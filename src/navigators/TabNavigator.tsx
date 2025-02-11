@@ -1,54 +1,62 @@
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {Text, View} from 'react-native';
+import styled from 'styled-components/native';
 
 const Tab = createBottomTabNavigator();
 
+const Container = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const TabIcon = styled.View<{focused: boolean}>`
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: ${props => (props.focused ? '#2196F3' : 'gray')};
+`;
+
+const ScreenText = styled.Text`
+  font-size: 16px;
+`;
+
 // Placeholder screens
 const HomeScreen = () => (
-  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-    <Text>Home</Text>
-  </View>
+  <Container>
+    <ScreenText>Home</ScreenText>
+  </Container>
 );
 
 const WalletScreen = () => (
-  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-    <Text>Wallet</Text>
-  </View>
+  <Container>
+    <ScreenText>Wallet</ScreenText>
+  </Container>
 );
 
 const SendScreen = () => (
-  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-    <Text>Send</Text>
-  </View>
+  <Container>
+    <ScreenText>Send</ScreenText>
+  </Container>
 );
 
 const ReceiveScreen = () => (
-  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-    <Text>Receive</Text>
-  </View>
+  <Container>
+    <ScreenText>Receive</ScreenText>
+  </Container>
 );
 
 const SettingsScreen = () => (
-  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-    <Text>Settings</Text>
-  </View>
+  <Container>
+    <ScreenText>Settings</ScreenText>
+  </Container>
 );
 
 export const TabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
-        tabBarIcon: ({focused, color}) => (
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: focused ? '#2196F3' : 'gray',
-            }}
-          />
-        ),
+        tabBarIcon: ({focused}) => <TabIcon focused={focused} />,
         tabBarActiveTintColor: '#2196F3',
         tabBarInactiveTintColor: 'gray',
       })}>

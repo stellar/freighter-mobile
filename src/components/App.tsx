@@ -1,36 +1,46 @@
 import React, {useState} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {useColorScheme} from 'react-native';
+import styled from 'styled-components/native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {TabNavigator} from '../navigators/TabNavigator';
+
+const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
+  flex: 1;
+  background-color: ${props =>
+    props.isDark ? Colors.darker : Colors.lighter};
+`;
+
+const Container = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const LoginButton = styled.TouchableOpacity`
+  background-color: red;
+  padding: 15px;
+  border-radius: 5px;
+`;
+
+const LoginText = styled.Text`
+  color: white;
+  font-size: 16px;
+`;
 
 export const App = (): React.JSX.Element => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-    flex: 1,
-  };
-
   if (!isLoggedIn) {
     return (
-      <SafeAreaView style={backgroundStyle}>
-        <View style={styles.container}>
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={() => setIsLoggedIn(true)}>
-            <Text style={styles.loginButtonText}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <SafeArea isDark={isDarkMode}>
+        <Container>
+          <LoginButton onPress={() => setIsLoggedIn(true)}>
+            <LoginText>Login</LoginText>
+          </LoginButton>
+        </Container>
+      </SafeArea>
     );
   }
 
@@ -40,22 +50,5 @@ export const App = (): React.JSX.Element => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loginButton: {
-    backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 5,
-  },
-  loginButtonText: {
-    color: 'white',
-    fontSize: 16,
-  },
-});
 
 export default App;
