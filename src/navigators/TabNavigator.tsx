@@ -2,6 +2,7 @@ import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import styled from 'styled-components/native';
 import {ROUTES, TabStackParamList} from '../config/routes';
+import {COLORS} from '../config/theme';
 
 const Tab = createBottomTabNavigator<TabStackParamList>();
 
@@ -15,7 +16,8 @@ const TabIcon = styled.View<{focused: boolean}>`
   width: 10px;
   height: 10px;
   border-radius: 5px;
-  background-color: ${({ focused }) => (focused ? '#2196F3' : 'gray')};
+  background-color: ${({focused}) =>
+    focused ? COLORS.tab.active : COLORS.tab.inactive};
 `;
 
 const ScreenText = styled.Text`
@@ -58,8 +60,8 @@ export const TabNavigator = () => {
     <Tab.Navigator
       screenOptions={({route}) => ({
         tabBarIcon: ({focused}) => <TabIcon focused={focused} />,
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: COLORS.tab.active,
+        tabBarInactiveTintColor: COLORS.tab.inactive,
       })}>
       <Tab.Screen name={ROUTES.TAB_HOME} component={HomeScreen} />
       <Tab.Screen name={ROUTES.TAB_WALLET} component={WalletScreen} />

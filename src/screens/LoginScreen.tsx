@@ -5,11 +5,12 @@ import styled from 'styled-components/native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {useColorScheme} from 'react-native';
 import {ROUTES, RootStackParamList} from '../config/routes';
+import {COLORS} from '../config/theme';
 
 const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
   background-color: ${({isDark}) =>
-    isDark ? Colors.darker : Colors.lighter};
+    isDark ? COLORS.background.dark : COLORS.background.light};
 `;
 
 const Container = styled.View`
@@ -19,13 +20,13 @@ const Container = styled.View`
 `;
 
 const LoginButton = styled.TouchableOpacity`
-  background-color: #2196F3;
+  background-color: ${COLORS.button.primary};
   padding: 15px;
   border-radius: 5px;
 `;
 
 const LoginText = styled.Text`
-  color: white;
+  color: ${COLORS.button.text};
   font-size: 16px;
 `;
 
