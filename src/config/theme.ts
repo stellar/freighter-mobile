@@ -12,6 +12,7 @@ export const COLORS = {
   text: {
     light: '#000000',
     dark: '#FFFFFF',
+    white: '#FFFFFF',
   },
   
   // Tab navigation
@@ -25,4 +26,6 @@ export const COLORS = {
     primary: '#2196F3',
     text: '#FFFFFF',
   },
+  
+  error: '#FF3B30',
 } as const; 

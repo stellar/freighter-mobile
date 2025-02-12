@@ -5,14 +5,18 @@ import {
   useStore as useReduxStore,
   TypedUseSelectorHook,
 } from 'react-redux';
+import {networkInfoReducer} from '../reducers/networkInfo';
 
 const initialState = {
-  // Add initial state here as needed
+  networkInfo: {
+    isConnected: true,
+    isInternetReachable: true,
+  },
 };
 
 export const store = configureStore({
   reducer: {
-    // Add reducers here as needed
+    networkInfo: networkInfoReducer,
   },
   preloadedState: initialState,
 });
