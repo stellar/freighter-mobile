@@ -32,21 +32,15 @@ const HomeScreen = () => (
   </Container>
 );
 
-const WalletScreen = () => (
+const SwapScreen = () => (
   <Container>
-    <ScreenText>Wallet</ScreenText>
+    <ScreenText>Swap</ScreenText>
   </Container>
 );
 
-const SendScreen = () => (
+const HistoryScreen = () => (
   <Container>
-    <ScreenText>Send</ScreenText>
-  </Container>
-);
-
-const ReceiveScreen = () => (
-  <Container>
-    <ScreenText>Receive</ScreenText>
+    <ScreenText>History</ScreenText>
   </Container>
 );
 
@@ -65,9 +59,8 @@ export const TabNavigator = () => {
         tabBarInactiveTintColor: COLORS.tab.inactive,
       })}>
       <Tab.Screen name={ROUTES.TAB_HOME} component={HomeScreen} />
-      <Tab.Screen name={ROUTES.TAB_WALLET} component={WalletScreen} />
-      <Tab.Screen name={ROUTES.TAB_SEND} component={SendScreen} />
-      <Tab.Screen name={ROUTES.TAB_RECEIVE} component={ReceiveScreen} />
+      <Tab.Screen name={ROUTES.TAB_SWAP} component={SwapScreen} />
+      <Tab.Screen name={ROUTES.TAB_HISTORY} component={HistoryScreen} />
       <Tab.Screen name={ROUTES.TAB_SETTINGS} component={SettingsScreen} />
     </Tab.Navigator>
   );

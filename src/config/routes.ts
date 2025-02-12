@@ -5,9 +5,8 @@ export const ROUTES = {
   
   // Tab Stack
   TAB_HOME: 'Home',
-  TAB_WALLET: 'Wallet',
-  TAB_SEND: 'Send',
-  TAB_RECEIVE: 'Receive',
+  TAB_SWAP: 'Swap',
+  TAB_HISTORY: 'History',
   TAB_SETTINGS: 'Settings',
 } as const;
 
@@ -18,8 +17,7 @@ export type RootStackParamList = {
 
 export type TabStackParamList = {
   [ROUTES.TAB_HOME]: undefined;
-  [ROUTES.TAB_WALLET]: undefined;
-  [ROUTES.TAB_SEND]: undefined;
-  [ROUTES.TAB_RECEIVE]: undefined;
+  [ROUTES.TAB_SWAP]: undefined;
+  [ROUTES.TAB_HISTORY]: undefined;
   [ROUTES.TAB_SETTINGS]: undefined;
 }; 
