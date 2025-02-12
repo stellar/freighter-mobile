@@ -2,15 +2,18 @@ import React from 'react';
 import styled from 'styled-components/native';
 import {COLORS} from '../config/theme';
 
-const Container = styled.View`
+const SafeContainer = styled.SafeAreaView`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   background-color: ${COLORS.error};
+  z-index: 1;
+`;
+
+const Content = styled.View`
   padding: 8px;
   align-items: center;
-  z-index: 1;
 `;
 
 const Message = styled.Text`
@@ -19,7 +22,9 @@ const Message = styled.Text`
 `;
 
 export const OfflineMessage = () => (
-  <Container>
-    <Message>No internet connection</Message>
-  </Container>
+  <SafeContainer>
+    <Content>
+      <Message>No internet connection</Message>
+    </Content>
+  </SafeContainer>
 ); 
