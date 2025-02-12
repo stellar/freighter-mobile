@@ -5,7 +5,7 @@ import {
   useStore as useReduxStore,
   TypedUseSelectorHook,
 } from 'react-redux';
-import {networkInfoReducer} from '../reducers/networkInfo';
+import {networkInfoReducer} from '../ducks/networkInfo';
 
 const initialState = {
   networkInfo: {

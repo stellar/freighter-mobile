@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import {useDispatch, useSelector} from 'react-redux';
-import {setNetworkInfo} from '../reducers/networkInfo';
+import {setNetworkInfo} from '../ducks/networkInfo';
 import {RootState} from '../config/store';
 import {OfflineMessage} from './OfflineMessage';
 import {debug} from '../helpers/debug';
