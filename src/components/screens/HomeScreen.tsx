@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import {fs} from '../../helpers/dimensions';
+import {BaseLayout} from '../layout/BaseLayout';
 
 const Container = styled.View`
   flex: 1;
@@ -13,7 +14,9 @@ const ScreenText = styled.Text`
 `;
 
 export const HomeScreen = () => (
-  <Container>
-    <ScreenText>Home</ScreenText>
-  </Container>
+  <BaseLayout>
+    <Container>
+      <ScreenText>Home</ScreenText>
+    </Container>
+  </BaseLayout>
 ); 

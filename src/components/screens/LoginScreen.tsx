@@ -2,17 +2,10 @@ import React from 'react';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
-import {useColorScheme} from 'react-native';
 import {ROUTES, RootStackParamList} from '../../config/routes';
 import {COLORS} from '../../config/theme';
 import {px, fs} from '../../helpers/dimensions';
-
-const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
-  flex: 1;
-  background-color: ${({isDark}) =>
-    isDark ? COLORS.background.dark : COLORS.background.light};
-`;
+import {BaseLayout} from '../layout/BaseLayout';
 
 const Container = styled.View`
   flex: 1;
@@ -38,15 +31,14 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<
 
 export const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const isDarkMode = useColorScheme() === 'dark';
-
+  
   return (
-    <SafeArea isDark={isDarkMode}>
+    <BaseLayout useSafeArea>
       <Container>
         <LoginButton onPress={() => navigation.replace(ROUTES.MAIN_TABS)}>
           <LoginText>Login</LoginText>
         </LoginButton>
       </Container>
-    </SafeArea>
+    </BaseLayout>
   );
 }; 
