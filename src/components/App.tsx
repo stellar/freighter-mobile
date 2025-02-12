@@ -3,12 +3,14 @@ import {NavigationContainer} from '@react-navigation/native';
 import {useColorScheme} from 'react-native';
 import styled from 'styled-components/native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
+import {Provider} from 'react-redux';
 import {TabNavigator} from '../navigators/TabNavigator';
+import {store} from '../config/store';
 
 const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
-  background-color: ${props =>
-    props.isDark ? Colors.darker : Colors.lighter};
+  background-color: ${({isDark}) =>
+    isDark ? Colors.darker : Colors.lighter};
 `;
 
 const Container = styled.View`
@@ -18,7 +20,7 @@ const Container = styled.View`
 `;
 
 const LoginButton = styled.TouchableOpacity`
-  background-color: red;
+  background-color: #2196F3;
   padding: 15px;
   border-radius: 5px;
 `;
@@ -34,20 +36,24 @@ export const App = (): React.JSX.Element => {
 
   if (!isLoggedIn) {
     return (
-      <SafeArea isDark={isDarkMode}>
-        <Container>
-          <LoginButton onPress={() => setIsLoggedIn(true)}>
-            <LoginText>Login</LoginText>
-          </LoginButton>
-        </Container>
-      </SafeArea>
+      <Provider store={store}>
+        <SafeArea isDark={isDarkMode}>
+          <Container>
+            <LoginButton onPress={() => setIsLoggedIn(true)}>
+              <LoginText>Login</LoginText>
+            </LoginButton>
+          </Container>
+        </SafeArea>
+      </Provider>
     );
   }
 
   return (
-    <NavigationContainer>
-      <TabNavigator />
-    </NavigationContainer>
+    <Provider store={store}>
+      <NavigationContainer>
+        <TabNavigator />
+      </NavigationContainer>
+    </Provider>
   );
 };
 
