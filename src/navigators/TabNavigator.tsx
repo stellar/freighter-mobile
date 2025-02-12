@@ -1,8 +1,9 @@
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import styled from 'styled-components/native';
+import {ROUTES, TabStackParamList} from '../config/routes';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabStackParamList>();
 
 const Container = styled.View`
   flex: 1;
@@ -14,7 +15,7 @@ const TabIcon = styled.View<{focused: boolean}>`
   width: 10px;
   height: 10px;
   border-radius: 5px;
-  background-color: ${props => (props.focused ? '#2196F3' : 'gray')};
+  background-color: ${({ focused }) => (focused ? '#2196F3' : 'gray')};
 `;
 
 const ScreenText = styled.Text`
@@ -60,11 +61,11 @@ export const TabNavigator = () => {
         tabBarActiveTintColor: '#2196F3',
         tabBarInactiveTintColor: 'gray',
       })}>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Wallet" component={WalletScreen} />
-      <Tab.Screen name="Send" component={SendScreen} />
-      <Tab.Screen name="Receive" component={ReceiveScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name={ROUTES.TAB_HOME} component={HomeScreen} />
+      <Tab.Screen name={ROUTES.TAB_WALLET} component={WalletScreen} />
+      <Tab.Screen name={ROUTES.TAB_SEND} component={SendScreen} />
+      <Tab.Screen name={ROUTES.TAB_RECEIVE} component={ReceiveScreen} />
+      <Tab.Screen name={ROUTES.TAB_SETTINGS} component={SettingsScreen} />
     </Tab.Navigator>
   );
 }; 

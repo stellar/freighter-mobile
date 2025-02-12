@@ -4,7 +4,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {useColorScheme} from 'react-native';
-import {RootStackParamList} from '../navigators/RootNavigator';
+import {ROUTES, RootStackParamList} from '../config/routes';
 
 const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
@@ -31,7 +31,7 @@ const LoginText = styled.Text`
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'Login'
+  typeof ROUTES.LOGIN
 >;
 
 export const LoginScreen = () => {
@@ -41,7 +41,7 @@ export const LoginScreen = () => {
   return (
     <SafeArea isDark={isDarkMode}>
       <Container>
-        <LoginButton onPress={() => navigation.replace('MainTabs')}>
+        <LoginButton onPress={() => navigation.replace(ROUTES.MAIN_TABS)}>
           <LoginText>Login</LoginText>
         </LoginButton>
       </Container>
