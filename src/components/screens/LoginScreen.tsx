@@ -4,9 +4,9 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {useColorScheme} from 'react-native';
-import {ROUTES, RootStackParamList} from '../config/routes';
-import {COLORS} from '../config/theme';
-import {px, fs} from '../helpers/dimensions';
+import {ROUTES, RootStackParamList} from '../../config/routes';
+import {COLORS} from '../../config/theme';
+import {px, fs} from '../../helpers/dimensions';
 
 const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;

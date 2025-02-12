@@ -3,15 +3,13 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import styled from 'styled-components/native';
 import {ROUTES, TabStackParamList} from '../config/routes';
 import {COLORS} from '../config/theme';
-import {px, fs} from '../helpers/dimensions';
+import {px} from '../helpers/dimensions';
+import {HomeScreen} from '../components/screens/HomeScreen';
+import {SwapScreen} from '../components/screens/SwapScreen';
+import {HistoryScreen} from '../components/screens/HistoryScreen';
+import {SettingsScreen} from '../components/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<TabStackParamList>();
-
-const Container = styled.View`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-`;
 
 const TabIcon = styled.View<{focused: boolean}>`
   width: ${px(10)};
@@ -20,35 +18,6 @@ const TabIcon = styled.View<{focused: boolean}>`
   background-color: ${({focused}) =>
     focused ? COLORS.tab.active : COLORS.tab.inactive};
 `;
-
-const ScreenText = styled.Text`
-  font-size: ${fs(16)};
-`;
-
-// Placeholder screens
-const HomeScreen = () => (
-  <Container>
-    <ScreenText>Home</ScreenText>
-  </Container>
-);
-
-const SwapScreen = () => (
-  <Container>
-    <ScreenText>Swap</ScreenText>
-  </Container>
-);
-
-const HistoryScreen = () => (
-  <Container>
-    <ScreenText>History</ScreenText>
-  </Container>
-);
-
-const SettingsScreen = () => (
-  <Container>
-    <ScreenText>Settings</ScreenText>
-  </Container>
-);
 
 export const TabNavigator = () => {
   return (
