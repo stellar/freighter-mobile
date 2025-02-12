@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import {COLORS} from '../config/theme';
+import {px, fs} from '../helpers/dimensions';
 
 const SafeContainer = styled.SafeAreaView`
   position: absolute;
@@ -12,13 +13,13 @@ const SafeContainer = styled.SafeAreaView`
 `;
 
 const Content = styled.View`
-  padding: 8px;
+  padding: ${px(8)};
   align-items: center;
 `;
 
 const Message = styled.Text`
   color: ${COLORS.text.white};
-  font-size: 14px;
+  font-size: ${fs(14)};
 `;
 
 export const OfflineMessage = () => (

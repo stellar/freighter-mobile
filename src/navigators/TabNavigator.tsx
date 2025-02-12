@@ -3,6 +3,7 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import styled from 'styled-components/native';
 import {ROUTES, TabStackParamList} from '../config/routes';
 import {COLORS} from '../config/theme';
+import {px, fs} from '../helpers/dimensions';
 
 const Tab = createBottomTabNavigator<TabStackParamList>();
 
@@ -13,15 +14,15 @@ const Container = styled.View`
 `;
 
 const TabIcon = styled.View<{focused: boolean}>`
-  width: 10px;
-  height: 10px;
-  border-radius: 5px;
+  width: ${px(10)};
+  height: ${px(10)};
+  border-radius: ${px(5)};
   background-color: ${({focused}) =>
     focused ? COLORS.tab.active : COLORS.tab.inactive};
 `;
 
 const ScreenText = styled.Text`
-  font-size: 16px;
+  font-size: ${fs(16)};
 `;
 
 // Placeholder screens

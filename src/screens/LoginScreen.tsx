@@ -6,6 +6,7 @@ import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {useColorScheme} from 'react-native';
 import {ROUTES, RootStackParamList} from '../config/routes';
 import {COLORS} from '../config/theme';
+import {px, fs} from '../helpers/dimensions';
 
 const SafeArea = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
@@ -21,13 +22,13 @@ const Container = styled.View`
 
 const LoginButton = styled.TouchableOpacity`
   background-color: ${COLORS.button.primary};
-  padding: 15px;
-  border-radius: 5px;
+  padding: ${px(15)};
+  border-radius: ${px(5)};
 `;
 
 const LoginText = styled.Text`
   color: ${COLORS.button.text};
-  font-size: 16px;
+  font-size: ${fs(16)};
 `;
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
