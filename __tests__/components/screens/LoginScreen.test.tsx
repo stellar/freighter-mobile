@@ -1,6 +1,6 @@
 import React from 'react';
 import {render, fireEvent} from '@testing-library/react-native';
-import {LoginScreen} from '../../src/components/screens/LoginScreen';
+import {LoginScreen} from '../../../src/components/screens/LoginScreen';
 
 // Mock useNavigation hook
 const mockNavigate = jest.fn();
