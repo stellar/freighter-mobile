@@ -20,13 +20,17 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<
 export const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   
+  const handleLogin = () => {
+    navigation.replace(ROUTES.MAIN_TABS);
+  };
+
   return (
     <BaseLayout useSafeArea>
       <Container>
         <Button
           variant={ButtonVariant.PRIMARY}
           size={ButtonSize.LARGE}
-          onPress={() => navigation.replace(ROUTES.MAIN_TABS)}>
+          onPress={handleLogin}>
           Login
         </Button>
       </Container>

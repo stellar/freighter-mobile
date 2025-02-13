@@ -35,10 +35,7 @@ export const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
 
   const handleSignOut = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{name: ROUTES.LOGIN}],
-    });
+    navigation.replace(ROUTES.LOGIN);
   };
 
   return (
