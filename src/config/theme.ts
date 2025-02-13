@@ -14,4 +14,6 @@ export const COLORS = {
     active: '#2196F3',
     inactive: '#808080',
   },
+
+  error: '#FF3B30',
 } as const; 
