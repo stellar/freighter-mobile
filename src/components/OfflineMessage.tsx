@@ -18,7 +18,7 @@ const Content = styled.View`
 `;
 
 const Message = styled.Text`
-  color: ${COLORS.text.white};
+  color: ${COLORS.text.default};
   font-size: ${fs(14)};
 `;
 

@@ -12,13 +12,13 @@ interface BaseLayoutProps {
 const StyledSafeAreaView = styled(SafeAreaView)<{backgroundColor?: string}>`
   flex: 1;
   background-color: ${({backgroundColor}) =>
-    backgroundColor || COLORS.background.light};
+    backgroundColor || COLORS.background.default};
 `;
 
 const StyledView = styled(View)<{backgroundColor?: string}>`
   flex: 1;
   background-color: ${({backgroundColor}) =>
-    backgroundColor || COLORS.background.light};
+    backgroundColor || COLORS.background.default};
 `;
 
 export const BaseLayout = ({

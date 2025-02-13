@@ -20,7 +20,7 @@ const LoginButton = styled.TouchableOpacity`
 `;
 
 const LoginText = styled.Text`
-  color: ${COLORS.button.text};
+  color: ${COLORS.text.default};
   font-size: ${fs(16)};
 `;
 
