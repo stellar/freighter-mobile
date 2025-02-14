@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components/native';
-import {COLORS} from '../config/theme';
+import {THEME} from '../config/sds/theme';
 import {px, fs} from '../helpers/dimensions';
 
 const SafeContainer = styled.SafeAreaView`
@@ -8,7 +8,7 @@ const SafeContainer = styled.SafeAreaView`
   top: 0;
   left: 0;
   right: 0;
-  background-color: ${COLORS.error};
+  background-color: ${THEME.colors.status.error};
   z-index: 1;
 `;
 
@@ -18,7 +18,7 @@ const Content = styled.View`
 `;
 
 const Message = styled.Text`
-  color: ${COLORS.text.default};
+  color: ${THEME.colors.text.default};
   font-size: ${fs(14)};
 `;
 

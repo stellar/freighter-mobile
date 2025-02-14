@@ -4,7 +4,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
 import {fs} from '../../helpers/dimensions';
 import {BaseLayout} from '../layout/BaseLayout';
-import {COLORS} from '../../config/theme';
+import {THEME} from '../../config/sds/theme';
 import {Button, ButtonVariant, ButtonSize} from '../sds/Button';
 import {ROUTES, RootStackParamList} from '../../config/routes';
 
@@ -22,7 +22,7 @@ const TopSection = styled.View`
 `;
 
 const ScreenText = styled.Text`
-  color: ${COLORS.text.default};
+  color: ${THEME.colors.text.default};
   font-size: ${fs(16)};
 `;
 

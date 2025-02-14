@@ -2,7 +2,7 @@ import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import styled from 'styled-components/native';
 import {ROUTES, TabStackParamList} from '../config/routes';
-import {COLORS} from '../config/theme';
+import {THEME} from '../config/sds/theme';
 import {px} from '../helpers/dimensions';
 import {HomeScreen} from '../components/screens/HomeScreen';
 import {SwapScreen} from '../components/screens/SwapScreen';
@@ -16,7 +16,7 @@ const TabIcon = styled.View<{focused: boolean}>`
   height: ${px(10)};
   border-radius: ${px(5)};
   background-color: ${({focused}) =>
-    focused ? COLORS.tab.active : COLORS.tab.inactive};
+    focused ? THEME.colors.tab.active : THEME.colors.tab.inactive};
 `;
 
 export const TabNavigator = () => {
@@ -24,8 +24,8 @@ export const TabNavigator = () => {
     <Tab.Navigator
       screenOptions={({route}) => ({
         tabBarIcon: ({focused}) => <TabIcon focused={focused} />,
-        tabBarActiveTintColor: COLORS.tab.active,
-        tabBarInactiveTintColor: COLORS.tab.inactive,
+        tabBarActiveTintColor: THEME.colors.tab.active,
+        tabBarInactiveTintColor: THEME.colors.tab.inactive,
       })}>
       <Tab.Screen name={ROUTES.TAB_HOME} component={HomeScreen} />
       <Tab.Screen name={ROUTES.TAB_SWAP} component={SwapScreen} />

@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components/native';
 import {fs} from '../../helpers/dimensions';
 import {BaseLayout} from '../layout/BaseLayout';
-import {COLORS} from '../../config/theme';
+import {THEME} from '../../config/sds/theme';
 
 const Container = styled.View`
   flex: 1;
@@ -11,7 +11,7 @@ const Container = styled.View`
 `;
 
 const ScreenText = styled.Text`
-  color: ${COLORS.text.default};
+  color: ${THEME.colors.text.default};
   font-size: ${fs(16)};
 `;
 

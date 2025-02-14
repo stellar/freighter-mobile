@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import {SafeAreaView, View} from 'react-native';
-import {COLORS} from '../../config/theme';
+import {THEME} from '../../config/sds/theme';
 
 interface BaseLayoutProps {
   children: React.ReactNode;
@@ -12,13 +12,13 @@ interface BaseLayoutProps {
 const StyledSafeAreaView = styled(SafeAreaView)<{backgroundColor?: string}>`
   flex: 1;
   background-color: ${({backgroundColor}) =>
-    backgroundColor || COLORS.background.default};
+    backgroundColor || THEME.colors.background.default};
 `;
 
 const StyledView = styled(View)<{backgroundColor?: string}>`
   flex: 1;
   background-color: ${({backgroundColor}) =>
-    backgroundColor || COLORS.background.default};
+    backgroundColor || THEME.colors.background.default};
 `;
 
 export const BaseLayout = ({

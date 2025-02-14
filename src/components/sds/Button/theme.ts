@@ -1,3 +1,13 @@
+/*
+* This file is used to define the theme for the Button component.
+* It is used to define the height, font size, padding, border radius, and colors for the button.
+* 
+* The values on this file have been ported from the Stellar Design System.
+* https://github.com/stellar/stellar-design-system/blob/main/%40stellar/design-system/src/components/Button/styles.scss
+*/
+
+import {THEME, PALETTE} from '../../../config/sds/theme';
+
 export const BUTTON_THEME = {
   height: {
     sm: 26,
@@ -5,58 +15,58 @@ export const BUTTON_THEME = {
     lg: 40,
   },
   fontSize: {
-    sm: 12,
-    md: 14,
-    lg: 16,
+    sm: THEME.typography.fontSize.xs,
+    md: THEME.typography.fontSize.sm,
+    lg: THEME.typography.fontSize.md,
   },
   padding: {
     sm: {
-      vertical: 4,
-      horizontal: 8,
+      vertical: THEME.spacing.xs,
+      horizontal: THEME.spacing.sm,
     },
     md: {
-      vertical: 6,
-      horizontal: 10,
+      vertical: THEME.spacing.sm - 2,
+      horizontal: THEME.spacing.sm + 2,
     },
     lg: {
-      vertical: 8,
-      horizontal: 12,
+      vertical: THEME.spacing.sm,
+      horizontal: THEME.spacing.md - 4,
     },
   },
   borderRadius: {
-    sm: 4,
-    md: 6,
-    lg: 8,
+    sm: THEME.borderRadius.sm,
+    md: THEME.borderRadius.md,
+    lg: THEME.borderRadius.lg,
   },
   colors: {
     primary: {
-      background: '#6E56CF',
-      text: '#FFFFFF',
+      background: THEME.colors.primary,
+      text: PALETTE.gray['12'],
     },
     secondary: {
-      background: '#171717',
-      text: '#FFFFFF',
+      background: PALETTE.gray['03'],
+      text: PALETTE.gray['12'],
     },
     tertiary: {
-      background: '#FCFCFC',
-      text: '#171717',
-      border: '#E2E2E2',
+      background: PALETTE.gray['01'],
+      text: PALETTE.gray['12'],
+      border: PALETTE.gray['06'],
     },
     error: {
-      background: '#FFFCFC',
-      text: '#CD2B31',
-      border: '#F9C6C6',
+      background: PALETTE.red['01'],
+      text: PALETTE.red['11'],
+      border: PALETTE.red['06'],
     },
     destructive: {
-      background: '#E5484D',
-      text: '#FFFFFF',
+      background: PALETTE.red['09'],
+      text: PALETTE.gray['12'],
     },
     disabled: {
-      background: '#E2E2E2',
-      text: '#8F8F8F',
+      background: PALETTE.gray['06'],
+      text: PALETTE.gray['09'],
     },
   },
   icon: {
-    spacing: 8,
+    spacing: THEME.spacing.sm,
   },
 } as const; 
