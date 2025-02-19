@@ -30,7 +30,7 @@ export default [...compat.extends(
             ...GLOBALS_BROWSER_FIX,
         },
 
-        ecmaVersion: 5,
+        ecmaVersion: "latest",
         sourceType: "script",
 
         parserOptions: {
