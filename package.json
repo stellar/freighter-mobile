@@ -20,7 +20,7 @@
     "react-native": "0.77.1",
     "react-native-responsive-screen": "^1.4.2",
     "react-native-safe-area-context": "^5.2.0",
-    "react-native-screens": "^4.6.0",
+    "react-native-screens": "^4.7.0",
     "react-redux": "^9.2.0",
     "styled-components": "^6.1.15"
   },
