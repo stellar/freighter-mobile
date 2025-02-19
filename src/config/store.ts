@@ -1,11 +1,11 @@
-import {configureStore} from '@reduxjs/toolkit';
+import { configureStore } from '@reduxjs/toolkit';
 import {
   useSelector as useReduxSelector,
   useDispatch as useReduxDispatch,
   useStore as useReduxStore,
   TypedUseSelectorHook,
 } from 'react-redux';
-import {networkInfoReducer} from '../ducks/networkInfo';
+import { networkInfoReducer } from '../ducks/networkInfo';
 
 const initialState = {
   networkInfo: {

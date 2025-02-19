@@ -1,14 +1,14 @@
 /*
-* This file is used to define the theme for the Button component.
-* It is used to define the height, font size, padding, border radius, and colors for the button.
-* 
-* The values on this file have been ported from the Stellar Design System.
-* https://github.com/stellar/stellar-design-system/blob/main/%40stellar/design-system/src/components/Button/styles.scss
-*/
+ * This file is used to define the theme for the Button component.
+ * It is used to define the height, font size, padding, border radius, and colors for the button.
+ *
+ * The values on this file have been ported from the Stellar Design System.
+ * https://github.com/stellar/stellar-design-system/blob/main/%40stellar/design-system/src/components/Button/styles.scss
+ */
 
-import {THEME, PALETTE} from '../../../config/sds/theme';
+import { THEME, PALETTE } from '../../../config/sds/theme';
 
-export const BUTTON_THEME = {
+const BUTTON_THEME = {
   height: {
     sm: 26,
     md: 32,
@@ -69,4 +69,6 @@ export const BUTTON_THEME = {
   icon: {
     spacing: THEME.spacing.sm,
   },
-} as const; 
+} as const;
+
+export default BUTTON_THEME;

@@ -1,12 +1,12 @@
 import React from 'react';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
-import {fs} from '../../helpers/dimensions';
-import {BaseLayout} from '../layout/BaseLayout';
-import {THEME} from '../../config/sds/theme';
-import {Button, ButtonVariant, ButtonSize} from '../sds/Button';
-import {ROUTES, RootStackParamList} from '../../config/routes';
+import { fs } from '../../helpers/dimensions';
+import { BaseLayout } from '../layout/BaseLayout';
+import { THEME } from '../../config/sds/theme';
+import { Button, ButtonVariant, ButtonSize } from '../sds/Button';
+import { ROUTES, RootStackParamList } from '../../config/routes';
 
 const Container = styled.View`
   flex: 1;
@@ -27,7 +27,7 @@ const ScreenText = styled.Text`
 `;
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+RootStackParamList,
   typeof ROUTES.MAIN_TABS
 >;
 
@@ -47,10 +47,11 @@ export const SettingsScreen = () => {
         <Button
           variant={ButtonVariant.DESTRUCTIVE}
           size={ButtonSize.LARGE}
-          onPress={handleSignOut}>
+          onPress={handleSignOut}
+        >
           Sign out
         </Button>
       </Container>
     </BaseLayout>
   );
-}; 
+};

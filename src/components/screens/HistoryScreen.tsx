@@ -1,8 +1,8 @@
 import React from 'react';
 import styled from 'styled-components/native';
-import {fs} from '../../helpers/dimensions';
-import {BaseLayout} from '../layout/BaseLayout';
-import {THEME} from '../../config/sds/theme';
+import { fs } from '../../helpers/dimensions';
+import { BaseLayout } from '../layout/BaseLayout';
+import { THEME } from '../../config/sds/theme';
 
 const Container = styled.View`
   flex: 1;
@@ -21,4 +21,4 @@ export const HistoryScreen = () => (
       <ScreenText>History</ScreenText>
     </Container>
   </BaseLayout>
-); 
+);

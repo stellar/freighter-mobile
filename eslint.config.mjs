@@ -46,6 +46,18 @@ export default [...compat.extends(
                 namedComponents: "arrow-function",
                 unnamedComponents: "arrow-function"
             }
-        ]
+        ],
+        "no-param-reassign": [
+            "error",
+            {
+                props: true,
+                // Allows direct state mutations in Redux reducers (which is safe due to Immer)
+                ignorePropertyModificationsFor: ["state"]
+            }
+        ],
+        "import/prefer-default-export": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "react/require-default-props": "off",
     },
 }];

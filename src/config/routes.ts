@@ -2,7 +2,7 @@ export const ROUTES = {
   // Auth Stack
   LOGIN: 'Login',
   MAIN_TABS: 'MainTabs',
-  
+
   // Tab Stack
   TAB_HOME: 'Home',
   TAB_SWAP: 'Swap',
@@ -20,4 +20,4 @@ export type TabStackParamList = {
   [ROUTES.TAB_SWAP]: undefined;
   [ROUTES.TAB_HISTORY]: undefined;
   [ROUTES.TAB_SETTINGS]: undefined;
-}; 
+};
