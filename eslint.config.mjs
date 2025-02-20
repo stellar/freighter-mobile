@@ -62,6 +62,10 @@ export default [
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
       "react/require-default-props": "off",
+
+      // Add these rules to match Prettier config and make sure we use double quotes
+      quotes: ["error", "double"],
+      "@typescript-eslint/quotes": ["error", "double"],
     },
   },
 ];
