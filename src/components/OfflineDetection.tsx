@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setNetworkInfo } from "../ducks/networkInfo";
+
 import { RootState } from "../config/store";
-import { OfflineMessage } from "./OfflineMessage";
+import { setNetworkInfo } from "../ducks/networkInfo";
 import debug from "../helpers/debug";
+import { OfflineMessage } from "./OfflineMessage";
 
 interface Props {
   children: React.ReactNode;

@@ -1,8 +1,8 @@
+import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +43,31 @@ export default [
           unnamedComponents: "arrow-function",
         },
       ],
+
+      "import/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+          ],
+          "newlines-between": "always",
+          alphabetize: { order: "asc" },
+        },
+      ],
+      "react/require-default-props": "off",
+      "import/prefer-default-export": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+
+      // Add these rules to match Prettier config and make sure we use double quotes
+      quotes: ["error", "double"],
+      "@typescript-eslint/quotes": ["error", "double"],
+
       "no-param-reassign": [
         "error",
         {
@@ -51,14 +76,6 @@ export default [
           ignorePropertyModificationsFor: ["state"],
         },
       ],
-      "import/prefer-default-export": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "react/require-default-props": "off",
-
-      // Add these rules to match Prettier config and make sure we use double quotes
-      quotes: ["error", "double"],
-      "@typescript-eslint/quotes": ["error", "double"],
     },
   },
 ];

@@ -1,6 +1,7 @@
 import React from "react";
-import styled from "styled-components/native";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
+import styled from "styled-components/native";
+
 import { px, fs } from "../../../helpers/dimensions";
 import BUTTON_THEME from "./theme";
 

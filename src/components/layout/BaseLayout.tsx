@@ -1,6 +1,7 @@
 import React from "react";
-import styled from "styled-components/native";
 import { SafeAreaView, View } from "react-native";
+import styled from "styled-components/native";
+
 import { THEME } from "../../config/sds/theme";
 
 interface BaseLayoutProps {

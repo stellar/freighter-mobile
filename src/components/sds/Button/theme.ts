@@ -5,7 +5,6 @@
  * The values on this file have been ported from the Stellar Design System.
  * https://github.com/stellar/stellar-design-system/blob/main/%40stellar/design-system/src/components/Button/styles.scss
  */
-
 import { THEME, PALETTE } from "../../../config/sds/theme";
 
 const BUTTON_THEME = {
