@@ -6,7 +6,7 @@
  * https://github.com/stellar/stellar-design-system/blob/main/%40stellar/design-system/src/components/Button/styles.scss
  */
 
-import { THEME, PALETTE } from '../../../config/sds/theme';
+import { THEME, PALETTE } from "../../../config/sds/theme";
 
 const BUTTON_THEME = {
   height: {
@@ -41,29 +41,29 @@ const BUTTON_THEME = {
   colors: {
     primary: {
       background: THEME.colors.primary,
-      text: PALETTE.gray['12'],
+      text: PALETTE.gray["12"],
     },
     secondary: {
-      background: PALETTE.gray['03'],
-      text: PALETTE.gray['12'],
+      background: PALETTE.gray["03"],
+      text: PALETTE.gray["12"],
     },
     tertiary: {
-      background: PALETTE.gray['01'],
-      text: PALETTE.gray['12'],
-      border: PALETTE.gray['06'],
+      background: PALETTE.gray["01"],
+      text: PALETTE.gray["12"],
+      border: PALETTE.gray["06"],
     },
     error: {
-      background: PALETTE.red['01'],
-      text: PALETTE.red['11'],
-      border: PALETTE.red['06'],
+      background: PALETTE.red["01"],
+      text: PALETTE.red["11"],
+      border: PALETTE.red["06"],
     },
     destructive: {
-      background: PALETTE.red['09'],
-      text: PALETTE.gray['12'],
+      background: PALETTE.red["09"],
+      text: PALETTE.gray["12"],
     },
     disabled: {
-      background: PALETTE.gray['06'],
-      text: PALETTE.gray['09'],
+      background: PALETTE.gray["06"],
+      text: PALETTE.gray["09"],
     },
   },
   icon: {

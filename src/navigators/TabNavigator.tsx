@@ -1,13 +1,13 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import styled from 'styled-components/native';
-import { ROUTES, TabStackParamList } from '../config/routes';
-import { THEME } from '../config/sds/theme';
-import { px } from '../helpers/dimensions';
-import { HomeScreen } from '../components/screens/HomeScreen';
-import { SwapScreen } from '../components/screens/SwapScreen';
-import { HistoryScreen } from '../components/screens/HistoryScreen';
-import { SettingsScreen } from '../components/screens/SettingsScreen';
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import styled from "styled-components/native";
+import { ROUTES, TabStackParamList } from "../config/routes";
+import { THEME } from "../config/sds/theme";
+import { px } from "../helpers/dimensions";
+import { HomeScreen } from "../components/screens/HomeScreen";
+import { SwapScreen } from "../components/screens/SwapScreen";
+import { HistoryScreen } from "../components/screens/HistoryScreen";
+import { SettingsScreen } from "../components/screens/SettingsScreen";
 
 const Tab = createBottomTabNavigator<TabStackParamList>();
 
@@ -15,7 +15,8 @@ const TabIcon = styled.View<{ focused: boolean }>`
   width: ${px(10)};
   height: ${px(10)};
   border-radius: ${px(5)};
-  background-color: ${({ focused }: { focused: boolean }) => (focused ? THEME.colors.tab.active : THEME.colors.tab.inactive)};
+  background-color: ${({ focused }: { focused: boolean }) =>
+    focused ? THEME.colors.tab.active : THEME.colors.tab.inactive};
 `;
 
 // Move the tab icon component outside of the render to follow React best practices

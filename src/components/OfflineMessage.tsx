@@ -1,7 +1,7 @@
-import React from 'react';
-import styled from 'styled-components/native';
-import { THEME } from '../config/sds/theme';
-import { px, fs } from '../helpers/dimensions';
+import React from "react";
+import styled from "styled-components/native";
+import { THEME } from "../config/sds/theme";
+import { px, fs } from "../helpers/dimensions";
 
 const SafeContainer = styled.SafeAreaView`
   position: absolute;

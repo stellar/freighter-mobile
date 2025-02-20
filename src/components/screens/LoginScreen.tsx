@@ -1,10 +1,10 @@
-import React from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import styled from 'styled-components/native';
-import { ROUTES, RootStackParamList } from '../../config/routes';
-import { BaseLayout } from '../layout/BaseLayout';
-import { Button, ButtonSize, ButtonVariant } from '../sds/Button';
+import React from "react";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import styled from "styled-components/native";
+import { ROUTES, RootStackParamList } from "../../config/routes";
+import { BaseLayout } from "../layout/BaseLayout";
+import { Button, ButtonSize, ButtonVariant } from "../sds/Button";
 
 const Container = styled.View`
   flex: 1;
@@ -13,7 +13,7 @@ const Container = styled.View`
 `;
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
-RootStackParamList,
+  RootStackParamList,
   typeof ROUTES.LOGIN
 >;
 

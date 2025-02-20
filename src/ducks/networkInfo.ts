@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface NetworkState {
   isConnected: boolean;
@@ -16,7 +16,7 @@ const initialState: NetworkState = {
 };
 
 const networkInfoSlice = createSlice({
-  name: 'networkInfo',
+  name: "networkInfo",
   initialState,
   reducers: {
     setNetworkInfo: (state, action: PayloadAction<NetworkPayload>) => {

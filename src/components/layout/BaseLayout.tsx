@@ -1,7 +1,7 @@
-import React from 'react';
-import styled from 'styled-components/native';
-import { SafeAreaView, View } from 'react-native';
-import { THEME } from '../../config/sds/theme';
+import React from "react";
+import styled from "styled-components/native";
+import { SafeAreaView, View } from "react-native";
+import { THEME } from "../../config/sds/theme";
 
 interface BaseLayoutProps {
   children: React.ReactNode;
@@ -15,12 +15,14 @@ interface StyledViewProps {
 
 const StyledSafeAreaView = styled(SafeAreaView)<StyledViewProps>`
   flex: 1;
-  background-color: ${({ backgroundColor }: StyledViewProps) => backgroundColor};
+  background-color: ${({ backgroundColor }: StyledViewProps) =>
+    backgroundColor};
 `;
 
 const StyledView = styled(View)<StyledViewProps>`
   flex: 1;
-  background-color: ${({ backgroundColor }: StyledViewProps) => backgroundColor};
+  background-color: ${({ backgroundColor }: StyledViewProps) =>
+    backgroundColor};
 `;
 
 export const BaseLayout = ({
