@@ -12,13 +12,6 @@ const compat = new FlatCompat({
   allConfig: js.configs.all,
 });
 
-// Need to add this to fix the AudioWorkletGlobalScope eslint
-const GLOBALS_BROWSER_FIX = {
-  ...globals.browser,
-  AudioWorkletGlobalScope: globals.browser["AudioWorkletGlobalScope "],
-};
-delete GLOBALS_BROWSER_FIX["AudioWorkletGlobalScope "];
-
 export default [
   ...compat.extends(
     "airbnb",
@@ -30,7 +23,7 @@ export default [
   {
     languageOptions: {
       globals: {
-        ...GLOBALS_BROWSER_FIX,
+        ...globals.browser,
       },
 
       ecmaVersion: "latest",
