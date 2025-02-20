@@ -1,0 +1,6 @@
+node_modules
+build
+coverage
+ios
+android
+*.d.ts 

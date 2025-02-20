@@ -16,16 +16,12 @@
     "test:watch": "jest --watch"
   },
   "lint-staged": {
-    "*.ts?(x)": [
-      "yarn lint",
-      "yarn format"
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
     ],
-    "*.js": [
-      "yarn lint",
-      "yarn format"
-    ],
-    "*.json": [
-      "yarn format"
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
     ]
   },
   "dependencies": {
