@@ -1,6 +1,16 @@
-node_modules
-build
-coverage
-ios
-android
-*.d.ts 
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+coverage/
+
+# Native files
+android/
+ios/
+
+# Lock file
+yarn.lock
+
+# Type declaration files
+*.d.ts

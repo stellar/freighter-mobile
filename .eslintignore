@@ -1,5 +1,13 @@
-node_modules
-build
-coverage
-ios
-android
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+coverage/
+
+# Native files
+android/
+ios/
+
+# Lock file
+yarn.lock
