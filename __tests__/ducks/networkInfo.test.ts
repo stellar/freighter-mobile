@@ -10,7 +10,7 @@ describe("networkInfo reducer", () => {
   };
 
   it("should return the initial state", () => {
-    expect(networkInfoReducer(undefined, { type: undefined })).toEqual(
+    expect(networkInfoReducer(undefined, { type: "@@redux/INIT" })).toEqual(
       initialState,
     );
   });

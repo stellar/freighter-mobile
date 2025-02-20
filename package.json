@@ -15,12 +15,12 @@
   },
   "lint-staged": {
     "*.ts?(x)": [
-      "yarn format",
-      "yarn lint"
+      "yarn lint",
+      "yarn format"
     ],
     "*.js": [
-      "yarn format",
-      "yarn lint"
+      "yarn lint",
+      "yarn format"
     ],
     "*.json": [
       "yarn format"

@@ -138,6 +138,7 @@ export const Button = ({
       return (
         <IconContainer position={IconPosition.RIGHT}>
           <ActivityIndicator
+            testID="button-loading-indicator"
             size="small"
             color={getTextColor(variant, disabled)}
           />

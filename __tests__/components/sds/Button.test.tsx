@@ -28,9 +28,8 @@ describe("Button", () => {
   });
 
   it("shows loading indicator when isLoading is true", () => {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { UNSAFE_getByType } = render(<Button isLoading>Test Button</Button>);
-    expect(UNSAFE_getByType("ActivityIndicator")).toBeTruthy();
+    const { getByTestId } = render(<Button isLoading>Test Button</Button>);
+    expect(getByTestId("button-loading-indicator")).toBeTruthy();
   });
 
   it("is disabled when disabled prop is true", () => {
