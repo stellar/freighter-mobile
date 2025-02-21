@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react-native";
+import { SwapScreen } from "components/screens/SwapScreen";
 import React from "react";
-
-import { SwapScreen } from "../../../src/components/screens/SwapScreen";
 
 describe("SwapScreen", () => {
   it("renders correctly", () => {

@@ -1,11 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BaseLayout } from "components/layout/BaseLayout";
+import { Button, ButtonSize, ButtonVariant } from "components/sds/Button";
+import { ROUTES, RootStackParamList } from "config/routes";
 import React from "react";
 import styled from "styled-components/native";
-
-import { ROUTES, RootStackParamList } from "../../config/routes";
-import { BaseLayout } from "../layout/BaseLayout";
-import { Button, ButtonSize, ButtonVariant } from "../sds/Button";
 
 const Container = styled.View`
   flex: 1;

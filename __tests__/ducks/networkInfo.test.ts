@@ -1,7 +1,4 @@
-import {
-  networkInfoReducer,
-  setNetworkInfo,
-} from "../../src/ducks/networkInfo";
+import { networkInfoReducer, setNetworkInfo } from "ducks/networkInfo";
 
 describe("networkInfo reducer", () => {
   const initialState = {

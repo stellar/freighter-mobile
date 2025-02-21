@@ -1,10 +1,9 @@
 import { NavigationContainer } from "@react-navigation/native";
+import { OfflineDetection } from "components/OfflineDetection";
+import { store } from "config/store";
+import { RootNavigator } from "navigators/RootNavigator";
 import React from "react";
 import { Provider } from "react-redux";
-
-import { store } from "../config/store";
-import { RootNavigator } from "../navigators/RootNavigator";
-import { OfflineDetection } from "./OfflineDetection";
 
 const App = (): React.JSX.Element => (
   <Provider store={store}>

@@ -1204,6 +1204,11 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.57.1.tgz#de633db3ec2ef6a3c89e2f19038063e8a122e2c2"
   integrity sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==
 
+"@fnando/eslint-plugin-consistent-import@*":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@fnando/eslint-plugin-consistent-import/-/eslint-plugin-consistent-import-0.1.1.tgz#5c1a2e1976dac7502ba0b054ac814db169deff46"
+  integrity sha512-f8Drr+hncrU/S+SEUiljCCzW6wUhe5wtAbiP+2ukLfmNfhFIHiug6odL0ILecPcg+RUhEm8iU89t1rpBSYeTfA==
+
 "@hapi/hoek@^9.0.0", "@hapi/hoek@^9.3.0":
   version "9.3.0"
   resolved "https://registry.yarnpkg.com/@hapi/hoek/-/hoek-9.3.0.tgz#8368869dcb735be2e7f5cb7647de78e167a251fb"

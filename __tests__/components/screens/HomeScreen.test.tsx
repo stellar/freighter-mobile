@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react-native";
+import { HomeScreen } from "components/screens/HomeScreen";
 import React from "react";
-
-import { HomeScreen } from "../../../src/components/screens/HomeScreen";
 
 describe("HomeScreen", () => {
   it("renders correctly", () => {

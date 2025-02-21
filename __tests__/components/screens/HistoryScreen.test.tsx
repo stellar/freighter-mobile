@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react-native";
+import { HistoryScreen } from "components/screens/HistoryScreen";
 import React from "react";
-
-import { HistoryScreen } from "../../../src/components/screens/HistoryScreen";
 
 describe("HistoryScreen", () => {
   it("renders correctly", () => {

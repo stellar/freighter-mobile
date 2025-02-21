@@ -1,9 +1,8 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { LoginScreen } from "components/screens/LoginScreen";
+import { ROUTES, RootStackParamList } from "config/routes";
+import { TabNavigator } from "navigators/TabNavigator";
 import React from "react";
-
-import { LoginScreen } from "../components/screens/LoginScreen";
-import { ROUTES, RootStackParamList } from "../config/routes";
-import { TabNavigator } from "./TabNavigator";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

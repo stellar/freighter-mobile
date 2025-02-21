@@ -1,5 +1,6 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
+import consistentImport from "@fnando/eslint-plugin-consistent-import";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,28 +23,19 @@ export default [
   ),
   {
     languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "script",
       globals: {
         ...globals.browser,
       },
-
-      ecmaVersion: "latest",
-      sourceType: "script",
-
       parserOptions: {
         project: "tsconfig.json",
       },
     },
-
+    plugins: {
+      "@fnando/consistent-import": consistentImport,
+    },
     rules: {
-      // Allow arrow functions in React components
-      "react/function-component-definition": [
-        2,
-        {
-          namedComponents: "arrow-function",
-          unnamedComponents: "arrow-function",
-        },
-      ],
-
       "import/order": [
         "error",
         {
@@ -59,6 +51,25 @@ export default [
           alphabetize: { order: "asc" },
         },
       ],
+
+      "@fnando/consistent-import/consistent-import": [
+        "error",
+        {
+          disallowRelative: true,
+          rootDir: "src",
+          prefix: "",
+        },
+      ],
+
+      // Allow arrow functions in React components
+      "react/function-component-definition": [
+        2,
+        {
+          namedComponents: "arrow-function",
+          unnamedComponents: "arrow-function",
+        },
+      ],
+
       "react/require-default-props": "off",
       "import/prefer-default-export": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",

@@ -1,8 +1,7 @@
+import { THEME } from "config/sds/theme";
 import React from "react";
 import { SafeAreaView, View } from "react-native";
 import styled from "styled-components/native";
-
-import { THEME } from "../../config/sds/theme";
 
 interface BaseLayoutProps {
   children: React.ReactNode;
