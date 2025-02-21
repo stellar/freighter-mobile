@@ -1,14 +1,11 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const getSrcDirs = require("./config/getSrcDirs");
+
 module.exports = {
   preset: "react-native",
   setupFiles: ["./jest.setup.js"],
   setupFilesAfterEnv: ["@testing-library/jest-native/extend-expect"],
-  moduleNameMapper: {
-    "^components/(.*)": "<rootDir>/src/components/$1",
-    "^config/(.*)": "<rootDir>/src/config/$1",
-    "^ducks/(.*)": "<rootDir>/src/ducks/$1",
-    "^helpers/(.*)": "<rootDir>/src/helpers/$1",
-    "^navigators/(.*)": "<rootDir>/src/navigators/$1",
-  },
+  moduleNameMapper: getSrcDirs(__dirname, "jest"),
   transformIgnorePatterns: [
     `node_modules/(?!(${[
       "react-native",

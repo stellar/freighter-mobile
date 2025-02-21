@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const getSrcDirs = require("./config/getSrcDirs");
+
 module.exports = {
   presets: ["module:@react-native/babel-preset"],
   plugins: [
@@ -7,13 +10,7 @@ module.exports = {
       {
         root: ["./src"],
         extensions: [".ios.js", ".android.js", ".js", ".ts", ".tsx", ".json"],
-        alias: {
-          components: "./src/components",
-          config: "./src/config",
-          ducks: "./src/ducks",
-          helpers: "./src/helpers",
-          navigators: "./src/navigators",
-        },
+        alias: getSrcDirs(__dirname),
       },
     ],
   ],
