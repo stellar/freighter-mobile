@@ -5,7 +5,7 @@ import { RootNavigator } from "navigators/RootNavigator";
 import React from "react";
 import { Provider } from "react-redux";
 
-const App = (): React.JSX.Element => (
+export const App = (): React.JSX.Element => (
   <Provider store={store}>
     <NavigationContainer>
       <OfflineDetection>
@@ -14,5 +14,3 @@ const App = (): React.JSX.Element => (
     </NavigationContainer>
   </Provider>
 );
-
-export default App;

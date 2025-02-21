@@ -7,7 +7,7 @@
  */
 import { THEME, PALETTE } from "config/sds/theme";
 
-const BUTTON_THEME = {
+export const BUTTON_THEME = {
   height: {
     sm: 26,
     md: 32,
@@ -69,5 +69,3 @@ const BUTTON_THEME = {
     spacing: THEME.spacing.sm,
   },
 } as const;
-
-export default BUTTON_THEME;
