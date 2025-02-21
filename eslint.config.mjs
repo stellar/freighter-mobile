@@ -61,6 +61,20 @@ export default [
         },
       ],
 
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react-redux",
+              importNames: ["useDispatch", "useSelector", "useStore"],
+              message:
+                "Please import from 'config/store' instead of react-redux.",
+            },
+          ],
+        },
+      ],
+
       // Allow arrow functions in React components
       "react/function-component-definition": [
         2,

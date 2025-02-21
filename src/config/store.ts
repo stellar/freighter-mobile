@@ -1,11 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { networkInfoReducer } from "ducks/networkInfo";
+/* eslint-disable no-restricted-imports */
 import {
   useSelector as useReduxSelector,
   useDispatch as useReduxDispatch,
   useStore as useReduxStore,
   TypedUseSelectorHook,
 } from "react-redux";
+
+/* eslint-enable no-restricted-imports */
 
 const initialState = {
   networkInfo: {
