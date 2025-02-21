@@ -1,9 +1,9 @@
 import { Dimensions } from "react-native";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 
-// iPhone 14 aspect ratio used as reference for design
-const DESIGN_HEIGHT = 844;
-const DESIGN_WIDTH = 390;
+// iPhone 16 Pro aspect ratio used as reference for design
+const DESIGN_HEIGHT = 874;
+const DESIGN_WIDTH = 402;
 const DESIGN_ASPECT_RATIO = DESIGN_WIDTH / DESIGN_HEIGHT;
 
 const { width, height } = Dimensions.get("window");
