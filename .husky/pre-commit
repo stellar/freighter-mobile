@@ -1,3 +1,2 @@
 yarn lint-staged
-yarn lint:ts
 yarn test

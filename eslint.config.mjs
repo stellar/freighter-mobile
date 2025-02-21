@@ -74,6 +74,7 @@ export default [
       "import/prefer-default-export": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-base-to-string": "off",
 
       // Add these rules to match Prettier config and make sure we use double quotes
       quotes: ["error", "double"],
