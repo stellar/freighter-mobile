@@ -1,10 +1,10 @@
-import React from 'react';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import styled from 'styled-components/native';
-import {ROUTES, RootStackParamList} from '../../config/routes';
-import {BaseLayout} from '../layout/BaseLayout';
-import {Button, ButtonSize, ButtonVariant} from '../sds/Button';
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BaseLayout } from "components/layout/BaseLayout";
+import { Button, ButtonSize, ButtonVariant } from "components/sds/Button";
+import { ROUTES, RootStackParamList } from "config/routes";
+import React from "react";
+import styled from "styled-components/native";
 
 const Container = styled.View`
   flex: 1;
@@ -19,7 +19,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<
 
 export const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  
+
   const handleLogin = () => {
     navigation.replace(ROUTES.MAIN_TABS);
   };
@@ -30,10 +30,11 @@ export const LoginScreen = () => {
         <Button
           variant={ButtonVariant.PRIMARY}
           size={ButtonSize.LARGE}
-          onPress={handleLogin}>
+          onPress={handleLogin}
+        >
           Login
         </Button>
       </Container>
     </BaseLayout>
   );
-}; 
+};

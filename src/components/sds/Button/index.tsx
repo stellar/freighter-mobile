@@ -1,26 +1,26 @@
-import React from 'react';
-import styled from 'styled-components/native';
-import {TouchableOpacity, ActivityIndicator} from 'react-native';
-import {px, fs} from '../../../helpers/dimensions';
-import {BUTTON_THEME} from './theme';
+import { BUTTON_THEME } from "components/sds/Button/theme";
+import { px, fs } from "helpers/dimensions";
+import React from "react";
+import { TouchableOpacity, ActivityIndicator } from "react-native";
+import styled from "styled-components/native";
 
 export enum ButtonVariant {
-  PRIMARY = 'primary',
-  SECONDARY = 'secondary',
-  TERTIARY = 'tertiary',
-  DESTRUCTIVE = 'destructive',
-  ERROR = 'error',
+  PRIMARY = "primary",
+  SECONDARY = "secondary",
+  TERTIARY = "tertiary",
+  DESTRUCTIVE = "destructive",
+  ERROR = "error",
 }
 
 export enum ButtonSize {
-  SMALL = 'sm',
-  MEDIUM = 'md',
-  LARGE = 'lg',
+  SMALL = "sm",
+  MEDIUM = "md",
+  LARGE = "lg",
 }
 
 export enum IconPosition {
-  LEFT = 'left',
-  RIGHT = 'right',
+  LEFT = "left",
+  RIGHT = "right",
 }
 
 interface ButtonProps {
@@ -56,11 +56,12 @@ const getButtonHeight = (size: ButtonSize) => px(BUTTON_THEME.height[size]);
 const getFontSize = (size: ButtonSize) => fs(BUTTON_THEME.fontSize[size]);
 
 const getPadding = (size: ButtonSize) => {
-  const {vertical, horizontal} = BUTTON_THEME.padding[size];
+  const { vertical, horizontal } = BUTTON_THEME.padding[size];
   return `${px(vertical)} ${px(horizontal)}`;
 };
 
-const getBorderRadius = (size: ButtonSize) => px(BUTTON_THEME.borderRadius[size]);
+const getBorderRadius = (size: ButtonSize) =>
+  px(BUTTON_THEME.borderRadius[size]);
 
 const getBackgroundColor = (variant: ButtonVariant, disabled: boolean) => {
   if (disabled) {
@@ -77,39 +78,47 @@ const getTextColor = (variant: ButtonVariant, disabled: boolean) => {
 };
 
 const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
-  height: ${({size}) => getButtonHeight(size)};
-  padding: ${({size}) => getPadding(size)};
-  border-radius: ${({size}) => getBorderRadius(size)};
-  background-color: ${({variant, disabled}) =>
+  height: ${({ size }: StyledButtonProps) => getButtonHeight(size)};
+  padding: ${({ size }: StyledButtonProps) => getPadding(size)};
+  border-radius: ${({ size }: StyledButtonProps) => getBorderRadius(size)};
+  background-color: ${({ variant, disabled }: StyledButtonProps) =>
     getBackgroundColor(variant, disabled)};
-  opacity: ${({disabled}) => (disabled ? 0.5 : 1)};
+  opacity: ${({ disabled }: StyledButtonProps) => (disabled ? 0.5 : 1)};
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  width: ${({isFullWidth}) => (isFullWidth ? '100%' : 'auto')};
-  ${({variant, disabled}) =>
-    (variant === ButtonVariant.TERTIARY || disabled)
+  width: ${({ isFullWidth }: StyledButtonProps) =>
+    isFullWidth ? "100%" : "auto"};
+  ${({ variant, disabled }: StyledButtonProps) =>
+    variant === ButtonVariant.TERTIARY || disabled
       ? `
     border-width: ${px(1)};
     border-color: ${BUTTON_THEME.colors.tertiary.border};
   `
-      : ''}
+      : ""}
 `;
 
-const ButtonText = styled.Text<{
+interface ButtonTextProps {
   variant: ButtonVariant;
   size: ButtonSize;
   disabled: boolean;
-}>`
-  color: ${({variant, disabled}) => getTextColor(variant, disabled)};
-  font-size: ${({size}) => getFontSize(size)};
+}
+
+const ButtonText = styled.Text<ButtonTextProps>`
+  color: ${({ variant, disabled }: ButtonTextProps) =>
+    getTextColor(variant, disabled)};
+  font-size: ${({ size }: ButtonTextProps) => getFontSize(size)};
   text-align: center;
 `;
 
-const IconContainer = styled.View<{position: IconPosition}>`
-  margin-left: ${({position}) =>
+interface IconContainerProps {
+  position: IconPosition;
+}
+
+const IconContainer = styled.View<IconContainerProps>`
+  margin-left: ${({ position }: IconContainerProps) =>
     position === IconPosition.RIGHT ? px(BUTTON_THEME.icon.spacing) : 0};
-  margin-right: ${({position}) =>
+  margin-right: ${({ position }: IconContainerProps) =>
     position === IconPosition.LEFT ? px(BUTTON_THEME.icon.spacing) : 0};
 `;
 
@@ -129,6 +138,7 @@ export const Button = ({
       return (
         <IconContainer position={IconPosition.RIGHT}>
           <ActivityIndicator
+            testID="button-loading-indicator"
             size="small"
             color={getTextColor(variant, disabled)}
           />
@@ -149,7 +159,8 @@ export const Button = ({
       size={size}
       isFullWidth={isFullWidth}
       disabled={disabled || isLoading}
-      onPress={onPress}>
+      onPress={onPress}
+    >
       {renderIcon(IconPosition.LEFT)}
       <ButtonText variant={variant} size={size} disabled={disabled}>
         {children}
@@ -157,4 +168,4 @@ export const Button = ({
       {renderIcon(IconPosition.RIGHT)}
     </StyledButton>
   );
-}; 
+};

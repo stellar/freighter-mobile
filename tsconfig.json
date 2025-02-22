@@ -5,6 +5,8 @@
       "@types/styled-components-react-native",
       "@types/jest",
       "@testing-library/jest-native"
-    ]
+    ],
+    "baseUrl": "src/"
   },
+  "include": ["src", "__tests__", "*.js", "*.ts"]
 }

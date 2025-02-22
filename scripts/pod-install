@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -e
+
+pod_install() {
+  if [[ -x $(which pod) ]]; then
+    if [[ "$IOS_SCHEME" == "" ]]; then
+      bundle exec pod install --project-directory=ios
+    else
+      bundle exec pod install --deployment --project-directory=ios
+    fi
+  else
+    echo "=> Cocoapods not installed; skipping."
+  fi
+}
+
+if [[ "$SKIP_COCOAPODS" != "yes" ]]; then
+  pod_install
+else
+  echo "=> Skipping Cocoapods install."
+fi

@@ -1,7 +1,7 @@
-import React from 'react';
-import styled from 'styled-components/native';
-import {SafeAreaView, View} from 'react-native';
-import {THEME} from '../../config/sds/theme';
+import { THEME } from "config/sds/theme";
+import React from "react";
+import { SafeAreaView, View } from "react-native";
+import styled from "styled-components/native";
 
 interface BaseLayoutProps {
   children: React.ReactNode;
@@ -9,24 +9,28 @@ interface BaseLayoutProps {
   backgroundColor?: string;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView)<{backgroundColor?: string}>`
+interface StyledViewProps {
+  backgroundColor: string;
+}
+
+const StyledSafeAreaView = styled(SafeAreaView)<StyledViewProps>`
   flex: 1;
-  background-color: ${({backgroundColor}) =>
-    backgroundColor || THEME.colors.background.default};
+  background-color: ${({ backgroundColor }: StyledViewProps) =>
+    backgroundColor};
 `;
 
-const StyledView = styled(View)<{backgroundColor?: string}>`
+const StyledView = styled(View)<StyledViewProps>`
   flex: 1;
-  background-color: ${({backgroundColor}) =>
-    backgroundColor || THEME.colors.background.default};
+  background-color: ${({ backgroundColor }: StyledViewProps) =>
+    backgroundColor};
 `;
 
 export const BaseLayout = ({
   children,
   useSafeArea = true,
-  backgroundColor,
+  backgroundColor = THEME.colors.background.default,
 }: BaseLayoutProps) => {
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
 
   return <Container backgroundColor={backgroundColor}>{children}</Container>;
-}; 
+};
