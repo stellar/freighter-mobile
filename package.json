@@ -13,10 +13,19 @@
     "lint:check": "eslint ./src ./__tests__",
     "check": "yarn lint:ts && yarn lint:check && yarn format:check",
     "fix": "yarn lint && yarn format",
-    "postinstall": "husky",
+    "postinstall": "husky && yarn pod-install",
     "start": "react-native start",
+    "start-c": "yarn start --reset-cache",
+    "pod-install": "sh ./scripts/pod-install",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "node-clean": "sh ./scripts/node-clean",
+    "gradle-clean": "sh ./scripts/gradle-clean",
+    "node-c-install": "yarn node-clean && yarn install",
+    "gradle-c-install": "yarn gradle-clean && yarn install",
+    "c-install": "yarn gradle-clean && yarn node-clean && yarn install",
+    "reset-env": "sh ./scripts/reset-env",
+    "r-install": "yarn reset-env && yarn install"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
