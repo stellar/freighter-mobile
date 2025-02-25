@@ -120,6 +120,90 @@ describe("Typography", () => {
         });
       });
     });
+
+    describe("Size handling", () => {
+      it("uses explicit size prop", () => {
+        const { getByText } = render(
+          <Display size="xl">Explicit Size</Display>,
+        );
+        const element = getByText("Explicit Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(56), // xl size
+          lineHeight: fsValue(64),
+        });
+      });
+
+      it("uses size shorthand", () => {
+        const { getByText } = render(<Display xl>Shorthand Size</Display>);
+        const element = getByText("Shorthand Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(56), // xl size
+          lineHeight: fsValue(64),
+        });
+      });
+
+      it("prioritizes explicit size over shorthand", () => {
+        const { getByText } = render(
+          <Display size="xl" sm>
+            Explicit Priority
+          </Display>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(56), // xl size
+          lineHeight: fsValue(64),
+        });
+      });
+
+      it("defaults to sm size", () => {
+        const { getByText } = render(<Display>Default Size</Display>);
+        const element = getByText("Default Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(32), // sm size
+          lineHeight: fsValue(40),
+        });
+      });
+    });
+
+    describe("Weight handling", () => {
+      it("uses explicit weight prop", () => {
+        const { getByText } = render(
+          <Display weight="bold">Explicit Weight</Display>,
+        );
+        const element = getByText("Explicit Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("uses weight shorthand", () => {
+        const { getByText } = render(<Display bold>Shorthand Weight</Display>);
+        const element = getByText("Shorthand Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("prioritizes explicit weight over shorthand", () => {
+        const { getByText } = render(
+          <Display weight="bold" light>
+            Explicit Priority
+          </Display>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("defaults to regular weight", () => {
+        const { getByText } = render(<Display>Default Weight</Display>);
+        const element = getByText("Default Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "400", // regular weight
+        });
+      });
+    });
   });
 
   describe("Text", () => {
@@ -239,6 +323,110 @@ describe("Typography", () => {
         display: "flex",
         alignItems: "center",
         height: fsValue(24), // md line height
+      });
+    });
+
+    describe("Size handling", () => {
+      it("uses explicit size prop", () => {
+        const { getByText } = render(<Text size="xl">Explicit Size</Text>);
+        const element = getByText("Explicit Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(20), // xl size
+          lineHeight: fsValue(28),
+        });
+      });
+
+      it("uses size shorthand", () => {
+        const { getByText } = render(<Text xl>Shorthand Size</Text>);
+        const element = getByText("Shorthand Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(20), // xl size
+          lineHeight: fsValue(28),
+        });
+      });
+
+      it("prioritizes explicit size over shorthand", () => {
+        const { getByText } = render(
+          <Text size="xl" sm>
+            Explicit Priority
+          </Text>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(20), // xl size
+          lineHeight: fsValue(28),
+        });
+      });
+
+      it("defaults to md size", () => {
+        const { getByText } = render(<Text>Default Size</Text>);
+        const element = getByText("Default Size");
+        expect(element.props.style).toMatchObject({
+          fontSize: fsValue(16), // md size
+          lineHeight: fsValue(24),
+        });
+      });
+    });
+
+    describe("Weight handling", () => {
+      it("uses explicit weight prop", () => {
+        const { getByText } = render(
+          <Text weight="bold">Explicit Weight</Text>,
+        );
+        const element = getByText("Explicit Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("uses weight shorthand", () => {
+        const { getByText } = render(<Text bold>Shorthand Weight</Text>);
+        const element = getByText("Shorthand Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("prioritizes explicit weight over shorthand", () => {
+        const { getByText } = render(
+          <Text weight="bold" light>
+            Explicit Priority
+          </Text>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "700", // bold weight
+        });
+      });
+
+      it("defaults to regular weight", () => {
+        const { getByText } = render(<Text>Default Weight</Text>);
+        const element = getByText("Default Weight");
+        expect(element.props.style).toMatchObject({
+          fontWeight: "400", // regular weight
+        });
+      });
+    });
+
+    describe("Vertical centering", () => {
+      it("applies vertical centering styles when enabled", () => {
+        const { getByText } = render(
+          <Text isVerticallyCentered>Centered Text</Text>,
+        );
+        const element = getByText("Centered Text");
+        expect(element.props.style).toMatchObject({
+          display: "flex",
+          alignItems: "center",
+          height: fsValue(24), // md line height
+        });
+      });
+
+      it("does not apply vertical centering styles when disabled", () => {
+        const { getByText } = render(<Text>Non-Centered Text</Text>);
+        const element = getByText("Non-Centered Text");
+        expect(element.props.style).not.toHaveProperty("display");
+        expect(element.props.style).not.toHaveProperty("alignItems");
+        expect(element.props.style).not.toHaveProperty("height");
       });
     });
 

@@ -55,6 +55,65 @@ const TEXT_SIZES = {
 export type DisplaySize = keyof typeof DISPLAY_SIZES;
 export type TextSize = keyof typeof TEXT_SIZES;
 
+type SizeShorthand = TextSize;
+type WeightShorthand = FontWeight;
+
+// Create union type of all size shorthands
+type SizeProps = {
+  [K in SizeShorthand as K]?: boolean;
+};
+
+// Create union type of all weight shorthands
+type WeightProps = {
+  [K in WeightShorthand as K]?: boolean;
+};
+
+interface TypographyBaseProps extends SizeProps, WeightProps {
+  color?: string;
+  children: React.ReactNode;
+  // Although we have the shorthands, we can still use the explicit props
+  size?: TextSize;
+  weight?: FontWeight;
+}
+
+/* eslint-disable no-nested-ternary */
+// Get size from props, with priority to explicit prop
+const getSize = <T extends string>(
+  props: { size?: T } & SizeProps,
+  defaultSize: T,
+): T =>
+  props.size ||
+  (props.xl
+    ? ("xl" as T)
+    : props.lg
+      ? ("lg" as T)
+      : props.md
+        ? ("md" as T)
+        : props.sm
+          ? ("sm" as T)
+          : props.xs
+            ? ("xs" as T)
+            : defaultSize);
+
+// Get weight from props, with priority to explicit prop
+const getWeight = (
+  props: { weight?: FontWeight } & WeightProps,
+  defaultWeight: FontWeight,
+): FontWeight =>
+  props.weight ||
+  (props.bold
+    ? "bold"
+    : props.semiBold
+      ? "semiBold"
+      : props.medium
+        ? "medium"
+        : props.regular
+          ? "regular"
+          : props.light
+            ? "light"
+            : defaultWeight);
+/* eslint-enable no-nested-ternary */
+
 // =============================================================================
 // Base styled components
 // =============================================================================
@@ -104,13 +163,18 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
 `;
 
 export const Display: React.FC<DisplayProps> = ({
-  size = "sm",
-  weight = "regular",
+  size,
+  weight,
   color = THEME.colors.text.primary,
   children,
   ...props
 }) => (
-  <StyledDisplay $size={size} $weight={weight} $color={color} {...props}>
+  <StyledDisplay
+    $size={getSize({ size, ...props }, "sm")}
+    $weight={getWeight({ weight, ...props }, "regular")}
+    $color={color}
+    {...props}
+  >
     {children}
   </StyledDisplay>
 );
@@ -168,16 +232,16 @@ const StyledText = styled(BaseText)<{
 `;
 
 export const Text: React.FC<TextProps> = ({
-  size = "md",
-  weight = "regular",
+  size,
+  weight,
   color = THEME.colors.text.primary,
   children,
   isVerticallyCentered = false,
   ...props
 }) => (
   <StyledText
-    $size={size}
-    $weight={weight}
+    $size={getSize({ size, ...props }, "md")}
+    $weight={getWeight({ weight, ...props }, "regular")}
     $color={color}
     $isVerticallyCentered={isVerticallyCentered}
     {...props}
