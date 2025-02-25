@@ -5,44 +5,87 @@ import React from "react";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
 
-export enum ButtonVariant {
-  PRIMARY = "primary",
-  SECONDARY = "secondary",
-  TERTIARY = "tertiary",
-  DESTRUCTIVE = "destructive",
-  ERROR = "error",
-}
+// Convert enums to const objects for better type inference
+export const ButtonVariants = {
+  PRIMARY: "primary",
+  SECONDARY: "secondary",
+  TERTIARY: "tertiary",
+  DESTRUCTIVE: "destructive",
+  ERROR: "error",
+} as const;
 
-export enum ButtonSize {
-  SMALL = "sm",
-  MEDIUM = "md",
-  LARGE = "lg",
-}
+export const ButtonSizes = {
+  SMALL: "sm",
+  MEDIUM: "md",
+  LARGE: "lg",
+} as const;
+
+// Create types from the const objects
+export type ButtonVariant =
+  (typeof ButtonVariants)[keyof typeof ButtonVariants];
+export type ButtonSize = (typeof ButtonSizes)[keyof typeof ButtonSizes];
+
+// Create shorthand types
+type VariantProps = {
+  primary?: boolean;
+  secondary?: boolean;
+  tertiary?: boolean;
+  destructive?: boolean;
+  error?: boolean;
+};
+
+type SizeProps = {
+  sm?: boolean;
+  md?: boolean;
+  lg?: boolean;
+};
 
 export enum IconPosition {
   LEFT = "left",
   RIGHT = "right",
 }
 
-interface ButtonProps {
-  /** Variant of the button */
+/**
+ * Button component with support for variants, sizes, icons, and loading states
+ *
+ * Variants:
+ * - primary (default) - Main call-to-action
+ * - secondary - Alternative action
+ * - tertiary - Less prominent action
+ * - destructive - Dangerous action
+ * - error - Error state
+ *
+ * Sizes:
+ * - sm - Small buttons
+ * - md - Medium buttons (default)
+ * - lg - Large buttons
+ *
+ * @example
+ * ```tsx
+ * // Using shorthands
+ * <Button primary lg>Large Primary Button</Button>
+ * <Button secondary sm>Small Secondary Button</Button>
+ *
+ * // Using explicit props
+ * <Button
+ *   variant={ButtonVariant.PRIMARY}
+ *   size={ButtonSize.LARGE}
+ * >
+ *   Large Primary Button
+ * </Button>
+ * ```
+ */
+interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;
-  /** Size of the button */
   size?: ButtonSize;
-  /** Label of the button */
   children?: string | React.ReactNode;
-  /** Icon element */
   icon?: React.ReactNode;
-  /** Position of the icon */
   iconPosition?: IconPosition;
-  /** Loading state indicator */
   isLoading?: boolean;
-  /** Sets width of the button to match the parent container */
   isFullWidth?: boolean;
-  /** Disabled state */
   disabled?: boolean;
-  /** onPress handler */
   onPress?: () => void;
+  testID?: string;
 }
 
 interface StyledButtonProps {
@@ -113,9 +156,43 @@ const IconContainer = styled.View<IconContainerProps>`
     position === IconPosition.LEFT ? px(BUTTON_THEME.icon.spacing) : 0};
 `;
 
+/* eslint-disable no-nested-ternary */
+// Helper to get variant from props
+const getVariant = (
+  props: { variant?: ButtonVariant } & VariantProps,
+  defaultVariant: ButtonVariant,
+): ButtonVariant =>
+  props.variant ||
+  (props.primary
+    ? ButtonVariants.PRIMARY
+    : props.secondary
+      ? ButtonVariants.SECONDARY
+      : props.tertiary
+        ? ButtonVariants.TERTIARY
+        : props.destructive
+          ? ButtonVariants.DESTRUCTIVE
+          : props.error
+            ? ButtonVariants.ERROR
+            : defaultVariant);
+
+// Helper to get size from props
+const getSize = (
+  props: { size?: ButtonSize } & SizeProps,
+  defaultSize: ButtonSize,
+): ButtonSize =>
+  props.size ||
+  (props.sm
+    ? ButtonSizes.SMALL
+    : props.lg
+      ? ButtonSizes.LARGE
+      : props.md
+        ? ButtonSizes.MEDIUM
+        : defaultSize);
+/* eslint-enable no-nested-ternary */
+
 export const Button = ({
-  variant = ButtonVariant.PRIMARY,
-  size = ButtonSize.MEDIUM,
+  variant,
+  size,
   children,
   icon,
   iconPosition = IconPosition.RIGHT,
@@ -123,8 +200,15 @@ export const Button = ({
   isFullWidth = false,
   disabled = false,
   onPress,
+  testID,
+  ...props
 }: ButtonProps) => {
   const disabledState = isLoading || disabled;
+  const resolvedVariant = getVariant(
+    { variant, ...props },
+    ButtonVariants.PRIMARY,
+  );
+  const resolvedSize = getSize({ size, ...props }, ButtonSizes.MEDIUM);
 
   const renderIcon = (position: IconPosition) => {
     if (isLoading && position === IconPosition.RIGHT) {
@@ -133,7 +217,7 @@ export const Button = ({
           <ActivityIndicator
             testID="button-loading-indicator"
             size="small"
-            color={getTextColor(variant, disabledState)}
+            color={getTextColor(resolvedVariant, disabledState)}
           />
         </IconContainer>
       );
@@ -148,17 +232,18 @@ export const Button = ({
 
   return (
     <StyledButton
-      variant={variant}
-      size={size}
+      variant={resolvedVariant}
+      size={resolvedSize}
       isFullWidth={isFullWidth}
       disabled={disabledState}
       onPress={onPress}
+      testID={testID}
     >
       {renderIcon(IconPosition.LEFT)}
       <Text
-        size={getFontSize(size)}
+        size={getFontSize(resolvedSize)}
         weight="semiBold"
-        color={getTextColor(variant, disabledState)}
+        color={getTextColor(resolvedVariant, disabledState)}
         isVerticallyCentered
       >
         {children}

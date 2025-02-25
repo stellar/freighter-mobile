@@ -1,7 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button, ButtonVariant, ButtonSize } from "components/sds/Button";
+import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
 import { ROUTES, RootStackParamList } from "config/routes";
 import { THEME } from "config/sds/theme";
 import { fs } from "helpers/dimensions";
@@ -45,8 +45,8 @@ export const SettingsScreen = () => {
           <ScreenText>Settings</ScreenText>
         </TopSection>
         <Button
-          variant={ButtonVariant.DESTRUCTIVE}
-          size={ButtonSize.LARGE}
+          variant={ButtonVariants.DESTRUCTIVE}
+          size={ButtonSizes.LARGE}
           onPress={handleSignOut}
         >
           Sign out
