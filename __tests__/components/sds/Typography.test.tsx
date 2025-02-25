@@ -204,6 +204,57 @@ describe("Typography", () => {
         });
       });
     });
+
+    describe("Color handling", () => {
+      it("uses explicit color prop", () => {
+        const { getByText } = render(
+          <Display color={THEME.colors.text.secondary}>Explicit Color</Display>,
+        );
+        const element = getByText("Explicit Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.secondary,
+        });
+      });
+
+      it("uses primary color shorthand", () => {
+        const { getByText } = render(<Display primary>Primary Color</Display>);
+        const element = getByText("Primary Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.primary,
+        });
+      });
+
+      it("uses secondary color shorthand", () => {
+        const { getByText } = render(
+          <Display secondary>Secondary Color</Display>,
+        );
+        const element = getByText("Secondary Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.secondary,
+        });
+      });
+
+      it("prioritizes explicit color over shorthand", () => {
+        const customColor = "#FF0000";
+        const { getByText } = render(
+          <Display color={customColor} primary secondary>
+            Explicit Priority
+          </Display>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          color: customColor,
+        });
+      });
+
+      it("defaults to primary color", () => {
+        const { getByText } = render(<Display>Default Color</Display>);
+        const element = getByText("Default Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.primary,
+        });
+      });
+    });
   });
 
   describe("Text", () => {
@@ -427,6 +478,55 @@ describe("Typography", () => {
         expect(element.props.style).not.toHaveProperty("display");
         expect(element.props.style).not.toHaveProperty("alignItems");
         expect(element.props.style).not.toHaveProperty("height");
+      });
+    });
+
+    describe("Color handling", () => {
+      it("uses explicit color prop", () => {
+        const { getByText } = render(
+          <Text color={THEME.colors.text.secondary}>Explicit Color</Text>,
+        );
+        const element = getByText("Explicit Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.secondary,
+        });
+      });
+
+      it("uses primary color shorthand", () => {
+        const { getByText } = render(<Text primary>Primary Color</Text>);
+        const element = getByText("Primary Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.primary,
+        });
+      });
+
+      it("uses secondary color shorthand", () => {
+        const { getByText } = render(<Text secondary>Secondary Color</Text>);
+        const element = getByText("Secondary Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.secondary,
+        });
+      });
+
+      it("prioritizes explicit color over shorthand", () => {
+        const customColor = "#FF0000";
+        const { getByText } = render(
+          <Text color={customColor} primary secondary>
+            Explicit Priority
+          </Text>,
+        );
+        const element = getByText("Explicit Priority");
+        expect(element.props.style).toMatchObject({
+          color: customColor,
+        });
+      });
+
+      it("defaults to primary color", () => {
+        const { getByText } = render(<Text>Default Color</Text>);
+        const element = getByText("Default Color");
+        expect(element.props.style).toMatchObject({
+          color: THEME.colors.text.primary,
+        });
       });
     });
 

@@ -68,7 +68,13 @@ type WeightProps = {
   [K in WeightShorthand as K]?: boolean;
 };
 
-interface TypographyBaseProps extends SizeProps, WeightProps {
+// Add color shorthands
+type ColorProps = {
+  primary?: boolean;
+  secondary?: boolean;
+};
+
+interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
   color?: string;
   children: React.ReactNode;
   // Although we have the shorthands, we can still use the explicit props
@@ -112,6 +118,18 @@ const getWeight = (
           : props.light
             ? "light"
             : defaultWeight);
+
+// Get color from props, with priority to explicit prop
+const getColor = (
+  props: { color?: string } & ColorProps,
+  defaultColor: string,
+): string =>
+  props.color ||
+  (props.secondary
+    ? THEME.colors.text.secondary
+    : props.primary
+      ? THEME.colors.text.primary
+      : defaultColor);
 /* eslint-enable no-nested-ternary */
 
 // =============================================================================
@@ -165,14 +183,14 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
 export const Display: React.FC<DisplayProps> = ({
   size,
   weight,
-  color = THEME.colors.text.primary,
+  color,
   children,
   ...props
 }) => (
   <StyledDisplay
     $size={getSize({ size, ...props }, "sm")}
     $weight={getWeight({ weight, ...props }, "regular")}
-    $color={color}
+    $color={getColor({ color, ...props }, THEME.colors.text.primary)}
     {...props}
   >
     {children}
@@ -234,7 +252,7 @@ const StyledText = styled(BaseText)<{
 export const Text: React.FC<TextProps> = ({
   size,
   weight,
-  color = THEME.colors.text.primary,
+  color,
   children,
   isVerticallyCentered = false,
   ...props
@@ -242,7 +260,7 @@ export const Text: React.FC<TextProps> = ({
   <StyledText
     $size={getSize({ size, ...props }, "md")}
     $weight={getWeight({ weight, ...props }, "regular")}
-    $color={color}
+    $color={getColor({ color, ...props }, THEME.colors.text.primary)}
     $isVerticallyCentered={isVerticallyCentered}
     {...props}
   >
