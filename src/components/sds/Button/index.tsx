@@ -45,36 +45,6 @@ export enum IconPosition {
   RIGHT = "right",
 }
 
-/**
- * Button component with support for variants, sizes, icons, and loading states
- *
- * Variants:
- * - primary (default) - Main call-to-action
- * - secondary - Alternative action
- * - tertiary - Less prominent action
- * - destructive - Dangerous action
- * - error - Error state
- *
- * Sizes:
- * - sm - Small buttons
- * - md - Medium buttons (default)
- * - lg - Large buttons
- *
- * @example
- * ```tsx
- * // Using shorthands
- * <Button primary lg>Large Primary Button</Button>
- * <Button secondary sm>Small Secondary Button</Button>
- *
- * // Using explicit props
- * <Button
- *   variant={ButtonVariant.PRIMARY}
- *   size={ButtonSize.LARGE}
- * >
- *   Large Primary Button
- * </Button>
- * ```
- */
 interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -190,6 +160,70 @@ const getSize = (
         : defaultSize);
 /* eslint-enable no-nested-ternary */
 
+/**
+ * Button component with support for variants, sizes, icons, and loading states
+ *
+ * @prop {ButtonVariant} [variant] - Explicit variant value
+ * @prop {ButtonSize} [size] - Explicit size value
+ * @prop {React.ReactNode} [icon] - Icon element to display
+ * @prop {IconPosition} [iconPosition=RIGHT] - Position of the icon (LEFT or RIGHT)
+ * @prop {boolean} [isLoading=false] - Shows loading indicator when true
+ * @prop {boolean} [isFullWidth=false] - Makes button fill container width
+ * @prop {boolean} [disabled=false] - Disables button interactions
+ * @prop {() => void} [onPress] - Handler for press events
+ *
+ * Variant shorthands (alternative to variant prop):
+ * - primary - Main call-to-action (default)
+ * - secondary - Alternative action
+ * - tertiary - Less prominent action
+ * - destructive - Dangerous action
+ * - error - Error state
+ *
+ * Size shorthands (alternative to size prop):
+ * - sm - Small buttons (32px height)
+ * - md - Medium buttons (40px height, default)
+ * - lg - Large buttons (48px height)
+ *
+ * @example
+ * ```tsx
+ * // Using shorthands
+ * <Button primary lg>
+ *   Large Primary Button
+ * </Button>
+ *
+ * <Button secondary sm>
+ *   Small Secondary Button
+ * </Button>
+ *
+ * // Using explicit props
+ * <Button
+ *   variant={ButtonVariants.PRIMARY}
+ *   size={ButtonSizes.LARGE}
+ *   isFullWidth
+ * >
+ *   Full Width Button
+ * </Button>
+ *
+ * // With icon
+ * <Button
+ *   tertiary
+ *   icon={<Icon name="settings" />}
+ *   iconPosition={IconPosition.LEFT}
+ * >
+ *   Settings
+ * </Button>
+ *
+ * // Loading state
+ * <Button
+ *   destructive
+ *   isLoading
+ *   disabled={false}
+ *   onPress={handleDelete}
+ * >
+ *   Delete Account
+ * </Button>
+ * ```
+ */
 export const Button = ({
   variant,
   size,
