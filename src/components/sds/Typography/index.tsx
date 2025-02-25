@@ -28,7 +28,7 @@ const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
   bold: "Bold",
 } as const;
 
-type FontWeight = keyof typeof FONT_WEIGHTS;
+export type FontWeight = keyof typeof FONT_WEIGHTS;
 
 interface TypographyBaseProps {
   weight?: FontWeight;
@@ -52,7 +52,7 @@ const TEXT_SIZES = {
   xs: { fontSize: 12, lineHeight: 20 },
 } as const;
 
-type DisplaySize = keyof typeof DISPLAY_SIZES;
+export type DisplaySize = keyof typeof DISPLAY_SIZES;
 export type TextSize = keyof typeof TEXT_SIZES;
 
 // =============================================================================
