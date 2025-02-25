@@ -18,7 +18,9 @@ const FONT_WEIGHTS = {
   bold: "700",
 } as const;
 
-const ANDROID_FONT_WEIGHTS = {
+type FontWeightKey = keyof typeof FONT_WEIGHTS;
+
+const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
   light: "Light",
   regular: "Regular",
   medium: "Medium",
@@ -28,7 +30,7 @@ const ANDROID_FONT_WEIGHTS = {
 
 type FontWeight = keyof typeof FONT_WEIGHTS;
 
-type TextColor = "default" | "secondary" | "disabled";
+type TextColor = keyof typeof THEME.colors.text;
 
 interface TypographyBaseProps {
   weight?: FontWeight;
