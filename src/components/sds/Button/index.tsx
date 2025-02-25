@@ -54,6 +54,7 @@ interface ButtonProps extends VariantProps, SizeProps {
   isLoading?: boolean;
   isFullWidth?: boolean;
   disabled?: boolean;
+  squared?: boolean;
   onPress?: () => void;
   testID?: string;
 }
@@ -63,6 +64,7 @@ interface StyledButtonProps {
   size: ButtonSize;
   isFullWidth: boolean;
   disabled: boolean;
+  squared?: boolean;
 }
 
 const getButtonHeight = (size: ButtonSize) => px(BUTTON_THEME.height[size]);
@@ -72,8 +74,8 @@ const getPadding = (size: ButtonSize) => {
   return `${px(vertical)} ${px(horizontal)}`;
 };
 
-const getBorderRadius = (size: ButtonSize) =>
-  px(BUTTON_THEME.borderRadius[size]);
+const getBorderRadius = (size: ButtonSize, squared = false) =>
+  squared ? px(BUTTON_THEME.borderRadius[size]) : px(100);
 
 const getBackgroundColor = (variant: ButtonVariant, disabled: boolean) => {
   if (disabled) {
@@ -101,7 +103,8 @@ const getFontSize = (size: ButtonSize): TextSize => BUTTON_THEME.fontSize[size];
 const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
   height: ${({ size }: StyledButtonProps) => getButtonHeight(size)};
   padding: ${({ size }: StyledButtonProps) => getPadding(size)};
-  border-radius: ${({ size }: StyledButtonProps) => getBorderRadius(size)};
+  border-radius: ${({ size, squared }: StyledButtonProps) =>
+    getBorderRadius(size, squared)};
   background-color: ${({ variant, disabled }: StyledButtonProps) =>
     getBackgroundColor(variant, disabled)};
   flex-direction: row;
@@ -162,6 +165,7 @@ const getSize = (
  * @prop {boolean} [isLoading=false] - Shows loading indicator when true
  * @prop {boolean} [isFullWidth=false] - Makes button fill container width
  * @prop {boolean} [disabled=false] - Disables button interactions
+ * @prop {boolean} [squared=false] - Uses squared corners when true, rounded when false
  * @prop {() => void} [onPress] - Handler for press events
  *
  * Variant shorthands (alternative to variant prop):
@@ -178,13 +182,14 @@ const getSize = (
  *
  * @example
  * ```tsx
- * // Using shorthands
+ * // Rounded button (default)
  * <Button primary lg>
- *   Large Primary Button
+ *   Rounded Primary Button
  * </Button>
  *
- * <Button secondary sm>
- *   Small Secondary Button
+ * // Squared button
+ * <Button secondary md squared>
+ *   Squared Secondary Button
  * </Button>
  *
  * // Using explicit props
@@ -225,6 +230,7 @@ export const Button = ({
   isLoading = false,
   isFullWidth = false,
   disabled = false,
+  squared = false,
   onPress,
   testID,
   ...props
@@ -262,6 +268,7 @@ export const Button = ({
       size={resolvedSize}
       isFullWidth={isFullWidth}
       disabled={disabledState}
+      squared={squared}
       onPress={onPress}
       testID={testID}
     >
