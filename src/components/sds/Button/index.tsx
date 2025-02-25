@@ -126,39 +126,31 @@ const IconContainer = styled.View<IconContainerProps>`
     position === IconPosition.LEFT ? px(BUTTON_THEME.icon.spacing) : 0};
 `;
 
-/* eslint-disable no-nested-ternary */
 // Helper to get variant from props
 const getVariant = (
   props: { variant?: ButtonVariant } & VariantProps,
   defaultVariant: ButtonVariant,
-): ButtonVariant =>
-  props.variant ||
-  (props.primary
-    ? ButtonVariants.PRIMARY
-    : props.secondary
-      ? ButtonVariants.SECONDARY
-      : props.tertiary
-        ? ButtonVariants.TERTIARY
-        : props.destructive
-          ? ButtonVariants.DESTRUCTIVE
-          : props.error
-            ? ButtonVariants.ERROR
-            : defaultVariant);
+): ButtonVariant => {
+  if (props.variant) return props.variant;
+  if (props.primary) return ButtonVariants.PRIMARY;
+  if (props.secondary) return ButtonVariants.SECONDARY;
+  if (props.tertiary) return ButtonVariants.TERTIARY;
+  if (props.destructive) return ButtonVariants.DESTRUCTIVE;
+  if (props.error) return ButtonVariants.ERROR;
+  return defaultVariant;
+};
 
 // Helper to get size from props
 const getSize = (
   props: { size?: ButtonSize } & SizeProps,
   defaultSize: ButtonSize,
-): ButtonSize =>
-  props.size ||
-  (props.sm
-    ? ButtonSizes.SMALL
-    : props.lg
-      ? ButtonSizes.LARGE
-      : props.md
-        ? ButtonSizes.MEDIUM
-        : defaultSize);
-/* eslint-enable no-nested-ternary */
+): ButtonSize => {
+  if (props.size) return props.size;
+  if (props.sm) return ButtonSizes.SMALL;
+  if (props.lg) return ButtonSizes.LARGE;
+  if (props.md) return ButtonSizes.MEDIUM;
+  return defaultSize;
+};
 
 /**
  * Button component with support for variants, sizes, icons, and loading states

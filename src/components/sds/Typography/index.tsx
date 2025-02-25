@@ -118,55 +118,44 @@ type ColorProps = {
   secondary?: boolean;
 };
 
-/* eslint-disable no-nested-ternary */
 // Get size from props, with priority to explicit prop
 const getSize = <T extends string>(
   props: { size?: T } & SizeProps,
   defaultSize: T,
-): T =>
-  props.size ||
-  (props.xl
-    ? ("xl" as T)
-    : props.lg
-      ? ("lg" as T)
-      : props.md
-        ? ("md" as T)
-        : props.sm
-          ? ("sm" as T)
-          : props.xs
-            ? ("xs" as T)
-            : defaultSize);
+): T => {
+  if (props.size) return props.size;
+  if (props.xl) return "xl" as T;
+  if (props.lg) return "lg" as T;
+  if (props.md) return "md" as T;
+  if (props.sm) return "sm" as T;
+  if (props.xs) return "xs" as T;
+  return defaultSize;
+};
 
 // Get weight from props, with priority to explicit prop
 const getWeight = (
   props: { weight?: FontWeight } & WeightProps,
   defaultWeight: FontWeight,
-): FontWeight =>
-  props.weight ||
-  (props.bold
-    ? "bold"
-    : props.semiBold
-      ? "semiBold"
-      : props.medium
-        ? "medium"
-        : props.regular
-          ? "regular"
-          : props.light
-            ? "light"
-            : defaultWeight);
+): FontWeight => {
+  if (props.weight) return props.weight;
+  if (props.bold) return "bold";
+  if (props.semiBold) return "semiBold";
+  if (props.medium) return "medium";
+  if (props.regular) return "regular";
+  if (props.light) return "light";
+  return defaultWeight;
+};
 
 // Get color from props, with priority to explicit prop
 const getColor = (
   props: { color?: string } & ColorProps,
   defaultColor: string,
-): string =>
-  props.color ||
-  (props.secondary
-    ? THEME.colors.text.secondary
-    : props.primary
-      ? THEME.colors.text.primary
-      : defaultColor);
-/* eslint-enable no-nested-ternary */
+): string => {
+  if (props.color) return props.color;
+  if (props.secondary) return THEME.colors.text.secondary;
+  if (props.primary) return THEME.colors.text.primary;
+  return defaultColor;
+};
 
 // =============================================================================
 // Base styled components
