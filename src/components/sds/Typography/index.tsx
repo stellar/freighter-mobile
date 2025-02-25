@@ -30,11 +30,9 @@ const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
 
 type FontWeight = keyof typeof FONT_WEIGHTS;
 
-type TextColor = keyof typeof THEME.colors.text;
-
 interface TypographyBaseProps {
   weight?: FontWeight;
-  color?: TextColor;
+  color?: string;
   children: React.ReactNode;
 }
 
@@ -55,13 +53,13 @@ const TEXT_SIZES = {
 } as const;
 
 type DisplaySize = keyof typeof DISPLAY_SIZES;
-type TextSize = keyof typeof TEXT_SIZES;
+export type TextSize = keyof typeof TEXT_SIZES;
 
 // =============================================================================
 // Base styled components
 // =============================================================================
 
-const BaseText = styled(RNText)<{ $weight: FontWeight; $color: TextColor }>`
+const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
   font-family: ${({ $weight }: { $weight: FontWeight }) =>
     Platform.select({
       ios: "Inter-Variable",
@@ -72,7 +70,7 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: TextColor }>`
       ios: FONT_WEIGHTS[$weight],
       android: "normal",
     })};
-  color: ${({ $color }: { $color: TextColor }) => THEME.colors.text[$color]};
+  color: ${({ $color }: { $color: string }) => $color};
 `;
 
 // =============================================================================
@@ -95,7 +93,7 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: TextColor }>`
  * - xs: 24px (smallest display text)
  */
 interface DisplayProps extends TypographyBaseProps {
-  size: DisplaySize;
+  size?: DisplaySize;
 }
 
 const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
@@ -106,9 +104,9 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
 `;
 
 export const Display: React.FC<DisplayProps> = ({
-  size,
+  size = "sm",
   weight = "regular",
-  color = "default",
+  color = THEME.colors.text.primary,
   children,
   ...props
 }) => (
@@ -138,24 +136,52 @@ export const Display: React.FC<DisplayProps> = ({
  * - xs: 12px (small labels, footnotes)
  */
 interface TextProps extends TypographyBaseProps {
-  size: TextSize;
+  size?: TextSize;
+  isVerticallyCentered?: boolean;
 }
 
-const StyledText = styled(BaseText)<{ $size: TextSize }>`
+const StyledText = styled(BaseText)<{
+  $size: TextSize;
+  $isVerticallyCentered?: boolean;
+}>`
   font-size: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].fontSize)};
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
+  // This will make sure button titles are vertically centered,
+  // but we should avoid using this for long copies since the fixed
+  // height prevents line breaks
+  ${({
+    $isVerticallyCentered,
+    $size,
+  }: {
+    $isVerticallyCentered?: boolean;
+    $size: TextSize;
+  }) =>
+    $isVerticallyCentered
+      ? `
+  display: flex;
+  align-items: center;
+  height: ${fs(TEXT_SIZES[$size].lineHeight)};
+      `
+      : ""};
 `;
 
 export const Text: React.FC<TextProps> = ({
-  size,
+  size = "md",
   weight = "regular",
-  color = "default",
+  color = THEME.colors.text.primary,
   children,
+  isVerticallyCentered = false,
   ...props
 }) => (
-  <StyledText $size={size} $weight={weight} $color={color} {...props}>
+  <StyledText
+    $size={size}
+    $weight={weight}
+    $color={color}
+    $isVerticallyCentered={isVerticallyCentered}
+    {...props}
+  >
     {children}
   </StyledText>
 );

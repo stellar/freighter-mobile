@@ -11,7 +11,7 @@ const Container = styled.View`
 `;
 
 const ScreenText = styled.Text`
-  color: ${THEME.colors.text.default};
+  color: ${THEME.colors.text.primary};
   font-size: ${fs(16)};
 `;
 

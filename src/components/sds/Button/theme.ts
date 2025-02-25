@@ -7,65 +7,72 @@
  */
 import { THEME, PALETTE } from "config/sds/theme";
 
+interface ButtonColorConfig {
+  background: string;
+  text: string;
+  border?: string;
+}
+
 export const BUTTON_THEME = {
   height: {
     sm: 26,
     md: 32,
     lg: 40,
   },
-  fontSize: {
-    sm: THEME.typography.fontSize.xs,
-    md: THEME.typography.fontSize.sm,
-    lg: THEME.typography.fontSize.md,
-  },
   padding: {
     sm: {
-      vertical: THEME.spacing.xs,
-      horizontal: THEME.spacing.sm,
+      vertical: 4,
+      horizontal: 8,
     },
     md: {
-      vertical: THEME.spacing.sm - 2,
-      horizontal: THEME.spacing.sm + 2,
+      vertical: 6,
+      horizontal: 10,
     },
     lg: {
-      vertical: THEME.spacing.sm,
-      horizontal: THEME.spacing.md - 4,
+      vertical: 8,
+      horizontal: 12,
     },
   },
   borderRadius: {
-    sm: THEME.borderRadius.sm,
-    md: THEME.borderRadius.md,
-    lg: THEME.borderRadius.lg,
+    sm: 4,
+    md: 6,
+    lg: 8,
+  },
+  fontSize: {
+    sm: "xs",
+    md: "sm",
+    lg: "md",
   },
   colors: {
     primary: {
       background: THEME.colors.primary,
-      text: PALETTE.gray["12"],
-    },
+      text: THEME.colors.text.primary,
+    } as ButtonColorConfig,
     secondary: {
-      background: PALETTE.gray["03"],
-      text: PALETTE.gray["12"],
-    },
+      background: PALETTE.light.gray["12"],
+      text: THEME.colors.text.primary,
+    } as ButtonColorConfig,
     tertiary: {
-      background: PALETTE.gray["01"],
-      text: PALETTE.gray["12"],
-      border: PALETTE.gray["06"],
-    },
+      background: PALETTE.light.gray["01"],
+      text: PALETTE.light.gray["12"],
+      border: PALETTE.light.gray["06"],
+    } as ButtonColorConfig,
     error: {
-      background: PALETTE.red["01"],
-      text: PALETTE.red["11"],
-      border: PALETTE.red["06"],
-    },
+      background: PALETTE.light.red["01"],
+      text: PALETTE.light.red["11"],
+      border: PALETTE.light.red["06"],
+    } as ButtonColorConfig,
     destructive: {
-      background: PALETTE.red["09"],
-      text: PALETTE.gray["12"],
-    },
+      background: PALETTE.light.red["09"],
+      text: PALETTE.light.base["00"],
+    } as ButtonColorConfig,
     disabled: {
-      background: PALETTE.gray["06"],
-      text: PALETTE.gray["09"],
-    },
+      background: PALETTE.light.gray["01"],
+      text: PALETTE.light.gray["09"],
+      border: PALETTE.light.gray["06"],
+    } as ButtonColorConfig,
   },
   icon: {
-    spacing: THEME.spacing.sm,
+    spacing: 8,
   },
 } as const;

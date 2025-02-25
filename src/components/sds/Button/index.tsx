@@ -1,5 +1,6 @@
 import { BUTTON_THEME } from "components/sds/Button/theme";
-import { px, fs } from "helpers/dimensions";
+import { Text, TextSize } from "components/sds/Typography";
+import { px } from "helpers/dimensions";
 import React from "react";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
@@ -53,8 +54,6 @@ interface StyledButtonProps {
 
 const getButtonHeight = (size: ButtonSize) => px(BUTTON_THEME.height[size]);
 
-const getFontSize = (size: ButtonSize) => fs(BUTTON_THEME.fontSize[size]);
-
 const getPadding = (size: ButtonSize) => {
   const { vertical, horizontal } = BUTTON_THEME.padding[size];
   return `${px(vertical)} ${px(horizontal)}`;
@@ -70,6 +69,13 @@ const getBackgroundColor = (variant: ButtonVariant, disabled: boolean) => {
   return BUTTON_THEME.colors[variant].background;
 };
 
+const getBorderColor = (variant: ButtonVariant, disabled: boolean) => {
+  if (disabled) {
+    return BUTTON_THEME.colors.disabled.border;
+  }
+  return BUTTON_THEME.colors[variant].border;
+};
+
 const getTextColor = (variant: ButtonVariant, disabled: boolean) => {
   if (disabled) {
     return BUTTON_THEME.colors.disabled.text;
@@ -77,38 +83,23 @@ const getTextColor = (variant: ButtonVariant, disabled: boolean) => {
   return BUTTON_THEME.colors[variant].text;
 };
 
+const getFontSize = (size: ButtonSize): TextSize => BUTTON_THEME.fontSize[size];
+
 const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
   height: ${({ size }: StyledButtonProps) => getButtonHeight(size)};
   padding: ${({ size }: StyledButtonProps) => getPadding(size)};
   border-radius: ${({ size }: StyledButtonProps) => getBorderRadius(size)};
   background-color: ${({ variant, disabled }: StyledButtonProps) =>
     getBackgroundColor(variant, disabled)};
-  opacity: ${({ disabled }: StyledButtonProps) => (disabled ? 0.5 : 1)};
   flex-direction: row;
   align-items: center;
   justify-content: center;
   width: ${({ isFullWidth }: StyledButtonProps) =>
     isFullWidth ? "100%" : "auto"};
-  ${({ variant, disabled }: StyledButtonProps) =>
-    variant === ButtonVariant.TERTIARY || disabled
-      ? `
-    border-width: ${px(1)};
-    border-color: ${BUTTON_THEME.colors.tertiary.border};
-  `
-      : ""}
-`;
-
-interface ButtonTextProps {
-  variant: ButtonVariant;
-  size: ButtonSize;
-  disabled: boolean;
-}
-
-const ButtonText = styled.Text<ButtonTextProps>`
-  color: ${({ variant, disabled }: ButtonTextProps) =>
-    getTextColor(variant, disabled)};
-  font-size: ${({ size }: ButtonTextProps) => getFontSize(size)};
-  text-align: center;
+  border-width: ${({ variant, disabled }: StyledButtonProps) =>
+    getBorderColor(variant, disabled) ? px(1) : 0};
+  border-color: ${({ variant, disabled }: StyledButtonProps) =>
+    getBorderColor(variant, disabled) || "transparent"};
 `;
 
 interface IconContainerProps {
@@ -133,6 +124,8 @@ export const Button = ({
   disabled = false,
   onPress,
 }: ButtonProps) => {
+  const disabledState = isLoading || disabled;
+
   const renderIcon = (position: IconPosition) => {
     if (isLoading && position === IconPosition.RIGHT) {
       return (
@@ -140,7 +133,7 @@ export const Button = ({
           <ActivityIndicator
             testID="button-loading-indicator"
             size="small"
-            color={getTextColor(variant, disabled)}
+            color={getTextColor(variant, disabledState)}
           />
         </IconContainer>
       );
@@ -158,13 +151,18 @@ export const Button = ({
       variant={variant}
       size={size}
       isFullWidth={isFullWidth}
-      disabled={disabled || isLoading}
+      disabled={disabledState}
       onPress={onPress}
     >
       {renderIcon(IconPosition.LEFT)}
-      <ButtonText variant={variant} size={size} disabled={disabled}>
+      <Text
+        size={getFontSize(size)}
+        weight="semiBold"
+        color={getTextColor(variant, disabledState)}
+        isVerticallyCentered
+      >
         {children}
-      </ButtonText>
+      </Text>
       {renderIcon(IconPosition.RIGHT)}
     </StyledButton>
   );
