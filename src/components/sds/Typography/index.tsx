@@ -30,10 +30,54 @@ const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
 
 export type FontWeight = keyof typeof FONT_WEIGHTS;
 
-interface TypographyBaseProps {
-  weight?: FontWeight;
+/**
+ * Base props for Typography components (Display and Text)
+ *
+ * @prop {string} [color] - Explicit color value (e.g. THEME.colors.text.primary)
+ * @prop {TextSize} [size] - Explicit size value (xs, sm, md, lg, xl)
+ * @prop {FontWeight} [weight] - Explicit weight value (light, regular, medium, semiBold, bold)
+ *
+ * Size shorthands (alternative to size prop):
+ * - xs - Extra small text
+ * - sm - Small text
+ * - md - Medium text (default for Text)
+ * - lg - Large text
+ * - xl - Extra large text
+ *
+ * Weight shorthands (alternative to weight prop):
+ * - light - 300
+ * - regular - 400 (default)
+ * - medium - 500
+ * - semiBold - 600
+ * - bold - 700
+ *
+ * Color shorthands (alternative to color prop):
+ * - primary - THEME.colors.text.primary (default)
+ * - secondary - THEME.colors.text.secondary
+ *
+ * Examples:
+ * ```tsx
+ * // Using explicit props
+ * <Text
+ *   size="md"
+ *   weight="semiBold"
+ *   color={THEME.colors.text.primary}
+ * >
+ *   Hello World
+ * </Text>
+ *
+ * // Using shorthands
+ * <Text md semiBold primary>Hello World</Text>
+ *
+ * // Mixing styles
+ * <Text size="lg" bold secondary>Hello World</Text>
+ * ```
+ */
+interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
   color?: string;
   children: React.ReactNode;
+  size?: TextSize;
+  weight?: FontWeight;
 }
 
 const DISPLAY_SIZES = {
@@ -73,14 +117,6 @@ type ColorProps = {
   primary?: boolean;
   secondary?: boolean;
 };
-
-interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
-  color?: string;
-  children: React.ReactNode;
-  // Although we have the shorthands, we can still use the explicit props
-  size?: TextSize;
-  weight?: FontWeight;
-}
 
 /* eslint-disable no-nested-ternary */
 // Get size from props, with priority to explicit prop
@@ -154,21 +190,6 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 // Display
 // =============================================================================
 
-/**
- * Display component is used for large, prominent text elements like:
- * - Page headings
- * - Hero text
- * - Section headers
- * - Modal titles
- * - Feature introductions
- *
- * Available sizes:
- * - xl: 56px (largest, for main headlines)
- * - lg: 48px (secondary headlines)
- * - md: 40px (section headers)
- * - sm: 32px (subsection headers)
- * - xs: 24px (smallest display text)
- */
 interface DisplayProps extends TypographyBaseProps {
   size?: DisplaySize;
 }
@@ -180,6 +201,34 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
     fs(DISPLAY_SIZES[$size].lineHeight)};
 `;
 
+/**
+ * Display component for large, prominent text elements
+ *
+ * Sizes (fontSize/lineHeight):
+ * - xl: 56px/64px - Main headlines
+ * - lg: 48px/56px - Secondary headlines
+ * - md: 40px/48px - Section headers
+ * - sm: 32px/40px - Subsection headers (default)
+ * - xs: 24px/32px - Smallest display text
+ *
+ * @example
+ * ```tsx
+ * // Extra large bold display text
+ * <Display xl bold>Welcome</Display>
+ *
+ * // Medium display with secondary color
+ * <Display md secondary>Section Title</Display>
+ *
+ * // Explicit props with custom color
+ * <Display
+ *   size="lg"
+ *   weight="semiBold"
+ *   color={PALETTE.dark.green["09"]}
+ * >
+ *   Custom Display
+ * </Display>
+ * ```
+ */
 export const Display: React.FC<DisplayProps> = ({
   size,
   weight,
@@ -201,22 +250,6 @@ export const Display: React.FC<DisplayProps> = ({
 // Text
 // =============================================================================
 
-/**
- * Text component is used for general purpose text content like:
- * - Body text
- * - Paragraphs
- * - Labels
- * - Navigation items
- * - Button text
- * - Form inputs
- *
- * Available sizes:
- * - xl: 20px (emphasized body text)
- * - lg: 18px (large body text)
- * - md: 16px (default body text)
- * - sm: 14px (secondary text, captions)
- * - xs: 12px (small labels, footnotes)
- */
 interface TextProps extends TypographyBaseProps {
   size?: TextSize;
   isVerticallyCentered?: boolean;
@@ -249,6 +282,37 @@ const StyledText = styled(BaseText)<{
       : ""};
 `;
 
+/**
+ * Text component for general purpose text content
+ *
+ * Sizes (fontSize/lineHeight):
+ * - xl: 20px/28px - Emphasized body text
+ * - lg: 18px/26px - Large body text
+ * - md: 16px/24px - Default body text
+ * - sm: 14px/22px - Secondary text, captions
+ * - xs: 12px/20px - Small labels, footnotes
+ *
+ * Additional props:
+ * @prop {boolean} [isVerticallyCentered] - Centers text vertically (useful for button titles)
+ *
+ * @example
+ * ```tsx
+ * // Basic body text
+ * <Text md>Regular body text</Text>
+ *
+ * // Small secondary color text
+ * <Text sm secondary>Caption text</Text>
+ *
+ * // Explicit props with custom color
+ * <Text
+ *   size="lg"
+ *   weight="bold"
+ *   color={PALETTE.dark.amber["09"]}
+ * >
+ *   Custom Text
+ * </Text>
+ * ```
+ */
 export const Text: React.FC<TextProps> = ({
   size,
   weight,
