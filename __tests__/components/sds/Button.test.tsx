@@ -9,51 +9,70 @@ describe("Button", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with default props", () => {
-    const { getByText } = render(<Button>Test Button</Button>);
-    expect(getByText("Test Button")).toBeTruthy();
-  });
+  describe("Rendering", () => {
+    it("renders with default props", () => {
+      const { getByText } = render(<Button>Default Button</Button>);
+      expect(getByText("Default Button")).toBeTruthy();
+    });
 
-  it("handles press events", () => {
-    const { getByText } = render(
-      <Button onPress={onPressMock}>Test Button</Button>,
-    );
+    it("renders with custom variant", () => {
+      Object.values(ButtonVariant).forEach((variant) => {
+        const { getByText } = render(
+          <Button variant={variant}>{variant} Button</Button>,
+        );
+        expect(getByText(`${variant} Button`)).toBeTruthy();
+      });
+    });
 
-    fireEvent.press(getByText("Test Button"));
-    expect(onPressMock).toHaveBeenCalledTimes(1);
-  });
+    it("renders with custom size", () => {
+      Object.values(ButtonSize).forEach((size) => {
+        const { getByText } = render(
+          <Button size={size}>{size} Button</Button>,
+        );
+        expect(getByText(`${size} Button`)).toBeTruthy();
+      });
+    });
 
-  it("shows loading indicator when isLoading is true", () => {
-    const { getByTestId } = render(<Button isLoading>Test Button</Button>);
-    expect(getByTestId("button-loading-indicator")).toBeTruthy();
-  });
+    it("renders with loading state", () => {
+      const { getByTestId, queryByText } = render(
+        <Button isLoading>Loading Button</Button>,
+      );
 
-  it("is disabled when disabled prop is true", () => {
-    const { getByText } = render(
-      <Button disabled onPress={onPressMock}>
-        Test Button
-      </Button>,
-    );
-
-    fireEvent.press(getByText("Test Button"));
-    expect(onPressMock).not.toHaveBeenCalled();
-  });
-
-  it("renders with different variants", () => {
-    const { rerender, getByText } = render(<Button>Test Button</Button>);
-
-    Object.values(ButtonVariant).forEach((variant) => {
-      rerender(<Button variant={variant}>Test Button</Button>);
-      expect(getByText("Test Button")).toBeTruthy();
+      expect(getByTestId("button-loading-indicator")).toBeTruthy();
+      expect(queryByText("Loading Button")).toBeTruthy();
     });
   });
 
-  it("renders with different sizes", () => {
-    const { rerender, getByText } = render(<Button>Test Button</Button>);
+  describe("Interactions", () => {
+    it("handles press events when enabled", () => {
+      const { getByText } = render(
+        <Button onPress={onPressMock}>Clickable Button</Button>,
+      );
 
-    Object.values(ButtonSize).forEach((size) => {
-      rerender(<Button size={size}>Test Button</Button>);
-      expect(getByText("Test Button")).toBeTruthy();
+      fireEvent.press(getByText("Clickable Button"));
+      expect(onPressMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not handle press events when disabled", () => {
+      const { getByText } = render(
+        <Button disabled onPress={onPressMock}>
+          Disabled Button
+        </Button>,
+      );
+
+      fireEvent.press(getByText("Disabled Button"));
+      expect(onPressMock).not.toHaveBeenCalled();
+    });
+
+    it("does not handle press events when loading", () => {
+      const { getByText } = render(
+        <Button isLoading onPress={onPressMock}>
+          Loading Button
+        </Button>,
+      );
+
+      fireEvent.press(getByText("Loading Button"));
+      expect(onPressMock).not.toHaveBeenCalled();
     });
   });
 });
