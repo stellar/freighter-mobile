@@ -6,7 +6,7 @@
       "@types/jest",
       "@testing-library/jest-native"
     ],
-    "baseUrl": "src/"
+    "baseUrl": "src/",
   },
-  "include": ["src", "__tests__", "*.js", "*.ts"]
+  "include": ["src", "__tests__", "*.js", "*.ts", "src/index.d.ts"]
 }
