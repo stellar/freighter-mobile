@@ -1,5 +1,5 @@
 import { BaseLayout } from "components/layout/BaseLayout";
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
 import styled from "styled-components/native";

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/jsx-props-no-spreading */
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
 import { Text as RNText, Platform } from "react-native";
