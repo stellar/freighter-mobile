@@ -122,9 +122,8 @@ const InputContainer = styled.View<
   }};
   border-radius: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
     px(INPUT_SIZES[$fieldSize].borderRadius)};
-  padding: 0
-    ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-      px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
+  padding-horizontal: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+    px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
 `;
 
 const StyledTextInput = styled.TextInput<
@@ -135,27 +134,17 @@ const StyledTextInput = styled.TextInput<
     fs(INPUT_SIZES[$fieldSize].fontSize)};
   line-height: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
     px(INPUT_SIZES[$fieldSize].lineHeight)};
-  padding: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-      px(INPUT_SIZES[$fieldSize].paddingVertical)}
-    0;
+  padding-vertical: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+    px(INPUT_SIZES[$fieldSize].paddingVertical)};
   color: ${THEME.colors.text.primary};
 `;
 
 const SideElement = styled.View<{ position: "left" | "right" }>`
   justify-content: center;
-  margin-${({ position }) => position}: ${px(8)};
+  margin-${({ position }: { position: "left" | "right" }) => position}: ${px(8)};
 `;
 
-const FieldNote = styled(Text)<Pick<StyledProps, "$variant">>`
-  color: ${({ $variant }: Pick<StyledProps, "$variant">) => {
-    if ($variant === "error") {
-      return THEME.colors.status.error;
-    }
-    if ($variant === "success") {
-      return THEME.colors.status.success;
-    }
-    return THEME.colors.text.secondary;
-  }};
+const FieldNoteWrapper = styled.View`
   margin-top: ${px(4)};
 `;
 
@@ -243,16 +232,26 @@ export const Input: React.FC<InputProps> = ({
         {copyButton?.position === "right" && renderCopyButton("right")}
       </InputContainer>
 
-      {note && <FieldNote sm>{note}</FieldNote>}
+      {note && (
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.text.secondary}>
+            {note}
+          </Text>
+        </FieldNoteWrapper>
+      )}
       {error && (
-        <FieldNote sm $variant="error">
-          {error}
-        </FieldNote>
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.status.error}>
+            {error}
+          </Text>
+        </FieldNoteWrapper>
       )}
       {success && (
-        <FieldNote sm $variant="success">
-          {success}
-        </FieldNote>
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.status.success}>
+            {success}
+          </Text>
+        </FieldNoteWrapper>
       )}
     </Container>
   );
