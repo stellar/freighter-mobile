@@ -40,31 +40,18 @@ const INPUT_SIZES = {
 export type InputSize = keyof typeof INPUT_SIZES;
 
 export interface InputProps {
-  /** ID of the input should be unique */
   id?: string;
-  /** Size of the input */
   fieldSize?: InputSize;
-  /** Label of the input */
   label?: string | React.ReactNode;
-  /** Adds suffix to the label */
   labelSuffix?: string | React.ReactNode;
-  /** Make label uppercase */
   isLabelUppercase?: boolean;
-  /** Input error without a message */
   isError?: boolean;
-  /** Password input preset with show/hide button */
   isPassword?: boolean;
-  /** Left side element of the input */
   leftElement?: JSX.Element;
-  /** Right side element of the input */
   rightElement?: JSX.Element;
-  /** Note message of the input */
   note?: string | React.ReactNode;
-  /** Error message of the input */
   error?: string | React.ReactNode;
-  /** Success message of the input */
   success?: string | React.ReactNode;
-  /** Copy button options */
   copyButton?: {
     position: "left" | "right";
     showLabel?: boolean;
@@ -130,12 +117,13 @@ const StyledTextInput = styled.TextInput<
   Pick<StyledProps, "$fieldSize" | "$hasLeftElement" | "$hasRightElement">
 >`
   flex: 1;
-  font-size: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    px(
+      INPUT_SIZES[$fieldSize].lineHeight +
+        2 * INPUT_SIZES[$fieldSize].paddingVertical,
+    )};
+  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
-  line-height: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(INPUT_SIZES[$fieldSize].lineHeight)};
-  padding-vertical: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(INPUT_SIZES[$fieldSize].paddingVertical)};
   color: ${THEME.colors.text.primary};
 `;
 

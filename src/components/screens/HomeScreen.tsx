@@ -36,8 +36,6 @@ export const HomeScreen = () => {
           note="Minimum 8 characters"
           value={passwordValue}
           onChangeText={setPasswordValue}
-          error="Password is too short"
-          success="Password is valid"
         />
 
         <View style={{ height: 40 }} />
