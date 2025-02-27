@@ -6,7 +6,7 @@ import {
   Text,
   TextSize,
 } from "components/sds/Typography";
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import { fsValue } from "helpers/dimensions";
 import React from "react";
 
