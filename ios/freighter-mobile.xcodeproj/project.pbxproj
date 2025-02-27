@@ -18,6 +18,8 @@
 		C92BC0E45A0344A499E724C4 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */; };
 		D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		D8E3BC1680FC4B7C9D639125 /* Inter-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 302D33B0FE4D45C9ABEC3073 /* Inter-VariableFont_opsz,wght.ttf */; };
+		732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */; };
+		3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EA47F7F1A9043699AECB850 /* Colors.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +39,8 @@
 		AFA1D0A6FE1E4E61A68B2CE8 /* Inter-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Medium.ttf"; path = "../src/assets/fonts/Inter-Medium.ttf"; sourceTree = "<group>"; };
 		BE3DD2A38FDF490B8902728A /* Inter-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Bold.ttf"; path = "../src/assets/fonts/Inter-Bold.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */ = {isa = PBXFileReference; name = "BootSplash.storyboard"; path = "freighter-mobile/BootSplash.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6EA47F7F1A9043699AECB850 /* Colors.xcassets */ = {isa = PBXFileReference; name = "Colors.xcassets"; path = "freighter-mobile/Colors.xcassets"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = folder.assetcatalog; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +63,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */,
+				6EA47F7F1A9043699AECB850 /* Colors.xcassets */,
 			);
 			name = "freighter-mobile";
 			sourceTree = "<group>";
@@ -194,6 +200,8 @@
 				39698F2DFE8D470C85CD8214 /* Inter-Regular.ttf in Resources */,
 				C92BC0E45A0344A499E724C4 /* Inter-SemiBold.ttf in Resources */,
 				D8E3BC1680FC4B7C9D639125 /* Inter-VariableFont_opsz,wght.ttf in Resources */,
+				732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */,
+				3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
