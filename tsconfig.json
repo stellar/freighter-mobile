@@ -8,5 +8,5 @@
     ],
     "baseUrl": "src/"
   },
-  "include": ["src", "__tests__", "*.js", "*.ts"]
+  "include": ["src", "__tests__", "*.js", "*.ts", "__mocks__"]
 }
