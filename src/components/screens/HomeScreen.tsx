@@ -1,11 +1,10 @@
+import ClipboardIcon from "assets/icons/clipboard.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Button } from "components/sds/Button";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
 import React from "react";
 import styled from "styled-components/native";
-import { Button } from "components/sds/Button";
-
-import ClipboardIcon from "assets/icons/clipboard.svg";
 
 const Container = styled.View`
   flex: 1;
@@ -25,7 +24,18 @@ export const HomeScreen = () => (
     <Container>
       <ScreenText>Home</ScreenText>
 
-      <Button secondary lg isFullWidth icon={<ClipboardIcon width={pxValue(16)} height={pxValue(16)} stroke={PALETTE.dark.gray["09"]} />}>
+      <Button
+        secondary
+        lg
+        isFullWidth
+        icon={
+          <ClipboardIcon
+            width={pxValue(16)}
+            height={pxValue(16)}
+            stroke={PALETTE.dark.gray["09"]}
+          />
+        }
+      >
         Test Button with Icon
       </Button>
     </Container>

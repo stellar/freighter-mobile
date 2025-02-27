@@ -22,6 +22,15 @@ export default [
     "plugin:@typescript-eslint/recommended-requiring-type-checking",
   ),
   {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*"],
+    rules: {
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+    },
+  },
+  {
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "script",

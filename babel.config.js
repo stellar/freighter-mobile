@@ -16,7 +16,7 @@ module.exports = {
           ".ts",
           ".tsx",
           ".json",
-          ".svg"
+          ".svg",
         ],
         alias: getSrcDirs(__dirname),
       },
