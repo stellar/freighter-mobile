@@ -55,9 +55,9 @@ export interface InputProps {
   /** Password input preset with show/hide button */
   isPassword?: boolean;
   /** Left side element of the input */
-  leftElement?: React.ReactNode;
+  leftElement?: JSX.Element;
   /** Right side element of the input */
-  rightElement?: React.ReactNode;
+  rightElement?: JSX.Element;
   /** Note message of the input */
   note?: string | React.ReactNode;
   /** Error message of the input */
@@ -141,9 +141,9 @@ const StyledTextInput = styled.TextInput<
   color: ${THEME.colors.text.primary};
 `;
 
-const SideElement = styled.View<Pick<StyledProps, "position">>`
+const SideElement = styled.View<{ position: "left" | "right" }>`
   justify-content: center;
-  margin-${({ position }: Pick<StyledProps, "position">) => position}: ${px(8)};
+  margin-${({ position }) => position}: ${px(8)};
 `;
 
 const FieldNote = styled(Text)<Pick<StyledProps, "$variant">>`
