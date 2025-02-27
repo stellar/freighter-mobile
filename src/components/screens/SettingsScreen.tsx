@@ -3,7 +3,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
 import { ROUTES, RootStackParamList } from "config/routes";
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
 import styled from "styled-components/native";

@@ -74,8 +74,13 @@ const getPadding = (size: ButtonSize) => {
   return `${px(vertical)} ${px(horizontal)}`;
 };
 
-const getBorderRadius = (size: ButtonSize, squared = false) =>
-  squared ? px(BUTTON_THEME.borderRadius[size]) : px(100);
+const getBorderRadius = (size: ButtonSize, squared = false) => {
+  if (squared) {
+    return px(BUTTON_THEME.borderRadius[size]);
+  }
+
+  return px(100);
+};
 
 const getBackgroundColor = (variant: ButtonVariant, disabled: boolean) => {
   if (disabled) {

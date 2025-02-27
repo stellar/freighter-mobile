@@ -1,4 +1,4 @@
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import { px, fs } from "helpers/dimensions";
 import React from "react";
 import styled from "styled-components/native";

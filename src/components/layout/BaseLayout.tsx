@@ -1,4 +1,4 @@
-import { THEME } from "config/sds/theme";
+import { THEME } from "config/theme";
 import React from "react";
 import { SafeAreaView, View } from "react-native";
 import styled from "styled-components/native";

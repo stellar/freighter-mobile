@@ -2,11 +2,11 @@
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
     "types": [
-      "@types/styled-components-react-native",
+      "styled-components-react-native",
       "@types/jest",
       "@testing-library/jest-native"
     ],
     "baseUrl": "src/"
   },
-  "include": ["src", "__tests__", "*.js", "*.ts"]
+  "include": ["src", "__tests__", "*.js", "*.ts", "__mocks__"]
 }
