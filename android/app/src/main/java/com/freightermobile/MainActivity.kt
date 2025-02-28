@@ -7,6 +7,7 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.zoontek.rnbootsplash.RNBootSplash
 
 class MainActivity : ReactActivity() {
 
@@ -27,6 +28,7 @@ class MainActivity : ReactActivity() {
    * react-native-screens package requires this override to properly work on Android devices.
    */
   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(null)
+    RNBootSplash.init(this, R.style.BootTheme)
+    super.onCreate(savedInstanceState)
   }
 }
