@@ -554,8 +554,6 @@ describe("Typography", () => {
       );
       const element = getByText("Link Text");
 
-      // Using act to wait for the promise to resolve.
-      // This is necessary because the promise is not resolved immediately.
       // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         fireEvent.press(element);
