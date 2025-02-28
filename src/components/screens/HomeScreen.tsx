@@ -36,7 +36,7 @@ export const HomeScreen = () => (
         By proceeding, you agree to
         {"\n"}
         Freighter&apos;s{" "}
-        <Text md weight="medium" url="https://example.com">
+        <Text md weight="medium" url="https://stellar.org/terms-of-service">
           terms of use
         </Text>
       </Text>

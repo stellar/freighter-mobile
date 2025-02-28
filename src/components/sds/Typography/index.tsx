@@ -333,7 +333,7 @@ export const Text: React.FC<TextProps> = ({
       $weight={getWeight({ weight, ...props }, "regular")}
       $color={getColor({ color, ...props }, THEME.colors.text.primary)}
       $isVerticallyCentered={isVerticallyCentered}
-      {...(url && { onPress: handlePress })}
+      {...(url && { onPress: () => handlePress() })}
       {...props}
     >
       {children}
