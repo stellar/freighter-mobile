@@ -26,8 +26,7 @@
     "c-install": "yarn gradle-clean && yarn node-clean && yarn install",
     "reset-env": "sh ./scripts/reset-env",
     "r-install": "yarn reset-env && yarn install",
-    "ios:generate-splashscreen": "npx react-native generate-bootsplash ./splashscreen/freighter-logo.svg --platforms=ios --background=161616 --logo-width=64 --flavor=main",
-    "android:generate-splashscreen": "npx react-native generate-bootsplash ./splashscreen/freighter-logo.svg --platforms=android --background=161616 --logo-width=64 --flavor=main"
+    "generate-splashscreen": "yarn react-native-bootsplash generate splashscreen/freighter-logo.svg --platforms=android,ios --background=161616 --logo-width=64 --assets-output=assets/bootsplash --flavor=main"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
