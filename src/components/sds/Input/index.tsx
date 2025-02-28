@@ -141,6 +141,74 @@ const FieldNoteWrapper = styled.View`
 // Component
 // =============================================================================
 
+/**
+ * Input component for text entry with various styling and functionality options.
+ *
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <Input
+ *   value={text}
+ *   onChangeText={setText}
+ *   placeholder="Enter text..."
+ * />
+ * ```
+ *
+ * @example
+ * With label and validation:
+ * ```tsx
+ * <Input
+ *   label="Email Address"
+ *   labelSuffix="(required)"
+ *   value={email}
+ *   onChangeText={setEmail}
+ *   error={!isValidEmail(email) && "Please enter a valid email"}
+ *   keyboardType="email-address"
+ * />
+ * ```
+ *
+ * @example
+ * Password input with side element:
+ * ```tsx
+ * <Input
+ *   label="Password"
+ *   value={password}
+ *   onChangeText={setPassword}
+ *   isPassword
+ *   rightElement={<Icon name="eye" onPress={togglePasswordVisibility} />}
+ * />
+ * ```
+ *
+ * @example
+ * With copy button and helper text:
+ * ```tsx
+ * <Input
+ *   value={walletAddress}
+ *   copyButton={{ position: "right", showLabel: true }}
+ *   note="Click the copy button to copy the address"
+ *   editable={false}
+ * />
+ * ```
+ *
+ * @param {InputProps} props - The component props
+ * @param {string} [props.fieldSize="md"] - Size variant of the input field ("sm" | "md" | "lg")
+ * @param {string | ReactNode} [props.label] - Label text or component to display above the input
+ * @param {string | ReactNode} [props.labelSuffix] - Additional text to display after the label
+ * @param {boolean} [props.isLabelUppercase] - Whether to transform the label text to uppercase
+ * @param {boolean} [props.isError] - Whether to show error styling
+ * @param {boolean} [props.isPassword] - Whether the input is for password entry
+ * @param {JSX.Element} [props.leftElement] - Element to render on the left side of the input
+ * @param {JSX.Element} [props.rightElement] - Element to render on the right side of the input
+ * @param {string | ReactNode} [props.note] - Helper text to display below the input
+ * @param {string | ReactNode} [props.error] - Error message to display below the input
+ * @param {string | ReactNode} [props.success] - Success message to display below the input
+ * @param {Object} [props.copyButton] - Configuration for the copy button
+ * @param {string} props.value - The input value
+ * @param {Function} [props.onChangeText] - Callback when text changes
+ * @param {string} [props.placeholder] - Placeholder text
+ * @param {boolean} [props.editable=true] - Whether the input is editable
+ * @param {string} [props.testID] - Test ID for testing
+ */
 export const Input: React.FC<InputProps> = ({
   fieldSize = "md",
   label,
