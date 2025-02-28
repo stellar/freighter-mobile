@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "ios": "react-native run-ios --mode Release",
     "lint": "eslint ./src ./__tests__ --fix",
     "lint:ts": "tsc --noEmit",
     "lint:ts:watch": "tsc --watch --noEmit",
