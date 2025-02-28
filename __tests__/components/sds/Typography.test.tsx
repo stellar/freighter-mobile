@@ -543,9 +543,9 @@ describe("Typography", () => {
     });
 
     it("opens the link when the text is pressed", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       jest
         .spyOn(Linking, "canOpenURL")
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         .mockImplementation((url: string) => Promise.resolve(true));
       const openURLSpy = jest.spyOn(Linking, "openURL");
 
