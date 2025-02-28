@@ -262,6 +262,9 @@ const StyledText = styled(BaseText)<{
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
   text-decoration: none;
+  // This will make sure button titles are vertically centered,
+  // but we should avoid using this for long copies since the fixed
+  // height prevents line breaks
   ${({
     $isVerticallyCentered,
     $size,
