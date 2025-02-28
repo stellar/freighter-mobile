@@ -6,6 +6,7 @@ import { ROUTES, RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -32,6 +33,7 @@ type SettingsScreenNavigationProp = NativeStackNavigationProp<
 >;
 
 export const SettingsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
 
   const handleSignOut = () => {
@@ -42,14 +44,14 @@ export const SettingsScreen = () => {
     <BaseLayout>
       <Container>
         <TopSection>
-          <ScreenText>Settings</ScreenText>
+          <ScreenText>{t("settings.title")}</ScreenText>
         </TopSection>
         <Button
           variant={ButtonVariants.DESTRUCTIVE}
           size={ButtonSizes.LARGE}
           onPress={handleSignOut}
         >
-          Sign out
+          {t("settings.signOut")}
         </Button>
       </Container>
     </BaseLayout>

@@ -1,6 +1,7 @@
-import { render, fireEvent } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import { SettingsScreen } from "components/screens/SettingsScreen";
 import { ROUTES } from "config/routes";
+import { renderWithProviders } from "helpers/testing";
 import React from "react";
 
 const mockReplace = jest.fn();
@@ -17,13 +18,13 @@ describe("SettingsScreen", () => {
   });
 
   it("renders correctly", () => {
-    const { getByText } = render(<SettingsScreen />);
+    const { getByText } = renderWithProviders(<SettingsScreen />);
     expect(getByText("Settings")).toBeTruthy();
     expect(getByText("Sign out")).toBeTruthy();
   });
 
   it("navigates to login screen when sign out is pressed", () => {
-    const { getByText } = render(<SettingsScreen />);
+    const { getByText } = renderWithProviders(<SettingsScreen />);
     const signOutButton = getByText("Sign out");
 
     fireEvent.press(signOutButton);

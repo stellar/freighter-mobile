@@ -1,7 +1,8 @@
-import { render, fireEvent } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
 import { BUTTON_THEME } from "components/sds/Button/theme";
 import { pxValue } from "helpers/dimensions";
+import { renderWithProviders } from "helpers/testing";
 import React from "react";
 
 describe("Button", () => {
@@ -13,7 +14,7 @@ describe("Button", () => {
 
   describe("Variant handling", () => {
     it("uses explicit variant prop", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button variant={ButtonVariants.SECONDARY} testID="test-button">
           Explicit Variant
         </Button>,
@@ -71,7 +72,7 @@ describe("Button", () => {
       ];
 
       variants.forEach(({ prop, text, expectedStyles }) => {
-        const { getByTestId } = render(
+        const { getByTestId } = renderWithProviders(
           <Button {...{ [prop]: true }} testID="test-button">
             {text}
           </Button>,
@@ -82,7 +83,7 @@ describe("Button", () => {
     });
 
     it("prioritizes explicit variant over shorthand", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button variant={ButtonVariants.PRIMARY} secondary testID="test-button">
           Priority Test
         </Button>,
@@ -96,7 +97,7 @@ describe("Button", () => {
     });
 
     it("defaults to primary variant", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button testID="test-button">Default Variant</Button>,
       );
       const button = getByTestId("test-button");
@@ -110,7 +111,7 @@ describe("Button", () => {
 
   describe("Size handling", () => {
     it("uses explicit size prop", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button size={ButtonSizes.LARGE} testID="test-button">
           Explicit Size
         </Button>,
@@ -148,7 +149,7 @@ describe("Button", () => {
       ];
 
       sizes.forEach(({ prop, text, expectedStyle }) => {
-        const { getByTestId } = render(
+        const { getByTestId } = renderWithProviders(
           <Button {...{ [prop]: true }} testID="test-button">
             {text}
           </Button>,
@@ -159,7 +160,7 @@ describe("Button", () => {
     });
 
     it("prioritizes explicit size over shorthand", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button size={ButtonSizes.LARGE} sm testID="test-button">
           Priority Test
         </Button>,
@@ -172,7 +173,7 @@ describe("Button", () => {
     });
 
     it("defaults to medium size", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button testID="test-button">Default Size</Button>,
       );
       const button = getByTestId("test-button");
@@ -185,7 +186,7 @@ describe("Button", () => {
 
   describe("Loading state", () => {
     it("shows loading indicator when loading", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button isLoading testID="test-button">
           Loading Button
         </Button>,
@@ -194,7 +195,7 @@ describe("Button", () => {
     });
 
     it("disables button when loading", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button isLoading onPress={onPressMock} testID="test-button">
           Loading Button
         </Button>,
@@ -207,7 +208,7 @@ describe("Button", () => {
 
   describe("Interactions", () => {
     it("handles press events when enabled", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button onPress={onPressMock} testID="test-button">
           Clickable Button
         </Button>,
@@ -218,7 +219,7 @@ describe("Button", () => {
     });
 
     it("does not handle press events when disabled", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button disabled onPress={onPressMock} testID="test-button">
           Disabled Button
         </Button>,
@@ -231,7 +232,7 @@ describe("Button", () => {
 
   describe("Mixed usage", () => {
     it("handles combination of props and shorthands", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button
           primary
           size={ButtonSizes.LARGE}
@@ -260,7 +261,7 @@ describe("Button", () => {
 
   describe("Full width handling", () => {
     it("applies full width style when enabled", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button isFullWidth testID="test-button">
           Full Width Button
         </Button>,
@@ -272,7 +273,7 @@ describe("Button", () => {
     });
 
     it("applies auto width style when disabled", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Button testID="test-button">Auto Width Button</Button>,
       );
 
@@ -284,7 +285,7 @@ describe("Button", () => {
 
   describe("Text styling", () => {
     it("applies correct text styles based on button size", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Button lg testID="test-button">
           Large Button
         </Button>,
@@ -298,7 +299,7 @@ describe("Button", () => {
     });
 
     it("applies correct text color based on variant and state", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Button secondary disabled testID="test-button">
           Disabled Button
         </Button>,
