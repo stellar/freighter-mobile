@@ -1,4 +1,4 @@
-import { render, fireEvent, act } from "@testing-library/react-native";
+import { fireEvent, act } from "@testing-library/react-native";
 import {
   Display,
   DisplaySize,
@@ -8,36 +8,41 @@ import {
 } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fsValue } from "helpers/dimensions";
+import { renderWithProviders } from "helpers/testing";
 import React from "react";
 import { Linking } from "react-native";
 
 describe("Typography", () => {
   describe("Display", () => {
     it("renders with default props", () => {
-      const { getByText } = render(<Display>Test Text</Display>);
+      const { getByText } = renderWithProviders(<Display>Test Text</Display>);
       const element = getByText("Test Text");
       expect(element).toBeTruthy();
     });
 
     it("renders with custom size", () => {
-      const { getByText } = render(<Display size="xl">Large Text</Display>);
+      const { getByText } = renderWithProviders(
+        <Display size="xl">Large Text</Display>,
+      );
       expect(getByText("Large Text")).toBeTruthy();
     });
 
     it("renders with custom weight", () => {
-      const { getByText } = render(<Display weight="bold">Bold Text</Display>);
+      const { getByText } = renderWithProviders(
+        <Display weight="bold">Bold Text</Display>,
+      );
       expect(getByText("Bold Text")).toBeTruthy();
     });
 
     it("renders with custom color", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Display color={THEME.colors.text.secondary}>Custom Color</Display>,
       );
       expect(getByText("Custom Color")).toBeTruthy();
     });
 
     it("renders with all custom props", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Display
           size="lg"
           weight="semiBold"
@@ -50,7 +55,7 @@ describe("Typography", () => {
     });
 
     it("applies correct default styles", () => {
-      const { getByText } = render(<Display>Test Text</Display>);
+      const { getByText } = renderWithProviders(<Display>Test Text</Display>);
       const element = getByText("Test Text");
 
       expect(element.props.style).toMatchObject({
@@ -63,7 +68,7 @@ describe("Typography", () => {
     });
 
     it("applies correct custom styles", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Display size="xl" weight="bold" color={THEME.colors.text.secondary}>
           Custom Text
         </Display>,
@@ -89,7 +94,7 @@ describe("Typography", () => {
       };
 
       Object.entries(sizes).forEach(([size, metrics]) => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display size={size as DisplaySize}>{size} size</Display>,
         );
         const element = getByText(`${size} size`);
@@ -111,7 +116,7 @@ describe("Typography", () => {
       };
 
       Object.entries(weights).forEach(([weight, value]) => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display weight={weight as FontWeight}>{weight} weight</Display>,
         );
         const element = getByText(`${weight} weight`);
@@ -124,7 +129,7 @@ describe("Typography", () => {
 
     describe("Size handling", () => {
       it("uses explicit size prop", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display size="xl">Explicit Size</Display>,
         );
         const element = getByText("Explicit Size");
@@ -135,7 +140,9 @@ describe("Typography", () => {
       });
 
       it("uses size shorthand", () => {
-        const { getByText } = render(<Display xl>Shorthand Size</Display>);
+        const { getByText } = renderWithProviders(
+          <Display xl>Shorthand Size</Display>,
+        );
         const element = getByText("Shorthand Size");
         expect(element.props.style).toMatchObject({
           fontSize: fsValue(56), // xl size
@@ -144,7 +151,7 @@ describe("Typography", () => {
       });
 
       it("prioritizes explicit size over shorthand", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display size="xl" sm>
             Explicit Priority
           </Display>,
@@ -157,7 +164,9 @@ describe("Typography", () => {
       });
 
       it("defaults to sm size", () => {
-        const { getByText } = render(<Display>Default Size</Display>);
+        const { getByText } = renderWithProviders(
+          <Display>Default Size</Display>,
+        );
         const element = getByText("Default Size");
         expect(element.props.style).toMatchObject({
           fontSize: fsValue(32), // sm size
@@ -168,7 +177,7 @@ describe("Typography", () => {
 
     describe("Weight handling", () => {
       it("uses explicit weight prop", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display weight="bold">Explicit Weight</Display>,
         );
         const element = getByText("Explicit Weight");
@@ -178,7 +187,9 @@ describe("Typography", () => {
       });
 
       it("uses weight shorthand", () => {
-        const { getByText } = render(<Display bold>Shorthand Weight</Display>);
+        const { getByText } = renderWithProviders(
+          <Display bold>Shorthand Weight</Display>,
+        );
         const element = getByText("Shorthand Weight");
         expect(element.props.style).toMatchObject({
           fontWeight: "700", // bold weight
@@ -186,7 +197,7 @@ describe("Typography", () => {
       });
 
       it("prioritizes explicit weight over shorthand", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display weight="bold" light>
             Explicit Priority
           </Display>,
@@ -198,7 +209,9 @@ describe("Typography", () => {
       });
 
       it("defaults to regular weight", () => {
-        const { getByText } = render(<Display>Default Weight</Display>);
+        const { getByText } = renderWithProviders(
+          <Display>Default Weight</Display>,
+        );
         const element = getByText("Default Weight");
         expect(element.props.style).toMatchObject({
           fontWeight: "400", // regular weight
@@ -208,7 +221,7 @@ describe("Typography", () => {
 
     describe("Color handling", () => {
       it("uses explicit color prop", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display color={THEME.colors.text.secondary}>Explicit Color</Display>,
         );
         const element = getByText("Explicit Color");
@@ -218,7 +231,9 @@ describe("Typography", () => {
       });
 
       it("uses primary color shorthand", () => {
-        const { getByText } = render(<Display primary>Primary Color</Display>);
+        const { getByText } = renderWithProviders(
+          <Display primary>Primary Color</Display>,
+        );
         const element = getByText("Primary Color");
         expect(element.props.style).toMatchObject({
           color: THEME.colors.text.primary,
@@ -226,7 +241,7 @@ describe("Typography", () => {
       });
 
       it("uses secondary color shorthand", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display secondary>Secondary Color</Display>,
         );
         const element = getByText("Secondary Color");
@@ -237,7 +252,7 @@ describe("Typography", () => {
 
       it("prioritizes explicit color over shorthand", () => {
         const customColor = "#FF0000";
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Display color={customColor} primary secondary>
             Explicit Priority
           </Display>,
@@ -249,7 +264,9 @@ describe("Typography", () => {
       });
 
       it("defaults to primary color", () => {
-        const { getByText } = render(<Display>Default Color</Display>);
+        const { getByText } = renderWithProviders(
+          <Display>Default Color</Display>,
+        );
         const element = getByText("Default Color");
         expect(element.props.style).toMatchObject({
           color: THEME.colors.text.primary,
@@ -260,37 +277,41 @@ describe("Typography", () => {
 
   describe("Text", () => {
     it("renders with default props", () => {
-      const { getByText } = render(<Text>Test Text</Text>);
+      const { getByText } = renderWithProviders(<Text>Test Text</Text>);
       const element = getByText("Test Text");
       expect(element).toBeTruthy();
     });
 
     it("renders with custom size", () => {
-      const { getByText } = render(<Text size="xl">Large Text</Text>);
+      const { getByText } = renderWithProviders(
+        <Text size="xl">Large Text</Text>,
+      );
       expect(getByText("Large Text")).toBeTruthy();
     });
 
     it("renders with custom weight", () => {
-      const { getByText } = render(<Text weight="bold">Bold Text</Text>);
+      const { getByText } = renderWithProviders(
+        <Text weight="bold">Bold Text</Text>,
+      );
       expect(getByText("Bold Text")).toBeTruthy();
     });
 
     it("renders with custom color", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text color={THEME.colors.text.secondary}>Custom Color</Text>,
       );
       expect(getByText("Custom Color")).toBeTruthy();
     });
 
     it("renders vertically centered", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text isVerticallyCentered>Centered Text</Text>,
       );
       expect(getByText("Centered Text")).toBeTruthy();
     });
 
     it("renders with all custom props", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text
           size="lg"
           weight="semiBold"
@@ -304,7 +325,7 @@ describe("Typography", () => {
     });
 
     it("applies correct default styles", () => {
-      const { getByText } = render(<Text>Test Text</Text>);
+      const { getByText } = renderWithProviders(<Text>Test Text</Text>);
       const element = getByText("Test Text");
 
       expect(element.props.style).toMatchObject({
@@ -317,7 +338,7 @@ describe("Typography", () => {
     });
 
     it("applies correct custom styles", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text
           size="xl"
           weight="bold"
@@ -351,7 +372,7 @@ describe("Typography", () => {
       };
 
       Object.entries(sizes).forEach(([size, metrics]) => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text size={size as TextSize}>{size} size</Text>,
         );
         const element = getByText(`${size} size`);
@@ -364,7 +385,7 @@ describe("Typography", () => {
     });
 
     it("applies vertical centering styles correctly", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text size="md" isVerticallyCentered>
           Centered Text
         </Text>,
@@ -380,7 +401,9 @@ describe("Typography", () => {
 
     describe("Size handling", () => {
       it("uses explicit size prop", () => {
-        const { getByText } = render(<Text size="xl">Explicit Size</Text>);
+        const { getByText } = renderWithProviders(
+          <Text size="xl">Explicit Size</Text>,
+        );
         const element = getByText("Explicit Size");
         expect(element.props.style).toMatchObject({
           fontSize: fsValue(20), // xl size
@@ -389,7 +412,9 @@ describe("Typography", () => {
       });
 
       it("uses size shorthand", () => {
-        const { getByText } = render(<Text xl>Shorthand Size</Text>);
+        const { getByText } = renderWithProviders(
+          <Text xl>Shorthand Size</Text>,
+        );
         const element = getByText("Shorthand Size");
         expect(element.props.style).toMatchObject({
           fontSize: fsValue(20), // xl size
@@ -398,7 +423,7 @@ describe("Typography", () => {
       });
 
       it("prioritizes explicit size over shorthand", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text size="xl" sm>
             Explicit Priority
           </Text>,
@@ -411,7 +436,7 @@ describe("Typography", () => {
       });
 
       it("defaults to md size", () => {
-        const { getByText } = render(<Text>Default Size</Text>);
+        const { getByText } = renderWithProviders(<Text>Default Size</Text>);
         const element = getByText("Default Size");
         expect(element.props.style).toMatchObject({
           fontSize: fsValue(16), // md size
@@ -422,7 +447,7 @@ describe("Typography", () => {
 
     describe("Weight handling", () => {
       it("uses explicit weight prop", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text weight="bold">Explicit Weight</Text>,
         );
         const element = getByText("Explicit Weight");
@@ -432,7 +457,9 @@ describe("Typography", () => {
       });
 
       it("uses weight shorthand", () => {
-        const { getByText } = render(<Text bold>Shorthand Weight</Text>);
+        const { getByText } = renderWithProviders(
+          <Text bold>Shorthand Weight</Text>,
+        );
         const element = getByText("Shorthand Weight");
         expect(element.props.style).toMatchObject({
           fontWeight: "700", // bold weight
@@ -440,7 +467,7 @@ describe("Typography", () => {
       });
 
       it("prioritizes explicit weight over shorthand", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text weight="bold" light>
             Explicit Priority
           </Text>,
@@ -452,7 +479,7 @@ describe("Typography", () => {
       });
 
       it("defaults to regular weight", () => {
-        const { getByText } = render(<Text>Default Weight</Text>);
+        const { getByText } = renderWithProviders(<Text>Default Weight</Text>);
         const element = getByText("Default Weight");
         expect(element.props.style).toMatchObject({
           fontWeight: "400", // regular weight
@@ -462,7 +489,7 @@ describe("Typography", () => {
 
     describe("Vertical centering", () => {
       it("applies vertical centering styles when enabled", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text isVerticallyCentered>Centered Text</Text>,
         );
         const element = getByText("Centered Text");
@@ -474,7 +501,9 @@ describe("Typography", () => {
       });
 
       it("does not apply vertical centering styles when disabled", () => {
-        const { getByText } = render(<Text>Non-Centered Text</Text>);
+        const { getByText } = renderWithProviders(
+          <Text>Non-Centered Text</Text>,
+        );
         const element = getByText("Non-Centered Text");
         expect(element.props.style).not.toHaveProperty("display");
         expect(element.props.style).not.toHaveProperty("alignItems");
@@ -484,7 +513,7 @@ describe("Typography", () => {
 
     describe("Color handling", () => {
       it("uses explicit color prop", () => {
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text color={THEME.colors.text.secondary}>Explicit Color</Text>,
         );
         const element = getByText("Explicit Color");
@@ -494,7 +523,9 @@ describe("Typography", () => {
       });
 
       it("uses primary color shorthand", () => {
-        const { getByText } = render(<Text primary>Primary Color</Text>);
+        const { getByText } = renderWithProviders(
+          <Text primary>Primary Color</Text>,
+        );
         const element = getByText("Primary Color");
         expect(element.props.style).toMatchObject({
           color: THEME.colors.text.primary,
@@ -502,7 +533,9 @@ describe("Typography", () => {
       });
 
       it("uses secondary color shorthand", () => {
-        const { getByText } = render(<Text secondary>Secondary Color</Text>);
+        const { getByText } = renderWithProviders(
+          <Text secondary>Secondary Color</Text>,
+        );
         const element = getByText("Secondary Color");
         expect(element.props.style).toMatchObject({
           color: THEME.colors.text.secondary,
@@ -511,7 +544,7 @@ describe("Typography", () => {
 
       it("prioritizes explicit color over shorthand", () => {
         const customColor = "#FF0000";
-        const { getByText } = render(
+        const { getByText } = renderWithProviders(
           <Text color={customColor} primary secondary>
             Explicit Priority
           </Text>,
@@ -523,7 +556,7 @@ describe("Typography", () => {
       });
 
       it("defaults to primary color", () => {
-        const { getByText } = render(<Text>Default Color</Text>);
+        const { getByText } = renderWithProviders(<Text>Default Color</Text>);
         const element = getByText("Default Color");
         expect(element.props.style).toMatchObject({
           color: THEME.colors.text.primary,
@@ -536,7 +569,9 @@ describe("Typography", () => {
         select: jest.fn((obj) => obj.android),
       }));
 
-      const { getByText } = render(<Text weight="bold">Android Text</Text>);
+      const { getByText } = renderWithProviders(
+        <Text weight="bold">Android Text</Text>,
+      );
       const element = getByText("Android Text");
 
       expect(element.props.style.fontFamily).toBe("Inter-Bold");
@@ -549,7 +584,7 @@ describe("Typography", () => {
         .mockImplementation((url: string) => Promise.resolve(true));
       const openURLSpy = jest.spyOn(Linking, "openURL");
 
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Text url="https://example.com">Link Text</Text>,
       );
       const element = getByText("Link Text");

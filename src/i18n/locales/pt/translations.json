@@ -1,0 +1,25 @@
+{
+  "noInternetConnection": "Sem conexão com a internet",
+  "home": {
+    "title": "Início"
+  },
+  "onboarding": {
+    "terms": {
+      "byProceeding": "Ao prosseguir, você concorda com o Freighter ",
+      "termsOfService": "Termos de uso"
+    },
+    "testButton": "Botão de teste com ícone",
+    "typePassword": "Digite sua senha",
+    "typePasswordNote": "Mínimo 8 caracteres"
+  },
+  "swap": {
+    "title": "Troca"
+  },
+  "history": {
+    "title": "Histórico"
+  },
+  "settings": {
+    "title": "Configurações",
+    "signOut": "Sair"
+  }
+}

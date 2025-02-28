@@ -2,6 +2,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -15,10 +16,14 @@ const ScreenText = styled.Text`
   font-size: ${fs(16)};
 `;
 
-export const HistoryScreen = () => (
-  <BaseLayout>
-    <Container>
-      <ScreenText>History</ScreenText>
-    </Container>
-  </BaseLayout>
-);
+export const HistoryScreen = () => {
+  const { t } = useTranslation();
+
+  return (
+    <BaseLayout>
+      <Container>
+        <ScreenText>{t("history.title")}</ScreenText>
+      </Container>
+    </BaseLayout>
+  );
+};

@@ -1,9 +1,10 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fsValue, pxValue } from "helpers/dimensions";
+import { renderWithProviders } from "helpers/testing";
 import React from "react";
 
 describe("Input", () => {
@@ -22,7 +23,7 @@ describe("Input", () => {
       };
 
       Object.entries(sizes).forEach(([size, metrics]) => {
-        const { getByTestId } = render(
+        const { getByTestId } = renderWithProviders(
           <Input
             fieldSize={size as "sm" | "md" | "lg"}
             testID="test-input"
@@ -39,7 +40,9 @@ describe("Input", () => {
     });
 
     it("defaults to medium size", () => {
-      const { getByTestId } = render(<Input testID="test-input" value="" />);
+      const { getByTestId } = renderWithProviders(
+        <Input testID="test-input" value="" />,
+      );
       const input = getByTestId("test-input");
 
       expect(input.props.style).toMatchObject({
@@ -51,19 +54,21 @@ describe("Input", () => {
 
   describe("Label handling", () => {
     it("renders label when provided", () => {
-      const { getByText } = render(<Input label="Test Label" value="" />);
+      const { getByText } = renderWithProviders(
+        <Input label="Test Label" value="" />,
+      );
       expect(getByText("Test Label")).toBeTruthy();
     });
 
     it("renders label suffix when provided", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input label="Test Label" labelSuffix="(optional)" value="" />,
       );
       expect(getByText("(optional)")).toBeTruthy();
     });
 
     it("renders uppercase label when isLabelUppercase is true", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input label="test label" isLabelUppercase value="" />,
       );
       expect(getByText("TEST LABEL")).toBeTruthy();
@@ -72,7 +77,7 @@ describe("Input", () => {
 
   describe("Error state", () => {
     it("applies error styles when isError is true", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input isError testID="test-input" value="" />,
       );
 
@@ -83,7 +88,7 @@ describe("Input", () => {
     });
 
     it("applies error styles when error message is provided", () => {
-      const { getByTestId, getByText } = render(
+      const { getByTestId, getByText } = renderWithProviders(
         <Input error="Error message" testID="test-input" value="" />,
       );
 
@@ -97,7 +102,7 @@ describe("Input", () => {
 
   describe("Side elements", () => {
     it("renders left element when provided", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input
           leftElement={<Text testID="left-element">Left</Text>}
           testID="test-input"
@@ -108,7 +113,7 @@ describe("Input", () => {
     });
 
     it("renders right element when provided", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input
           rightElement={<Text testID="right-element">Right</Text>}
           testID="test-input"
@@ -125,7 +130,7 @@ describe("Input", () => {
     });
 
     it("renders copy button on the left when specified", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input
           copyButton={{ position: "left", showLabel: true }}
           value="test"
@@ -135,7 +140,7 @@ describe("Input", () => {
     });
 
     it("renders copy button on the right when specified", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input
           copyButton={{ position: "right", showLabel: true }}
           value="test"
@@ -145,7 +150,7 @@ describe("Input", () => {
     });
 
     it("copies text to clipboard when copy button is pressed", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input
           copyButton={{ position: "right", showLabel: true }}
           value="test value"
@@ -160,7 +165,7 @@ describe("Input", () => {
 
   describe("Input interactions", () => {
     it("calls onChangeText when text changes", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input testID="test-input" value="" onChangeText={onChangeTextMock} />,
       );
 
@@ -169,7 +174,7 @@ describe("Input", () => {
     });
 
     it("handles disabled state", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input testID="test-input" value="" editable={false} />,
       );
 
@@ -182,12 +187,14 @@ describe("Input", () => {
 
   describe("Messages", () => {
     it("renders note message when provided", () => {
-      const { getByText } = render(<Input note="Helper text" value="" />);
+      const { getByText } = renderWithProviders(
+        <Input note="Helper text" value="" />,
+      );
       expect(getByText("Helper text")).toBeTruthy();
     });
 
     it("renders success message when provided", () => {
-      const { getByText } = render(
+      const { getByText } = renderWithProviders(
         <Input success="Success message" value="" />,
       );
       expect(getByText("Success message")).toBeTruthy();
@@ -196,7 +203,7 @@ describe("Input", () => {
 
   describe("Password input", () => {
     it("toggles secure text entry when isPassword is true", () => {
-      const { getByTestId } = render(
+      const { getByTestId } = renderWithProviders(
         <Input isPassword testID="test-input" value="" />,
       );
       const input = getByTestId("test-input");

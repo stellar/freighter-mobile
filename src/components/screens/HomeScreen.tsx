@@ -6,6 +6,7 @@ import { Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import styled from "styled-components/native";
 
@@ -24,17 +25,18 @@ const ScreenText = styled.Text`
 
 export const HomeScreen = () => {
   const [passwordValue, setPasswordValue] = useState("");
+  const { t } = useTranslation();
 
   return (
     <BaseLayout>
       <Container>
-        <ScreenText>Home</ScreenText>
+        <ScreenText>{t("home.title")}</ScreenText>
 
         <Input
           isPassword
-          placeholder="Type your password"
+          placeholder={t("onboarding.typePassword")}
           fieldSize="lg"
-          note="Minimum 8 characters"
+          note={t("onboarding.typePasswordNote")}
           value={passwordValue}
           onChangeText={setPasswordValue}
         />
@@ -47,11 +49,9 @@ export const HomeScreen = () => {
             textAlign: "center",
           }}
         >
-          By proceeding, you agree to
-          {"\n"}
-          Freighter&apos;s{" "}
+          {t("onboarding.terms.byProceeding")}
           <Text md weight="medium" url="https://stellar.org/terms-of-service">
-            terms of use
+            {t("onboarding.terms.termsOfService")}
           </Text>
         </Text>
 
@@ -69,7 +69,7 @@ export const HomeScreen = () => {
             />
           }
         >
-          Test Button with Icon
+          {t("onboarding.testButton")}
         </Button>
       </Container>
     </BaseLayout>

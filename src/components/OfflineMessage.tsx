@@ -1,6 +1,7 @@
 import { THEME } from "config/theme";
 import { px, fs } from "helpers/dimensions";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const SafeContainer = styled.SafeAreaView`
@@ -22,10 +23,14 @@ const Message = styled.Text`
   font-size: ${fs(14)};
 `;
 
-export const OfflineMessage = () => (
-  <SafeContainer>
-    <Content>
-      <Message>No internet connection</Message>
-    </Content>
-  </SafeContainer>
-);
+export const OfflineMessage = () => {
+  const { t } = useTranslation();
+
+  return (
+    <SafeContainer>
+      <Content>
+        <Message>{t("noInternetConnection")}</Message>
+      </Content>
+    </SafeContainer>
+  );
+};

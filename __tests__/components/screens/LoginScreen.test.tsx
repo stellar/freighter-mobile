@@ -1,5 +1,6 @@
-import { render, fireEvent } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import { LoginScreen } from "components/screens/LoginScreen";
+import { renderWithProviders } from "helpers/testing";
 import React from "react";
 
 // Mock useNavigation hook
@@ -18,12 +19,12 @@ describe("LoginScreen", () => {
   });
 
   it("renders correctly", () => {
-    const { getByText } = render(<LoginScreen />);
+    const { getByText } = renderWithProviders(<LoginScreen />);
     expect(getByText("Login")).toBeTruthy();
   });
 
   it("navigates to main tabs when login button is pressed", () => {
-    const { getByText } = render(<LoginScreen />);
+    const { getByText } = renderWithProviders(<LoginScreen />);
     const loginButton = getByText("Login");
 
     fireEvent.press(loginButton);

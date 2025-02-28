@@ -1,7 +1,0 @@
-{
-  "eslint.workingDirectories": ["../"],
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit"
-  }
-}
