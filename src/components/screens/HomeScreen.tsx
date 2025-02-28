@@ -1,6 +1,7 @@
 import ClipboardIcon from "assets/icons/clipboard.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
+import { Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
 import React from "react";
@@ -23,6 +24,22 @@ export const HomeScreen = () => (
   <BaseLayout>
     <Container>
       <ScreenText>Home</ScreenText>
+
+      <Text
+        md
+        secondary
+        weight="medium"
+        style={{
+          textAlign: "center",
+        }}
+      >
+        By proceeding, you agree to
+        {"\n"}
+        Freighter&apos;s{" "}
+        <Text md weight="medium" url="https://example.com">
+          terms of use
+        </Text>
+      </Text>
 
       <Button
         secondary

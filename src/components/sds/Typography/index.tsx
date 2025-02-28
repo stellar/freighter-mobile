@@ -3,7 +3,13 @@
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
-import { Text as RNText, Platform } from "react-native";
+import {
+  Text as RNText,
+  Platform,
+  Linking,
+  StyleProp,
+  TextStyle,
+} from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -242,6 +248,8 @@ export const Display: React.FC<DisplayProps> = ({
 interface TextProps extends TypographyBaseProps {
   size?: TextSize;
   isVerticallyCentered?: boolean;
+  url?: string;
+  style?: StyleProp<TextStyle>;
 }
 
 const StyledText = styled(BaseText)<{
@@ -252,9 +260,7 @@ const StyledText = styled(BaseText)<{
     fs(TEXT_SIZES[$size].fontSize)};
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
-  // This will make sure button titles are vertically centered,
-  // but we should avoid using this for long copies since the fixed
-  // height prevents line breaks
+  text-decoration: none;
   ${({
     $isVerticallyCentered,
     $size,
@@ -308,15 +314,29 @@ export const Text: React.FC<TextProps> = ({
   color,
   children,
   isVerticallyCentered = false,
+  url,
   ...props
-}) => (
-  <StyledText
-    $size={getSize({ size, ...props }, "md")}
-    $weight={getWeight({ weight, ...props }, "regular")}
-    $color={getColor({ color, ...props }, THEME.colors.text.primary)}
-    $isVerticallyCentered={isVerticallyCentered}
-    {...props}
-  >
-    {children}
-  </StyledText>
-);
+}) => {
+  const handlePress = () => {
+    if (url) {
+      Linking.canOpenURL(url).then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        }
+      });
+    }
+  };
+
+  return (
+    <StyledText
+      $size={getSize({ size, ...props }, "md")}
+      $weight={getWeight({ weight, ...props }, "regular")}
+      $color={getColor({ color, ...props }, THEME.colors.text.primary)}
+      $isVerticallyCentered={isVerticallyCentered}
+      {...(url && { onPress: handlePress })}
+      {...props}
+    >
+      {children}
+    </StyledText>
+  );
+};

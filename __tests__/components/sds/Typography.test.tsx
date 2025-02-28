@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 import {
   Display,
   DisplaySize,
@@ -9,6 +9,7 @@ import {
 import { THEME } from "config/theme";
 import { fsValue } from "helpers/dimensions";
 import React from "react";
+import { Linking } from "react-native";
 
 describe("Typography", () => {
   describe("Display", () => {
@@ -530,8 +531,6 @@ describe("Typography", () => {
       });
     });
 
-    /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-    /* eslint-disable @typescript-eslint/no-unsafe-return */
     it("handles platform-specific font families", () => {
       jest.mock("react-native/Libraries/Utilities/Platform", () => ({
         select: jest.fn((obj) => obj.android),
@@ -542,7 +541,27 @@ describe("Typography", () => {
 
       expect(element.props.style.fontFamily).toBe("Inter-Bold");
     });
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-    /* eslint-enable @typescript-eslint/no-unsafe-return */
+
+    it("opens the link when the text is pressed", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      jest
+        .spyOn(Linking, "canOpenURL")
+        .mockImplementation((url: string) => Promise.resolve(true));
+      const openURLSpy = jest.spyOn(Linking, "openURL");
+
+      const { getByText } = render(
+        <Text url="https://example.com">Link Text</Text>,
+      );
+      const element = getByText("Link Text");
+
+      // Using act to wait for the promise to resolve.
+      // This is necessary because the promise is not resolved immediately.
+      // eslint-disable-next-line @typescript-eslint/require-await
+      await act(async () => {
+        fireEvent.press(element);
+      });
+
+      expect(openURLSpy).toHaveBeenCalledWith("https://example.com");
+    });
   });
 });
