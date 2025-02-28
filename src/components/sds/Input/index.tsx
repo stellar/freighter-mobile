@@ -41,6 +41,7 @@ export type InputSize = keyof typeof INPUT_SIZES;
 
 export interface InputProps {
   id?: string;
+  testID?: string;
   fieldSize?: InputSize;
   label?: string | React.ReactNode;
   labelSuffix?: string | React.ReactNode;
@@ -157,6 +158,7 @@ export const Input: React.FC<InputProps> = ({
   onChangeText,
   placeholder,
   editable = true,
+  testID,
   ...props
 }) => {
   const handleCopy = () => {
@@ -192,6 +194,7 @@ export const Input: React.FC<InputProps> = ({
       )}
 
       <InputContainer
+        testID={testID ? `${testID}-container` : undefined}
         $fieldSize={fieldSize}
         $isError={isError || !!error}
         $isDisabled={!editable}
@@ -202,6 +205,7 @@ export const Input: React.FC<InputProps> = ({
         )}
 
         <StyledTextInput
+          testID={testID}
           $fieldSize={fieldSize}
           $hasLeftElement={!!leftElement || copyButton?.position === "left"}
           $hasRightElement={!!rightElement || copyButton?.position === "right"}
