@@ -237,6 +237,12 @@ export const Input: React.FC<InputProps> = ({
     Clipboard.setString(value);
   };
 
+  const getLabelSize = () => ({
+    xs: fieldSize === "sm",
+    sm: fieldSize === "md",
+    md: fieldSize === "lg",
+  });
+
   const renderCopyButton = (position: "left" | "right") => (
     <TouchableOpacity onPress={handleCopy}>
       <SideElement position={position}>
@@ -248,15 +254,13 @@ export const Input: React.FC<InputProps> = ({
   return (
     <Container $fieldSize={fieldSize}>
       {label && (
-        <Text
-          sm={fieldSize === "sm"}
-          md={fieldSize === "md"}
-          lg={fieldSize === "lg"}
-          color={THEME.colors.text.primary}
-        >
+        <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
           {isLabelUppercase ? label.toString().toUpperCase() : label}
           {labelSuffix && (
-            <Text color={THEME.colors.text.secondary}> {labelSuffix}</Text>
+            <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+              {" "}
+              {labelSuffix}
+            </Text>
           )}
         </Text>
       )}
