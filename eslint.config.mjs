@@ -94,6 +94,7 @@ export default [
       ],
 
       "react/require-default-props": "off",
+      "react/jsx-props-no-spreading": "off",
       "import/prefer-default-export": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",

@@ -1,10 +1,12 @@
 import ClipboardIcon from "assets/icons/clipboard.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
+import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
-import React from "react";
+import React, { useState } from "react";
+import { View } from "react-native";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -20,41 +22,56 @@ const ScreenText = styled.Text`
   margin-bottom: ${px(50)};
 `;
 
-export const HomeScreen = () => (
-  <BaseLayout>
-    <Container>
-      <ScreenText>Home</ScreenText>
+export const HomeScreen = () => {
+  const [passwordValue, setPasswordValue] = useState("");
 
-      <Text
-        md
-        secondary
-        weight="medium"
-        style={{
-          textAlign: "center",
-        }}
-      >
-        By proceeding, you agree to
-        {"\n"}
-        Freighter&apos;s{" "}
-        <Text md weight="medium" url="https://stellar.org/terms-of-service">
-          terms of use
+  return (
+    <BaseLayout>
+      <Container>
+        <ScreenText>Home</ScreenText>
+
+        <Input
+          isPassword
+          placeholder="Type your password"
+          fieldSize="lg"
+          note="Minimum 8 characters"
+          value={passwordValue}
+          onChangeText={setPasswordValue}
+        />
+
+        <Text
+          md
+          secondary
+          weight="medium"
+          style={{
+            textAlign: "center",
+          }}
+        >
+          By proceeding, you agree to
+          {"\n"}
+          Freighter&apos;s{" "}
+          <Text md weight="medium" url="https://stellar.org/terms-of-service">
+            terms of use
+          </Text>
         </Text>
-      </Text>
 
-      <Button
-        secondary
-        lg
-        isFullWidth
-        icon={
-          <ClipboardIcon
-            width={pxValue(16)}
-            height={pxValue(16)}
-            stroke={PALETTE.dark.gray["09"]}
-          />
-        }
-      >
-        Test Button with Icon
-      </Button>
-    </Container>
-  </BaseLayout>
-);
+        <View style={{ height: 40 }} />
+
+        <Button
+          secondary
+          lg
+          isFullWidth
+          icon={
+            <ClipboardIcon
+              width={pxValue(16)}
+              height={pxValue(16)}
+              stroke={PALETTE.dark.gray["09"]}
+            />
+          }
+        >
+          Test Button with Icon
+        </Button>
+      </Container>
+    </BaseLayout>
+  );
+};

@@ -84,6 +84,7 @@ interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
   children: React.ReactNode;
   size?: TextSize;
   weight?: FontWeight;
+  testID?: string;
 }
 
 const DISPLAY_SIZES = {
