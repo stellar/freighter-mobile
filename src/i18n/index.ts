@@ -1,4 +1,4 @@
-import getOSLanguage from "helpers/get-os-language";
+import getOSLanguage from "helpers/getOsLanguage";
 import en from "i18n/locales/en/translations.json";
 import pt from "i18n/locales/pt/translations.json";
 import i18n, { CustomTypeOptions, ParseKeys } from "i18next";

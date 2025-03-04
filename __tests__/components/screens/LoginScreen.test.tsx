@@ -1,6 +1,6 @@
 import { fireEvent } from "@testing-library/react-native";
 import { LoginScreen } from "components/screens/LoginScreen";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 // Mock useNavigation hook

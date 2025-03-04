@@ -4,7 +4,7 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fsValue, pxValue } from "helpers/dimensions";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 describe("Input", () => {

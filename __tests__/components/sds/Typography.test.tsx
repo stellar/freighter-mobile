@@ -8,7 +8,7 @@ import {
 } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fsValue } from "helpers/dimensions";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { Linking } from "react-native";
 

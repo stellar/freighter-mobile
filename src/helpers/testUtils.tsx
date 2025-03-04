@@ -6,7 +6,7 @@ import { I18nextProvider } from "react-i18next";
 
 type RenderWithProviderType = (component: React.ReactElement) => RenderAPI;
 
-jest.mock("helpers/get-os-language");
+jest.mock("helpers/getOsLanguage");
 
 export const renderWithProviders: RenderWithProviderType = (component) =>
   render(<I18nextProvider i18n={i18n}>{component}</I18nextProvider>);

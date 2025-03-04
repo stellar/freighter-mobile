@@ -1,5 +1,5 @@
 import { HistoryScreen } from "components/screens/HistoryScreen";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 describe("HistoryScreen", () => {

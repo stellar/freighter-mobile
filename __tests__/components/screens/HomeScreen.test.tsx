@@ -1,5 +1,5 @@
 import { HomeScreen } from "components/screens/HomeScreen";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 describe("HomeScreen", () => {

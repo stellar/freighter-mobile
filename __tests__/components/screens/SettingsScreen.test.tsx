@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/react-native";
 import { SettingsScreen } from "components/screens/SettingsScreen";
 import { ROUTES } from "config/routes";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 const mockReplace = jest.fn();

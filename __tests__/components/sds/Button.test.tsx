@@ -2,7 +2,7 @@ import { fireEvent } from "@testing-library/react-native";
 import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
 import { BUTTON_THEME } from "components/sds/Button/theme";
 import { pxValue } from "helpers/dimensions";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 describe("Button", () => {

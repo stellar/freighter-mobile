@@ -1,5 +1,5 @@
 import { SwapScreen } from "components/screens/SwapScreen";
-import { renderWithProviders } from "helpers/testing";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 describe("SwapScreen", () => {
