@@ -39,7 +39,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 10,
     gap: 6,
     borderRadius: 4,
-    lines: 2,
+    lines: 3,
   },
   md: {
     fontSize: 14,
@@ -48,7 +48,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 12,
     gap: 8,
     borderRadius: 6,
-    lines: 4,
+    lines: 5,
   },
   lg: {
     fontSize: 16,
@@ -57,7 +57,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 14,
     gap: 8,
     borderRadius: 8,
-    lines: 6,
+    lines: 7,
   },
 } as const;
 

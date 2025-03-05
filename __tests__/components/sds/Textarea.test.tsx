@@ -22,7 +22,7 @@ describe("Textarea", () => {
           paddingHorizontal: 10,
           gap: 6,
           borderRadius: 4,
-          lines: 2,
+          lines: 3,
         },
         md: {
           fontSize: 14,
@@ -31,7 +31,7 @@ describe("Textarea", () => {
           paddingHorizontal: 12,
           gap: 8,
           borderRadius: 6,
-          lines: 4,
+          lines: 5,
         },
         lg: {
           fontSize: 16,
@@ -40,7 +40,7 @@ describe("Textarea", () => {
           paddingHorizontal: 14,
           gap: 8,
           borderRadius: 8,
-          lines: 6,
+          lines: 7,
         },
       };
 
@@ -68,9 +68,9 @@ describe("Textarea", () => {
       const textarea = getByTestId("test-textarea");
 
       expect(textarea.props.style).toMatchObject({
-        height: pxValue(4 * 28),
+        height: pxValue(5 * 28),
       });
-      expect(textarea.props).toHaveProperty("numberOfLines", 4);
+      expect(textarea.props).toHaveProperty("numberOfLines", 5);
     });
   });
 
