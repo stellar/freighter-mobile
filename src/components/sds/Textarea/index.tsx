@@ -1,12 +1,16 @@
+import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
+import { fs, px } from "helpers/dimensions";
 import React from "react";
-import { View, TextInput, StyleSheet, Text } from "react-native";
+import { TextInput } from "react-native";
+import styled from "styled-components/native";
 
-export interface TextareaProps {
-  /** Number of lines the textarea should have */
-  lines: number;
+export interface BaseTextAreaProps {
+  isError?: boolean;
+  /** Value of the textarea */
+  testID?: string;
   /** Disabled state of the textarea */
-  disabled?: boolean;
+  editable?: boolean;
   /** Label of the textarea */
   label?: string | React.ReactNode;
   /** Adds suffix to the label */
@@ -19,15 +23,97 @@ export interface TextareaProps {
   success?: string | React.ReactNode;
   /** Make label uppercase */
   isLabelUppercase?: boolean;
+  /** Size */
+  fieldSize?: TextAreaSize;
 }
 
-interface Props extends TextareaProps, React.ComponentProps<typeof TextInput> {}
+export interface TextareaProps
+  extends React.ComponentProps<typeof TextInput>,
+    BaseTextAreaProps {}
 
-export const Textarea: React.FC<Props> = ({
-  lines,
+const TEXTAREA_SIZES = {
+  sm: {
+    fontSize: 12,
+    lineHeight: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+    borderRadius: 4,
+    lines: 2,
+  },
+  md: {
+    fontSize: 14,
+    lineHeight: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+    borderRadius: 6,
+    lines: 4,
+  },
+  lg: {
+    fontSize: 16,
+    lineHeight: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 8,
+    borderRadius: 8,
+    lines: 6,
+  },
+} as const;
+
+export type TextAreaSize = keyof typeof TEXTAREA_SIZES;
+
+interface StyledProps {
+  $fieldSize: TextAreaSize;
+  $isError?: boolean;
+  $isDisabled?: boolean;
+  position?: "left" | "right";
+  $variant?: "error" | "success";
+}
+
+const LINES_MULTIPLIER = 28;
+
+const Container = styled.View<Pick<StyledProps, "$fieldSize">>`
+  width: 100%;
+  height: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
+    px(TEXTAREA_SIZES[$fieldSize].lines * LINES_MULTIPLIER)};
+`;
+
+const StyledTextInput = styled.TextInput<Pick<StyledProps, "$fieldSize">>`
+  flex: 1;
+  background-color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
+    $isDisabled
+      ? THEME.colors.background.secondary
+      : THEME.colors.background.default};
+  height: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
+    px(TEXTAREA_SIZES[$fieldSize].lines * LINES_MULTIPLIER)};
+  font-size: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
+    fs(TEXTAREA_SIZES[$fieldSize].fontSize)};
+  color: ${THEME.colors.text.primary};
+  border-width: 1px;
+  border-color: ${({ $isError }: Pick<StyledProps, "$isError">) => {
+    if ($isError) {
+      return THEME.colors.status.error;
+    }
+    return THEME.colors.border.default;
+  }};
+  border-radius: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+    px(TEXTAREA_SIZES[$fieldSize].borderRadius)};
+  padding-horizontal: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+    px(TEXTAREA_SIZES[$fieldSize].paddingHorizontal)};
+  padding-vertical: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
+    px(TEXTAREA_SIZES[$fieldSize].paddingVertical)};
+`;
+
+const FieldNoteWrapper = styled.View`
+  margin-top: ${px(8)};
+`;
+
+export const Textarea: React.FC<TextareaProps> = ({
+  testID,
   label,
   labelSuffix,
-  disabled,
+  editable = true,
   note,
   placeholder,
   value,
@@ -35,34 +121,23 @@ export const Textarea: React.FC<Props> = ({
   error,
   success,
   isLabelUppercase,
-}: Props) => {
-  const styles = StyleSheet.create({
-    container: {
-      width: "100%",
-    },
-    textarea: {
-      height: lines * 30,
-      width: "100%",
-      borderWidth: 1,
-      borderRadius: 8,
-      padding: 12,
-      backgroundColor: disabled
-        ? THEME.colors.background.secondary
-        : THEME.colors.background.default,
-    },
-    label: {
-      color: THEME.colors.text.secondary,
-      marginBottom: 8,
-    },
+  fieldSize = "md",
+  isError,
+  ...props
+}: TextareaProps) => {
+  const getLabelSize = () => ({
+    xs: fieldSize === "sm",
+    sm: fieldSize === "md",
+    md: fieldSize === "lg",
   });
 
   return (
-    <View style={styles.container}>
+    <Container $fieldSize={fieldSize}>
       {label && (
-        <Text style={{ color: THEME.colors.text.secondary }}>
+        <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
           {isLabelUppercase ? label.toString().toUpperCase() : label}
           {labelSuffix && (
-            <Text style={{ color: THEME.colors.text.secondary }}>
+            <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
               {" "}
               {labelSuffix}
             </Text>
@@ -70,25 +145,44 @@ export const Textarea: React.FC<Props> = ({
         </Text>
       )}
 
-      <TextInput
-        multiline
-        numberOfLines={lines}
-        style={styles.textarea}
-        placeholder={placeholder}
+      <StyledTextInput
+        testID={testID}
+        $fieldSize={fieldSize}
         value={value}
         onChangeText={onChangeText}
-        editable={!disabled}
+        placeholder={placeholder}
+        multiline
+        numberOfLines={TEXTAREA_SIZES[fieldSize].lines}
+        textAlignVertical="top"
+        $isError={isError || !!error}
+        $isDisabled={!editable}
+        placeholderTextColor={THEME.colors.text.secondary}
+        editable={editable}
+        {...props}
       />
+
       {note && (
-        <Text style={{ color: THEME.colors.text.secondary }}>{note}</Text>
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.text.secondary}>
+            {note}
+          </Text>
+        </FieldNoteWrapper>
       )}
       {error && (
-        <Text style={{ color: THEME.colors.status.error }}>{error}</Text>
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.status.error}>
+            {error}
+          </Text>
+        </FieldNoteWrapper>
       )}
       {success && (
-        <Text style={{ color: THEME.colors.status.success }}>{success}</Text>
+        <FieldNoteWrapper>
+          <Text sm color={THEME.colors.status.success}>
+            {success}
+          </Text>
+        </FieldNoteWrapper>
       )}
-    </View>
+    </Container>
   );
 };
 

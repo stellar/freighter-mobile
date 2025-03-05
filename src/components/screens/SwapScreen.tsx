@@ -10,6 +10,7 @@ const Container = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
+  padding: 0 18px;
 `;
 
 const ScreenText = styled.Text`
@@ -24,7 +25,11 @@ export const SwapScreen = () => {
     <BaseLayout>
       <Container>
         <ScreenText>{t("swap.title")}</ScreenText>
-        <Textarea placeholder={t("swap.placeholder")} lines={4} />
+        <Textarea
+          placeholder="Large placeholder message here"
+          note="Phrases are usually 12 or 24 words"
+          fieldSize="lg"
+        />
       </Container>
     </BaseLayout>
   );
