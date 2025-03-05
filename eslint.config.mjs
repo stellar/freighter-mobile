@@ -1,6 +1,7 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
+import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,7 @@ export default [
     "airbnb/hooks",
     "plugin:@typescript-eslint/recommended",
     "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "prettier",
   ),
   {
     files: ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*"],
@@ -100,6 +102,7 @@ export default [
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-base-to-string": "off",
       "@typescript-eslint/no-floating-promises": "off",
+      "object-curly-newline": "off",
 
       // Add these rules to match Prettier config and make sure we use double quotes
       quotes: ["error", "double"],

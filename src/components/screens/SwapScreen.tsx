@@ -1,4 +1,5 @@
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Textarea } from "components/sds/Textarea";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
@@ -23,6 +24,7 @@ export const SwapScreen = () => {
     <BaseLayout>
       <Container>
         <ScreenText>{t("swap.title")}</ScreenText>
+        <Textarea placeholder={t("swap.placeholder")} lines={4} />
       </Container>
     </BaseLayout>
   );
