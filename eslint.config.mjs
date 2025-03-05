@@ -1,7 +1,6 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
-import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
