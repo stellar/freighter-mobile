@@ -1,7 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import { OfflineMessage } from "components/OfflineMessage";
-import { RootState, useDispatch, useSelector } from "config/store";
-import { setNetworkInfo } from "ducks/networkInfo";
+import { useNetworkStore, useIsOffline } from "config/store";
 import { debug } from "helpers/debug";
 import React, { useEffect } from "react";
 
@@ -10,10 +9,9 @@ interface Props {
 }
 
 export const OfflineDetection = ({ children }: Props) => {
-  const dispatch = useDispatch();
-  const { isConnected, isInternetReachable } = useSelector(
-    (state: RootState) => state.networkInfo,
-  );
+  const { isConnected, isInternetReachable, setNetworkInfo } =
+    useNetworkStore();
+  const isOffline = useIsOffline();
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -22,12 +20,10 @@ export const OfflineDetection = ({ children }: Props) => {
         `Connection status changed: connected=${state.isConnected}, reachable=${state.isInternetReachable}`,
       );
 
-      dispatch(
-        setNetworkInfo({
-          isConnected: state.isConnected,
-          isInternetReachable: state.isInternetReachable,
-        }),
-      );
+      setNetworkInfo({
+        isConnected: state.isConnected,
+        isInternetReachable: state.isInternetReachable,
+      });
     });
 
     // Initial network check
@@ -50,9 +46,7 @@ export const OfflineDetection = ({ children }: Props) => {
       debug("network", "Cleaning up network listener");
       unsubscribe();
     };
-  }, [dispatch]);
-
-  const isOffline = !isConnected || !isInternetReachable;
+  }, [setNetworkInfo]);
 
   useEffect(() => {
     debug(

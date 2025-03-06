@@ -1,30 +1,31 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { create } from "zustand";
 
 interface NetworkState {
   isConnected: boolean;
   isInternetReachable: boolean;
+  setNetworkInfo: (payload: {
+    isConnected: boolean | null;
+    isInternetReachable: boolean | null;
+  }) => void;
 }
 
-interface NetworkPayload {
-  isConnected: boolean | null;
-  isInternetReachable: boolean | null;
-}
-
-const initialState: NetworkState = {
+export const useNetworkStore = create<NetworkState>((set) => ({
   isConnected: true,
   isInternetReachable: true,
+  setNetworkInfo: (payload) =>
+    set({
+      isConnected: payload.isConnected ?? false,
+      isInternetReachable: payload.isInternetReachable ?? false,
+    }),
+}));
+
+// Helper hooks and selectors
+export const useNetworkInfo = () => {
+  const { isConnected, isInternetReachable } = useNetworkStore();
+  return { isConnected, isInternetReachable };
 };
 
-const networkInfoSlice = createSlice({
-  name: "networkInfo",
-  initialState,
-  reducers: {
-    setNetworkInfo: (state, action: PayloadAction<NetworkPayload>) => {
-      state.isConnected = action.payload.isConnected ?? false;
-      state.isInternetReachable = action.payload.isInternetReachable ?? false;
-    },
-  },
-});
-
-export const { setNetworkInfo } = networkInfoSlice.actions;
-export const networkInfoReducer = networkInfoSlice.reducer;
+export const useIsOffline = () => {
+  const { isConnected, isInternetReachable } = useNetworkStore();
+  return !isConnected || !isInternetReachable;
+};
