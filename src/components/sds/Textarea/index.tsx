@@ -5,28 +5,6 @@ import React from "react";
 import { TextInput } from "react-native";
 import styled from "styled-components/native";
 
-export interface BaseTextAreaProps {
-  isError?: boolean;
-  /** Value of the textarea */
-  testID?: string;
-  /** Disabled state of the textarea */
-  editable?: boolean;
-  /** Label of the textarea */
-  label?: string | React.ReactNode;
-  /** Adds suffix to the label */
-  labelSuffix?: string | React.ReactNode;
-  /** Note message of the textarea */
-  note?: string | React.ReactNode;
-  /** Error message of the textarea */
-  error?: string | React.ReactNode;
-  /** Success message of the input */
-  success?: string | React.ReactNode;
-  /** Make label uppercase */
-  isLabelUppercase?: boolean;
-  /** Size */
-  fieldSize?: TextAreaSize;
-}
-
 export interface TextareaProps
   extends React.ComponentProps<typeof TextInput>,
     BaseTextAreaProps {}
@@ -108,6 +86,84 @@ const StyledTextInput = styled.TextInput<Pick<StyledProps, "$fieldSize">>`
 const FieldNoteWrapper = styled.View`
   margin-top: ${px(8)};
 `;
+
+/**
+ * Textarea component for multi-line text entry with various styling and functionality options.
+ *
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <Textarea
+ *   value={text}
+ *   onChangeText={setText}
+ *   placeholder="Enter your message..."
+ * />
+ * ```
+ *
+ * @example
+ * With label and validation:
+ * ```tsx
+ * <Textarea
+ *   label="Description"
+ *   labelSuffix="(required)"
+ *   value={description}
+ *   onChangeText={setDescription}
+ *   error={!description && "Please enter a description"}
+ *   fieldSize="lg"
+ * />
+ * ```
+ *
+ * @example
+ * With helper text and disabled state:
+ * ```tsx
+ * <Textarea
+ *   label="Notes"
+ *   value={notes}
+ *   onChangeText={setNotes}
+ *   note="Add any additional information here"
+ *   editable={false}
+ * />
+ * ```
+ *
+ * @example
+ * With success message:
+ * ```tsx
+ * <Textarea
+ *   label="Feedback"
+ *   value={feedback}
+ *   onChangeText={setFeedback}
+ *   success="Thank you for your feedback!"
+ *   fieldSize="md"
+ * />
+ * ```
+ *
+ * @param {TextareaProps} props - The component props
+ * @param {string} [props.fieldSize="md"] - Size variant of the textarea ("sm" | "md" | "lg")
+ * @param {string | ReactNode} [props.label] - Label text or component to display above the textarea
+ * @param {string | ReactNode} [props.labelSuffix] - Additional text to display after the label
+ * @param {boolean} [props.isLabelUppercase] - Whether to transform the label text to uppercase
+ * @param {boolean} [props.isError] - Whether to show error styling
+ * @param {boolean} [props.editable=true] - Whether the textarea is editable
+ * @param {string | ReactNode} [props.note] - Helper text to display below the textarea
+ * @param {string | ReactNode} [props.error] - Error message to display below the textarea
+ * @param {string | ReactNode} [props.success] - Success message to display below the textarea
+ * @param {string} props.value - The textarea value
+ * @param {Function} [props.onChangeText] - Callback when text changes
+ * @param {string} [props.placeholder] - Placeholder text
+ * @param {string} [props.testID] - Test ID for testing
+ */
+interface BaseTextAreaProps {
+  isError?: boolean;
+  testID?: string;
+  editable?: boolean;
+  label?: string | React.ReactNode;
+  labelSuffix?: string | React.ReactNode;
+  note?: string | React.ReactNode;
+  error?: string | React.ReactNode;
+  success?: string | React.ReactNode;
+  isLabelUppercase?: boolean;
+  fieldSize?: TextAreaSize;
+}
 
 export const Textarea: React.FC<TextareaProps> = ({
   testID,
