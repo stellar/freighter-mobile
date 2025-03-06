@@ -1174,7 +1174,7 @@ import ZoomIn from "assets/icons/zoom-in.svg";
 import ZoomOut from "assets/icons/zoom-out.svg";
 import { THEME } from "config/theme";
 import React from "react";
-import { View } from "react-native";
+import styled from "styled-components/native";
 
 export const Icons = {
   ActivityHeart,
@@ -2361,6 +2361,18 @@ export interface IconProps {
   testID?: string;
 }
 
+const CircleContainer = styled.View`
+  width: ${({ size }: { size: number }) => size * 1.5}px;
+  height: ${({ size }: { size: number }) => size * 1.5}px;
+  border-radius: 50%;
+  background-color: ${THEME.colors.background.default};
+  border-color: ${THEME.colors.border.default};
+  border-width: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const IconComponent: React.FC<IconProps> = ({
   name,
   size = 24,
@@ -2379,23 +2391,7 @@ const IconComponent: React.FC<IconProps> = ({
   );
 
   if (circle) {
-    return (
-      <View
-        style={{
-          width: size * 1.5,
-          height: size * 1.5,
-          borderRadius: "50%",
-          backgroundColor: THEME.colors.background.default,
-          borderColor: THEME.colors.border.default,
-          borderWidth: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {iconElement}
-      </View>
-    );
+    return <CircleContainer size={size}>{iconElement}</CircleContainer>;
   }
 
   return iconElement;
