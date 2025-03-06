@@ -4,7 +4,6 @@ const getSrcDirs = require("./config/getSrcDirs");
 module.exports = {
   preset: "react-native",
   setupFiles: ["./jest.setup.js"],
-  setupFilesAfterEnv: ["@testing-library/jest-native/extend-expect"],
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
