@@ -45,20 +45,6 @@ export enum IconPosition {
   RIGHT = "right",
 }
 
-interface ButtonProps extends VariantProps, SizeProps {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  children?: string | React.ReactNode;
-  icon?: React.ReactNode;
-  iconPosition?: IconPosition;
-  isLoading?: boolean;
-  isFullWidth?: boolean;
-  disabled?: boolean;
-  squared?: boolean;
-  onPress?: () => void;
-  testID?: string;
-}
-
 interface StyledButtonProps {
   variant: ButtonVariant;
   size: ButtonSize;
@@ -161,17 +147,65 @@ const getSize = (
 };
 
 /**
- * Button component with support for variants, sizes, icons, and loading states
+ * Button component with support for variants, sizes, icons, and loading states.
  *
- * @prop {ButtonVariant} [variant] - Explicit variant value
- * @prop {ButtonSize} [size] - Explicit size value
- * @prop {React.ReactNode} [icon] - Icon element to display
- * @prop {IconPosition} [iconPosition=RIGHT] - Position of the icon (LEFT or RIGHT)
- * @prop {boolean} [isLoading=false] - Shows loading indicator when true
- * @prop {boolean} [isFullWidth=false] - Makes button fill container width
- * @prop {boolean} [disabled=false] - Disables button interactions
- * @prop {boolean} [squared=false] - Uses squared corners when true, rounded when false
- * @prop {() => void} [onPress] - Handler for press events
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <Button onPress={handlePress}>
+ *   Click me
+ * </Button>
+ * ```
+ *
+ * @example
+ * With variants:
+ * ```tsx
+ * // Primary (default)
+ * <Button primary>Primary Button</Button>
+ *
+ * // Secondary
+ * <Button secondary>Secondary Button</Button>
+ *
+ * // Destructive
+ * <Button destructive>Delete</Button>
+ * ```
+ *
+ * @example
+ * With sizes:
+ * ```tsx
+ * // Small
+ * <Button sm>Small Button</Button>
+ *
+ * // Medium (default)
+ * <Button md>Medium Button</Button>
+ *
+ * // Large
+ * <Button lg>Large Button</Button>
+ * ```
+ *
+ * @example
+ * With icons and loading state:
+ * ```tsx
+ * <Button
+ *   icon={<Icon name="arrow-right" />}
+ *   iconPosition={IconPosition.RIGHT}
+ *   isLoading={isSubmitting}
+ * >
+ *   Submit
+ * </Button>
+ * ```
+ *
+ * @param {ButtonProps} props - The component props
+ * @param {ButtonVariant} [props.variant] - Explicit variant value (overrides shorthand props)
+ * @param {ButtonSize} [props.size] - Explicit size value (overrides shorthand props)
+ * @param {React.ReactNode} [props.icon] - Icon element to display
+ * @param {IconPosition} [props.iconPosition=RIGHT] - Position of the icon (LEFT or RIGHT)
+ * @param {boolean} [props.isLoading=false] - Shows loading indicator when true
+ * @param {boolean} [props.isFullWidth=false] - Makes button fill container width
+ * @param {boolean} [props.disabled=false] - Disables button interactions
+ * @param {boolean} [props.squared=false] - Uses squared corners when true, rounded when false
+ * @param {() => void} [props.onPress] - Handler for press events
+ * @param {string} [props.testID] - Test ID for testing
  *
  * Variant shorthands (alternative to variant prop):
  * - primary - Main call-to-action (default)
@@ -184,48 +218,21 @@ const getSize = (
  * - sm - Small buttons (32px height)
  * - md - Medium buttons (40px height, default)
  * - lg - Large buttons (48px height)
- *
- * @example
- * ```tsx
- * // Rounded button (default)
- * <Button primary lg>
- *   Rounded Primary Button
- * </Button>
- *
- * // Squared button
- * <Button secondary md squared>
- *   Squared Secondary Button
- * </Button>
- *
- * // Using explicit props
- * <Button
- *   variant={ButtonVariants.PRIMARY}
- *   size={ButtonSizes.LARGE}
- *   isFullWidth
- * >
- *   Full Width Button
- * </Button>
- *
- * // With icon
- * <Button
- *   tertiary
- *   icon={<Icon name="settings" />}
- *   iconPosition={IconPosition.LEFT}
- * >
- *   Settings
- * </Button>
- *
- * // Loading state
- * <Button
- *   destructive
- *   isLoading
- *   disabled={false}
- *   onPress={handleDelete}
- * >
- *   Delete Account
- * </Button>
- * ```
  */
+interface ButtonProps extends VariantProps, SizeProps {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  children?: string | React.ReactNode;
+  icon?: React.ReactNode;
+  iconPosition?: IconPosition;
+  isLoading?: boolean;
+  isFullWidth?: boolean;
+  disabled?: boolean;
+  squared?: boolean;
+  onPress?: () => void;
+  testID?: string;
+}
+
 export const Button = ({
   variant,
   size,

@@ -20,6 +20,7 @@ export default [
     "airbnb/hooks",
     "plugin:@typescript-eslint/recommended",
     "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "prettier",
   ),
   {
     files: ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*"],
@@ -100,6 +101,7 @@ export default [
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-base-to-string": "off",
       "@typescript-eslint/no-floating-promises": "off",
+      "object-curly-newline": "off",
 
       // Add these rules to match Prettier config and make sure we use double quotes
       quotes: ["error", "double"],

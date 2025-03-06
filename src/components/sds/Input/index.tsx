@@ -39,39 +39,6 @@ const INPUT_SIZES = {
 
 export type InputSize = keyof typeof INPUT_SIZES;
 
-export interface InputProps {
-  id?: string;
-  testID?: string;
-  fieldSize?: InputSize;
-  label?: string | React.ReactNode;
-  labelSuffix?: string | React.ReactNode;
-  isLabelUppercase?: boolean;
-  isError?: boolean;
-  isPassword?: boolean;
-  leftElement?: JSX.Element;
-  rightElement?: JSX.Element;
-  note?: string | React.ReactNode;
-  error?: string | React.ReactNode;
-  success?: string | React.ReactNode;
-  copyButton?: {
-    position: "left" | "right";
-    showLabel?: boolean;
-  };
-  value?: string;
-  onChangeText?: (text: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  editable?: boolean;
-  autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  keyboardType?:
-    | "default"
-    | "number-pad"
-    | "decimal-pad"
-    | "numeric"
-    | "email-address"
-    | "phone-pad";
-}
-
 // =============================================================================
 // Styled components
 // =============================================================================
@@ -155,7 +122,7 @@ const FieldNoteWrapper = styled.View`
  * ```
  *
  * @example
- * With label and validation:
+ * With validation and keyboard types:
  * ```tsx
  * <Input
  *   label="Email Address"
@@ -164,25 +131,32 @@ const FieldNoteWrapper = styled.View`
  *   onChangeText={setEmail}
  *   error={!isValidEmail(email) && "Please enter a valid email"}
  *   keyboardType="email-address"
+ *   autoCapitalize="none"
  * />
  * ```
  *
  * @example
- * Password input with side element:
+ * With side elements:
  * ```tsx
  * <Input
  *   label="Password"
  *   value={password}
  *   onChangeText={setPassword}
  *   isPassword
- *   rightElement={<Icon name="eye" onPress={togglePasswordVisibility} />}
+ *   rightElement={
+ *     <Icon
+ *       name={showPassword ? "eye-off" : "eye"}
+ *       onPress={togglePasswordVisibility}
+ *     />
+ *   }
  * />
  * ```
  *
  * @example
- * With copy button and helper text:
+ * With copy functionality:
  * ```tsx
  * <Input
+ *   label="Wallet Address"
  *   value={walletAddress}
  *   copyButton={{ position: "right", showLabel: true }}
  *   note="Click the copy button to copy the address"
@@ -208,7 +182,42 @@ const FieldNoteWrapper = styled.View`
  * @param {string} [props.placeholder] - Placeholder text
  * @param {boolean} [props.editable=true] - Whether the input is editable
  * @param {string} [props.testID] - Test ID for testing
+ * @param {("none" | "sentences" | "words" | "characters")} [props.autoCapitalize] - Text capitalization behavior
+ * @param {("default" | "number-pad" | "decimal-pad" | "numeric" | "email-address" | "phone-pad")} [props.keyboardType] - Keyboard type for the input
  */
+interface InputProps {
+  id?: string;
+  testID?: string;
+  fieldSize?: InputSize;
+  label?: string | React.ReactNode;
+  labelSuffix?: string | React.ReactNode;
+  isLabelUppercase?: boolean;
+  isError?: boolean;
+  isPassword?: boolean;
+  leftElement?: JSX.Element;
+  rightElement?: JSX.Element;
+  note?: string | React.ReactNode;
+  error?: string | React.ReactNode;
+  success?: string | React.ReactNode;
+  copyButton?: {
+    position: "left" | "right";
+    showLabel?: boolean;
+  };
+  value?: string;
+  onChangeText?: (text: string) => void;
+  placeholder?: string;
+  secureTextEntry?: boolean;
+  editable?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  keyboardType?:
+    | "default"
+    | "number-pad"
+    | "decimal-pad"
+    | "numeric"
+    | "email-address"
+    | "phone-pad";
+}
+
 export const Input: React.FC<InputProps> = ({
   fieldSize = "md",
   label,
