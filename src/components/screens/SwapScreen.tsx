@@ -1,5 +1,4 @@
 import { BaseLayout } from "components/layout/BaseLayout";
-import Avatar from "components/sds/Avatar";
 import { Textarea } from "components/sds/Textarea";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
@@ -31,12 +30,6 @@ export const SwapScreen = () => {
           note="Phrases are usually 12 or 24 words"
           fieldSize="lg"
         />
-        <Avatar
-          size="lg"
-          publicAddress="GA5WRH5Q4XXV2J7RH7BDJP4PJ5UJVXN5NN7HSRBGBX2CQMKYCDEF5KWZ"
-        />
-        <Avatar size="md" userName="Bruno nunes" />
-        <Avatar size="md" />
       </Container>
     </BaseLayout>
   );
