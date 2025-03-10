@@ -14,25 +14,25 @@ export const OfflineDetection = ({ children }: Props) => {
   const isOffline = useIsOffline();
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = NetInfo.addEventListener((event) => {
       debug(
         "network",
-        `Connection status changed: connected=${state.isConnected}, reachable=${state.isInternetReachable}`,
+        `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
       );
 
       setNetworkInfo({
-        isConnected: state.isConnected,
-        isInternetReachable: state.isInternetReachable,
+        isConnected: event.isConnected,
+        isInternetReachable: event.isInternetReachable,
       });
     });
 
     // Initial network check
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     NetInfo.fetch()
-      .then((state) => {
+      .then((networkState) => {
         debug(
           "network",
-          `Initial network state: connected=${state.isConnected}, reachable=${state.isInternetReachable}`,
+          `Initial network state: connected=${networkState.isConnected}, reachable=${networkState.isInternetReachable}`,
         );
       })
       .catch((error: Error) => {
