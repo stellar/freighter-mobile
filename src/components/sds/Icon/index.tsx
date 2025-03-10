@@ -1173,6 +1173,7 @@ import Zap from "assets/icons/zap.svg";
 import ZoomIn from "assets/icons/zoom-in.svg";
 import ZoomOut from "assets/icons/zoom-out.svg";
 import { THEME } from "config/theme";
+import { px } from "helpers/dimensions";
 import React from "react";
 import styled from "styled-components/native";
 
@@ -2362,8 +2363,8 @@ export interface IconProps {
 }
 
 const CircleContainer = styled.View`
-  width: ${({ size }: { size: number }) => size * 1.5}px;
-  height: ${({ size }: { size: number }) => size * 1.5}px;
+  width: ${({ size }: { size: number }) => px(size * 1.5)};
+  height: ${({ size }: { size: number }) => px(size * 1.5)};
   border-radius: 50%;
   background-color: ${THEME.colors.background.default};
   border-color: ${THEME.colors.border.default};
@@ -2387,7 +2388,7 @@ const IconComponent: React.FC<IconProps> = ({
   }
 
   const iconElement = (
-    <IconSvg width={size} height={size} color={color} testID={testID} />
+    <IconSvg width={px(size)} height={px(size)} color={color} testID={testID} />
   );
 
   if (circle) {
