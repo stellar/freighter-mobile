@@ -71,20 +71,6 @@ export default [
         },
       ],
 
-      "no-restricted-imports": [
-        "error",
-        {
-          paths: [
-            {
-              name: "react-redux",
-              importNames: ["useDispatch", "useSelector", "useStore"],
-              message:
-                "Please import from 'config/store' instead of react-redux.",
-            },
-          ],
-        },
-      ],
-
       // Allow arrow functions in React components
       "react/function-component-definition": [
         2,
@@ -111,8 +97,6 @@ export default [
         "error",
         {
           props: true,
-          // Allows direct state mutations in Redux reducers (which is safe due to Immer)
-          ignorePropertyModificationsFor: ["state"],
         },
       ],
     },

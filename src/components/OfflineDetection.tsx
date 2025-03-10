@@ -1,7 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import { OfflineMessage } from "components/OfflineMessage";
-import { RootState, useDispatch, useSelector } from "config/store";
-import { setNetworkInfo } from "ducks/networkInfo";
+import { useNetworkStore, useIsOffline } from "config/store";
 import { debug } from "helpers/debug";
 import React, { useEffect } from "react";
 
@@ -10,33 +9,30 @@ interface Props {
 }
 
 export const OfflineDetection = ({ children }: Props) => {
-  const dispatch = useDispatch();
-  const { isConnected, isInternetReachable } = useSelector(
-    (state: RootState) => state.networkInfo,
-  );
+  const { isConnected, isInternetReachable, setNetworkInfo } =
+    useNetworkStore();
+  const isOffline = useIsOffline();
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = NetInfo.addEventListener((event) => {
       debug(
         "network",
-        `Connection status changed: connected=${state.isConnected}, reachable=${state.isInternetReachable}`,
+        `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
       );
 
-      dispatch(
-        setNetworkInfo({
-          isConnected: state.isConnected,
-          isInternetReachable: state.isInternetReachable,
-        }),
-      );
+      setNetworkInfo({
+        isConnected: event.isConnected,
+        isInternetReachable: event.isInternetReachable,
+      });
     });
 
     // Initial network check
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     NetInfo.fetch()
-      .then((state) => {
+      .then((networkState) => {
         debug(
           "network",
-          `Initial network state: connected=${state.isConnected}, reachable=${state.isInternetReachable}`,
+          `Initial network state: connected=${networkState.isConnected}, reachable=${networkState.isInternetReachable}`,
         );
       })
       .catch((error: Error) => {
@@ -50,9 +46,7 @@ export const OfflineDetection = ({ children }: Props) => {
       debug("network", "Cleaning up network listener");
       unsubscribe();
     };
-  }, [dispatch]);
-
-  const isOffline = !isConnected || !isInternetReachable;
+  }, [setNetworkInfo]);
 
   useEffect(() => {
     debug(
