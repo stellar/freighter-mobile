@@ -246,7 +246,7 @@ export const Display: React.FC<DisplayProps> = ({
 // Text
 // =============================================================================
 
-interface TextProps extends TypographyBaseProps {
+export interface TextProps extends TypographyBaseProps {
   size?: TextSize;
   isVerticallyCentered?: boolean;
   url?: string;

@@ -21,5 +21,12 @@
   "settings": {
     "title": "Settings",
     "signOut": "Sign out"
+  },
+  "recoveryPhraseWarning": {
+    "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
+    "ifYouForgetYourPassword": "If you forget your password, use the recovery phrase to access your wallet",
+    "dontShareWithAnyone": "Don't share this phrase with anyone",
+    "neverAskForYourPhrase": "Stellar Development Foundation will never ever ask for your phrase",
+    "ifYouLose": "If you lose, we can't recover it"
   }
 }

@@ -1,6 +1,7 @@
+import RecoveryPhraseWarningBox from "components/RecoveryPhraseWarningBox";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { THEME } from "config/theme";
-import { fs } from "helpers/dimensions";
+import { fs, px } from "helpers/dimensions";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
@@ -9,6 +10,7 @@ const Container = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
+  padding-horizontal: ${px(24)};
 `;
 
 const ScreenText = styled.Text`
@@ -23,6 +25,8 @@ export const HistoryScreen = () => {
     <BaseLayout>
       <Container>
         <ScreenText>{t("history.title")}</ScreenText>
+
+        <RecoveryPhraseWarningBox />
       </Container>
     </BaseLayout>
   );

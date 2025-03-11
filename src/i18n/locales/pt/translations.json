@@ -21,5 +21,12 @@
   "settings": {
     "title": "Configurações",
     "signOut": "Sair"
+  },
+  "recoveryPhraseWarning": {
+    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total aos seus fundos.",
+    "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
+    "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
+    "neverAskForYourPhrase": "Stellar Development Foundation nunca pedirá sua frase",
+    "ifYouLose": "Se você a perder, não podemos recuperá-la"
   }
 }
