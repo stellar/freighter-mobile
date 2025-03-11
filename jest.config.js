@@ -3,7 +3,7 @@ const getSrcDirs = require("./config/getSrcDirs");
 
 module.exports = {
   preset: "react-native",
-  setupFiles: ["./jest.setup.js"],
+  setupFiles: ["./jest.setup.js", "@shopify/react-native-skia/jestSetup.js"],
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
@@ -17,6 +17,7 @@ module.exports = {
       "@react-native-community",
       "react-native-safe-area-context",
       "react-native-responsive-screen",
+      "@shopify/react-native-skia",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
