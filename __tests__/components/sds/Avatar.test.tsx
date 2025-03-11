@@ -47,7 +47,7 @@ describe("Avatar", () => {
       const avatar = getByTestId("stellar-avatar");
       expect(avatar).toBeDefined();
 
-      expect(avatar).toHaveStyle({ backgroundColor: "#232323" });
+      expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
     });
 
     it("renders with user name (initials)", () => {
@@ -108,7 +108,7 @@ describe("Avatar", () => {
       const avatar = getByTestId("identicon-avatar");
       expect(avatar).toBeDefined();
 
-      expect(avatar).toHaveStyle({ backgroundColor: "#232323" });
+      expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
     });
 
     it("renders different identicons for different addresses", () => {
@@ -127,7 +127,7 @@ describe("Avatar", () => {
       expect(avatars).toHaveLength(2);
 
       avatars.forEach((avatar) => {
-        expect(avatar).toHaveStyle({ backgroundColor: "#232323" });
+        expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
       });
     });
   });
