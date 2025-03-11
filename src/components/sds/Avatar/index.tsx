@@ -2,7 +2,7 @@ import { Canvas, Paint, Rect } from "@shopify/react-native-skia";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
+import { fs, px } from "helpers/dimensions";
 import {
   HSVtoRGB,
   publicKeyToBytes,
