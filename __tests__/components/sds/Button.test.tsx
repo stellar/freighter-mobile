@@ -23,7 +23,7 @@ describe("Button", () => {
 
       expect(button.props.style).toMatchObject({
         backgroundColor: BUTTON_THEME.colors.secondary.background,
-        borderColor: "transparent",
+        borderColor: BUTTON_THEME.colors.secondary.border,
       });
     });
 
@@ -42,7 +42,7 @@ describe("Button", () => {
           text: "Secondary Button",
           expectedStyles: {
             backgroundColor: BUTTON_THEME.colors.secondary.background,
-            borderColor: "transparent",
+            borderColor: BUTTON_THEME.colors.secondary.border,
           },
         },
         {

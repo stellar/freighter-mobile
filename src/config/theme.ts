@@ -120,9 +120,9 @@ export const THEME = {
     primary: PALETTE.dark.lilac["09"],
     secondary: PALETTE.dark.gray["12"],
     background: {
-      default: PALETTE.dark.gray["03"],
-      secondary: PALETTE.dark.gray["04"],
-      tertiary: PALETTE.dark.gray["05"],
+      default: PALETTE.dark.gray["01"],
+      secondary: PALETTE.dark.gray["02"],
+      tertiary: PALETTE.dark.gray["03"],
     },
     text: {
       primary: PALETTE.dark.gray["12"],

@@ -51,6 +51,7 @@ export const BUTTON_THEME = {
     secondary: {
       background: PALETTE.light.gray["12"],
       text: THEME.colors.text.primary,
+      border: THEME.colors.border.default,
     } as ButtonColorConfig,
     tertiary: {
       background: PALETTE.light.gray["01"],
@@ -67,9 +68,9 @@ export const BUTTON_THEME = {
       text: PALETTE.light.base["00"],
     } as ButtonColorConfig,
     disabled: {
-      background: PALETTE.light.gray["01"],
+      background: THEME.colors.background.tertiary,
       text: PALETTE.light.gray["09"],
-      border: PALETTE.light.gray["06"],
+      border: THEME.colors.border.default,
     } as ButtonColorConfig,
   },
   icon: {
