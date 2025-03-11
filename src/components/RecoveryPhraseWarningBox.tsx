@@ -9,13 +9,13 @@ import styled from "styled-components/native";
 const Container = styled.View`
   background-color: ${THEME.colors.background.tertiary};
   padding: ${px(24)};
-  border-radius: 16px;
+  border-radius: ${px(16)};
   gap: ${px(16)};
   width: 100%;
 `;
 
 const ItemBox = styled.View`
-  border-radius: 8px;
+  border-radius: ${px(8)};
   flex-direction: row;
   align-items: flex-start;
 `;
