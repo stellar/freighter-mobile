@@ -56,7 +56,7 @@ const CircleContainer = styled.View<{
 
 const InitialsText = styled(Text)`
   font-size: ${({ $size }: { $size: AvatarSize }) =>
-    px(AVATAR_SIZES[$size].fontSize)};
+    fs(AVATAR_SIZES[$size].fontSize)};
   font-weight: bold;
   text-align: center;
   color: ${THEME.colors.text.secondary};
