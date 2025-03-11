@@ -36,6 +36,53 @@ export interface RecoveryPhraseWarningBoxProps {
   testID?: string;
 }
 
+/**
+ * A component that displays important security warnings and information about the recovery phrase
+ * in a visually organized box format. Each warning is accompanied by an appropriate icon and
+ * uses consistent styling for better readability.
+ *
+ * The component displays five key pieces of information:
+ * 1. Recovery phrase access warning
+ * 2. Password recovery information
+ * 3. Security sharing warning
+ * 4. Anti-phishing warning
+ * 5. Recovery phrase loss warning
+ *
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <RecoveryPhraseWarningBox />
+ * ```
+ *
+ * @example
+ * With custom testID:
+ * ```tsx
+ * <RecoveryPhraseWarningBox testID="custom-warning-box" />
+ * ```
+ *
+ * @example
+ * Used in a screen:
+ * ```tsx
+ * <View style={styles.container}>
+ *   <Text>Important Security Information</Text>
+ *   <RecoveryPhraseWarningBox />
+ *   <Button onPress={handleContinue}>I Understand</Button>
+ * </View>
+ * ```
+ *
+ * The component uses the following icons from the design system:
+ * - Lock01: For recovery phrase access warning
+ * - PasscodeLock: For password recovery information
+ * - EyeOff: For security sharing warning
+ * - XSquare: For anti-phishing warning
+ * - AlertCircle: For recovery phrase loss warning
+ *
+ * All text content is internationalized through i18n translations using the
+ * "recoveryPhraseWarning" namespace.
+ *
+ * @param {RecoveryPhraseWarningBoxProps} props - The component props
+ * @param {string} [props.testID] - Optional testID for testing purposes
+ */
 const RecoveryPhraseWarningBox: React.FC<RecoveryPhraseWarningBoxProps> = ({
   testID,
 }) => {
