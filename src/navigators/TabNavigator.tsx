@@ -34,6 +34,7 @@ export const TabNavigator = () => {
         tabBarIcon: renderTabIcon,
         tabBarActiveTintColor: THEME.colors.tab.active,
         tabBarInactiveTintColor: THEME.colors.tab.inactive,
+        headerShown: false,
       })}
     >
       <Tab.Screen

@@ -1,4 +1,6 @@
+/* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { LoginScreen } from "components/screens/LoginScreen";
 import { ROUTES, RootStackParamList } from "config/routes";
 import { TabNavigator } from "navigators/TabNavigator";
@@ -18,7 +20,7 @@ export const RootNavigator = () => {
     <Stack.Navigator
       initialRouteName={ROUTES.LOGIN}
       screenOptions={{
-        headerShown: false,
+        header: (props) => <CustomNavigationHeader {...props} />,
         animation: "slide_from_right", // Default animation for forward navigation
       }}
     >
@@ -29,7 +31,13 @@ export const RootNavigator = () => {
           animation: "slide_from_left", // Custom animation when returning to login
         }}
       />
-      <Stack.Screen name={ROUTES.MAIN_TABS} component={TabNavigator} />
+      <Stack.Screen
+        name={ROUTES.MAIN_TABS}
+        component={TabNavigator}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 };

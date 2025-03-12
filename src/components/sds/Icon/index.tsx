@@ -2360,6 +2360,7 @@ export interface IconProps {
   size?: number;
   color?: string;
   testID?: string;
+  onPress?: () => void;
 }
 
 const CircleContainer = styled.View`
@@ -2380,6 +2381,7 @@ const IconComponent: React.FC<IconProps> = ({
   color = THEME.colors.primary,
   circle,
   testID,
+  onPress,
 }) => {
   const IconSvg = name ? Icons[name] : null;
 
@@ -2388,11 +2390,21 @@ const IconComponent: React.FC<IconProps> = ({
   }
 
   const iconElement = (
-    <IconSvg width={px(size)} height={px(size)} color={color} testID={testID} />
+    <IconSvg
+      width={px(size)}
+      height={px(size)}
+      color={color}
+      testID={testID}
+      onPress={onPress}
+    />
   );
 
   if (circle) {
-    return <CircleContainer size={size}>{iconElement}</CircleContainer>;
+    return (
+      <CircleContainer size={size} onPress={onPress}>
+        {iconElement}
+      </CircleContainer>
+    );
   }
 
   return iconElement;
