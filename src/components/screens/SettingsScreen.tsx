@@ -1,13 +1,19 @@
-import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
-import { ROUTES, RootStackParamList } from "config/routes";
+import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
+
+type SettingsScreenProps = {
+  navigation: NativeStackNavigationProp<
+    MainTabStackParamList,
+    typeof MAIN_TAB_ROUTES.TAB_SETTINGS
+  >;
+};
 
 const Container = styled.View`
   flex: 1;
@@ -27,17 +33,14 @@ const ScreenText = styled.Text`
   font-size: ${fs(16)};
 `;
 
-type SettingsScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  typeof ROUTES.MAIN_TABS
->;
-
-export const SettingsScreen = () => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
-  const navigation = useNavigation<SettingsScreenNavigationProp>();
 
   const handleSignOut = () => {
-    navigation.replace(ROUTES.LOGIN);
+    // TODO: Implement sign-out
+    navigation.replace(MAIN_TAB_ROUTES.TAB_HOME);
   };
 
   return (

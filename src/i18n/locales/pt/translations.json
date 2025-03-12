@@ -3,17 +3,28 @@
   "home": {
     "title": "Início"
   },
-  "onboarding": {
+  "welcomeScreen": {
+    "createNewWallet": "Criar uma nova carteira",
+    "iAlreadyHaveWallet": "Já tenho uma carteira",
     "terms": {
-      "byProceeding": "Ao prosseguir, você concorda com o Freighter ",
-      "termsOfService": "Termos de uso"
-    },
+      "byProceeding": "Ao continuar, você concorda com os ",
+      "termsOfService": "termos de uso do Freighter"
+    }
+  },
+  "choosePasswordScreen": {
+    "title": "Escolha uma senha",
+    "passwordInputPlaceholder": "Digite sua senha",
+    "passwordNote": "Mínimo de 8 caracteres",
+    "defaultActionButtonText": "Continuar",
+    "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
+  },
+  "onboarding": {
     "testButton": "Botão de teste com ícone",
     "typePassword": "Digite sua senha",
-    "typePasswordNote": "Mínimo 8 caracteres"
+    "typePasswordNote": "Mínimo de 8 caracteres"
   },
   "swap": {
-    "title": "Troca"
+    "title": "Swap"
   },
   "history": {
     "title": "Histórico"
@@ -23,10 +34,10 @@
     "signOut": "Sair"
   },
   "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total aos seus fundos.",
+    "yourRecoveryPhrase": "Sua frase de recuperação concede acesso total às suas carteiras e fundos.",
     "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
     "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
-    "neverAskForYourPhrase": "Stellar Development Foundation nunca pedirá sua frase",
-    "ifYouLose": "Se você a perder, não podemos recuperá-la"
+    "neverAskForYourPhrase": "A Stellar Development Foundation nunca irá solicitar sua frase",
+    "ifYouLose": "Se você perdê-la, não poderemos recuperá-la"
   }
 }

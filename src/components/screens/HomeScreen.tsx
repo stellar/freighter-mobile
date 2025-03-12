@@ -49,9 +49,9 @@ export const HomeScreen = () => {
             textAlign: "center",
           }}
         >
-          {t("onboarding.terms.byProceeding")}
+          {t("welcomeScreen.terms.byProceeding")}
           <Text md weight="medium" url="https://stellar.org/terms-of-service">
-            {t("onboarding.terms.termsOfService")}
+            {t("welcomeScreen.terms.termsOfService")}
           </Text>
         </Text>
 
