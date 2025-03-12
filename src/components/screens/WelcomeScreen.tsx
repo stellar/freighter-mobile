@@ -36,6 +36,19 @@ const StyledTermsTextContainer = styled.View`
   margin-bottom: ${px(70)};
 `;
 
+const StyledTermsText = styled(Text)`
+  text-align: center;
+  padding-horizontal: ${px(32)};
+`;
+
+interface StyledProps {
+  $size: number;
+}
+
+const StyledSpacer = styled.View<StyledProps>`
+  height: ${({ $size }: StyledProps) => px($size)};
+`;
+
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
 
@@ -55,7 +68,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
         </StyledIconContainer>
         <View>
           <StyledDisplay>Freighter Wallet</StyledDisplay>
-          <View style={{ height: 32 }} />
+          <StyledSpacer $size={32} />
           <Button
             variant={ButtonVariants.TERTIARY}
             size={ButtonSizes.LARGE}
@@ -63,7 +76,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           >
             {t("welcomeScreen.createNewWallet")}
           </Button>
-          <View style={{ height: 12 }} />
+          <StyledSpacer $size={12} />
           <Button
             variant={ButtonVariants.SECONDARY}
             size={ButtonSizes.LARGE}
@@ -73,20 +86,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           </Button>
         </View>
         <StyledTermsTextContainer>
-          <Text
-            md
-            secondary
-            weight="medium"
-            style={{
-              textAlign: "center",
-              paddingHorizontal: 32,
-            }}
-          >
+          <StyledTermsText md secondary weight="medium">
             {t("welcomeScreen.terms.byProceeding")}
             <Text md weight="medium" url="https://stellar.org/terms-of-service">
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
-          </Text>
+          </StyledTermsText>
         </StyledTermsTextContainer>
       </Container>
     </BaseLayout>

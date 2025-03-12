@@ -2,6 +2,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { PASSWORD_MIN_LENGTH } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +24,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
     navigation.navigate(AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN);
   };
 
-  const canContinue = passwordValue.length >= 8;
+  const canContinue = passwordValue.length >= PASSWORD_MIN_LENGTH;
 
   return (
     <OnboardLayout
