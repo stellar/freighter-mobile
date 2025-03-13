@@ -2,7 +2,7 @@ import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
-import React from "react";
+import React, { JSX } from "react";
 import { TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 

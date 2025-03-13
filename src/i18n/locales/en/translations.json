@@ -32,6 +32,13 @@
     "warningBlockTwo": "Keep it in a safe place.",
     "defaultActionButtonText": "I understand, reveal my phrase"
   },
+  "recoveryPhraseScreen": {
+    "title": "Your Recovery Phrase",
+    "warning": "This is for your eyes only. Never share this.",
+    "copyButtonText": "Copy to clipboard",
+    "defaultActionButtonText": "Continue",
+    "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
+  },
   "onboarding": {
     "continue": "Continue",
     "testButton": "Test Button with Icon",

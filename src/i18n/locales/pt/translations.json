@@ -32,6 +32,13 @@
     "warningBlockTwo": "Mantenha-a em um lugar seguro.",
     "defaultActionButtonText": "Eu entendo, revele minha frase"
   },
+  "recoveryPhraseScreen": {
+    "title": "Sua Frase de Recuperação",
+    "warning": "Isso é apenas para você. Nunca compartilhe isto.",
+    "copyButtonText": "Copiar",
+    "defaultActionButtonText": "Continuar",
+    "footerNoteText": "Certifique-se de guardá-la em um lugar seguro\nantes de continuar"
+  },
   "onboarding": {
     "continue": "Continuar",
     "testButton": "Botão de teste com ícone",
