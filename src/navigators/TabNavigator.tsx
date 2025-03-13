@@ -5,7 +5,7 @@ import { HomeScreen } from "components/screens/HomeScreen";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import styled from "styled-components/native";
 

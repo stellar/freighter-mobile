@@ -5,7 +5,7 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
 import { View } from "react-native";
 import styled from "styled-components/native";

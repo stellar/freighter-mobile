@@ -2,7 +2,7 @@ import Icon from "components/sds/Icon";
 import { Text, TextProps } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import styled from "styled-components/native";
 

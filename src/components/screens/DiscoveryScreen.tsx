@@ -2,7 +2,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Textarea } from "components/sds/Textarea";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import styled from "styled-components/native";
 

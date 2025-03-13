@@ -11,7 +11,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator = () => {
   // TODO: This is a temp env to control if the user is logged in or not
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isAuthenticated = false;
+  const isAuthenticated = true;
 
   useEffect(() => {
     // We can bypass the eslint rule here because we need to hide the splash screen

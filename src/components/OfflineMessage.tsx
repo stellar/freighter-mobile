@@ -1,6 +1,6 @@
 import { THEME } from "config/theme";
 import { px, fs } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";

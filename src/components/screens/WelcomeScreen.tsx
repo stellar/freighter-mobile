@@ -5,7 +5,7 @@ import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
-import useAppTranslation from "helpers/useAppTranslation";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
 import styled from "styled-components/native";
