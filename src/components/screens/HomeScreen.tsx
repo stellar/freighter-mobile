@@ -5,8 +5,8 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px, pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import styled from "styled-components/native";
 
@@ -25,7 +25,7 @@ const ScreenText = styled.Text`
 
 export const HomeScreen = () => {
   const [passwordValue, setPasswordValue] = useState("");
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
     <BaseLayout>
@@ -49,9 +49,9 @@ export const HomeScreen = () => {
             textAlign: "center",
           }}
         >
-          {t("onboarding.terms.byProceeding")}
+          {t("welcomeScreen.terms.byProceeding")}
           <Text md weight="medium" url="https://stellar.org/terms-of-service">
-            {t("onboarding.terms.termsOfService")}
+            {t("welcomeScreen.terms.termsOfService")}
           </Text>
         </Text>
 

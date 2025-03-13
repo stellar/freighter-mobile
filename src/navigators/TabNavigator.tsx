@@ -1,16 +1,15 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
-import { SettingsScreen } from "components/screens/SettingsScreen";
-import { SwapScreen } from "components/screens/SwapScreen";
-import { ROUTES, TabStackParamList } from "config/routes";
+import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
-const Tab = createBottomTabNavigator<TabStackParamList>();
+const MainTab = createBottomTabNavigator<MainTabStackParamList>();
 
 const TabIcon = styled.View<{ focused: boolean }>`
   width: ${px(10)};
@@ -26,48 +25,41 @@ const renderTabIcon = ({ focused }: { focused: boolean }) => (
 );
 
 export const TabNavigator = () => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
-    <Tab.Navigator
+    <MainTab.Navigator
       screenOptions={() => ({
         tabBarIcon: renderTabIcon,
         tabBarActiveTintColor: THEME.colors.tab.active,
         tabBarInactiveTintColor: THEME.colors.tab.inactive,
+        headerShown: false,
       })}
     >
-      <Tab.Screen
-        name={ROUTES.TAB_HOME}
-        component={HomeScreen}
-        options={{
-          headerTitle: t("home.title"),
-          tabBarLabel: t("home.title"),
-        }}
-      />
-      <Tab.Screen
-        name={ROUTES.TAB_SWAP}
-        component={SwapScreen}
-        options={{
-          headerTitle: t("swap.title"),
-          tabBarLabel: t("swap.title"),
-        }}
-      />
-      <Tab.Screen
-        name={ROUTES.TAB_HISTORY}
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
         options={{
           headerTitle: t("history.title"),
           tabBarLabel: t("history.title"),
         }}
       />
-      <Tab.Screen
-        name={ROUTES.TAB_SETTINGS}
-        component={SettingsScreen}
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_HOME}
+        component={HomeScreen}
         options={{
-          headerTitle: t("settings.title"),
-          tabBarLabel: t("settings.title"),
+          headerTitle: t("home.title"),
+          tabBarLabel: t("home.title"),
         }}
       />
-    </Tab.Navigator>
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
+        component={DiscoveryScreen}
+        options={{
+          headerTitle: t("discovery.title"),
+          tabBarLabel: t("discovery.title"),
+        }}
+      />
+    </MainTab.Navigator>
   );
 };

@@ -2,8 +2,8 @@ import RecoveryPhraseWarningBox from "components/RecoveryPhraseWarningBox";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -19,7 +19,7 @@ const ScreenText = styled.Text`
 `;
 
 export const HistoryScreen = () => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
     <BaseLayout>

@@ -141,6 +141,10 @@ export const THEME = {
       active: PALETTE.dark.lilac["09"],
       inactive: PALETTE.dark.gray["09"],
     },
+    base: {
+      primary: PALETTE.dark.base["00"],
+      secondary: PALETTE.dark.base["01"],
+    },
   },
   opacity: {
     disabled: 0.6,

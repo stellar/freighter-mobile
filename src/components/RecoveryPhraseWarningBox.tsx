@@ -2,8 +2,8 @@ import Icon from "components/sds/Icon";
 import { Text, TextProps } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -86,7 +86,7 @@ export interface RecoveryPhraseWarningBoxProps {
 const RecoveryPhraseWarningBox: React.FC<RecoveryPhraseWarningBoxProps> = ({
   testID,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   const iconProps = {
     size: 20,
