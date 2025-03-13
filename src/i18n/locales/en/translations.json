@@ -1,4 +1,5 @@
 {
+  "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "home": {
     "title": "Home"
@@ -19,19 +20,16 @@
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
   },
   "onboarding": {
+    "continue": "Continue",
     "testButton": "Test Button with Icon",
     "typePassword": "Type your password",
     "typePasswordNote": "Minimum 8 characters"
   },
-  "swap": {
-    "title": "Swap"
+  "discovery": {
+    "title": "Discovery"
   },
   "history": {
     "title": "History"
-  },
-  "settings": {
-    "title": "Settings",
-    "signOut": "Sign out"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",

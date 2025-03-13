@@ -18,13 +18,13 @@ const ScreenText = styled.Text`
   font-size: ${fs(16)};
 `;
 
-export const SwapScreen = () => {
+export const DiscoveryScreen = () => {
   const { t } = useTranslation();
 
   return (
     <BaseLayout>
       <Container>
-        <ScreenText>{t("swap.title")}</ScreenText>
+        <ScreenText>{t("discovery.title")}</ScreenText>
         <Textarea
           placeholder="Large placeholder message here"
           note="Phrases are usually 12 or 24 words"

@@ -1,4 +1,5 @@
 {
+  "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "Sem conexão com a internet",
   "home": {
     "title": "Início"
@@ -19,19 +20,16 @@
     "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
   },
   "onboarding": {
+    "continue": "Continuar",
     "testButton": "Botão de teste com ícone",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres"
   },
-  "swap": {
-    "title": "Swap"
+  "discovery": {
+    "title": "Explorar"
   },
   "history": {
     "title": "Histórico"
-  },
-  "settings": {
-    "title": "Configurações",
-    "signOut": "Sair"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação concede acesso total às suas carteiras e fundos.",

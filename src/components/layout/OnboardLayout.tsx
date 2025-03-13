@@ -3,6 +3,7 @@ import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
+import { t } from "i18next";
 import React from "react";
 import {
   KeyboardAvoidingView,
@@ -103,7 +104,7 @@ interface DefaultFooterProps {
 const DefaultFooter: React.FC<DefaultFooterProps> = ({
   onPressDefaultActionButton,
   isDefaultActionButtonDisabled,
-  defaultActionButtonText = "Continue",
+  defaultActionButtonText = t("onboarding.continue"),
 }) => (
   <Button
     variant={ButtonVariants.TERTIARY}

@@ -1,7 +1,7 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
@@ -50,7 +50,7 @@ const StyledSpacer = styled.View<StyledProps>`
 `;
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation("translations");
 
   const handleCreateNewWallet = () => {
     navigation.push(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN);
@@ -67,28 +67,20 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           <FreighterLogo width={px(32)} height={px(32)} />
         </StyledIconContainer>
         <View>
-          <StyledDisplay>Freighter Wallet</StyledDisplay>
+          <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
           <StyledSpacer $size={32} />
-          <Button
-            variant={ButtonVariants.TERTIARY}
-            size={ButtonSizes.LARGE}
-            onPress={handleCreateNewWallet}
-          >
+          <Button tertiary lg onPress={handleCreateNewWallet}>
             {t("welcomeScreen.createNewWallet")}
           </Button>
           <StyledSpacer $size={12} />
-          <Button
-            variant={ButtonVariants.SECONDARY}
-            size={ButtonSizes.LARGE}
-            onPress={handleIAlreadyHaveWallet}
-          >
+          <Button secondary lg onPress={handleIAlreadyHaveWallet}>
             {t("welcomeScreen.iAlreadyHaveWallet")}
           </Button>
         </View>
         <StyledTermsTextContainer>
-          <StyledTermsText md secondary weight="medium">
+          <StyledTermsText md secondary medium>
             {t("welcomeScreen.terms.byProceeding")}
-            <Text md weight="medium" url="https://stellar.org/terms-of-service">
+            <Text md medium url="https://stellar.org/terms-of-service">
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
           </StyledTermsText>

@@ -1,8 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
-import { SettingsScreen } from "components/screens/SettingsScreen";
-import { SwapScreen } from "components/screens/SwapScreen";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
@@ -38,22 +37,6 @@ export const TabNavigator = () => {
       })}
     >
       <MainTab.Screen
-        name={MAIN_TAB_ROUTES.TAB_HOME}
-        component={HomeScreen}
-        options={{
-          headerTitle: t("home.title"),
-          tabBarLabel: t("home.title"),
-        }}
-      />
-      <MainTab.Screen
-        name={MAIN_TAB_ROUTES.TAB_SWAP}
-        component={SwapScreen}
-        options={{
-          headerTitle: t("swap.title"),
-          tabBarLabel: t("swap.title"),
-        }}
-      />
-      <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
         options={{
@@ -62,11 +45,19 @@ export const TabNavigator = () => {
         }}
       />
       <MainTab.Screen
-        name={MAIN_TAB_ROUTES.TAB_SETTINGS}
-        component={SettingsScreen}
+        name={MAIN_TAB_ROUTES.TAB_HOME}
+        component={HomeScreen}
         options={{
-          headerTitle: t("settings.title"),
-          tabBarLabel: t("settings.title"),
+          headerTitle: t("home.title"),
+          tabBarLabel: t("home.title"),
+        }}
+      />
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
+        component={DiscoveryScreen}
+        options={{
+          headerTitle: t("discovery.title"),
+          tabBarLabel: t("discovery.title"),
         }}
       />
     </MainTab.Navigator>
