@@ -1,7 +1,7 @@
 import { THEME } from "config/theme";
 import { px, fs } from "helpers/dimensions";
+import useAppTranslation from "helpers/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const SafeContainer = styled.SafeAreaView`
@@ -24,7 +24,7 @@ const Message = styled.Text`
 `;
 
 export const OfflineMessage = () => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
     <SafeContainer>

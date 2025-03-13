@@ -2,8 +2,8 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Textarea } from "components/sds/Textarea";
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
+import useAppTranslation from "helpers/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -19,7 +19,7 @@ const ScreenText = styled.Text`
 `;
 
 export const DiscoveryScreen = () => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
     <BaseLayout>

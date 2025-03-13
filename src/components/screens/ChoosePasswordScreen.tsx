@@ -4,8 +4,8 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { PASSWORD_MIN_LENGTH } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import useAppTranslation from "helpers/useAppTranslation";
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
 
 type ChoosePasswordScreenProps = {
   navigation: NativeStackNavigationProp<
@@ -18,7 +18,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   navigation,
 }) => {
   const [passwordValue, setPasswordValue] = useState("");
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   const handleContinue = () => {
     navigation.navigate(AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN);

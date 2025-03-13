@@ -5,8 +5,8 @@ import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
+import useAppTranslation from "helpers/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import styled from "styled-components/native";
 
@@ -50,7 +50,7 @@ const StyledSpacer = styled.View<StyledProps>`
 `;
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation("translations");
+  const { t } = useAppTranslation();
 
   const handleCreateNewWallet = () => {
     navigation.push(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN);

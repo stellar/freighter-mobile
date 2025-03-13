@@ -5,8 +5,8 @@ import { HomeScreen } from "components/screens/HomeScreen";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
+import useAppTranslation from "helpers/useAppTranslation";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
@@ -25,7 +25,7 @@ const renderTabIcon = ({ focused }: { focused: boolean }) => (
 );
 
 export const TabNavigator = () => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   return (
     <MainTab.Navigator
