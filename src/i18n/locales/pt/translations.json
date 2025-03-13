@@ -26,6 +26,12 @@
     "defaultActionButtonText": "Continuar",
     "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
   },
+  "recoveryPhraseAlertScreen": {
+    "title": "Frase de recuperação",
+    "warningBlockOne": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la em um novo app.",
+    "warningBlockTwo": "Mantenha-a em um lugar seguro.",
+    "defaultActionButtonText": "Eu entendo, revele minha frase"
+  },
   "onboarding": {
     "continue": "Continuar",
     "testButton": "Botão de teste com ícone",

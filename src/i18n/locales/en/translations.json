@@ -26,6 +26,12 @@
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
   },
+  "recoveryPhraseAlertScreen": {
+    "title": "Recovery Phrase",
+    "warningBlockOne": "Your recovery phrase gives you access to your account and is the only way to access it in a new app.",
+    "warningBlockTwo": "Keep it in a safe place.",
+    "defaultActionButtonText": "I understand, reveal my phrase"
+  },
   "onboarding": {
     "continue": "Continue",
     "testButton": "Test Button with Icon",
