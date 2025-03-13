@@ -1,76 +1,67 @@
-import ClipboardIcon from "assets/icons/clipboard.svg";
+import { useFocusEffect } from "@react-navigation/native";
+import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button } from "components/sds/Button";
-import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { PALETTE, THEME } from "config/theme";
-import { fs, px, pxValue } from "helpers/dimensions";
-import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
-import { View } from "react-native";
+import { NETWORKS } from "config/constants";
+import { useBalances, useBalancesFetcher } from "ducks/balances";
+import { debug } from "helpers/debug";
+import React, { useCallback } from "react";
 import styled from "styled-components/native";
 
 const Container = styled.View`
   flex: 1;
-  justify-content: center;
-  align-items: center;
-  margin-horizontal: ${px(24)};
+  padding: 16px;
 `;
 
-const ScreenText = styled.Text`
-  color: ${THEME.colors.text.primary};
-  font-size: ${fs(16)};
-  margin-bottom: ${px(50)};
+const Header = styled.View`
+  margin-bottom: 20px;
 `;
 
 export const HomeScreen = () => {
-  const [passwordValue, setPasswordValue] = useState("");
-  const { t } = useAppTranslation();
+  const { fetchAccountBalances } = useBalancesFetcher();
+  const { balances, isLoading, error } = useBalances();
+
+  // TODO: read the below from store
+  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ";
+  const network = NETWORKS.TESTNET;
+
+  const loadBalances = useCallback(() => {
+    fetchAccountBalances({
+      publicKey,
+      network,
+    });
+  }, [fetchAccountBalances, network]);
+
+  // Fetch balances when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadBalances();
+    }, [loadBalances]),
+  );
+
+  // Debug balances state
+  useFocusEffect(
+    useCallback(() => {
+      debug("HOME balances state", {
+        isLoading,
+        error,
+        balances,
+      });
+    }, [balances, isLoading, error]),
+  );
 
   return (
     <BaseLayout>
       <Container>
-        <ScreenText>{t("home.title")}</ScreenText>
+        <Header>
+          <Text md>Tokens</Text>
+        </Header>
 
-        <Input
-          isPassword
-          placeholder={t("onboarding.typePassword")}
-          fieldSize="lg"
-          note={t("onboarding.typePasswordNote")}
-          value={passwordValue}
-          onChangeText={setPasswordValue}
-        />
-
-        <Text
-          md
-          secondary
-          weight="medium"
-          style={{
-            textAlign: "center",
-          }}
-        >
-          {t("welcomeScreen.terms.byProceeding")}
-          <Text md weight="medium" url="https://stellar.org/terms-of-service">
-            {t("welcomeScreen.terms.termsOfService")}
-          </Text>
-        </Text>
-
-        <View style={{ height: 40 }} />
-
-        <Button
-          secondary
-          lg
-          isFullWidth
-          icon={
-            <ClipboardIcon
-              width={pxValue(16)}
-              height={pxValue(16)}
-              stroke={PALETTE.dark.gray["09"]}
-            />
-          }
-        >
-          {t("onboarding.testButton")}
-        </Button>
+        {error ? (
+          <Text md>Error loading balances: {error}</Text>
+        ) : (
+          <BalancesList balances={balances} isLoading={isLoading} />
+        )}
       </Container>
     </BaseLayout>
   );
