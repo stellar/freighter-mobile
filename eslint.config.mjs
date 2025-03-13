@@ -88,6 +88,7 @@ export default [
       "@typescript-eslint/no-base-to-string": "off",
       "@typescript-eslint/no-floating-promises": "off",
       "object-curly-newline": "off",
+      "no-plusplus": "off",
 
       // Add these rules to match Prettier config and make sure we use double quotes
       quotes: ["error", "double"],
