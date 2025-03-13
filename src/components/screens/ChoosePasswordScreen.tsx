@@ -17,14 +17,16 @@ type ChoosePasswordScreenProps = {
 export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   navigation,
 }) => {
-  const [passwordValue, setPasswordValue] = useState("");
+  const [password, setPassword] = useState("");
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
-    navigation.navigate(AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN);
+    navigation.navigate(AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN, {
+      password,
+    });
   };
 
-  const canContinue = passwordValue.length >= PASSWORD_MIN_LENGTH;
+  const canContinue = password.length >= PASSWORD_MIN_LENGTH;
 
   return (
     <OnboardLayout
@@ -44,8 +46,8 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
         placeholder={t("choosePasswordScreen.passwordInputPlaceholder")}
         fieldSize="lg"
         note={t("choosePasswordScreen.passwordNote")}
-        value={passwordValue}
-        onChangeText={setPasswordValue}
+        value={password}
+        onChangeText={setPassword}
       />
     </OnboardLayout>
   );

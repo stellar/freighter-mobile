@@ -19,6 +19,13 @@
     "defaultActionButtonText": "Continuar",
     "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
   },
+  "confirmPasswordScreen": {
+    "title": "Confirme a Senha",
+    "passwordInputPlaceholder": "Confirme sua senha",
+    "passwordNote": "Mínimo de 8 caracteres",
+    "defaultActionButtonText": "Continuar",
+    "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
+  },
   "onboarding": {
     "continue": "Continuar",
     "testButton": "Botão de teste com ícone",

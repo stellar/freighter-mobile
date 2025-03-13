@@ -13,8 +13,15 @@
     }
   },
   "choosePasswordScreen": {
-    "title": "Choose a password",
+    "title": "Choose a Password",
     "passwordInputPlaceholder": "Type your password",
+    "passwordNote": "Minimum 8 characters",
+    "defaultActionButtonText": "Continue",
+    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
+  },
+  "confirmPasswordScreen": {
+    "title": "Confirm Password",
+    "passwordInputPlaceholder": "Confirm your password",
     "passwordNote": "Minimum 8 characters",
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
