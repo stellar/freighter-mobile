@@ -1,5 +1,5 @@
 import { fireEvent } from "@testing-library/react-native";
-import { ChoosePasswordScreen } from "components/screens/ChoosePasswordScreen";
+import { ConfirmPasswordScreen } from "components/screens/ConfirmPasswordScreen";
 import { AUTH_STACK_ROUTES } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -12,25 +12,49 @@ jest.mock("@react-navigation/native", () => ({
   })),
 }));
 
-describe("ChoosePasswordScreen", () => {
+describe("ConfirmPasswordScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("renders correctly", () => {
     const { getByText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ConfirmPasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password12345" } } as never}
+      />,
     );
-    expect(getByText("Choose a Password")).toBeTruthy();
+    expect(getByText("Confirm Password")).toBeTruthy();
   });
 
   it("has disabled continue button when password is less than 8 characters", () => {
     const { getByText, getByPlaceholderText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ConfirmPasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password12345" } } as never}
+      />,
     );
 
-    const passwordInput = getByPlaceholderText("Type your password");
+    const passwordInput = getByPlaceholderText("Confirm your password");
     fireEvent.changeText(passwordInput, "short");
+
+    // The button should be disabled, so pressing it should not trigger navigation
+    const continueButton = getByText("Continue");
+    fireEvent.press(continueButton);
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("has disabled continue button when password is different", () => {
+    const { getByText, getByPlaceholderText } = renderWithProviders(
+      <ConfirmPasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password123456" } } as never}
+      />,
+    );
+
+    const passwordInput = getByPlaceholderText("Confirm your password");
+    fireEvent.changeText(passwordInput, "password12345");
 
     // The button should be disabled, so pressing it should not trigger navigation
     const continueButton = getByText("Continue");
@@ -41,10 +65,13 @@ describe("ChoosePasswordScreen", () => {
 
   it("enables continue button when password is at least 8 characters", () => {
     const { getByText, getByPlaceholderText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ConfirmPasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password12345" } } as never}
+      />,
     );
 
-    const passwordInput = getByPlaceholderText("Type your password");
+    const passwordInput = getByPlaceholderText("Confirm your password");
     fireEvent.changeText(passwordInput, "password12345");
 
     // The button should now be enabled
@@ -52,18 +79,16 @@ describe("ChoosePasswordScreen", () => {
     fireEvent.press(continueButton);
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN,
-      {
-        password: "password12345",
-      },
+      AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN,
     );
   });
 
   it("shows footer note text only when password is valid", () => {
     const { getByText, getByPlaceholderText, queryByText } =
       renderWithProviders(
-        <ChoosePasswordScreen
+        <ConfirmPasswordScreen
           navigation={{ navigate: mockNavigate } as never}
+          route={{ params: { password: "password12345" } } as never}
         />,
       );
 
@@ -74,8 +99,7 @@ describe("ChoosePasswordScreen", () => {
       ),
     ).toBeNull();
 
-    // Type a valid password
-    const passwordInput = getByPlaceholderText("Type your password");
+    const passwordInput = getByPlaceholderText("Confirm your password");
     fireEvent.changeText(passwordInput, "password12345");
 
     // Footer note should now be visible

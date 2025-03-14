@@ -194,8 +194,8 @@ interface InputProps {
   isLabelUppercase?: boolean;
   isError?: boolean;
   isPassword?: boolean;
-  leftElement?: JSX.Element;
-  rightElement?: JSX.Element;
+  leftElement?: React.JSX.Element;
+  rightElement?: React.JSX.Element;
   note?: string | React.ReactNode;
   error?: string | React.ReactNode;
   success?: string | React.ReactNode;

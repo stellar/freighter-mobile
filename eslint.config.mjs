@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable import/no-extraneous-dependencies */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
 import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +35,9 @@ export default [
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-return": "off",
     },
+  },
+  {
+    ignores: ["jest.setup.js", "tsconfig.json"],
   },
   {
     languageOptions: {

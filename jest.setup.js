@@ -1,3 +1,7 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable import/extensions */
+import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
+
 // Mock navigation
 jest.mock("@react-navigation/native", () => {
   const actualNav = jest.requireActual("@react-navigation/native");
@@ -38,3 +42,5 @@ jest.mock("react-native-responsive-screen", () => ({
   widthPercentageToDP: jest.fn((width) => width),
   heightPercentageToDP: jest.fn((height) => height),
 }));
+
+jest.mock("@react-native-clipboard/clipboard", () => mockClipboard);

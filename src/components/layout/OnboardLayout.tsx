@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
@@ -8,6 +8,7 @@ import React from "react";
 import {
   KeyboardAvoidingView,
   KeyboardAvoidingViewProps,
+  Platform,
   ScrollView,
   ScrollViewProps,
 } from "react-native";
@@ -47,6 +48,7 @@ const StyledContentContainer = styled.View`
 const FooterContainer = styled.View`
   gap: ${px(24)};
   background-color: ${THEME.colors.background.default};
+  padding-bottom: ${Platform.OS === "ios" ? 0 : px(24)};
 `;
 
 const FooterNoteText = styled(Text)`
@@ -55,7 +57,14 @@ const FooterNoteText = styled(Text)`
 
 const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView).attrs(
   (props: KeyboardAvoidingViewProps) => ({
-    behavior: "padding",
+    behavior: Platform.select({
+      ios: "padding",
+      android: undefined,
+    }),
+    contentContainerStyle: {
+      flex: 1,
+      backgroundColor: THEME.colors.background.default,
+    },
     ...props,
   }),
 )`
@@ -107,8 +116,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
   defaultActionButtonText = t("onboarding.continue"),
 }) => (
   <Button
-    variant={ButtonVariants.TERTIARY}
-    size={ButtonSizes.LARGE}
+    tertiary
+    lg
     onPress={onPressDefaultActionButton}
     disabled={isDefaultActionButtonDisabled}
   >

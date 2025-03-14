@@ -13,11 +13,31 @@
     }
   },
   "choosePasswordScreen": {
-    "title": "Choose a password",
+    "title": "Choose a Password",
     "passwordInputPlaceholder": "Type your password",
     "passwordNote": "Minimum 8 characters",
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
+  },
+  "confirmPasswordScreen": {
+    "title": "Confirm Password",
+    "passwordInputPlaceholder": "Confirm your password",
+    "passwordNote": "Minimum 8 characters",
+    "defaultActionButtonText": "Continue",
+    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
+  },
+  "recoveryPhraseAlertScreen": {
+    "title": "Recovery Phrase",
+    "warningBlockOne": "Your recovery phrase gives you access to your account and is the only way to access it in a new app.",
+    "warningBlockTwo": "Keep it in a safe place.",
+    "defaultActionButtonText": "I understand, reveal my phrase"
+  },
+  "recoveryPhraseScreen": {
+    "title": "Your Recovery Phrase",
+    "warning": "This is for your eyes only. Never share this.",
+    "copyButtonText": "Copy to clipboard",
+    "defaultActionButtonText": "Continue",
+    "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
   },
   "onboarding": {
     "continue": "Continue",

@@ -4,6 +4,12 @@
     "types": ["styled-components-react-native", "@types/jest"],
     "baseUrl": "src/"
   },
-  "include": ["src", "__tests__", "*.js", "*.ts", "__mocks__"],
-  "exclude": ["eslint.config.mjs"]
+  "include": [
+    "src",
+    "__tests__",
+    "*.js",
+    "*.ts",
+    "__mocks__",
+    "eslint.config.mjs"
+  ]
 }
