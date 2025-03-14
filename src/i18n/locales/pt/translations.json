@@ -39,11 +39,17 @@
     "defaultActionButtonText": "Continuar",
     "footerNoteText": "Certifique-se de guardá-la em um lugar seguro\nantes de continuar"
   },
+  "importWalletScreen": {
+    "title": "Importar Carteira",
+    "textAreaPlaceholder": "Digite a frase de recuperação",
+    "textAreaNote": "As frases de recuperação geralmente têm 12 ou 24 palavras",
+    "defaultActionButtonText": "Importar carteira"
+  },
   "onboarding": {
     "continue": "Continuar",
-    "testButton": "Botão de teste com ícone",
     "typePassword": "Digite sua senha",
-    "typePasswordNote": "Mínimo de 8 caracteres"
+    "typePasswordNote": "Mínimo de 8 caracteres",
+    "pastFromClipboard": "Colar da área de transferência"
   },
   "discovery": {
     "title": "Explorar"
