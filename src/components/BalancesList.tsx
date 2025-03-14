@@ -3,7 +3,9 @@ import { Asset, Horizon } from "@stellar/stellar-sdk";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
-import React, { useCallback } from "react";
+import { debug } from "helpers/debug";
+import { formatAssetAmount } from "helpers/formatAmount";
+import React, { useCallback, useEffect } from "react";
 import { FlatList } from "react-native";
 import { Balance, LiquidityPoolBalance } from "services/backend";
 import styled from "styled-components/native";
@@ -61,14 +63,6 @@ const getLPShareCode = (reserves: Horizon.HorizonApi.Reserve[]) => {
 const isLiquidityPool = (balance: Balance): balance is LiquidityPoolBalance =>
   "liquidityPoolId" in balance && "reserves" in balance;
 
-// Helper function to format amounts (you can move this to a utils file)
-const formatAmount = (amount: string): string =>
-  // Basic formatting, you might want to enhance this
-  parseFloat(amount).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 7,
-  });
-
 /**
  * A fully self-contained component to display a list of token balances
  * Fetches its own data using hardcoded values (in a real app, these would come from a global store)
@@ -91,6 +85,13 @@ export const BalancesList: React.FC = () => {
       });
     }, [fetchAccountBalances, publicKey, network]),
   );
+
+  // Log balances to console when they change
+  useEffect(() => {
+    if (balances) {
+      debug("Current balances:", balances);
+    }
+  }, [balances]);
 
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
@@ -142,7 +143,7 @@ export const BalancesList: React.FC = () => {
           </IconPlaceholder>
           <Text md>{tokenCode}</Text>
         </LeftSection>
-        <Text md>{formatAmount(item.total.toString())}</Text>
+        <Text md>{formatAssetAmount(item.total)}</Text>
       </BalanceRow>
     );
   };
