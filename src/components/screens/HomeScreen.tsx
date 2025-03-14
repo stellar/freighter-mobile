@@ -1,10 +1,8 @@
-import ClipboardIcon from "assets/icons/clipboard.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { PALETTE, THEME } from "config/theme";
-import { fs, px, pxValue } from "helpers/dimensions";
+import { THEME } from "config/theme";
+import { fs, px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
 import { View } from "react-native";
@@ -56,21 +54,6 @@ export const HomeScreen = () => {
         </Text>
 
         <View style={{ height: 40 }} />
-
-        <Button
-          secondary
-          lg
-          isFullWidth
-          icon={
-            <ClipboardIcon
-              width={pxValue(16)}
-              height={pxValue(16)}
-              stroke={PALETTE.dark.gray["09"]}
-            />
-          }
-        >
-          {t("onboarding.testButton")}
-        </Button>
       </Container>
     </BaseLayout>
   );

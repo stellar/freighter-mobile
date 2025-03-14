@@ -3,19 +3,14 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { ChoosePasswordScreen } from "components/screens/ChoosePasswordScreen";
 import { ConfirmPasswordScreen } from "components/screens/ConfirmPasswordScreen";
+import { ImportWalletScreen } from "components/screens/ImportWalletScreen";
 import { RecoveryPhraseAlertScreen } from "components/screens/RecoveryPhraseAlertScreen";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
 import { WelcomeScreen } from "components/screens/WelcomeScreen";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
-import { THEME } from "config/theme";
 import React from "react";
-import { View } from "react-native";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-
-const BlankScreen = () => (
-  <View style={{ flex: 1, backgroundColor: THEME.colors.background.default }} />
-);
 
 export const AuthNavigator = () => (
   <AuthStack.Navigator
@@ -49,7 +44,7 @@ export const AuthNavigator = () => (
     />
     <AuthStack.Screen
       name={AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN}
-      component={BlankScreen}
+      component={ImportWalletScreen}
     />
   </AuthStack.Navigator>
 );
