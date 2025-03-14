@@ -1,15 +1,12 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { Asset, Horizon } from "@stellar/stellar-sdk";
 import { Text } from "components/sds/Typography";
-import React from "react";
+import { NETWORKS } from "config/constants";
+import { useBalances, useBalancesFetcher } from "ducks/balances";
+import React, { useCallback } from "react";
 import { FlatList } from "react-native";
 import { Balance, LiquidityPoolBalance } from "services/backend";
 import styled from "styled-components/native";
-
-// Define the props for the BalancesList component
-interface BalancesListProps {
-  balances?: Record<string, Balance>;
-  isLoading?: boolean;
-}
 
 // Styled components for the list items
 const BalanceRow = styled.View`
@@ -73,12 +70,28 @@ const formatAmount = (amount: string): string =>
   });
 
 /**
- * A reusable component to display a list of token balances
+ * A fully self-contained component to display a list of token balances
+ * Fetches its own data using hardcoded values (in a real app, these would come from a global store)
  */
-export const BalancesList: React.FC<BalancesListProps> = ({
-  balances,
-  isLoading,
-}) => {
+export const BalancesList: React.FC = () => {
+  // Hardcoded values - in a real app, these would come from a global wallet store/context
+  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ";
+  const network = NETWORKS.TESTNET;
+
+  // Use the hooks to fetch and access balances
+  const { fetchAccountBalances } = useBalancesFetcher();
+  const { balances, isLoading, error } = useBalances();
+
+  // Fetch balances when component comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchAccountBalances({
+        publicKey,
+        network,
+      });
+    }, [fetchAccountBalances, publicKey, network]),
+  );
+
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
     return (
@@ -86,6 +99,15 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         <Text md>
           {isLoading ? "Loading balances..." : "No balances found"}
         </Text>
+      </EmptyState>
+    );
+  }
+
+  // Display error state if there's an error
+  if (error) {
+    return (
+      <EmptyState>
+        <Text md>Error loading balances</Text>
       </EmptyState>
     );
   }
