@@ -12,5 +12,4 @@
     "__mocks__",
     "eslint.config.mjs"
   ]
-  // "exclude": ["eslint.config.mjs"]
 }

@@ -2,7 +2,7 @@ import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
-import React, { JSX } from "react";
+import React from "react";
 import { TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 
@@ -194,8 +194,8 @@ interface InputProps {
   isLabelUppercase?: boolean;
   isError?: boolean;
   isPassword?: boolean;
-  leftElement?: JSX.Element;
-  rightElement?: JSX.Element;
+  leftElement?: React.JSX.Element;
+  rightElement?: React.JSX.Element;
   note?: string | React.ReactNode;
   error?: string | React.ReactNode;
   success?: string | React.ReactNode;
