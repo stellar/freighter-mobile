@@ -4,7 +4,11 @@ import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
 import { debug } from "helpers/debug";
-import { formatAssetAmount } from "helpers/formatAmount";
+import {
+  formatAssetAmount,
+  formatFiatAmount,
+  formatPercentageAmount,
+} from "helpers/formatAmount";
 import React, { useCallback, useEffect } from "react";
 import { FlatList } from "react-native";
 import { Balance, LiquidityPoolBalance } from "services/backend";
@@ -25,12 +29,38 @@ const LeftSection = styled.View`
   align-items: center;
 `;
 
+const AssetTextContainer = styled.View`
+  flex-direction: column;
+  margin-left: 12px;
+`;
+
+const AmountText = styled(Text)`
+  color: gray;
+  margin-top: 2px;
+`;
+
+const RightSection = styled.View`
+  flex-direction: column;
+  align-items: flex-end;
+`;
+
+// Define the props explicitly with types to fix linter error
+interface PriceChangeTextProps {
+  isPositive: boolean;
+  children?: React.ReactNode;
+  sm?: boolean;
+}
+
+const PriceChangeText = styled(Text)<PriceChangeTextProps>`
+  color: ${(props: PriceChangeTextProps) =>
+    props.isPositive ? "green" : "red"};
+`;
+
 const IconPlaceholder = styled.View`
   width: 40px;
   height: 40px;
   border-radius: 20px;
   background-color: green;
-  margin-right: 12px;
   justify-content: center;
   align-items: center;
 `;
@@ -121,19 +151,26 @@ export const BalancesList: React.FC = () => {
 
   // Render each balance item
   const renderItem = ({ item }: { item: Balance & { id: string } }) => {
-    // Determine the token code based on balance type
-    let tokenCode: string;
+    // Determine the asset code based on balance type
+    let assetCode: string;
     let firstChar: string;
+
+    // Use random fake numbers for price and percentage as requested
+    const currentPrice = 0.001 + Math.random() * 99.999; // Random number between 0.001 and 100
+    const percentagePriceChange24h = Math.random() * 10 - 5; // Random number between -5 and 5
 
     if (isLiquidityPool(item)) {
       // Handle liquidity pool balances
-      tokenCode = getLPShareCode(item.reserves);
+      assetCode = getLPShareCode(item.reserves);
       firstChar = "LP";
     } else {
-      // Handle regular token balances (native, asset, token)
-      tokenCode = item.token.code;
-      firstChar = tokenCode.charAt(0);
+      // Handle regular asset balances
+      assetCode = item.token.code;
+      firstChar = assetCode.charAt(0);
     }
+
+    // Calculate total value in USD
+    const fiatValue = item.total.multipliedBy(currentPrice);
 
     return (
       <BalanceRow>
@@ -141,9 +178,17 @@ export const BalancesList: React.FC = () => {
           <IconPlaceholder>
             <Text md>{firstChar}</Text>
           </IconPlaceholder>
-          <Text md>{tokenCode}</Text>
+          <AssetTextContainer>
+            <Text md>{assetCode}</Text>
+            <AmountText sm>{formatAssetAmount(item.total)}</AmountText>
+          </AssetTextContainer>
         </LeftSection>
-        <Text md>{formatAssetAmount(item.total)}</Text>
+        <RightSection>
+          <Text md>{formatFiatAmount(fiatValue)}</Text>
+          <PriceChangeText sm isPositive={percentagePriceChange24h >= 0}>
+            {formatPercentageAmount(percentagePriceChange24h)}
+          </PriceChangeText>
+        </RightSection>
       </BalanceRow>
     );
   };
