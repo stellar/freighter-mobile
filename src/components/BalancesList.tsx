@@ -9,8 +9,8 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import React, { useCallback, useEffect } from "react";
-import { FlatList } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { FlatList, RefreshControl } from "react-native";
 import { Balance, LiquidityPoolBalance } from "services/backend";
 import styled from "styled-components/native";
 
@@ -102,6 +102,9 @@ export const BalancesList: React.FC = () => {
   const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ";
   const network = NETWORKS.TESTNET;
 
+  // State for tracking manual refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Use the hooks to fetch and access balances
   const { fetchAccountBalances } = useBalancesFetcher();
   const { balances, isLoading, error } = useBalances();
@@ -116,10 +119,23 @@ export const BalancesList: React.FC = () => {
     }, [fetchAccountBalances, publicKey, network]),
   );
 
+  // Function to handle manual refresh
+  const handleRefresh = useCallback(() => {
+    debug("Manual refresh triggered");
+    setIsRefreshing(true);
+
+    fetchAccountBalances({
+      publicKey,
+      network,
+    }).finally(() => {
+      setIsRefreshing(false);
+    });
+  }, [fetchAccountBalances, publicKey, network]);
+
   // Log balances to console when they change
   useEffect(() => {
     if (balances) {
-      debug("Current balances:", balances);
+      debug("BalancesList", "Current balances:", Object.keys(balances));
     }
   }, [balances]);
 
@@ -198,6 +214,13 @@ export const BalancesList: React.FC = () => {
       data={balanceItems}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor="blue" // Customize the loading indicator color
+        />
+      }
     />
   );
 };
