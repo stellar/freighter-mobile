@@ -1,19 +1,25 @@
 import BigNumber from "bignumber.js";
 
+// Convert input to BigNumber for consistent handling
+const convertToBigNumber = (
+  value: string | number | BigNumber | { toString: () => string },
+): BigNumber => {
+  if (typeof value === "number") {
+    return new BigNumber(value);
+  }
+
+  if (value instanceof BigNumber) {
+    return value;
+  }
+
+  return new BigNumber(value.toString());
+};
+
 export const formatAssetAmount = (
   amount: string | number | { toString: () => string },
   code?: string,
 ) => {
-  let bnAmount;
-
-  // Convert input to BigNumber for consistent handling
-  if (typeof amount === "number") {
-    bnAmount = new BigNumber(amount);
-  } else if (amount instanceof BigNumber) {
-    bnAmount = amount;
-  } else {
-    bnAmount = new BigNumber(amount.toString());
-  }
+  const bnAmount = convertToBigNumber(amount);
 
   const formatter = new Intl.NumberFormat("en-US", {
     useGrouping: true,
@@ -42,4 +48,25 @@ export const formatFiatAmount = (
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numericAmount);
+};
+
+export const formatPercentageAmount = (
+  amount?: string | number | { toString: () => string },
+): string => {
+  if (!amount) {
+    return "0.00%";
+  }
+
+  const bnAmount = convertToBigNumber(amount);
+
+  // Format the number with 2 decimal places
+  const formattedNumber = bnAmount.toFixed(2);
+
+  // Add the appropriate sign and percentage symbol
+  if (bnAmount.gt(0)) {
+    return `+${formattedNumber}%`;
+  }
+
+  // BigNumber already includes the negative sign in formattedNumber
+  return `${formattedNumber}%`;
 };
