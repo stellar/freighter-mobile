@@ -11,12 +11,12 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import { isLiquidityPool } from "helpers/isLiquidityPool";
-import React, { useCallback, useEffect, useState } from "react";
+import debounce from "lodash/debounce";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import { Balance } from "services/backend";
 import styled from "styled-components/native";
 
-// Styled components for the list items
 const BalanceRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
@@ -91,71 +91,89 @@ const getLPShareCode = (reserves: Horizon.HorizonApi.Reserve[]) => {
   return `${assetA} / ${assetB}`;
 };
 
+// Type definition for the debounced function with cancel method
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DebouncedFunction<T extends (...args: any[]) => any> = {
+  (...args: Parameters<T>): ReturnType<T> | undefined;
+  cancel: () => void;
+};
+
 /**
  * A fully self-contained component to display a list of token balances
- * Fetches its own data using hardcoded values (in a real app, these would come from a global store)
  */
 export const BalancesList: React.FC = () => {
-  // Hardcoded values - in a real app, these would come from a global wallet store/context
+  // TODO: Hardcoded values for testing, we'll get this from the wallet context
   const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ";
   const network = NETWORKS.TESTNET;
 
-  // State for tracking manual refresh
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Use the hooks to fetch and access balances
+  // Properly typed reference for the debounced function
+  const debouncedFetchPricesRef = useRef<DebouncedFunction<
+    (balancesData: Record<string, Balance>) => void
+  > | null>(null);
+
   const { fetchAccountBalances } = useBalancesFetcher();
   const { balances, isLoading: isBalancesLoading, error } = useBalances();
 
-  // Use the hooks to fetch and access prices
   const { fetchPricesForBalances } = usePricesFetcher();
   const { prices, isLoading: isPricesLoading } = usePrices();
+
+  // Setup the debounced fetch prices function to prevent spamming the API
+  useEffect(() => {
+    debouncedFetchPricesRef.current = debounce(
+      (balancesData: Record<string, Balance>) => {
+        debug("Fetching prices (debounced)");
+
+        fetchPricesForBalances({
+          balances: balancesData,
+          publicKey,
+          network,
+        });
+      },
+      300,
+    ); // 300ms debounce time
+
+    // Clean up the debounced function on unmount
+    return () => {
+      if (debouncedFetchPricesRef.current?.cancel) {
+        debouncedFetchPricesRef.current.cancel();
+      }
+      debouncedFetchPricesRef.current = null;
+    };
+  }, [fetchPricesForBalances, publicKey, network]);
+
+  // Function to fetch balances (used for both initial load and refresh)
+  const fetchBalances = useCallback(async () => {
+    debug("Fetching balances");
+    await fetchAccountBalances({
+      publicKey,
+      network,
+    });
+  }, [fetchAccountBalances, publicKey, network]);
 
   // Fetch balances when component comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchAccountBalances({
-        publicKey,
-        network,
-      });
-    }, [fetchAccountBalances, publicKey, network]),
+      fetchBalances();
+    }, [fetchBalances]),
   );
 
-  // Fetch prices when balances change
+  // When balances change, fetch prices with debounce
   useEffect(() => {
     if (balances && Object.keys(balances).length > 0) {
-      fetchPricesForBalances({
-        balances,
-        publicKey,
-        network,
-      });
+      debouncedFetchPricesRef.current?.(balances);
     }
-  }, [balances, fetchPricesForBalances, publicKey, network]);
+  }, [balances]);
 
   // Function to handle manual refresh
   const handleRefresh = useCallback(() => {
-    debug("Manual refresh triggered");
     setIsRefreshing(true);
 
-    // Refresh both balances and prices
-    fetchAccountBalances({
-      publicKey,
-      network,
-    })
-      .then(() => {
-        // Prices will be refreshed automatically via the effect when balances change
-      })
-      .finally(() => {
-        setIsRefreshing(false);
-      });
-  }, [fetchAccountBalances, publicKey, network]);
-
-  // Log balances to console when they change
-  useEffect(() => {
-    if (balances) {
-      debug("BalancesList", "Current balances:", Object.keys(balances));
-    }
-  }, [balances]);
+    fetchBalances().finally(() => {
+      setIsRefreshing(false);
+    });
+  }, [fetchBalances]);
 
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
@@ -239,7 +257,7 @@ export const BalancesList: React.FC = () => {
         <RefreshControl
           refreshing={isRefreshing || isBalancesLoading || isPricesLoading}
           onRefresh={handleRefresh}
-          tintColor="blue" // Customize the loading indicator color
+          tintColor="blue"
         />
       }
     />
