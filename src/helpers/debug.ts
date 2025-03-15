@@ -18,6 +18,10 @@ const getTimestamp = () => {
 };
 
 const formatArgs = (payload: any) => {
+  if (typeof payload === "string") {
+    return payload;
+  }
+
   try {
     return JSON.stringify(payload, null, 2);
   } catch (error) {
