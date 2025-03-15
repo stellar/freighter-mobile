@@ -6,6 +6,8 @@ const PASSWORD_MIN_LENGTH = 8;
 export { PASSWORD_MIN_LENGTH };
 
 export const INDEXER_URL = "https://freighter-backend.stellar.org/api/v1";
+export const TOKEN_PRICES_URL =
+  "https://freighter-backend-dev.kube001-dev.services.stellar-ops.com/api/v1/token-prices";
 
 export enum FRIENDBOT_URLS {
   TESTNET = "https://friendbot.stellar.org",

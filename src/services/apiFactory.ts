@@ -125,7 +125,7 @@ export interface ApiServiceOptions {
 export function createApiService(options: ApiServiceOptions) {
   const {
     baseURL,
-    timeout = 30000,
+    timeout = 15000,
     headers = {
       "Content-Type": "application/json",
       Accept: "application/json",

@@ -65,7 +65,7 @@ export function bigize<T>(obj: T, keys: string[] = []): Bigizable<T> {
   }
 
   // Early return for non-objects
-  if (!isObject(obj)) {
+  if (obj === null || obj === undefined || !isObject(obj)) {
     return obj as Bigizable<T>;
   }
 

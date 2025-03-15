@@ -3,15 +3,17 @@ import { Asset, Horizon } from "@stellar/stellar-sdk";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
+import { getTokenPrice, usePrices, usePricesFetcher } from "ducks/prices";
 import { debug } from "helpers/debug";
 import {
   formatAssetAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
+import { isLiquidityPool } from "helpers/isLiquidityPool";
 import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
-import { Balance, LiquidityPoolBalance } from "services/backend";
+import { Balance } from "services/backend";
 import styled from "styled-components/native";
 
 // Styled components for the list items
@@ -89,10 +91,6 @@ const getLPShareCode = (reserves: Horizon.HorizonApi.Reserve[]) => {
   return `${assetA} / ${assetB}`;
 };
 
-// Function to determine if a balance is a liquidity pool
-const isLiquidityPool = (balance: Balance): balance is LiquidityPoolBalance =>
-  "liquidityPoolId" in balance && "reserves" in balance;
-
 /**
  * A fully self-contained component to display a list of token balances
  * Fetches its own data using hardcoded values (in a real app, these would come from a global store)
@@ -107,7 +105,11 @@ export const BalancesList: React.FC = () => {
 
   // Use the hooks to fetch and access balances
   const { fetchAccountBalances } = useBalancesFetcher();
-  const { balances, isLoading, error } = useBalances();
+  const { balances, isLoading: isBalancesLoading, error } = useBalances();
+
+  // Use the hooks to fetch and access prices
+  const { fetchPricesForBalances } = usePricesFetcher();
+  const { prices, isLoading: isPricesLoading } = usePrices();
 
   // Fetch balances when component comes into focus
   useFocusEffect(
@@ -119,17 +121,33 @@ export const BalancesList: React.FC = () => {
     }, [fetchAccountBalances, publicKey, network]),
   );
 
+  // Fetch prices when balances change
+  useEffect(() => {
+    if (balances && Object.keys(balances).length > 0) {
+      fetchPricesForBalances({
+        balances,
+        publicKey,
+        network,
+      });
+    }
+  }, [balances, fetchPricesForBalances, publicKey, network]);
+
   // Function to handle manual refresh
   const handleRefresh = useCallback(() => {
     debug("Manual refresh triggered");
     setIsRefreshing(true);
 
+    // Refresh both balances and prices
     fetchAccountBalances({
       publicKey,
       network,
-    }).finally(() => {
-      setIsRefreshing(false);
-    });
+    })
+      .then(() => {
+        // Prices will be refreshed automatically via the effect when balances change
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+      });
   }, [fetchAccountBalances, publicKey, network]);
 
   // Log balances to console when they change
@@ -144,7 +162,7 @@ export const BalancesList: React.FC = () => {
     return (
       <EmptyState>
         <Text md>
-          {isLoading ? "Loading balances..." : "No balances found"}
+          {isBalancesLoading ? "Loading balances..." : "No balances found"}
         </Text>
       </EmptyState>
     );
@@ -171,9 +189,10 @@ export const BalancesList: React.FC = () => {
     let assetCode: string;
     let firstChar: string;
 
-    // Use random fake numbers for price and percentage as requested
-    const currentPrice = 0.001 + Math.random() * 99.999; // Random number between 0.001 and 100
-    const percentagePriceChange24h = Math.random() * 10 - 5; // Random number between -5 and 5
+    // Get price data from store
+    const priceData = getTokenPrice(prices, item);
+    const currentPrice = priceData?.currentPrice;
+    const percentagePriceChange24h = priceData?.percentagePriceChange24h;
 
     if (isLiquidityPool(item)) {
       // Handle liquidity pool balances
@@ -186,7 +205,7 @@ export const BalancesList: React.FC = () => {
     }
 
     // Calculate total value in USD
-    const fiatValue = item.total.multipliedBy(currentPrice);
+    const fiatValue = item.total.multipliedBy(currentPrice || 0);
 
     return (
       <BalanceRow>
@@ -200,9 +219,11 @@ export const BalancesList: React.FC = () => {
           </AssetTextContainer>
         </LeftSection>
         <RightSection>
-          <Text md>{formatFiatAmount(fiatValue)}</Text>
-          <PriceChangeText sm isPositive={percentagePriceChange24h >= 0}>
-            {formatPercentageAmount(percentagePriceChange24h)}
+          <Text md>{currentPrice ? formatFiatAmount(fiatValue) : "—"}</Text>
+          <PriceChangeText sm isPositive={!percentagePriceChange24h?.lt(0)}>
+            {percentagePriceChange24h
+              ? formatPercentageAmount(percentagePriceChange24h)
+              : "—"}
           </PriceChangeText>
         </RightSection>
       </BalanceRow>
@@ -216,7 +237,7 @@ export const BalancesList: React.FC = () => {
       keyExtractor={(item) => item.id}
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing}
+          refreshing={isRefreshing || isBalancesLoading || isPricesLoading}
           onRefresh={handleRefresh}
           tintColor="blue" // Customize the loading indicator color
         />
