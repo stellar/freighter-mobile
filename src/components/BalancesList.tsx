@@ -1,10 +1,14 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Asset, Horizon } from "@stellar/stellar-sdk";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
+import { Balance } from "config/types";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
 import { usePrices, usePricesFetcher } from "ducks/prices";
-import { isLiquidityPool, getTokenPriceFromBalance } from "helpers/balances";
+import {
+  isLiquidityPool,
+  getTokenPriceFromBalance,
+  getLPShareCode,
+} from "helpers/balances";
 import { debug } from "helpers/debug";
 import {
   formatAssetAmount,
@@ -13,7 +17,6 @@ import {
 } from "helpers/formatAmount";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { FlatList, RefreshControl } from "react-native";
-import { Balance } from "services/backend";
 import styled from "styled-components/native";
 
 const BalanceRow = styled.View`
@@ -72,23 +75,8 @@ const EmptyState = styled.View`
   justify-content: center;
 `;
 
-const getLPShareCode = (reserves: Horizon.HorizonApi.Reserve[]) => {
-  if (!reserves[0] || !reserves[1]) {
-    return "";
-  }
-
-  let assetA = reserves[0].asset.split(":")[0];
-  let assetB = reserves[1].asset.split(":")[0];
-
-  if (assetA === Asset.native().toString()) {
-    assetA = Asset.native().code;
-  }
-  if (assetB === Asset.native().toString()) {
-    assetB = Asset.native().code;
-  }
-
-  return `${assetA} / ${assetB}`;
-};
+// Append id to the balance object to be used in the FlatList
+type BalanceItem = Balance & { id: string };
 
 /**
  * A fully self-contained component to display a list of token balances
@@ -192,10 +180,13 @@ export const BalancesList: React.FC = () => {
   }
 
   // Convert balances object to array for FlatList
-  const balanceItems = Object.entries(balances).map(([id, balance]) => ({
-    id,
-    ...balance,
-  }));
+  const balanceItems: BalanceItem[] = Object.entries(balances).map(
+    ([id, balance]) =>
+      ({
+        id,
+        ...balance,
+      }) as BalanceItem,
+  );
 
   // Render each balance item
   const renderItem = ({ item }: { item: Balance & { id: string } }) => {
@@ -210,7 +201,7 @@ export const BalancesList: React.FC = () => {
 
     if (isLiquidityPool(item)) {
       // Handle liquidity pool balances
-      assetCode = getLPShareCode(item.reserves);
+      assetCode = getLPShareCode(item);
       firstChar = "LP";
     } else {
       // Handle regular asset balances

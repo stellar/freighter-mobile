@@ -1,7 +1,7 @@
 import { NETWORKS } from "config/constants";
+import { Balance, TokenPricesMap } from "config/types";
 import { getTokenIdentifiersFromBalances } from "helpers/balances";
-import { Balance } from "services/backend";
-import { TokenPricesMap, fetchTokenPrices } from "services/tokenPrices";
+import { fetchTokenPrices } from "services/backend";
 import { create } from "zustand";
 
 interface PricesState {

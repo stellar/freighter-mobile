@@ -1,12 +1,39 @@
-import BigNumber from "bignumber.js";
+import { Asset } from "@stellar/stellar-sdk";
 import {
   Balance,
   LiquidityPoolBalance,
   NativeToken,
   AssetToken,
+  TokenIdentifier,
   Issuer,
-} from "services/backend";
-import { TokenIdentifier, TokenPricesMap } from "services/tokenPrices";
+  TokenPrice,
+  TokenPricesMap,
+} from "config/types";
+
+/**
+ * Get the share code for a liquidity pool
+ *
+ * @param balance Balance object
+ * @returns Share code string or empty string if not applicable
+ */
+export const getLPShareCode = (balance: Balance) => {
+  const reserves = "reserves" in balance ? balance.reserves : [];
+  if (!reserves[0] || !reserves[1]) {
+    return "";
+  }
+
+  let assetA = reserves[0].asset.split(":")[0];
+  let assetB = reserves[1].asset.split(":")[0];
+
+  if (assetA === Asset.native().toString()) {
+    assetA = Asset.native().code;
+  }
+  if (assetB === Asset.native().toString()) {
+    assetB = Asset.native().code;
+  }
+
+  return `${assetA} / ${assetB}`;
+};
 
 /**
  * Check if balance is a liquidity pool
@@ -98,15 +125,16 @@ export const getTokenIdentifiersFromBalances = (
 export const getTokenPriceFromBalance = (
   prices: TokenPricesMap,
   balance: Balance,
-): {
-  currentPrice: BigNumber | null;
-  percentagePriceChange24h: BigNumber | null;
-} | null => {
+): TokenPrice | null => {
   const tokenId = getTokenIdentifier(balance);
-
   if (!tokenId) {
     return null; // Liquidity pools or unknown token types
   }
 
-  return prices[tokenId] || null;
+  const priceData = prices[tokenId];
+  if (!priceData) {
+    return null; // Token not found in prices map
+  }
+
+  return priceData;
 };

@@ -1,6 +1,5 @@
-import { AssetType, Horizon } from "@stellar/stellar-sdk";
-import BigNumber from "bignumber.js";
 import { INDEXER_URL, NETWORKS } from "config/constants";
+import { BalanceMap, TokenIdentifier, TokenPricesMap } from "config/types";
 import { bigize } from "helpers/bigize";
 import { createApiService } from "services/apiFactory";
 
@@ -8,82 +7,6 @@ import { createApiService } from "services/apiFactory";
 export const backendApi = createApiService({
   baseURL: INDEXER_URL,
 });
-
-export type NativeToken = {
-  type: AssetType;
-  code: string;
-};
-
-export type Issuer = {
-  key: string;
-  name?: string;
-  url?: string;
-  hostName?: string;
-};
-
-export type AssetToken = {
-  type: AssetType;
-  code: string;
-  issuer: Issuer;
-  anchorAsset?: string;
-  numAccounts?: BigNumber;
-  amount?: BigNumber;
-  bidCount?: BigNumber;
-  askCount?: BigNumber;
-  spread?: BigNumber;
-};
-
-export type BaseBalance = {
-  total: BigNumber;
-
-  // for non-native tokens, this should be total - sellingLiabilities
-  // for native, it should also subtract the minimumBalance
-  // for liquidity pools, it doesn't exist
-  available?: BigNumber;
-
-  // for liquidity pools, this doesn't exist
-  buyingLiabilities?: string;
-  sellingLiabilities?: string;
-  contractId?: string;
-
-  // TODO: handle blockaidData later when we add support for it
-  // blockaidData: BlockAidScanAssetResult;
-};
-
-// Liquidity Pool balances doesn't have a "token" property
-export type LiquidityPoolBalance = BaseBalance & {
-  limit: BigNumber;
-  liquidityPoolId: string;
-  reserves: Horizon.HorizonApi.Reserve[];
-};
-
-export type NativeBalance = BaseBalance & {
-  token: NativeToken;
-  minimumBalance: BigNumber;
-};
-
-export type AssetBalance = BaseBalance & {
-  token: AssetToken;
-  limit: BigNumber;
-  sponsor?: string;
-};
-
-export type TokenBalance = AssetBalance & {
-  name: string;
-  symbol: string;
-  decimals: number;
-};
-
-export type BalanceMap = {
-  [balanceIdentifier: string]: Balance;
-  native: NativeBalance;
-};
-
-export type Balance =
-  | AssetBalance
-  | TokenBalance
-  | NativeBalance
-  | LiquidityPoolBalance;
 
 export type FetchBalancesResponse = {
   balances?: BalanceMap;
@@ -140,4 +63,89 @@ export const fetchBalances = async ({
     ...data,
     balances: bigizedBalances || data.balances,
   };
+};
+
+/**
+ * Response from the token prices API
+ */
+interface TokenPricesResponse {
+  data: TokenPricesMap;
+}
+
+/**
+ * Request parameters for fetching token prices
+ */
+export interface FetchTokenPricesParams {
+  /** Array of token identifiers to fetch prices for */
+  tokens: TokenIdentifier[];
+}
+
+/**
+ * Note: This is a FAKE implementation that returns random data after a 1-second delay
+ * Simulates fetching the current USD prices and 24h percentage changes for the specified tokens
+ *
+ * @param params Object containing the list of tokens to fetch prices for
+ * @returns Promise resolving to a map of token identifiers to their price information
+ *
+ * @example
+ * // Fetch prices for XLM and USDC
+ * const prices = await fetchTokenPrices({
+ *   tokens: [
+ *     "XLM",
+ *     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+ *   ]
+ * });
+ *
+ * // Access individual token prices
+ * const xlmPrice = prices["XLM"];
+ * console.log(`XLM price: $${xlmPrice.currentPrice} (${xlmPrice.percentagePriceChange24h}% 24h change)`);
+ */
+export const fetchTokenPrices = async ({
+  tokens,
+}: FetchTokenPricesParams): Promise<TokenPricesResponse> => {
+  // TODO: uncomment this once the endpoint is deployed
+  // const { data } = await backendApi.post<TokenPricesResponse>(
+  //   "/token-prices",
+  //   { tokens },
+  // );
+
+  // Simulate network delay (1 second as requested)
+  // eslint-disable-next-line no-promise-executor-return
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // This is the backend interface for the prices map
+  // We'll convert those values to BigNumber for convenience
+  const pricesMap: {
+    [tokenIdentifier: TokenIdentifier]: {
+      currentPrice: string | null;
+      percentagePriceChange24h: number | null;
+    };
+  } = {};
+
+  // Generate fake price data for each token
+  tokens.forEach((token) => {
+    // Special case for stablecoin
+    if (token.includes("USD")) {
+      pricesMap[token] = {
+        currentPrice: (0.99 + Math.random() * 0.02).toFixed(6), // Between 0.99 and 1.01
+        percentagePriceChange24h: Math.random() * 0.2 - 0.1, // Between -0.1% and +0.1%
+      };
+    } else {
+      pricesMap[token] = {
+        currentPrice: (0.001 + Math.random() * 99.999).toFixed(6), // Random number between 0.001 and 100,
+        percentagePriceChange24h: Math.random() * 10 - 5, // Random number between -5 and 5
+      };
+    }
+  });
+
+  // Create fake API response structure
+  const fakeResponse = {
+    data: pricesMap,
+  };
+
+  // Make sure to convert the response values to BigNumber for convenience
+  return bigize(fakeResponse, [
+    "currentPrice",
+    "percentagePriceChange24h",
+  ]) as TokenPricesResponse;
 };
