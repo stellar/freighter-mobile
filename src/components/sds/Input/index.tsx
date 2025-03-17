@@ -3,7 +3,7 @@ import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React from "react";
-import { TouchableOpacity } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -93,6 +93,14 @@ const StyledTextInput = styled.TextInput<
   font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
   color: ${THEME.colors.text.primary};
+  font-family: ${Platform.select({
+    ios: "Inter-Variable",
+    android: "Inter-Regular",
+  })};
+  font-weight: ${Platform.select({
+    ios: "400",
+    android: "normal",
+  })};
 `;
 
 const SideElement = styled.View<{ position: "left" | "right" }>`
