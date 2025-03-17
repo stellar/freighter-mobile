@@ -3,14 +3,14 @@ import { Asset, Horizon } from "@stellar/stellar-sdk";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
-import { getTokenPrice, usePrices, usePricesFetcher } from "ducks/prices";
+import { usePrices, usePricesFetcher } from "ducks/prices";
+import { isLiquidityPool, getTokenPriceFromBalance } from "helpers/balances";
 import { debug } from "helpers/debug";
 import {
   formatAssetAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import { isLiquidityPool } from "helpers/isLiquidityPool";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import { Balance } from "services/backend";
@@ -204,7 +204,7 @@ export const BalancesList: React.FC = () => {
     let firstChar: string;
 
     // Get price data from store
-    const priceData = getTokenPrice(prices, item);
+    const priceData = getTokenPriceFromBalance(prices, item);
     const currentPrice = priceData?.currentPrice;
     const percentagePriceChange24h = priceData?.percentagePriceChange24h;
 
