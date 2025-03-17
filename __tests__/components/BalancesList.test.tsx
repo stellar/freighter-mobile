@@ -148,7 +148,9 @@ describe("BalancesList", () => {
     });
 
     // Mock balance helpers defaults
-    (balancesHelpers.isLiquidityPool as jest.Mock).mockReturnValue(false);
+    (balancesHelpers.isLiquidityPool as unknown as jest.Mock).mockReturnValue(
+      false,
+    );
     (balancesHelpers.getTokenPriceFromBalance as jest.Mock).mockReturnValue(
       null,
     );
@@ -304,9 +306,9 @@ describe("BalancesList", () => {
     };
 
     // Setup mock helpers for LP
-    (balancesHelpers.isLiquidityPool as jest.Mock).mockImplementation(
-      (balance) => "liquidityPoolId" in balance,
-    );
+    (
+      balancesHelpers.isLiquidityPool as unknown as jest.Mock
+    ).mockImplementation((balance) => "liquidityPoolId" in balance);
     (balancesHelpers.getLPShareCode as jest.Mock).mockReturnValue("XLM / USDC");
 
     // Mock balances with LP
