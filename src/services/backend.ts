@@ -81,7 +81,7 @@ export interface FetchTokenPricesParams {
 }
 
 /**
- * Note: This is a FAKE implementation that returns random data after a 1-second delay
+ * NOTE: This is a FAKE implementation that returns random data after a 1-second delay
  * Simulates fetching the current USD prices and 24h percentage changes for the specified tokens
  *
  * @param params Object containing the list of tokens to fetch prices for
@@ -103,7 +103,7 @@ export interface FetchTokenPricesParams {
 export const fetchTokenPrices = async ({
   tokens,
 }: FetchTokenPricesParams): Promise<TokenPricesResponse> => {
-  // TODO: uncomment this once the endpoint is deployed
+  // TODO: Uncomment this once the endpoint is deployed
   // const { data } = await backendApi.post<TokenPricesResponse>(
   //   "/token-prices",
   //   { tokens },
@@ -122,7 +122,7 @@ export const fetchTokenPrices = async ({
     };
   } = {};
 
-  // Generate fake price data for each token
+  // Generate FAKE price data for each token
   tokens.forEach((token) => {
     // Special case for stablecoin
     if (token.includes("USD")) {

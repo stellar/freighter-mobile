@@ -38,7 +38,7 @@ export type BaseBalance = {
   sellingLiabilities?: string;
   contractId?: string;
 
-  // TODO: handle blockaidData later when we add support for it
+  // TODO: Handle blockaidData later once we add support for it
   // blockaidData: BlockAidScanAssetResult;
 };
 

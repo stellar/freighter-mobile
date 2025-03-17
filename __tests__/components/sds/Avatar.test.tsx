@@ -1,9 +1,51 @@
 /**
- * @jest-environment @shopify/react-native-skia/jestEnv.mjs
+ * @jest-environment jsdom
  */
 import { Avatar, AvatarSize } from "components/sds/Avatar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+
+/* eslint-disable */
+// Mock the Skia canvas functionality with proper React components
+jest.mock("@shopify/react-native-skia", () => {
+  const React = require("react");
+
+  // Create mock components that actually render
+  const createMockComponent =
+    (name: string) =>
+    ({
+      children,
+      ...props
+    }: {
+      children?: React.ReactNode;
+      [key: string]: any;
+    }) =>
+      React.createElement(
+        "div",
+        {
+          "data-testid": `skia-${name.toLowerCase()}`,
+          ...props,
+        },
+        children,
+      );
+
+  return {
+    Canvas: createMockComponent("Canvas"),
+    Rect: createMockComponent("Rect"),
+    Paint: createMockComponent("Paint"),
+    Fill: createMockComponent("Fill"),
+    Group: createMockComponent("Group"),
+    Circle: createMockComponent("Circle"),
+    Path: createMockComponent("Path"),
+    Skia: {
+      Path: {
+        Make: jest.fn(),
+      },
+    },
+    useValue: jest.fn(() => ({ current: 0 })),
+  };
+});
+/* eslint-enable */
 
 const TEST_PUBLIC_ADDRESS =
   "GBDEVU63Y6NTHJQQZIKVTC23NWLQVP3WJ2RI2OTSJTNYOIGICST5TVOM";
