@@ -111,7 +111,7 @@ export const BalancesList: React.FC = () => {
   } = useBalances();
 
   const { fetchPricesForBalances } = usePricesFetcher();
-  const { prices } = usePrices();
+  const { prices, isLoading: isPricesLoading } = usePrices();
 
   // Cleanup timeout on unmount
   useEffect(
@@ -251,7 +251,7 @@ export const BalancesList: React.FC = () => {
       keyExtractor={(item) => item.id}
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing}
+          refreshing={isRefreshing || isPricesLoading}
           onRefresh={handleRefresh}
           tintColor="blue"
         />
