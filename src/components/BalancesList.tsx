@@ -237,6 +237,7 @@ export const BalancesList: React.FC = () => {
 
   return (
     <FlatList
+      testID="balances-list"
       data={balanceItems}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
