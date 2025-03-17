@@ -159,6 +159,15 @@ export const BalancesList: React.FC = () => {
     }
   }, [balances, fetchPricesForBalances, publicKey, network]);
 
+  // Display error state if there's an error loading balances
+  if (balancesError) {
+    return (
+      <EmptyState>
+        <Text md>Error loading balances</Text>
+      </EmptyState>
+    );
+  }
+
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
     return (
@@ -166,15 +175,6 @@ export const BalancesList: React.FC = () => {
         <Text md>
           {isBalancesLoading ? "Loading balances..." : "No balances found"}
         </Text>
-      </EmptyState>
-    );
-  }
-
-  // Display error state if there's an error loading balances
-  if (balancesError) {
-    return (
-      <EmptyState>
-        <Text md>Error loading balances</Text>
       </EmptyState>
     );
   }
