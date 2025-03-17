@@ -11,10 +11,18 @@ import {
 } from "config/types";
 
 /**
- * Get the share code for a liquidity pool
+ * Gets the human-readable share code for a liquidity pool balance
  *
- * @param balance Balance object
- * @returns Share code string or empty string if not applicable
+ * This function extracts the asset codes from both reserves in a liquidity pool
+ * and formats them as a readable string (e.g., "XLM / USDC"). It handles the case
+ * where one or both assets might be the native XLM asset.
+ *
+ * @param {Balance} balance - The balance object to extract share code from
+ * @returns {string} Formatted share code string (e.g., "XLM / USDC") or empty string if not applicable
+ *
+ * @example
+ * // Get share code for a liquidity pool balance
+ * const lpShareCode = getLPShareCode(lpBalance); // Returns "XLM / USDC"
  */
 export const getLPShareCode = (balance: Balance) => {
   const reserves = "reserves" in balance ? balance.reserves : [];
@@ -36,7 +44,23 @@ export const getLPShareCode = (balance: Balance) => {
 };
 
 /**
- * Check if balance is a liquidity pool
+ * Determines if a balance object represents a liquidity pool
+ *
+ * This is a type guard function that checks if a balance object has the
+ * required properties to be considered a liquidity pool balance.
+ *
+ * @param {Balance} balance - The balance object to check
+ * @returns {boolean} True if the balance is a liquidity pool, false otherwise
+ *
+ * @example
+ * // Check if a balance is a liquidity pool
+ * if (isLiquidityPool(balance)) {
+ *   // It's a liquidity pool, access LP-specific properties
+ *   console.log(balance.liquidityPoolId);
+ * } else {
+ *   // It's a regular asset balance
+ *   console.log(balance.token.code);
+ * }
  */
 export const isLiquidityPool = (
   balance: Balance,
@@ -44,10 +68,14 @@ export const isLiquidityPool = (
   "liquidityPoolId" in balance && "reserves" in balance;
 
 /**
- * Get a standardized token identifier from either a Balance or Token object
+ * Gets a standardized token identifier from either a Balance or Token object
  *
- * @param item Balance object or a Token object
- * @returns Standardized token identifier string or null if not applicable
+ * This function creates a consistent string identifier for tokens that can be used
+ * as keys in maps or for comparison. For native XLM it returns "XLM", and for
+ * other assets it returns a format like "CODE:ISSUER_KEY".
+ *
+ * @param {Balance | NativeToken | AssetToken} item - Balance object or a Token object
+ * @returns {TokenIdentifier | null} Standardized token identifier string or null if not applicable
  *
  * @example
  * // Get identifier from balance
@@ -87,10 +115,20 @@ export const getTokenIdentifier = (
 };
 
 /**
- * Extract token identifiers from balances
+ * Extracts unique token identifiers from a collection of balances
  *
- * @param balances Record of balance identifiers to Balance objects
- * @returns Array of token identifiers for price lookup
+ * This function processes a map of balance objects and extracts a unique
+ * list of token identifiers that can be used for price lookups or other operations.
+ * It filters out nulls and duplicates from the result.
+ *
+ * @param {Record<string, Balance>} balances - Record of balance identifiers to Balance objects
+ * @returns {TokenIdentifier[]} Array of unique token identifiers for price lookup
+ *
+ * @example
+ * // Get token identifiers from account balances
+ * const { balances } = useBalances();
+ * const tokenIds = getTokenIdentifiersFromBalances(balances);
+ * // tokenIds might be ["XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"]
  */
 export const getTokenIdentifiersFromBalances = (
   balances: Record<string, Balance>,
@@ -109,11 +147,15 @@ export const getTokenIdentifiersFromBalances = (
 };
 
 /**
- * Get token price from the prices map
+ * Retrieves token price data for a given balance from the prices map
  *
- * @param prices The prices map from usePrices()
- * @param balance Balance object
- * @returns The price data or null if not found
+ * This function looks up price data for a token by first converting the balance
+ * to a token identifier, then retrieving the corresponding price data from the
+ * prices map. It handles cases where the token might not exist in the prices map.
+ *
+ * @param {TokenPricesMap} prices - The prices map from usePrices()
+ * @param {Balance} balance - Balance object to find the price for
+ * @returns {TokenPrice | null} The price data or null if not found
  *
  * @example
  * // Get price using balance object
@@ -121,6 +163,12 @@ export const getTokenIdentifiersFromBalances = (
  * const { balances } = useBalances();
  * const nativeBalance = balances["native"];
  * const xlmPrice = getTokenPriceFromBalance(prices, nativeBalance);
+ *
+ * // Use the price data
+ * if (xlmPrice) {
+ *   console.log(`XLM price: $${xlmPrice.currentPrice.toString()}`);
+ *   console.log(`24h change: ${xlmPrice.percentagePriceChange24h.toString()}%`);
+ * }
  */
 export const getTokenPriceFromBalance = (
   prices: TokenPricesMap,

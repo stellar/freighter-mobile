@@ -48,7 +48,12 @@ const RightSection = styled.View`
   align-items: flex-end;
 `;
 
-// Define the props explicitly with types to fix linter error
+/**
+ * Interface for PriceChangeText styling props
+ * @property {boolean} isPositive - Whether the price change is positive (green) or negative (red)
+ * @property {React.ReactNode} [children] - Child elements
+ * @property {boolean} [sm] - Whether to use small text size
+ */
 interface PriceChangeTextProps {
   isPositive: boolean;
   children?: React.ReactNode;
@@ -75,11 +80,24 @@ const EmptyState = styled.View`
   justify-content: center;
 `;
 
-// Append id to the balance object to be used in the FlatList
+/**
+ * Extended Balance type with an id field for use in FlatList
+ */
 type BalanceItem = Balance & { id: string };
 
 /**
- * A fully self-contained component to display a list of token balances
+ * BalancesList Component
+ *
+ * A self-contained component that displays a user's token balances in a scrollable list.
+ * Features include:
+ * - Displays regular tokens and liquidity pool tokens
+ * - Shows token balances with corresponding fiat values
+ * - Displays 24h price changes with color indicators
+ * - Supports pull-to-refresh to update balances and prices
+ * - Shows loading, error, and empty states
+ * - Auto-refreshes when the screen comes into focus
+ *
+ * @returns {JSX.Element} A FlatList of balance items or an empty state message
  */
 export const BalancesList: React.FC = () => {
   // TODO: Hardcoded values for testing, we'll get this from the wallet context
@@ -101,7 +119,9 @@ export const BalancesList: React.FC = () => {
   const { fetchPricesForBalances } = usePricesFetcher();
   const { prices, isLoading: isPricesLoading } = usePrices();
 
-  // Cleanup timeout on unmount
+  /**
+   * Cleanup timeout on component unmount to prevent memory leaks
+   */
   useEffect(
     () => () => {
       if (refreshTimeoutRef.current) {
@@ -112,7 +132,12 @@ export const BalancesList: React.FC = () => {
     [],
   );
 
-  // Function to fetch only the account balances
+  /**
+   * Fetches account balances for the current publicKey and network
+   * Does not fetch prices directly - this is handled by the useEffect that watches balances
+   *
+   * @returns {Promise<void>} Promise that resolves when balances are fetched
+   */
   const fetchBalances = useCallback(async () => {
     await fetchAccountBalances({
       publicKey,
@@ -121,7 +146,10 @@ export const BalancesList: React.FC = () => {
     // Don't fetch prices here - let the useEffect handle that
   }, [fetchAccountBalances, publicKey, network]);
 
-  // Function to handle manual refresh with minimum display time for spinner
+  /**
+   * Handles manual refresh via pull-to-refresh gesture
+   * Ensures the refresh spinner is visible for at least 1 second for a better UX
+   */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     const refreshStartTime = Date.now();
@@ -138,18 +166,24 @@ export const BalancesList: React.FC = () => {
     });
   }, [fetchBalances]);
 
-  // Fetch balances when component comes into focus (without showing spinner)
+  /**
+   * Fetch balances when component comes into focus
+   * Does not show a spinner, as this is background refreshing
+   */
   useFocusEffect(
     useCallback(() => {
       fetchBalances();
     }, [fetchBalances]),
   );
 
-  // This will automatically run after fetchBalances has updated the balances state
+  /**
+   * Fetch token prices whenever balances are updated
+   * Only fetches if balances exist and are not empty
+   */
   useEffect(() => {
     // Check if balances is available and not empty
     if (balances && Object.keys(balances).length > 0) {
-      debug("Fetching prices for tokens");
+      debug("Fetching prices for tokens", "Balances: ", balances);
 
       fetchPricesForBalances({
         balances,
@@ -188,7 +222,15 @@ export const BalancesList: React.FC = () => {
       }) as BalanceItem,
   );
 
-  // Render each balance item
+  /**
+   * Renders an individual balance item in the list
+   * Handles both regular tokens and liquidity pool tokens
+   * Displays token name, amount, fiat value, and price change
+   *
+   * @param {Object} params - The render item parameters
+   * @param {BalanceItem} params.item - The balance item to render
+   * @returns {JSX.Element} The rendered balance row
+   */
   const renderItem = ({ item }: { item: Balance & { id: string } }) => {
     // Determine the asset code based on balance type
     let assetCode: string;

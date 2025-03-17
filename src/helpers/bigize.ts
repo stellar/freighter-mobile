@@ -5,6 +5,9 @@ import isObject from "lodash/isObject";
 
 /**
  * Interface for mapping keys that need to be converted to BigNumber
+ * Used internally to optimize lookups of property names during conversion
+ *
+ * @internal
  */
 interface KeyMap {
   [key: string]: boolean;
@@ -12,7 +15,10 @@ interface KeyMap {
 
 /**
  * Generic type for the object to be processed
- * T can be any object, array, or primitive type
+ * Preserves the original type structure while allowing for BigNumber conversion
+ *
+ * @template T - The type of the input object
+ * @internal
  */
 type Bigizable<T> = T extends object ? T : T;
 
@@ -23,9 +29,10 @@ type Bigizable<T> = T extends object ? T : T;
  * whose names match those in the provided `keys` array, and converts their values to
  * BigNumber instances if they represent valid numbers.
  *
- * @param obj - The object or array to process
- * @param keys - Array of property names to convert to BigNumber
- * @returns A new object with the specified properties converted to BigNumber
+ * @template T - The type of the input object
+ * @param {T} obj - The object or array to process
+ * @param {string[]} [keys=[]] - Array of property names to convert to BigNumber
+ * @returns {Bigizable<T>} A new object with the specified properties converted to BigNumber
  *
  * @example
  * // Convert specific numeric fields in a simple object
