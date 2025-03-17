@@ -11,7 +11,6 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import { isLiquidityPool } from "helpers/isLiquidityPool";
-import debounce from "lodash/debounce";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import { Balance } from "services/backend";
@@ -91,13 +90,6 @@ const getLPShareCode = (reserves: Horizon.HorizonApi.Reserve[]) => {
   return `${assetA} / ${assetB}`;
 };
 
-// Type definition for the debounced function with cancel method
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DebouncedFunction<T extends (...args: any[]) => any> = {
-  (...args: Parameters<T>): ReturnType<T> | undefined;
-  cancel: () => void;
-};
-
 /**
  * A fully self-contained component to display a list of token balances
  */
@@ -108,72 +100,76 @@ export const BalancesList: React.FC = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Properly typed reference for the debounced function
-  const debouncedFetchPricesRef = useRef<DebouncedFunction<
-    (balancesData: Record<string, Balance>) => void
-  > | null>(null);
+  // Reference to track refresh timeout
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { fetchAccountBalances } = useBalancesFetcher();
-  const { balances, isLoading: isBalancesLoading, error } = useBalances();
+  const {
+    balances,
+    isLoading: isBalancesLoading,
+    error: balancesError,
+  } = useBalances();
 
   const { fetchPricesForBalances } = usePricesFetcher();
-  const { prices, isLoading: isPricesLoading } = usePrices();
+  const { prices } = usePrices();
 
-  // Setup the debounced fetch prices function to prevent spamming the API
-  useEffect(() => {
-    debouncedFetchPricesRef.current = debounce(
-      (balancesData: Record<string, Balance>) => {
-        debug("Fetching prices (debounced)");
-
-        fetchPricesForBalances({
-          balances: balancesData,
-          publicKey,
-          network,
-        });
-      },
-      300,
-    ); // 300ms debounce time
-
-    // Clean up the debounced function on unmount
-    return () => {
-      if (debouncedFetchPricesRef.current?.cancel) {
-        debouncedFetchPricesRef.current.cancel();
+  // Cleanup timeout on unmount
+  useEffect(
+    () => () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
       }
-      debouncedFetchPricesRef.current = null;
-    };
-  }, [fetchPricesForBalances, publicKey, network]);
+    },
+    [],
+  );
 
-  // Function to fetch balances (used for both initial load and refresh)
+  // Function to fetch only the account balances
   const fetchBalances = useCallback(async () => {
-    debug("Fetching balances");
     await fetchAccountBalances({
       publicKey,
       network,
     });
+    // Don't fetch prices here - let the useEffect handle that
   }, [fetchAccountBalances, publicKey, network]);
 
-  // Fetch balances when component comes into focus
+  // Function to handle manual refresh with minimum display time for spinner
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    const refreshStartTime = Date.now();
+
+    fetchBalances().finally(() => {
+      const elapsedTime = Date.now() - refreshStartTime;
+      const remainingTime = Math.max(0, 1000 - elapsedTime);
+
+      // Keep spinner visible for at least 1 second for a smoother UX
+      refreshTimeoutRef.current = setTimeout(() => {
+        setIsRefreshing(false);
+        refreshTimeoutRef.current = null;
+      }, remainingTime);
+    });
+  }, [fetchBalances]);
+
+  // Fetch balances when component comes into focus (without showing spinner)
   useFocusEffect(
     useCallback(() => {
       fetchBalances();
     }, [fetchBalances]),
   );
 
-  // When balances change, fetch prices with debounce
+  // This will automatically run after fetchBalances has updated the balances state
   useEffect(() => {
+    // Check if balances is available and not empty
     if (balances && Object.keys(balances).length > 0) {
-      debouncedFetchPricesRef.current?.(balances);
+      debug("Fetching prices for tokens");
+
+      fetchPricesForBalances({
+        balances,
+        publicKey,
+        network,
+      });
     }
-  }, [balances]);
-
-  // Function to handle manual refresh
-  const handleRefresh = useCallback(() => {
-    setIsRefreshing(true);
-
-    fetchBalances().finally(() => {
-      setIsRefreshing(false);
-    });
-  }, [fetchBalances]);
+  }, [balances, fetchPricesForBalances, publicKey, network]);
 
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
@@ -186,8 +182,8 @@ export const BalancesList: React.FC = () => {
     );
   }
 
-  // Display error state if there's an error
-  if (error) {
+  // Display error state if there's an error loading balances
+  if (balancesError) {
     return (
       <EmptyState>
         <Text md>Error loading balances</Text>
@@ -255,7 +251,7 @@ export const BalancesList: React.FC = () => {
       keyExtractor={(item) => item.id}
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing || isBalancesLoading || isPricesLoading}
+          refreshing={isRefreshing}
           onRefresh={handleRefresh}
           tintColor="blue"
         />
