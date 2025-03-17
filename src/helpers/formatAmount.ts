@@ -23,7 +23,7 @@ export const formatAssetAmount = (
 
   const formatter = new Intl.NumberFormat("en-US", {
     useGrouping: true,
-    minimumFractionDigits: 0, // Only display decimals if needed
+    minimumFractionDigits: 2, // Always show at least 2 decimal places
     maximumFractionDigits: 20, // Support high precision if needed
   });
 
