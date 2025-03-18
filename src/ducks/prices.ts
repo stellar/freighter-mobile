@@ -87,35 +87,3 @@ export const usePricesStore = create<PricesState>((set) => ({
     }
   },
 }));
-
-/**
- * Use Prices Hook
- *
- * A selector hook that provides access to the current token prices, loading state,
- * error state, and the timestamp of when prices were last updated from the prices store.
- *
- * @returns {Object} The prices state object
- * @returns {TokenPricesMap} returns.prices - The token price data
- * @returns {boolean} returns.isLoading - Whether prices are currently being fetched
- * @returns {string | null} returns.error - Any error message, or null if no error
- * @returns {number | null} returns.lastUpdated - Timestamp of when prices were last updated
- */
-export const usePrices = () => {
-  const { prices, isLoading, error, lastUpdated } = usePricesStore();
-  return { prices, isLoading, error, lastUpdated };
-};
-
-/**
- * Use Prices Fetcher Hook
- *
- * A selector hook that provides the function to fetch token prices.
- * This hook is separated from usePrices to allow components to trigger
- * price fetching without necessarily needing to consume the price state.
- *
- * @returns {Object} Object containing the fetch function
- * @returns {Function} returns.fetchPricesForBalances - Function to fetch prices for tokens in balances
- */
-export const usePricesFetcher = () => {
-  const { fetchPricesForBalances } = usePricesStore();
-  return { fetchPricesForBalances };
-};

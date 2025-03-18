@@ -3,7 +3,7 @@ import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { Balance } from "config/types";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
-import { usePrices, usePricesFetcher } from "ducks/prices";
+import { usePricesStore } from "ducks/prices";
 import {
   isLiquidityPool,
   getTokenPriceFromBalance,
@@ -116,8 +116,11 @@ export const BalancesList: React.FC = () => {
     error: balancesError,
   } = useBalances();
 
-  const { fetchPricesForBalances } = usePricesFetcher();
-  const { prices, isLoading: isPricesLoading } = usePrices();
+  const {
+    fetchPricesForBalances,
+    prices,
+    isLoading: isPricesLoading,
+  } = usePricesStore();
 
   /**
    * Cleanup timeout on component unmount to prevent memory leaks
