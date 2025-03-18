@@ -57,11 +57,17 @@ export const fetchBalances = async ({
       "askCount",
       "spread",
     ]);
+
+    // Convert native balance identifier to "XLM" for consistency
+    if (bigizedBalances.native) {
+      bigizedBalances.XLM = bigizedBalances.native;
+      delete bigizedBalances.native;
+    }
   }
 
   return {
     ...data,
-    balances: bigizedBalances || data.balances,
+    balances: bigizedBalances,
   };
 };
 
@@ -109,7 +115,7 @@ export const fetchTokenPrices = async ({
   //   { tokens },
   // );
 
-  // Simulate network delay (1 second as requested)
+  // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
   await new Promise((resolve) => setTimeout(resolve, 500));
 

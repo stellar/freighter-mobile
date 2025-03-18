@@ -38,7 +38,7 @@ interface PricesState {
  * Handles fetching, storing, and error states for price data of tokens
  * held in user balances.
  */
-export const usePricesStore = create<PricesState>((set) => ({
+export const usePricesStore = create<PricesState>((set, get) => ({
   prices: {},
   isLoading: false,
   error: null,
@@ -77,7 +77,12 @@ export const usePricesStore = create<PricesState>((set) => ({
         lastUpdated: Date.now(),
       });
     } catch (error) {
+      // Preserve existing prices data in case of error
+      const currentPrices = get().prices;
+
       set({
+        // Keep the existing prices data
+        prices: currentPrices,
         error:
           error instanceof Error
             ? error.message

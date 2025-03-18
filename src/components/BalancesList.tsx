@@ -1,15 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
-import { Balance } from "config/types";
+import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
-import {
-  isLiquidityPool,
-  getTokenPriceFromBalance,
-  getLPShareCode,
-} from "helpers/balances";
-import { debug } from "helpers/debug";
 import {
   formatAssetAmount,
   formatFiatAmount,
@@ -81,9 +75,9 @@ const EmptyState = styled.View`
 `;
 
 /**
- * Extended Balance type with an id field for use in FlatList
+ * Extended PricedBalance type with an id field for use in FlatList
  */
-type BalanceItem = Balance & { id: string };
+type BalanceItem = PricedBalance & { id: string };
 
 /**
  * BalancesList Component
@@ -101,7 +95,8 @@ type BalanceItem = Balance & { id: string };
  */
 export const BalancesList: React.FC = () => {
   // TODO: Hardcoded values for testing, we'll get this from the wallet context
-  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ";
+  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ"; // with LP
+  // const publicKey = "GBDQO6LWQJBMWWPZV3SVGEFGX5CIBMPHQKU7HJZPWQWV6EWI6DKRP5WB"; // with Soroban Token
   const network = NETWORKS.TESTNET;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -111,16 +106,13 @@ export const BalancesList: React.FC = () => {
 
   const {
     balances,
+    pricedBalances,
     isLoading: isBalancesLoading,
     error: balancesError,
     fetchAccountBalances,
   } = useBalancesStore();
 
-  const {
-    fetchPricesForBalances,
-    prices,
-    isLoading: isPricesLoading,
-  } = usePricesStore();
+  const isPricesLoading = usePricesStore((state) => state.isLoading);
 
   /**
    * Cleanup timeout on component unmount to prevent memory leaks
@@ -137,7 +129,7 @@ export const BalancesList: React.FC = () => {
 
   /**
    * Fetches account balances for the current publicKey and network
-   * Does not fetch prices directly - this is handled by the useEffect that watches balances
+   * The store will handle fetching prices and calculating fiat values
    *
    * @returns {Promise<void>} Promise that resolves when balances are fetched
    */
@@ -146,7 +138,6 @@ export const BalancesList: React.FC = () => {
       publicKey,
       network,
     });
-    // Don't fetch prices here - let the useEffect handle that
   }, [fetchAccountBalances, publicKey, network]);
 
   /**
@@ -179,23 +170,6 @@ export const BalancesList: React.FC = () => {
     }, [fetchBalances]),
   );
 
-  /**
-   * Fetch token prices whenever balances are updated
-   * Only fetches if balances exist and are not empty
-   */
-  useEffect(() => {
-    // Check if balances is available and not empty
-    if (balances && Object.keys(balances).length > 0) {
-      debug("Fetching prices for tokens", "Balances: ", balances);
-
-      fetchPricesForBalances({
-        balances,
-        publicKey,
-        network,
-      });
-    }
-  }, [balances, fetchPricesForBalances, publicKey, network]);
-
   // Display error state if there's an error loading balances
   if (balancesError) {
     return (
@@ -217,7 +191,7 @@ export const BalancesList: React.FC = () => {
   }
 
   // Convert balances object to array for FlatList
-  const balanceItems: BalanceItem[] = Object.entries(balances).map(
+  const balanceItems: BalanceItem[] = Object.entries(pricedBalances).map(
     ([id, balance]) =>
       ({
         id,
@@ -234,51 +208,31 @@ export const BalancesList: React.FC = () => {
    * @param {BalanceItem} params.item - The balance item to render
    * @returns {JSX.Element} The rendered balance row
    */
-  const renderItem = ({ item }: { item: Balance & { id: string } }) => {
-    // Determine the asset code based on balance type
-    let assetCode: string;
-    let firstChar: string;
-
-    // Get price data from store
-    const priceData = getTokenPriceFromBalance(prices, item);
-    const currentPrice = priceData?.currentPrice;
-    const percentagePriceChange24h = priceData?.percentagePriceChange24h;
-
-    if (isLiquidityPool(item)) {
-      // Handle liquidity pool balances
-      assetCode = getLPShareCode(item);
-      firstChar = "LP";
-    } else {
-      // Handle regular asset balances
-      assetCode = item.token.code;
-      firstChar = assetCode.charAt(0);
-    }
-
-    // Calculate total value in USD
-    const fiatValue = item.total.multipliedBy(currentPrice || 0);
-
-    return (
-      <BalanceRow>
-        <LeftSection>
-          <IconPlaceholder>
-            <Text md>{firstChar}</Text>
-          </IconPlaceholder>
-          <AssetTextContainer>
-            <Text md>{assetCode}</Text>
-            <AmountText sm>{formatAssetAmount(item.total)}</AmountText>
-          </AssetTextContainer>
-        </LeftSection>
-        <RightSection>
-          <Text md>{currentPrice ? formatFiatAmount(fiatValue) : "—"}</Text>
-          <PriceChangeText sm isPositive={!percentagePriceChange24h?.lt(0)}>
-            {percentagePriceChange24h
-              ? formatPercentageAmount(percentagePriceChange24h)
-              : "—"}
-          </PriceChangeText>
-        </RightSection>
-      </BalanceRow>
-    );
-  };
+  const renderItem = ({ item }: { item: BalanceItem }) => (
+    <BalanceRow>
+      <LeftSection>
+        <IconPlaceholder>
+          <Text md>{item.firstChar}</Text>
+        </IconPlaceholder>
+        <AssetTextContainer>
+          <Text md>{item.displayName}</Text>
+          <AmountText sm>
+            {formatAssetAmount(item.total, item.tokenCode)}
+          </AmountText>
+        </AssetTextContainer>
+      </LeftSection>
+      <RightSection>
+        <Text md>
+          {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
+        </Text>
+        <PriceChangeText sm isPositive={!item.percentagePriceChange24h?.lt(0)}>
+          {item.percentagePriceChange24h
+            ? formatPercentageAmount(item.percentagePriceChange24h)
+            : "—"}
+        </PriceChangeText>
+      </RightSection>
+    </BalanceRow>
+  );
 
   return (
     <FlatList
