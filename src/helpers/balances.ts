@@ -5,7 +5,6 @@ import {
   NativeToken,
   AssetToken,
   TokenIdentifier,
-  Issuer,
   TokenPrice,
   TokenPricesMap,
 } from "config/types";
@@ -107,7 +106,7 @@ export const getTokenIdentifier = (
 
   // Asset token with issuer
   if ("code" in token && "issuer" in token) {
-    return `${token.code}:${(token.issuer as Issuer).key}`;
+    return `${token.code}:${token.issuer.key}`;
   }
 
   // Fallback for unknown types

@@ -2,8 +2,8 @@ import { AssetType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 
 export type NativeToken = {
-  type: AssetType;
-  code: string;
+  type: AssetType.native;
+  code: "XLM";
 };
 
 export type Issuer = {
@@ -14,9 +14,9 @@ export type Issuer = {
 };
 
 export type AssetToken = {
-  type: AssetType;
   code: string;
   issuer: Issuer;
+  type?: AssetType;
   anchorAsset?: string;
   numAccounts?: BigNumber;
   amount?: BigNumber;
@@ -27,39 +27,45 @@ export type AssetToken = {
 
 export type BaseBalance = {
   total: BigNumber;
+};
 
-  // for non-native tokens, this should be total - sellingLiabilities
-  // for native, it should also subtract the minimumBalance
-  // for liquidity pools, it doesn't exist
-  available?: BigNumber;
-
-  // for liquidity pools, this doesn't exist
-  buyingLiabilities?: string;
-  sellingLiabilities?: string;
-  contractId?: string;
+export type NativeBalance = BaseBalance & {
+  token: NativeToken;
+  // this should be total - sellingLiabilities - minimumBalance
+  available: BigNumber;
+  minimumBalance: BigNumber;
+  buyingLiabilities: string;
+  sellingLiabilities: string;
 
   // TODO: Handle blockaidData later once we add support for it
   // blockaidData: BlockAidScanAssetResult;
 };
 
-export type NativeBalance = BaseBalance & {
-  token: NativeToken;
-  minimumBalance: BigNumber;
-};
-
 export type ClassicBalance = BaseBalance & {
   token: AssetToken;
+  // this should be total - sellingLiabilities
+  available: BigNumber;
   limit: BigNumber;
+  buyingLiabilities: string;
+  sellingLiabilities: string;
   sponsor?: string;
+
+  // TODO: Handle blockaidData later once we add support for it
+  // blockaidData: BlockAidScanAssetResult;
 };
 
-export type SorobanBalance = ClassicBalance & {
+export type SorobanBalance = BaseBalance & {
+  token: AssetToken;
+  // this should be equal to total
+  available: BigNumber;
+  contractId: string;
   name: string;
   symbol: string;
   decimals: number;
 };
 
 // Liquidity Pool balances doesn't have a "token" property
+// but rather a list of tokens under the reserves property
 export type LiquidityPoolBalance = BaseBalance & {
   limit: BigNumber;
   liquidityPoolId: string;
