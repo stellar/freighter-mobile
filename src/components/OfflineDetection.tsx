@@ -1,6 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import { OfflineMessage } from "components/OfflineMessage";
-import { useNetworkStore, useIsOffline } from "config/store";
+import { useNetworkStore } from "config/store";
 import { debug } from "helpers/debug";
 import React, { useEffect } from "react";
 
@@ -9,9 +9,8 @@ interface Props {
 }
 
 export const OfflineDetection = ({ children }: Props) => {
-  const { isConnected, isInternetReachable, setNetworkInfo } =
+  const { isConnected, isInternetReachable, isOffline, setNetworkInfo } =
     useNetworkStore();
-  const isOffline = useIsOffline();
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((event) => {

@@ -3,6 +3,7 @@ import { create } from "zustand";
 interface NetworkState {
   isConnected: boolean;
   isInternetReachable: boolean;
+  isOffline: boolean;
   setNetworkInfo: (payload: {
     isConnected: boolean | null;
     isInternetReachable: boolean | null;
@@ -12,20 +13,13 @@ interface NetworkState {
 export const useNetworkStore = create<NetworkState>((set) => ({
   isConnected: true,
   isInternetReachable: true,
+  isOffline: false,
   setNetworkInfo: (payload) =>
-    set({
+    set((state) => ({
       isConnected: payload.isConnected ?? false,
       isInternetReachable: payload.isInternetReachable ?? false,
-    }),
+      isOffline:
+        !(payload.isConnected ?? state.isConnected) ||
+        !(payload.isInternetReachable ?? state.isInternetReachable),
+    })),
 }));
-
-// Helper hooks and selectors
-export const useNetworkInfo = () => {
-  const { isConnected, isInternetReachable } = useNetworkStore();
-  return { isConnected, isInternetReachable };
-};
-
-export const useIsOffline = () => {
-  const { isConnected, isInternetReachable } = useNetworkStore();
-  return !isConnected || !isInternetReachable;
-};
