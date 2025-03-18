@@ -2,7 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { Balance } from "config/types";
-import { useBalances, useBalancesFetcher } from "ducks/balances";
+import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import {
   isLiquidityPool,
@@ -109,12 +109,12 @@ export const BalancesList: React.FC = () => {
   // Reference to track refresh timeout
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { fetchAccountBalances } = useBalancesFetcher();
   const {
     balances,
     isLoading: isBalancesLoading,
     error: balancesError,
-  } = useBalances();
+    fetchAccountBalances,
+  } = useBalancesStore();
 
   const {
     fetchPricesForBalances,

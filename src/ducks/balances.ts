@@ -63,34 +63,3 @@ export const useBalancesStore = create<BalancesState>((set) => ({
     }
   },
 }));
-
-/**
- * Use Balances Hook
- *
- * A selector hook that provides access to the current balances, loading state,
- * and error state from the balances store.
- *
- * @returns {Object} The balances state object
- * @returns {Record<string, Balance>} returns.balances - The account balances
- * @returns {boolean} returns.isLoading - Whether balances are currently being fetched
- * @returns {string | null} returns.error - Any error message, or null if no error
- */
-export const useBalances = () => {
-  const { balances, isLoading, error } = useBalancesStore();
-  return { balances, isLoading, error };
-};
-
-/**
- * Use Balances Fetcher Hook
- *
- * A selector hook that provides the function to fetch account balances.
- * This hook is separated from useBalances to allow components to trigger
- * balance fetching without necessarily needing to consume the balance state.
- *
- * @returns {Object} Object containing the fetch function
- * @returns {Function} returns.fetchAccountBalances - Function to fetch account balances
- */
-export const useBalancesFetcher = () => {
-  const { fetchAccountBalances } = useBalancesStore();
-  return { fetchAccountBalances };
-};
