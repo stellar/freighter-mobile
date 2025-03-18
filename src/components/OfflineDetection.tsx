@@ -1,6 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import { OfflineMessage } from "components/OfflineMessage";
-import { useNetworkStore } from "config/store";
+import { useNetworkStore } from "ducks/networkInfo";
 import { debug } from "helpers/debug";
 import React, { useEffect } from "react";
 
