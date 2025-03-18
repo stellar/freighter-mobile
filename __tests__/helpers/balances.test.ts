@@ -1,6 +1,6 @@
 import { BigNumber } from "bignumber.js";
 import {
-  AssetBalance,
+  ClassicBalance,
   AssetToken,
   Balance,
   LiquidityPoolBalance,
@@ -28,7 +28,7 @@ describe("balances helpers", () => {
     minimumBalance: new BigNumber("1"),
   };
 
-  const assetBalance: AssetBalance = {
+  const assetBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {

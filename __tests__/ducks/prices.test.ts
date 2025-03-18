@@ -5,7 +5,7 @@ import { NETWORKS } from "config/constants";
 import {
   Balance,
   NativeBalance,
-  AssetBalance,
+  ClassicBalance,
   TokenPricesMap,
 } from "config/types";
 import { usePricesStore, usePrices, usePricesFetcher } from "ducks/prices";
@@ -41,7 +41,7 @@ describe("prices duck", () => {
     minimumBalance: new BigNumber("1"),
   };
 
-  const mockAssetBalance: AssetBalance = {
+  const mockAssetBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {

@@ -2,7 +2,7 @@ import { AssetType } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import { Balance, NativeBalance, AssetBalance } from "config/types";
+import { Balance, NativeBalance, ClassicBalance } from "config/types";
 import {
   useBalancesStore,
   useBalances,
@@ -30,7 +30,7 @@ describe("balances duck", () => {
     minimumBalance: new BigNumber("1"),
   };
 
-  const mockAssetBalance: AssetBalance = {
+  const mockAssetBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {

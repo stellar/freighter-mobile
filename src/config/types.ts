@@ -42,6 +42,23 @@ export type BaseBalance = {
   // blockaidData: BlockAidScanAssetResult;
 };
 
+export type NativeBalance = BaseBalance & {
+  token: NativeToken;
+  minimumBalance: BigNumber;
+};
+
+export type ClassicBalance = BaseBalance & {
+  token: AssetToken;
+  limit: BigNumber;
+  sponsor?: string;
+};
+
+export type SorobanBalance = ClassicBalance & {
+  name: string;
+  symbol: string;
+  decimals: number;
+};
+
 // Liquidity Pool balances doesn't have a "token" property
 export type LiquidityPoolBalance = BaseBalance & {
   limit: BigNumber;
@@ -49,33 +66,16 @@ export type LiquidityPoolBalance = BaseBalance & {
   reserves: Horizon.HorizonApi.Reserve[];
 };
 
-export type NativeBalance = BaseBalance & {
-  token: NativeToken;
-  minimumBalance: BigNumber;
-};
-
-export type AssetBalance = BaseBalance & {
-  token: AssetToken;
-  limit: BigNumber;
-  sponsor?: string;
-};
-
-export type TokenBalance = AssetBalance & {
-  name: string;
-  symbol: string;
-  decimals: number;
-};
+export type Balance =
+  | NativeBalance
+  | ClassicBalance
+  | SorobanBalance
+  | LiquidityPoolBalance;
 
 export type BalanceMap = {
   [balanceIdentifier: string]: Balance;
   native: NativeBalance;
 };
-
-export type Balance =
-  | AssetBalance
-  | TokenBalance
-  | NativeBalance
-  | LiquidityPoolBalance;
 
 /**
  * Price data for a single token

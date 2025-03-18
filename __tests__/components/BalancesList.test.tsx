@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalancesList } from "components/BalancesList";
 import { NETWORKS } from "config/constants";
-import { AssetBalance, NativeBalance } from "config/types";
+import { ClassicBalance, NativeBalance } from "config/types";
 import { useBalances, useBalancesFetcher } from "ducks/balances";
 import { usePrices, usePricesFetcher } from "ducks/prices";
 import * as balancesHelpers from "helpers/balances";
@@ -93,7 +93,7 @@ describe("BalancesList", () => {
     minimumBalance: new BigNumber("1"),
   };
 
-  const mockAssetBalance: AssetBalance = {
+  const mockAssetBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {
