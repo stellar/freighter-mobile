@@ -1,6 +1,7 @@
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { getDefaultConfig, mergeConfig } = require("@react-native/metro-config");
+const { mergeConfig } = require("@react-native/metro-config");
+const { getDefaultConfig } = require("expo/metro-config");
 
 /**
  * Metro configuration
