@@ -125,7 +125,7 @@ export const getTokenIdentifier = (
  *
  * @example
  * // Get token identifiers from account balances
- * const { balances } = useBalances();
+ * const { balances } = useBalancesStore();
  * const tokenIds = getTokenIdentifiersFromBalances(balances);
  * // tokenIds might be ["XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"]
  */
@@ -152,14 +152,14 @@ export const getTokenIdentifiersFromBalances = (
  * to a token identifier, then retrieving the corresponding price data from the
  * prices map. It handles cases where the token might not exist in the prices map.
  *
- * @param {TokenPricesMap} prices - The prices map from usePrices()
+ * @param {TokenPricesMap} prices - The prices map from usePricesStore()
  * @param {Balance} balance - Balance object to find the price for
  * @returns {TokenPrice | null} The price data or null if not found
  *
  * @example
  * // Get price using balance object
- * const { prices } = usePrices();
- * const { balances } = useBalances();
+ * const { prices } = usePricesStore();
+ * const { balances } = useBalancesStore();
  * const nativeBalance = balances["native"];
  * const xlmPrice = getTokenPriceFromBalance(prices, nativeBalance);
  *

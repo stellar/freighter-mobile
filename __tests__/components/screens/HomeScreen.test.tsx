@@ -14,15 +14,24 @@ jest.mock("@react-navigation/native", () => ({
   })),
 }));
 
-// Mock the balance fetcher
+// Mock the stores
 jest.mock("ducks/balances", () => ({
-  useBalancesFetcher: jest.fn(() => ({
-    fetchAccountBalances: jest.fn(),
-  })),
-  useBalances: jest.fn(() => ({
+  useBalancesStore: jest.fn(() => ({
     balances: {},
+    pricedBalances: {},
     isLoading: false,
     error: null,
+    fetchAccountBalances: jest.fn(),
+  })),
+}));
+
+jest.mock("ducks/prices", () => ({
+  usePricesStore: jest.fn(() => ({
+    prices: {},
+    isLoading: false,
+    error: null,
+    lastUpdated: null,
+    fetchPricesForBalances: jest.fn(),
   })),
 }));
 

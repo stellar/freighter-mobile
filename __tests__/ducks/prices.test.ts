@@ -2,13 +2,8 @@ import { AssetType } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import {
-  Balance,
-  NativeBalance,
-  ClassicBalance,
-  TokenPricesMap,
-} from "config/types";
-import { usePricesStore, usePrices, usePricesFetcher } from "ducks/prices";
+import { Balance, NativeBalance, ClassicBalance } from "config/types";
+import { usePricesStore } from "ducks/prices";
 import * as balancesHelpers from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
 
@@ -30,47 +25,53 @@ describe("prices duck", () => {
     typeof fetchTokenPrices
   >;
 
-  // Mock balances
-  const mockNativeBalance: NativeBalance = {
-    token: {
-      code: "XLM",
-      type: "native" as AssetType,
-    },
-    total: new BigNumber("100.5"),
-    available: new BigNumber("100.5"),
-    minimumBalance: new BigNumber("1"),
-  };
-
-  const mockAssetBalance: ClassicBalance = {
-    token: {
-      code: "USDC",
-      issuer: {
-        key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  // Helper function to create mock balances
+  const createMockBalances = () => {
+    const mockNativeBalance: NativeBalance = {
+      token: {
+        code: "XLM",
+        type: "native" as const, // Fix the type issue
       },
-      type: "credit_alphanum4" as AssetType,
-    },
-    total: new BigNumber("200"),
-    available: new BigNumber("200"),
-    limit: new BigNumber("1000"),
-  };
+      total: new BigNumber("100.5"),
+      available: new BigNumber("100.5"),
+      minimumBalance: new BigNumber("1"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    };
 
-  // Define type to satisfy the linter
-  type MockBalanceRecord = Record<string, Balance> & { native: NativeBalance };
+    const mockAssetBalance: ClassicBalance = {
+      token: {
+        code: "USDC",
+        issuer: {
+          key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+        type: "credit_alphanum4" as AssetType,
+      },
+      total: new BigNumber("200"),
+      available: new BigNumber("200"),
+      limit: new BigNumber("1000"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    };
 
-  const mockBalances: MockBalanceRecord = {
-    native: mockNativeBalance,
-    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+    // Define type to satisfy the linter
+    type MockBalanceRecord = Record<string, Balance> & {
+      native: NativeBalance;
+    };
+
+    return {
+      mockNativeBalance,
       mockAssetBalance,
+      mockBalances: {
+        native: mockNativeBalance,
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          mockAssetBalance,
+      } as MockBalanceRecord,
+    };
   };
 
-  // Mock token identifiers
-  const mockTokenIdentifiers = [
-    "XLM",
-    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-  ];
-
-  // Mock token prices
-  const mockPrices: TokenPricesMap = {
+  // Helper function to create mock prices
+  const createMockPrices = () => ({
     XLM: {
       currentPrice: new BigNumber("0.5"),
       percentagePriceChange24h: new BigNumber("0.02"),
@@ -79,7 +80,16 @@ describe("prices duck", () => {
       currentPrice: new BigNumber("1"),
       percentagePriceChange24h: new BigNumber("-0.01"),
     },
-  };
+  });
+
+  const { mockBalances } = createMockBalances();
+  const mockPrices = createMockPrices();
+
+  // Mock token identifiers
+  const mockTokenIdentifiers = [
+    "XLM",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
 
   const mockParams = {
     balances: mockBalances,
@@ -162,40 +172,69 @@ describe("prices duck", () => {
       expect(mockFetchTokenPrices).not.toHaveBeenCalled();
     });
 
-    it("should update error state when fetch fails with Error instance", async () => {
-      const errorMessage = "Network error";
-      mockFetchTokenPrices.mockRejectedValueOnce(new Error(errorMessage));
+    describe("error handling", () => {
+      it("should update error state when fetch fails with Error instance", async () => {
+        const errorMessage = "Network error";
+        mockFetchTokenPrices.mockRejectedValueOnce(new Error(errorMessage));
 
-      const { result } = renderHook(() => usePricesStore());
+        const { result } = renderHook(() => usePricesStore());
 
-      await act(async () => {
-        await result.current.fetchPricesForBalances(mockParams);
+        await act(async () => {
+          await result.current.fetchPricesForBalances(mockParams);
+        });
+
+        expect(result.current.prices).toEqual({});
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe(errorMessage);
+        expect(result.current.lastUpdated).toBeNull();
       });
 
-      expect(result.current.prices).toEqual({});
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(errorMessage);
-      expect(result.current.lastUpdated).toBeNull();
-    });
+      it("should update error state when fetch fails with non-Error", async () => {
+        mockFetchTokenPrices.mockRejectedValueOnce("Some non-error rejection");
 
-    it("should update error state when fetch fails with non-Error", async () => {
-      mockFetchTokenPrices.mockRejectedValueOnce("Some non-error rejection");
+        const { result } = renderHook(() => usePricesStore());
 
-      const { result } = renderHook(() => usePricesStore());
+        await act(async () => {
+          await result.current.fetchPricesForBalances(mockParams);
+        });
 
-      await act(async () => {
-        await result.current.fetchPricesForBalances(mockParams);
+        expect(result.current.prices).toEqual({});
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe("Failed to fetch token prices");
+        expect(result.current.lastUpdated).toBeNull();
       });
 
-      expect(result.current.prices).toEqual({});
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe("Failed to fetch token prices");
-      expect(result.current.lastUpdated).toBeNull();
+      it("should preserve existing prices when fetch fails", async () => {
+        // First set some prices
+        const mockLastUpdated = Date.now();
+        act(() => {
+          usePricesStore.setState({
+            prices: mockPrices,
+            isLoading: false,
+            error: null,
+            lastUpdated: mockLastUpdated,
+          });
+        });
+
+        // Then simulate a failed fetch
+        mockFetchTokenPrices.mockRejectedValueOnce(new Error("Network error"));
+
+        const { result } = renderHook(() => usePricesStore());
+
+        await act(async () => {
+          await result.current.fetchPricesForBalances(mockParams);
+        });
+
+        expect(result.current.prices).toEqual(mockPrices);
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe("Network error");
+        expect(result.current.lastUpdated).toBe(mockLastUpdated);
+      });
     });
   });
 
   describe("selector hooks", () => {
-    it("usePrices should return correct values", () => {
+    it("should have correct state values", () => {
       const mockLastUpdated = Date.now();
 
       act(() => {
@@ -207,7 +246,7 @@ describe("prices duck", () => {
         });
       });
 
-      const { result } = renderHook(() => usePrices());
+      const { result } = renderHook(() => usePricesStore());
 
       expect(result.current.prices).toEqual(mockPrices);
       expect(result.current.isLoading).toBe(true);
@@ -215,8 +254,8 @@ describe("prices duck", () => {
       expect(result.current.lastUpdated).toBe(mockLastUpdated);
     });
 
-    it("usePricesFetcher should return fetchPricesForBalances function", async () => {
-      const { result } = renderHook(() => usePricesFetcher());
+    it("should have fetchPricesForBalances function", async () => {
+      const { result } = renderHook(() => usePricesStore());
 
       expect(typeof result.current.fetchPricesForBalances).toBe("function");
 
