@@ -39,11 +39,17 @@
     "defaultActionButtonText": "Continue",
     "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
   },
+  "importWalletScreen": {
+    "title": "Import Wallet",
+    "textAreaPlaceholder": "Enter recovery phrase",
+    "textAreaNote": "Phrases are usually 12 or 24 words",
+    "defaultActionButtonText": "Import wallet"
+  },
   "onboarding": {
     "continue": "Continue",
-    "testButton": "Test Button with Icon",
     "typePassword": "Type your password",
-    "typePasswordNote": "Minimum 8 characters"
+    "typePasswordNote": "Minimum 8 characters",
+    "pastFromClipboard": "Paste from clipboard"
   },
   "discovery": {
     "title": "Discovery"

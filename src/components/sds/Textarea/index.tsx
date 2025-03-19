@@ -2,7 +2,7 @@ import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React from "react";
-import { TextInput } from "react-native";
+import { Platform, TextInput } from "react-native";
 import styled from "styled-components/native";
 
 export interface TextareaProps
@@ -17,7 +17,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 10,
     gap: 6,
     borderRadius: 4,
-    lines: 3,
+    lines: 2,
   },
   md: {
     fontSize: 14,
@@ -26,7 +26,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 12,
     gap: 8,
     borderRadius: 6,
-    lines: 5,
+    lines: 3,
   },
   lg: {
     fontSize: 16,
@@ -35,7 +35,7 @@ const TEXTAREA_SIZES = {
     paddingHorizontal: 14,
     gap: 8,
     borderRadius: 8,
-    lines: 7,
+    lines: 4,
   },
 } as const;
 
@@ -81,6 +81,14 @@ const StyledTextInput = styled.TextInput<Pick<StyledProps, "$fieldSize">>`
     px(TEXTAREA_SIZES[$fieldSize].paddingHorizontal)};
   padding-vertical: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
     px(TEXTAREA_SIZES[$fieldSize].paddingVertical)};
+  font-family: ${Platform.select({
+    ios: "Inter-Variable",
+    android: "Inter-Regular",
+  })};
+  font-weight: ${Platform.select({
+    ios: "400",
+    android: "normal",
+  })};
 `;
 
 const FieldNoteWrapper = styled.View`

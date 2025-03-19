@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
+import { PALETTE, THEME } from "config/theme";
+import { px, pxValue } from "helpers/dimensions";
 import { t } from "i18next";
 import React from "react";
 import {
@@ -24,6 +25,8 @@ interface OnboardLayoutProps {
   onPressDefaultActionButton?: () => void;
   isDefaultActionButtonDisabled?: boolean;
   defaultActionButtonText?: string;
+  hasClipboardButton?: boolean;
+  onPressClipboardButton?: () => Promise<void>;
 }
 
 interface StyledProps {
@@ -89,10 +92,16 @@ const StyledScrollView = styled(ScrollView).attrs(
   background-color: ${THEME.colors.background.default};
 `;
 
+const StyledFooterButtonContainer = styled.View`
+  gap: ${px(12)};
+`;
+
 interface DefaultFooterProps {
   onPressDefaultActionButton?: () => void;
   isDefaultActionButtonDisabled?: boolean;
   defaultActionButtonText?: string;
+  hasClipboardButton?: boolean;
+  onPressClipboardButton?: () => Promise<void>;
 }
 
 /**
@@ -109,20 +118,40 @@ interface DefaultFooterProps {
  * @param {() => void} [props.onPressDefaultActionButton] - Callback when the action button is pressed.
  * @param {boolean} [props.isDefaultActionButtonDisabled] - Flag to disable the action button.
  * @param {string} [props.defaultActionButtonText="Continue"] - Text to display on the action button.
+ * @param {boolean} [props.hasClipboardButton] - Flag to display a clipboard button in the footer.
+ * @param {() => void} [props.onPressClipboardButton] - Callback when the clipboard button is pressed.
  */
 const DefaultFooter: React.FC<DefaultFooterProps> = ({
   onPressDefaultActionButton,
   isDefaultActionButtonDisabled,
   defaultActionButtonText = t("onboarding.continue"),
+  hasClipboardButton = false,
+  onPressClipboardButton,
 }) => (
-  <Button
-    tertiary
-    lg
-    onPress={onPressDefaultActionButton}
-    disabled={isDefaultActionButtonDisabled}
-  >
-    {defaultActionButtonText}
-  </Button>
+  <StyledFooterButtonContainer>
+    {hasClipboardButton && (
+      <Button
+        secondary
+        lg
+        isFullWidth
+        testID="clipboard-button"
+        onPress={onPressClipboardButton as () => void}
+        icon={
+          <Icon.Clipboard size={pxValue(16)} color={PALETTE.dark.gray["09"]} />
+        }
+      >
+        {t("onboarding.pastFromClipboard")}
+      </Button>
+    )}
+    <Button
+      tertiary
+      lg
+      onPress={onPressDefaultActionButton}
+      disabled={isDefaultActionButtonDisabled}
+    >
+      {defaultActionButtonText}
+    </Button>
+  </StyledFooterButtonContainer>
 );
 
 /**
@@ -150,6 +179,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
  * @param {() => void} [props.onPressDefaultActionButton] - Optional callback for the default action button press.
  * @param {boolean} [props.isDefaultActionButtonDisabled] - Optional flag to disable the default action button.
  * @param {string} [props.defaultActionButtonText="Continue"] - Optional text for the default action button.
+ * @param {boolean} [props.hasClipboardButton] - Optional flag to display a clipboard button in the footer.
+ * @param {() => Promise<void>} [props.onPressClipboardButton] - Optional callback for the clipboard button press.
  */
 export const OnboardLayout = ({
   children,
@@ -160,6 +191,8 @@ export const OnboardLayout = ({
   onPressDefaultActionButton,
   isDefaultActionButtonDisabled,
   defaultActionButtonText,
+  hasClipboardButton,
+  onPressClipboardButton,
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
 
@@ -183,6 +216,8 @@ export const OnboardLayout = ({
                 onPressDefaultActionButton={onPressDefaultActionButton}
                 isDefaultActionButtonDisabled={isDefaultActionButtonDisabled}
                 defaultActionButtonText={defaultActionButtonText}
+                hasClipboardButton={hasClipboardButton}
+                onPressClipboardButton={onPressClipboardButton}
               />
             )}
           </FooterContainer>
