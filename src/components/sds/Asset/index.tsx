@@ -112,12 +112,13 @@ export type AssetSource = {
 /**
  * Base props for the Asset component
  *
- * @property {AssetSize} size - Size variant for the component ("sm", "md", or "lg")
+ * @property {AssetSize} [size] - Size variant for the component ("sm", "md", or "lg").
+ *   Defaults to "lg" if not specified.
  * @property {AssetSource} sourceOne - Primary asset source configuration
  */
 export type AssetBaseProps = {
-  /** Asset size */
-  size: AssetSize;
+  /** Asset size (defaults to "lg" if not specified) */
+  size?: AssetSize;
   /** First asset source */
   sourceOne: AssetSource;
 };
@@ -347,18 +348,17 @@ const AssetImage = styled.Image`
  *
  * @param {AssetProps} props - The component props
  * @param {AssetVariant} props.variant - Display variant: "single", "swap", "pair", or "platform"
- * @param {AssetSize} props.size - Size variant: "sm", "md", or "lg"
+ * @param {AssetSize} [props.size] - Size variant: "sm", "md", or "lg". Defaults to "lg" if not specified.
  * @param {AssetSource} props.sourceOne - Primary asset source properties
  * @param {AssetSource} [props.sourceTwo] - Secondary asset source (required for multi-asset variants)
  * @returns {JSX.Element} The rendered Asset component
  *
  * @example
- * // Single asset with local image
+ * // Single asset with local image (using default size "lg")
  * import { logos } from "assets/logos";
  *
  * <Asset
  *   variant="single"
- *   size="md"
  *   sourceOne={{
  *     image: logos.stellar,
  *     altText: "Stellar Logo",
@@ -367,7 +367,7 @@ const AssetImage = styled.Image`
  * />
  *
  * @example
- * // Token swap representation
+ * // Token swap representation with explicitly set size
  * <Asset
  *   variant="swap"
  *   size="md"
@@ -413,7 +413,7 @@ const AssetImage = styled.Image`
  */
 export const Asset: React.FC<AssetProps> = ({
   variant,
-  size,
+  size = "lg",
   sourceOne,
   sourceTwo,
 }: AssetProps) => {

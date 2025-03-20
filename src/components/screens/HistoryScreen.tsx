@@ -31,7 +31,6 @@ export const HistoryScreen = () => {
         <View style={{ height: 40 }} />
         <Asset
           variant="single"
-          size="lg"
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
@@ -43,7 +42,6 @@ export const HistoryScreen = () => {
 
         <Asset
           variant="swap"
-          size="lg"
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
@@ -58,7 +56,6 @@ export const HistoryScreen = () => {
 
         <Asset
           variant="pair"
-          size="lg"
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
@@ -73,7 +70,6 @@ export const HistoryScreen = () => {
 
         <Asset
           variant="platform"
-          size="lg"
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
