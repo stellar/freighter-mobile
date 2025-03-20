@@ -113,4 +113,32 @@ describe("Asset", () => {
     const image = getByLabelText("Asset 1");
     expect(image).toBeTruthy();
   });
+
+  it("handles both remote URLs and local image imports", () => {
+    // Mock a local image import
+    const localImage = { uri: "test" }; // Simplified mock of an imported image
+
+    const { getByLabelText } = render(
+      <Asset
+        variant="single"
+        size="md"
+        sourceOne={{
+          image: localImage, // Test with "imported" image
+          altText: "Local Asset",
+        }}
+      />,
+    );
+
+    const image = getByLabelText("Local Asset");
+    expect(image.props.source).toBe(localImage); // Should pass the object directly
+  });
+
+  it("applies accessibility props correctly", () => {
+    const { getByLabelText } = render(
+      <Asset variant="single" size="md" sourceOne={mockSourceOne} />,
+    );
+
+    const image = getByLabelText("Asset 1");
+    expect(image.props.accessibilityLabel).toBe("Asset 1");
+  });
 });
