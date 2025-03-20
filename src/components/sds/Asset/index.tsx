@@ -1,6 +1,7 @@
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import React from "react";
+import { ImageSourcePropType } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -70,7 +71,7 @@ type AssetVariant = "single" | "swap" | "pair" | "platform";
 /** */
 export type AssetSource = {
   /** Image URL */
-  image: string;
+  image: ImageSourcePropType | string;
   /** Image alt text (for accessibility) */
   altText: string;
   /** Custom background color */
