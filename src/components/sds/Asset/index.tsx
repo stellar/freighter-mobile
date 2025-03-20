@@ -65,14 +65,14 @@ const ASSET_SIZES = {
   lg: {
     single: 40,
     swap: {
-      size: 28,
+      size: 30,
       containerWidth: 40,
       containerHeight: 40,
     },
     pair: {
-      size: 28,
+      size: 26,
       containerWidth: 40,
-      containerHeight: 28,
+      containerHeight: 26,
     },
     platform: {
       size: 40,
