@@ -1,9 +1,11 @@
-import RecoveryPhraseWarningBox from "components/RecoveryPhraseWarningBox";
+import { logos } from "assets/logos";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Asset } from "components/sds/Asset";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
+import { View } from "react-native";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -26,7 +28,70 @@ export const HistoryScreen = () => {
       <Container>
         <ScreenText>{t("history.title")}</ScreenText>
 
-        <RecoveryPhraseWarningBox />
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="single"
+          size="lg"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+            backgroundColor: "#fff",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="swap"
+          size="lg"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+            backgroundColor: "#fff",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+            backgroundColor: "#2775CA",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="pair"
+          size="lg"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+            backgroundColor: "#fff",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+            backgroundColor: "#2775CA",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="platform"
+          size="lg"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+            backgroundColor: "#fff",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+            backgroundColor: "#2775CA",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
       </Container>
     </BaseLayout>
   );
