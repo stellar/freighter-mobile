@@ -1,6 +1,7 @@
-/* eslint-disable global-require */
+/* eslint-disable @fnando/consistent-import/consistent-import */
+// Export all logo assets from this file for easy importing
+import stellarLogo from "./stellar-logo.png";
 
-// Export all PNG logo assets from this file for easy importing
 export const logos = {
-  stellar: require("./stellar-logo.png"),
+  stellar: stellarLogo,
 };
