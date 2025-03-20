@@ -29,14 +29,13 @@ export const HistoryScreen = () => {
         <ScreenText>{t("history.title")}</ScreenText>
 
         <View style={{ height: 40 }} />
-
         <Asset
           variant="single"
           size="lg"
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
-            backgroundColor: "#fff",
+            backgroundColor: "#041A40", // Optional background color
           }}
         />
 
@@ -48,12 +47,10 @@ export const HistoryScreen = () => {
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
-            backgroundColor: "#fff",
           }}
           sourceTwo={{
             image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
             altText: "USDC Logo",
-            backgroundColor: "#2775CA",
           }}
         />
 
@@ -65,12 +62,10 @@ export const HistoryScreen = () => {
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
-            backgroundColor: "#fff",
           }}
           sourceTwo={{
             image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
             altText: "USDC Logo",
-            backgroundColor: "#2775CA",
           }}
         />
 
@@ -82,12 +77,10 @@ export const HistoryScreen = () => {
           sourceOne={{
             image: logos.stellar,
             altText: "Stellar Logo",
-            backgroundColor: "#fff",
           }}
           sourceTwo={{
             image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
             altText: "USDC Logo",
-            backgroundColor: "#2775CA",
           }}
         />
 
