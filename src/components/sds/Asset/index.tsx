@@ -8,6 +8,23 @@ import styled from "styled-components/native";
 // Constants and types
 // =============================================================================
 
+/**
+ * Size configurations for the Asset component
+ *
+ * Defines the dimensions and spacing for different size variants and display modes.
+ * All measurements are in pixels before scaling.
+ *
+ * Each size variant ("sm", "md", "lg") contains:
+ * - `single`: Dimension for single asset display
+ * - `swap`: Settings for the swap variant (two assets with second overlapping)
+ * - `pair`: Settings for the pair variant (two assets side by side)
+ * - `platform`: Settings for the platform variant (main asset with smaller platform logo)
+ *
+ * Each variant configuration includes:
+ * - `size`: The dimension of the individual asset
+ * - `containerWidth`: Total width of the component
+ * - `containerHeight`: Total height of the component
+ */
 const ASSET_SIZES = {
   sm: {
     single: 16,
@@ -65,10 +82,24 @@ const ASSET_SIZES = {
   },
 } as const;
 
+/** Size variants for the Asset component: "sm", "md", or "lg" */
 type AssetSize = keyof typeof ASSET_SIZES;
+
+/** Display variants for asset presentation: single asset, swap, pair, or platform */
 type AssetVariant = "single" | "swap" | "pair" | "platform";
 
-/** */
+/**
+ * Asset source configuration
+ *
+ * Defines the properties needed to display an asset image.
+ *
+ * @property {ImageSourcePropType | string} image - The image source - can be either:
+ *   - An imported image (e.g., `logos.stellar`)
+ *   - A remote URL as string (e.g., "https://example.com/logo.png")
+ * @property {string} altText - Accessible description of the image for screen readers
+ * @property {string} [backgroundColor] - Optional custom background color for the asset
+ *   (defaults to the theme's background color if not provided)
+ */
 export type AssetSource = {
   /** Image URL */
   image: ImageSourcePropType | string;
@@ -78,7 +109,12 @@ export type AssetSource = {
   backgroundColor?: string;
 };
 
-/** */
+/**
+ * Base props for the Asset component
+ *
+ * @property {AssetSize} size - Size variant for the component ("sm", "md", or "lg")
+ * @property {AssetSource} sourceOne - Primary asset source configuration
+ */
 export type AssetBaseProps = {
   /** Asset size */
   size: AssetSize;
@@ -86,14 +122,26 @@ export type AssetBaseProps = {
   sourceOne: AssetSource;
 };
 
-/** */
+/**
+ * Props for a single asset display
+ *
+ * Used when displaying a standalone token/asset image.
+ */
 export type SingleAssetProps = {
   /** Asset or asset pair variant */
   variant: "single";
   sourceTwo?: undefined;
 };
 
-/** */
+/**
+ * Props for multi-asset display variants
+ *
+ * Used for "swap", "pair", and "platform" variants where two assets
+ * are displayed together with different positioning.
+ *
+ * @property {AssetSource} sourceTwo - Secondary asset source configuration,
+ *   displayed with positioning based on the selected variant
+ */
 export type MultiAssetProps = {
   /** Asset or asset pair variant */
   variant: "swap" | "pair" | "platform";
@@ -101,7 +149,12 @@ export type MultiAssetProps = {
   sourceTwo: AssetSource;
 };
 
-/** */
+/**
+ * Combined props for the Asset component
+ *
+ * Allows the component to accept different prop combinations based on
+ * the selected variant, ensuring type safety and proper prop validation.
+ */
 export type AssetProps = (SingleAssetProps | MultiAssetProps) & AssetBaseProps;
 
 // =============================================================================
@@ -271,7 +324,90 @@ const AssetImage = styled.Image`
 // =============================================================================
 
 /**
- * An asset image displayed in a circle from a URL source. The component can accept multiple sources to show a currency pair, for example.
+ * Asset Component
+ *
+ * A flexible component for displaying asset images (tokens, cryptocurrencies, etc.)
+ * in a consistent circular format with various presentation options.
+ *
+ * Features:
+ * - Multiple size variants: "sm", "md", and "lg" to fit different UI contexts
+ * - Four display variants:
+ *   - "single": displays a single asset (for individual tokens)
+ *   - "swap": displays two assets with the second overlapping in bottom-right (for token swaps)
+ *   - "pair": displays two assets side by side (for trading pairs)
+ *   - "platform": displays two assets with a platform logo overlaid (for protocol assets)
+ * - Supports both local assets (imported from the asset system) and remote images (URLs)
+ * - Consistent styling with border and background
+ * - Customizable background colors for specific assets
+ *
+ * The component handles proper positioning and sizing internally, adapting to the
+ * selected variant and ensuring assets are displayed with the correct visual hierarchy.
+ *
+ * @param {AssetProps} props - The component props
+ * @param {AssetVariant} props.variant - Display variant: "single", "swap", "pair", or "platform"
+ * @param {AssetSize} props.size - Size variant: "sm", "md", or "lg"
+ * @param {AssetSource} props.sourceOne - Primary asset source properties
+ * @param {AssetSource} [props.sourceTwo] - Secondary asset source (required for multi-asset variants)
+ * @returns {JSX.Element} The rendered Asset component
+ *
+ * @example
+ * // Single asset with local image
+ * import { logos } from "assets/logos";
+ *
+ * <Asset
+ *   variant="single"
+ *   size="md"
+ *   sourceOne={{
+ *     image: logos.stellar,
+ *     altText: "Stellar Logo",
+ *     backgroundColor: "#041A40" // Optional background color
+ *   }}
+ * />
+ *
+ * @example
+ * // Token swap representation
+ * <Asset
+ *   variant="swap"
+ *   size="md"
+ *   sourceOne={{
+ *     image: logos.stellar,
+ *     altText: "Stellar Logo"
+ *   }}
+ *   sourceTwo={{
+ *     image: "https://example.com/usdc-logo.png",
+ *     altText: "USDC Logo"
+ *   }}
+ * />
+ *
+ * @example
+ * // Trading pair representation
+ * <Asset
+ *   variant="pair"
+ *   size="lg"
+ *   sourceOne={{
+ *     image: logos.stellar,
+ *     altText: "Stellar Logo"
+ *   }}
+ *   sourceTwo={{
+ *     image: "https://example.com/usdc-logo.png",
+ *     altText: "USDC Logo"
+ *   }}
+ * />
+ *
+ * @example
+ * // Platform asset representation
+ * <Asset
+ *   variant="platform"
+ *   size="lg"
+ *   sourceOne={{
+ *     image: "https://example.com/token-logo.png",
+ *     altText: "Token Logo"
+ *   }}
+ *   sourceTwo={{
+ *     image: logos.stellar,
+ *     altText: "Stellar Platform Logo"
+ *   }}
+ * />
  */
 export const Asset: React.FC<AssetProps> = ({
   variant,
