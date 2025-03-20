@@ -63,21 +63,21 @@ const ASSET_SIZES = {
     },
   },
   lg: {
-    single: 32,
+    single: 40,
     swap: {
-      size: 24,
-      containerWidth: 32,
-      containerHeight: 32,
+      size: 28,
+      containerWidth: 40,
+      containerHeight: 40,
     },
     pair: {
-      size: 24,
-      containerWidth: 36,
-      containerHeight: 24,
+      size: 28,
+      containerWidth: 40,
+      containerHeight: 28,
     },
     platform: {
-      size: 32,
-      containerWidth: 32,
-      containerHeight: 32,
+      size: 40,
+      containerWidth: 40,
+      containerHeight: 40,
     },
   },
 } as const;
@@ -229,12 +229,14 @@ const getBorderRadius = (
 };
 
 // Helper to get position styles for second asset
-const getSecondAssetPositionStyles = (
-  $variant: AssetVariant,
-  $isSecond?: boolean,
-) => {
+const getAssetPositionStyle = ($variant: AssetVariant, $isSecond?: boolean) => {
   if (!$isSecond) {
-    return "";
+    return `
+      position: absolute;
+      z-index: 1;
+      left: 0;
+      top: 0;
+    `;
   }
 
   if ($variant === "swap") {
@@ -311,7 +313,7 @@ const AssetImageContainer = styled.View<AssetImageContainerProps>`
   overflow: hidden;
 
   ${(props: AssetImageContainerProps) =>
-    getSecondAssetPositionStyles(props.$variant, props.$isSecond)}
+    getAssetPositionStyle(props.$variant, props.$isSecond)}
 `;
 
 const AssetImage = styled.Image`
