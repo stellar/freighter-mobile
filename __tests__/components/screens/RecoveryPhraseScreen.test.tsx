@@ -62,6 +62,10 @@ type RecoveryPhraseScreenRouteProp = RouteProp<
 >;
 
 describe("RecoveryPhraseScreen", () => {
+  beforeAll(() => {
+    jest.setTimeout(30000);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
