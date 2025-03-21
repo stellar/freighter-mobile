@@ -1,69 +1,259 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import { fireEvent } from "@testing-library/react-native";
+import { RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
-import { AUTH_STACK_ROUTES } from "config/routes";
-import { renderWithProviders } from "helpers/testUtils";
+import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
+import { generateMnemonic } from "stellar-hd-wallet";
 
-const mockNavigate = jest.fn();
+jest.mock("@react-native-clipboard/clipboard", () => ({
+  setString: jest.fn(),
+}));
+
+jest.mock("stellar-hd-wallet", () => ({
+  generateMnemonic: jest.fn(
+    () =>
+      "test phrase one two three four five six seven eight nine ten eleven twelve",
+  ),
+}));
+
+jest.mock("hooks/useAppTranslation", () => () => ({
+  t: (key: string) => {
+    const translations: Record<string, string> = {
+      "recoveryPhraseScreen.title": "Recovery Phrase",
+      "recoveryPhraseScreen.warning":
+        "Write down these words in order and store them in a safe place",
+      "recoveryPhraseScreen.defaultActionButtonText": "Continue",
+      "recoveryPhraseScreen.footerNoteText": "Keep your recovery phrase safe",
+      "recoveryPhraseScreen.copyButtonText": "Copy",
+    };
+    return translations[key] || key;
+  },
+}));
+
+const mockSignUp = jest.fn();
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(() => ({
+    signUp: mockSignUp,
+    error: null,
+    isLoading: false,
+  })),
+}));
+
+const mockNavigation = {
+  navigate: jest.fn(),
+};
+
+const mockRoute = {
+  params: {
+    password: "test-password",
+  },
+};
+
+type RecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
+>;
+
+type RecoveryPhraseScreenRouteProp = RouteProp<
+  AuthStackParamList,
+  typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
+>;
 
 describe("RecoveryPhraseScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("renders correctly", () => {
-    const { getByText } = renderWithProviders(
-      <RecoveryPhraseScreen navigation={{ navigate: mockNavigate } as never} />,
+    const { getByText, queryByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
     );
 
-    // Check for title (from the OnboardLayout component)
-    expect(getByText("Your Recovery Phrase")).toBeTruthy();
-
-    // Check for warning text
-    expect(
-      getByText("This is for your eyes only. Never share this."),
-    ).toBeTruthy();
-
-    // Check that the fake recovery phrase is rendered
+    expect(getByText("Recovery Phrase")).toBeTruthy();
     expect(
       getByText(
-        "gloom student label strategy tattoo promote brand mushroom problem divert carbon erode",
+        "Write down these words in order and store them in a safe place",
+      ),
+    ).toBeTruthy();
+    expect(getByText("Continue")).toBeTruthy();
+    expect(getByText("Copy")).toBeTruthy();
+
+    expect(
+      getByText(
+        "test phrase one two three four five six seven eight nine ten eleven twelve",
       ),
     ).toBeTruthy();
 
-    // Check for the copy button text
-    expect(getByText("Copy to clipboard")).toBeTruthy();
-
-    // Check for the continue button text
-    expect(getByText("Continue")).toBeTruthy();
+    expect(queryByText("Error message")).toBeNull();
   });
 
-  it("navigates when the continue button is pressed", () => {
-    const { getByText } = renderWithProviders(
-      <RecoveryPhraseScreen navigation={{ navigate: mockNavigate } as never} />,
+  it("handles clipboard copy when copy button is pressed", () => {
+    const { getByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
     );
 
-    const continueButton = getByText("Continue");
-    fireEvent.press(continueButton);
+    fireEvent.press(getByText("Copy"));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN,
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(Clipboard.setString).toHaveBeenCalledWith(
+      "test phrase one two three four five six seven eight nine ten eleven twelve",
     );
   });
 
-  it("copies the recovery phrase to clipboard when the copy button is pressed", () => {
-    const { getByText } = renderWithProviders(
-      <RecoveryPhraseScreen navigation={{ navigate: mockNavigate } as never} />,
+  it("calls signUp with password and mnemonic phrase when continue is pressed", async () => {
+    const { getByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
     );
 
-    const copyButton = getByText("Copy to clipboard");
-    fireEvent.press(copyButton);
+    fireEvent.press(getByText("Continue"));
 
-    const spy = jest.spyOn(Clipboard, "setString");
+    jest.runAllTimers();
 
-    expect(spy).toHaveBeenCalledWith(
-      "gloom student label strategy tattoo promote brand mushroom problem divert carbon erode",
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalledWith({
+        password: "test-password",
+        mnemonicPhrase:
+          "test phrase one two three four five six seven eight nine ten eleven twelve",
+      });
+    });
+  });
+
+  it("disables the continue button when loading", () => {
+    jest
+      .requireMock("ducks/auth")
+      .useAuthenticationStore.mockImplementation(() => ({
+        signUp: mockSignUp,
+        error: null,
+        isLoading: true,
+      }));
+
+    const { getByTestId } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
     );
+
+    const continueButton = getByTestId("default-action-button");
+    expect(continueButton).toBeTruthy();
+    expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
+  });
+
+  it("renders error message when there is an error", () => {
+    jest
+      .requireMock("ducks/auth")
+      .useAuthenticationStore.mockImplementation(() => ({
+        signUp: mockSignUp,
+        error: "Test error message",
+        isLoading: false,
+      }));
+
+    const { getByText, queryByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
+    );
+
+    expect(getByText("Test error message")).toBeTruthy();
+
+    expect(
+      queryByText(
+        "test phrase one two three four five six seven eight nine ten eleven twelve",
+      ),
+    ).toBeNull();
+  });
+
+  it("uses local loading state for immediate feedback", async () => {
+    jest
+      .requireMock("ducks/auth")
+      .useAuthenticationStore.mockImplementation(() => ({
+        signUp: mockSignUp,
+        error: null,
+        isLoading: false,
+      }));
+
+    const { getByText, rerender, getByTestId } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
+    );
+
+    fireEvent.press(getByText("Continue"));
+
+    const continueButton = getByTestId("default-action-button");
+    expect(continueButton).toBeTruthy();
+
+    jest.runAllTimers();
+    jest
+      .requireMock("ducks/auth")
+      .useAuthenticationStore.mockImplementation(() => ({
+        signUp: mockSignUp,
+        error: null,
+        isLoading: true,
+      }));
+
+    rerender(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
+    );
+
+    expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalled();
+    });
+  });
+
+  it("should not call signUp if there is no recovery phrase", () => {
+    (generateMnemonic as jest.Mock).mockReturnValueOnce("");
+
+    const { getByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
+    );
+
+    fireEvent.press(getByText("Continue"));
+
+    jest.runAllTimers();
+
+    expect(mockSignUp).not.toHaveBeenCalled();
   });
 });

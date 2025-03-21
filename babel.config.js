@@ -2,7 +2,7 @@
 const getSrcDirs = require("./config/getSrcDirs");
 
 module.exports = {
-  presets: ["babel-preset-expo"],
+  presets: ["module:@react-native/babel-preset"],
   plugins: [
     "babel-plugin-styled-components",
     [

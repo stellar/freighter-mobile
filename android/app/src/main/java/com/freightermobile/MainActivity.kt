@@ -1,5 +1,4 @@
 package com.freightermobile
-import expo.modules.ReactActivityDelegateWrapper
 
 // this import is needed for the onCreate override function
 import android.os.Bundle;
@@ -23,7 +22,7 @@ class MainActivity : ReactActivity() {
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      ReactActivityDelegateWrapper(this, BuildConfig.IS_NEW_ARCHITECTURE_ENABLED, DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled))
+      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   /**
    * react-native-screens package requires this override to properly work on Android devices.

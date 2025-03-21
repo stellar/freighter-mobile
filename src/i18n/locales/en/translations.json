@@ -63,5 +63,19 @@
     "dontShareWithAnyone": "Don't share this phrase with anyone",
     "neverAskForYourPhrase": "Stellar Development Foundation will never ever ask for your phrase",
     "ifYouLose": "If you lose, we can't recover it"
+  },
+  "authStore": {
+    "error": {
+      "failedToDeriveHashKey": "Failed to derive hash key",
+      "failedToCreateAccount": "Failed to create account",
+      "failedToLogout": "Failed to logout",
+      "noActiveAccount": "No active account",
+      "failedToGetActivePassword": "Failed to get active password",
+      "noKeyPairFound": "No key pair found",
+      "failedToSignUp": "Failed to sign up",
+      "failedToCheckAuthenticationStatus": "Failed to check authentication status",
+      "failedToGetActiveKeyPair": "Failed to get active key pair"
+    },
+    "account": "Account {{number}}"
   }
 }

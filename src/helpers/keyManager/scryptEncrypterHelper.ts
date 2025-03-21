@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/default-param-last */
 import {
@@ -5,15 +6,8 @@ import {
   decode as base64Decode,
 } from "@stablelib/base64";
 import { encode as utf8Encode, decode as utf8Decode } from "@stablelib/utf8";
-import {
-  EncryptedKey,
-  Encrypter,
-  Key,
-} from "@stellar/typescript-wallet-sdk-km";
 import rnScrypt from "react-native-scrypt";
 import nacl from "tweetnacl";
-
-const NAME = "ScryptEncrypter";
 
 export interface EncryptParams {
   phrase: string;
@@ -32,7 +26,7 @@ export interface EncryptResponse {
 export interface DecryptParams {
   phrase: string;
   password: string;
-  salt: never;
+  salt: string;
 }
 
 export const SALT_BYTES = 32;
@@ -42,7 +36,7 @@ export const CURRENT_CRYPTO_VERSION = CRYPTO_V1;
 export const KEY_LEN = nacl.secretbox.keyLength; // 32 bytes
 
 async function scrypt(
-  password: string,
+  password: any,
   salt: any,
   n: number = 16384,
   r: number = 8,
@@ -52,7 +46,6 @@ async function scrypt(
 ) {
   const derivedKey = await rnScrypt(
     password,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     Array.from(Buffer.from(salt, "utf-8")),
     n,
     r,
@@ -77,7 +70,7 @@ function scryptPass({
   dkLen = KEY_LEN,
 }: {
   password: string;
-  salt: any;
+  salt: string;
   dkLen?: number;
 }): Promise<Uint8Array> {
   const [n, r, p] = [32768, 8, 1];
@@ -157,53 +150,8 @@ export async function decrypt({
   }
 
   if (!decryptedBytes) {
-    throw new Error("That passphrase wasn't valid.");
+    throw new Error("That passphrase wasn’t valid.");
   }
 
   return utf8Decode(decryptedBytes);
 }
-
-export const ScryptEncrypter: Encrypter = {
-  name: NAME,
-  async encryptKey({
-    key,
-    password,
-  }: {
-    key: Key;
-    password: string;
-  }): Promise<EncryptedKey> {
-    const { privateKey, path, extra, publicKey, type, ...props } = key;
-
-    const { encryptedPhrase, salt } = await encrypt({
-      password,
-      phrase: JSON.stringify({ privateKey, path, extra, publicKey, type }),
-    });
-
-    return {
-      ...props,
-      encryptedBlob: encryptedPhrase,
-      encrypterName: NAME,
-      salt,
-    };
-  },
-
-  async decryptKey({
-    encryptedKey,
-    password,
-  }: {
-    encryptedKey: EncryptedKey;
-    password: string;
-  }) {
-    const { encrypterName, salt, encryptedBlob, ...props } = encryptedKey;
-
-    const data = JSON.parse(
-      await decrypt({ phrase: encryptedBlob, salt: salt as never, password }),
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return {
-      ...props,
-      ...data,
-    };
-  },
-};

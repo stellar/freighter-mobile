@@ -1,11 +1,17 @@
 export type Account = {
-  publicKey: string;
+  id: string;
   name: string;
+  publicKey: string;
   imported?: boolean;
-  mnemonicPhrase?: string;
 };
 
 export type KeyPair = {
   publicKey: string;
   privateKey: string;
 };
+
+export interface TemporaryStore {
+  expiration: number;
+  privateKeys: Record<string, string>;
+  mnemonicPhrase: string;
+}

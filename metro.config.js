@@ -1,7 +1,7 @@
+/* eslint-disable global-require */
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { mergeConfig } = require("@react-native/metro-config");
-const { getDefaultConfig } = require("expo/metro-config");
+const { mergeConfig, getDefaultConfig } = require("@react-native/metro-config");
 
 /**
  * Metro configuration
@@ -16,6 +16,7 @@ const config = {
   resolver: {
     assetExts: ["png", "jpg", "jpeg", "gif"],
     sourceExts: ["js", "jsx", "ts", "tsx", "svg", "json"],
+    extraNodeModules: require("node-libs-react-native"),
   },
 };
 

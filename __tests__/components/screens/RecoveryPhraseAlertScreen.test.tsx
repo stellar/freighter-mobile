@@ -15,6 +15,7 @@ describe("RecoveryPhraseAlertScreen", () => {
     const { getByText, getByTestId } = renderWithProviders(
       <RecoveryPhraseAlertScreen
         navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password" } } as never}
       />,
     );
 
@@ -26,6 +27,7 @@ describe("RecoveryPhraseAlertScreen", () => {
     const { getByText } = renderWithProviders(
       <RecoveryPhraseAlertScreen
         navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password" } } as never}
       />,
     );
 
@@ -35,6 +37,7 @@ describe("RecoveryPhraseAlertScreen", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN,
+      { password: "password" },
     );
   });
 });

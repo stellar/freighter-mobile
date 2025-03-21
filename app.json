@@ -1,5 +1,4 @@
 {
   "name": "freighter-mobile",
-  "displayName": "Freighter",
-  "plugins": ["expo-secure-store"]
+  "displayName": "Freighter"
 }

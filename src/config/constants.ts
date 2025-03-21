@@ -79,10 +79,31 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   TESTNET_NETWORK_DETAILS,
 ];
 
+/**
+ * Non-sensitive storage keys.
+ *
+ * ACTIVE_ACCOUNT The active account is the account that is currently being used.
+ *
+ * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
+ *
+ * HASH_KEY The hash key is used to encrypt and decrypt data.
+ * */
 export enum STORAGE_KEYS {
-  KEY_DERIVATION_NUMBER_ID = "keyDerivationNumber",
-  KEY_ID_LIST = "keyIdList",
-  KEY_ID = "keyId",
-  ACTIVE_ACCOUNT = "activeAccount",
+  ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
+  HASH_KEY_TIMESTAMP = "hashKeyTimestamp",
+}
+
+/**
+ * Sensitive storage keys.
+ *
+ * MNEMONIC_PHRASE The mnemonic phrase is used to generate the key pair.
+ * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
+ * HASH_KEY The hash key is used to encrypt and decrypt the temporary store.
+ * */
+export enum SENSITIVE_STORAGE_KEYS {
+  MNEMONIC_PHRASE = "mnemonicPhrase",
+  TEMPORARY_STORE = "temporaryStore",
+  HASH_KEY = "hashKey",
+  HASH_KEY_SALT = "hashKeySalt",
 }

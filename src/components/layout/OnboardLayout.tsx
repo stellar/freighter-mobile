@@ -27,6 +27,7 @@ interface OnboardLayoutProps {
   defaultActionButtonText?: string;
   hasClipboardButton?: boolean;
   onPressClipboardButton?: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 interface StyledProps {
@@ -102,6 +103,7 @@ interface DefaultFooterProps {
   defaultActionButtonText?: string;
   hasClipboardButton?: boolean;
   onPressClipboardButton?: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 /**
@@ -127,6 +129,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
   defaultActionButtonText = t("onboarding.continue"),
   hasClipboardButton = false,
   onPressClipboardButton,
+  isLoading,
 }) => (
   <StyledFooterButtonContainer>
     {hasClipboardButton && (
@@ -146,6 +149,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
     <Button
       tertiary
       lg
+      testID="default-action-button"
+      isLoading={isLoading}
       onPress={onPressDefaultActionButton}
       disabled={isDefaultActionButtonDisabled}
     >
@@ -193,6 +198,7 @@ export const OnboardLayout = ({
   defaultActionButtonText,
   hasClipboardButton,
   onPressClipboardButton,
+  isLoading,
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
 
@@ -218,6 +224,7 @@ export const OnboardLayout = ({
                 defaultActionButtonText={defaultActionButtonText}
                 hasClipboardButton={hasClipboardButton}
                 onPressClipboardButton={onPressClipboardButton}
+                isLoading={isLoading}
               />
             )}
           </FooterContainer>

@@ -1,4 +1,4 @@
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import RecoveryPhraseWarningBox from "components/RecoveryPhraseWarningBox";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
@@ -7,20 +7,21 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
-type RecoveryPhraseAlertScreenProps = {
-  navigation: NativeStackNavigationProp<
-    AuthStackParamList,
-    typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN
-  >;
-};
+type RecoveryPhraseAlertScreenProps = NativeStackScreenProps<
+  AuthStackParamList,
+  typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN
+>;
 
 export const RecoveryPhraseAlertScreen: React.FC<
   RecoveryPhraseAlertScreenProps
-> = ({ navigation }) => {
+> = ({ navigation, route }) => {
+  const { password } = route.params;
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
-    navigation.navigate(AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN);
+    navigation.navigate(AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN, {
+      password,
+    });
   };
 
   return (
