@@ -1,4 +1,4 @@
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -7,12 +7,10 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
 
-type ChoosePasswordScreenProps = {
-  navigation: NativeStackNavigationProp<
-    AuthStackParamList,
-    typeof AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN
-  >;
-};
+type ChoosePasswordScreenProps = NativeStackScreenProps<
+  AuthStackParamList,
+  typeof AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN
+>;
 
 export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   navigation,

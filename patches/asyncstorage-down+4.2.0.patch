@@ -1,0 +1,24 @@
+diff --git a/node_modules/asyncstorage-down/default-opts.js b/node_modules/asyncstorage-down/default-opts.js
+index c076d3d..88708e5 100644
+--- a/node_modules/asyncstorage-down/default-opts.js
++++ b/node_modules/asyncstorage-down/default-opts.js
+@@ -1,5 +1,5 @@
+ module.exports = {
+   get AsyncStorage() {
+-    return require('react-native').AsyncStorage
++    return require('@react-native-async-storage/async-storage').default
+   }
+ }
+diff --git a/node_modules/asyncstorage-down/package.json b/node_modules/asyncstorage-down/package.json
+index 6b6cdd2..9285195 100644
+--- a/node_modules/asyncstorage-down/package.json
++++ b/node_modules/asyncstorage-down/package.json
+@@ -25,7 +25,7 @@
+     "eslint": "^5.9.0",
+     "husky": "^1.1.3",
+     "levelup": "^1.3.0",
+-    "react-native": "file:./mock-react-native",
++    "@react-native-async-storage/async-storage": "file:./mock-react-native",
+     "tape": "^4.6.3"
+   },
+   "repository": {

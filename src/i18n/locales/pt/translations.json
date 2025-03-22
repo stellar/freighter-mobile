@@ -63,5 +63,19 @@
     "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
     "neverAskForYourPhrase": "A Stellar Development Foundation nunca irá solicitar sua frase",
     "ifYouLose": "Se você perdê-la, não poderemos recuperá-la"
+  },
+  "authStore": {
+    "error": {
+      "failedToDeriveHashKey": "Falha ao derivar chave hash",
+      "failedToCreateAccount": "Falha ao criar conta",
+      "failedToLogout": "Falha ao sair",
+      "noActiveAccount": "Nenhuma conta ativa",
+      "failedToGetActivePassword": "Falha ao obter senha ativa",
+      "noKeyPairFound": "Nenhum par de chaves encontrado",
+      "failedToSignUp": "Falha ao se inscrever",
+      "failedToCheckAuthenticationStatus": "Falha ao verificar status de autenticação",
+      "failedToGetActiveKeyPair": "Falha ao obter par de chaves ativo"
+    },
+    "account": "Conta {{number}}"
   }
 }
