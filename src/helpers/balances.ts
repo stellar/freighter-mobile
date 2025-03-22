@@ -74,7 +74,7 @@ export const isLiquidityPool = (
  * other assets it returns a format like "CODE:ISSUER_KEY".
  *
  * @param {Balance | NativeToken | AssetToken} item - Balance object or a Token object
- * @returns {TokenIdentifier | null} Standardized token identifier string or null if not applicable
+ * @returns {TokenIdentifier} Standardized token identifier string or "" if not applicable
  *
  * @example
  * // Get identifier from balance
@@ -85,10 +85,10 @@ export const isLiquidityPool = (
  */
 export const getTokenIdentifier = (
   item: Balance | NativeToken | AssetToken,
-): TokenIdentifier | null => {
+): TokenIdentifier => {
   // Handle liquidity pools - they don't have token identifiers
   if (isLiquidityPool(item as Balance)) {
-    return null;
+    return "";
   }
 
   let token;
@@ -110,7 +110,7 @@ export const getTokenIdentifier = (
   }
 
   // Fallback for unknown types
-  return null;
+  return "";
 };
 
 /**

@@ -2,8 +2,9 @@ import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
-import { useBalancesStore } from "ducks/balances";
-import React, { useEffect } from "react";
+import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
+import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
+import React from "react";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -20,16 +21,11 @@ export const HomeScreen = () => {
   const publicKey = "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
   const network = NETWORKS.TESTNET;
 
-  const fetchAccountBalances = useBalancesStore(
-    (state) => state.fetchAccountBalances,
-  );
+  // Fetch balances when component mounts or when publicKey/network changes
+  useFetchPricedBalances({ publicKey, network });
 
-  useEffect(() => {
-    fetchAccountBalances({
-      publicKey,
-      network,
-    });
-  }, [fetchAccountBalances, publicKey, network]);
+  // Fetch icons whenever balances are updated
+  useFetchAssetIcons();
 
   return (
     <BaseLayout>

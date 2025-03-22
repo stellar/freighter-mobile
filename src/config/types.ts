@@ -117,8 +117,7 @@ export interface TokenPricesMap {
  * @property {string} [fiatCode] - Currency code for fiat value display (e.g., "USD")
  * @property {BigNumber} [fiatTotal] - Total value of the balance in fiat currency
  * @property {string} [displayName] - Human-readable name for display purposes
- * @property {string} [firstChar] - First character or abbreviation for avatar/icon fallback
- * @property {string} [imageUrl] - URL to the token's icon or image
+ * @property {string} [tokenInitials] - First character or abbreviation for avatar/icon fallback
  */
 export type PricedBalance = Balance &
   TokenPrice & {
@@ -126,8 +125,7 @@ export type PricedBalance = Balance &
     fiatCode?: string;
     fiatTotal?: BigNumber;
     displayName?: string;
-    firstChar?: string;
-    imageUrl?: string;
+    tokenInitials?: string;
   };
 
 /**
