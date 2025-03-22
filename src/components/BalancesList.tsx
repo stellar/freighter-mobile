@@ -1,8 +1,11 @@
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
+import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
+import { useAssetIconsStore } from "ducks/assetIcons";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
+import { getTokenIdentifier } from "helpers/balances";
 import {
   formatAssetAmount,
   formatFiatAmount,
@@ -62,9 +65,16 @@ const IconPlaceholder = styled.View`
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  background-color: green;
+  background-color: ${THEME.colors.background.secondary};
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+`;
+
+const AssetImage = styled.Image`
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
 `;
 
 const EmptyState = styled.View`
@@ -117,6 +127,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     fetchAccountBalances,
   } = useBalancesStore();
 
+  const icons = useAssetIconsStore((state) => state.icons);
   const isPricesLoading = usePricesStore((state) => state.isLoading);
 
   /**
@@ -136,6 +147,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    * Handles manual refresh via pull-to-refresh gesture
    * Ensures the refresh spinner is visible for at least 1 second for a better UX
    */
+  // TODO: Refresh icons as well with pull-to-refresh
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     const refreshStartTime = Date.now();
@@ -193,31 +205,45 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    * @param {BalanceItem} params.item - The balance item to render
    * @returns {JSX.Element} The rendered balance row
    */
-  const renderItem = ({ item }: { item: BalanceItem }) => (
-    <BalanceRow>
-      <LeftSection>
-        <IconPlaceholder>
-          <Text md>{item.firstChar}</Text>
-        </IconPlaceholder>
-        <AssetTextContainer>
-          <Text md>{item.displayName}</Text>
-          <AmountText sm>
-            {formatAssetAmount(item.total, item.tokenCode)}
-          </AmountText>
-        </AssetTextContainer>
-      </LeftSection>
-      <RightSection>
-        <Text md>
-          {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
-        </Text>
-        <PriceChangeText sm isPositive={!item.percentagePriceChange24h?.lt(0)}>
-          {item.percentagePriceChange24h
-            ? formatPercentageAmount(item.percentagePriceChange24h)
-            : "—"}
-        </PriceChangeText>
-      </RightSection>
-    </BalanceRow>
-  );
+  const renderItem = ({ item }: { item: BalanceItem }) => {
+    const iconUrl = icons[getTokenIdentifier(item)] || "";
+    return (
+      <BalanceRow>
+        <LeftSection>
+          <IconPlaceholder>
+            {iconUrl ? (
+              <AssetImage
+                source={{ uri: iconUrl }}
+                resizeMode="cover"
+                accessibilityLabel={`${item.displayName} token icon`}
+              />
+            ) : (
+              <Text md>{item.tokenInitials}</Text>
+            )}
+          </IconPlaceholder>
+          <AssetTextContainer>
+            <Text md>{item.displayName}</Text>
+            <AmountText sm>
+              {formatAssetAmount(item.total, item.tokenCode)}
+            </AmountText>
+          </AssetTextContainer>
+        </LeftSection>
+        <RightSection>
+          <Text md>
+            {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
+          </Text>
+          <PriceChangeText
+            sm
+            isPositive={!item.percentagePriceChange24h?.lt(0)}
+          >
+            {item.percentagePriceChange24h
+              ? formatPercentageAmount(item.percentagePriceChange24h)
+              : "—"}
+          </PriceChangeText>
+        </RightSection>
+      </BalanceRow>
+    );
+  };
 
   return (
     <FlatList

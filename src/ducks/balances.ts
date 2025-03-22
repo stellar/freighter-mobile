@@ -43,47 +43,47 @@ const getExistingPricedBalances = (
   balances: BalanceMap,
   statePricedBalances: PricedBalanceMap,
 ): PricedBalanceMap => {
-  const existingPricedBalances: PricedBalanceMap = {} as PricedBalanceMap;
-
-  // Process each balance
-  Object.entries(balances).forEach(([id, balance]) => {
+  // Create entries by mapping over balances
+  const entries = Object.entries(balances).map(([id, balance]) => {
     // Get existing price data for this balance if available
     const existingPriceData = statePricedBalances[id];
 
     // Determine the asset code based on balance type
     let tokenCode: string;
     let displayName: string;
-    let firstChar: string;
-    const imageUrl: string = ""; // TODO: Add image URL
+    let tokenInitials: string;
 
     if (isLiquidityPool(balance)) {
       // Handle liquidity pool balances
       tokenCode = getLPShareCode(balance);
       displayName = tokenCode;
-      firstChar = "LP";
+      tokenInitials = "LP";
     } else {
       // Handle regular asset balances
       tokenCode = balance.token.code;
       displayName = tokenCode; // TODO: We can fetch it from TOML or Soroban Token props
-      firstChar = tokenCode.charAt(0);
+      tokenInitials = tokenCode.slice(0, 2);
     }
 
-    // Create the priced balance object and keeps existing price data if available
-    existingPricedBalances[id] = {
+    // Create the priced balance object and keep existing price data if available
+    const pricedBalance = {
       ...balance,
       tokenCode,
       displayName,
-      firstChar,
-      imageUrl,
+      tokenInitials,
       // Preserve existing price data if available
       currentPrice: existingPriceData?.currentPrice,
       percentagePriceChange24h: existingPriceData?.percentagePriceChange24h,
       fiatCode: existingPriceData?.fiatCode,
       fiatTotal: existingPriceData?.fiatTotal,
     };
+
+    // Return entry as [id, pricedBalance] tuple
+    return [id, pricedBalance] as [string, typeof pricedBalance];
   });
 
-  return existingPricedBalances;
+  // Convert the entries array to an object
+  return Object.fromEntries(entries) as PricedBalanceMap;
 };
 
 /**
@@ -126,17 +126,6 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   pricedBalances: {} as PricedBalanceMap,
   isLoading: false,
   error: null,
-  /**
-   * Fetches account balances for a given public key and network
-   * Also fetches prices for the balances and calculates fiat values
-   *
-   * @async
-   * @param {Object} params - Parameters for fetching balances
-   * @param {string} params.publicKey - The account's public key
-   * @param {NETWORKS} params.network - The network to fetch balances from (e.g., TESTNET, PUBLIC)
-   * @param {string[]} [params.contractIds] - Optional array of contract IDs to filter by
-   * @returns {Promise<void>} A promise that resolves when the operation completes
-   */
   fetchAccountBalances: async (params) => {
     try {
       set({ isLoading: true, error: null });
