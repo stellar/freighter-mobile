@@ -97,12 +97,11 @@ export enum STORAGE_KEYS {
 /**
  * Sensitive storage keys.
  *
- * MNEMONIC_PHRASE The mnemonic phrase is used to generate the key pair.
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key is used to encrypt and decrypt the temporary store.
+ * HASH_KEY_SALT The hash key salt is used to encrypt and decrypt the temporary store.
  * */
 export enum SENSITIVE_STORAGE_KEYS {
-  MNEMONIC_PHRASE = "mnemonicPhrase",
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
   HASH_KEY_SALT = "hashKeySalt",

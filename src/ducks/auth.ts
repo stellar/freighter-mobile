@@ -53,7 +53,6 @@ interface AuthState {
 }
 
 interface AuthActions {
-  login: (password: string, recoveryPhrase: string) => void;
   logout: () => void;
   signUp: (params: SignUpParams) => void;
   getIsAuthenticated: () => void;
@@ -199,12 +198,10 @@ const storeAccount = async ({
     encrypterName: ScryptEncrypter.name,
   };
 
-  // const [keyStore, accountListRaw] = await Promise.all([
-  //   keyManager.storeKey(keyMetadata),
-  //   dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST),
-  // ]);
-  const keyStore = await keyManager.storeKey(keyMetadata);
-  const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
+  const [keyStore, accountListRaw] = await Promise.all([
+    keyManager.storeKey(keyMetadata),
+    dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST),
+  ]);
 
   const accountList = accountListRaw
     ? (JSON.parse(accountListRaw) as Account[])
@@ -213,7 +210,6 @@ const storeAccount = async ({
     number: accountList.length + 1,
   });
 
-  // Store account info
   await Promise.all([
     dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id),
     appendAccount({
@@ -237,13 +233,12 @@ const storeAccount = async ({
 const logout = async (): Promise<void> => {
   try {
     await Promise.all([
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.MNEMONIC_PHRASE),
-      await dataStorage.remove(STORAGE_KEYS.HASH_KEY_TIMESTAMP),
-      await dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
-      await dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
+      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
+      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
+      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+      dataStorage.remove(STORAGE_KEYS.HASH_KEY_TIMESTAMP),
+      dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
+      dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
     ]);
   } catch (error) {
     logger.error("Failed to logout", error);
@@ -287,80 +282,6 @@ const signUp = async ({
 };
 
 /**
- * Authenticates a user with their password
- */
-const login = async (password: string): Promise<void> => {
-  try {
-    // Check if an active account exists
-    const activeAccount = await dataStorage.getItem(
-      STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
-    );
-
-    if (!activeAccount) {
-      logger.error("No active account found during login");
-      throw new Error(t("authStore.error.noActiveAccount"));
-    }
-
-    try {
-      // Check if the key exists in the store and load it with password
-      const loadedKey = await keyManager.loadKey(activeAccount, password);
-
-      if (!loadedKey) {
-        logger.error("No key pair found in key manager");
-        throw new Error(t("authStore.error.noKeyPairFound"));
-      }
-
-      if (!loadedKey.extra) {
-        logger.error("Key exists but has no extra data");
-        throw new Error(t("authStore.error.noKeyPairFound"));
-      }
-
-      // Extract the mnemonic phrase from the key's extra data
-      const { mnemonicPhrase } = loadedKey.extra as { mnemonicPhrase?: string };
-
-      if (!mnemonicPhrase) {
-        logger.error("Mnemonic phrase not found in key's extra data");
-        throw new Error(t("authStore.error.mnemonicPhraseNotFound"));
-      }
-
-      // Get account name from stored accounts
-      const accountListRaw = await dataStorage.getItem(
-        STORAGE_KEYS.ACCOUNT_LIST,
-      );
-
-      if (!accountListRaw) {
-        logger.error("Account list not found in storage");
-        throw new Error(t("authStore.error.accountListNotFound"));
-      }
-
-      const accountList = JSON.parse(accountListRaw) as Account[];
-      const account = accountList.find((a) => a.id === activeAccount);
-
-      if (!account) {
-        logger.error(
-          `Account with ID ${activeAccount} not found in account list`,
-        );
-        throw new Error(t("authStore.error.accountNotFound"));
-      }
-
-      // Create the temporary store with the hash key
-      await createTemporaryStore(password, mnemonicPhrase, {
-        publicKey: account.publicKey,
-        privateKey: loadedKey.privateKey,
-        accountName: account.name,
-        id: account.id,
-      });
-    } catch (error) {
-      logger.error("Failed to login", error);
-      throw new Error(t("authStore.error.invalidPassword"));
-    }
-  } catch (error) {
-    logger.error("Login process failed", error);
-    throw error;
-  }
-};
-
-/**
  * Reset the authentication state for debugging purposes
  * This function should be used when there's a decryption error to start fresh
  */
@@ -389,54 +310,6 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
   ...initialState,
 
   clearError: () => set({ error: null }),
-
-  login: (password, recoveryPhrase) => {
-    set((state) => ({ ...state, isLoading: true }));
-
-    // If a recovery phrase is provided, we're doing recovery login
-    if (recoveryPhrase) {
-      signUp({ mnemonicPhrase: recoveryPhrase, password, imported: true })
-        .then(() => {
-          set((state) => ({
-            ...state,
-            network: NETWORKS.TESTNET,
-            isAuthenticated: true,
-          }));
-        })
-        .catch((error) => {
-          set((state) => ({
-            ...state,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to recover account",
-          }));
-        })
-        .finally(() => {
-          set((state) => ({ ...state, isLoading: false }));
-        });
-      return;
-    }
-
-    // Regular password login
-    login(password)
-      .then(() => {
-        set((state) => ({
-          ...state,
-          network: NETWORKS.TESTNET,
-          isAuthenticated: true,
-        }));
-      })
-      .catch((error) => {
-        set((state) => ({
-          ...state,
-          error: error instanceof Error ? error.message : "Failed to login",
-        }));
-      })
-      .finally(() => {
-        set((state) => ({ ...state, isLoading: false }));
-      });
-  },
 
   logout: () => {
     set((state) => ({ ...state, isLoading: true, error: null }));
