@@ -116,7 +116,8 @@ export const fetchTokenPrices = async ({
   /*
   // ========================================================
   // Uncomment this to simulate token-prices response
-  // This may be useful for testing the UI with token prices we still don't have available
+  // This may be useful for testing the UI with token prices on Testnet
+  // as the /token-prices endpoint only returns prices for Mainnet
 
   // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
