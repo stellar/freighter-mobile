@@ -44,6 +44,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
+    if (!recoveryPhrase) return;
     // Use InteractionManager to ensure UI animations complete first
     InteractionManager.runAfterInteractions(() => {
       signUp({

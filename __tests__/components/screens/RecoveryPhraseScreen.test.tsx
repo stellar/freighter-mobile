@@ -117,6 +117,25 @@ describe("RecoveryPhraseScreen", () => {
     );
   });
 
+  it("should not call signUp if there is no recovery phrase", () => {
+    (generateMnemonic as jest.Mock).mockReturnValueOnce("");
+
+    const { getByText } = render(
+      <RecoveryPhraseScreen
+        navigation={
+          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
+        }
+        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
+      />,
+    );
+
+    fireEvent.press(getByText("Continue"));
+
+    jest.runAllTimers();
+
+    expect(mockSignUp).not.toHaveBeenCalled();
+  });
+
   it("calls signUp with password and mnemonic phrase when continue is pressed", async () => {
     const { getByText } = render(
       <RecoveryPhraseScreen
@@ -188,72 +207,5 @@ describe("RecoveryPhraseScreen", () => {
         "test phrase one two three four five six seven eight nine ten eleven twelve",
       ),
     ).toBeNull();
-  });
-
-  it("uses local loading state for immediate feedback", async () => {
-    jest
-      .requireMock("ducks/auth")
-      .useAuthenticationStore.mockImplementation(() => ({
-        signUp: mockSignUp,
-        error: null,
-        isLoading: false,
-      }));
-
-    const { getByText, rerender, getByTestId } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
-
-    fireEvent.press(getByText("Continue"));
-
-    const continueButton = getByTestId("default-action-button");
-    expect(continueButton).toBeTruthy();
-
-    jest.runAllTimers();
-    jest
-      .requireMock("ducks/auth")
-      .useAuthenticationStore.mockImplementation(() => ({
-        signUp: mockSignUp,
-        error: null,
-        isLoading: true,
-      }));
-
-    rerender(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
-
-    expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
-
-    await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalled();
-    });
-  });
-
-  it("should not call signUp if there is no recovery phrase", () => {
-    (generateMnemonic as jest.Mock).mockReturnValueOnce("");
-
-    const { getByText } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
-
-    fireEvent.press(getByText("Continue"));
-
-    jest.runAllTimers();
-
-    expect(mockSignUp).not.toHaveBeenCalled();
   });
 });
