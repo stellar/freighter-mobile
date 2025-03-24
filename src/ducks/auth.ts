@@ -70,6 +70,7 @@ const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Key manager instance for handling cryptographic operations
+ * We're using testnet as the default, but the same key manager can be used for mainnet as well
  */
 const keyManager = createKeyManager(Networks.TESTNET);
 
@@ -126,7 +127,7 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
 
     return { hashKey, salt };
   } catch (error) {
-    logger.error("Failed to generate hash key", error);
+    logger.error("generateHashKey", "Failed to generate hash key", error);
     throw new Error("Failed to generate hash key");
   }
 };
@@ -168,7 +169,11 @@ const createTemporaryStore = async (
       encryptedData,
     );
   } catch (error) {
-    logger.error("Failed to create temporary store", error);
+    logger.error(
+      "createTemporaryStore",
+      "Failed to create temporary store",
+      error,
+    );
     throw new Error("Failed to create temporary store");
   }
 };
@@ -212,6 +217,7 @@ const storeAccount = async ({
       name: accountName,
       publicKey,
       imported,
+      network: NETWORKS.TESTNET,
     }),
     createTemporaryStore(password, mnemonicPhrase, {
       publicKey,
@@ -235,7 +241,7 @@ const logout = async (): Promise<void> => {
       dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
     ]);
   } catch (error) {
-    logger.error("Failed to logout", error);
+    logger.error("storeAccount", "Failed to logout", error);
     throw error;
   }
 };
@@ -266,7 +272,7 @@ const signUp = async ({
       imported,
     });
   } catch (error) {
-    logger.error("Failed to sign up", error);
+    logger.error("signUp", "Failed to sign up", error);
 
     // Clean up any partial data on error
     await logout();
@@ -316,10 +322,13 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
             isAuthenticated: true,
             isLoading: false,
           });
-          logger.info("Sign up completed successfully");
         })
         .catch((error) => {
-          logger.error("Sign up failed", error);
+          logger.error(
+            "useAuthenticationStore.signUp",
+            "Sign up failed",
+            error,
+          );
           set({
             error:
               error instanceof Error

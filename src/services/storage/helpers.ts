@@ -27,7 +27,7 @@ const getHashKey = async () => {
   );
 
   if (!rawHashKey) {
-    logger.error("Hash key not found in secure storage");
+    logger.error("getHashKey", "Hash key not found in secure storage");
     return null;
   }
 

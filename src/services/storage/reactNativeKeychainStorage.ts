@@ -8,15 +8,6 @@ import { PersistentStorage } from "services/storage/storageFactory";
 const DEFAULT_SERVICE = "freighter_secure_storage";
 
 /**
- * Sanitizes a key to be compatible with keychain
- * Ensures that keys are valid for use with react-native-keychain
- */
-function sanitizeKey(key: string): string {
-  // Replace any non-alphanumeric, non-permitted characters with underscores
-  return key.replace(/[^a-zA-Z0-9._-]/g, "_");
-}
-
-/**
  * Implementation of PersistentStorage using react-native-keychain
  * This provides a more secure storage option compared to AsyncStorage
  */
@@ -28,9 +19,8 @@ export const reactNativeKeychainStorage: PersistentStorage = {
    */
   getItem: async (key) => {
     try {
-      const sanitizedKey = sanitizeKey(key);
       const result = await Keychain.getGenericPassword({
-        service: `${DEFAULT_SERVICE}_${sanitizedKey}`,
+        service: `${DEFAULT_SERVICE}_${key}`,
       });
 
       if (result === false) {
@@ -39,7 +29,11 @@ export const reactNativeKeychainStorage: PersistentStorage = {
 
       return result.password;
     } catch (error) {
-      logger.error(`Error retrieving key from keychain: ${key}`, error);
+      logger.error(
+        "reactNativeKeychainStorage.getItem",
+        `Error retrieving key from keychain: ${key}`,
+        error,
+      );
       return null;
     }
   },
@@ -52,12 +46,15 @@ export const reactNativeKeychainStorage: PersistentStorage = {
    */
   setItem: async (key, value) => {
     try {
-      const sanitizedKey = sanitizeKey(key);
-      await Keychain.setGenericPassword(sanitizedKey, value, {
-        service: `${DEFAULT_SERVICE}_${sanitizedKey}`,
+      await Keychain.setGenericPassword(key, value, {
+        service: `${DEFAULT_SERVICE}_${key}`,
       });
     } catch (error) {
-      logger.error(`Error storing key in keychain: ${key}`, error);
+      logger.error(
+        "reactNativeKeychainStorage.setItem",
+        `Error storing key in keychain: ${key}`,
+        error,
+      );
       throw new Error(`Failed to store item in keychain: ${key}`);
     }
   },
@@ -73,7 +70,7 @@ export const reactNativeKeychainStorage: PersistentStorage = {
         await Promise.all(
           keys.map((key) =>
             Keychain.resetGenericPassword({
-              service: `${DEFAULT_SERVICE}_${sanitizeKey(key)}`,
+              service: `${DEFAULT_SERVICE}_${key}`,
             }),
           ),
         );
@@ -81,10 +78,14 @@ export const reactNativeKeychainStorage: PersistentStorage = {
       }
 
       await Keychain.resetGenericPassword({
-        service: `${DEFAULT_SERVICE}_${sanitizeKey(keys)}`,
+        service: `${DEFAULT_SERVICE}_${keys}`,
       });
     } catch (error) {
-      logger.error("Error removing keys from keychain", error);
+      logger.error(
+        "reactNativeKeychainStorage.remove",
+        "Error removing keys from keychain",
+        error,
+      );
       // Don't throw since removal failures shouldn't block execution
     }
   },

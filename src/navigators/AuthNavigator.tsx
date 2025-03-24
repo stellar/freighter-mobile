@@ -27,7 +27,11 @@ export const AuthNavigator = () => {
           // TODO: Add login screen logic
         }
       } catch (error) {
-        logger.error("Error checking for existing account", error);
+        logger.error(
+          "checkForExistingAccount",
+          "Error checking for existing account",
+          error,
+        );
       }
     };
 

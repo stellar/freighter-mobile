@@ -22,7 +22,7 @@ interface TemporaryStore {
 /**
  * Retrieves data from the temporary store
  */
-const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
+const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
   try {
     const parsedHashKey = await getHashKey();
 
@@ -83,6 +83,7 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
 
       if (!isTemporaryStore(parsed)) {
         logger.error(
+          "getTemporaryStore",
           "Decrypted data does not match TemporaryStore structure",
           parsed,
         );
@@ -91,7 +92,11 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
 
       return parsed;
     } catch (error) {
-      logger.error("Failed to decrypt temporary store", error);
+      logger.error(
+        "getTemporaryStore",
+        "Failed to decrypt temporary store",
+        error,
+      );
 
       // If decryption fails, the hash key or temporary store may be corrupted
       // We should clear them both and force a new login
@@ -101,6 +106,7 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
       return null;
     }
   } catch (error) {
+    logger.error("getTemporaryStore", "Failed to get temporary store", error);
     return null;
   }
 };
@@ -139,6 +145,7 @@ export const isHashKeyValid = async (): Promise<boolean> => {
 
     return isValid;
   } catch (error) {
+    logger.error("isHashKeyValid", "Failed to check hash key validity", error);
     return false;
   }
 };
@@ -175,7 +182,7 @@ const getActiveAccount = async (): Promise<{
 
   // Get sensitive data from temporary store if the hash key is valid
   if (await isHashKeyValid()) {
-    const temporaryStore = await getFromTemporaryStore();
+    const temporaryStore = await getTemporaryStore();
 
     if (!temporaryStore) {
       throw new Error(t("authStore.error.temporaryStoreNotFound"));

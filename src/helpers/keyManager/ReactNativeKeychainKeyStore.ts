@@ -68,7 +68,11 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
       this.keyStore.configure(params);
       return Promise.resolve();
     } catch (e) {
-      logger.error("Failed to configure keychain store", e);
+      logger.error(
+        "ReactNativeKeychainKeyStore.configure",
+        "Failed to configure keychain store",
+        e,
+      );
       return Promise.reject(e);
     }
   }
@@ -79,8 +83,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
    * @returns {Promise<KeyMetadata[]>} Array of key metadata for stored keys
    */
   public async storeKeys(keys: EncryptedKey[]) {
-    debug(`Storing ${keys.length} keys in keychain`);
-
     // We can't store keys if they're already there
     const usedKeys: EncryptedKey[] = [];
 
@@ -93,6 +95,7 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
 
     if (usedKeys.length) {
       logger.error(
+        "ReactNativeKeychainKeyStore.storeKeys",
         `Some keys already exist in keychain: ${usedKeys.map((k) => k.id).join(", ")}`,
       );
       return Promise.reject(
@@ -110,7 +113,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
       keysMetadata.push(getKeyMetadata(encryptedKey));
     }
 
-    debug(`Successfully stored ${keys.length} keys in keychain`);
     return Promise.resolve(keysMetadata);
   }
 
@@ -120,8 +122,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
    * @returns {Promise<KeyMetadata[]>} Array of key metadata for updated keys
    */
   public async updateKeys(keys: EncryptedKey[]) {
-    debug(`Updating ${keys.length} keys in keychain`);
-
     // We need to ensure all keys already exist before updating them
     const notFoundKeys: EncryptedKey[] = [];
 
@@ -134,6 +134,7 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
 
     if (notFoundKeys.length) {
       logger.error(
+        "ReactNativeKeychainKeyStore.updateKeys",
         `Some keys not found in keychain: ${notFoundKeys.map((k) => k.id).join(", ")}`,
       );
       return Promise.reject(
@@ -150,7 +151,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
       keysMetadata.push(getKeyMetadata(encryptedKey));
     }
 
-    debug(`Successfully updated ${keys.length} keys in keychain`);
     return Promise.resolve(keysMetadata);
   }
 
@@ -163,10 +163,13 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     debug(`Loading key ${id} from keychain`);
     const key = await this.keyStore.getKey(id);
     if (!key) {
-      logger.error(`Key ${id} not found in keychain`);
+      logger.error(
+        "ReactNativeKeychainKeyStore.loadKey",
+        `Key ${id} not found in keychain`,
+      );
       return Promise.reject(id);
     }
-    debug(`Successfully loaded key ${id} from keychain`);
+
     return Promise.resolve(key);
   }
 
@@ -179,13 +182,19 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     debug(`Removing key ${id} from keychain`);
     const hasKey = await this.keyStore.hasKey(id);
     if (!hasKey) {
-      logger.error(`Key ${id} not found in keychain`);
+      logger.error(
+        "ReactNativeKeychainKeyStore.removeKey",
+        `Key ${id} not found in keychain`,
+      );
       return Promise.reject(id);
     }
 
     const key = await this.keyStore.getKey(id);
     if (!key) {
-      logger.error(`Key ${id} could not be retrieved from keychain`);
+      logger.error(
+        "ReactNativeKeychainKeyStore.removeKey",
+        `Key ${id} could not be retrieved from keychain`,
+      );
       return Promise.reject(id);
     }
     const metadata: KeyMetadata = getKeyMetadata(key);
@@ -193,7 +202,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     await this.keyStore.removeKey(id);
     await this.keyStore.removeFromKeyIndex(id);
 
-    debug(`Successfully removed key ${id} from keychain`);
     return Promise.resolve(metadata);
   }
 
@@ -202,9 +210,8 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
    * @returns {Promise<EncryptedKey[]>} Array of all encrypted keys
    */
   public async loadAllKeys() {
-    debug("Loading all keys from keychain");
     const keys = await this.keyStore.getAllKeys();
-    debug(`Loaded ${keys.length} keys from keychain`);
+
     return Promise.resolve(keys);
   }
 }

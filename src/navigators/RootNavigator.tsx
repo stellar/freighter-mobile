@@ -21,7 +21,11 @@ export const RootNavigator = () => {
     const validateAuth = async () => {
       try {
         // First check if hash key is valid - this might authenticate the user
-        await isHashKeyValid();
+        const hashKeyValid = await isHashKeyValid();
+        if (!hashKeyValid) {
+          setInitializing(false);
+          return;
+        }
 
         // Then get auth status
         getIsAuthenticated();

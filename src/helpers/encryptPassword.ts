@@ -166,7 +166,7 @@ export async function decryptDataWithPassword({
 
     return utf8Decode(decryptedBytes);
   } catch (error) {
-    logger.error("Error decrypting data:", error);
+    logger.error("decryptDataWithPassword", "Error decrypting data:", error);
 
     // Rethrow the error with a more specific message
     if (error instanceof Error) {

@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+import { debug } from "helpers/debug";
+
 /**
  * Log levels supported by the logger
  */
@@ -13,29 +15,29 @@ export enum LogLevel {
  * Interface for logger adapters
  */
 export interface LoggerAdapter {
-  debug: (message: string, ...args: unknown[]) => void;
-  info: (message: string, ...args: unknown[]) => void;
-  warn: (message: string, ...args: unknown[]) => void;
-  error: (message: string, ...args: unknown[]) => void;
+  debug: (context: string, message: string, ...args: unknown[]) => void;
+  info: (context: string, message: string, ...args: unknown[]) => void;
+  warn: (context: string, message: string, ...args: unknown[]) => void;
+  error: (context: string, message: string, ...args: unknown[]) => void;
 }
 
 /**
  * Default console adapter implementation
  */
 const consoleAdapter: LoggerAdapter = {
-  debug: (message: string, ...args: unknown[]) => {
+  debug: (context: string, message: string, ...args: unknown[]) => {
     if (__DEV__) {
-      console.debug(`[DEBUG] ${message}`, ...args);
+      debug(`[${context}] ${message}`, ...args);
     }
   },
-  info: (message: string, ...args: unknown[]) => {
-    console.info(`[INFO] ${message}`, ...args);
+  info: (context: string, message: string, ...args: unknown[]) => {
+    console.info(`[${context}] ${message}`, ...args);
   },
-  warn: (message: string, ...args: unknown[]) => {
-    console.warn(`[WARN] ${message}`, ...args);
+  warn: (context: string, message: string, ...args: unknown[]) => {
+    console.warn(`[${context}] ${message}`, ...args);
   },
-  error: (message: string, ...args: unknown[]) => {
-    console.error(`[ERROR] ${message}`, ...args);
+  error: (context: string, message: string, ...args: unknown[]) => {
+    console.error(`[${context}] ${message}`, ...args);
   },
 };
 
@@ -71,38 +73,42 @@ class Logger {
 
   /**
    * Log a debug message
+   * @param context - The context of the message
    * @param message - The message to log
    * @param args - Additional arguments to log
    */
-  debug(message: string, ...args: unknown[]): void {
-    this.adapter.debug(message, ...args);
+  debug(context: string, message: string, ...args: unknown[]): void {
+    this.adapter.debug(context, message, ...args);
   }
 
   /**
    * Log an info message
+   * @param context - The context of the message
    * @param message - The message to log
    * @param args - Additional arguments to log
    */
-  info(message: string, ...args: unknown[]): void {
-    this.adapter.info(message, ...args);
+  info(context: string, message: string, ...args: unknown[]): void {
+    this.adapter.info(context, message, ...args);
   }
 
   /**
    * Log a warning message
+   * @param context - The context of the message
    * @param message - The message to log
    * @param args - Additional arguments to log
    */
-  warn(message: string, ...args: unknown[]): void {
-    this.adapter.warn(message, ...args);
+  warn(context: string, message: string, ...args: unknown[]): void {
+    this.adapter.warn(context, message, ...args);
   }
 
   /**
    * Log an error message
+   * @param context - The context of the message
    * @param message - The message to log
    * @param args - Additional arguments to log
    */
-  error(message: string, ...args: unknown[]): void {
-    this.adapter.error(message, ...args);
+  error(context: string, message: string, ...args: unknown[]): void {
+    this.adapter.error(context, message, ...args);
   }
 }
 

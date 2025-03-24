@@ -1,10 +1,12 @@
 import { AssetType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { NETWORKS } from "config/constants";
 
 export type Account = {
   id: string;
   name: string;
   publicKey: string;
+  network: NETWORKS;
   imported?: boolean;
 };
 
