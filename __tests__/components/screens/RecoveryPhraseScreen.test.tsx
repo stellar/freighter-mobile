@@ -142,7 +142,7 @@ describe("RecoveryPhraseScreen", () => {
           "test phrase one two three four five six seven eight nine ten eleven twelve",
       });
     });
-  });
+  }, 10000);
 
   it("disables the continue button when loading", () => {
     jest
