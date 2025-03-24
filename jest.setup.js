@@ -45,28 +45,6 @@ jest.mock("react-native-responsive-screen", () => ({
 
 jest.mock("@react-native-clipboard/clipboard", () => mockClipboard);
 
-// jest.mock("@stablelib/base64", () => ({
-//   encode: jest.fn(() => "mockedBase64String"),
-// }));
-
-// jest.mock("@stablelib/utf8", () => ({
-//   decode: jest.fn(() => "mockedUtf8String"),
-//   encode: jest.fn(() => "mockedUtf8String"),
-// }));
-
-// jest.mock("tweetnacl", () => ({
-//   nacl: {
-//     secretbox: {
-//       open: jest.fn(() => "mockedDecryptedString"),
-//       keyLength: 32,
-//       nonceLength: 24,
-//     },
-//     randomBytes: jest.fn(() => new Uint8Array([1, 2, 3, 4])),
-//   }
-// }));
-
-// jest.mock("react-native-scrypt", () => jest.fn(() => Promise.resolve("mockedScryptString")));
-
 jest.mock("@stablelib/base64", () => ({
   encode: jest.fn((input) => `mock-base64(${input})`),
   decode: jest.fn((input) => new Uint8Array([1, 2, 3])), // Mock decoded Uint8Array
