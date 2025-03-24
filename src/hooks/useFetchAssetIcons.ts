@@ -1,12 +1,8 @@
+import { NETWORK_URLS } from "config/constants";
 import { useAssetIconsStore } from "ducks/assetIcons";
 import { useBalancesStore } from "ducks/balances";
 import { debug } from "helpers/debug";
 import { useEffect } from "react";
-
-/*
- * TODO:
- * - Force refresh icon fetch every 24h
- */
 
 /**
  * Hook to fetch asset icons whenever balances change.
@@ -17,11 +13,9 @@ import { useEffect } from "react";
  * 2. Fetch icons for all assets in the background
  * 3. Cache the icons in the asset icons store
  */
-export const useFetchAssetIcons = () => {
+export const useFetchAssetIcons = (networkUrl: NETWORK_URLS) => {
   const balances = useBalancesStore((state) => state.balances);
-  const fetchBalancesIcons = useAssetIconsStore(
-    (state) => state.fetchBalancesIcons,
-  );
+  const { fetchBalancesIcons, refreshIcons } = useAssetIconsStore();
 
   // Create a balances key that changes only when the set of balances changes
   const balancesKey = Object.keys(balances).sort().join(",");
@@ -30,8 +24,19 @@ export const useFetchAssetIcons = () => {
     debug("useFetchAssetIcons", "Balances changed", balancesKey);
     if (balancesKey.length > 3) {
       // Fetch icons in the background
-      fetchBalancesIcons(balances);
+      fetchBalancesIcons({ balances, networkUrl });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balancesKey, fetchBalancesIcons]);
+  }, [balancesKey, networkUrl, fetchBalancesIcons]);
+
+  // Try refreshing icons after some initial delay (5s) so that it doesn't
+  // interfere with any other process that may be loading since this
+  // is a lower priority operation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshIcons();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [refreshIcons]);
 };

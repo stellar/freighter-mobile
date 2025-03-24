@@ -1,7 +1,7 @@
 import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import React from "react";
@@ -18,14 +18,16 @@ const Header = styled.View`
 
 export const HomeScreen = () => {
   // TODO: Get this from wallet context
+  // const publicKey = "GDVCNUP2GJFDCKTIMWFKJHWC7U5ULLCODKWX2YNMRJ5UEW3WJYBZ67QY";
+  // const networkDetails = PUBLIC_NETWORK_DETAILS;
   const publicKey = "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
-  const network = NETWORKS.TESTNET;
+  const networkDetails = TESTNET_NETWORK_DETAILS;
 
   // Fetch balances when component mounts or when publicKey/network changes
-  useFetchPricedBalances({ publicKey, network });
+  useFetchPricedBalances({ publicKey, network: networkDetails.network });
 
   // Fetch icons whenever balances are updated
-  useFetchAssetIcons();
+  useFetchAssetIcons(networkDetails.networkUrl);
 
   return (
     <BaseLayout>
@@ -33,7 +35,7 @@ export const HomeScreen = () => {
         <Header>
           <Text md>Tokens</Text>
         </Header>
-        <BalancesList publicKey={publicKey} network={network} />
+        <BalancesList publicKey={publicKey} network={networkDetails.network} />
       </Container>
     </BaseLayout>
   );

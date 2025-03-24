@@ -147,7 +147,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    * Handles manual refresh via pull-to-refresh gesture
    * Ensures the refresh spinner is visible for at least 1 second for a better UX
    */
-  // TODO: Refresh icons as well with pull-to-refresh
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     const refreshStartTime = Date.now();
@@ -206,7 +205,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    * @returns {JSX.Element} The rendered balance row
    */
   const renderItem = ({ item }: { item: BalanceItem }) => {
-    const iconUrl = icons[getTokenIdentifier(item)] || "";
+    const iconUrl = icons[getTokenIdentifier(item)]?.imageUrl || "";
     return (
       <BalanceRow>
         <LeftSection>

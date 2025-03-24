@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NetworkDetails, TESTNET_NETWORK_DETAILS } from "config/constants";
+import { NETWORK_URLS } from "config/constants";
 import { AssetToken, BalanceMap } from "config/types";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
@@ -7,14 +7,104 @@ import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+interface Icon {
+  imageUrl: string;
+  networkUrl: NETWORK_URLS;
+}
+
 interface AssetIconsState {
-  icons: Record<string, string>;
+  icons: Record<string, Icon>;
+  lastRefreshed: number | null;
   fetchIconUrl: (params: {
     asset: AssetToken;
-    networkDetails: NetworkDetails;
-  }) => Promise<string>;
-  fetchBalancesIcons: (balances: BalanceMap) => Promise<void>;
+    networkUrl: NETWORK_URLS;
+  }) => Promise<Icon>;
+  fetchBalancesIcons: (params: {
+    balances: BalanceMap;
+    networkUrl: NETWORK_URLS;
+  }) => Promise<void>;
+  refreshIcons: () => void;
 }
+
+const BATCH_SIZE = 3; // Process 3 icons at a time
+const BATCH_DELAY = 1000; // 1 second delay between batches
+
+/**
+ * Process a batch of icons for refresh
+ * @param params Parameters for batch processing
+ * @param params.entries Array of icon entries to process
+ * @param params.batchIndex Current batch index
+ * @param params.updatedIcons Record to store updated icons
+ * @param params.startTime Start time of the overall refresh operation
+ * @param params.set Zustand set function to update store
+ */
+const processIconBatches = async (params: {
+  entries: [string, Icon][];
+  batchIndex: number;
+  updatedIcons: Record<string, Icon>;
+  startTime: number;
+  set: (
+    partial:
+      | AssetIconsState
+      | Partial<AssetIconsState>
+      | ((
+          state: AssetIconsState,
+        ) => AssetIconsState | Partial<AssetIconsState>),
+  ) => void;
+}) => {
+  const { entries, batchIndex, updatedIcons, startTime, set } = params;
+  const batch = entries.slice(0, BATCH_SIZE);
+  const remainingEntries = entries.slice(BATCH_SIZE);
+
+  // Process current batch
+  await Promise.all(
+    batch.map(async ([cacheKey, icon]) => {
+      try {
+        // Parse the cache key to get asset details
+        const [assetCode, issuerKey] = cacheKey.split(":");
+
+        const imageUrl = await getIconUrlFromIssuer({
+          assetCode,
+          issuerKey,
+          networkUrl: icon.networkUrl,
+        });
+
+        updatedIcons[cacheKey] = {
+          imageUrl,
+          networkUrl: icon.networkUrl,
+        };
+      } catch (error) {
+        // Keep the existing icon URL if refresh fails
+        updatedIcons[cacheKey] = icon;
+      }
+    }),
+  );
+
+  // Update icons after each batch
+  set((state) => ({
+    icons: {
+      ...state.icons,
+      ...updatedIcons,
+    },
+  }));
+
+  // Process next batch if there are remaining entries
+  if (remainingEntries.length > 0) {
+    setTimeout(() => {
+      processIconBatches({
+        entries: remainingEntries,
+        batchIndex: batchIndex + 1,
+        updatedIcons,
+        startTime,
+        set,
+      });
+    }, BATCH_DELAY);
+  } else {
+    // All batches completed, update lastRefreshed
+    const now = Date.now();
+    set({ lastRefreshed: now });
+  }
+};
 
 /**
  * Asset Icons Store
@@ -27,7 +117,8 @@ export const useAssetIconsStore = create<AssetIconsState>()(
   persist(
     (set, get) => ({
       icons: {},
-      fetchIconUrl: async ({ asset, networkDetails }) => {
+      lastRefreshed: null,
+      fetchIconUrl: async ({ asset, networkUrl }) => {
         const cacheKey = getTokenIdentifier(asset);
         const cachedIcon = get().icons[cacheKey];
 
@@ -45,46 +136,41 @@ export const useAssetIconsStore = create<AssetIconsState>()(
 
         try {
           // Fetch icon URL if not cached
-          const iconUrl = await getIconUrlFromIssuer({
+          const imageUrl = await getIconUrlFromIssuer({
             assetCode: asset.code,
             issuerKey: asset.issuer.key,
-            networkDetails,
+            networkUrl,
           });
+
+          const icon: Icon = {
+            imageUrl,
+            networkUrl,
+          };
 
           debug(
             "AssetIconsStore",
             `Icon fetched for ${cacheKey}`,
-            iconUrl ? "Icon found" : "No icon available",
-            iconUrl,
+            imageUrl ? "Icon found" : "No icon available",
+            icon,
           );
 
           // Cache the icon URL (even if empty, to avoid re-fetching)
           set((state) => ({
             icons: {
               ...state.icons,
-              [cacheKey]: iconUrl,
+              [cacheKey]: icon,
             },
           }));
 
-          return iconUrl;
+          return icon;
         } catch (error) {
-          debug(
-            "AssetIconsStore",
-            `Failed to fetch icon for ${cacheKey}`,
-            error,
-          );
-          return "";
+          return {
+            imageUrl: "",
+            networkUrl,
+          };
         }
       },
-      fetchBalancesIcons: async (balances) => {
-        const balanceCount = Object.keys(balances).length;
-        debug(
-          "AssetIconsStore",
-          `Starting batch icon fetch for ${balanceCount} balances`,
-        );
-
-        const startTime = Date.now();
-
+      fetchBalancesIcons: async ({ balances, networkUrl }) => {
         // Process all balances in parallel using Promise.all
         await Promise.all(
           Object.entries(balances).map(async ([id, balance]) => {
@@ -102,17 +188,47 @@ export const useAssetIconsStore = create<AssetIconsState>()(
             // so that we don't need to return anything
             await get().fetchIconUrl({
               asset: balance.token,
-              networkDetails: TESTNET_NETWORK_DETAILS,
+              networkUrl,
             });
           }),
         );
+      },
+      refreshIcons: () => {
+        const { icons, lastRefreshed } = get();
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-        const duration = Date.now() - startTime;
+        // If lastRefreshed is not set yet, this means we're starting fresh
+        // and the app will already fetch all icons from scratch so let's
+        // simply set the lastRefreshed timestamp to now to avoid unnecessarily
+        // going through the refresh api requests below
+        if (!lastRefreshed) {
+          set({ lastRefreshed: now });
+          return;
+        }
+
+        // Check if we've refreshed in the last 24 hours
+        if (now - lastRefreshed < ONE_DAY_MS) {
+          return;
+        }
+
+        const iconCount = Object.keys(icons).length;
         debug(
           "AssetIconsStore",
-          `Completed batch icon fetch in ${duration}ms`,
-          `Processed ${balanceCount} icons`,
+          `Starting icon refresh for ${iconCount} cached icons`,
         );
+
+        const startTime = Date.now();
+        const updatedIcons: Record<string, Icon> = {};
+
+        // Start processing the first batch
+        processIconBatches({
+          entries: Object.entries(icons),
+          batchIndex: 0,
+          updatedIcons,
+          startTime,
+          set,
+        });
       },
     }),
     {
