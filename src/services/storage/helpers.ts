@@ -1,5 +1,6 @@
 import { SENSITIVE_STORAGE_KEYS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
+import { HashKey } from "config/types";
 import {
   dataStorage,
   secureDataStorage,
@@ -30,12 +31,9 @@ const getHashKey = async () => {
     return null;
   }
 
-  const { hashKey, salt } = JSON.parse(rawHashKey) as {
-    hashKey: string;
-    salt: string;
-  };
+  const { hashKey, salt } = JSON.parse(rawHashKey);
 
-  return { hashKey, salt };
+  return { hashKey, salt } as HashKey;
 };
 
 export { clearTemporaryData, getHashKey };

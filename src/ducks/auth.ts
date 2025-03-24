@@ -7,7 +7,7 @@ import {
   STORAGE_KEYS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { Account, KeyPair } from "config/types";
+import { Account, HashKey, KeyPair, TemporaryStore } from "config/types";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
@@ -44,12 +44,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  activeKeyPair: {
-    publicKey: string;
-    privateKey: string;
-    accountName: string;
-    id: string;
-  } | null;
+  activeKeyPair: (KeyPair & { accountName: string; id: string }) | null;
 }
 
 interface AuthActions {
@@ -57,7 +52,6 @@ interface AuthActions {
   signUp: (params: SignUpParams) => void;
   getIsAuthenticated: () => void;
   clearError: () => void;
-  resetAuthenticationState: () => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -98,12 +92,7 @@ const appendAccount = async (account: Account) => {
  * Generates a unique hash key derived from the password
  * This key will be used to encrypt/decrypt the temporary store
  */
-const generateHashKey = async (
-  password: string,
-): Promise<{
-  hashKey: string;
-  salt: string;
-}> => {
+const generateHashKey = async (password: string): Promise<HashKey> => {
   try {
     // Generate a random salt for the hash key
     const salt = generateSalt();
@@ -161,7 +150,7 @@ const createTemporaryStore = async (
         [activeKeyPair.id]: activeKeyPair.privateKey,
       },
       mnemonicPhrase,
-    };
+    } as TemporaryStore;
 
     // Convert the store to a JSON string
     const temporaryStoreJson = JSON.stringify(temporaryStore);
@@ -287,27 +276,6 @@ const signUp = async ({
 };
 
 /**
- * Reset the authentication state for debugging purposes
- * This function should be used when there's a decryption error to start fresh
- */
-const resetAuthenticationState = async (): Promise<void> => {
-  try {
-    // Clear all authentication related data
-    await Promise.all([
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-      dataStorage.remove(STORAGE_KEYS.HASH_KEY_EXPIRE_AT),
-    ]);
-
-    // Don't remove the account list or active account ID
-    // This allows the user to still see their accounts after reset
-  } catch (error) {
-    logger.error("Failed to reset authentication state", error);
-    throw error;
-  }
-};
-
-/**
  * Authentication Store
  */
 export const useAuthenticationStore = create<AuthStore>()((set) => ({
@@ -379,28 +347,6 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
               : t("authStore.error.failedToCheckAuthenticationStatus"),
         });
         set({ isAuthenticated: false });
-      })
-      .finally(() => {
-        set({ isLoading: false });
-      });
-  },
-
-  resetAuthenticationState: () => {
-    set({ isLoading: true, error: null });
-
-    resetAuthenticationState()
-      .then(() => {
-        set({
-          isAuthenticated: false,
-        });
-      })
-      .catch((error) => {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to reset authentication state",
-        });
       })
       .finally(() => {
         set({ isLoading: false });

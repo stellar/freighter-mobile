@@ -19,6 +19,11 @@ export interface TemporaryStore {
   mnemonicPhrase: string;
 }
 
+export type HashKey = {
+  hashKey: string;
+  salt: string;
+};
+
 export type NativeToken = {
   type: AssetType.native;
   code: "XLM";

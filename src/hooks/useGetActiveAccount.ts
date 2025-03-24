@@ -38,7 +38,6 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
     );
 
     if (!temporaryStore) {
-      logger.error("Temporary store not found in secure storage");
       return null;
     }
 
@@ -48,14 +47,10 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
     );
 
     if (!timestampStr) {
-      logger.error("Hash key timestamp not found in storage");
       return null;
     }
 
     try {
-      // Attempt to decrypt the temporary store
-      logger.info("Attempting to decrypt temporary store");
-
       const decryptedData = await decryptDataWithPassword({
         data: temporaryStore,
         password: hashKey,
@@ -66,15 +61,12 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
       let parsed: unknown;
       try {
         parsed = JSON.parse(decryptedData);
-        logger.info("Successfully decrypted and parsed temporary store");
       } catch (parseError) {
-        logger.error("Failed to parse decrypted data as JSON", parseError);
         return null;
       }
 
       // Validate parsed data structure
       if (!parsed || typeof parsed !== "object") {
-        logger.error("Decrypted data is not a valid object");
         return null;
       }
 
@@ -103,14 +95,12 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
 
       // If decryption fails, the hash key or temporary store may be corrupted
       // We should clear them both and force a new login
-      logger.info("Clearing corrupted temporary store and hash key");
 
       await clearTemporaryData();
 
       return null;
     }
   } catch (error) {
-    logger.error("Error accessing secure storage", error);
     return null;
   }
 };
@@ -123,7 +113,6 @@ export const isHashKeyValid = async (): Promise<boolean> => {
     const parsedHashKey = await getHashKey();
 
     if (!parsedHashKey) {
-      logger.info("Hash key not found in secure storage");
       return false;
     }
 
@@ -133,7 +122,6 @@ export const isHashKeyValid = async (): Promise<boolean> => {
     );
 
     if (!temporaryStore) {
-      logger.info("Temporary store not found in secure storage");
       return false;
     }
 
@@ -143,22 +131,14 @@ export const isHashKeyValid = async (): Promise<boolean> => {
     );
 
     if (!timestampStr) {
-      logger.info("Hash key timestamp not found in storage");
       return false;
     }
 
     const timestamp = parseInt(timestampStr, 10);
     const isValid = Date.now() < timestamp;
 
-    if (!isValid) {
-      logger.info("Hash key has expired");
-    } else {
-      logger.info("Hash key is valid");
-    }
-
     return isValid;
   } catch (error) {
-    logger.error("Error checking hash key validity", error);
     return false;
   }
 };

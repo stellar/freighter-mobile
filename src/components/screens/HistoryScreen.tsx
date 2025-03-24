@@ -37,16 +37,12 @@ const LoadingText = styled(Text)`
 
 export const HistoryScreen = () => {
   const { t } = useAppTranslation();
-  const { logout, resetAuthenticationState } = useAuthenticationStore();
+  const { logout } = useAuthenticationStore();
   const { account, isLoading, error, fetchActiveAccount } =
     useGetActiveAccount();
 
   const handleLogout = () => {
     logout();
-  };
-
-  const handleResetAuth = () => {
-    resetAuthenticationState();
   };
 
   useEffect(() => {
@@ -73,12 +69,6 @@ export const HistoryScreen = () => {
           <Button onPress={handleLogout}>
             <Text>Logout</Text>
           </Button>
-
-          {error && (
-            <Button secondary onPress={handleResetAuth}>
-              <Text>Reset Auth State (Debug)</Text>
-            </Button>
-          )}
         </ButtonContainer>
       </Container>
     </BaseLayout>
