@@ -120,13 +120,19 @@ const generateHashKey = async (
     // Calculate the expiration timestamp (24 hours from now)
     const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
     // Store the hash key, salt, and expiration timestamp
+    const hashKeyObj = {
+      hashKey,
+      salt,
+    };
     await Promise.all([
       dataStorage.setItem(
-        STORAGE_KEYS.HASH_KEY_TIMESTAMP,
+        STORAGE_KEYS.HASH_KEY_EXPIRE_AT,
         expirationTime.toString(),
       ),
-      secureDataStorage.setItem(SENSITIVE_STORAGE_KEYS.HASH_KEY, hashKey),
-      secureDataStorage.setItem(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT, salt),
+      secureDataStorage.setItem(
+        SENSITIVE_STORAGE_KEYS.HASH_KEY,
+        JSON.stringify(hashKeyObj),
+      ),
     ]);
 
     return { hashKey, salt };
@@ -234,9 +240,8 @@ const logout = async (): Promise<void> => {
   try {
     await Promise.all([
       secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
       secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-      dataStorage.remove(STORAGE_KEYS.HASH_KEY_TIMESTAMP),
+      dataStorage.remove(STORAGE_KEYS.HASH_KEY_EXPIRE_AT),
       dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
       dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
     ]);
@@ -290,9 +295,8 @@ const resetAuthenticationState = async (): Promise<void> => {
     // Clear all authentication related data
     await Promise.all([
       secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
       secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-      dataStorage.remove(STORAGE_KEYS.HASH_KEY_TIMESTAMP),
+      dataStorage.remove(STORAGE_KEYS.HASH_KEY_EXPIRE_AT),
     ]);
 
     // Don't remove the account list or active account ID

@@ -83,26 +83,22 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
  * Non-sensitive storage keys.
  *
  * ACTIVE_ACCOUNT The active account is the account that is currently being used.
- *
  * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
- *
- * HASH_KEY The hash key is used to encrypt and decrypt data.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
-  HASH_KEY_TIMESTAMP = "hashKeyTimestamp",
+  HASH_KEY_EXPIRE_AT = "hashKeyExpireAt",
 }
 
 /**
  * Sensitive storage keys.
  *
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
- * HASH_KEY The hash key is used to encrypt and decrypt the temporary store.
- * HASH_KEY_SALT The hash key salt is used to encrypt and decrypt the temporary store.
+ * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
+ * HASH_KEY format: { hashKey: string, salt: string }
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
-  HASH_KEY_SALT = "hashKeySalt",
 }

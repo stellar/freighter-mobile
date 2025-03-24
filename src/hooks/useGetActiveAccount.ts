@@ -4,6 +4,7 @@ import { Account } from "config/types";
 import { decryptDataWithPassword } from "helpers/encryptPassword";
 import { t } from "i18next";
 import { useState, useCallback } from "react";
+import { clearTemporaryData, getHashKey } from "services/storage/helpers";
 import {
   dataStorage,
   secureDataStorage,
@@ -23,21 +24,13 @@ interface TemporaryStore {
  */
 const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
   try {
-    // Get the hash key and salt from secure storage
-    const [hashKey, hashKeySalt] = await Promise.all([
-      secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
-    ]);
+    const parsedHashKey = await getHashKey();
 
-    if (!hashKey) {
-      logger.error("Hash key not found in secure storage");
+    if (!parsedHashKey) {
       return null;
     }
 
-    if (!hashKeySalt) {
-      logger.error("Hash key salt not found in secure storage");
-      return null;
-    }
+    const { hashKey, salt } = parsedHashKey;
 
     // Get the encrypted temporary store
     const temporaryStore = await secureDataStorage.getItem(
@@ -51,7 +44,7 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
 
     // Get the hash key timestamp
     const timestampStr = await dataStorage.getItem(
-      STORAGE_KEYS.HASH_KEY_TIMESTAMP,
+      STORAGE_KEYS.HASH_KEY_EXPIRE_AT,
     );
 
     if (!timestampStr) {
@@ -66,7 +59,7 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
       const decryptedData = await decryptDataWithPassword({
         data: temporaryStore,
         password: hashKey,
-        salt: hashKeySalt,
+        salt,
       });
 
       // Try to parse the decrypted data
@@ -112,12 +105,7 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
       // We should clear them both and force a new login
       logger.info("Clearing corrupted temporary store and hash key");
 
-      await Promise.all([
-        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT),
-        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-        dataStorage.remove(STORAGE_KEYS.HASH_KEY_TIMESTAMP),
-      ]);
+      await clearTemporaryData();
 
       return null;
     }
@@ -132,23 +120,10 @@ const getFromTemporaryStore = async (): Promise<TemporaryStore | null> => {
  */
 export const isHashKeyValid = async (): Promise<boolean> => {
   try {
-    // Check if hash key exists
-    const hashKey = await secureDataStorage.getItem(
-      SENSITIVE_STORAGE_KEYS.HASH_KEY,
-    );
+    const parsedHashKey = await getHashKey();
 
-    if (!hashKey) {
+    if (!parsedHashKey) {
       logger.info("Hash key not found in secure storage");
-      return false;
-    }
-
-    // Check if hash key salt exists
-    const hashKeySalt = await secureDataStorage.getItem(
-      SENSITIVE_STORAGE_KEYS.HASH_KEY_SALT,
-    );
-
-    if (!hashKeySalt) {
-      logger.info("Hash key salt not found in secure storage");
       return false;
     }
 
@@ -164,7 +139,7 @@ export const isHashKeyValid = async (): Promise<boolean> => {
 
     // Check if hash key timestamp exists and is not expired
     const timestampStr = await dataStorage.getItem(
-      STORAGE_KEYS.HASH_KEY_TIMESTAMP,
+      STORAGE_KEYS.HASH_KEY_EXPIRE_AT,
     );
 
     if (!timestampStr) {
