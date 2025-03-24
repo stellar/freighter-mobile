@@ -72,7 +72,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       const response = await fetchTokenPrices({ tokens });
 
       set({
-        prices: response.data,
+        prices: response,
         isLoading: false,
         lastUpdated: Date.now(),
       });

@@ -108,12 +108,15 @@ export interface FetchTokenPricesParams {
  */
 export const fetchTokenPrices = async ({
   tokens,
-}: FetchTokenPricesParams): Promise<TokenPricesResponse> => {
-  // TODO: Uncomment this once the endpoint is deployed
-  // const { data } = await backendApi.post<TokenPricesResponse>(
-  //   "/token-prices",
-  //   { tokens },
-  // );
+}: FetchTokenPricesParams): Promise<TokenPricesMap> => {
+  const { data } = await backendApi.post<TokenPricesResponse>("/token-prices", {
+    tokens,
+  });
+
+  /*
+  // ========================================================
+  // Uncomment this to simulate token-prices response
+  // This may be useful for testing the UI with token prices we still don't have available
 
   // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
@@ -122,13 +125,12 @@ export const fetchTokenPrices = async ({
   // This is the backend interface for the prices map
   // We'll convert those values to BigNumber for convenience
   const pricesMap: {
-    [tokenIdentifier: TokenIdentifier]: {
-      currentPrice: string | null;
-      percentagePriceChange24h: number | null;
-    };
-  } = {};
+     [tokenIdentifier: TokenIdentifier]: {
+       currentPrice: string | null;
+       percentagePriceChange24h: number | null;
+     };
+   } = {};
 
-  // Generate FAKE price data for each token
   tokens.forEach((token) => {
     // Special case for stablecoin
     if (token.includes("USD")) {
@@ -144,14 +146,21 @@ export const fetchTokenPrices = async ({
     }
   });
 
-  // Create fake API response structure
-  const fakeResponse = {
-    data: pricesMap,
-  };
+  //========================================================
+  */
+
+  // Make sure it's compliant with the TokenPricesMap type as the backend
+  // returns { "code:issuer" : null } for tokens that are not supported
+  const pricesMap = data.data;
+  tokens.forEach((token) => {
+    if (!pricesMap[token]) {
+      pricesMap[token] = {
+        currentPrice: null,
+        percentagePriceChange24h: null,
+      };
+    }
+  });
 
   // Make sure to convert the response values to BigNumber for convenience
-  return bigize(fakeResponse, [
-    "currentPrice",
-    "percentagePriceChange24h",
-  ]) as TokenPricesResponse;
+  return bigize(pricesMap, ["currentPrice", "percentagePriceChange24h"]);
 };
