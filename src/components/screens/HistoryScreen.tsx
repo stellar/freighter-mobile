@@ -1,4 +1,6 @@
+import { logos } from "assets/logos";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Asset } from "components/sds/Asset";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
@@ -7,6 +9,7 @@ import { fs, px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import styled from "styled-components/native";
 
 const Container = styled.View`
@@ -53,7 +56,6 @@ export const HistoryScreen = () => {
     <BaseLayout>
       <Container>
         <ScreenText>{t("history.title")}</ScreenText>
-
         {isLoading && <LoadingText>Loading...</LoadingText>}
 
         {error && <ErrorText color="error">{error}</ErrorText>}
@@ -70,6 +72,59 @@ export const HistoryScreen = () => {
             <Text>Logout</Text>
           </Button>
         </ButtonContainer>
+        <View style={{ height: 40 }} />
+        <Asset
+          variant="single"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+            backgroundColor: "#041A40", // Optional background color
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="swap"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="pair"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
+
+        <Asset
+          variant="platform"
+          sourceOne={{
+            image: logos.stellar,
+            altText: "Stellar Logo",
+          }}
+          sourceTwo={{
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=002",
+            altText: "USDC Logo",
+          }}
+        />
+
+        <View style={{ height: 40 }} />
       </Container>
     </BaseLayout>
   );
