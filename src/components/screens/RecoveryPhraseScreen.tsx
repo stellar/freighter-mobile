@@ -9,7 +9,7 @@ import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { InteractionManager } from "react-native";
 import { generateMnemonic } from "stellar-hd-wallet";
 import styled from "styled-components/native";
@@ -41,29 +41,15 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     }),
   );
   const { signUp, error, isLoading } = useAuthenticationStore();
-  const [localLoading, setLocalLoading] = useState(false);
   const { t } = useAppTranslation();
 
-  // Handle the transition between local loading and global loading states
-  useEffect(() => {
-    if (isLoading) {
-      setLocalLoading(false);
-    }
-  }, [isLoading]);
-
   const handleContinue = () => {
-    // Set local loading state immediately to show feedback
-    setLocalLoading(true);
-
     // Use InteractionManager to ensure UI animations complete first
     InteractionManager.runAfterInteractions(() => {
-      // Add a small delay to allow loading indicators to appear
-      setTimeout(() => {
-        signUp({
-          password,
-          mnemonicPhrase: recoveryPhrase,
-        });
-      }, 50);
+      signUp({
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
     });
   };
 
@@ -92,7 +78,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       defaultActionButtonText={t(
         "recoveryPhraseScreen.defaultActionButtonText",
       )}
-      isLoading={isLoading || localLoading}
+      isLoading={isLoading}
       onPressDefaultActionButton={handleContinue}
       footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
     >
