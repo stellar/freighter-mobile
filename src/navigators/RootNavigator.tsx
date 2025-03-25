@@ -1,31 +1,75 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { STORAGE_KEYS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { isHashKeyValid } from "hooks/useGetActiveAccount";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
+import { dataStorage } from "services/storage/storageFactory";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
-  // TODO: This is a temp env to control if the user is logged in or not
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isAuthenticated = true;
+  const { getIsAuthenticated, isAuthenticated } = useAuthenticationStore();
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    // We can bypass the eslint rule here because we need to hide the splash screen
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    RNBootSplash.hide({ fade: true });
-  }, []);
+    const validateAuth = async () => {
+      try {
+        // First check if hash key is valid - this might authenticate the user
+        const hashKeyValid = await isHashKeyValid();
+        if (!hashKeyValid) {
+          setInitializing(false);
+          return;
+        }
+
+        // Then get auth status
+        getIsAuthenticated();
+
+        // Check if we have a stored account
+        const activeAccountId = await dataStorage.getItem(
+          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+        );
+        setHasAccount(!!activeAccountId);
+
+        // Hide the splash screen after initialization
+        await RNBootSplash.hide({ fade: true });
+        setInitializing(false);
+      } catch (error) {
+        setInitializing(false);
+      }
+    };
+
+    validateAuth();
+  }, [getIsAuthenticated]);
+
+  // Show nothing while initializing
+  if (initializing) {
+    return null;
+  }
+
+  // Determine initial route
+  const getInitialRouteName = () => {
+    if (isAuthenticated) {
+      return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
+    }
+
+    // If we have an account but not authenticated, show login screen
+    if (hasAccount) {
+      return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
+    }
+
+    // Otherwise show the auth stack (welcome, signup, etc.)
+    return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
+  };
 
   return (
     <RootStack.Navigator
-      initialRouteName={
-        isAuthenticated
-          ? ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK
-          : ROOT_NAVIGATOR_ROUTES.AUTH_STACK
-      }
+      initialRouteName={getInitialRouteName()}
       screenOptions={{
         headerShown: false,
       }}

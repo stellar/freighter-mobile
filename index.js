@@ -14,5 +14,8 @@
 // First, load polyfills
 require("./src/bootstrap.js");
 
+// Load the shim
+require("./shim.js");
+
 // Then initialize the app
 require("./src/index");

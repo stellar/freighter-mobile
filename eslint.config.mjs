@@ -36,7 +36,7 @@ export default [
     },
   },
   {
-    ignores: ["jest.setup.js", "tsconfig.json"],
+    ignores: ["jest.setup.js", "tsconfig.json", "shim.js"],
   },
   {
     languageOptions: {

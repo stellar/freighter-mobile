@@ -80,6 +80,7 @@ describe("ConfirmPasswordScreen", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN,
+      { password: "password12345" },
     );
   });
 

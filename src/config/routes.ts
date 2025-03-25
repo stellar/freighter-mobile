@@ -29,8 +29,12 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
     password: string;
   };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: {
+    password: string;
+  };
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: {
+    password: string;
+  };
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
 };
 
