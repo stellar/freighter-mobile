@@ -1,17 +1,16 @@
+import { AssetIcon } from "components/AssetIcon";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
-import { useAssetIconsStore } from "ducks/assetIcons";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
-import { getTokenIdentifier } from "helpers/balances";
+import { isLiquidityPool } from "helpers/balances";
 import {
   formatAssetAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -61,22 +60,6 @@ const PriceChangeText = styled(Text)<PriceChangeTextProps>`
     props.isPositive ? "green" : "red"};
 `;
 
-const IconPlaceholder = styled.View`
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background-color: ${THEME.colors.background.secondary};
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-`;
-
-const AssetImage = styled.Image`
-  width: 100%;
-  height: 100%;
-  border-radius: 20px;
-`;
-
 const EmptyState = styled.View`
   padding: 32px 16px;
   align-items: center;
@@ -86,7 +69,9 @@ const EmptyState = styled.View`
 /**
  * Extended PricedBalance type with an id field for use in FlatList
  */
-type BalanceItem = PricedBalance & { id: string };
+type BalanceItem = PricedBalance & {
+  id: string;
+};
 
 /**
  * BalancesList Component Props
@@ -127,7 +112,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     fetchAccountBalances,
   } = useBalancesStore();
 
-  const icons = useAssetIconsStore((state) => state.icons);
   const isPricesLoading = usePricesStore((state) => state.isLoading);
 
   /**
@@ -204,45 +188,33 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    * @param {BalanceItem} params.item - The balance item to render
    * @returns {JSX.Element} The rendered balance row
    */
-  const renderItem = ({ item }: { item: BalanceItem }) => {
-    const iconUrl = icons[getTokenIdentifier(item)]?.imageUrl || "";
-    return (
-      <BalanceRow>
-        <LeftSection>
-          <IconPlaceholder>
-            {iconUrl ? (
-              <AssetImage
-                source={{ uri: iconUrl }}
-                resizeMode="cover"
-                accessibilityLabel={`${item.displayName} token icon`}
-              />
-            ) : (
-              <Text md>{item.tokenInitials}</Text>
-            )}
-          </IconPlaceholder>
-          <AssetTextContainer>
-            <Text md>{item.displayName}</Text>
-            <AmountText sm>
-              {formatAssetAmount(item.total, item.tokenCode)}
-            </AmountText>
-          </AssetTextContainer>
-        </LeftSection>
-        <RightSection>
-          <Text md>
-            {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
-          </Text>
-          <PriceChangeText
-            sm
-            isPositive={!item.percentagePriceChange24h?.lt(0)}
-          >
-            {item.percentagePriceChange24h
-              ? formatPercentageAmount(item.percentagePriceChange24h)
-              : "—"}
-          </PriceChangeText>
-        </RightSection>
-      </BalanceRow>
-    );
-  };
+  const renderItem = ({ item }: { item: BalanceItem }) => (
+    <BalanceRow>
+      <LeftSection>
+        {isLiquidityPool(item) ? (
+          <AssetIcon token={{ type: "native", code: "XLM" }} />
+        ) : (
+          <AssetIcon token={item.token} />
+        )}
+        <AssetTextContainer>
+          <Text md>{item.displayName}</Text>
+          <AmountText sm>
+            {formatAssetAmount(item.total, item.tokenCode)}
+          </AmountText>
+        </AssetTextContainer>
+      </LeftSection>
+      <RightSection>
+        <Text md>
+          {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
+        </Text>
+        <PriceChangeText sm isPositive={!item.percentagePriceChange24h?.lt(0)}>
+          {item.percentagePriceChange24h
+            ? formatPercentageAmount(item.percentagePriceChange24h)
+            : "—"}
+        </PriceChangeText>
+      </RightSection>
+    </BalanceRow>
+  );
 
   return (
     <FlatList

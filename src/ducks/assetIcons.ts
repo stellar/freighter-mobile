@@ -122,13 +122,6 @@ export const useAssetIconsStore = create<AssetIconsState>()(
         const cacheKey = getTokenIdentifier(asset);
         const cachedIcon = get().icons[cacheKey];
 
-        debug(
-          "AssetIconsStore",
-          `Fetching icon for ${cacheKey}`,
-          cachedIcon ? "Found in cache" : "Cache miss",
-          cachedIcon,
-        );
-
         // Return cached icon if available
         if (cachedIcon) {
           return cachedIcon;

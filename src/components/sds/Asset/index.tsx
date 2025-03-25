@@ -83,7 +83,7 @@ const ASSET_SIZES = {
 } as const;
 
 /** Size variants for the Asset component: "sm", "md", or "lg" */
-type AssetSize = keyof typeof ASSET_SIZES;
+export type AssetSize = keyof typeof ASSET_SIZES;
 
 /** Display variants for asset presentation: single asset, swap, pair, or platform */
 type AssetVariant = "single" | "swap" | "pair" | "platform";
