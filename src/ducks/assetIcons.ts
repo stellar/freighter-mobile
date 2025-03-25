@@ -7,36 +7,72 @@ import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+/**
+ * Represents an asset icon with its source URL and network context
+ * @property {string} imageUrl - The URL of the icon image
+ * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
+ */
 interface Icon {
   imageUrl: string;
   networkUrl: NETWORK_URLS;
 }
 
+/**
+ * State and actions for managing asset icons
+ * @property {Record<string, Icon>} icons - Cached icon data mapped by token identifier
+ * @property {number | null} lastRefreshed - Timestamp of the last icon refresh operation
+ */
 interface AssetIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
+  /**
+   * Fetches an icon URL for a given asset
+   * @param {Object} params - Function parameters
+   * @param {AssetToken} params.asset - The asset to fetch the icon for
+   * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
+   * @returns {Promise<Icon>} The fetched icon data
+   */
   fetchIconUrl: (params: {
     asset: AssetToken;
     networkUrl: NETWORK_URLS;
   }) => Promise<Icon>;
+  /**
+   * Fetches icons for all assets in a balance map
+   * @param {Object} params - Function parameters
+   * @param {BalanceMap} params.balances - Map of balances to fetch icons for
+   * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
+   */
   fetchBalancesIcons: (params: {
     balances: BalanceMap;
     networkUrl: NETWORK_URLS;
   }) => Promise<void>;
+  /**
+   * Refreshes all cached icons if 24 hours have passed since last refresh
+   * Processes icons in batches to avoid overwhelming the network
+   */
   refreshIcons: () => void;
 }
 
-const BATCH_SIZE = 3; // Process 3 icons at a time
-const BATCH_DELAY = 1000; // 1 second delay between batches
+/** Number of icons to process in each batch */
+const BATCH_SIZE = 3;
+/** Delay in milliseconds between processing batches */
+const BATCH_DELAY = 1000;
 
 /**
- * Process a batch of icons for refresh
- * @param params Parameters for batch processing
- * @param params.entries Array of icon entries to process
- * @param params.batchIndex Current batch index
- * @param params.updatedIcons Record to store updated icons
- * @param params.startTime Start time of the overall refresh operation
- * @param params.set Zustand set function to update store
+ * Processes a batch of icons for refresh in a low-priority background task
+ *
+ * This function:
+ * 1. Takes a batch of icons from the input array
+ * 2. Processes them in parallel
+ * 3. Updates the store with refreshed icons
+ * 4. Schedules the next batch with a delay
+ *
+ * @param {Object} params - Function parameters
+ * @param {[string, Icon][]} params.entries - Array of icon entries to process
+ * @param {number} params.batchIndex - Current batch index for debugging
+ * @param {Record<string, Icon>} params.updatedIcons - Accumulator for updated icons
+ * @param {number} params.startTime - Start time of the refresh operation
+ * @param {Function} params.set - Zustand set function to update store
  */
 const processIconBatches = async (params: {
   entries: [string, Icon][];
@@ -110,8 +146,25 @@ const processIconBatches = async (params: {
  * Asset Icons Store
  *
  * Manages and caches asset icon URLs using Zustand with persistence.
- * Icons are fetched only once and cached to avoid unnecessary API calls.
- * The cache persists across sessions using AsyncStorage.
+ *
+ * Features:
+ * - Caches icons to avoid unnecessary API calls
+ * - Persists cache across sessions using AsyncStorage
+ * - Refreshes icons every 24 hours in the background
+ * - Processes icon updates in batches to manage network load
+ * - Handles network errors gracefully
+ *
+ * @example
+ * // Fetch icon for a specific asset
+ * const { fetchIconUrl } = useAssetIconsStore();
+ * const icon = await fetchIconUrl({
+ *   asset: myAsset,
+ *   networkUrl: NETWORK_URLS.PUBLIC
+ * });
+ *
+ * // Access cached icons
+ * const { icons } = useAssetIconsStore();
+ * const cachedIcon = icons[tokenIdentifier];
  */
 export const useAssetIconsStore = create<AssetIconsState>()(
   persist(

@@ -2,17 +2,41 @@ import { NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import { useEffect } from "react";
 
+/**
+ * Parameters for fetching priced balances
+ * @property {string} publicKey - The Stellar account public key
+ * @property {NETWORKS} network - The Stellar network to fetch from (e.g., PUBLIC, TESTNET)
+ */
 interface FetchPricedBalancesParams {
   publicKey: string;
   network: NETWORKS;
 }
 
 /**
- * Hook to fetch priced balances for a given public key and network.
- * Balances are fetched when the component mounts or when the publicKey/network changes.
+ * Hook to fetch and manage priced balances for a Stellar account.
  *
- * @param params.publicKey - The public key to fetch balances for
- * @param params.network - The network to fetch balances from
+ * Automatically fetches account balances with pricing information when:
+ * - The component mounts
+ * - The public key changes
+ * - The network changes
+ *
+ * @param {FetchPricedBalancesParams} params - The parameters for fetching balances
+ * @param {string} params.publicKey - The Stellar account public key
+ * @param {NETWORKS} params.network - The Stellar network to fetch from
+ *
+ * @example
+ * // Basic usage
+ * function AccountBalances() {
+ *   useFetchPricedBalances({
+ *     publicKey: "GBBD...",
+ *     network: NETWORKS.PUBLIC
+ *   });
+ *   // ... rest of the component
+ * }
+ *
+ * @remarks
+ * - Uses the balances store to manage state
+ * - Automatically refetches when dependencies change
  */
 export const useFetchPricedBalances = ({
   publicKey,
