@@ -75,7 +75,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -94,7 +94,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: "invalid-key",
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -112,7 +112,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -131,7 +131,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -154,7 +154,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -175,7 +175,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -201,7 +201,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -226,7 +226,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
@@ -261,7 +261,7 @@ describe("getIconUrlFromIssuer", () => {
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
       assetCode,
-      networkDetails: testNetworkDetails,
+      networkUrl: testNetworkDetails.networkUrl,
     });
 
     // Assert
