@@ -67,14 +67,18 @@ export const isLiquidityPool = (
   "liquidityPoolId" in balance && "reserves" in balance;
 
 /**
- * Gets a standardized token identifier from either a Balance or Token object
+ * Gets a unique identifier for a token or balance
  *
- * This function creates a consistent string identifier for tokens that can be used
- * as keys in maps or for comparison. For native XLM it returns "XLM", and for
- * other assets it returns a format like "CODE:ISSUER_KEY".
+ * This function generates a consistent identifier string that can be used
+ * to look up prices or other data for a token. It handles both Balance objects
+ * and raw Token objects.
  *
- * @param {Balance | NativeToken | AssetToken} item - Balance object or a Token object
- * @returns {TokenIdentifier} Standardized token identifier string or "" if not applicable
+ * For native XLM tokens, returns "XLM"
+ * For other assets, returns "CODE:ISSUER_KEY"
+ * For liquidity pools or unknown types, returns empty string
+ *
+ * @param {Balance | NativeToken | AssetToken} item - The balance or token to identify
+ * @returns {TokenIdentifier} The token identifier string or empty string for liquidity pools/unknown types
  *
  * @example
  * // Get identifier from balance
@@ -118,7 +122,7 @@ export const getTokenIdentifier = (
  *
  * This function processes a map of balance objects and extracts a unique
  * list of token identifiers that can be used for price lookups or other operations.
- * It filters out nulls and duplicates from the result.
+ * It filters out empty strings and duplicates from the result.
  *
  * @param {Record<string, Balance>} balances - Record of balance identifiers to Balance objects
  * @returns {TokenIdentifier[]} Array of unique token identifiers for price lookup

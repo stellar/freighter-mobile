@@ -2,7 +2,6 @@ import { NETWORKS } from "config/constants";
 import { BalanceMap, PricedBalanceMap, TokenPricesMap } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { getLPShareCode, isLiquidityPool } from "helpers/balances";
-import { debug } from "helpers/debug";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
 
@@ -162,14 +161,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       const { prices, error: pricesError } = usePricesStore.getState();
 
       if (pricesError || !prices || Object.keys(prices).length === 0) {
-        // Log price fetch error but don't fail the whole operation
-        debug(
-          "BalancesStore",
-          "Failed to fetch prices. Error:",
-          pricesError,
-          " Prices:",
-          prices,
-        );
+        // Don't fail the whole operation in case of price fetch error
         return;
       }
 
