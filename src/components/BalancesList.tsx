@@ -4,7 +4,6 @@ import { NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
-import { isLiquidityPool } from "helpers/balances";
 import {
   formatAssetAmount,
   formatFiatAmount,
@@ -191,11 +190,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   const renderItem = ({ item }: { item: BalanceItem }) => (
     <BalanceRow>
       <LeftSection>
-        {isLiquidityPool(item) ? (
-          <AssetIcon token={{ type: "native", code: "XLM" }} />
-        ) : (
-          <AssetIcon token={item.token} />
-        )}
+        <AssetIcon token={item} />
         <AssetTextContainer>
           <Text md>{item.displayName}</Text>
           <AmountText sm>

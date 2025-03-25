@@ -99,6 +99,8 @@ type AssetVariant = "single" | "swap" | "pair" | "platform";
  * @property {string} altText - Accessible description of the image for screen readers
  * @property {string} [backgroundColor] - Optional custom background color for the asset
  *   (defaults to the theme's background color if not provided)
+ * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
+ *   instead of an image (e.g., for displaying text or other components)
  */
 export type AssetSource = {
   /** Image URL */
@@ -107,6 +109,8 @@ export type AssetSource = {
   altText: string;
   /** Custom background color */
   backgroundColor?: string;
+  /** Custom content renderer */
+  renderContent?: () => React.ReactNode;
 };
 
 /**
@@ -340,6 +344,7 @@ const AssetImage = styled.Image`
  *   - "pair": displays two assets side by side (for trading pairs)
  *   - "platform": displays two assets with a platform logo overlaid (for protocol assets)
  * - Supports both local assets (imported from the asset system) and remote images (URLs)
+ * - Supports custom content rendering (e.g., text or other components)
  * - Consistent styling with border and background
  * - Customizable background colors for specific assets
  *
@@ -424,15 +429,19 @@ export const Asset: React.FC<AssetProps> = ({
       $isSecond={isSecond}
       $backgroundColor={source.backgroundColor}
     >
-      <AssetImage
-        // This will allow handling both local and remote images
-        source={
-          typeof source.image === "string"
-            ? { uri: source.image }
-            : source.image
-        }
-        accessibilityLabel={source.altText}
-      />
+      {source.renderContent ? (
+        source.renderContent()
+      ) : (
+        <AssetImage
+          // This will allow handling both local and remote images
+          source={
+            typeof source.image === "string"
+              ? { uri: source.image }
+              : source.image
+          }
+          accessibilityLabel={source.altText}
+        />
+      )}
     </AssetImageContainer>
   );
 

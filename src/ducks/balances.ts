@@ -51,18 +51,15 @@ const getExistingPricedBalances = (
     // Determine the asset code based on balance type
     let tokenCode: string;
     let displayName: string;
-    let tokenInitials: string;
 
     if (isLiquidityPool(balance)) {
       // Handle liquidity pool balances
       tokenCode = getLPShareCode(balance);
       displayName = tokenCode;
-      tokenInitials = "LP";
     } else {
       // Handle regular asset balances
       tokenCode = balance.token.code;
       displayName = tokenCode; // TODO: We can fetch it from TOML or Soroban Token props
-      tokenInitials = tokenCode.slice(0, 2);
     }
 
     // Create the priced balance object and keep existing price data if available
@@ -70,7 +67,6 @@ const getExistingPricedBalances = (
       ...balance,
       tokenCode,
       displayName,
-      tokenInitials,
       // Preserve existing price data if available
       currentPrice: existingPriceData?.currentPrice,
       percentagePriceChange24h: existingPriceData?.percentagePriceChange24h,
