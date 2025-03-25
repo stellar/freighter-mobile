@@ -95,8 +95,7 @@ type BalanceItem = PricedBalance & { id: string };
  */
 export const BalancesList: React.FC = () => {
   // TODO: Hardcoded values for testing, we'll get this from the wallet context
-  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ"; // with LP
-  // const publicKey = "GBDQO6LWQJBMWWPZV3SVGEFGX5CIBMPHQKU7HJZPWQWV6EWI6DKRP5WB"; // with Soroban Token
+  const publicKey = "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"; // with LP
   const network = NETWORKS.TESTNET;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
