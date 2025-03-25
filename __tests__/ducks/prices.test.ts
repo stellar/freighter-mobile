@@ -114,7 +114,7 @@ describe("prices duck", () => {
 
     // Setup default mock returns
     mockGetTokenIdentifiersFromBalances.mockReturnValue(mockTokenIdentifiers);
-    mockFetchTokenPrices.mockResolvedValue({ data: mockPrices });
+    mockFetchTokenPrices.mockResolvedValue(mockPrices);
   });
 
   describe("initial state", () => {

@@ -249,7 +249,7 @@ describe("BalancesList", () => {
 
       await waitFor(() => {
         expect(mockFetchAccountBalances).toHaveBeenCalledWith({
-          publicKey: "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ",
+          publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
           network: NETWORKS.TESTNET,
         });
       });
