@@ -119,12 +119,15 @@ export type AssetSource = {
  * @property {AssetSize} [size] - Size variant for the component ("sm", "md", or "lg").
  *   Defaults to "lg" if not specified.
  * @property {AssetSource} sourceOne - Primary asset source configuration
+ * @property {string} [testID] - Optional test identifier for testing purposes
  */
 export type AssetBaseProps = {
   /** Asset size (defaults to "lg" if not specified) */
   size?: AssetSize;
   /** First asset source */
   sourceOne: AssetSource;
+  /** Test identifier */
+  testID?: string;
 };
 
 /**
@@ -299,6 +302,7 @@ interface AssetImageContainerProps {
   $variant: AssetVariant;
   $isSecond?: boolean;
   $backgroundColor?: string;
+  testID?: string;
 }
 
 const AssetImageContainer = styled.View<AssetImageContainerProps>`
@@ -356,6 +360,7 @@ const AssetImage = styled.Image`
  * @param {AssetSize} [props.size] - Size variant: "sm", "md", or "lg". Defaults to "lg" if not specified.
  * @param {AssetSource} props.sourceOne - Primary asset source properties
  * @param {AssetSource} [props.sourceTwo] - Secondary asset source (required for multi-asset variants)
+ * @param {string} [props.testID] - Optional test identifier for testing purposes
  * @returns {JSX.Element} The rendered Asset component
  *
  * @example
@@ -421,6 +426,7 @@ export const Asset: React.FC<AssetProps> = ({
   size = "lg",
   sourceOne,
   sourceTwo,
+  testID = "asset",
 }: AssetProps) => {
   const renderImage = (source: AssetSource, isSecond = false) => (
     <AssetImageContainer
@@ -428,6 +434,7 @@ export const Asset: React.FC<AssetProps> = ({
       $variant={variant}
       $isSecond={isSecond}
       $backgroundColor={source.backgroundColor}
+      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
     >
       {source.renderContent ? (
         source.renderContent()
@@ -446,9 +453,9 @@ export const Asset: React.FC<AssetProps> = ({
   );
 
   return (
-    <AssetContainer $size={size} $variant={variant}>
+    <AssetContainer $size={size} $variant={variant} testID={testID}>
       {renderImage(sourceOne)}
-      {sourceTwo ? renderImage(sourceTwo, true) : null}
+      {sourceTwo && renderImage(sourceTwo, true)}
     </AssetContainer>
   );
 };
