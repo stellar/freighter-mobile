@@ -2,10 +2,13 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
+import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import React from "react";
 import styled from "styled-components/native";
 
@@ -26,6 +29,18 @@ const renderTabIcon = ({ focused }: { focused: boolean }) => (
 
 export const TabNavigator = () => {
   const { t } = useAppTranslation();
+
+  // TODO: Get this from wallet context
+  // const publicKey = "GD7HIY2E4EASBGTJ7R4XEL3RDPKMNGE7V6GMEQSWFXRHMYZOGSVRB7OO";
+  // const networkDetails = PUBLIC_NETWORK_DETAILS;
+  const publicKey = "GAG5Q24OEIY6CMPNDCYZQAKP2I3SS4SGR2RT3WXK4YQSPY46DPTCHOGM";
+  const networkDetails = TESTNET_NETWORK_DETAILS;
+
+  // Fetch balances when component mounts or when publicKey/network changes
+  useFetchPricedBalances({ publicKey, network: networkDetails.network });
+
+  // Fetch icons whenever balances are updated
+  useFetchAssetIcons(networkDetails.networkUrl);
 
   return (
     <MainTab.Navigator
