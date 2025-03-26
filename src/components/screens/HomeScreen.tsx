@@ -5,11 +5,6 @@ import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import React from "react";
 import styled from "styled-components/native";
 
-const Container = styled.View`
-  flex: 1;
-  padding: 16px;
-`;
-
 const Header = styled.View`
   margin-bottom: 20px;
 `;
@@ -23,12 +18,10 @@ export const HomeScreen = () => {
 
   return (
     <BaseLayout>
-      <Container>
-        <Header>
-          <Text md>Tokens</Text>
-        </Header>
-        <BalancesList publicKey={publicKey} network={networkDetails.network} />
-      </Container>
+      <Header>
+        <Text md>Tokens</Text>
+      </Header>
+      <BalancesList publicKey={publicKey} network={networkDetails.network} />
     </BaseLayout>
   );
 };
