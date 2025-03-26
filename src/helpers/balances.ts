@@ -1,4 +1,5 @@
 import { Asset } from "@stellar/stellar-sdk";
+import { BigNumber } from "bignumber.js";
 import {
   Balance,
   LiquidityPoolBalance,
@@ -7,6 +8,8 @@ import {
   TokenIdentifier,
   TokenPrice,
   TokenPricesMap,
+  PricedBalanceMap,
+  PricedBalance,
 } from "config/types";
 
 /**
@@ -188,4 +191,49 @@ export const getTokenPriceFromBalance = (
   }
 
   return priceData;
+};
+
+/**
+ * Sorts a map of balances according to specific rules:
+ * 1. Regular balances are sorted by fiatTotal in descending order
+ * 2. Liquidity pool balances are sorted by total amount in descending order
+ * 3. LP balances are always at the bottom
+ *
+ * @param {PricedBalanceMap} balances - Map of balances to sort
+ * @returns {PricedBalanceMap} Sorted map of balances
+ */
+export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
+  // Convert to array of entries and separate into regular and LP balances
+  const entries = Object.entries(balances);
+  const [regularBalances, lpBalances] = entries.reduce<
+    [Array<[string, PricedBalance]>, Array<[string, PricedBalance]>]
+  >(
+    ([regular, lp], [id, balance]) => {
+      if (isLiquidityPool(balance)) {
+        return [regular, [...lp, [id, balance]]];
+      }
+      return [[...regular, [id, balance]], lp];
+    },
+    [[], []],
+  );
+
+  // Sort regular balances by fiatTotal
+  regularBalances.sort(([, a], [, b]) => {
+    const fiatTotalA = a.fiatTotal || new BigNumber(0);
+    const fiatTotalB = b.fiatTotal || new BigNumber(0);
+    return fiatTotalB.minus(fiatTotalA).toNumber();
+  });
+
+  // Sort LP balances by total amount
+  lpBalances.sort(([, a], [, b]) => {
+    const totalA = a.total || new BigNumber(0);
+    const totalB = b.total || new BigNumber(0);
+    return totalB.minus(totalA).toNumber();
+  });
+
+  // Combine sorted regular balances with sorted LP balances at the bottom
+  const sortedEntries = [...regularBalances, ...lpBalances];
+
+  // Convert back to object
+  return Object.fromEntries(sortedEntries);
 };

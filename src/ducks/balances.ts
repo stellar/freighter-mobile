@@ -1,7 +1,11 @@
 import { NETWORKS } from "config/constants";
 import { BalanceMap, PricedBalanceMap, TokenPricesMap } from "config/types";
 import { usePricesStore } from "ducks/prices";
-import { getLPShareCode, isLiquidityPool } from "helpers/balances";
+import {
+  getLPShareCode,
+  isLiquidityPool,
+  sortBalances,
+} from "helpers/balances";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
 
@@ -144,7 +148,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       // Set the balances and pricedBalances in the store right away so we can display the balances immediately
       set({
         balances,
-        pricedBalances: existingPricedBalances,
+        pricedBalances: sortBalances(existingPricedBalances),
         isLoading: false,
       });
 
@@ -171,7 +175,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         prices,
       );
 
-      set({ pricedBalances: updatedPricedBalances });
+      set({ pricedBalances: sortBalances(updatedPricedBalances) });
     } catch (error) {
       set({
         error:
