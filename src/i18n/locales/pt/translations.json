@@ -77,5 +77,8 @@
       "failedToGetActiveKeyPair": "Falha ao obter par de chaves ativo"
     },
     "account": "Conta {{number}}"
+  },
+  "balancesList": {
+    "title": "Tokens"
   }
 }

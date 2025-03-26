@@ -1,26 +1,20 @@
 import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Text } from "components/sds/Typography";
-import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "navigators/TabNavigator";
 import React from "react";
 import styled from "styled-components/native";
 
-const Header = styled.View`
-  margin-bottom: 20px;
+const Spacing = styled.View`
+  margin-bottom: 100px;
 `;
 
 export const HomeScreen = () => {
-  // TODO: Get this from wallet context
-  // const publicKey = "GD7HIY2E4EASBGTJ7R4XEL3RDPKMNGE7V6GMEQSWFXRHMYZOGSVRB7OO";
-  // const networkDetails = PUBLIC_NETWORK_DETAILS;
-  const publicKey = "GAG5Q24OEIY6CMPNDCYZQAKP2I3SS4SGR2RT3WXK4YQSPY46DPTCHOGM";
-  const networkDetails = TESTNET_NETWORK_DETAILS;
+  const publicKey = TEST_PUBLIC_KEY;
+  const networkDetails = TEST_NETWORK_DETAILS;
 
   return (
     <BaseLayout>
-      <Header>
-        <Text md>Tokens</Text>
-      </Header>
+      <Spacing />
       <BalancesList publicKey={publicKey} network={networkDetails.network} />
     </BaseLayout>
   );

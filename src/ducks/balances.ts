@@ -62,7 +62,8 @@ const getExistingPricedBalances = (
     } else {
       // Handle regular asset balances
       tokenCode = balance.token.code;
-      displayName = tokenCode; // TODO: We can fetch it from TOML or Soroban Token props
+      displayName =
+        balance.token.type === "native" ? "Stellar Lumens" : tokenCode;
     }
 
     // Create the priced balance object and keep existing price data if available
