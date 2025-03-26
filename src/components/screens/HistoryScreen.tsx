@@ -52,6 +52,10 @@ export const HistoryScreen = () => {
     fetchActiveAccount();
   }, [fetchActiveAccount]);
 
+  // const callLoginScreen = () => {
+
+  // };
+
   return (
     <BaseLayout>
       <Container>
@@ -70,6 +74,9 @@ export const HistoryScreen = () => {
         <ButtonContainer>
           <Button onPress={handleLogout}>
             <Text>Logout</Text>
+          </Button>
+          <Button onPress={handleLogout}>
+            <Text>Login Screen</Text>
           </Button>
         </ButtonContainer>
         <View style={{ height: 40 }} />

@@ -10,6 +10,7 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_ALERT_SCREEN: "RecoveryPhraseAlertScreen",
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+  LOGIN_SCREEN: "LoginScreen",
 } as const;
 
 export const MAIN_TAB_ROUTES = {
@@ -36,6 +37,7 @@ export type AuthStackParamList = {
     password: string;
   };
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.LOGIN_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {

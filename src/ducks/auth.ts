@@ -30,6 +30,11 @@ interface SignUpParams {
   imported?: boolean;
 }
 
+// Parameters for login function
+interface SignInParams {
+  password: string;
+}
+
 // Parameters for storeAccount function
 interface StoreAccountParams {
   mnemonicPhrase: string;
@@ -47,9 +52,21 @@ interface AuthState {
   activeKeyPair: (KeyPair & { accountName: string; id: string }) | null;
 }
 
+/**
+ * Actions for the Auth store
+ *
+ * logout: Logs out the user and clears sensitive data
+ * signUp: Signs up a new user with the provided seed phrase and password. This function stores the account in the key manager and creates the temporary store.
+ * signIn: Logs in the user with the provided password. This function is called when the existing hashKey is expired. It creates a new hashKey and temporary store.
+ * importWallet: Imports a wallet with the provided seed phrase and password. This function stores the account in the key manager and creates the temporary store.
+ * addAccount: Adds a new account to the account list. This derives a new key pair from the mnemonic phrase and stores it in the key manager.
+ * getIsAuthenticated: Checks if the user is authenticated
+ * clearError: Clears the error message
+ */
 interface AuthActions {
   logout: () => void;
   signUp: (params: SignUpParams) => void;
+  signIn: (params: SignInParams) => void;
   getIsAuthenticated: () => void;
   clearError: () => void;
 }
@@ -82,6 +99,14 @@ const appendAccount = async (account: Account) => {
   const accountList = accountListRaw
     ? (JSON.parse(accountListRaw) as Account[])
     : [];
+
+  if (
+    accountList.find(
+      (a) => a.id === account.id && a.network === account.network,
+    )
+  ) {
+    return;
+  }
 
   await dataStorage.setItem(
     STORAGE_KEYS.ACCOUNT_LIST,
@@ -282,6 +307,76 @@ const signUp = async ({
 };
 
 /**
+ * Logs in the user with the provided password
+ */
+const signIn = async ({ password }: SignInParams): Promise<void> => {
+  try {
+    let activeAccount = await dataStorage.getItem(
+      STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+    );
+
+    // Check if an active account exists.
+    // If not, use the first key found in the key manager
+    if (!activeAccount) {
+      logger.info("signIn", "No active account found during login");
+
+      const allKeys = await keyManager.loadAllKeyIds();
+
+      if (allKeys.length === 0) {
+        logger.error("signIn", "No keys found in key manager");
+        throw new Error(t("authStore.error.noKeyPairFound"));
+      }
+
+      [activeAccount] = allKeys;
+    }
+
+    // Load the key with the password
+    // TOOD: implement error handling logic -- maybe add a limit to the number of attempts
+    const loadedKey = await keyManager.loadKey(activeAccount, password);
+    const keyExtraData = loadedKey.extra as
+      | undefined
+      | {
+          mnemonicPhrase: string | null;
+        };
+
+    if (!keyExtraData || !keyExtraData?.mnemonicPhrase) {
+      logger.error("signIn", "Key exists but has no extra data");
+      // Clear the all the data and throw an error
+      await logout();
+      throw new Error(t("authStore.error.noKeyPairFound"));
+    }
+
+    const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
+    const accountList = JSON.parse(accountListRaw ?? "[]") as Account[];
+    let account = accountList.find((a) => a.id === activeAccount);
+
+    if (!account) {
+      logger.error("signIn", "Account not found in account list");
+      // Clear the all the data and throw an error
+      account = {
+        id: activeAccount,
+        name: t("authStore.account", { number: accountList.length + 1 }),
+        publicKey: loadedKey.publicKey,
+        imported: false,
+        network: NETWORKS.TESTNET,
+      };
+
+      await appendAccount(account);
+    }
+
+    await createTemporaryStore(password, keyExtraData.mnemonicPhrase, {
+      publicKey: loadedKey.publicKey,
+      privateKey: loadedKey.privateKey,
+      accountName: account.name,
+      id: activeAccount,
+    });
+  } catch (error) {
+    logger.error("signIn", "Failed to sign in", error);
+    throw error;
+  }
+};
+
+/**
  * Authentication Store
  */
 export const useAuthenticationStore = create<AuthStore>()((set) => ({
@@ -334,6 +429,37 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
               error instanceof Error
                 ? error.message
                 : t("authStore.error.failedToSignUp"),
+            isLoading: false,
+          });
+          logout();
+        });
+    }, 0);
+  },
+
+  signIn: (params) => {
+    // Set loading state
+    set((state) => ({ ...state, isLoading: true, error: null }));
+
+    // Use a setTimeout to allow UI updates to propagate
+    setTimeout(() => {
+      signIn(params)
+        .then(() => {
+          set({
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        })
+        .catch((error) => {
+          logger.error(
+            "useAuthenticationStore.signIn",
+            "Sign in failed",
+            error,
+          );
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : t("authStore.error.failedToSignIn"),
             isLoading: false,
           });
           logout();

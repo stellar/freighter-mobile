@@ -1,6 +1,8 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { LoadingScreen } from "components/screens/LoadingScreen";
 import { STORAGE_KEYS } from "config/constants";
+import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { isHashKeyValid } from "hooks/useGetActiveAccount";
@@ -35,11 +37,14 @@ export const RootNavigator = () => {
           STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
         );
         setHasAccount(!!activeAccountId);
-
-        // Hide the splash screen after initialization
-        await RNBootSplash.hide({ fade: true });
-        setInitializing(false);
       } catch (error) {
+        logger.error(
+          "RootNavigator.validateAuth",
+          "Error initializing the app",
+          error,
+        );
+      } finally {
+        await RNBootSplash.hide({ fade: true });
         setInitializing(false);
       }
     };
@@ -47,9 +52,9 @@ export const RootNavigator = () => {
     validateAuth();
   }, [getIsAuthenticated]);
 
-  // Show nothing while initializing
+  // Show loading screen while initializing
   if (initializing) {
-    return null;
+    return <LoadingScreen />;
   }
 
   // Determine initial route
