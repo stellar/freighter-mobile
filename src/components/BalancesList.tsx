@@ -36,6 +36,7 @@ const BalanceRow = styled.View`
   height: ${px(44)};
   justify-content: space-between;
   align-items: center;
+  margin-bottom: ${px(24)};
 `;
 
 const LeftSection = styled.View`
@@ -52,10 +53,6 @@ const RightSection = styled.View`
   flex-direction: column;
   align-items: flex-end;
   margin-left: ${px(16)};
-`;
-
-const RowSeparator = styled.View`
-  height: ${px(24)};
 `;
 
 /**
@@ -222,10 +219,10 @@ export const BalancesList: React.FC<BalancesListProps> = ({
       </ListTitle>
       <FlatList
         testID="balances-list"
+        showsVerticalScrollIndicator={false}
         data={balanceItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        ItemSeparatorComponent={RowSeparator}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing || isPricesLoading}

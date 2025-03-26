@@ -1,11 +1,21 @@
 import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { THEME } from "config/theme";
+import { px } from "helpers/dimensions";
 import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "navigators/TabNavigator";
 import React from "react";
+import { Dimensions } from "react-native";
 import styled from "styled-components/native";
 
+const { width } = Dimensions.get("window");
+
 const Spacing = styled.View`
-  margin-bottom: 100px;
+  height: ${px(300)};
+  width: ${width}px;
+  margin-left: ${px(-24)};
+  margin-bottom: ${px(24)};
+  border-bottom-width: ${px(1)};
+  border-bottom-color: ${THEME.colors.border.default};
 `;
 
 export const HomeScreen = () => {
