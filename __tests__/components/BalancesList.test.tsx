@@ -1,5 +1,5 @@
 import { AssetType } from "@stellar/stellar-sdk";
-import { fireEvent, waitFor, act } from "@testing-library/react-native";
+import { act } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalancesList } from "components/BalancesList";
 import { NETWORKS } from "config/constants";
@@ -29,9 +29,10 @@ jest.mock("ducks/prices", () => ({
 // Mock React Navigation's useFocusEffect
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn((callback) => {
-    // Execute the callback once to simulate focus
+    // Execute the callback immediately to simulate focus
     callback();
-    return null;
+    // Return a cleanup function
+    return () => {};
   }),
 }));
 
@@ -40,6 +41,10 @@ jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
   getTokenIdentifiersFromBalances: jest.fn(),
   getLPShareCode: jest.fn(),
+  getTokenIdentifier: jest.fn((token) => {
+    if (token.type === "native") return "XLM";
+    return `${token.code}:${token.issuer.key}`;
+  }),
 }));
 
 // Mock debug to avoid console logs in tests
@@ -191,7 +196,12 @@ describe("BalancesList", () => {
         createMockStoreState({ isLoading: true }),
       );
 
-      const { getByText } = renderWithProviders(<BalancesList />);
+      const { getByText } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
       expect(getByText("Loading balances...")).toBeTruthy();
     });
 
@@ -200,14 +210,24 @@ describe("BalancesList", () => {
         createMockStoreState({ error: "Failed to load balances" }),
       );
 
-      const { getByText } = renderWithProviders(<BalancesList />);
+      const { getByText } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
       expect(getByText("Error loading balances")).toBeTruthy();
     });
 
     it("should show empty state when no balances are found", () => {
       mockUseBalancesStore.mockReturnValue(createMockStoreState());
 
-      const { getByText } = renderWithProviders(<BalancesList />);
+      const { getByText } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
       expect(getByText("No balances found")).toBeTruthy();
     });
 
@@ -219,7 +239,12 @@ describe("BalancesList", () => {
         }),
       );
 
-      const { getByText, getByTestId } = renderWithProviders(<BalancesList />);
+      const { getByText, getByTestId } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
 
       expect(getByTestId("balances-list")).toBeTruthy();
       expect(getByText("XLM")).toBeTruthy();
@@ -238,18 +263,29 @@ describe("BalancesList", () => {
         }),
       );
 
-      const { getByTestId } = renderWithProviders(<BalancesList />);
+      const { getByTestId } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
       const flatList = getByTestId("balances-list");
 
+      // Trigger refresh by simulating the onRefresh event
       act(() => {
-        fireEvent(flatList, "refresh");
+        const { refreshControl } = flatList.props;
+        refreshControl.props.onRefresh();
       });
 
-      await waitFor(() => {
-        expect(mockFetchAccountBalances).toHaveBeenCalledWith({
-          publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
-          network: NETWORKS.TESTNET,
-        });
+      // Add a small delay to allow the async operation to complete
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+
+      // Verify the mock was called with correct arguments
+      expect(mockFetchAccountBalances).toHaveBeenCalledWith({
+        publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
+        network: NETWORKS.TESTNET,
       });
     });
   });
@@ -311,7 +347,12 @@ describe("BalancesList", () => {
         }),
       );
 
-      const { getByText } = renderWithProviders(<BalancesList />);
+      const { getByText } = renderWithProviders(
+        <BalancesList
+          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
+          network={NETWORKS.TESTNET}
+        />,
+      );
       expect(getByText("XLM / USDC")).toBeTruthy();
     });
   });

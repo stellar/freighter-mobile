@@ -38,8 +38,9 @@ export const useFetchAssetIcons = (networkUrl: NETWORK_URLS) => {
   const balancesKey = Object.keys(balances).sort().join(",");
 
   useEffect(() => {
-    debug("useFetchAssetIcons", "Balances changed", balancesKey);
     if (balancesKey.length > 3) {
+      debug("useFetchAssetIcons", "Balances changed", balancesKey);
+
       // Fetch icons in the background
       fetchBalancesIcons({ balances, networkUrl });
     }
