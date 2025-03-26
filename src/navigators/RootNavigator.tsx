@@ -37,7 +37,6 @@ export const RootNavigator = () => {
         setHasAccount(!!activeAccountId);
 
         // Hide the splash screen after initialization
-        await RNBootSplash.hide({ fade: true });
         setInitializing(false);
       } catch (error) {
         setInitializing(false);
@@ -46,6 +45,13 @@ export const RootNavigator = () => {
 
     validateAuth();
   }, [getIsAuthenticated]);
+
+  // Hide splash screen once initialization is complete
+  useEffect(() => {
+    if (!initializing) {
+      RNBootSplash.hide({ fade: true });
+    }
+  }, [initializing]);
 
   // Show nothing while initializing
   if (initializing) {
