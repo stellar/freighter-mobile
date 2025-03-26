@@ -105,9 +105,9 @@ const getUpdatedPricedBalances = (
         ...updatedPricedBalances[id],
         ...priceData,
         fiatCode: "USD",
-        fiatTotal: updatedPricedBalances[id].total.multipliedBy(
-          priceData.currentPrice || 0,
-        ),
+        fiatTotal:
+          priceData.currentPrice &&
+          updatedPricedBalances[id].total.multipliedBy(priceData.currentPrice),
       };
     }
   });

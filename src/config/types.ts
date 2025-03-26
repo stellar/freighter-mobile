@@ -183,7 +183,7 @@ export type PricedBalance = Balance &
   TokenPrice & {
     tokenCode?: string;
     fiatCode?: string;
-    fiatTotal?: BigNumber;
+    fiatTotal?: BigNumber | null;
     displayName?: string;
   };
 

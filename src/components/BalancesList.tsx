@@ -193,22 +193,24 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         </AssetTextContainer>
       </LeftSection>
       <RightSection>
-        <Text medium>
-          {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
-        </Text>
-        <Text
-          sm
-          medium
-          color={
-            !item.percentagePriceChange24h?.lt(0)
-              ? THEME.colors.status.success
-              : THEME.colors.status.error
-          }
-        >
-          {item.percentagePriceChange24h
-            ? formatPercentageAmount(item.percentagePriceChange24h)
-            : "—"}
-        </Text>
+        {item.fiatTotal ? (
+          <>
+            <Text medium>{formatFiatAmount(item.fiatTotal)}</Text>
+            <Text
+              sm
+              medium
+              color={
+                item.percentagePriceChange24h?.gt(0)
+                  ? THEME.colors.status.success
+                  : THEME.colors.text.secondary
+              }
+            >
+              {formatPercentageAmount(item.percentagePriceChange24h)}
+            </Text>
+          </>
+        ) : (
+          <Text medium>--</Text>
+        )}
       </RightSection>
     </BalanceRow>
   );
