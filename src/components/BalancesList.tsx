@@ -42,17 +42,20 @@ const BalanceRow = styled.View`
 const LeftSection = styled.View`
   flex-direction: row;
   align-items: center;
+  flex: 1;
+  margin-right: ${px(16)};
 `;
 
 const AssetTextContainer = styled.View`
   flex-direction: column;
   margin-left: ${px(16)};
+  flex: 1;
 `;
 
 const RightSection = styled.View`
   flex-direction: column;
   align-items: flex-end;
-  margin-left: ${px(16)};
+  width: ${px(115)};
 `;
 
 /**
@@ -183,8 +186,10 @@ export const BalancesList: React.FC<BalancesListProps> = ({
       <LeftSection>
         <AssetIcon token={item} />
         <AssetTextContainer>
-          <Text medium>{item.displayName}</Text>
-          <Text sm medium secondary>
+          <Text medium numberOfLines={1}>
+            {item.displayName}
+          </Text>
+          <Text sm medium secondary numberOfLines={1}>
             {formatAssetAmount(item.total, item.tokenCode)}
           </Text>
         </AssetTextContainer>
@@ -192,7 +197,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
       <RightSection>
         {item.fiatTotal ? (
           <>
-            <Text medium>{formatFiatAmount(item.fiatTotal)}</Text>
+            <Text medium numberOfLines={1}>
+              {formatFiatAmount(item.fiatTotal)}
+            </Text>
             <Text
               sm
               medium

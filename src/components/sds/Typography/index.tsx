@@ -251,6 +251,7 @@ export interface TextProps extends TypographyBaseProps {
   isVerticallyCentered?: boolean;
   url?: string;
   style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
 }
 
 const StyledText = styled(BaseText)<{
