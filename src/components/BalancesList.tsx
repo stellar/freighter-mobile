@@ -16,18 +16,18 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
-const Spinner = styled.ActivityIndicator`
-  margin-top: ${px(24)};
-  width: 100%;
-  align-items: center;
-`;
-
 const ListWrapper = styled.View`
   flex: 1;
 `;
 
 const ListTitle = styled.View`
   margin-bottom: ${px(24)};
+`;
+
+const Spinner = styled.ActivityIndicator`
+  margin-top: ${px(24)};
+  width: 100%;
+  align-items: center;
 `;
 
 const BalanceRow = styled.View`
