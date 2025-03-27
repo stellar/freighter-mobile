@@ -79,6 +79,8 @@
     "account": "Account {{number}}"
   },
   "balancesList": {
-    "title": "Tokens"
+    "title": "Tokens",
+    "error": "Error loading balances",
+    "empty": "No balances found"
   }
 }

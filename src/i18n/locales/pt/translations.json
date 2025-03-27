@@ -79,6 +79,8 @@
     "account": "Conta {{number}}"
   },
   "balancesList": {
-    "title": "Tokens"
+    "title": "Tokens",
+    "error": "Erro ao carregar saldos",
+    "empty": "Nenhum saldo encontrado"
   }
 }

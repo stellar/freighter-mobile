@@ -16,10 +16,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
-const EmptyState = styled.View`
-  padding: 32px 16px;
+const Spinner = styled.ActivityIndicator`
+  margin-top: ${px(24)};
+  width: 100%;
   align-items: center;
-  justify-content: center;
 `;
 
 const ListWrapper = styled.View`
@@ -146,20 +146,29 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   // Display error state if there's an error loading balances
   if (balancesError) {
     return (
-      <EmptyState>
-        <Text md>Error loading balances</Text>
-      </EmptyState>
+      <ListWrapper>
+        <ListTitle>
+          <Text medium>{t("balancesList.title")}</Text>
+        </ListTitle>
+        <Text md>{t("balancesList.error")}</Text>
+      </ListWrapper>
     );
   }
 
   // If no balances or empty object, show empty state
   if (!balances || Object.keys(balances).length === 0) {
     return (
-      <EmptyState>
-        <Text md>
-          {isBalancesLoading ? "Loading balances..." : "No balances found"}
-        </Text>
-      </EmptyState>
+      <ListWrapper>
+        <ListTitle>
+          <Text medium>{t("balancesList.title")}</Text>
+        </ListTitle>
+
+        {isBalancesLoading ? (
+          <Spinner size="large" color={THEME.colors.secondary} />
+        ) : (
+          <Text md>{t("balancesList.empty")}</Text>
+        )}
+      </ListWrapper>
     );
   }
 
@@ -234,7 +243,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <RefreshControl
             refreshing={isRefreshing || isPricesLoading}
             onRefresh={handleRefresh}
-            tintColor="white"
+            tintColor={THEME.colors.secondary}
           />
         }
       />
