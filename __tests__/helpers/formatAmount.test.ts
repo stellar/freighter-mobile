@@ -158,8 +158,9 @@ describe("formatAmount helpers", () => {
     });
 
     it("should handle undefined input", () => {
-      expect(formatPercentageAmount()).toBe("0.00%");
-      expect(formatPercentageAmount(undefined)).toBe("0.00%");
+      expect(formatPercentageAmount()).toBe("--");
+      expect(formatPercentageAmount(null)).toBe("--");
+      expect(formatPercentageAmount(undefined)).toBe("--");
     });
 
     it("should handle objects with toString method", () => {

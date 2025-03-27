@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
-import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { TEST_PUBLIC_KEY, TEST_NETWORK_DETAILS } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
@@ -26,12 +26,6 @@ const TabIcon = styled.View<{ focused: boolean }>`
 const renderTabIcon = ({ focused }: { focused: boolean }) => (
   <TabIcon focused={focused} />
 );
-
-export const TEST_PUBLIC_KEY =
-  "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
-export const TEST_NETWORK_DETAILS = TESTNET_NETWORK_DETAILS;
-// export const TEST_PUBLIC_KEY = "GD7EMKA34FGOC32GMK53JRVRYU2A6F5SBXDSE3XIGUAO7ZE4IP3FIQRC";
-// export const TEST_NETWORK_DETAILS = PUBLIC_NETWORK_DETAILS;
 
 export const TabNavigator = () => {
   const { t } = useAppTranslation();

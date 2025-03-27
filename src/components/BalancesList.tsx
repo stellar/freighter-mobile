@@ -170,7 +170,11 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         </ListTitle>
 
         {isBalancesLoading ? (
-          <Spinner size="large" color={THEME.colors.secondary} />
+          <Spinner
+            testID="balances-list-spinner"
+            size="large"
+            color={THEME.colors.secondary}
+          />
         ) : (
           <Text md>{t("balancesList.empty")}</Text>
         )}

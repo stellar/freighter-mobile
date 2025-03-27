@@ -1,8 +1,8 @@
 import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "config/constants";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
-import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "navigators/TabNavigator";
 import React from "react";
 import { Dimensions } from "react-native";
 import styled from "styled-components/native";

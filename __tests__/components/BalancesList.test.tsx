@@ -196,13 +196,13 @@ describe("BalancesList", () => {
         createMockStoreState({ isLoading: true }),
       );
 
-      const { getByText } = renderWithProviders(
+      const { getByTestId } = renderWithProviders(
         <BalancesList
           publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
           network={NETWORKS.TESTNET}
         />,
       );
-      expect(getByText("Loading balances...")).toBeTruthy();
+      expect(getByTestId("balances-list-spinner")).toBeVisible();
     });
 
     it("should show error state when there is an error loading balances", () => {
