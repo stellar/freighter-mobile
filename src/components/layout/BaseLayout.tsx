@@ -19,7 +19,6 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
   background-color: ${({ $backgroundColor }: StyledViewProps) =>
     $backgroundColor};
   padding-top: ${({ $insets }: StyledViewProps) => $insets.top}px;
-  padding-bottom: ${({ $insets }: StyledViewProps) => $insets.bottom}px;
   padding-left: ${({ $insets }: StyledViewProps) => $insets.left}px;
   padding-right: ${({ $insets }: StyledViewProps) => $insets.right}px;
 `;
