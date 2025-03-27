@@ -186,8 +186,9 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 // Display
 // =============================================================================
 
-interface DisplayProps extends TypographyBaseProps {
-  size?: DisplaySize;
+export interface DisplayProps extends TypographyBaseProps {
+  size?: TextSize;
+  style?: StyleProp<TextStyle>;
 }
 
 const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`

@@ -76,6 +76,9 @@ const mockIsLiquidityPool =
     (balance: Balance) => balance is LiquidityPoolBalance
   >;
 
+const testPublicKey =
+  "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
+
 describe("BalancesList", () => {
   // Helper function to create mock balances
   const createMockBalances = () => {
@@ -197,10 +200,7 @@ describe("BalancesList", () => {
       );
 
       const { getByTestId } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
       expect(getByTestId("balances-list-spinner")).toBeVisible();
     });
@@ -211,10 +211,7 @@ describe("BalancesList", () => {
       );
 
       const { getByText } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
       expect(getByText("Error loading balances")).toBeTruthy();
     });
@@ -223,10 +220,7 @@ describe("BalancesList", () => {
       mockUseBalancesStore.mockReturnValue(createMockStoreState());
 
       const { getByText } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
       expect(getByText("No balances found")).toBeTruthy();
     });
@@ -240,10 +234,7 @@ describe("BalancesList", () => {
       );
 
       const { getByText, getByTestId } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
 
       expect(getByTestId("balances-list")).toBeTruthy();
@@ -264,10 +255,7 @@ describe("BalancesList", () => {
       );
 
       const { getByTestId } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
       const flatList = getByTestId("balances-list");
 
@@ -284,7 +272,7 @@ describe("BalancesList", () => {
 
       // Verify the mock was called with correct arguments
       expect(mockFetchAccountBalances).toHaveBeenCalledWith({
-        publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
+        publicKey: testPublicKey,
         network: NETWORKS.TESTNET,
       });
     });
@@ -348,10 +336,7 @@ describe("BalancesList", () => {
       );
 
       const { getByText } = renderWithProviders(
-        <BalancesList
-          publicKey="GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG"
-          network={NETWORKS.TESTNET}
-        />,
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
       expect(getByText("XLM / USDC")).toBeTruthy();
     });
