@@ -82,8 +82,8 @@ const getExistingPricedBalances = (
     return [id, pricedBalance] as [string, typeof pricedBalance];
   });
 
-  // Convert the entries array to an object
-  return Object.fromEntries(entries) as PricedBalanceMap;
+  // Convert the entries array to an object and sort it
+  return sortBalances(Object.fromEntries(entries));
 };
 
 /**
@@ -112,7 +112,8 @@ const getUpdatedPricedBalances = (
     }
   });
 
-  return updatedPricedBalances;
+  // Sort the updated priced balances
+  return sortBalances(updatedPricedBalances);
 };
 
 /**
@@ -137,6 +138,9 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         throw new Error("No balances returned from API");
       }
 
+      // Set the "raw" balances right away as they don't depend on prices
+      set({ balances });
+
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
 
@@ -146,27 +150,44 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         statePricedBalances,
       );
 
-      // Set the balances and pricedBalances in the store right away so we can display the balances immediately
-      set({
-        balances,
-        pricedBalances: sortBalances(existingPricedBalances),
-        isLoading: false,
-      });
-
       const { fetchPricesForBalances } = usePricesStore.getState();
 
       // Fetch updated prices for the balances using the prices store
-      await fetchPricesForBalances({
+      const priceFetchPromise = fetchPricesForBalances({
         balances,
         publicKey: params.publicKey,
         network: params.network,
       });
+
+      // Wait a maximum of 3 seconds for prices to be fetched
+      try {
+        await Promise.race([
+          priceFetchPromise,
+          new Promise((_, reject) =>
+            // eslint-disable-next-line no-promise-executor-return
+            setTimeout(() => reject(new Error("Price fetch timeout")), 3000),
+          ),
+        ]);
+      } catch (error) {
+        // If price fetch times out, use existing data and stop balances loading
+        set({
+          pricedBalances: existingPricedBalances,
+          isLoading: false,
+        });
+      }
+
+      // Make sure to wait until the prices finishes fetching
+      await priceFetchPromise;
 
       // Get the updated prices from the store
       const { prices, error: pricesError } = usePricesStore.getState();
 
       if (pricesError || !prices || Object.keys(prices).length === 0) {
         // Don't fail the whole operation in case of price fetch error
+        set({
+          pricedBalances: existingPricedBalances,
+          isLoading: false,
+        });
         return;
       }
 
@@ -176,7 +197,10 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         prices,
       );
 
-      set({ pricedBalances: sortBalances(updatedPricedBalances) });
+      set({
+        pricedBalances: updatedPricedBalances,
+        isLoading: false,
+      });
     } catch (error) {
       set({
         error:
