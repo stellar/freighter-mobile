@@ -108,7 +108,7 @@ export const formatFiatAmount = (
 export const formatPercentageAmount = (
   amount?: string | number | { toString: () => string } | null,
 ): string => {
-  if (!amount) {
+  if (amount === null || amount === undefined) {
     return "--";
   }
 
