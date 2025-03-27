@@ -27,14 +27,17 @@ const renderTabIcon = ({ focused }: { focused: boolean }) => (
   <TabIcon focused={focused} />
 );
 
+export const TEST_PUBLIC_KEY =
+  "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
+export const TEST_NETWORK_DETAILS = TESTNET_NETWORK_DETAILS;
+// export const TEST_PUBLIC_KEY = "GD7EMKA34FGOC32GMK53JRVRYU2A6F5SBXDSE3XIGUAO7ZE4IP3FIQRC";
+// export const TEST_NETWORK_DETAILS = PUBLIC_NETWORK_DETAILS;
+
 export const TabNavigator = () => {
   const { t } = useAppTranslation();
 
-  // TODO: Get this from wallet context
-  // const publicKey = "GD7HIY2E4EASBGTJ7R4XEL3RDPKMNGE7V6GMEQSWFXRHMYZOGSVRB7OO";
-  // const networkDetails = PUBLIC_NETWORK_DETAILS;
-  const publicKey = "GAG5Q24OEIY6CMPNDCYZQAKP2I3SS4SGR2RT3WXK4YQSPY46DPTCHOGM";
-  const networkDetails = TESTNET_NETWORK_DETAILS;
+  const publicKey = TEST_PUBLIC_KEY;
+  const networkDetails = TEST_NETWORK_DETAILS;
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({ publicKey, network: networkDetails.network });
