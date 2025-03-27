@@ -5,6 +5,7 @@ import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
+import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
   formatAssetAmount,
@@ -52,10 +53,15 @@ const AssetTextContainer = styled.View`
   flex: 1;
 `;
 
-const RightSection = styled.View`
+interface RightSectionProps {
+  isLP: boolean;
+}
+
+const RightSection = styled.View<RightSectionProps>`
   flex-direction: column;
   align-items: flex-end;
-  width: ${px(115)};
+  /* For liquidity pool balances we only need 20px for the "--" string */
+  width: ${({ isLP }: RightSectionProps) => px(isLP ? 20 : 115)};
 `;
 
 /**
@@ -203,7 +209,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           </Text>
         </AssetTextContainer>
       </LeftSection>
-      <RightSection>
+      <RightSection isLP={isLiquidityPool(item)}>
         {item.fiatTotal ? (
           <>
             <Text medium numberOfLines={1}>
@@ -222,7 +228,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
             </Text>
           </>
         ) : (
-          <Text medium>--</Text>
+          <Text sm medium secondary>
+            --
+          </Text>
         )}
       </RightSection>
     </BalanceRow>
