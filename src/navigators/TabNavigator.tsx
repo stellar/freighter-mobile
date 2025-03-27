@@ -20,7 +20,7 @@ interface TabIconWrapperProps {
 const TabIconWrapper = styled.View<TabIconWrapperProps>`
   width: ${px(80)};
   height: ${px(36)};
-  margin-top: ${px(7)};
+  margin-top: ${px(10)};
   border-radius: ${px(100)};
   justify-content: center;
   align-items: center;
@@ -66,6 +66,7 @@ export const TabNavigator = () => (
         borderColor: THEME.colors.border.default,
         borderTopWidth: pxValue(1),
         borderStyle: "solid",
+        paddingHorizontal: pxValue(72),
       },
     })}
   >
