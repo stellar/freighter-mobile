@@ -63,8 +63,9 @@ export const TabNavigator = () => (
       tabBarInactiveTintColor: THEME.colors.tab.inactive,
       tabBarStyle: {
         backgroundColor: THEME.colors.background.default,
-        borderTopColor: THEME.colors.border.default,
+        borderColor: THEME.colors.border.default,
         borderTopWidth: pxValue(1),
+        borderStyle: "solid",
       },
     })}
   >
