@@ -134,10 +134,16 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     setIsRefreshing(true);
     const refreshStartTime = Date.now();
 
-    fetchAccountBalances({
-      publicKey,
-      network,
-    }).finally(() => {
+    Promise.all([
+      fetchAccountBalances({
+        publicKey,
+        network,
+      }),
+      // Add a minimum delay to prevent flickering
+      new Promise((resolve) => {
+        setTimeout(resolve, 500);
+      }),
+    ]).finally(() => {
       const elapsedTime = Date.now() - refreshStartTime;
       const remainingTime = Math.max(0, 1000 - elapsedTime);
 
