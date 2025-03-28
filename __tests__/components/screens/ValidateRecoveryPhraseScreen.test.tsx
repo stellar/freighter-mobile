@@ -75,6 +75,10 @@ describe("ValidateRecoveryPhraseScreen", () => {
     jest.useFakeTimers();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("renders correctly with initial state", () => {
     renderScreen();
 
