@@ -315,7 +315,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.stellar.freightermobile;
+				PRODUCT_BUNDLE_IDENTIFIER = org.stellar.freighterwallet;
 				PRODUCT_NAME = "freighter-mobile";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -344,7 +344,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = org.stellar.freightermobile;
+				PRODUCT_BUNDLE_IDENTIFIER = org.stellar.freighterwallet;
 				PRODUCT_NAME = "freighter-mobile";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
