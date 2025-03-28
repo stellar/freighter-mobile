@@ -73,7 +73,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
+    jest.useFakeTimers({ legacyFakeTimers: false });
   });
 
   afterEach(() => {
@@ -97,13 +97,13 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[0]);
     await user.press(continueButton);
 
-    // Advance timers by exact delay duration
     act(() => {
       jest.advanceTimersByTime(DELAY_MS);
     });
 
-    // Verify UI update
-    expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    });
   }, 10000);
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
@@ -114,22 +114,29 @@ describe("ValidateRecoveryPhraseScreen", () => {
     let button = screen.getByTestId("default-action-button");
     await user.type(input, words[0]);
     await user.press(button);
+
     act(() => jest.advanceTimersByTime(DELAY_MS));
-    expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    });
 
     // Second word
     input = screen.getByPlaceholderText("Type the correct word");
     button = screen.getByTestId("default-action-button");
     await user.type(input, words[1]);
     await user.press(button);
+
     act(() => jest.advanceTimersByTime(DELAY_MS));
-    expect(screen.getByText(/enter word #3/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #3/i)).toBeTruthy();
+    });
 
     // Third word
     input = screen.getByPlaceholderText("Type the correct word");
     button = screen.getByTestId("default-action-button");
     await user.type(input, words[2]);
     await user.press(button);
+
     act(() => jest.advanceTimersByTime(DELAY_MS));
 
     await waitFor(() => {
@@ -148,7 +155,12 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     await user.type(input, "wrongword");
     await user.press(continueButton);
-    expect(screen.getByText("Incorrect word. Please try again.")).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Incorrect word. Please try again."),
+      ).toBeTruthy();
+    });
   });
 
   it("clears error when user starts typing", async () => {
@@ -159,10 +171,20 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     await user.type(input, "wrongword");
     await user.press(continueButton);
-    expect(screen.getByText("Incorrect word. Please try again.")).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Incorrect word. Please try again."),
+      ).toBeTruthy();
+    });
 
     await user.type(input, "a");
-    expect(screen.queryByText("Incorrect word. Please try again.")).toBeNull();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Incorrect word. Please try again."),
+      ).toBeNull();
+    });
   });
 
   it("disables continue button when input is empty", async () => {
@@ -173,6 +195,9 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     const input = screen.getByPlaceholderText("Type the correct word");
     await user.type(input, "one");
-    expect(continueButton.props.accessibilityState.disabled).toBeFalsy();
+
+    await waitFor(() => {
+      expect(continueButton.props.accessibilityState.disabled).toBeFalsy();
+    });
   });
 });
