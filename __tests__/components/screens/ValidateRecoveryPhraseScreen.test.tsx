@@ -1,6 +1,6 @@
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { userEvent, screen } from "@testing-library/react-native";
+import { userEvent, screen, act } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -102,9 +102,12 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await screen.findByTestId("button-loading-indicator");
 
     // Run timers and wait for next screen
-    jest.runAllTimers();
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await screen.findByText(/enter word #2/i);
-  }, 10000); // Increase timeout to 10 seconds
+  }, 10000);
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
     const selectedWords = [words[0], words[1], words[2]];
@@ -118,7 +121,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(firstInput, selectedWords[0]);
     await user.press(firstButton);
     await screen.findByTestId("button-loading-indicator");
-    jest.runAllTimers();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await screen.findByText(/enter word #2/i);
 
     // Second word
@@ -127,7 +134,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(secondInput, selectedWords[1]);
     await user.press(secondButton);
     await screen.findByTestId("button-loading-indicator");
-    jest.runAllTimers();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await screen.findByText(/enter word #3/i);
 
     // Third word
@@ -136,13 +147,16 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(thirdInput, selectedWords[2]);
     await user.press(thirdButton);
     await screen.findByTestId("button-loading-indicator");
-    jest.runAllTimers();
+
+    act(() => {
+      jest.runAllTimers();
+    });
 
     expect(mockSignUp).toHaveBeenCalledWith({
       password: "test-password",
       mnemonicPhrase: mockRoute.params.recoveryPhrase,
     });
-  }, 15000); // Increase timeout to 15 seconds for the longer test
+  }, 15000);
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();
