@@ -39,6 +39,12 @@
     "defaultActionButtonText": "Continue",
     "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
   },
+  "validateRecoveryPhraseScreen": {
+    "title": "Enter Word #{{number}}",
+    "inputPlaceholder": "Type the correct word",
+    "errorText": "Word is incorrect, try again",
+    "defaultActionButtonText": "Continue"
+  },
   "importWalletScreen": {
     "title": "Import Wallet",
     "textAreaPlaceholder": "Enter recovery phrase",
