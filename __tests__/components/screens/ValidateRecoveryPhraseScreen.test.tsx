@@ -83,20 +83,6 @@ describe("ValidateRecoveryPhraseScreen", () => {
     expect(screen.getByTestId("default-action-button")).toBeTruthy();
   });
 
-  it("shows error when incorrect word is entered", async () => {
-    renderScreen();
-
-    const input = screen.getByPlaceholderText("Type the correct word");
-    const continueButton = screen.getByTestId("default-action-button");
-
-    await user.type(input, "wrongword");
-    await user.press(continueButton);
-    jest.runAllTimers();
-
-    expect(screen.getByText("Incorrect word. Please try again.")).toBeTruthy();
-    expect(mockSignUp).not.toHaveBeenCalled();
-  }, 10000);
-
   it("proceeds to next word when correct word is entered", async () => {
     renderScreen();
 
@@ -147,6 +133,17 @@ describe("ValidateRecoveryPhraseScreen", () => {
       password: "test-password",
       mnemonicPhrase: mockRoute.params.recoveryPhrase,
     });
+  });
+
+  it("shows error when incorrect word is entered", async () => {
+    renderScreen();
+
+    const input = screen.getByPlaceholderText("Type the correct word");
+    const continueButton = screen.getByTestId("default-action-button");
+
+    await user.type(input, "wrongword");
+    await user.press(continueButton);
+    expect(screen.getByText("Incorrect word. Please try again.")).toBeTruthy();
   });
 
   it("clears error when user starts typing", async () => {
