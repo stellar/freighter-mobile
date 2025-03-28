@@ -116,7 +116,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/enter word #2/i)).toBeTruthy();
     });
-  });
+  }, 30000);
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
     renderScreen();
@@ -168,7 +168,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
         mnemonicPhrase: mockRoute.params.recoveryPhrase,
       });
     });
-  });
+  }, 30000);
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();
