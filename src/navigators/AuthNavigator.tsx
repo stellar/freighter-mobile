@@ -6,6 +6,7 @@ import { ConfirmPasswordScreen } from "components/screens/ConfirmPasswordScreen"
 import { ImportWalletScreen } from "components/screens/ImportWalletScreen";
 import { RecoveryPhraseAlertScreen } from "components/screens/RecoveryPhraseAlertScreen";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
+import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
 import { WelcomeScreen } from "components/screens/WelcomeScreen";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
@@ -67,6 +68,10 @@ export const AuthNavigator = () => {
       <AuthStack.Screen
         name={AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN}
         component={RecoveryPhraseScreen}
+      />
+      <AuthStack.Screen
+        name={AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN}
+        component={ValidateRecoveryPhraseScreen}
       />
       <AuthStack.Screen
         name={AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN}

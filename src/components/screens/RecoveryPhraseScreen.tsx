@@ -33,6 +33,7 @@ const RecoveryPhraseText = styled(Text)`
 
 export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   route,
+  navigation,
 }) => {
   const { password } = route.params;
   const [recoveryPhrase] = useState(
@@ -40,16 +41,16 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       entropyBits: 128,
     }),
   );
-  const { signUp, error, isLoading } = useAuthenticationStore();
+  const { error, isLoading } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;
     // Use InteractionManager to ensure UI animations complete first
     InteractionManager.runAfterInteractions(() => {
-      signUp({
+      navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
         password,
-        mnemonicPhrase: recoveryPhrase,
+        recoveryPhrase,
       });
     });
   };
