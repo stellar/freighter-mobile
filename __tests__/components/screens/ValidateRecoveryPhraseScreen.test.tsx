@@ -99,7 +99,6 @@ describe("ValidateRecoveryPhraseScreen", () => {
   it("proceeds to next word when correct word is entered", async () => {
     renderScreen();
 
-    // Since Math.random is mocked to return 0, the first word will be the first word in the array
     expect(screen.getByText(/enter word #1/i)).toBeTruthy();
 
     const input = screen.getByPlaceholderText("Type the correct word");
@@ -115,7 +114,6 @@ describe("ValidateRecoveryPhraseScreen", () => {
   });
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
-    // Since Math.random is mocked to return 0, the selected words will be the first three words
     const selectedWords = [words[0], words[1], words[2]];
     renderScreen();
 
