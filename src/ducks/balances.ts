@@ -117,6 +117,59 @@ const getUpdatedPricedBalances = (
 };
 
 /**
+ * Fetches and processes priced balances with a timeout for price fetching
+ */
+const fetchPricedBalances = async (
+  set: (state: Partial<BalancesState>) => void,
+  balances: BalanceMap,
+  statePricedBalances: PricedBalanceMap,
+  params: { publicKey: string; network: NETWORKS },
+): Promise<PricedBalanceMap> => {
+  // Initialize pricedBalances with basic balance data
+  const existingPricedBalances = getExistingPricedBalances(
+    balances,
+    statePricedBalances,
+  );
+
+  const { fetchPricesForBalances } = usePricesStore.getState();
+
+  // Fetch updated prices for the balances using the prices store
+  const priceFetchPromise = fetchPricesForBalances({
+    balances,
+    publicKey: params.publicKey,
+    network: params.network,
+  });
+
+  // Wait a maximum of 3 seconds for prices to be fetched
+  try {
+    await Promise.race([
+      priceFetchPromise,
+      new Promise((_, reject) =>
+        // eslint-disable-next-line no-promise-executor-return
+        setTimeout(() => reject(new Error("Price fetch timeout")), 3000),
+      ),
+    ]);
+  } catch (error) {
+    // If price fetch times out, set existing data and continue fetching
+    set({ pricedBalances: existingPricedBalances, isLoading: false });
+  }
+
+  // Make sure to wait until the prices finishes fetching
+  await priceFetchPromise;
+
+  // Get the updated prices from the store
+  const { prices, error: pricesError } = usePricesStore.getState();
+
+  if (pricesError || !prices || Object.keys(prices).length === 0) {
+    // Return existing data in case of price fetch error
+    return existingPricedBalances;
+  }
+
+  // Update pricedBalances with price data from the prices store
+  return getUpdatedPricedBalances(existingPricedBalances, prices);
+};
+
+/**
  * Balances Store
  *
  * A Zustand store that manages the state of account balances in the application.
@@ -144,63 +197,15 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
 
-      // Initialize pricedBalances with basic balance data
-      const existingPricedBalances = getExistingPricedBalances(
+      // Fetch and process priced balances
+      const pricedBalances = await fetchPricedBalances(
+        set,
         balances,
         statePricedBalances,
+        params,
       );
 
-      const { fetchPricesForBalances } = usePricesStore.getState();
-
-      // Fetch updated prices for the balances using the prices store
-      const priceFetchPromise = fetchPricesForBalances({
-        balances,
-        publicKey: params.publicKey,
-        network: params.network,
-      });
-
-      // Wait a maximum of 3 seconds for prices to be fetched
-      try {
-        await Promise.race([
-          priceFetchPromise,
-          new Promise((_, reject) =>
-            // eslint-disable-next-line no-promise-executor-return
-            setTimeout(() => reject(new Error("Price fetch timeout")), 3000),
-          ),
-        ]);
-      } catch (error) {
-        // If price fetch times out, use existing data and stop balances loading
-        set({
-          pricedBalances: existingPricedBalances,
-          isLoading: false,
-        });
-      }
-
-      // Make sure to wait until the prices finishes fetching
-      await priceFetchPromise;
-
-      // Get the updated prices from the store
-      const { prices, error: pricesError } = usePricesStore.getState();
-
-      if (pricesError || !prices || Object.keys(prices).length === 0) {
-        // Don't fail the whole operation in case of price fetch error
-        set({
-          pricedBalances: existingPricedBalances,
-          isLoading: false,
-        });
-        return;
-      }
-
-      // Update pricedBalances with price data from the prices store
-      const updatedPricedBalances = getUpdatedPricedBalances(
-        existingPricedBalances,
-        prices,
-      );
-
-      set({
-        pricedBalances: updatedPricedBalances,
-        isLoading: false,
-      });
+      set({ pricedBalances, isLoading: false });
     } catch (error) {
       set({
         error:
