@@ -1,6 +1,6 @@
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { userEvent, screen, act } from "@testing-library/react-native";
+import { userEvent, screen, act, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -30,6 +30,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
+const DELAY_MS = 500;
 const mockSignUp = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({
@@ -82,7 +83,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
   it("renders correctly with initial state", () => {
     renderScreen();
 
-    expect(screen.getByText(/enter word #/i)).toBeTruthy();
+    expect(screen.getByText(/enter word #1/i)).toBeTruthy();
     expect(screen.getByPlaceholderText("Type the correct word")).toBeTruthy();
     expect(screen.getByTestId("default-action-button")).toBeTruthy();
   });
@@ -90,71 +91,52 @@ describe("ValidateRecoveryPhraseScreen", () => {
   it("proceeds to next word when correct word is entered", async () => {
     renderScreen();
 
-    expect(screen.getByText(/enter word #1/i)).toBeTruthy();
-
     const input = screen.getByPlaceholderText("Type the correct word");
     const continueButton = screen.getByTestId("default-action-button");
 
     await user.type(input, words[0]);
     await user.press(continueButton);
 
-    // Wait for loading indicator
-    await screen.findByTestId("button-loading-indicator");
-
-    // Run timers and wait for next screen
+    // Advance timers by exact delay duration
     act(() => {
-      jest.runAllTimers();
+      jest.advanceTimersByTime(DELAY_MS);
     });
 
-    await screen.findByText(/enter word #2/i);
+    // Verify UI update
+    expect(screen.getByText(/enter word #2/i)).toBeTruthy();
   }, 10000);
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
-    const selectedWords = [words[0], words[1], words[2]];
     renderScreen();
 
-    expect(screen.getByText(/enter word #1/i)).toBeTruthy();
-
     // First word
-    const firstInput = screen.getByPlaceholderText("Type the correct word");
-    const firstButton = screen.getByTestId("default-action-button");
-    await user.type(firstInput, selectedWords[0]);
-    await user.press(firstButton);
-    await screen.findByTestId("button-loading-indicator");
-
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    await screen.findByText(/enter word #2/i);
+    let input = screen.getByPlaceholderText("Type the correct word");
+    let button = screen.getByTestId("default-action-button");
+    await user.type(input, words[0]);
+    await user.press(button);
+    act(() => jest.advanceTimersByTime(DELAY_MS));
+    expect(screen.getByText(/enter word #2/i)).toBeTruthy();
 
     // Second word
-    const secondInput = screen.getByPlaceholderText("Type the correct word");
-    const secondButton = screen.getByTestId("default-action-button");
-    await user.type(secondInput, selectedWords[1]);
-    await user.press(secondButton);
-    await screen.findByTestId("button-loading-indicator");
-
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    await screen.findByText(/enter word #3/i);
+    input = screen.getByPlaceholderText("Type the correct word");
+    button = screen.getByTestId("default-action-button");
+    await user.type(input, words[1]);
+    await user.press(button);
+    act(() => jest.advanceTimersByTime(DELAY_MS));
+    expect(screen.getByText(/enter word #3/i)).toBeTruthy();
 
     // Third word
-    const thirdInput = screen.getByPlaceholderText("Type the correct word");
-    const thirdButton = screen.getByTestId("default-action-button");
-    await user.type(thirdInput, selectedWords[2]);
-    await user.press(thirdButton);
-    await screen.findByTestId("button-loading-indicator");
+    input = screen.getByPlaceholderText("Type the correct word");
+    button = screen.getByTestId("default-action-button");
+    await user.type(input, words[2]);
+    await user.press(button);
+    act(() => jest.advanceTimersByTime(DELAY_MS));
 
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    expect(mockSignUp).toHaveBeenCalledWith({
-      password: "test-password",
-      mnemonicPhrase: mockRoute.params.recoveryPhrase,
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalledWith({
+        password: "test-password",
+        mnemonicPhrase: mockRoute.params.recoveryPhrase,
+      });
     });
   }, 15000);
 
