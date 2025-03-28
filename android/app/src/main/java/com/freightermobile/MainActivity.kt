@@ -1,4 +1,4 @@
-package com.freightermobile
+package org.stellar.freightermobile
 
 // this import is needed for the onCreate override function
 import android.os.Bundle;
