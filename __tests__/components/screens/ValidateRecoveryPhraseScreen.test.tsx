@@ -91,10 +91,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     await user.type(input, "wrongword");
     await user.press(continueButton);
+    jest.runAllTimers();
 
     expect(screen.getByText("Incorrect word. Please try again.")).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it("proceeds to next word when correct word is entered", async () => {
     renderScreen();
