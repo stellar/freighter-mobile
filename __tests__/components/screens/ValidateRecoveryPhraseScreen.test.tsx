@@ -1,10 +1,20 @@
-import { RouteProp } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userEvent, screen, act, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import type { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+
+// Mock InteractionManager to execute callbacks immediately
+jest.mock("react-native", () => {
+  const rn = jest.requireActual("react-native");
+  rn.InteractionManager.runAfterInteractions = jest.fn((callback) => {
+    callback();
+    return { cancel: jest.fn() };
+  });
+  return rn;
+});
 
 // Mock the useWordSelection hook to always return the first three words
 jest.mock("hooks/useWordSelection", () => ({
@@ -30,7 +40,6 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const DELAY_MS = 500;
 const mockSignUp = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({
@@ -73,7 +82,8 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers({ legacyFakeTimers: false });
+    // Use modern fake timers
+    jest.useFakeTimers();
   });
 
   afterEach(() => {
@@ -97,14 +107,16 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[0]);
     await user.press(continueButton);
 
+    // Run all timers completely
     act(() => {
-      jest.advanceTimersByTime(DELAY_MS);
+      jest.runAllTimers();
     });
 
+    // Wait for the UI to update
     await waitFor(() => {
       expect(screen.getByText(/enter word #2/i)).toBeTruthy();
     });
-  }, 10000);
+  });
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
     renderScreen();
@@ -115,7 +127,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[0]);
     await user.press(button);
 
-    act(() => jest.advanceTimersByTime(DELAY_MS));
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await waitFor(() => {
       expect(screen.getByText(/enter word #2/i)).toBeTruthy();
     });
@@ -126,7 +142,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[1]);
     await user.press(button);
 
-    act(() => jest.advanceTimersByTime(DELAY_MS));
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await waitFor(() => {
       expect(screen.getByText(/enter word #3/i)).toBeTruthy();
     });
@@ -137,7 +157,10 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[2]);
     await user.press(button);
 
-    act(() => jest.advanceTimersByTime(DELAY_MS));
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
@@ -145,7 +168,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
         mnemonicPhrase: mockRoute.params.recoveryPhrase,
       });
     });
-  }, 15000);
+  });
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();
