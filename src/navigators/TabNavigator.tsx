@@ -47,6 +47,14 @@ interface TabIconProps {
 
 const TabIcon = ({ route, focused, color }: TabIconProps) => {
   const IconComponent = TAB_ICONS[route.name];
+  return (
+    <TabIconWrapper focused={focused}>
+      <IconComponent size={TAB_ICON_SIZE} color={color} />
+    </TabIconWrapper>
+  );
+};
+
+export const TabNavigator = () => {
   const publicKey = TEST_PUBLIC_KEY;
   const networkDetails = TEST_NETWORK_DETAILS;
 
@@ -57,39 +65,33 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
   useFetchAssetIcons(networkDetails.networkUrl);
 
   return (
-    <TabIconWrapper focused={focused}>
-      <IconComponent size={TAB_ICON_SIZE} color={color} />
-    </TabIconWrapper>
+    <MainTab.Navigator
+      initialRouteName={MAIN_TAB_ROUTES.TAB_HOME}
+      screenOptions={({ route }) => ({
+        // eslint-disable-next-line react/no-unstable-nested-components
+        tabBarIcon: (props) => <TabIcon route={route} {...props} />,
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: THEME.colors.tab.active,
+        tabBarInactiveTintColor: THEME.colors.tab.inactive,
+        tabBarStyle: {
+          backgroundColor: THEME.colors.background.default,
+          borderColor: THEME.colors.border.default,
+          borderTopWidth: pxValue(1),
+          borderStyle: "solid",
+          paddingHorizontal: pxValue(72),
+        },
+      })}
+    >
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_HISTORY}
+        component={HistoryScreen}
+      />
+      <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
+        component={DiscoveryScreen}
+      />
+    </MainTab.Navigator>
   );
 };
-
-export const TabNavigator = () => (
-  <MainTab.Navigator
-    initialRouteName={MAIN_TAB_ROUTES.TAB_HOME}
-    screenOptions={({ route }) => ({
-      // eslint-disable-next-line react/no-unstable-nested-components
-      tabBarIcon: (props) => <TabIcon route={route} {...props} />,
-      headerShown: false,
-      tabBarShowLabel: false,
-      tabBarActiveTintColor: THEME.colors.tab.active,
-      tabBarInactiveTintColor: THEME.colors.tab.inactive,
-      tabBarStyle: {
-        backgroundColor: THEME.colors.background.default,
-        borderColor: THEME.colors.border.default,
-        borderTopWidth: pxValue(1),
-        borderStyle: "solid",
-        paddingHorizontal: pxValue(72),
-      },
-    })}
-  >
-    <MainTab.Screen
-      name={MAIN_TAB_ROUTES.TAB_HISTORY}
-      component={HistoryScreen}
-    />
-    <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
-    <MainTab.Screen
-      name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
-      component={DiscoveryScreen}
-    />
-  </MainTab.Navigator>
-);
