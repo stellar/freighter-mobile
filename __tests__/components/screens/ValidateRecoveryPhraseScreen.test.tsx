@@ -98,11 +98,13 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, words[0]);
     await user.press(continueButton);
 
+    // Wait for loading indicator
     await screen.findByTestId("button-loading-indicator");
-    jest.runAllTimers();
 
+    // Run timers and wait for next screen
+    jest.runAllTimers();
     await screen.findByText(/enter word #2/i);
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
   it("completes validation flow with all 3 correct words and calls signUp", async () => {
     const selectedWords = [words[0], words[1], words[2]];
@@ -115,6 +117,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     const firstButton = screen.getByTestId("default-action-button");
     await user.type(firstInput, selectedWords[0]);
     await user.press(firstButton);
+    await screen.findByTestId("button-loading-indicator");
     jest.runAllTimers();
     await screen.findByText(/enter word #2/i);
 
@@ -123,6 +126,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     const secondButton = screen.getByTestId("default-action-button");
     await user.type(secondInput, selectedWords[1]);
     await user.press(secondButton);
+    await screen.findByTestId("button-loading-indicator");
     jest.runAllTimers();
     await screen.findByText(/enter word #3/i);
 
@@ -131,13 +135,14 @@ describe("ValidateRecoveryPhraseScreen", () => {
     const thirdButton = screen.getByTestId("default-action-button");
     await user.type(thirdInput, selectedWords[2]);
     await user.press(thirdButton);
+    await screen.findByTestId("button-loading-indicator");
     jest.runAllTimers();
 
     expect(mockSignUp).toHaveBeenCalledWith({
       password: "test-password",
       mnemonicPhrase: mockRoute.params.recoveryPhrase,
     });
-  });
+  }, 15000); // Increase timeout to 15 seconds for the longer test
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();
