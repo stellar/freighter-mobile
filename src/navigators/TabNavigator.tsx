@@ -9,6 +9,7 @@ import { THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
+import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import React from "react";
 import styled from "styled-components/native";
 
@@ -63,6 +64,12 @@ export const TabNavigator = () => {
 
   // Fetch icons whenever balances are updated
   useFetchAssetIcons(networkDetails.networkUrl);
+
+  // Start polling for balance and price updates
+  usePricedBalancesPolling({
+    publicKey: TEST_PUBLIC_KEY,
+    network: TEST_NETWORK_DETAILS.network,
+  });
 
   return (
     <MainTab.Navigator
