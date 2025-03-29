@@ -2,7 +2,11 @@
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "home": {
-    "title": "Home"
+    "title": "Home",
+    "buy": "Buy",
+    "send": "Send",
+    "swap": "Swap",
+    "copy": "Copy"
   },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",
