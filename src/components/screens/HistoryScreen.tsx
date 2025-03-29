@@ -1,3 +1,4 @@
+import Clipboard from "@react-native-clipboard/clipboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
@@ -44,6 +45,13 @@ export const HistoryScreen = () => {
       </Display>
 
       <Container>
+        <Text>
+          The below is the TESTNET account you have just created. The account
+          used for displaying the Home balances is another hardcoded MAINNET
+          account used just for testing the balances UI with its prices. You can
+          tap to copy the account to your clipboard.
+        </Text>
+
         {isLoading && <Text>Loading...</Text>}
 
         {error && <Text color={THEME.colors.status.error}>{error}</Text>}
@@ -51,7 +59,15 @@ export const HistoryScreen = () => {
         {account && (
           <>
             <Text>{account.accountName}</Text>
-            <Text>{account.publicKey}</Text>
+            <Text
+              onPress={() =>
+                Clipboard.setString(
+                  `TESTNET testing account:${account.publicKey}`,
+                )
+              }
+            >
+              {account.publicKey}
+            </Text>
           </>
         )}
 

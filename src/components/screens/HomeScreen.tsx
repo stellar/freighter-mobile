@@ -1,3 +1,4 @@
+import Clipboard from "@react-native-clipboard/clipboard";
 import { BalancesList } from "components/BalancesList";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -79,7 +80,9 @@ export const HomeScreen = () => {
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
-            onPress={() => {}}
+            onPress={() =>
+              Clipboard.setString(`MAINNET testing account:${publicKey}`)
+            }
           />
         </ButtonsRow>
       </TopSection>
