@@ -208,7 +208,7 @@ export const OnboardLayout = ({
         <StyledContainer $insets={insets}>
           <StyledContentContainer>
             {icon}
-            {title && <Display>{title}</Display>}
+            {title && <Display medium>{title}</Display>}
             {children}
           </StyledContentContainer>
           <FooterContainer>
