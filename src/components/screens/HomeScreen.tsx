@@ -74,11 +74,7 @@ export const HomeScreen = () => {
 
         <ButtonsRow>
           <IconButton Icon={Icon.Plus} title={t("home.buy")} />
-          <IconButton
-            Icon={Icon.ArrowUp}
-            title={t("home.send")}
-            onPress={() => {}}
-          />
+          <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
           <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
           <IconButton
             Icon={Icon.Copy01}
