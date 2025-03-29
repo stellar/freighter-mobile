@@ -9,6 +9,7 @@ import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "config/constants";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
 import { Dimensions } from "react-native";
 import styled from "styled-components/native";
@@ -56,6 +57,8 @@ export const HomeScreen = () => {
 
   const { t } = useAppTranslation();
 
+  const { formattedBalance } = useTotalBalance();
+
   return (
     <BaseLayout>
       <TopSection>
@@ -65,7 +68,7 @@ export const HomeScreen = () => {
             <Text>Test Balances Account</Text>
           </AccountNameRow>
           <Display lg medium>
-            $1,305.13
+            {formattedBalance}
           </Display>
         </AccountTotal>
 
@@ -86,7 +89,9 @@ export const HomeScreen = () => {
           />
         </ButtonsRow>
       </TopSection>
+
       <BorderLine />
+
       <BalancesList publicKey={publicKey} network={networkDetails.network} />
     </BaseLayout>
   );
