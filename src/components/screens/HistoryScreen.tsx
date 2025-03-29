@@ -14,7 +14,6 @@ const Container = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
-  padding-horizontal: ${px(24)};
   gap: ${px(12)};
 `;
 
