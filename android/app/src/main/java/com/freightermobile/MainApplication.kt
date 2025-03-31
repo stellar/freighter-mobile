@@ -1,4 +1,4 @@
-package com.freightermobile
+package org.stellar.freighterwallet
 
 import android.app.Application
 import com.facebook.react.PackageList

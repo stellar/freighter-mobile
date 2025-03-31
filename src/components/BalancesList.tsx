@@ -4,7 +4,6 @@ import { NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { usePricesStore } from "ducks/prices";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
@@ -13,7 +12,7 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -100,31 +99,12 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   const { t } = useAppTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Reference to track refresh timeout
-  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const {
-    balances,
     pricedBalances,
     isLoading: isBalancesLoading,
     error: balancesError,
     fetchAccountBalances,
   } = useBalancesStore();
-
-  const isPricesLoading = usePricesStore((state) => state.isLoading);
-
-  /**
-   * Cleanup timeout on component unmount to prevent memory leaks
-   */
-  useEffect(
-    () => () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
-    },
-    [],
-  );
 
   /**
    * Handles manual refresh via pull-to-refresh gesture
@@ -132,26 +112,18 @@ export const BalancesList: React.FC<BalancesListProps> = ({
    */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    const refreshStartTime = Date.now();
 
-    Promise.all([
-      fetchAccountBalances({
-        publicKey,
-        network,
-      }),
-      // Add a minimum delay to prevent flickering
-      new Promise((resolve) => {
-        setTimeout(resolve, 500);
-      }),
-    ]).finally(() => {
-      const elapsedTime = Date.now() - refreshStartTime;
-      const remainingTime = Math.max(0, 1000 - elapsedTime);
+    // Start fetching balances and prices
+    fetchAccountBalances({
+      publicKey,
+      network,
+    });
 
-      // Keep spinner visible for at least 1 second for a smoother UX
-      refreshTimeoutRef.current = setTimeout(() => {
-        setIsRefreshing(false);
-        refreshTimeoutRef.current = null;
-      }, remainingTime);
+    // Add a minimum spinner delay to prevent flickering
+    new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    }).finally(() => {
+      setIsRefreshing(false);
     });
   }, [fetchAccountBalances, publicKey, network]);
 
@@ -167,8 +139,8 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     );
   }
 
-  // If no balances or empty object, show empty state
-  if (!balances || Object.keys(balances).length === 0) {
+  // If no balances or loading, show empty state
+  if (Object.keys(pricedBalances).length === 0) {
     return (
       <ListWrapper>
         <ListTitle>
@@ -259,7 +231,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing || isPricesLoading}
+            refreshing={isRefreshing || isBalancesLoading}
             onRefresh={handleRefresh}
             tintColor={THEME.colors.secondary}
           />
