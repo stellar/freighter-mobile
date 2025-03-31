@@ -73,7 +73,7 @@ export const HistoryScreen = () => {
 
         <ButtonContainer>
           <Button isFullWidth onPress={handleLogout}>
-            <Text>Logout</Text>
+            {t("logout")}
           </Button>
         </ButtonContainer>
       </Container>
