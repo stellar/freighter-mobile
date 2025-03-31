@@ -82,6 +82,12 @@
     },
     "account": "Conta {{number}}"
   },
+  "validateRecoveryPhraseScreen": {
+    "title": "Digite a Palavra #{{number}}",
+    "inputPlaceholder": "Digite a palavra",
+    "errorText": "Palavra incorreta, tente novamente",
+    "defaultActionButtonText": "Continuar"
+  },
   "balancesList": {
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
