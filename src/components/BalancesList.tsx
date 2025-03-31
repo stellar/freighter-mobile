@@ -12,7 +12,7 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -98,6 +98,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMounting, setIsMounting] = useState(true);
 
   const {
     pricedBalances,
@@ -105,6 +106,16 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     error: balancesError,
     fetchAccountBalances,
   } = useBalancesStore();
+
+  // Set isMounting to false after the component mounts.
+  // This is used to prevent the "no balances" state from showing
+  // for a fraction of second while the store is setting the
+  // isBalancesLoading flag. We could revisit this after
+  // we finish implementing the auth flow as it could be
+  // naturally solved by that.
+  useEffect(() => {
+    setIsMounting(false);
+  }, []);
 
   /**
    * Handles manual refresh via pull-to-refresh gesture
@@ -147,7 +158,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
 
-        {isBalancesLoading ? (
+        {isBalancesLoading || isMounting ? (
           <Spinner
             testID="balances-list-spinner"
             size="large"
