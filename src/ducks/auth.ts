@@ -2,25 +2,34 @@ import { encode as base64Encode } from "@stablelib/base64";
 import { Networks } from "@stellar/stellar-sdk";
 import { KeyType, ScryptEncrypter } from "@stellar/typescript-wallet-sdk-km";
 import {
+  HASH_KEY_EXPIRATION_MS,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
   STORAGE_KEYS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { Account, HashKey, KeyPair, TemporaryStore } from "config/types";
+import {
+  Account,
+  AUTH_STATUS,
+  AuthStatus,
+  HashKey,
+  KeyPair,
+  TemporaryStore,
+} from "config/types";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
   generateSalt,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
-import { isHashKeyValid } from "hooks/useGetActiveAccount";
+import { isHashKeyExpired } from "hooks/useGetActiveAccount";
 import { t } from "i18next";
+import { clearTemporaryData, getHashKey } from "services/storage/helpers";
 import {
   dataStorage,
   secureDataStorage,
 } from "services/storage/storageFactory";
-import { fromMnemonic } from "stellar-hd-wallet";
+import StellarHDWallet from "stellar-hd-wallet";
 import { create } from "zustand";
 
 // Parameters for signUp function
@@ -35,6 +44,12 @@ interface SignInParams {
   password: string;
 }
 
+// Parameters for importWallet function
+interface ImportWalletParams {
+  mnemonicPhrase: string;
+  password: string;
+}
+
 // Parameters for storeAccount function
 interface StoreAccountParams {
   mnemonicPhrase: string;
@@ -46,44 +61,36 @@ interface StoreAccountParams {
 // State slice types
 interface AuthState {
   network: NETWORKS | null;
-  isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  activeKeyPair: (KeyPair & { accountName: string; id: string }) | null;
+  authStatus: AuthStatus;
 }
 
 /**
  * Actions for the Auth store
  *
- * logout: Logs out the user and clears sensitive data
- * signUp: Signs up a new user with the provided seed phrase and password. This function stores the account in the key manager and creates the temporary store.
+ * logout: Logs out the user and clears stored data (both sensitive and non-sensitive)
+ * signUp: Signs up a new user with the password. This function stores the account in the key manager and creates the temporary store.
  * signIn: Logs in the user with the provided password. This function is called when the existing hashKey is expired. It creates a new hashKey and temporary store.
  * importWallet: Imports a wallet with the provided seed phrase and password. This function stores the account in the key manager and creates the temporary store.
- * addAccount: Adds a new account to the account list. This derives a new key pair from the mnemonic phrase and stores it in the key manager.
- * getIsAuthenticated: Checks if the user is authenticated
- * clearError: Clears the error message
  */
 interface AuthActions {
   logout: () => void;
   signUp: (params: SignUpParams) => void;
-  signIn: (params: SignInParams) => void;
-  getIsAuthenticated: () => void;
-  clearError: () => void;
+  signIn: (params: SignInParams) => Promise<void>;
+  importWallet: (params: ImportWalletParams) => void;
+  getAuthStatus: () => Promise<AuthStatus>;
 }
 
 type AuthStore = AuthState & AuthActions;
 
 // Initial state
 const initialState: AuthState = {
-  network: null,
-  isAuthenticated: false,
+  network: NETWORKS.TESTNET,
   isLoading: false,
   error: null,
-  activeKeyPair: null,
+  authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
 };
-
-// Constants
-const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Key manager instance for handling cryptographic operations
@@ -92,7 +99,35 @@ const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const keyManager = createKeyManager(Networks.TESTNET);
 
 /**
- * Helper functions
+ * Validates the authentication status of the user
+ */
+const getAuthStatus = async (): Promise<AuthStatus> => {
+  try {
+    const [hashKey, temporaryStore] = await Promise.all([
+      getHashKey(),
+      secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+    ]);
+
+    if (!hashKey || !temporaryStore) {
+      // No hash key or temporary store found. User is not authenticated.
+      return AUTH_STATUS.NOT_AUTHENTICATED;
+    }
+
+    const hashKeyExpired = isHashKeyExpired(hashKey);
+
+    if (hashKeyExpired) {
+      return AUTH_STATUS.HASH_KEY_EXPIRED;
+    }
+
+    return AUTH_STATUS.AUTHENTICATED;
+  } catch (error) {
+    logger.error("validateAuth", "Failed to validate auth", error);
+    return AUTH_STATUS.NOT_AUTHENTICATED;
+  }
+};
+
+/**
+ * Adds a new account to the account list
  */
 const appendAccount = async (account: Account) => {
   const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
@@ -115,7 +150,7 @@ const appendAccount = async (account: Account) => {
 };
 
 /**
- * Generates a unique hash key derived from the password
+ * Generate and store a unique hash key derived from the password
  * This key will be used to encrypt/decrypt the temporary store
  */
 const generateHashKey = async (password: string): Promise<HashKey> => {
@@ -132,25 +167,23 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     // Convert to base64 for storage
     const hashKey = base64Encode(hashKeyBytes);
 
-    // Calculate the expiration timestamp (24 hours from now)
+    // Calculate the expiration timestamp
     const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+
     // Store the hash key, salt, and expiration timestamp
     const hashKeyObj = {
       hashKey,
       salt,
+      expiresAt: expirationTime,
     };
     await Promise.all([
-      dataStorage.setItem(
-        STORAGE_KEYS.HASH_KEY_EXPIRE_AT,
-        expirationTime.toString(),
-      ),
       secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
         JSON.stringify(hashKeyObj),
       ),
     ]);
 
-    return { hashKey, salt };
+    return hashKeyObj;
   } catch (error) {
     logger.error("generateHashKey", "Failed to generate hash key", error);
     throw new Error("Failed to generate hash key");
@@ -259,14 +292,12 @@ const storeAccount = async ({
 const logout = async (): Promise<void> => {
   try {
     await Promise.all([
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
-      secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
-      dataStorage.remove(STORAGE_KEYS.HASH_KEY_EXPIRE_AT),
-      dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
+      clearTemporaryData(),
       dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
+      dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
     ]);
   } catch (error) {
-    logger.error("storeAccount", "Failed to logout", error);
+    logger.error("logout", "Failed to logout", error);
     throw error;
   }
 };
@@ -280,8 +311,7 @@ const signUp = async ({
   imported = false,
 }: SignUpParams): Promise<void> => {
   try {
-    // Generate a key pair from the mnemonic
-    const wallet = fromMnemonic(mnemonicPhrase);
+    const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
     const keyDerivationNumber = 0;
 
     const keyPair = {
@@ -331,8 +361,13 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     }
 
     // Load the key with the password
-    // TOOD: implement error handling logic -- maybe add a limit to the number of attempts
-    const loadedKey = await keyManager.loadKey(activeAccount, password);
+    const loadedKey = await keyManager
+      .loadKey(activeAccount, password)
+      .catch(() => {
+        // TODO: implement error handling logic -- maybe add a limit to the number of attempts
+        throw new Error(t("authStore.error.invalidPassword"));
+      });
+
     const keyExtraData = loadedKey.extra as
       | undefined
       | {
@@ -352,7 +387,7 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
 
     if (!account) {
       logger.error("signIn", "Account not found in account list");
-      // Clear the all the data and throw an error
+
       account = {
         id: activeAccount,
         name: t("authStore.account", { number: accountList.length + 1 }),
@@ -377,19 +412,62 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
 };
 
 /**
+ * Imports a wallet with the provided credentials
+ */
+const importWallet = async ({
+  mnemonicPhrase,
+  password,
+}: ImportWalletParams): Promise<void> => {
+  try {
+    // Generate a key pair from the mnemonic
+    const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+    const keyDerivationNumber = 0;
+
+    const keyPair = {
+      publicKey: wallet.getPublicKey(keyDerivationNumber),
+      privateKey: wallet.getSecret(keyDerivationNumber),
+    };
+
+    // Delete any existing accounts
+    const allKeys = await keyManager.loadAllKeyIds();
+    if (allKeys.length > 0) {
+      const promises = [
+        ...allKeys.map((key) => keyManager.removeKey(key)),
+        dataStorage.remove(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
+        dataStorage.remove(STORAGE_KEYS.ACCOUNT_LIST),
+      ];
+
+      await Promise.all(promises);
+    }
+
+    // Store the account in the key manager and create the temporary store
+    await storeAccount({
+      mnemonicPhrase,
+      password,
+      keyPair,
+    });
+  } catch (error) {
+    logger.error("importWallet", "Failed to import wallet", error);
+    throw error;
+  }
+};
+
+/**
  * Authentication Store
  */
 export const useAuthenticationStore = create<AuthStore>()((set) => ({
   ...initialState,
-
-  clearError: () => set({ error: null }),
 
   logout: () => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
     logout()
       .then(() => {
-        set({ ...initialState });
+        set({
+          ...initialState,
+          authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+          isLoading: false,
+        });
       })
       .catch((error) => {
         set({
@@ -405,7 +483,6 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
   },
 
   signUp: (params) => {
-    // Set loading state
     set((state) => ({ ...state, isLoading: true, error: null }));
 
     // Use a setTimeout to allow UI updates to propagate
@@ -413,8 +490,8 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
       signUp(params)
         .then(() => {
           set({
-            network: NETWORKS.TESTNET,
-            isAuthenticated: true,
+            ...initialState,
+            authStatus: AUTH_STATUS.AUTHENTICATED,
             isLoading: false,
           });
         })
@@ -431,60 +508,65 @@ export const useAuthenticationStore = create<AuthStore>()((set) => ({
                 : t("authStore.error.failedToSignUp"),
             isLoading: false,
           });
-          logout();
         });
     }, 0);
   },
 
-  signIn: (params) => {
-    // Set loading state
+  signIn: async (params) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await signIn(params);
+      set({
+        ...initialState,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+      });
+    } catch (error) {
+      logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToSignIn"),
+        isLoading: false,
+      });
+      throw error; // Rethrow to handle in the UI
+    }
+  },
+
+  importWallet: (params) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
-    // Use a setTimeout to allow UI updates to propagate
     setTimeout(() => {
-      signIn(params)
+      importWallet(params)
         .then(() => {
           set({
-            isAuthenticated: true,
+            ...initialState,
+            authStatus: AUTH_STATUS.AUTHENTICATED,
             isLoading: false,
           });
         })
         .catch((error) => {
           logger.error(
-            "useAuthenticationStore.signIn",
-            "Sign in failed",
+            "useAuthenticationStore.importWallet",
+            "Import wallet failed",
             error,
           );
           set({
             error:
               error instanceof Error
                 ? error.message
-                : t("authStore.error.failedToSignIn"),
+                : t("authStore.error.failedToImportWallet"),
             isLoading: false,
           });
-          logout();
         });
     }, 0);
   },
 
-  getIsAuthenticated: () => {
-    set((state) => ({ ...state, isLoading: true, error: null }));
-
-    isHashKeyValid()
-      .then((hashKeyValid) => {
-        set({ isAuthenticated: hashKeyValid });
-      })
-      .catch((error) => {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToCheckAuthenticationStatus"),
-        });
-        set({ isAuthenticated: false });
-      })
-      .finally(() => {
-        set({ isLoading: false });
-      });
+  getAuthStatus: async () => {
+    const authStatus = await getAuthStatus();
+    set({ authStatus });
+    return authStatus;
   },
 }));

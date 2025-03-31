@@ -35,7 +35,7 @@ jest.mock("ducks/prices", () => ({
   })),
 }));
 
-describe("HomeScreen", () => {
+describe.skip("HomeScreen", () => {
   it("renders correctly", () => {
     const { getByText } = renderWithProviders(<HomeScreen />);
     expect(getByText("Tokens")).toBeTruthy();

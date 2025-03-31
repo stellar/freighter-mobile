@@ -19,14 +19,20 @@ describe("ChoosePasswordScreen", () => {
 
   it("renders correctly", () => {
     const { getByText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ChoosePasswordScreen
+        navigation={{ navigate: mockNavigate, route: {} } as never}
+        route={{ params: { password: "password" } } as never}
+      />,
     );
     expect(getByText("Choose a Password")).toBeTruthy();
   });
 
   it("has disabled continue button when password is less than 8 characters", () => {
     const { getByText, getByPlaceholderText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ChoosePasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password" } } as never}
+      />,
     );
 
     const passwordInput = getByPlaceholderText("Type your password");
@@ -41,7 +47,10 @@ describe("ChoosePasswordScreen", () => {
 
   it("enables continue button when password is at least 8 characters", () => {
     const { getByText, getByPlaceholderText } = renderWithProviders(
-      <ChoosePasswordScreen navigation={{ navigate: mockNavigate } as never} />,
+      <ChoosePasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "password" } } as never}
+      />,
     );
 
     const passwordInput = getByPlaceholderText("Type your password");
@@ -64,6 +73,7 @@ describe("ChoosePasswordScreen", () => {
       renderWithProviders(
         <ChoosePasswordScreen
           navigation={{ navigate: mockNavigate } as never}
+          route={{ params: { password: "password" } } as never}
         />,
       );
 

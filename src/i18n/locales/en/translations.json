@@ -45,6 +45,13 @@
     "textAreaNote": "Phrases are usually 12 or 24 words",
     "defaultActionButtonText": "Import wallet"
   },
+  "lockScreen": {
+    "title": "Welcome back",
+    "description": "Enter password to unlock Freighter",
+    "passwordInputPlaceholder": "Type your password",
+    "unlockButtonText": "Unlock",
+    "forgotPasswordButtonText": "Forgot password"
+  },
   "onboarding": {
     "continue": "Continue",
     "typePassword": "Type your password",
@@ -74,7 +81,9 @@
       "noKeyPairFound": "No key pair found",
       "failedToSignUp": "Failed to sign up",
       "failedToCheckAuthenticationStatus": "Failed to check authentication status",
-      "failedToGetActiveKeyPair": "Failed to get active key pair"
+      "failedToGetActiveKeyPair": "Failed to get active key pair",
+      "invalidPassword": "Invalid password. Please try again.",
+      "invalidMnemonic": "Invalid mnemonic"
     },
     "account": "Account {{number}}"
   }

@@ -1,16 +1,27 @@
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { logos } from "assets/logos";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Asset } from "components/sds/Asset";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
+import {
+  MAIN_TAB_ROUTES,
+  MainTabStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+} from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { fs, px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import React from "react";
 import { View } from "react-native";
 import styled from "styled-components/native";
+
+type HistoryScreenProps = BottomTabScreenProps<
+  MainTabStackParamList,
+  typeof MAIN_TAB_ROUTES.TAB_HISTORY
+>;
 
 const Container = styled.View`
   flex: 1;
@@ -38,23 +49,19 @@ const LoadingText = styled(Text)`
   margin-bottom: ${px(12)};
 `;
 
-export const HistoryScreen = () => {
+export const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { logout } = useAuthenticationStore();
-  const { account, isLoading, error, fetchActiveAccount } =
-    useGetActiveAccount();
+  const { account, isLoading, error } = useGetActiveAccount();
 
   const handleLogout = () => {
     logout();
   };
 
-  useEffect(() => {
-    fetchActiveAccount();
-  }, [fetchActiveAccount]);
-
-  // const callLoginScreen = () => {
-
-  // };
+  const callLoginScreen = () => {
+    // @ts-expect-error asd
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN);
+  };
 
   return (
     <BaseLayout>
@@ -75,7 +82,7 @@ export const HistoryScreen = () => {
           <Button onPress={handleLogout}>
             <Text>Logout</Text>
           </Button>
-          <Button onPress={handleLogout}>
+          <Button onPress={callLoginScreen}>
             <Text>Login Screen</Text>
           </Button>
         </ButtonContainer>

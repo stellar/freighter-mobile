@@ -1,96 +1,66 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "components/screens/LoadingScreen";
-import { STORAGE_KEYS } from "config/constants";
-import { logger } from "config/logger";
+import { LockScreen } from "components/screens/LockScreen";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { isHashKeyValid } from "hooks/useGetActiveAccount";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
-import { dataStorage } from "services/storage/storageFactory";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
-  const { getIsAuthenticated, isAuthenticated } = useAuthenticationStore();
-  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
+  const { authStatus, getAuthStatus } = useAuthenticationStore();
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    const validateAuth = async () => {
-      try {
-        // First check if hash key is valid - this might authenticate the user
-        const hashKeyValid = await isHashKeyValid();
-        if (!hashKeyValid) {
-          setInitializing(false);
-          return;
-        }
+    getAuthStatus().finally(() => {
+      setInitializing(false);
+      RNBootSplash.hide({ fade: true });
+    });
+  }, [getAuthStatus]);
 
-        // Then get auth status
-        getIsAuthenticated();
+  const initialRouteName = useMemo(() => {
+    if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
+      return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
+    }
 
-        // Check if we have a stored account
-        const activeAccountId = await dataStorage.getItem(
-          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
-        );
-        setHasAccount(!!activeAccountId);
-      } catch (error) {
-        logger.error(
-          "RootNavigator.validateAuth",
-          "Error initializing the app",
-          error,
-        );
-      } finally {
-        await RNBootSplash.hide({ fade: true });
-        setInitializing(false);
-      }
-    };
+    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
+    }
 
-    validateAuth();
-  }, [getIsAuthenticated]);
+    return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
+  }, [authStatus]);
 
-  // Show loading screen while initializing
   if (initializing) {
     return <LoadingScreen />;
   }
 
-  // Determine initial route
-  const getInitialRouteName = () => {
-    if (isAuthenticated) {
-      return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
-    }
-
-    // If we have an account but not authenticated, show login screen
-    if (hasAccount) {
-      return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
-    }
-
-    // Otherwise show the auth stack (welcome, signup, etc.)
-    return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
-  };
-
   return (
     <RootStack.Navigator
-      initialRouteName={getInitialRouteName()}
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
       }}
     >
-      {isAuthenticated ? (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
-          component={TabNavigator}
-          options={{
-            headerShown: false,
-          }}
-        />
-      ) : (
+      {authStatus === AUTH_STATUS.NOT_AUTHENTICATED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
           component={AuthNavigator}
+        />
+      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
+        <RootStack.Screen
+          name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
+          component={LockScreen}
+        />
+      ) : (
+        <RootStack.Screen
+          name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
+          component={TabNavigator}
         />
       )}
     </RootStack.Navigator>
