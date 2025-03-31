@@ -161,8 +161,8 @@ describe("balances helpers", () => {
       );
     });
 
-    it("should return null for liquidity pool balances", () => {
-      expect(getTokenIdentifier(liquidityPoolBalance as Balance)).toBeNull();
+    it("should return empty string for liquidity pool balances", () => {
+      expect(getTokenIdentifier(liquidityPoolBalance as Balance)).toBe("");
     });
 
     it("should work directly with token objects", () => {
@@ -172,7 +172,7 @@ describe("balances helpers", () => {
       );
     });
 
-    it("should return null for unrecognized token types", () => {
+    it("should return empty string for unrecognized token types", () => {
       const unknownToken = {
         token: {
           code: "UNKNOWN",
@@ -181,7 +181,7 @@ describe("balances helpers", () => {
         total: new BigNumber("100"),
         available: new BigNumber("100"),
       };
-      expect(getTokenIdentifier(unknownToken as Balance)).toBeNull();
+      expect(getTokenIdentifier(unknownToken as Balance)).toBe("");
     });
   });
 

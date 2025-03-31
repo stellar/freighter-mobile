@@ -138,8 +138,10 @@ export const THEME = {
       error: PALETTE.dark.red["06"],
     },
     tab: {
-      active: PALETTE.dark.lilac["09"],
-      inactive: PALETTE.dark.gray["09"],
+      active: PALETTE.dark.gray["12"],
+      inactive: PALETTE.dark.gray["11"],
+      activeBackground: PALETTE.dark.gray["04"],
+      inactiveBackground: "transparent",
     },
     base: {
       primary: PALETTE.dark.base["00"],

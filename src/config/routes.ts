@@ -12,6 +12,7 @@ export const AUTH_STACK_ROUTES = {
   CONFIRM_PASSWORD_SCREEN: "ConfirmPasswordScreen",
   RECOVERY_PHRASE_ALERT_SCREEN: "RecoveryPhraseAlertScreen",
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
+  VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
   LOCK_SCREEN: "LockScreen",
 } as const;
@@ -47,6 +48,10 @@ export type AuthStackParamList = {
     password: string;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
+    password: string;
+    recoveryPhrase: string;
+  };
 };
 
 export type MainTabStackParamList = {

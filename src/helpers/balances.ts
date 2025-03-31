@@ -1,4 +1,5 @@
 import { Asset } from "@stellar/stellar-sdk";
+import { BigNumber } from "bignumber.js";
 import {
   Balance,
   LiquidityPoolBalance,
@@ -7,6 +8,8 @@ import {
   TokenIdentifier,
   TokenPrice,
   TokenPricesMap,
+  PricedBalanceMap,
+  PricedBalance,
 } from "config/types";
 
 /**
@@ -67,14 +70,18 @@ export const isLiquidityPool = (
   "liquidityPoolId" in balance && "reserves" in balance;
 
 /**
- * Gets a standardized token identifier from either a Balance or Token object
+ * Gets a unique identifier for a token or balance
  *
- * This function creates a consistent string identifier for tokens that can be used
- * as keys in maps or for comparison. For native XLM it returns "XLM", and for
- * other assets it returns a format like "CODE:ISSUER_KEY".
+ * This function generates a consistent identifier string that can be used
+ * to look up prices or other data for a token. It handles both Balance objects
+ * and raw Token objects.
  *
- * @param {Balance | NativeToken | AssetToken} item - Balance object or a Token object
- * @returns {TokenIdentifier | null} Standardized token identifier string or null if not applicable
+ * For native XLM tokens, returns "XLM"
+ * For other assets, returns "CODE:ISSUER_KEY"
+ * For liquidity pools or unknown types, returns empty string
+ *
+ * @param {Balance | NativeToken | AssetToken} item - The balance or token to identify
+ * @returns {TokenIdentifier} The token identifier string or empty string for liquidity pools/unknown types
  *
  * @example
  * // Get identifier from balance
@@ -85,10 +92,10 @@ export const isLiquidityPool = (
  */
 export const getTokenIdentifier = (
   item: Balance | NativeToken | AssetToken,
-): TokenIdentifier | null => {
+): TokenIdentifier => {
   // Handle liquidity pools - they don't have token identifiers
   if (isLiquidityPool(item as Balance)) {
-    return null;
+    return "";
   }
 
   let token;
@@ -110,7 +117,7 @@ export const getTokenIdentifier = (
   }
 
   // Fallback for unknown types
-  return null;
+  return "";
 };
 
 /**
@@ -118,7 +125,7 @@ export const getTokenIdentifier = (
  *
  * This function processes a map of balance objects and extracts a unique
  * list of token identifiers that can be used for price lookups or other operations.
- * It filters out nulls and duplicates from the result.
+ * It filters out empty strings and duplicates from the result.
  *
  * @param {Record<string, Balance>} balances - Record of balance identifiers to Balance objects
  * @returns {TokenIdentifier[]} Array of unique token identifiers for price lookup
@@ -184,4 +191,49 @@ export const getTokenPriceFromBalance = (
   }
 
   return priceData;
+};
+
+/**
+ * Sorts a map of balances according to specific rules:
+ * 1. Regular balances are sorted by fiatTotal in descending order
+ * 2. Liquidity pool balances are sorted by total amount in descending order
+ * 3. LP balances are always at the bottom
+ *
+ * @param {PricedBalanceMap} balances - Map of balances to sort
+ * @returns {PricedBalanceMap} Sorted map of balances
+ */
+export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
+  // Convert to array of entries and separate into regular and LP balances
+  const entries = Object.entries(balances);
+  const [regularBalances, lpBalances] = entries.reduce<
+    [Array<[string, PricedBalance]>, Array<[string, PricedBalance]>]
+  >(
+    ([regular, lp], [id, balance]) => {
+      if (isLiquidityPool(balance)) {
+        return [regular, [...lp, [id, balance]]];
+      }
+      return [[...regular, [id, balance]], lp];
+    },
+    [[], []],
+  );
+
+  // Sort regular balances by fiatTotal
+  regularBalances.sort(([, a], [, b]) => {
+    const fiatTotalA = a.fiatTotal || new BigNumber(0);
+    const fiatTotalB = b.fiatTotal || new BigNumber(0);
+    return fiatTotalB.minus(fiatTotalA).toNumber();
+  });
+
+  // Sort LP balances by total amount
+  lpBalances.sort(([, a], [, b]) => {
+    const totalA = a.total || new BigNumber(0);
+    const totalB = b.total || new BigNumber(0);
+    return totalB.minus(totalA).toNumber();
+  });
+
+  // Combine sorted regular balances with sorted LP balances at the bottom
+  const sortedEntries = [...regularBalances, ...lpBalances];
+
+  // Convert back to object
+  return Object.fromEntries(sortedEntries);
 };

@@ -20,7 +20,6 @@ type WelcomeScreenProps = {
 const Container = styled.View`
   flex: 1;
   justify-content: space-between;
-  padding-horizontal: ${px(24)};
 `;
 
 const StyledDisplay = styled(Display)`

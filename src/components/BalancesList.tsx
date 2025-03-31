@@ -1,144 +1,110 @@
-import { useFocusEffect } from "@react-navigation/native";
+import { AssetIcon } from "components/AssetIcon";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
+import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { usePricesStore } from "ducks/prices";
+import { isLiquidityPool } from "helpers/balances";
+import { px } from "helpers/dimensions";
 import {
   formatAssetAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import useAppTranslation from "hooks/useAppTranslation";
+import React, { useCallback, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
+const ListWrapper = styled.View`
+  flex: 1;
+`;
+
+const ListTitle = styled.View`
+  margin-bottom: ${px(24)};
+`;
+
+const Spinner = styled.ActivityIndicator`
+  margin-top: ${px(24)};
+  width: 100%;
+  align-items: center;
+`;
+
 const BalanceRow = styled.View`
   flex-direction: row;
+  width: 100%;
+  height: ${px(44)};
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  border-bottom-width: 1px;
-  border-bottom-color: blue;
+  margin-bottom: ${px(24)};
 `;
 
 const LeftSection = styled.View`
   flex-direction: row;
   align-items: center;
+  flex: 1;
+  margin-right: ${px(16)};
 `;
 
 const AssetTextContainer = styled.View`
   flex-direction: column;
-  margin-left: 12px;
+  margin-left: ${px(16)};
+  flex: 1;
 `;
 
-const AmountText = styled(Text)`
-  color: gray;
-  margin-top: 2px;
-`;
-
-const RightSection = styled.View`
-  flex-direction: column;
-  align-items: flex-end;
-`;
-
-/**
- * Interface for PriceChangeText styling props
- * @property {boolean} isPositive - Whether the price change is positive (green) or negative (red)
- * @property {React.ReactNode} [children] - Child elements
- * @property {boolean} [sm] - Whether to use small text size
- */
-interface PriceChangeTextProps {
-  isPositive: boolean;
-  children?: React.ReactNode;
-  sm?: boolean;
+interface RightSectionProps {
+  isLP: boolean;
 }
 
-const PriceChangeText = styled(Text)<PriceChangeTextProps>`
-  color: ${(props: PriceChangeTextProps) =>
-    props.isPositive ? "green" : "red"};
-`;
-
-const IconPlaceholder = styled.View`
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background-color: green;
-  justify-content: center;
-  align-items: center;
-`;
-
-const EmptyState = styled.View`
-  padding: 32px 16px;
-  align-items: center;
-  justify-content: center;
+const RightSection = styled.View<RightSectionProps>`
+  flex-direction: column;
+  align-items: flex-end;
+  /* For liquidity pool balances we only need 20px for the "--" string */
+  width: ${({ isLP }: RightSectionProps) => px(isLP ? 20 : 115)};
 `;
 
 /**
  * Extended PricedBalance type with an id field for use in FlatList
  */
-type BalanceItem = PricedBalance & { id: string };
+type BalanceItem = PricedBalance & {
+  id: string;
+};
+
+/**
+ * BalancesList Component Props
+ */
+interface BalancesListProps {
+  publicKey: string;
+  network: NETWORKS;
+}
 
 /**
  * BalancesList Component
  *
- * A self-contained component that displays a user's token balances in a scrollable list.
+ * A component that displays a user's token balances in a scrollable list.
  * Features include:
  * - Displays regular tokens and liquidity pool tokens
  * - Shows token balances with corresponding fiat values
  * - Displays 24h price changes with color indicators
  * - Supports pull-to-refresh to update balances and prices
  * - Shows loading, error, and empty states
- * - Auto-refreshes when the screen comes into focus
  *
+ * @param {BalancesListProps} props - Component props
  * @returns {JSX.Element} A FlatList of balance items or an empty state message
  */
-export const BalancesList: React.FC = () => {
-  // TODO: Hardcoded values for testing, we'll get this from the wallet context
-  const publicKey = "GBNMQBDE2BPGG7QMNZTKA5VMKMSUNBQMMADANNMPS6VNRUYIVAU5TJRQ"; // with LP
-  // const publicKey = "GBDQO6LWQJBMWWPZV3SVGEFGX5CIBMPHQKU7HJZPWQWV6EWI6DKRP5WB"; // with Soroban Token
-  const network = NETWORKS.TESTNET;
-
+export const BalancesList: React.FC<BalancesListProps> = ({
+  publicKey,
+  network,
+}) => {
+  const { t } = useAppTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Reference to track refresh timeout
-  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const {
-    balances,
     pricedBalances,
     isLoading: isBalancesLoading,
     error: balancesError,
     fetchAccountBalances,
   } = useBalancesStore();
-
-  const isPricesLoading = usePricesStore((state) => state.isLoading);
-
-  /**
-   * Cleanup timeout on component unmount to prevent memory leaks
-   */
-  useEffect(
-    () => () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
-    },
-    [],
-  );
-
-  /**
-   * Fetches account balances for the current publicKey and network
-   * The store will handle fetching prices and calculating fiat values
-   *
-   * @returns {Promise<void>} Promise that resolves when balances are fetched
-   */
-  const fetchBalances = useCallback(async () => {
-    await fetchAccountBalances({
-      publicKey,
-      network,
-    });
-  }, [fetchAccountBalances, publicKey, network]);
 
   /**
    * Handles manual refresh via pull-to-refresh gesture
@@ -146,47 +112,51 @@ export const BalancesList: React.FC = () => {
    */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    const refreshStartTime = Date.now();
 
-    fetchBalances().finally(() => {
-      const elapsedTime = Date.now() - refreshStartTime;
-      const remainingTime = Math.max(0, 1000 - elapsedTime);
-
-      // Keep spinner visible for at least 1 second for a smoother UX
-      refreshTimeoutRef.current = setTimeout(() => {
-        setIsRefreshing(false);
-        refreshTimeoutRef.current = null;
-      }, remainingTime);
+    // Start fetching balances and prices
+    fetchAccountBalances({
+      publicKey,
+      network,
     });
-  }, [fetchBalances]);
 
-  /**
-   * Fetch balances when component comes into focus
-   * Does not show a spinner, as this is background refreshing
-   */
-  useFocusEffect(
-    useCallback(() => {
-      fetchBalances();
-    }, [fetchBalances]),
-  );
+    // Add a minimum spinner delay to prevent flickering
+    new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    }).finally(() => {
+      setIsRefreshing(false);
+    });
+  }, [fetchAccountBalances, publicKey, network]);
 
   // Display error state if there's an error loading balances
   if (balancesError) {
     return (
-      <EmptyState>
-        <Text md>Error loading balances</Text>
-      </EmptyState>
+      <ListWrapper>
+        <ListTitle>
+          <Text medium>{t("balancesList.title")}</Text>
+        </ListTitle>
+        <Text md>{t("balancesList.error")}</Text>
+      </ListWrapper>
     );
   }
 
-  // If no balances or empty object, show empty state
-  if (!balances || Object.keys(balances).length === 0) {
+  // If no balances or loading, show empty state
+  if (Object.keys(pricedBalances).length === 0) {
     return (
-      <EmptyState>
-        <Text md>
-          {isBalancesLoading ? "Loading balances..." : "No balances found"}
-        </Text>
-      </EmptyState>
+      <ListWrapper>
+        <ListTitle>
+          <Text medium>{t("balancesList.title")}</Text>
+        </ListTitle>
+
+        {isBalancesLoading ? (
+          <Spinner
+            testID="balances-list-spinner"
+            size="large"
+            color={THEME.colors.secondary}
+          />
+        ) : (
+          <Text md>{t("balancesList.empty")}</Text>
+        )}
+      </ListWrapper>
     );
   }
 
@@ -211,42 +181,62 @@ export const BalancesList: React.FC = () => {
   const renderItem = ({ item }: { item: BalanceItem }) => (
     <BalanceRow>
       <LeftSection>
-        <IconPlaceholder>
-          <Text md>{item.firstChar}</Text>
-        </IconPlaceholder>
+        <AssetIcon token={item} />
         <AssetTextContainer>
-          <Text md>{item.displayName}</Text>
-          <AmountText sm>
+          <Text medium numberOfLines={1}>
+            {item.displayName}
+          </Text>
+          <Text sm medium secondary numberOfLines={1}>
             {formatAssetAmount(item.total, item.tokenCode)}
-          </AmountText>
+          </Text>
         </AssetTextContainer>
       </LeftSection>
-      <RightSection>
-        <Text md>
-          {item.fiatTotal ? formatFiatAmount(item.fiatTotal) : "—"}
-        </Text>
-        <PriceChangeText sm isPositive={!item.percentagePriceChange24h?.lt(0)}>
-          {item.percentagePriceChange24h
-            ? formatPercentageAmount(item.percentagePriceChange24h)
-            : "—"}
-        </PriceChangeText>
+      <RightSection isLP={isLiquidityPool(item)}>
+        {item.fiatTotal ? (
+          <>
+            <Text medium numberOfLines={1}>
+              {formatFiatAmount(item.fiatTotal)}
+            </Text>
+            <Text
+              sm
+              medium
+              color={
+                item.percentagePriceChange24h?.gt(0)
+                  ? THEME.colors.status.success
+                  : THEME.colors.text.secondary
+              }
+            >
+              {formatPercentageAmount(item.percentagePriceChange24h)}
+            </Text>
+          </>
+        ) : (
+          <Text sm medium secondary>
+            --
+          </Text>
+        )}
       </RightSection>
     </BalanceRow>
   );
 
   return (
-    <FlatList
-      testID="balances-list"
-      data={balanceItems}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing || isPricesLoading}
-          onRefresh={handleRefresh}
-          tintColor="blue"
-        />
-      }
-    />
+    <ListWrapper>
+      <ListTitle>
+        <Text medium>{t("balancesList.title")}</Text>
+      </ListTitle>
+      <FlatList
+        testID="balances-list"
+        showsVerticalScrollIndicator={false}
+        data={balanceItems}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing || isBalancesLoading}
+            onRefresh={handleRefresh}
+            tintColor={THEME.colors.secondary}
+          />
+        }
+      />
+    </ListWrapper>
   );
 };

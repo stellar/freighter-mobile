@@ -8,7 +8,7 @@ const HASH_KEY_EXPIRATION_MS = 30 * 1000; // 30 seconds
 
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, HASH_KEY_EXPIRATION_MS };
 
-export const INDEXER_URL = "https://freighter-backend.stellar.org/api/v1";
+export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
 
 export enum FRIENDBOT_URLS {
   TESTNET = "https://friendbot.stellar.org",

@@ -213,13 +213,7 @@ const useGetActiveAccount = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      // If the error is due to expired authentication, show lock screen
-      if (errorMessage === t("authStore.error.authenticationExpired")) {
-        // @ts-ignore
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN);
-      } else {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
 
       return null;
     } finally {
@@ -227,12 +221,10 @@ const useGetActiveAccount = () => {
     }
   }, [getAuthStatus, navigation]);
 
-  // Refresh account data when component mounts
   useEffect(() => {
     fetchActiveAccount();
   }, [fetchActiveAccount]);
 
-  // Add a method to manually refresh the account
   const refreshAccount = useCallback(
     () => fetchActiveAccount(),
     [fetchActiveAccount],
@@ -242,7 +234,7 @@ const useGetActiveAccount = () => {
     account,
     isLoading,
     error,
-    refreshAccount, // Expose refresh method
+    refreshAccount,
   };
 };
 

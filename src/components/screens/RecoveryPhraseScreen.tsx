@@ -10,8 +10,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useState } from "react";
-import { InteractionManager } from "react-native";
-import StellarHDWallet from "stellar-hd-wallet";
+import { generateMnemonic } from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
 type RecoveryPhraseScreenProps = NativeStackScreenProps<
@@ -33,24 +32,23 @@ const RecoveryPhraseText = styled(Text)`
 
 export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   route,
+  navigation,
 }) => {
   const { password } = route.params;
   const [recoveryPhrase] = useState(
-    StellarHDWallet.generateMnemonic({
+    generateMnemonic({
       entropyBits: 128,
     }),
   );
-  const { signUp, error, isLoading } = useAuthenticationStore();
+  const { error, isLoading } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;
-    // Use InteractionManager to ensure UI animations complete first
-    InteractionManager.runAfterInteractions(() => {
-      signUp({
-        password,
-        mnemonicPhrase: recoveryPhrase,
-      });
+
+    navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
+      password,
+      recoveryPhrase,
     });
   };
 

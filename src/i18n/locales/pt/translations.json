@@ -2,7 +2,11 @@
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "Sem conexão com a internet",
   "home": {
-    "title": "Início"
+    "title": "Início",
+    "buy": "Comprar",
+    "send": "Enviar",
+    "swap": "Trocar",
+    "copy": "Copiar"
   },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",
@@ -86,5 +90,16 @@
       "invalidMnemonic": "Frase de recuperação inválida"
     },
     "account": "Conta {{number}}"
+  },
+  "validateRecoveryPhraseScreen": {
+    "title": "Digite a Palavra #{{number}}",
+    "inputPlaceholder": "Digite a palavra",
+    "errorText": "Palavra incorreta, tente novamente",
+    "defaultActionButtonText": "Continuar"
+  },
+  "balancesList": {
+    "title": "Tokens",
+    "error": "Erro ao carregar saldos",
+    "empty": "Nenhum saldo encontrado"
   }
 }

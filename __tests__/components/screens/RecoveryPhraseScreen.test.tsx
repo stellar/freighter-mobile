@@ -1,7 +1,7 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
@@ -136,12 +136,11 @@ describe("RecoveryPhraseScreen", () => {
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 
-  it("calls signUp with password and mnemonic phrase when continue is pressed", async () => {
+  it("navigates to validate recovery phrase screen when continue is pressed", () => {
+    const mockNavigate = jest.fn();
     const { getByText } = render(
       <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
+        navigation={{ navigate: mockNavigate } as never}
         route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
       />,
     );
@@ -150,14 +149,15 @@ describe("RecoveryPhraseScreen", () => {
 
     jest.runAllTimers();
 
-    await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith(
+      AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN,
+      {
         password: "test-password",
-        mnemonicPhrase:
+        recoveryPhrase:
           "test phrase one two three four five six seven eight nine ten eleven twelve",
-      });
-    });
-  }, 10000);
+      },
+    );
+  });
 
   it("disables the continue button when loading", () => {
     jest

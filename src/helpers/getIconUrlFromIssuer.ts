@@ -1,5 +1,5 @@
 import { Horizon, StellarToml, StrKey } from "@stellar/stellar-sdk";
-import { NetworkDetails } from "config/constants";
+import { NETWORK_URLS } from "config/constants";
 import { debug } from "helpers/debug";
 
 /**
@@ -16,12 +16,10 @@ import { debug } from "helpers/debug";
  * - One to the issuer's domain to get the stellar.toml file
  * - Later, one to fetch the actual image (handled by the caller)
  *
- * TODO: Implement caching of icon URLs to reduce network requests
- *
  * @param {Object} params - Parameters for icon URL retrieval
  * @param {string} params.issuerKey - The public key of the asset issuer
  * @param {string} params.assetCode - The code of the asset (e.g., "USDC", "BTC")
- * @param {NetworkDetails} params.networkDetails - Network information including URL
+ * @param {string} params.networkUrl - Network URL which is used to fetch the icon
  * @returns {Promise<string>} A promise that resolves to the icon URL if found, or empty string otherwise
  *
  * @example
@@ -29,18 +27,18 @@ import { debug } from "helpers/debug";
  * const iconUrl = await getIconUrlFromIssuer({
  *   issuerKey: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
  *   assetCode: "USDC",
- *   networkDetails: TESTNET_NETWORK_DETAILS
+ *   networkUrl: "https://horizon-testnet.stellar.org"
  * });
  */
 
 export const getIconUrlFromIssuer = async ({
   issuerKey,
   assetCode,
-  networkDetails,
+  networkUrl,
 }: {
   issuerKey: string;
   assetCode: string;
-  networkDetails: NetworkDetails;
+  networkUrl: NETWORK_URLS;
 }): Promise<string> => {
   if (!StrKey.isValidEd25519PublicKey(issuerKey)) {
     debug("getIconUrlFromIssuer", "Invalid issuer key", issuerKey);
@@ -49,11 +47,21 @@ export const getIconUrlFromIssuer = async ({
 
   let homeDomain;
   try {
-    const server = new Horizon.Server(networkDetails.networkUrl);
+    const server = new Horizon.Server(networkUrl);
     const account = await server.loadAccount(issuerKey);
     homeDomain = account.home_domain;
   } catch (e) {
-    debug("getIconUrlFromIssuer", "Failed to load account", e);
+    debug(
+      "getIconUrlFromIssuer",
+      "Failed to load account, error:",
+      e,
+      " params: ",
+      {
+        issuerKey,
+        assetCode,
+        networkUrl,
+      },
+    );
     return "";
   }
 
@@ -66,7 +74,11 @@ export const getIconUrlFromIssuer = async ({
   try {
     toml = await StellarToml.Resolver.resolve(homeDomain);
   } catch (e) {
-    debug("getIconUrlFromIssuer", "Failed to resolve TOML", e);
+    debug(
+      "getIconUrlFromIssuer",
+      "Failed to resolve TOML",
+      e?.toString() || "unknown",
+    );
     return "";
   }
 

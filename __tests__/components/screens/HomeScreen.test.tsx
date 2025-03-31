@@ -16,13 +16,18 @@ jest.mock("@react-navigation/native", () => ({
 
 // Mock the stores
 jest.mock("ducks/balances", () => ({
-  useBalancesStore: jest.fn(() => ({
-    balances: {},
-    pricedBalances: {},
-    isLoading: false,
-    error: null,
-    fetchAccountBalances: jest.fn(),
-  })),
+  useBalancesStore: jest.fn((selector) => {
+    const mockState = {
+      balances: {},
+      pricedBalances: {},
+      isLoading: false,
+      error: null,
+      fetchAccountBalances: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve()),
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
 }));
 
 jest.mock("ducks/prices", () => ({
@@ -35,7 +40,7 @@ jest.mock("ducks/prices", () => ({
   })),
 }));
 
-describe.skip("HomeScreen", () => {
+describe("HomeScreen", () => {
   it("renders correctly", () => {
     const { getByText } = renderWithProviders(<HomeScreen />);
     expect(getByText("Tokens")).toBeTruthy();

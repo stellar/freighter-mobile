@@ -2,63 +2,107 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
+import Icon from "components/sds/Icon";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
-import useAppTranslation from "hooks/useAppTranslation";
+import { px, pxValue } from "helpers/dimensions";
+import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
+import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import React from "react";
 import styled from "styled-components/native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
 
-const TabIcon = styled.View<{ focused: boolean }>`
-  width: ${px(10)};
-  height: ${px(10)};
-  border-radius: ${px(5)};
-  background-color: ${({ focused }: { focused: boolean }) =>
-    focused ? THEME.colors.tab.active : THEME.colors.tab.inactive};
+const TAB_ICON_SIZE = 20;
+
+interface TabIconWrapperProps {
+  focused: boolean;
+}
+
+const TabIconWrapper = styled.View<TabIconWrapperProps>`
+  width: ${px(80)};
+  height: ${px(36)};
+  margin-top: ${px(10)};
+  border-radius: ${px(100)};
+  justify-content: center;
+  align-items: center;
+  background: ${({ focused }: TabIconWrapperProps) =>
+    focused
+      ? THEME.colors.tab.activeBackground
+      : THEME.colors.tab.inactiveBackground};
 `;
 
-// Move the tab icon component outside of the render to follow React best practices
-const renderTabIcon = ({ focused }: { focused: boolean }) => (
-  <TabIcon focused={focused} />
-);
+const TAB_ICONS = {
+  [MAIN_TAB_ROUTES.TAB_HISTORY]: Icon.ClockRewind,
+  [MAIN_TAB_ROUTES.TAB_HOME]: Icon.Home02,
+  [MAIN_TAB_ROUTES.TAB_DISCOVERY]: Icon.Compass03,
+} as const;
+
+interface TabIconProps {
+  route: { name: keyof typeof TAB_ICONS };
+  focused: boolean;
+  color: string;
+}
+
+const TabIcon = ({ route, focused, color }: TabIconProps) => {
+  const IconComponent = TAB_ICONS[route.name];
+  return (
+    <TabIconWrapper focused={focused}>
+      <IconComponent size={TAB_ICON_SIZE} color={color} />
+    </TabIconWrapper>
+  );
+};
 
 export const TabNavigator = () => {
-  const { t } = useAppTranslation();
+  const { account } = useGetActiveAccount();
+  const publicKey = account?.publicKey;
+  const networkDetails = TESTNET_NETWORK_DETAILS;
+
+  // Fetch balances when component mounts or when publicKey/network changes
+  useFetchPricedBalances({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
+
+  // Fetch icons whenever balances are updated
+  useFetchAssetIcons(networkDetails.networkUrl);
+
+  // Start polling for balance and price updates
+  usePricedBalancesPolling({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
 
   return (
     <MainTab.Navigator
-      screenOptions={() => ({
-        tabBarIcon: renderTabIcon,
+      initialRouteName={MAIN_TAB_ROUTES.TAB_HOME}
+      screenOptions={({ route }) => ({
+        // eslint-disable-next-line react/no-unstable-nested-components
+        tabBarIcon: (props) => <TabIcon route={route} {...props} />,
+        headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: THEME.colors.tab.active,
         tabBarInactiveTintColor: THEME.colors.tab.inactive,
-        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: THEME.colors.background.default,
+          borderColor: THEME.colors.border.default,
+          borderTopWidth: pxValue(1),
+          borderStyle: "solid",
+          paddingHorizontal: pxValue(72),
+        },
       })}
     >
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
-        options={{
-          headerTitle: t("history.title"),
-          tabBarLabel: t("history.title"),
-        }}
       />
-      <MainTab.Screen
-        name={MAIN_TAB_ROUTES.TAB_HOME}
-        component={HomeScreen}
-        options={{
-          headerTitle: t("home.title"),
-          tabBarLabel: t("home.title"),
-        }}
-      />
+      <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
         component={DiscoveryScreen}
-        options={{
-          headerTitle: t("discovery.title"),
-          tabBarLabel: t("discovery.title"),
-        }}
       />
     </MainTab.Navigator>
   );

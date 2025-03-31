@@ -186,8 +186,9 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 // Display
 // =============================================================================
 
-interface DisplayProps extends TypographyBaseProps {
-  size?: DisplaySize;
+export interface DisplayProps extends TypographyBaseProps {
+  size?: TextSize;
+  style?: StyleProp<TextStyle>;
 }
 
 const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
@@ -251,6 +252,8 @@ export interface TextProps extends TypographyBaseProps {
   isVerticallyCentered?: boolean;
   url?: string;
   style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+  onPress?: () => void;
 }
 
 const StyledText = styled(BaseText)<{
@@ -319,9 +322,10 @@ export const Text: React.FC<TextProps> = ({
   children,
   isVerticallyCentered = false,
   url,
+  onPress,
   ...props
 }) => {
-  const handlePress = () => {
+  const handleOnPressUrl = () => {
     if (url) {
       Linking.canOpenURL(url).then((supported) => {
         if (supported) {
@@ -337,7 +341,8 @@ export const Text: React.FC<TextProps> = ({
       $weight={getWeight({ weight, ...props }, "regular")}
       $color={getColor({ color, ...props }, THEME.colors.text.primary)}
       $isVerticallyCentered={isVerticallyCentered}
-      {...(url && { onPress: () => handlePress() })}
+      {...(url && { onPress: () => handleOnPressUrl() })}
+      {...(!url && onPress && { onPress: () => onPress() })}
       {...props}
     >
       {children}

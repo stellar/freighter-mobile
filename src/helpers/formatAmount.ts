@@ -106,10 +106,10 @@ export const formatFiatAmount = (
  * formatPercentageAmount(); // Returns "0.00%"
  */
 export const formatPercentageAmount = (
-  amount?: string | number | { toString: () => string },
+  amount?: string | number | { toString: () => string } | null,
 ): string => {
-  if (!amount) {
-    return "0.00%";
+  if (amount === null || amount === undefined) {
+    return "--";
   }
 
   const bnAmount = convertToBigNumber(amount);

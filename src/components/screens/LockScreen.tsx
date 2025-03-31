@@ -5,21 +5,14 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import {
-  NETWORKS,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-  STORAGE_KEYS,
-} from "config/constants";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { fs, px } from "helpers/dimensions";
-import { createKeyManager } from "helpers/keyManager/keyManager";
 import useAppTranslation from "hooks/useAppTranslation";
 import { getActiveAccountPublicKey } from "hooks/useGetActiveAccount";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { dataStorage } from "services/storage/storageFactory";
 import styled from "styled-components/native";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -30,12 +23,10 @@ type LockScreenProps = NativeStackScreenProps<
 const Container = styled.View`
   flex: 1;
   justify-content: space-between;
-  padding-horizontal: ${px(24)};
 `;
 
 const StyledIconContainer = styled.View`
   align-items: center;
-  margin-top: ${px(32)};
 `;
 
 const StyledFormContainer = styled.View`
@@ -48,7 +39,7 @@ const StyledFormContainer = styled.View`
 `;
 
 const ForgotPasswordContainer = styled.View`
-  margin-bottom: ${px(8)};
+  margin-bottom: ${px(32)};
 `;
 
 const StyledInputContainer = styled.View`
@@ -67,19 +58,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
   const { t } = useAppTranslation();
-
-  dataStorage
-    .getItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID)
-    .then((activeAccountId) => {
-      console.log("activeAccountId", activeAccountId);
-    });
-  dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST).then((accountList) => {
-    console.log("accountList", accountList);
-  });
-  const km = createKeyManager(NETWORKS.TESTNET);
-  km.loadAllKeyIds().then((keyIds) => {
-    console.log("keyIds", keyIds);
-  });
 
   useEffect(() => {
     const fetchActiveAccountPublicKey = async () => {

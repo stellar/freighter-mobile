@@ -83,7 +83,7 @@ const ASSET_SIZES = {
 } as const;
 
 /** Size variants for the Asset component: "sm", "md", or "lg" */
-type AssetSize = keyof typeof ASSET_SIZES;
+export type AssetSize = keyof typeof ASSET_SIZES;
 
 /** Display variants for asset presentation: single asset, swap, pair, or platform */
 type AssetVariant = "single" | "swap" | "pair" | "platform";
@@ -99,6 +99,8 @@ type AssetVariant = "single" | "swap" | "pair" | "platform";
  * @property {string} altText - Accessible description of the image for screen readers
  * @property {string} [backgroundColor] - Optional custom background color for the asset
  *   (defaults to the theme's background color if not provided)
+ * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
+ *   instead of an image (e.g., for displaying text or other components)
  */
 export type AssetSource = {
   /** Image URL */
@@ -107,6 +109,8 @@ export type AssetSource = {
   altText: string;
   /** Custom background color */
   backgroundColor?: string;
+  /** Custom content renderer */
+  renderContent?: () => React.ReactNode;
 };
 
 /**
@@ -115,12 +119,15 @@ export type AssetSource = {
  * @property {AssetSize} [size] - Size variant for the component ("sm", "md", or "lg").
  *   Defaults to "lg" if not specified.
  * @property {AssetSource} sourceOne - Primary asset source configuration
+ * @property {string} [testID] - Optional test identifier for testing purposes
  */
 export type AssetBaseProps = {
   /** Asset size (defaults to "lg" if not specified) */
   size?: AssetSize;
   /** First asset source */
   sourceOne: AssetSource;
+  /** Test identifier */
+  testID?: string;
 };
 
 /**
@@ -295,6 +302,7 @@ interface AssetImageContainerProps {
   $variant: AssetVariant;
   $isSecond?: boolean;
   $backgroundColor?: string;
+  testID?: string;
 }
 
 const AssetImageContainer = styled.View<AssetImageContainerProps>`
@@ -340,6 +348,7 @@ const AssetImage = styled.Image`
  *   - "pair": displays two assets side by side (for trading pairs)
  *   - "platform": displays two assets with a platform logo overlaid (for protocol assets)
  * - Supports both local assets (imported from the asset system) and remote images (URLs)
+ * - Supports custom content rendering (e.g., text or other components)
  * - Consistent styling with border and background
  * - Customizable background colors for specific assets
  *
@@ -351,6 +360,7 @@ const AssetImage = styled.Image`
  * @param {AssetSize} [props.size] - Size variant: "sm", "md", or "lg". Defaults to "lg" if not specified.
  * @param {AssetSource} props.sourceOne - Primary asset source properties
  * @param {AssetSource} [props.sourceTwo] - Secondary asset source (required for multi-asset variants)
+ * @param {string} [props.testID] - Optional test identifier for testing purposes
  * @returns {JSX.Element} The rendered Asset component
  *
  * @example
@@ -416,6 +426,7 @@ export const Asset: React.FC<AssetProps> = ({
   size = "lg",
   sourceOne,
   sourceTwo,
+  testID = "asset",
 }: AssetProps) => {
   const renderImage = (source: AssetSource, isSecond = false) => (
     <AssetImageContainer
@@ -423,23 +434,28 @@ export const Asset: React.FC<AssetProps> = ({
       $variant={variant}
       $isSecond={isSecond}
       $backgroundColor={source.backgroundColor}
+      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
     >
-      <AssetImage
-        // This will allow handling both local and remote images
-        source={
-          typeof source.image === "string"
-            ? { uri: source.image }
-            : source.image
-        }
-        accessibilityLabel={source.altText}
-      />
+      {source.renderContent ? (
+        source.renderContent()
+      ) : (
+        <AssetImage
+          // This will allow handling both local and remote images
+          source={
+            typeof source.image === "string"
+              ? { uri: source.image }
+              : source.image
+          }
+          accessibilityLabel={source.altText}
+        />
+      )}
     </AssetImageContainer>
   );
 
   return (
-    <AssetContainer $size={size} $variant={variant}>
+    <AssetContainer $size={size} $variant={variant} testID={testID}>
       {renderImage(sourceOne)}
-      {sourceTwo ? renderImage(sourceTwo, true) : null}
+      {sourceTwo && renderImage(sourceTwo, true)}
     </AssetContainer>
   );
 };
