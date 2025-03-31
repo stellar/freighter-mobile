@@ -222,7 +222,7 @@ describe("BalancesList", () => {
       const { getByText } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
-      expect(getByText("No balances found")).toBeTruthy();
+      expect(getByText("Fund with Friendbot")).toBeTruthy();
     });
 
     it("should render the list of balances correctly", () => {
