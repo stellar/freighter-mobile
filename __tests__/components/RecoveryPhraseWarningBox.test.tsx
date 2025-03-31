@@ -23,7 +23,7 @@ describe("RecoveryPhraseWarningBox", () => {
         "Stellar Development Foundation will never ever ask for your phrase",
       ),
     ).toBeTruthy();
-    expect(getByText("If you lose, we can't recover it")).toBeTruthy();
+    expect(getByText("If you lose it, we can't recover it")).toBeTruthy();
   });
 
   it("renders all five warning items", () => {
