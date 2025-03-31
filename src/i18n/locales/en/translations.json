@@ -92,5 +92,9 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "empty": "No balances found"
-  }
+  },
+  "friendbotButton": {
+    "title": "Fund with Friendbot"
+  },
+  "logout": "Log out"
 }

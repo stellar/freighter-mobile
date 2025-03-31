@@ -92,5 +92,9 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "empty": "Nenhum saldo encontrado"
-  }
+  },
+  "friendbotButton": {
+    "title": "Adicionar saldo com Friendbot"
+  },
+  "logout": "Sair"
 }
