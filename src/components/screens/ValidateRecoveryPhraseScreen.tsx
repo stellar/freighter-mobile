@@ -23,14 +23,14 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const [currentWord, setCurrentWord] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSigningUp, setIsSigningUp] = useState(false);
+  const isSigningUp = useAuthenticationStore((state) => state.isLoading);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const { signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
-  const { words, selectedIndices } = useWordSelection(recoveryPhrase);
-  const currentWordIndex = selectedIndices[currentIndex];
+  const { words, selectedIndexes } = useWordSelection(recoveryPhrase);
+  const currentWordIndex = selectedIndexes[currentIndex];
   const canContinue = useMemo(
     () =>
       currentWord.trim().toLowerCase() ===
@@ -40,7 +40,11 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   const handleContinue = useCallback(() => {
     if (!canContinue) {
-      setError(t("validateRecoveryPhraseScreen.errorText"));
+      setIsLoading(true);
+      setTimeout(() => {
+        setError(t("validateRecoveryPhraseScreen.errorText"));
+        setIsLoading(false);
+      }, DELAY_MS);
       return;
     }
 
@@ -52,7 +56,6 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         setCurrentWord("");
         setError(undefined);
       } else {
-        setIsSigningUp(true);
         InteractionManager.runAfterInteractions(() => {
           signUp({
             password,
@@ -64,14 +67,14 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     }, DELAY_MS);
   }, [canContinue, currentIndex, password, recoveryPhrase, signUp, t]);
 
-  const handleWordChange = useCallback((value: string) => {
+  const handleOnChangeText = useCallback((value: string) => {
     setCurrentWord(value.trim());
     setError(undefined);
   }, []);
 
   return (
     <OnboardLayout
-      icon={<Icon.PasscodeLock circle />}
+      icon={<Icon.Passcode circle />}
       title={t("validateRecoveryPhraseScreen.title", {
         number: currentWordIndex + 1,
       })}
@@ -87,7 +90,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         placeholder={t("validateRecoveryPhraseScreen.inputPlaceholder")}
         fieldSize="lg"
         value={currentWord}
-        onChangeText={handleWordChange}
+        onChangeText={handleOnChangeText}
         error={error}
       />
     </OnboardLayout>

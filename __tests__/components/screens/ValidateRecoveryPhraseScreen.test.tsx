@@ -22,7 +22,7 @@ jest.mock("hooks/useWordSelection", () => ({
     const words = recoveryPhrase.split(" ");
     return {
       words,
-      selectedIndices: [0, 1, 2], // Always select first three words
+      selectedIndexes: [0, 1, 2], // Always select first three words
     };
   },
 }));
@@ -41,12 +41,24 @@ jest.mock("hooks/useAppTranslation", () => () => ({
 }));
 
 const mockSignUp = jest.fn();
+let mockIsLoading = false;
+let mockError: string | null = null;
+
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: jest.fn(() => ({
-    signUp: mockSignUp,
-    error: null,
-    isLoading: false,
-  })),
+  useAuthenticationStore: jest.fn((selector) => {
+    if (typeof selector === "function") {
+      return selector({
+        signUp: mockSignUp,
+        error: mockError,
+        isLoading: mockIsLoading,
+      });
+    }
+    return {
+      signUp: mockSignUp,
+      error: mockError,
+      isLoading: mockIsLoading,
+    };
+  }),
 }));
 
 const mockRoute = {
@@ -82,6 +94,8 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsLoading = false;
+    mockError = null;
     // Use modern fake timers
     jest.useFakeTimers();
   });
@@ -179,6 +193,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await user.type(input, "wrongword");
     await user.press(continueButton);
 
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
     await waitFor(() => {
       expect(
         screen.getByText("Incorrect word. Please try again."),
@@ -194,6 +213,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     await user.type(input, "wrongword");
     await user.press(continueButton);
+
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
 
     await waitFor(() => {
       expect(
@@ -222,5 +246,13 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await waitFor(() => {
       expect(continueButton.props.accessibilityState.disabled).toBeFalsy();
     });
+  });
+
+  it("disables continue button when signing up", () => {
+    mockIsLoading = true;
+    renderScreen();
+
+    const continueButton = screen.getByTestId("default-action-button");
+    expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
   });
 });

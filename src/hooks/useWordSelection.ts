@@ -3,14 +3,14 @@ import { useMemo, useState } from "react";
 export const useWordSelection = (recoveryPhrase: string) => {
   const words = useMemo(() => recoveryPhrase.split(" "), [recoveryPhrase]);
 
-  const [selectedIndices] = useState(() => {
-    const indices = Array.from({ length: words.length }, (_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
+  const [selectedIndexes] = useState(() => {
+    const indexes = Array.from({ length: words.length }, (_, i) => i);
+    for (let i = indexes.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
+      [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
     }
-    return indices.slice(0, 3);
+    return indexes.slice(0, 3);
   });
 
-  return { words, selectedIndices };
+  return { words, selectedIndexes };
 };
