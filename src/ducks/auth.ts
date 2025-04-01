@@ -492,7 +492,6 @@ const createTemporaryStore = async (
 
     // Create the temporary store object
     const temporaryStore = {
-      expiration: Date.now() + HASH_KEY_EXPIRATION_MS,
       privateKeys: {
         [activeKeyPair.id]: activeKeyPair.privateKey,
       },

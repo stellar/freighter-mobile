@@ -3,8 +3,7 @@ import { Networks } from "@stellar/stellar-sdk";
 
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 32;
-// const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
-const HASH_KEY_EXPIRATION_MS = 30 * 1000; // 30 seconds
+const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
 
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, HASH_KEY_EXPIRATION_MS };
 
