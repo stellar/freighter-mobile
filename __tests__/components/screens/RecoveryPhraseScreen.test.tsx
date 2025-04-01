@@ -27,6 +27,8 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "recoveryPhraseScreen.defaultActionButtonText": "Continue",
       "recoveryPhraseScreen.footerNoteText": "Keep your recovery phrase safe",
       "recoveryPhraseScreen.copyButtonText": "Copy",
+      "onboarding.skip": "Skip",
+      "onboarding.continue": "Continue",
     };
     return translations[key] || key;
   },
@@ -159,7 +161,7 @@ describe("RecoveryPhraseScreen", () => {
     );
   });
 
-  it("disables the continue button when loading", () => {
+  it("disables the continue and skip buttons when loading", () => {
     jest
       .requireMock("ducks/auth")
       .useAuthenticationStore.mockImplementation(() => ({
@@ -177,9 +179,12 @@ describe("RecoveryPhraseScreen", () => {
       />,
     );
 
-    const continueButton = getByTestId("default-action-button");
+    const continueButton = getByTestId("continue-button");
+    const skipButton = getByTestId("skip-button");
     expect(continueButton).toBeTruthy();
     expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
+    expect(skipButton).toBeTruthy();
+    expect(skipButton.props.accessibilityState.disabled).toBeTruthy();
   });
 
   it("renders error message when there is an error", () => {

@@ -18,12 +18,17 @@ export const RootNavigator = () => {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    getAuthStatus().finally(() => {
+    const initializeApp = async () => {
+      // Check auth status when app starts
+      await getAuthStatus();
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
-    });
+    };
+
+    initializeApp();
   }, [getAuthStatus]);
 
+  // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;

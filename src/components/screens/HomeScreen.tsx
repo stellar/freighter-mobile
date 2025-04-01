@@ -69,7 +69,7 @@ export const HomeScreen = () => {
         <AccountTotal>
           <AccountNameRow>
             <Avatar size="sm" publicAddress={publicKey ?? ""} />
-            <Text>Test Balances Account</Text>
+            <Text>{account?.accountName ?? t("home.title")}</Text>
           </AccountNameRow>
           <Display lg medium>
             {formattedBalance}

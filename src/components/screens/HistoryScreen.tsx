@@ -2,12 +2,14 @@ import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
+import { logger } from "config/logger";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import React, { useState } from "react";
+import { Alert } from "react-native";
 import styled from "styled-components/native";
 
 type HistoryScreenProps = BottomTabScreenProps<
@@ -27,20 +29,45 @@ const ButtonContainer = styled.View`
   margin-top: auto;
   width: 100%;
   margin-bottom: ${px(24)};
+  gap: ${px(12)};
 `;
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   const { t } = useAppTranslation();
-  const { logout } = useAuthenticationStore();
-  const { refreshAccount } = useGetActiveAccount();
+  const { logout, wipeAllDataForDebug } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
+  const [isWiping, setIsWiping] = useState(false);
 
   const handleLogout = () => {
     logout();
   };
 
-  useEffect(() => {
-    refreshAccount();
-  }, [refreshAccount]);
+  const handleWipeData = () => {
+    Alert.alert(
+      "Debug Action",
+      "This will completely wipe all account data and return to welcome screen. Are you sure?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Wipe Everything",
+          style: "destructive",
+          onPress: () => {
+            setIsWiping(true);
+            wipeAllDataForDebug()
+              .catch((error) => {
+                logger.error("handleWipeData", "Failed to wipe data:", error);
+              })
+              .finally(() => {
+                setIsWiping(false);
+              });
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <BaseLayout>
@@ -50,8 +77,19 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
 
       <Container>
         <ButtonContainer>
+          <Text>{account?.publicKey}</Text>
+
           <Button isFullWidth onPress={handleLogout}>
             <Text>Logout</Text>
+          </Button>
+
+          <Button
+            isFullWidth
+            onPress={handleWipeData}
+            isLoading={isWiping}
+            destructive
+          >
+            <Text>Debug: Wipe All Data</Text>
           </Button>
         </ButtonContainer>
       </Container>

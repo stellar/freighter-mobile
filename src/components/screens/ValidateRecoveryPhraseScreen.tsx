@@ -7,7 +7,6 @@ import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useWordSelection } from "hooks/useWordSelection";
 import React, { useCallback, useMemo, useState } from "react";
-import { InteractionManager } from "react-native";
 
 type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -56,11 +55,9 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         setCurrentWord("");
         setError(undefined);
       } else {
-        InteractionManager.runAfterInteractions(() => {
-          signUp({
-            password,
-            mnemonicPhrase: recoveryPhrase,
-          });
+        signUp({
+          password,
+          mnemonicPhrase: recoveryPhrase,
         });
       }
       setIsLoading(false);

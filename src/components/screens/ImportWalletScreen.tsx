@@ -8,7 +8,6 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
-import { InteractionManager } from "react-native";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -24,11 +23,9 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
-    InteractionManager.runAfterInteractions(() => {
-      importWallet({
-        mnemonicPhrase: recoveryPhrase,
-        password,
-      });
+    importWallet({
+      mnemonicPhrase: recoveryPhrase,
+      password,
     });
   };
 

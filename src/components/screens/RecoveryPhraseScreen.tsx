@@ -30,6 +30,42 @@ const RecoveryPhraseText = styled(Text)`
   text-align: center;
 `;
 
+const StyledFooterButtonContainer = styled.View`
+  gap: ${px(12)};
+`;
+
+const Footer: React.FC<{
+  isLoading: boolean;
+  onPressContinue: () => void;
+  onPressSkip: () => void;
+}> = ({ isLoading, onPressContinue, onPressSkip }) => {
+  const { t } = useAppTranslation();
+
+  return (
+    <StyledFooterButtonContainer>
+      <Button
+        tertiary
+        lg
+        isFullWidth
+        testID="continue-button"
+        onPress={onPressContinue}
+        disabled={isLoading}
+      >
+        {t("onboarding.continue")}
+      </Button>
+      <Button
+        secondary
+        lg
+        testID="skip-button"
+        isLoading={isLoading}
+        onPress={onPressSkip}
+      >
+        {t("onboarding.skip")}
+      </Button>
+    </StyledFooterButtonContainer>
+  );
+};
+
 export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   route,
   navigation,
@@ -40,7 +76,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       entropyBits: 128,
     }),
   );
-  const { error, isLoading } = useAuthenticationStore();
+  const { error, isLoading, signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
@@ -49,6 +85,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
       password,
       recoveryPhrase,
+    });
+  };
+
+  const handleSkip = () => {
+    signUp({
+      password,
+      mnemonicPhrase: recoveryPhrase,
     });
   };
 
@@ -74,12 +117,15 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     <OnboardLayout
       icon={<Icon.ShieldTick circle />}
       title={t("recoveryPhraseScreen.title")}
-      defaultActionButtonText={t(
-        "recoveryPhraseScreen.defaultActionButtonText",
-      )}
       isLoading={isLoading}
-      onPressDefaultActionButton={handleContinue}
       footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
+      footer={
+        <Footer
+          isLoading={isLoading}
+          onPressContinue={handleContinue}
+          onPressSkip={handleSkip}
+        />
+      }
     >
       <Text secondary md>
         {t("recoveryPhraseScreen.warning")}

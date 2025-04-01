@@ -53,11 +53,35 @@ const StyledTitle = styled(Text)`
   font-weight: 600;
 `;
 
+const StyledErrorText = styled(Text)`
+  color: ${THEME.colors.status.error};
+`;
+
 export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
-  const { signIn, isLoading: isSigningIn, error } = useAuthenticationStore();
+  const {
+    signIn,
+    isLoading: isSigningIn,
+    error,
+    authStatus,
+  } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
   const { t } = useAppTranslation();
+
+  // Monitor auth status changes to navigate when unlocked
+  useEffect(() => {
+    if (authStatus === "AUTHENTICATED") {
+      // Add a small delay to ensure state is settled before navigation
+      const navigationTimeout = setTimeout(() => {
+        navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+      }, 100);
+
+      return () => {
+        clearTimeout(navigationTimeout);
+      };
+    }
+    return undefined;
+  }, [authStatus, navigation]);
 
   useEffect(() => {
     const fetchActiveAccountPublicKey = async () => {
@@ -78,14 +102,13 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const handleUnlock = useCallback(() => {
     if (!canContinue) return;
 
-    signIn({ password: passwordValue }).then(() => {
-      if (navigation.getState().index > 0) {
-        navigation.goBack();
-      } else {
-        navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-      }
-    });
-  }, [canContinue, passwordValue, signIn, navigation]);
+    // Disable other navigation attempts while signing in
+    if (isSigningIn) return;
+
+    // Try to sign in - error handling is in the auth store
+    signIn({ password: passwordValue });
+    // Navigation will happen automatically through the authStatus effect
+  }, [canContinue, passwordValue, signIn, isSigningIn]);
 
   const handlePasswordChange = useCallback((value: string) => {
     setPasswordValue(value);
@@ -109,7 +132,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
               value={passwordValue}
               onChangeText={handlePasswordChange}
             />
-            {error && <Text>{error}</Text>}
+            {error && <StyledErrorText>{error}</StyledErrorText>}
             <Button
               tertiary
               lg
