@@ -35,25 +35,51 @@ import {
 import StellarHDWallet from "stellar-hd-wallet";
 import { create } from "zustand";
 
-// Parameters for signUp function
+/**
+ * Parameters for signUp function
+ *
+ * @interface SignUpParams
+ * @property {string} mnemonicPhrase - The mnemonic phrase for the wallet
+ * @property {string} password - User's password for encrypting the wallet
+ * @property {boolean} [imported] - Whether the wallet was imported (optional)
+ */
 interface SignUpParams {
   mnemonicPhrase: string;
   password: string;
   imported?: boolean;
 }
 
-// Parameters for login function
+/**
+ * Parameters for login function
+ *
+ * @interface SignInParams
+ * @property {string} password - User's password for authentication
+ */
 interface SignInParams {
   password: string;
 }
 
-// Parameters for importWallet function
+/**
+ * Parameters for importWallet function
+ *
+ * @interface ImportWalletParams
+ * @property {string} mnemonicPhrase - The mnemonic phrase to import
+ * @property {string} password - User's password for encrypting the imported wallet
+ */
 interface ImportWalletParams {
   mnemonicPhrase: string;
   password: string;
 }
 
-// Parameters for storeAccount function
+/**
+ * Parameters for storeAccount function
+ *
+ * @interface StoreAccountParams
+ * @property {string} mnemonicPhrase - The mnemonic phrase for the wallet
+ * @property {string} password - User's password for encrypting the wallet
+ * @property {KeyPair} keyPair - The public and private key pair
+ * @property {boolean} [imported] - Whether the wallet was imported (optional)
+ */
 interface StoreAccountParams {
   mnemonicPhrase: string;
   password: string;
@@ -61,7 +87,17 @@ interface StoreAccountParams {
   imported?: boolean;
 }
 
-// Active account type
+/**
+ * Active account information
+ *
+ * Contains the active account's public and private keys, name, and ID
+ *
+ * @interface ActiveAccount
+ * @property {string} publicKey - The account's public key
+ * @property {string} privateKey - The account's private key
+ * @property {string} accountName - The account's display name
+ * @property {string} id - The account's unique identifier
+ */
 interface ActiveAccount {
   publicKey: string;
   privateKey: string;
@@ -69,7 +105,23 @@ interface ActiveAccount {
   id: string;
 }
 
-// State slice types
+/**
+ * Authentication State Interface
+ *
+ * Defines the structure of the authentication state store using Zustand.
+ * This store manages user authentication status, active account information,
+ * and navigation state.
+ *
+ * @interface AuthState
+ * @property {NETWORKS | null} network - The current blockchain network
+ * @property {boolean} isLoading - Indicates if auth-related operations are in progress
+ * @property {string | null} error - Error message if auth operation failed, null otherwise
+ * @property {AuthStatus} authStatus - Current authentication status (NOT_AUTHENTICATED, HASH_KEY_EXPIRED, AUTHENTICATED)
+ * @property {ActiveAccount | null} account - Currently active account information
+ * @property {boolean} isLoadingAccount - Indicates if account data is being loaded
+ * @property {string | null} accountError - Error message if account operations failed, null otherwise
+ * @property {NavigationContainerRef<RootStackParamList> | null} navigationRef - Reference to the navigation container
+ */
 interface AuthState {
   network: NETWORKS | null;
   isLoading: boolean;
@@ -84,12 +136,23 @@ interface AuthState {
 }
 
 /**
- * Actions for the Auth store
+ * Authentication Actions Interface
  *
- * logout: Logs out the user and clears stored data (both sensitive and non-sensitive)
- * signUp: Signs up a new user with the password. This function stores the account in the key manager and creates the temporary store.
- * signIn: Logs in the user with the provided password. This function is called when the existing hashKey is expired. It creates a new hashKey and temporary store.
- * importWallet: Imports a wallet with the provided seed phrase and password. This function stores the account in the key manager and creates the temporary store.
+ * Defines the actions available in the authentication store.
+ * These actions allow users to sign up, sign in, log out, import wallets,
+ * and manage their active account.
+ *
+ * @interface AuthActions
+ * @property {Function} logout - Logs out the user and clears stored data (both sensitive and non-sensitive)
+ * @property {Function} signUp - Signs up a new user with the provided credentials
+ * @property {Function} signIn - Signs in a user with the provided password
+ * @property {Function} importWallet - Imports a wallet with the provided seed phrase and password
+ * @property {Function} getAuthStatus - Gets the current authentication status
+ * @property {Function} fetchActiveAccount - Fetches the currently active account
+ * @property {Function} refreshActiveAccount - Refreshes the active account data
+ * @property {Function} setNavigationRef - Sets the navigation reference for navigation actions
+ * @property {Function} navigateToLockScreen - Navigates to the lock screen
+ * @property {Function} wipeAllDataForDebug - Wipes all user data (for debugging purposes)
  */
 interface AuthActions {
   logout: () => void;
@@ -107,6 +170,14 @@ interface AuthActions {
   wipeAllDataForDebug: () => Promise<boolean>;
 }
 
+/**
+ * Authentication Store Type
+ *
+ * Combines the authentication state and actions into a single type
+ * for the Zustand store.
+ *
+ * @type {AuthState & AuthActions}
+ */
 type AuthStore = AuthState & AuthActions;
 
 // Initial state
@@ -131,6 +202,8 @@ const keyManager = createKeyManager(Networks.TESTNET);
 
 /**
  * Checks if there's an existing account (even if logged out)
+ *
+ * @returns {Promise<boolean>} True if at least one account exists, false otherwise
  */
 const hasExistingAccount = async (): Promise<boolean> => {
   try {
@@ -156,6 +229,11 @@ const hasExistingAccount = async (): Promise<boolean> => {
 
 /**
  * Validates the authentication status of the user
+ *
+ * Checks if accounts exist, if hash key is valid, and if temporary store exists
+ * to determine the current authentication status.
+ *
+ * @returns {Promise<AuthStatus>} The current authentication status
  */
 const getAuthStatus = async (): Promise<AuthStatus> => {
   try {
@@ -193,6 +271,10 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
 
 /**
  * Decrypts and returns the temporary store data
+ *
+ * @param {HashKey} hashKey - The hash key object containing the key and salt
+ * @param {string} temporaryStore - The encrypted temporary store data
+ * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if decryption failed
  */
 const decryptTemporaryStore = async (
   hashKey: HashKey,
@@ -215,6 +297,11 @@ const decryptTemporaryStore = async (
 
 /**
  * Retrieves data from the temporary store
+ *
+ * Gets the hash key, retrieves the encrypted temporary store,
+ * and decrypts it to access sensitive data.
+ *
+ * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if retrieval failed
  */
 const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
   try {
@@ -280,7 +367,11 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
 };
 
 /**
- * Gets the public key of the active account. Used on lock screen.
+ * Gets the public key of the active account
+ *
+ * Used on lock screen to display the public key without requiring authentication.
+ *
+ * @returns {Promise<string | null>} The active account's public key or null if not found
  */
 export const getActiveAccountPublicKey = async (): Promise<string | null> => {
   const activeAccountId = await dataStorage.getItem(
@@ -308,6 +399,9 @@ export const getActiveAccountPublicKey = async (): Promise<string | null> => {
 
 /**
  * Adds a new account to the account list
+ *
+ * @param {Account} account - The account to add to the list
+ * @returns {Promise<void>}
  */
 const appendAccount = async (account: Account) => {
   const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
@@ -331,7 +425,13 @@ const appendAccount = async (account: Account) => {
 
 /**
  * Generate and store a unique hash key derived from the password
- * This key will be used to encrypt/decrypt the temporary store
+ *
+ * Creates a hash key from the password using a random salt, sets an expiration
+ * timestamp, and stores it securely. This key is used to encrypt/decrypt
+ * the temporary store.
+ *
+ * @param {string} password - The user's password to derive the hash key from
+ * @returns {Promise<HashKey>} The generated hash key object with salt and expiration
  */
 const generateHashKey = async (password: string): Promise<HashKey> => {
   try {
@@ -372,6 +472,14 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
 
 /**
  * Creates and encrypts the temporary store using the hash key
+ *
+ * Generates a new hash key, creates a temporary store with sensitive data,
+ * encrypts it, and stores it securely.
+ *
+ * @param {string} password - The user's password for encryption
+ * @param {string} mnemonicPhrase - The mnemonic phrase to store
+ * @param {Object} activeKeyPair - The active key pair with account info
+ * @returns {Promise<void>}
  */
 const createTemporaryStore = async (
   password: string,
@@ -416,6 +524,12 @@ const createTemporaryStore = async (
   }
 };
 
+/**
+ * Stores a new account in key manager and creates a temporary store
+ *
+ * @param {StoreAccountParams} params - The account parameters to store
+ * @returns {Promise<void>}
+ */
 const storeAccount = async ({
   mnemonicPhrase,
   password,
@@ -468,6 +582,8 @@ const storeAccount = async ({
 
 /**
  * Logs out the user and clears sensitive data (internal implementation)
+ *
+ * @returns {Promise<void>}
  */
 const logoutInternal = async (): Promise<void> => {
   try {
@@ -484,6 +600,12 @@ const logoutInternal = async (): Promise<void> => {
 
 /**
  * Signs up a new user with the provided credentials
+ *
+ * Creates a new wallet from the mnemonic phrase, generates a key pair,
+ * and stores the account in the key manager and temporary store.
+ *
+ * @param {SignUpParams} params - The signup parameters
+ * @returns {Promise<void>}
  */
 const signUp = async ({
   mnemonicPhrase,
@@ -518,6 +640,12 @@ const signUp = async ({
 
 /**
  * Logs in the user with the provided password
+ *
+ * Validates the password against the stored key, loads the account data,
+ * and creates a new temporary store with the sensitive information.
+ *
+ * @param {SignInParams} params - The signin parameters
+ * @returns {Promise<void>}
  */
 const signIn = async ({ password }: SignInParams): Promise<void> => {
   try {
@@ -593,6 +721,12 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
 
 /**
  * Imports a wallet with the provided credentials
+ *
+ * Generates a key pair from the mnemonic, removes any existing accounts,
+ * and stores the new account.
+ *
+ * @param {ImportWalletParams} params - The wallet import parameters
+ * @returns {Promise<void>}
  */
 const importWallet = async ({
   mnemonicPhrase,
@@ -634,6 +768,12 @@ const importWallet = async ({
 
 /**
  * Gets the active account data by combining temporary store sensitive data with account list information
+ *
+ * Retrieves the active account ID, loads account information from storage,
+ * and gets the private key from the temporary store.
+ *
+ * @returns {Promise<ActiveAccount | null>} The active account data or null if not found
+ * @throws {Error} If the active account cannot be retrieved
  */
 const getActiveAccount = async (): Promise<ActiveAccount | null> => {
   try {
@@ -698,10 +838,24 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
 
 /**
  * Authentication Store
+ *
+ * A Zustand store that manages user authentication state and operations.
+ * This store provides actions for user signup, signin, logout, wallet importing,
+ * and active account management.
+ *
+ * It maintains the authentication status and securely handles sensitive data
+ * like private keys and mnemonic phrases through a temporary encrypted store.
  */
 export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   ...initialState,
 
+  /**
+   * Logs out the user by clearing sensitive data
+   *
+   * For accounts with existing accounts, it preserves account data but clears sensitive info,
+   * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
+   * For new users with no accounts, it performs a full logout.
+   */
   logout: () => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
@@ -760,6 +914,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }, 0);
   },
 
+  /**
+   * Signs up a new user with the provided credentials
+   *
+   * @param {SignUpParams} params - The signup parameters
+   */
   signUp: (params) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
@@ -793,6 +952,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }, 0);
   },
 
+  /**
+   * Signs in a user with the provided password
+   *
+   * @param {SignInParams} params - The signin parameters
+   * @returns {Promise<void>}
+   */
   signIn: async (params) => {
     set({ isLoading: true, error: null });
 
@@ -851,6 +1016,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
+  /**
+   * Imports a wallet with the provided credentials
+   *
+   * @param {ImportWalletParams} params - The wallet import parameters
+   */
   importWallet: (params) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
@@ -883,6 +1053,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }, 0);
   },
 
+  /**
+   * Gets the current authentication status
+   *
+   * @returns {Promise<AuthStatus>} The current authentication status
+   */
   getAuthStatus: async () => {
     const authStatus = await getAuthStatus();
     set({ authStatus });
@@ -895,6 +1070,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     return authStatus;
   },
 
+  /**
+   * Navigates to the lock screen
+   *
+   * Used when authentication expires or user needs to re-authenticate
+   */
   navigateToLockScreen: () => {
     const { navigationRef } = get();
     if (navigationRef && navigationRef.isReady()) {
@@ -913,6 +1093,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
+  /**
+   * Fetches the active account data
+   *
+   * Checks auth status first and redirects to lock screen if hash key is expired
+   *
+   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+   */
   fetchActiveAccount: async () => {
     set({ isLoadingAccount: true, accountError: null });
 
@@ -941,12 +1128,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
+  /**
+   * Refreshes the active account data
+   *
+   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+   */
   refreshActiveAccount: () => get().fetchActiveAccount(),
 
+  /**
+   * Sets the navigation reference for navigation actions
+   *
+   * @param {NavigationContainerRef<RootStackParamList>} ref - The navigation reference
+   */
   setNavigationRef: (ref) => {
     set({ navigationRef: ref });
   },
 
+  /**
+   * Wipes all user data for debugging purposes
+   *
+   * Removes all keys from key manager, clears all stored data,
+   * and resets the store state to initial.
+   *
+   * @returns {Promise<boolean>} True if successful, false otherwise
+   */
   wipeAllDataForDebug: async () => {
     try {
       set({ isLoading: true, error: null });
