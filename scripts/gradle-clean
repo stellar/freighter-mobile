@@ -1,5 +1,3 @@
 #!/bin/bash
 
-rm -rf ./android/app/src/main/res/drawable-* || true
-rm -rf ./android/app/src/main/res/raw || true
 (cd android && ./gradlew clean || true) && cd ..
