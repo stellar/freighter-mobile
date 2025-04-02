@@ -4,7 +4,7 @@ import { bigize } from "helpers/bigize";
 import { createApiService } from "services/apiFactory";
 
 // Create a dedicated API service for backend operations
-export const backendApi = createApiService({
+const backendApi = createApiService({
   baseURL: INDEXER_URL,
 });
 

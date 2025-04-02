@@ -229,7 +229,7 @@ interface ButtonProps extends VariantProps, SizeProps {
   isFullWidth?: boolean;
   disabled?: boolean;
   squared?: boolean;
-  onPress?: () => void;
+  onPress?: () => void | Promise<void>;
   testID?: string;
 }
 

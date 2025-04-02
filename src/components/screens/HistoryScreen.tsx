@@ -80,7 +80,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
           <Text>{account?.publicKey}</Text>
 
           <Button isFullWidth onPress={handleLogout}>
-            <Text>Logout</Text>
+            {t("logout")}
           </Button>
 
           <Button

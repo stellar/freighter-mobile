@@ -1,4 +1,5 @@
 import { AssetIcon } from "components/AssetIcon";
+import { FriendbotButton } from "components/FriendbotButton";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
@@ -12,7 +13,7 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -98,6 +99,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMounting, setIsMounting] = useState(true);
 
   const {
     pricedBalances,
@@ -105,6 +107,22 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     error: balancesError,
     fetchAccountBalances,
   } = useBalancesStore();
+
+  const noBalances = Object.keys(pricedBalances).length === 0;
+
+  const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
+    network,
+  );
+
+  // Set isMounting to false after the component mounts.
+  // This is used to prevent the "no balances" state from showing
+  // for a fraction of second while the store is setting the
+  // isBalancesLoading flag. We could revisit this after
+  // we finish implementing the auth flow as it could be
+  // naturally solved by that.
+  useEffect(() => {
+    setIsMounting(false);
+  }, []);
 
   /**
    * Handles manual refresh via pull-to-refresh gesture
@@ -139,23 +157,35 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     );
   }
 
-  // If no balances or loading, show empty state
-  if (Object.keys(pricedBalances).length === 0) {
+  // If no balances and still loading, show the spinner
+  if (noBalances && (isBalancesLoading || isMounting)) {
     return (
       <ListWrapper>
         <ListTitle>
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
 
-        {isBalancesLoading ? (
-          <Spinner
-            testID="balances-list-spinner"
-            size="large"
-            color={THEME.colors.secondary}
-          />
-        ) : (
-          <Text md>{t("balancesList.empty")}</Text>
+        <Spinner
+          testID="balances-list-spinner"
+          size="large"
+          color={THEME.colors.secondary}
+        />
+      </ListWrapper>
+    );
+  }
+
+  // If still no balances after fetching, then show the empty state
+  if (noBalances) {
+    return (
+      <ListWrapper>
+        <ListTitle>
+          <Text medium>{t("balancesList.title")}</Text>
+        </ListTitle>
+
+        {isTestNetwork && (
+          <FriendbotButton publicKey={publicKey} network={network} />
         )}
+        {!isTestNetwork && <Text md>{t("balancesList.empty")}</Text>}
       </ListWrapper>
     );
   }
