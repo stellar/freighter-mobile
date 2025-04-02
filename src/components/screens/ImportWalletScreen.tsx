@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Textarea } from "components/sds/Textarea";
-import { Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -51,12 +50,8 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         note={t("importWalletScreen.textAreaNote")}
         value={recoveryPhrase}
         onChangeText={setRecoveryPhrase}
+        error={error}
       />
-      {error && (
-        <Text secondary md>
-          {error}
-        </Text>
-      )}
     </OnboardLayout>
   );
 };

@@ -5,7 +5,6 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
@@ -57,7 +56,6 @@ export const HomeScreen = () => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
-  const networkDetails = network ?? NETWORKS.PUBLIC;
 
   const { t } = useAppTranslation();
 
@@ -92,7 +90,7 @@ export const HomeScreen = () => {
 
       <BorderLine />
 
-      <BalancesList publicKey={publicKey ?? ""} network={networkDetails} />
+      <BalancesList publicKey={publicKey ?? ""} network={network} />
     </BaseLayout>
   );
 };

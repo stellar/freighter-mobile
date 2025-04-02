@@ -14,6 +14,8 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+
+  // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
 } as const;
 

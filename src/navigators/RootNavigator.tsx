@@ -30,15 +30,15 @@ export const RootNavigator = () => {
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
-    if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
-      return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
 
-    return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
+    return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
   }, [authStatus]);
 
   if (initializing) {
@@ -52,10 +52,10 @@ export const RootNavigator = () => {
         headerShown: false,
       }}
     >
-      {authStatus === AUTH_STATUS.NOT_AUTHENTICATED ? (
+      {authStatus === AUTH_STATUS.AUTHENTICATED ? (
         <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
-          component={AuthNavigator}
+          name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
+          component={TabNavigator}
         />
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
         <RootStack.Screen
@@ -64,8 +64,8 @@ export const RootNavigator = () => {
         />
       ) : (
         <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
-          component={TabNavigator}
+          name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
+          component={AuthNavigator}
         />
       )}
     </RootStack.Navigator>

@@ -4,14 +4,14 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
-import { Text } from "components/sds/Typography";
+import { Display, Text } from "components/sds/Typography";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
-import { useAuthenticationStore } from "ducks/auth";
-import { fs, px } from "helpers/dimensions";
+import { AUTH_STATUS } from "config/types";
+import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { getActiveAccountPublicKey } from "hooks/useGetActiveAccount";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components/native";
 
@@ -48,15 +48,6 @@ const StyledInputContainer = styled.View`
   margin-top: ${px(32)};
 `;
 
-const StyledTitle = styled(Text)`
-  font-size: ${fs(24)};
-  font-weight: 600;
-`;
-
-const StyledErrorText = styled(Text)`
-  color: ${THEME.colors.status.error};
-`;
-
 export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const {
     signIn,
@@ -70,7 +61,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
-    if (authStatus === "AUTHENTICATED") {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
       // Add a small delay to ensure state is settled before navigation
       const navigationTimeout = setTimeout(() => {
         navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
@@ -122,7 +113,9 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
         </StyledIconContainer>
         <StyledFormContainer>
           <Avatar size="lg" publicAddress={publicKey ?? ""} />
-          <StyledTitle>{t("lockScreen.title")}</StyledTitle>
+          <Display xs semiBold>
+            {t("lockScreen.title")}
+          </Display>
           <Text secondary>{t("lockScreen.description")}</Text>
           <StyledInputContainer>
             <Input
@@ -131,8 +124,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
               fieldSize="lg"
               value={passwordValue}
               onChangeText={handlePasswordChange}
+              error={
+                error && <Text color={THEME.colors.status.error}>{error}</Text>
+              }
             />
-            {error && <StyledErrorText>{error}</StyledErrorText>}
             <Button
               tertiary
               lg

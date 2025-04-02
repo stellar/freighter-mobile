@@ -89,7 +89,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
             isLoading={isWiping}
             destructive
           >
-            <Text>Debug: Wipe All Data</Text>
+            Debug: Wipe All Data
           </Button>
         </ButtonContainer>
       </Container>

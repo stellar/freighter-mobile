@@ -3,8 +3,7 @@ import { Networks } from "@stellar/stellar-sdk";
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
-// export const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
-export const HASH_KEY_EXPIRATION_MS = 15 * 1000; // 15 seconds for debugging
+export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
 
@@ -96,7 +95,7 @@ export enum STORAGE_KEYS {
  *
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
- * HASH_KEY format: { hashKey: string, salt: string, expiration: number }
+ * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",

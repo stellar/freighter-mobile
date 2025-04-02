@@ -1,4 +1,5 @@
 import { BaseLayout } from "components/layout/BaseLayout";
+import { THEME } from "config/theme";
 import React from "react";
 import { ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
@@ -12,7 +13,7 @@ const Container = styled.View`
 export const LoadingScreen: React.FC = () => (
   <BaseLayout useSafeArea>
     <Container>
-      <ActivityIndicator />
+      <ActivityIndicator size="large" color={THEME.colors.secondary} />
     </Container>
   </BaseLayout>
 );

@@ -25,7 +25,6 @@ import {
   decryptDataWithPassword,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
-import { isHashKeyExpired } from "hooks/useGetActiveAccount";
 import { t } from "i18next";
 import { clearTemporaryData, getHashKey } from "services/storage/helpers";
 import {
@@ -41,12 +40,10 @@ import { create } from "zustand";
  * @interface SignUpParams
  * @property {string} mnemonicPhrase - The mnemonic phrase for the wallet
  * @property {string} password - User's password for encrypting the wallet
- * @property {boolean} [imported] - Whether the wallet was imported (optional)
  */
 interface SignUpParams {
   mnemonicPhrase: string;
   password: string;
-  imported?: boolean;
 }
 
 /**
@@ -123,7 +120,7 @@ interface ActiveAccount {
  * @property {NavigationContainerRef<RootStackParamList> | null} navigationRef - Reference to the navigation container
  */
 interface AuthState {
-  network: NETWORKS | null;
+  network: NETWORKS;
   isLoading: boolean;
   error: string | null;
   authStatus: AuthStatus;
@@ -226,6 +223,12 @@ const hasExistingAccount = async (): Promise<boolean> => {
     return false;
   }
 };
+
+/**
+ * Checks if a hash key is expired
+ */
+const isHashKeyExpired = (hashKey: HashKey): boolean =>
+  Date.now() > hashKey.expiresAt;
 
 /**
  * Validates the authentication status of the user
@@ -533,14 +536,13 @@ const storeAccount = async ({
   mnemonicPhrase,
   password,
   keyPair,
-  imported = false,
 }: StoreAccountParams): Promise<void> => {
   const { publicKey, privateKey } = keyPair;
 
   // Store the key using the key manager
   const keyMetadata = {
     key: {
-      extra: { imported, mnemonicPhrase },
+      extra: { mnemonicPhrase },
       type: KeyType.plaintextKey,
       publicKey,
       privateKey,
@@ -567,7 +569,6 @@ const storeAccount = async ({
       id: keyStore.id,
       name: accountName,
       publicKey,
-      imported,
       network: NETWORKS.TESTNET,
     }),
     createTemporaryStore(password, mnemonicPhrase, {
@@ -598,6 +599,22 @@ const logoutInternal = async (): Promise<void> => {
 };
 
 /**
+ * Derives a key pair from a mnemonic phrase
+ *
+ * @param {string} mnemonicPhrase - The mnemonic phrase to derive the key pair from
+ * @returns {Promise<KeyPair>} The derived key pair
+ */
+const deriveKeyPair = (mnemonicPhrase: string) => {
+  const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+  const keyDerivationNumber = 0;
+
+  return {
+    publicKey: wallet.getPublicKey(keyDerivationNumber),
+    privateKey: wallet.getSecret(keyDerivationNumber),
+  };
+};
+
+/**
  * Signs up a new user with the provided credentials
  *
  * Creates a new wallet from the mnemonic phrase, generates a key pair,
@@ -609,23 +626,15 @@ const logoutInternal = async (): Promise<void> => {
 const signUp = async ({
   mnemonicPhrase,
   password,
-  imported = false,
 }: SignUpParams): Promise<void> => {
   try {
-    const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
-    const keyDerivationNumber = 0;
-
-    const keyPair = {
-      publicKey: wallet.getPublicKey(keyDerivationNumber),
-      privateKey: wallet.getSecret(keyDerivationNumber),
-    };
+    const keyPair = deriveKeyPair(mnemonicPhrase);
 
     // Store the account in the key manager and create the temporary store
     await storeAccount({
       mnemonicPhrase,
       password,
       keyPair,
-      imported,
     });
   } catch (error) {
     logger.error("signUp", "Failed to sign up", error);
@@ -732,14 +741,7 @@ const importWallet = async ({
   password,
 }: ImportWalletParams): Promise<void> => {
   try {
-    // Generate a key pair from the mnemonic
-    const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
-    const keyDerivationNumber = 0;
-
-    const keyPair = {
-      publicKey: wallet.getPublicKey(keyDerivationNumber),
-      privateKey: wallet.getSecret(keyDerivationNumber),
-    };
+    const keyPair = deriveKeyPair(mnemonicPhrase);
 
     // Delete any existing accounts
     const allKeys = await keyManager.loadAllKeyIds();
@@ -1147,11 +1149,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * Wipes all user data for debugging purposes
    *
    * Removes all keys from key manager, clears all stored data,
-   * and resets the store state to initial.
+   * and resets the store state to initial. This is debug only.
    *
    * @returns {Promise<boolean>} True if successful, false otherwise
    */
   wipeAllDataForDebug: async () => {
+    if (!__DEV__) {
+      return false;
+    }
+
     try {
       set({ isLoading: true, error: null });
 
