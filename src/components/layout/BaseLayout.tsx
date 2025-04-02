@@ -1,14 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
 import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  KeyboardAvoidingViewProps,
-  ScrollView,
-  ScrollViewProps,
-  Platform,
-} from "react-native";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
@@ -23,40 +17,6 @@ interface StyledViewProps {
   $backgroundColor: string;
   $insets: EdgeInsets;
 }
-
-const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView).attrs(
-  (props: KeyboardAvoidingViewProps) => ({
-    behavior: Platform.select({
-      ios: "padding",
-      android: undefined,
-    }),
-    contentContainerStyle: {
-      flex: 1,
-      backgroundColor: THEME.colors.background.default,
-    },
-    ...props,
-  }),
-)`
-  flex: 1;
-  background-color: ${THEME.colors.background.default};
-`;
-
-const StyledScrollView = styled(ScrollView).attrs(
-  (props: ScrollViewProps) =>
-    ({
-      keyboardShouldPersistTaps: "never",
-      showsVerticalScrollIndicator: false,
-      alwaysBounceVertical: false,
-      contentContainerStyle: {
-        flex: 1,
-        backgroundColor: THEME.colors.background.default,
-      },
-      ...props,
-    }) as ScrollViewProps,
-)`
-  flex-grow: 1;
-  background-color: ${THEME.colors.background.default};
-`;
 
 const DEFAULT_PADDING = pxValue(24);
 
@@ -88,13 +48,11 @@ export const BaseLayout = ({
 
   if (useKeyboardAvoidingView) {
     return (
-      <StyledKeyboardAvoidingView>
-        <StyledScrollView>
-          <Container $insets={insets} $backgroundColor={backgroundColor}>
-            {children}
-          </Container>
-        </StyledScrollView>
-      </StyledKeyboardAvoidingView>
+      <ScrollableKeyboardView>
+        <Container $insets={insets} $backgroundColor={backgroundColor}>
+          {children}
+        </Container>
+      </ScrollableKeyboardView>
     );
   }
 
