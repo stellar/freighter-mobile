@@ -5,50 +5,50 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AppState,
   AppStateStatus,
-  InteractionManager,
   PanResponder,
   PanResponderInstance,
 } from "react-native";
 
-const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when app is in background
-const FOREGROUND_CHECK_INTERVAL = 10000; // Check every 10 seconds when app is in foreground
-const ACTIVE_CHECK_INTERVAL = 5000; // Check every 5 seconds when user is actively using the app
+// Constants for interval timings (in milliseconds)
+const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
+const FOREGROUND_CHECK_INTERVAL = 10000; // Check every 10 seconds in foreground (inactive)
+const ACTIVE_CHECK_INTERVAL = 5000; // Check every 5 seconds when user is active
+const MIN_CHECK_INTERVAL = 1000; // Minimum interval between auth checks
+const INACTIVITY_THRESHOLD = 30000; // User is inactive after 30 seconds without interaction
+const INTERACTION_CHECK_INTERVAL = 5000; // Frequency to check for user interaction
+const INITIAL_CHECK_DELAY = 300; // Delay before performing an initial auth check
+const INITIAL_SETUP_DELAY = 500; // Delay to prevent race conditions during setup
 
 /**
- * Hook that periodically checks authentication status and redirects to lock screen when needed
- * Accelerates checks when the user is actively using the app
+ * Custom hook to periodically check authentication status and redirect to the lock screen if needed.
+ * It adjusts the check frequency based on the app state and user activity.
  */
 const useAuthCheck = () => {
   const { getAuthStatus, authStatus, navigateToLockScreen } =
     useAuthenticationStore();
   const [isActive, setIsActive] = useState(true);
-  const appState = useRef(AppState.currentState);
+
+  // Refs to track app state, last interaction, auth check intervals, and pan responder instance
+  const appState = useRef<AppStateStatus>(AppState.currentState);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastInteractionRef = useRef(Date.now());
-  const lastCheckRef = useRef(Date.now());
+  const lastInteractionRef = useRef<number>(Date.now());
+  const lastCheckRef = useRef<number>(Date.now());
   const panResponderRef = useRef<PanResponderInstance | null>(null);
 
-  // Check auth status based on current state (background, foreground, active)
+  /**
+   * Check the authentication status and navigate to the lock screen if the auth hash is expired.
+   */
   const checkAuth = useCallback(async () => {
+    const now = Date.now();
+
+    // Prevent excessive checking
+    if (now - lastCheckRef.current < MIN_CHECK_INTERVAL) return;
+    // Skip checks if already on lock screen
+    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) return;
+
+    lastCheckRef.current = now;
     try {
-      const now = Date.now();
-      // If it's been too soon since last check, skip
-      if (now - lastCheckRef.current < 1000) {
-        return;
-      }
-
-      // Don't perform auth checks too frequently while on lock screen
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
-        const skipChecksWhenExpired = true;
-        if (skipChecksWhenExpired) {
-          // Skip frequent checks when already in expired state
-          return;
-        }
-      }
-
-      lastCheckRef.current = now;
       const status = await getAuthStatus();
-
       if (status === AUTH_STATUS.HASH_KEY_EXPIRED) {
         navigateToLockScreen();
       }
@@ -61,7 +61,9 @@ const useAuthCheck = () => {
     }
   }, [getAuthStatus, navigateToLockScreen, authStatus]);
 
-  // Set up interval for checking auth based on app state
+  /**
+   * Setup a periodic interval to check authentication status based on the current app state and user activity.
+   */
   const setupCheckInterval = useCallback(
     (state: AppStateStatus) => {
       // Clear any existing interval
@@ -71,24 +73,15 @@ const useAuthCheck = () => {
       }
 
       let intervalTime: number;
-
-      // Determine check frequency based on app state
       if (state === "active") {
-        if (isActive) {
-          // User actively using the app
-          intervalTime = ACTIVE_CHECK_INTERVAL;
-        } else {
-          // App in foreground but user not actively interacting
-          intervalTime = FOREGROUND_CHECK_INTERVAL;
-        }
+        intervalTime = isActive
+          ? ACTIVE_CHECK_INTERVAL
+          : FOREGROUND_CHECK_INTERVAL;
       } else {
-        // App in background
         intervalTime = BACKGROUND_CHECK_INTERVAL;
       }
 
-      // Set up the interval
       checkIntervalRef.current = setInterval(() => {
-        // Using a function that ignores the Promise
         checkAuth().catch((err) =>
           logger.error("setupCheckInterval", "Error checking auth", err),
         );
@@ -97,21 +90,22 @@ const useAuthCheck = () => {
     [isActive, checkAuth],
   );
 
-  // Handle app state changes (foreground/background)
+  /**
+   * Listen for app state changes (foreground/background) to adjust the auth check interval.
+   */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // When returning to active state, allow a slight delay before checking auth
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
-        // App has come to the foreground - check auth with a delay to allow app to fully resume
         setTimeout(() => {
           checkAuth().catch((err) =>
             logger.error("handleAppStateChange", "Error checking auth", err),
           );
-        }, 300);
+        }, INITIAL_CHECK_DELAY);
       }
-
       appState.current = nextAppState;
       setupCheckInterval(nextAppState);
     };
@@ -121,50 +115,41 @@ const useAuthCheck = () => {
       handleAppStateChange,
     );
 
-    // Initial setup with a slight delay to ensure app is fully initialized
+    // Initial setup delay to ensure the app is fully initialized
     setTimeout(() => {
       setupCheckInterval(appState.current);
-    }, 300);
+    }, INITIAL_CHECK_DELAY);
 
     return () => {
       subscription.remove();
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
+      if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
     };
   }, [setupCheckInterval, checkAuth]);
 
-  // Track user interaction
+  /**
+   * Monitor user interaction and update active status accordingly.
+   */
   useEffect(() => {
-    const interactionStartListener =
-      InteractionManager.createInteractionHandle();
     lastInteractionRef.current = Date.now();
     setIsActive(true);
 
-    const interactionCheck = setInterval(() => {
+    const interactionChecker = setInterval(() => {
       const now = Date.now();
-      // If user hasn't interacted in 30 seconds, consider them "inactive"
-      if (now - lastInteractionRef.current > 30000) {
-        setIsActive(false);
-      } else {
-        setIsActive(true);
-      }
-    }, 5000);
+      setIsActive(now - lastInteractionRef.current <= INACTIVITY_THRESHOLD);
+    }, INTERACTION_CHECK_INTERVAL);
 
-    return () => {
-      InteractionManager.clearInteractionHandle(interactionStartListener);
-      clearInterval(interactionCheck);
-    };
+    return () => clearInterval(interactionChecker);
   }, []);
 
-  // Initialize PanResponder to track user interactions
+  /**
+   * Initialize PanResponder to capture touch interactions and update the last interaction timestamp.
+   */
   useEffect(() => {
     const updateLastInteraction = () => {
       lastInteractionRef.current = Date.now();
       setIsActive(true);
     };
 
-    // Create pan responder to detect touches
     panResponderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => {
         updateLastInteraction();
@@ -177,27 +162,25 @@ const useAuthCheck = () => {
       onPanResponderTerminationRequest: () => true,
     });
 
-    // Check auth after a short delay to avoid race conditions with navigation
+    // Perform an initial auth check after a short delay to avoid navigation race conditions
     const initialCheckTimeout = setTimeout(() => {
       checkAuth().catch((err) =>
         logger.error("initPanResponder", "Error checking auth", err),
       );
-    }, 500);
+    }, INITIAL_SETUP_DELAY);
 
-    return () => {
-      // Cleanup timeouts
-      clearTimeout(initialCheckTimeout);
-    };
+    return () => clearTimeout(initialCheckTimeout);
   }, [checkAuth]);
 
-  // Check auth on specific screens or after specific actions
+  /**
+   * Provide a function to manually trigger an auth check.
+   */
   const checkAuthNow = useCallback(() => {
     checkAuth().catch((err) =>
       logger.error("checkAuthNow", "Error checking auth", err),
     );
   }, [checkAuth]);
 
-  // Return the responder handlers along with other values
   return {
     checkAuthNow,
     isActive,

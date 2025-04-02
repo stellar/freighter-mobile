@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 
-const PASSWORD_MIN_LENGTH = 8;
-const PASSWORD_MAX_LENGTH = 32;
-const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
-
-export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, HASH_KEY_EXPIRATION_MS };
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 32;
+// export const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
+export const HASH_KEY_EXPIRATION_MS = 15 * 1000; // 15 seconds for debugging
 
 export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
 
