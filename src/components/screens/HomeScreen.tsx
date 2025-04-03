@@ -9,10 +9,10 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import {
-  MANAGE_ASSETS_ROUTES,
-  ManageAssetsStackParamList,
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
 } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
@@ -27,7 +27,7 @@ import styled from "styled-components/native";
 const { width } = Dimensions.get("window");
 
 type HomeScreenProps = BottomTabScreenProps<
-  MainTabStackParamList & ManageAssetsStackParamList,
+  MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
 
@@ -89,18 +89,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const actions = [
     {
-      title: "Settings",
+      title: t("home.actions.settings"),
       systemIcon: Icons!.settings,
       onPress: () => logger.debug("HomeScreen", "Not implemented"),
     },
     {
-      title: "Manage assets",
+      title: t("home.actions.manageAssets"),
       systemIcon: Icons!.manageAssets,
       onPress: () =>
-        navigation.navigate(MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN),
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
     },
     {
-      title: "My QR code",
+      title: t("home.actions.myQRCode"),
       systemIcon: Icons!.myQrCode,
       onPress: () => logger.debug("HomeScreen", "Not implemented"),
     },

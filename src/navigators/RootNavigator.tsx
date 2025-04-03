@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import {
-  MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
@@ -67,7 +66,7 @@ export const RootNavigator = () => {
             component={TabNavigator}
           />
           <RootStack.Screen
-            name={MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN}
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK}
             component={ManageAssetsStackNavigator}
           />
         </RootStack.Group>
