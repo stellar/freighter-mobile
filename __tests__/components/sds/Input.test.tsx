@@ -34,7 +34,7 @@ describe("Input", () => {
 
         expect(input.props.style).toMatchObject({
           fontSize: fsValue(metrics.fontSize),
-          height: pxValue(metrics.lineHeight + 2 * metrics.paddingVertical),
+          height: pxValue(metrics.lineHeight + 3 * metrics.paddingVertical),
         });
       });
     });
@@ -47,7 +47,7 @@ describe("Input", () => {
 
       expect(input.props.style).toMatchObject({
         fontSize: fsValue(14), // md size
-        height: pxValue(32), // lineHeight(20) + 2 * paddingVertical(6)
+        height: pxValue(38), // lineHeight(20) + 3 * paddingVertical(6)
       });
     });
   });
