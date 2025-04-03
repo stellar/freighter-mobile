@@ -102,7 +102,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
         onPress={onPressClipboardButton as () => void}
         icon={<Icon.Clipboard size={16} color={PALETTE.dark.gray["09"]} />}
       >
-        {t("onboarding.pastFromClipboard")}
+        {t("onboarding.pasteFromClipboard")}
       </Button>
     )}
     <Button
