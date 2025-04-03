@@ -4,7 +4,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
-import { px, pxValue } from "helpers/dimensions";
+import { px } from "helpers/dimensions";
 import { t } from "i18next";
 import React from "react";
 import { Platform } from "react-native";
@@ -100,9 +100,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
         isFullWidth
         testID="clipboard-button"
         onPress={onPressClipboardButton as () => void}
-        icon={
-          <Icon.Clipboard size={pxValue(16)} color={PALETTE.dark.gray["09"]} />
-        }
+        icon={<Icon.Clipboard size={16} color={PALETTE.dark.gray["09"]} />}
       >
         {t("onboarding.pastFromClipboard")}
       </Button>
