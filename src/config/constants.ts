@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
+import { pxValue } from "helpers/dimensions";
+
+export const DEFAULT_PADDING = pxValue(24);
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
