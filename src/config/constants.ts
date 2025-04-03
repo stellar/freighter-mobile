@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 
-const PASSWORD_MIN_LENGTH = 8;
-
-export { PASSWORD_MIN_LENGTH };
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 32;
+export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
 
@@ -88,7 +88,6 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
-  HASH_KEY_EXPIRE_AT = "hashKeyExpireAt",
 }
 
 /**
@@ -96,22 +95,9 @@ export enum STORAGE_KEYS {
  *
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
- * HASH_KEY format: { hashKey: string, salt: string }
+ * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
 }
-
-/**
- * Please ignore the below, it's being used for testing purposes
- */
-// export const TEST_PUBLIC_KEY =
-//   "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
-// export const TEST_NETWORK_DETAILS = TESTNET_NETWORK_DETAILS;
-// export const TEST_PUBLIC_KEY =
-//   "GD7EMKA34FGOC32GMK53JRVRYU2A6F5SBXDSE3XIGUAO7ZE4IP3FIQRC";
-// export const TEST_NETWORK_DETAILS = PUBLIC_NETWORK_DETAILS;
-export const TEST_PUBLIC_KEY =
-  "GB7CK4MCAJUYYI4K5IC6ZMTJBYMZXF5HDBUNMQXBILNX5NCS3S3T5OYH";
-export const TEST_NETWORK_DETAILS = PUBLIC_NETWORK_DETAILS;

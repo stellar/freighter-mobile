@@ -5,10 +5,11 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { TEST_NETWORK_DETAILS, TEST_PUBLIC_KEY } from "config/constants";
 import { THEME } from "config/theme";
+import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
 import { Dimensions } from "react-native";
@@ -52,8 +53,9 @@ const BorderLine = styled.View`
 `;
 
 export const HomeScreen = () => {
-  const publicKey = TEST_PUBLIC_KEY;
-  const networkDetails = TEST_NETWORK_DETAILS;
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+  const publicKey = account?.publicKey;
 
   const { t } = useAppTranslation();
 
@@ -64,8 +66,8 @@ export const HomeScreen = () => {
       <TopSection>
         <AccountTotal>
           <AccountNameRow>
-            <Avatar size="sm" publicAddress={publicKey} />
-            <Text>Test Balances Account</Text>
+            <Avatar size="sm" publicAddress={publicKey ?? ""} />
+            <Text>{account?.accountName ?? t("home.title")}</Text>
           </AccountNameRow>
           <Display lg medium>
             {formattedBalance}
@@ -88,7 +90,7 @@ export const HomeScreen = () => {
 
       <BorderLine />
 
-      <BalancesList publicKey={publicKey} network={networkDetails.network} />
+      <BalancesList publicKey={publicKey ?? ""} network={network} />
     </BaseLayout>
   );
 };

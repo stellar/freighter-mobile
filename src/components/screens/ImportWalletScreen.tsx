@@ -4,6 +4,7 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Textarea } from "components/sds/Textarea";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
 
@@ -13,14 +14,18 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 >;
 
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
-  navigation,
+  route,
 }) => {
+  const { password } = route.params;
+  const { importWallet, error, isLoading } = useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
   const { t } = useAppTranslation();
 
   const handleContinue = () => {
-    // TODO: Navigate to the next screen after authentication is implemented
-    navigation.replace(AUTH_STACK_ROUTES.WELCOME_SCREEN);
+    importWallet({
+      mnemonicPhrase: recoveryPhrase,
+      password,
+    });
   };
 
   const onPressPasteFromClipboard = async () => {
@@ -28,17 +33,16 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     setRecoveryPhrase(clipboardText);
   };
 
-  const canContinue = !!recoveryPhrase;
-
   return (
     <OnboardLayout
       icon={<Icon.Download01 circle />}
       title={t("importWalletScreen.title")}
-      isDefaultActionButtonDisabled={!canContinue}
       defaultActionButtonText={t("importWalletScreen.defaultActionButtonText")}
       onPressDefaultActionButton={handleContinue}
+      isDefaultActionButtonDisabled={!recoveryPhrase}
       hasClipboardButton
       onPressClipboardButton={onPressPasteFromClipboard}
+      isLoading={isLoading}
     >
       <Textarea
         fieldSize="lg"
@@ -46,6 +50,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         note={t("importWalletScreen.textAreaNote")}
         value={recoveryPhrase}
         onChangeText={setRecoveryPhrase}
+        error={error}
       />
     </OnboardLayout>
   );

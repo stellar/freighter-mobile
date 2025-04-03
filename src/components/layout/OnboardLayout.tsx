@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -6,13 +7,7 @@ import { PALETTE, THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import { t } from "i18next";
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  KeyboardAvoidingViewProps,
-  Platform,
-  ScrollView,
-  ScrollViewProps,
-} from "react-native";
+import { Platform } from "react-native";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
@@ -57,40 +52,6 @@ const FooterContainer = styled.View`
 
 const FooterNoteText = styled(Text)`
   text-align: center;
-`;
-
-const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView).attrs(
-  (props: KeyboardAvoidingViewProps) => ({
-    behavior: Platform.select({
-      ios: "padding",
-      android: undefined,
-    }),
-    contentContainerStyle: {
-      flex: 1,
-      backgroundColor: THEME.colors.background.default,
-    },
-    ...props,
-  }),
-)`
-  flex: 1;
-  background-color: ${THEME.colors.background.default};
-`;
-
-const StyledScrollView = styled(ScrollView).attrs(
-  (props: ScrollViewProps) =>
-    ({
-      keyboardShouldPersistTaps: "never",
-      showsVerticalScrollIndicator: false,
-      alwaysBounceVertical: false,
-      contentContainerStyle: {
-        flex: 1,
-        backgroundColor: THEME.colors.background.default,
-      },
-      ...props,
-    }) as ScrollViewProps,
-)`
-  flex-grow: 1;
-  background-color: ${THEME.colors.background.default};
 `;
 
 const StyledFooterButtonContainer = styled.View`
@@ -203,33 +164,31 @@ export const OnboardLayout = ({
   const insets = useSafeAreaInsets();
 
   return (
-    <StyledKeyboardAvoidingView>
-      <StyledScrollView>
-        <StyledContainer $insets={insets}>
-          <StyledContentContainer>
-            {icon}
-            {title && <Display medium>{title}</Display>}
-            {children}
-          </StyledContentContainer>
-          <FooterContainer>
-            {footerNoteText && (
-              <FooterNoteText sm secondary>
-                {footerNoteText}
-              </FooterNoteText>
-            )}
-            {footer || (
-              <DefaultFooter
-                onPressDefaultActionButton={onPressDefaultActionButton}
-                isDefaultActionButtonDisabled={isDefaultActionButtonDisabled}
-                defaultActionButtonText={defaultActionButtonText}
-                hasClipboardButton={hasClipboardButton}
-                onPressClipboardButton={onPressClipboardButton}
-                isLoading={isLoading}
-              />
-            )}
-          </FooterContainer>
-        </StyledContainer>
-      </StyledScrollView>
-    </StyledKeyboardAvoidingView>
+    <ScrollableKeyboardView>
+      <StyledContainer $insets={insets}>
+        <StyledContentContainer>
+          {icon}
+          {title && <Display medium>{title}</Display>}
+          {children}
+        </StyledContentContainer>
+        <FooterContainer>
+          {footerNoteText && (
+            <FooterNoteText sm secondary>
+              {footerNoteText}
+            </FooterNoteText>
+          )}
+          {footer || (
+            <DefaultFooter
+              onPressDefaultActionButton={onPressDefaultActionButton}
+              isDefaultActionButtonDisabled={isDefaultActionButtonDisabled}
+              defaultActionButtonText={defaultActionButtonText}
+              hasClipboardButton={hasClipboardButton}
+              onPressClipboardButton={onPressClipboardButton}
+              isLoading={isLoading}
+            />
+          )}
+        </FooterContainer>
+      </StyledContainer>
+    </ScrollableKeyboardView>
   );
 };

@@ -37,6 +37,7 @@ describe("WelcomeScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
+      { isImporting: false },
     );
   });
 
@@ -50,7 +51,8 @@ describe("WelcomeScreen", () => {
     fireEvent.press(importWalletButton);
 
     expect(mockPush).toHaveBeenCalledWith(
-      AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN,
+      AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
+      { isImporting: true },
     );
   });
 });

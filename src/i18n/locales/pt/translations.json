@@ -49,10 +49,18 @@
     "textAreaNote": "As frases de recuperação geralmente têm 12 ou 24 palavras",
     "defaultActionButtonText": "Importar carteira"
   },
+  "lockScreen": {
+    "title": "Bem-vindo de volta",
+    "description": "Digite a senha para desbloquear o Freighter",
+    "passwordInputPlaceholder": "Digite sua senha",
+    "unlockButtonText": "Desbloquear",
+    "forgotPasswordButtonText": "Esqueceu sua senha"
+  },
   "onboarding": {
     "continue": "Continuar",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
+    "skip": "Pular",
     "pastFromClipboard": "Colar da área de transferência"
   },
   "discovery": {
@@ -78,7 +86,9 @@
       "noKeyPairFound": "Nenhum par de chaves encontrado",
       "failedToSignUp": "Falha ao se inscrever",
       "failedToCheckAuthenticationStatus": "Falha ao verificar status de autenticação",
-      "failedToGetActiveKeyPair": "Falha ao obter par de chaves ativo"
+      "failedToGetActiveKeyPair": "Falha ao obter par de chaves ativo",
+      "invalidPassword": "Senha inválida. Por favor, tente novamente.",
+      "invalidMnemonic": "Frase de recuperação inválida"
     },
     "account": "Conta {{number}}"
   },

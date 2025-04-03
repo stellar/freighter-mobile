@@ -3,12 +3,13 @@ import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
 import Icon from "components/sds/Icon";
-import { TEST_PUBLIC_KEY, TEST_NETWORK_DETAILS } from "config/constants";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import React from "react";
 import styled from "styled-components/native";
@@ -56,19 +57,23 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
 };
 
 export const TabNavigator = () => {
-  const publicKey = TEST_PUBLIC_KEY;
-  const networkDetails = TEST_NETWORK_DETAILS;
+  const { account } = useGetActiveAccount();
+  const publicKey = account?.publicKey;
+  const networkDetails = TESTNET_NETWORK_DETAILS;
 
   // Fetch balances when component mounts or when publicKey/network changes
-  useFetchPricedBalances({ publicKey, network: networkDetails.network });
+  useFetchPricedBalances({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
 
   // Fetch icons whenever balances are updated
   useFetchAssetIcons(networkDetails.networkUrl);
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({
-    publicKey: TEST_PUBLIC_KEY,
-    network: TEST_NETWORK_DETAILS.network,
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
   });
 
   return (

@@ -1,6 +1,9 @@
 export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
+
+  // This screen can be called on both stacks.
+  LOCK_SCREEN: "LockScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -11,6 +14,9 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+
+  // This screen can be called on both stacks.
+  LOCK_SCREEN: "LockScreen",
 } as const;
 
 export const MAIN_TAB_ROUTES = {
@@ -22,13 +28,17 @@ export const MAIN_TAB_ROUTES = {
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
 };
 
 export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.WELCOME_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN]: {
+    isImporting?: boolean;
+  };
   [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
     password: string;
+    isImporting?: boolean;
   };
   [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: {
     password: string;
@@ -36,11 +46,14 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: {
     password: string;
   };
+  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
+    password: string;
+  };
+  [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
     password: string;
     recoveryPhrase: string;
   };
-  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {

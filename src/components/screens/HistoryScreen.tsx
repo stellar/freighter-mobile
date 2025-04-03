@@ -1,14 +1,21 @@
-import Clipboard from "@react-native-clipboard/clipboard";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import { logger } from "config/logger";
+import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import React, { useState } from "react";
+import { Alert } from "react-native";
 import styled from "styled-components/native";
+
+type HistoryScreenProps = BottomTabScreenProps<
+  MainTabStackParamList,
+  typeof MAIN_TAB_ROUTES.TAB_HISTORY
+>;
 
 const Container = styled.View`
   margin-top: ${px(100)};
@@ -22,21 +29,45 @@ const ButtonContainer = styled.View`
   margin-top: auto;
   width: 100%;
   margin-bottom: ${px(24)};
+  gap: ${px(12)};
 `;
 
-export const HistoryScreen = () => {
+export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   const { t } = useAppTranslation();
-  const { logout } = useAuthenticationStore();
-  const { account, isLoading, error, fetchActiveAccount } =
-    useGetActiveAccount();
+  const { logout, wipeAllDataForDebug } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
+  const [isWiping, setIsWiping] = useState(false);
 
   const handleLogout = () => {
     logout();
   };
 
-  useEffect(() => {
-    fetchActiveAccount();
-  }, [fetchActiveAccount]);
+  const handleWipeData = () => {
+    Alert.alert(
+      "Debug Action",
+      "This will completely wipe all account data and return to welcome screen. Are you sure?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Wipe Everything",
+          style: "destructive",
+          onPress: () => {
+            setIsWiping(true);
+            wipeAllDataForDebug()
+              .catch((error) => {
+                logger.error("handleWipeData", "Failed to wipe data:", error);
+              })
+              .finally(() => {
+                setIsWiping(false);
+              });
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <BaseLayout>
@@ -45,35 +76,20 @@ export const HistoryScreen = () => {
       </Display>
 
       <Container>
-        <Text>
-          The below is the TESTNET account you have just created. The account
-          used for displaying the Home balances is another hardcoded MAINNET
-          account used just for testing the balances UI with its prices. You can
-          tap to copy the account to your clipboard.
-        </Text>
-
-        {isLoading && <Text>Loading...</Text>}
-
-        {error && <Text color={THEME.colors.status.error}>{error}</Text>}
-
-        {account && (
-          <>
-            <Text>{account.accountName}</Text>
-            <Text
-              onPress={() =>
-                Clipboard.setString(
-                  `TESTNET testing account:${account.publicKey}`,
-                )
-              }
-            >
-              {account.publicKey}
-            </Text>
-          </>
-        )}
-
         <ButtonContainer>
+          <Text>{account?.publicKey}</Text>
+
           <Button isFullWidth onPress={handleLogout}>
             {t("logout")}
+          </Button>
+
+          <Button
+            isFullWidth
+            onPress={handleWipeData}
+            isLoading={isWiping}
+            destructive
+          >
+            Debug: Wipe All Data
           </Button>
         </ButtonContainer>
       </Container>

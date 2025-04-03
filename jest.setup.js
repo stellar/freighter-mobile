@@ -4,13 +4,35 @@ import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock
 
 // Mock navigation
 jest.mock("@react-navigation/native", () => {
-  const actualNav = jest.requireActual("@react-navigation/native");
+  const originalModule = jest.requireActual("@react-navigation/native");
+
+  // Create a mockRef that can be called with generics
+  const mockRef = {
+    current: null,
+    navigate: jest.fn(),
+    dispatch: jest.fn(),
+    reset: jest.fn(),
+    goBack: jest.fn(),
+    getRootState: jest.fn().mockReturnValue({}),
+    isFocused: jest.fn().mockReturnValue(true),
+    canGoBack: jest.fn().mockReturnValue(false),
+    isReady: jest.fn().mockReturnValue(true),
+  };
+
+  // Mock createNavigationContainerRef as a function that can accept generics
+  const createNavigationContainerRef = function () {
+    return mockRef;
+  };
+
   return {
-    ...actualNav,
-    useNavigation: () => ({
+    __esModule: true,
+    ...originalModule,
+    useNavigation: jest.fn().mockReturnValue({
       navigate: jest.fn(),
       replace: jest.fn(),
+      goBack: jest.fn(),
     }),
+    createNavigationContainerRef,
   };
 });
 
@@ -86,3 +108,30 @@ jest.mock("tweetnacl", () => {
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
+
+jest.mock("helpers/getOsLanguage", () =>
+  jest.fn().mockImplementationOnce(() => "en"),
+);
+
+// Mock react-native-bootsplash
+jest.mock("react-native-bootsplash", () => ({
+  hide: jest.fn(),
+  show: jest.fn(),
+  getVisibilityStatus: jest.fn(() => Promise.resolve("hidden")),
+}));
+
+jest.mock("@react-navigation/native-stack", () => ({
+  createNativeStackNavigator: () => ({
+    Navigator: jest.fn(({ children }) => children),
+    Screen: jest.fn(),
+    Group: jest.fn(),
+  }),
+}));
+
+jest.mock("@react-navigation/bottom-tabs", () => ({
+  createBottomTabNavigator: () => ({
+    Navigator: jest.fn(({ children }) => children),
+    Screen: jest.fn(),
+    Group: jest.fn(),
+  }),
+}));

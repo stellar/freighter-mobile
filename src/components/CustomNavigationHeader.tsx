@@ -2,7 +2,6 @@ import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import Icon from "components/sds/Icon";
 import { THEME } from "config/theme";
-import { isIOS } from "helpers/device";
 import { px } from "helpers/dimensions";
 import React from "react";
 import { TouchableOpacity } from "react-native";
@@ -14,8 +13,7 @@ interface StyledProps {
 }
 
 const StyledContainer = styled.View<StyledProps>`
-  padding-top: ${({ $insets }: StyledProps) =>
-    isIOS ? px($insets.top) : px(32)};
+  padding-top: ${({ $insets }: StyledProps) => px($insets.top)};
   padding-left: ${px(24)};
   padding-right: ${px(24)};
   padding-bottom: ${px(16)};

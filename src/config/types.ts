@@ -16,7 +16,6 @@ export type KeyPair = {
 };
 
 export interface TemporaryStore {
-  expiration: number;
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;
 }
@@ -24,7 +23,19 @@ export interface TemporaryStore {
 export type HashKey = {
   hashKey: string;
   salt: string;
+  expiresAt: number;
 };
+
+export const AUTH_STATUS = {
+  // User is not authenticated. No hash key or temporary store found.
+  NOT_AUTHENTICATED: "NOT_AUTHENTICATED",
+  // User is authenticated. Hash key is not expired and temporary store is found.
+  AUTHENTICATED: "AUTHENTICATED",
+  // User is authenticated. Hash key is expired and temporary store is found.
+  HASH_KEY_EXPIRED: "HASH_KEY_EXPIRED",
+} as const;
+
+export type AuthStatus = (typeof AUTH_STATUS)[keyof typeof AUTH_STATUS];
 
 /**
  * Represents a native Stellar token (XLM)

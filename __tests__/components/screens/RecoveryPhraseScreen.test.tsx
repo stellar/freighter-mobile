@@ -5,7 +5,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
-import { generateMnemonic } from "stellar-hd-wallet";
+import StellarHDWallet from "stellar-hd-wallet";
 
 jest.mock("@react-native-clipboard/clipboard", () => ({
   setString: jest.fn(),
@@ -27,6 +27,8 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "recoveryPhraseScreen.defaultActionButtonText": "Continue",
       "recoveryPhraseScreen.footerNoteText": "Keep your recovery phrase safe",
       "recoveryPhraseScreen.copyButtonText": "Copy",
+      "onboarding.skip": "Skip",
+      "onboarding.continue": "Continue",
     };
     return translations[key] || key;
   },
@@ -118,7 +120,7 @@ describe("RecoveryPhraseScreen", () => {
   });
 
   it("should not call signUp if there is no recovery phrase", () => {
-    (generateMnemonic as jest.Mock).mockReturnValueOnce("");
+    (StellarHDWallet.generateMnemonic as jest.Mock).mockReturnValueOnce("");
 
     const { getByText } = render(
       <RecoveryPhraseScreen
@@ -159,7 +161,7 @@ describe("RecoveryPhraseScreen", () => {
     );
   });
 
-  it("disables the continue button when loading", () => {
+  it("disables the continue and skip buttons when loading", () => {
     jest
       .requireMock("ducks/auth")
       .useAuthenticationStore.mockImplementation(() => ({
@@ -177,9 +179,12 @@ describe("RecoveryPhraseScreen", () => {
       />,
     );
 
-    const continueButton = getByTestId("default-action-button");
+    const continueButton = getByTestId("continue-button");
+    const skipButton = getByTestId("skip-button");
     expect(continueButton).toBeTruthy();
     expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
+    expect(skipButton).toBeTruthy();
+    expect(skipButton.props.accessibilityState.disabled).toBeTruthy();
   });
 
   it("renders error message when there is an error", () => {

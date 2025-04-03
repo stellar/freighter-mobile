@@ -8,75 +8,48 @@ import { RecoveryPhraseAlertScreen } from "components/screens/RecoveryPhraseAler
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
 import { WelcomeScreen } from "components/screens/WelcomeScreen";
-import { STORAGE_KEYS } from "config/constants";
-import { logger } from "config/logger";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
-import React, { useEffect } from "react";
-import { dataStorage } from "services/storage/storageFactory";
+import React from "react";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
-export const AuthNavigator = () => {
-  useEffect(() => {
-    const checkForExistingAccount = async () => {
-      try {
-        const activeAccountId = await dataStorage.getItem(
-          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
-        );
-
-        if (activeAccountId) {
-          // TODO: Add login screen logic
-        }
-      } catch (error) {
-        logger.error(
-          "checkForExistingAccount",
-          "Error checking for existing account",
-          error,
-        );
-      }
-    };
-
-    checkForExistingAccount();
-  }, []);
-
-  return (
-    <AuthStack.Navigator
-      initialRouteName={AUTH_STACK_ROUTES.WELCOME_SCREEN}
-      screenOptions={{
-        header: (props) => <CustomNavigationHeader {...props} />,
+export const AuthNavigator = () => (
+  <AuthStack.Navigator
+    initialRouteName={AUTH_STACK_ROUTES.WELCOME_SCREEN}
+    screenOptions={{
+      header: (props) => <CustomNavigationHeader {...props} />,
+    }}
+  >
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.WELCOME_SCREEN}
+      component={WelcomeScreen}
+      options={{
+        headerShown: false,
       }}
-    >
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.WELCOME_SCREEN}
-        component={WelcomeScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN}
-        component={ChoosePasswordScreen}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN}
-        component={ConfirmPasswordScreen}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN}
-        component={RecoveryPhraseAlertScreen}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN}
-        component={RecoveryPhraseScreen}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN}
-        component={ValidateRecoveryPhraseScreen}
-      />
-      <AuthStack.Screen
-        name={AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN}
-        component={ImportWalletScreen}
-      />
-    </AuthStack.Navigator>
-  );
-};
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN}
+      component={ChoosePasswordScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN}
+      component={ConfirmPasswordScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN}
+      component={RecoveryPhraseAlertScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN}
+      component={RecoveryPhraseScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN}
+      component={ValidateRecoveryPhraseScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN}
+      component={ImportWalletScreen}
+    />
+  </AuthStack.Navigator>
+);

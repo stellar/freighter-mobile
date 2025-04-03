@@ -51,28 +51,26 @@ const StyledSpacer = styled.View<StyledProps>`
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
 
-  const handleCreateNewWallet = () => {
-    navigation.push(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN);
-  };
-
-  const handleIAlreadyHaveWallet = () => {
-    navigation.push(AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN);
+  const navigateToScreen = (isImporting: boolean) => {
+    navigation.push(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN, {
+      isImporting,
+    });
   };
 
   return (
     <BaseLayout useSafeArea>
       <Container>
         <StyledIconContainer>
-          <FreighterLogo width={px(32)} height={px(32)} />
+          <FreighterLogo width={px(48)} height={px(48)} />
         </StyledIconContainer>
         <View>
           <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
           <StyledSpacer $size={32} />
-          <Button tertiary lg onPress={handleCreateNewWallet}>
+          <Button tertiary lg onPress={() => navigateToScreen(false)}>
             {t("welcomeScreen.createNewWallet")}
           </Button>
           <StyledSpacer $size={12} />
-          <Button secondary lg onPress={handleIAlreadyHaveWallet}>
+          <Button secondary lg onPress={() => navigateToScreen(true)}>
             {t("welcomeScreen.iAlreadyHaveWallet")}
           </Button>
         </View>

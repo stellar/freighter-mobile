@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
 import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import React from "react";
@@ -8,6 +10,7 @@ interface BaseLayoutProps {
   children: React.ReactNode;
   useSafeArea?: boolean;
   backgroundColor?: string;
+  useKeyboardAvoidingView?: boolean;
 }
 
 interface StyledViewProps {
@@ -37,10 +40,21 @@ const StyledView = styled.View<StyledViewProps>`
 export const BaseLayout = ({
   children,
   useSafeArea = true,
+  useKeyboardAvoidingView = false,
   backgroundColor = THEME.colors.background.default,
 }: BaseLayoutProps) => {
   const insets = useSafeAreaInsets();
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
+
+  if (useKeyboardAvoidingView) {
+    return (
+      <ScrollableKeyboardView>
+        <Container $insets={insets} $backgroundColor={backgroundColor}>
+          {children}
+        </Container>
+      </ScrollableKeyboardView>
+    );
+  }
 
   return (
     <Container $insets={insets} $backgroundColor={backgroundColor}>
