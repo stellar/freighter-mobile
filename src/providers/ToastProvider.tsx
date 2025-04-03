@@ -1,5 +1,5 @@
 import { Toast, ToastProps, ToastVariant } from "components/sds/Toast";
-import { px } from "helpers/dimensions";
+import { pxValue } from "helpers/dimensions";
 import React, {
   createContext,
   useCallback,
@@ -45,7 +45,8 @@ interface ToastWrapperProps {
 
 const ToastWrapper = styled.View<ToastWrapperProps>`
   width: 100%;
-  padding-top: ${({ $insets }: ToastWrapperProps) => px($insets.top + 16)};
+  padding-top: ${({ $insets }: ToastWrapperProps) =>
+    `${$insets.top + pxValue(16)}px`};
 `;
 
 interface ToastPropsWithId extends ToastProps {
