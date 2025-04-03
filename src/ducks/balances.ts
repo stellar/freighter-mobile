@@ -192,6 +192,11 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   error: null,
   fetchAccountBalances: async (params) => {
     try {
+      // It can happen that the public key is not available yet during app initialization
+      // In this case, we should early return and wait for the public key to be available
+      // to prevent UI glitches due to balances fetching error
+      if (!params.publicKey) return;
+
       set({ isLoading: true, error: null });
 
       // Fetch balances

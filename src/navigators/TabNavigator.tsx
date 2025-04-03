@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import { HomeScreen } from "components/screens/HomeScreen";
+import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
 import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
@@ -75,6 +76,10 @@ export const TabNavigator = () => {
     publicKey: publicKey ?? "",
     network: networkDetails.network,
   });
+
+  if (!publicKey) {
+    return <LoadingScreen />;
+  }
 
   return (
     <MainTab.Navigator
