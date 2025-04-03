@@ -152,7 +152,7 @@ interface AuthState {
  * @property {Function} wipeAllDataForDebug - Wipes all user data (for debugging purposes)
  */
 interface AuthActions {
-  logout: () => void;
+  logout: (isForgotPassword?: boolean) => void;
   signUp: (params: SignUpParams) => void;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => void;
@@ -857,7 +857,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
    * For new users with no accounts, it performs a full logout.
    */
-  logout: () => {
+  logout: (isForgotPassword = false) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
 
     // We'll use setTimeout to handle the async operations
@@ -873,7 +873,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           await clearTemporaryData();
 
           // If there's an existing account, don't remove account list - just navigate to lock screen
-          if (hasAccount) {
+          if (hasAccount && !isForgotPassword) {
             set({
               account: null,
               isLoadingAccount: false,
