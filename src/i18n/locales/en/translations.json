@@ -68,7 +68,7 @@
     "typePassword": "Type your password",
     "typePasswordNote": "Minimum 8 characters",
     "skip": "Skip",
-    "pastFromClipboard": "Paste from clipboard"
+    "pasteFromClipboard": "Paste from clipboard"
   },
   "discovery": {
     "title": "Discovery"
@@ -85,17 +85,20 @@
   },
   "authStore": {
     "error": {
-      "failedToDeriveHashKey": "Failed to derive hash key",
-      "failedToCreateAccount": "Failed to create account",
+      "accountListNotFound": "Account list not found",
+      "accountNotFound": "Account not found",
+      "hashKeyNotFound": "Hash key not found",
+      "temporaryStoreNotFound": "Temporary store not found",
+      "privateKeyNotFound": "Private key not found",
+      "authenticationExpired": "Authentication expired",
       "failedToLogout": "Failed to logout",
       "noActiveAccount": "No active account",
-      "failedToGetActivePassword": "Failed to get active password",
       "noKeyPairFound": "No key pair found",
       "failedToSignUp": "Failed to sign up",
-      "failedToCheckAuthenticationStatus": "Failed to check authentication status",
-      "failedToGetActiveKeyPair": "Failed to get active key pair",
-      "invalidPassword": "Invalid password. Please try again.",
-      "invalidMnemonic": "Invalid mnemonic"
+      "failedToSignIn": "Failed to sign in",
+      "failedToImportWallet": "Failed to import wallet",
+      "failedToLoadAccount": "Failed to load account",
+      "invalidPassword": "Invalid password. Please try again."
     },
     "account": "Account {{number}}"
   },
