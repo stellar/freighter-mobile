@@ -139,9 +139,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
-            onPress={() =>
-              Clipboard.setString(`MAINNET testing account:${publicKey}`)
-            }
+            onPress={() => Clipboard.setString(publicKey ?? "")}
           />
         </ButtonsRow>
       </TopSection>

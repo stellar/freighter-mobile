@@ -7,7 +7,7 @@ import { Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { px, pxValue } from "helpers/dimensions";
+import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useState } from "react";
 import { generateMnemonic } from "stellar-hd-wallet";
@@ -140,9 +140,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         lg
         isFullWidth
         onPress={handleCopy}
-        icon={
-          <Icon.Copy01 size={pxValue(16)} color={PALETTE.dark.gray["09"]} />
-        }
+        icon={<Icon.Copy01 size={16} color={PALETTE.dark.gray["09"]} />}
       >
         {t("recoveryPhraseScreen.copyButtonText")}
       </Button>

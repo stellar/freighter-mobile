@@ -54,6 +54,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     isLoading: isSigningIn,
     error,
     authStatus,
+    logout,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
@@ -138,7 +139,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
           </StyledInputContainer>
         </StyledFormContainer>
         <ForgotPasswordContainer>
-          <Button secondary lg onPress={() => {}}>
+          <Button secondary lg onPress={() => logout(true)}>
             {t("lockScreen.forgotPasswordButtonText")}
           </Button>
         </ForgotPasswordContainer>

@@ -88,7 +88,7 @@ const StyledTextInput = styled.TextInput<
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     px(
       INPUT_SIZES[$fieldSize].lineHeight +
-        2 * INPUT_SIZES[$fieldSize].paddingVertical,
+        3 * INPUT_SIZES[$fieldSize].paddingVertical,
     )};
   font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
