@@ -2,6 +2,33 @@ import { HomeScreen } from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
+jest.mock("react-native-context-menu-view", () => {
+  const ContextMenu = ({
+    children,
+    onPress,
+  }: {
+    children: React.ReactNode;
+    onPress?: (e: { nativeEvent: { index: number } }) => void;
+  }) => {
+    const handlePress = () => {
+      if (onPress) {
+        onPress({ nativeEvent: { index: 0 } });
+      }
+    };
+
+    return (
+      <button onClick={handlePress} data-testid="context-menu" type="button">
+        {children}
+      </button>
+    );
+  };
+
+  return {
+    __esModule: true,
+    default: ContextMenu,
+  };
+});
+
 // Mock the stores
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {

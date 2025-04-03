@@ -8364,6 +8364,11 @@ react-native-bootsplash@^6.3.3:
     ts-dedent "^2.2.0"
     xml-formatter "^3.6.3"
 
+react-native-context-menu-view@^1.18.0:
+  version "1.18.0"
+  resolved "https://registry.yarnpkg.com/react-native-context-menu-view/-/react-native-context-menu-view-1.18.0.tgz#3e997cd389f1cee4324c0ef827ab70f15f758d8c"
+  integrity sha512-Rj4ralJ1hQUiTCduTI8EH1MEd1n3FNOas6tQhX4kLgcb0ZiqZPYAiLlA4WMClYrstD3gVnl3EU8y+5es1ulolw==
+
 react-native-crypto@^2.0.1, react-native-crypto@^2.1.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/react-native-crypto/-/react-native-crypto-2.2.0.tgz#c999ed7c96064f830e1f958687f53d0c44025770"

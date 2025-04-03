@@ -1,5 +1,6 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { BalancesList } from "components/BalancesList";
+import ContextMenuButton from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
@@ -7,12 +8,12 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { px } from "helpers/dimensions";
+import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
-import { Dimensions } from "react-native";
+import { Dimensions, Platform } from "react-native";
 import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
@@ -52,6 +53,19 @@ const BorderLine = styled.View`
   margin-bottom: ${px(24)};
 `;
 
+const Icons = Platform.select({
+  ios: {
+    settings: "gear",
+    manageAssets: "pencil",
+    myQrCode: "qrcode",
+  },
+  android: {
+    settings: "baseline_format_paint",
+    manageAssets: "baseline_delete",
+    myQrCode: "outline_circle",
+  },
+});
+
 export const HomeScreen = () => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -61,8 +75,27 @@ export const HomeScreen = () => {
 
   const { formattedBalance } = useTotalBalance();
 
+  const actions = [
+    { title: "Settings", systemIcon: Icons!.settings },
+    { title: "Manage assets", systemIcon: Icons!.manageAssets },
+    { title: "My QR code", systemIcon: Icons!.myQrCode },
+  ];
+
   return (
     <BaseLayout>
+      <ContextMenuButton
+        contextMenuProps={{
+          onPress: (e) => {
+            console.log(e.nativeEvent.index);
+          },
+          actions,
+        }}
+      >
+        <Icon.DotsHorizontal
+          size={pxValue(24)}
+          color={THEME.colors.base.secondary}
+        />
+      </ContextMenuButton>
       <TopSection>
         <AccountTotal>
           <AccountNameRow>
