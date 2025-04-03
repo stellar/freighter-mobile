@@ -124,9 +124,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
               fieldSize="lg"
               value={passwordValue}
               onChangeText={handlePasswordChange}
-              error={
-                error && <Text color={THEME.colors.status.error}>{error}</Text>
-              }
+              error={error}
             />
             <Button
               tertiary
