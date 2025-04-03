@@ -873,6 +873,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           await clearTemporaryData();
 
           // If there's an existing account, don't remove account list - just navigate to lock screen
+          // If it's a forgot password logout, remove the account list and active account id.
+          // This will redirect to the welcome screen where the user can create a new account or restore from seed phrase
           if (hasAccount && !isForgotPassword) {
             set({
               account: null,
