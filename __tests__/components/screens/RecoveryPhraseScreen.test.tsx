@@ -121,10 +121,6 @@ describe("RecoveryPhraseScreen", () => {
 
     expect(mockCopyToClipboard).toHaveBeenCalledWith(
       "test phrase one two three four five six seven eight nine ten eleven twelve",
-      {
-        notificationMessage: "Copy",
-        toastVariant: "success",
-      },
     );
   });
 
