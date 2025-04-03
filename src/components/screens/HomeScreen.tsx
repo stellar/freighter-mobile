@@ -67,7 +67,6 @@ export const HomeScreen = () => {
 
     copyToClipboard(publicKey, {
       notificationMessage: t("accountAddressCopied"),
-      toastVariant: "success",
     });
   };
 

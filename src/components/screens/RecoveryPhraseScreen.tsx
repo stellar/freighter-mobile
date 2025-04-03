@@ -98,11 +98,8 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const handleCopy = useCallback(() => {
     if (!recoveryPhrase) return;
-    copyToClipboard(recoveryPhrase, {
-      notificationMessage: t("recoveryPhraseScreen.copyButtonText"),
-      toastVariant: "success",
-    });
-  }, [recoveryPhrase, copyToClipboard, t]);
+    copyToClipboard(recoveryPhrase);
+  }, [recoveryPhrase, copyToClipboard]);
 
   if (error) {
     return (
