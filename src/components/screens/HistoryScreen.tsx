@@ -18,7 +18,6 @@ type HistoryScreenProps = BottomTabScreenProps<
 >;
 
 const Container = styled.View`
-  margin-top: ${px(100)};
   flex: 1;
   justify-content: center;
   align-items: center;
@@ -70,8 +69,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   };
 
   return (
-    <BaseLayout>
-      <Display sm style={{ alignSelf: "center", marginTop: 40 }}>
+    <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
+      <Display sm style={{ alignSelf: "center" }}>
         {t("history.title")}
       </Display>
 

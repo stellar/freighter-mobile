@@ -124,6 +124,11 @@ export const THEME = {
       secondary: PALETTE.dark.gray["02"],
       tertiary: PALETTE.dark.gray["03"],
     },
+    foreground: {
+      primary: PALETTE.dark.gray["09"],
+      secondary: PALETTE.dark.gray["08"],
+      tertiary: PALETTE.dark.gray["07"],
+    },
     text: {
       primary: PALETTE.dark.gray["12"],
       secondary: PALETTE.dark.gray["11"],

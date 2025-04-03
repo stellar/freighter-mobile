@@ -1,4 +1,5 @@
 import Clipboard from "@react-native-clipboard/clipboard";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import ContextMenuButton from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
@@ -6,6 +7,13 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { logger } from "config/logger";
+import {
+  MANAGE_ASSETS_ROUTES,
+  ManageAssetsStackParamList,
+  MainTabStackParamList,
+  MAIN_TAB_ROUTES,
+} from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
@@ -18,8 +26,12 @@ import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
 
+type HomeScreenProps = BottomTabScreenProps<
+  MainTabStackParamList & ManageAssetsStackParamList,
+  typeof MAIN_TAB_ROUTES.TAB_HOME
+>;
+
 const TopSection = styled.View`
-  margin-top: ${px(50)};
   padding-top: ${px(22)};
   width: 100%;
   align-items: center;
@@ -66,7 +78,7 @@ const Icons = Platform.select({
   },
 });
 
-export const HomeScreen = () => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
@@ -76,17 +88,30 @@ export const HomeScreen = () => {
   const { formattedBalance } = useTotalBalance();
 
   const actions = [
-    { title: "Settings", systemIcon: Icons!.settings },
-    { title: "Manage assets", systemIcon: Icons!.manageAssets },
-    { title: "My QR code", systemIcon: Icons!.myQrCode },
+    {
+      title: "Settings",
+      systemIcon: Icons!.settings,
+      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+    },
+    {
+      title: "Manage assets",
+      systemIcon: Icons!.manageAssets,
+      onPress: () =>
+        navigation.navigate(MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN),
+    },
+    {
+      title: "My QR code",
+      systemIcon: Icons!.myQrCode,
+      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+    },
   ];
 
   return (
-    <BaseLayout>
+    <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
       <ContextMenuButton
         contextMenuProps={{
           onPress: (e) => {
-            console.log(e.nativeEvent.index);
+            actions[e.nativeEvent.index].onPress();
           },
           actions,
         }}

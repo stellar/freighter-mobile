@@ -25,6 +25,10 @@ export const MAIN_TAB_ROUTES = {
   TAB_DISCOVERY: "Discovery",
 } as const;
 
+export const MANAGE_ASSETS_ROUTES = {
+  MANAGE_ASSETS_SCREEN: "ManageAssetsScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
@@ -60,4 +64,8 @@ export type MainTabStackParamList = {
   [MAIN_TAB_ROUTES.TAB_HISTORY]: undefined;
   [MAIN_TAB_ROUTES.TAB_HOME]: undefined;
   [MAIN_TAB_ROUTES.TAB_DISCOVERY]: undefined;
+};
+
+export type ManageAssetsStackParamList = {
+  [MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN]: undefined;
 };

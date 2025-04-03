@@ -11,11 +11,23 @@ interface BaseLayoutProps {
   useSafeArea?: boolean;
   backgroundColor?: string;
   useKeyboardAvoidingView?: boolean;
+  insets?: {
+    top: boolean;
+    right: boolean;
+    bottom: boolean;
+    left: boolean;
+  };
 }
 
 interface StyledViewProps {
   $backgroundColor: string;
   $insets: EdgeInsets;
+  $insetsConfig?: {
+    top: boolean;
+    right: boolean;
+    bottom: boolean;
+    left: boolean;
+  };
 }
 
 const DEFAULT_PADDING = pxValue(24);
@@ -24,11 +36,14 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
   flex: 1;
   background-color: ${({ $backgroundColor }: StyledViewProps) =>
     $backgroundColor};
-  padding-top: ${({ $insets }: StyledViewProps) => $insets.top}px;
-  padding-left: ${({ $insets }: StyledViewProps) =>
-    $insets.left + DEFAULT_PADDING}px;
-  padding-right: ${({ $insets }: StyledViewProps) =>
-    $insets.right + DEFAULT_PADDING}px;
+  padding-top: ${({ $insets, $insetsConfig }: StyledViewProps) =>
+    $insetsConfig?.top ? $insets.top : 0}px;
+  padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) =>
+    ($insetsConfig?.right ? $insets.right : 0) + DEFAULT_PADDING}px;
+  padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) =>
+    $insetsConfig?.bottom ? $insets.bottom : 0}px;
+  padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) =>
+    ($insetsConfig?.left ? $insets.left : 0) + DEFAULT_PADDING}px;
 `;
 
 const StyledView = styled.View<StyledViewProps>`
@@ -42,14 +57,24 @@ export const BaseLayout = ({
   useSafeArea = true,
   useKeyboardAvoidingView = false,
   backgroundColor = THEME.colors.background.default,
+  insets = {
+    top: true,
+    right: true,
+    bottom: true,
+    left: true,
+  },
 }: BaseLayoutProps) => {
-  const insets = useSafeAreaInsets();
+  const safeAreaInsets = useSafeAreaInsets();
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
 
   if (useKeyboardAvoidingView) {
     return (
       <ScrollableKeyboardView>
-        <Container $insets={insets} $backgroundColor={backgroundColor}>
+        <Container
+          $insets={safeAreaInsets}
+          $backgroundColor={backgroundColor}
+          $insetsConfig={insets}
+        >
           {children}
         </Container>
       </ScrollableKeyboardView>
@@ -57,7 +82,11 @@ export const BaseLayout = ({
   }
 
   return (
-    <Container $insets={insets} $backgroundColor={backgroundColor}>
+    <Container
+      $insets={safeAreaInsets}
+      $backgroundColor={backgroundColor}
+      $insetsConfig={insets}
+    >
       {children}
     </Container>
   );
