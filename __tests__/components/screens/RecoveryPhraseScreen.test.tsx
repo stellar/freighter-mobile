@@ -1,4 +1,3 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { fireEvent, render } from "@testing-library/react-native";
@@ -7,8 +6,15 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
 import StellarHDWallet from "stellar-hd-wallet";
 
-jest.mock("@react-native-clipboard/clipboard", () => ({
-  setString: jest.fn(),
+const mockCopyToClipboard = jest.fn();
+jest.mock("hooks/useClipboard", () => ({
+  useClipboard: () => ({
+    copyToClipboard: mockCopyToClipboard,
+  }),
+}));
+
+jest.mock("providers/ToastProvider", () => ({
+  useToast: () => ({ showToast: jest.fn() }),
 }));
 
 jest.mock("stellar-hd-wallet", () => ({
@@ -113,9 +119,12 @@ describe("RecoveryPhraseScreen", () => {
 
     fireEvent.press(getByText("Copy"));
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(Clipboard.setString).toHaveBeenCalledWith(
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(
       "test phrase one two three four five six seven eight nine ten eleven twelve",
+      {
+        notificationMessage: "Copy",
+        toastVariant: "success",
+      },
     );
   });
 
@@ -131,11 +140,10 @@ describe("RecoveryPhraseScreen", () => {
       />,
     );
 
-    fireEvent.press(getByText("Continue"));
+    const skipButton = getByText("Skip");
+    fireEvent.press(skipButton);
 
-    jest.runAllTimers();
-
-    expect(mockSignUp).not.toHaveBeenCalled();
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
   it("navigates to validate recovery phrase screen when continue is pressed", () => {

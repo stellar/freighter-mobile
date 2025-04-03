@@ -1,4 +1,3 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import { BalancesList } from "components/BalancesList";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -9,10 +8,11 @@ import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
-import { Dimensions } from "react-native";
+import { Dimensions, View } from "react-native";
 import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
@@ -58,8 +58,18 @@ export const HomeScreen = () => {
   const publicKey = account?.publicKey;
 
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
 
   const { formattedBalance } = useTotalBalance();
+
+  const handleCopyAddress = () => {
+    if (publicKey) {
+      copyToClipboard(publicKey, {
+        notificationMessage: t("accountAddressCopied"),
+        toastVariant: "success",
+      });
+    }
+  };
 
   return (
     <BaseLayout>
@@ -78,13 +88,13 @@ export const HomeScreen = () => {
           <IconButton Icon={Icon.Plus} title={t("home.buy")} />
           <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
           <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
-          <IconButton
-            Icon={Icon.Copy01}
-            title={t("home.copy")}
-            onPress={() =>
-              Clipboard.setString(`MAINNET testing account:${publicKey}`)
-            }
-          />
+          <View testID="copy-button">
+            <IconButton
+              Icon={Icon.Copy01}
+              title={t("home.copy")}
+              onPress={handleCopyAddress}
+            />
+          </View>
         </ButtonsRow>
       </TopSection>
 

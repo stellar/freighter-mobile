@@ -78,7 +78,11 @@ export const IconButton: React.FC<IconButtonProps> = ({
 
   return (
     <ButtonContainer disabled={isDisabled} testID="icon-button-container">
-      <IconWrapper onPress={onPress} disabled={isDisabled} testID="icon-button">
+      <IconWrapper
+        onPress={onPress}
+        disabled={isDisabled}
+        testID={`icon-button-${title.toLowerCase()}`}
+      >
         <Icon size={24} color={THEME.colors.text.primary} />
       </IconWrapper>
       <Text md medium secondary>

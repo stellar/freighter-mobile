@@ -1,4 +1,3 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import { Button } from "components/sds/Button";
@@ -9,6 +8,7 @@ import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useState } from "react";
 import { generateMnemonic } from "stellar-hd-wallet";
 import styled from "styled-components/native";
@@ -78,6 +78,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   );
   const { error, isLoading, signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;
@@ -97,8 +98,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const handleCopy = useCallback(() => {
     if (!recoveryPhrase) return;
-    Clipboard.setString(recoveryPhrase);
-  }, [recoveryPhrase]);
+    copyToClipboard(recoveryPhrase, {
+      notificationMessage: t("recoveryPhraseScreen.copyButtonText"),
+      toastVariant: "success",
+    });
+  }, [recoveryPhrase, copyToClipboard, t]);
 
   if (error) {
     return (

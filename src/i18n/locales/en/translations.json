@@ -1,6 +1,7 @@
 {
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
+  "accountAddressCopied": "Account address copied!",
   "home": {
     "title": "Home",
     "buy": "Buy",

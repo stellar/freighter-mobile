@@ -16,7 +16,7 @@ describe("IconButton", () => {
     );
 
     expect(getByText("Home")).toBeTruthy();
-    expect(getByTestId("icon-button")).toBeTruthy();
+    expect(getByTestId("icon-button-home")).toBeTruthy();
   });
 
   it("calls onPress when pressed", () => {
@@ -24,7 +24,7 @@ describe("IconButton", () => {
       <IconButton Icon={Icon.Home02} title="Home" onPress={mockOnPress} />,
     );
 
-    fireEvent.press(getByTestId("icon-button"));
+    fireEvent.press(getByTestId("icon-button-home"));
     expect(mockOnPress).toHaveBeenCalledTimes(1);
   });
 
@@ -38,7 +38,7 @@ describe("IconButton", () => {
       />,
     );
 
-    fireEvent.press(getByTestId("icon-button"));
+    fireEvent.press(getByTestId("icon-button-home"));
     expect(mockOnPress).not.toHaveBeenCalled();
   });
 
@@ -47,7 +47,7 @@ describe("IconButton", () => {
       <IconButton Icon={Icon.Home02} title="Home" />,
     );
 
-    fireEvent.press(getByTestId("icon-button"));
+    fireEvent.press(getByTestId("icon-button-home"));
     expect(mockOnPress).not.toHaveBeenCalled();
   });
 

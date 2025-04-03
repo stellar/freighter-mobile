@@ -8,6 +8,7 @@ import { RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
+import { ToastProvider } from "providers/ToastProvider";
 import React from "react";
 import { I18nextProvider } from "react-i18next";
 import { StatusBar } from "react-native";
@@ -26,7 +27,9 @@ export const App = (): React.JSX.Element => (
               backgroundColor={THEME.colors.background.default}
               barStyle="light-content"
             />
-            <RootNavigator />
+            <ToastProvider>
+              <RootNavigator />
+            </ToastProvider>
           </OfflineDetection>
         </AuthCheckProvider>
       </NavigationContainer>
