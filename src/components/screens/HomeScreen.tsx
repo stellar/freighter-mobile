@@ -12,7 +12,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
-import { Dimensions, View } from "react-native";
+import { Dimensions } from "react-native";
 import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
@@ -88,13 +88,11 @@ export const HomeScreen = () => {
           <IconButton Icon={Icon.Plus} title={t("home.buy")} />
           <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
           <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
-          <View testID="copy-button">
-            <IconButton
-              Icon={Icon.Copy01}
-              title={t("home.copy")}
-              onPress={handleCopyAddress}
-            />
-          </View>
+          <IconButton
+            Icon={Icon.Copy01}
+            title={t("home.copy")}
+            onPress={handleCopyAddress}
+          />
         </ButtonsRow>
       </TopSection>
 
