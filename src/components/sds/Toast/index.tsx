@@ -1,5 +1,6 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
 import { PALETTE } from "config/theme";
 import { px } from "helpers/dimensions";
 import React, { useEffect, useCallback } from "react";
@@ -62,36 +63,6 @@ const getBackgroundColor = (
 const getIconColor = (variant: ToastVariant): string =>
   variantColors[variant].iconColor;
 
-const ToastWrapper = styled.View`
-  width: 100%;
-  padding: 0 ${px(24)};
-`;
-
-const ToastContainer = styled(Animated.View)<{
-  variant: ToastVariant;
-  isFilled?: boolean;
-}>`
-  background-color: ${({
-    variant,
-    isFilled,
-  }: {
-    variant: ToastVariant;
-    isFilled?: boolean;
-  }) => getBackgroundColor(variant, isFilled)};
-  border: 1px solid ${PALETTE.dark.gray["06"]};
-  border-radius: ${px(8)};
-  padding: ${px(12)};
-  margin: ${px(8)} 0;
-  flex-direction: column;
-  gap: ${px(8)};
-  width: 100%;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.25;
-  shadow-radius: 3.84px;
-  elevation: 5;
-`;
-
 const TitleContainer = styled.View`
   flex-direction: row;
   align-items: flex-start;
@@ -105,18 +76,34 @@ const IconContainer = styled.View`
   flex-shrink: 0;
 `;
 
-const TitleText = styled(Text)`
-  color: ${PALETTE.dark.gray["12"]};
-  font-size: ${px(14)};
-  line-height: ${px(20)};
-  font-weight: 600;
+const ToastWrapper = styled.View`
+  width: 100%;
+  padding: 0 ${px(DEFAULT_PADDING)};
 `;
 
-const MessageText = styled(Text)`
-  color: ${PALETTE.dark.gray["11"]};
-  font-size: ${px(14)};
-  line-height: ${px(20)};
-  font-weight: 400;
+const ToastContainer = styled(Animated.View)<{
+  variant: ToastVariant;
+  isFilled?: boolean;
+}>`
+  background-color: ${({
+    variant,
+    isFilled,
+  }: {
+    variant: ToastVariant;
+    isFilled?: boolean;
+  }) => getBackgroundColor(variant, isFilled)};
+  border: ${px(1)} solid ${PALETTE.dark.gray["06"]};
+  border-radius: ${px(8)};
+  padding: ${px(12)};
+  margin: ${px(8)} 0;
+  flex-direction: column;
+  gap: ${px(8)};
+  width: 100%;
+  shadow-color: #000;
+  shadow-offset: 0 ${px(2)};
+  shadow-opacity: 0.25;
+  shadow-radius: ${px(3.84)};
+  elevation: 5;
 `;
 
 /**
@@ -196,9 +183,15 @@ export const Toast: React.FC<ToastProps> = ({
               <Icon.InfoCircle size={16} color={getIconColor(variant)} />
             )}
           </IconContainer>
-          <TitleText>{title}</TitleText>
+          <Text sm semiBold>
+            {title}
+          </Text>
         </TitleContainer>
-        {message && <MessageText>{message}</MessageText>}
+        {message && (
+          <Text sm secondary>
+            {message}
+          </Text>
+        )}
       </ToastContainer>
     </ToastWrapper>
   );

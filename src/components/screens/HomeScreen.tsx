@@ -63,12 +63,12 @@ export const HomeScreen = () => {
   const { formattedBalance } = useTotalBalance();
 
   const handleCopyAddress = () => {
-    if (publicKey) {
-      copyToClipboard(publicKey, {
-        notificationMessage: t("accountAddressCopied"),
-        toastVariant: "success",
-      });
-    }
+    if (!publicKey) return;
+
+    copyToClipboard(publicKey, {
+      notificationMessage: t("accountAddressCopied"),
+      toastVariant: "success",
+    });
   };
 
   return (

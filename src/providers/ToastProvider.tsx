@@ -93,11 +93,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     const newToast: ToastPropsWithId = {
       ...options,
       id: Date.now().toString(),
-      onDismiss: () => {
-        setToasts((currentToasts) =>
-          currentToasts.filter((toast) => toast.id !== newToast.id),
-        );
-      },
     };
 
     setToasts((currentToasts) => [...currentToasts, newToast]);

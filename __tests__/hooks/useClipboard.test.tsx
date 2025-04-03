@@ -86,7 +86,7 @@ describe("useClipboard", () => {
 
     act(() => {
       result.current.copyToClipboard(text, {
-        showNotification: false,
+        hideNotification: true,
       });
     });
 

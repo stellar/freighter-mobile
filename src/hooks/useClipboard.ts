@@ -4,8 +4,8 @@ import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
 
 interface CopyToClipboardOptions {
-  /** Whether to show a toast notification (default: true) */
-  showNotification?: boolean;
+  /** Whether to hide the toast notification (default: false) */
+  hideNotification?: boolean;
   /** Custom message for the toast notification */
   notificationMessage?: string;
   /** Custom toast variant (default: "success") */
@@ -44,12 +44,12 @@ export const useClipboard = (): UseClipboardResult => {
       try {
         Clipboard.setString(text);
 
-        if (options.showNotification !== false) {
-          showToast({
-            title: options.notificationMessage || t("clipboard.copied"),
-            variant: options.toastVariant || "success",
-          });
-        }
+        if (options.hideNotification) return;
+
+        showToast({
+          title: options.notificationMessage || t("clipboard.copied"),
+          variant: options.toastVariant || "success",
+        });
       } catch (error) {
         showToast({
           title: t("clipboard.failed"),
