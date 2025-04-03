@@ -107,5 +107,9 @@
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
-  "logout": "Sair"
+  "logout": "Sair",
+  "clipboard": {
+    "copied": "Copiado para a área de transferência!",
+    "failed": "Falha ao copiar para a área de transferência"
+  }
 }

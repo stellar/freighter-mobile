@@ -107,5 +107,9 @@
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },
-  "logout": "Log out"
+  "logout": "Log out",
+  "clipboard": {
+    "copied": "Copied to clipboard!",
+    "failed": "Failed to copy to clipboard"
+  }
 }

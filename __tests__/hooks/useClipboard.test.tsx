@@ -13,6 +13,17 @@ jest.mock("providers/ToastProvider", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
+// Mock the translation function
+jest.mock("hooks/useAppTranslation", () => () => ({
+  t: (key: string) => {
+    const translations: Record<string, string> = {
+      "clipboard.copied": "Copied to clipboard!",
+      "clipboard.failed": "Failed to copy to clipboard",
+    };
+    return translations[key] || key;
+  },
+}));
+
 describe("useClipboard", () => {
   beforeEach(() => {
     // Reset mocks before each test

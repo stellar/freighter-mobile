@@ -1,4 +1,5 @@
 import Clipboard from "@react-native-clipboard/clipboard";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
 
@@ -36,6 +37,7 @@ interface UseClipboardResult {
  */
 export const useClipboard = (): UseClipboardResult => {
   const { showToast } = useToast();
+  const { t } = useAppTranslation();
 
   const copyToClipboard = useCallback(
     (text: string, options: CopyToClipboardOptions = {}) => {
@@ -44,18 +46,18 @@ export const useClipboard = (): UseClipboardResult => {
 
         if (options.showNotification !== false) {
           showToast({
-            title: options.notificationMessage || "Copied to clipboard!",
+            title: options.notificationMessage || t("clipboard.copied"),
             variant: options.toastVariant || "success",
           });
         }
       } catch (error) {
         showToast({
-          title: "Failed to copy to clipboard",
+          title: t("clipboard.failed"),
           variant: "error",
         });
       }
     },
-    [showToast],
+    [showToast, t],
   );
 
   return { copyToClipboard };

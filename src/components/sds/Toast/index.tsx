@@ -30,43 +30,37 @@ export interface ToastProps {
   isFilled?: boolean;
 }
 
+const variantColors = {
+  success: {
+    iconColor: PALETTE.dark.green["09"],
+    backgroundColor: PALETTE.dark.green["03"],
+  },
+  error: {
+    iconColor: PALETTE.dark.red["09"],
+    backgroundColor: PALETTE.dark.red["02"],
+  },
+  warning: {
+    iconColor: PALETTE.dark.amber["09"],
+    backgroundColor: PALETTE.dark.amber["03"],
+  },
+  secondary: {
+    iconColor: PALETTE.dark.gray["11"],
+    backgroundColor: PALETTE.dark.gray["03"],
+  },
+  primary: {
+    iconColor: PALETTE.dark.lilac["09"],
+    backgroundColor: PALETTE.dark.gray["01"],
+  },
+} as const;
+
 const getBackgroundColor = (
   variant: ToastVariant,
   isFilled?: boolean,
-): string => {
-  if (isFilled) {
-    switch (variant) {
-      case "success":
-        return PALETTE.dark.green["03"];
-      case "error":
-        return PALETTE.dark.red["02"];
-      case "warning":
-        return PALETTE.dark.amber["03"];
-      case "secondary":
-        return PALETTE.dark.gray["03"];
-      case "primary":
-      default:
-        return PALETTE.dark.gray["01"];
-    }
-  }
-  return PALETTE.dark.gray["01"];
-};
+): string =>
+  isFilled ? variantColors[variant].backgroundColor : PALETTE.dark.gray["01"];
 
-const getIconColor = (variant: ToastVariant): string => {
-  switch (variant) {
-    case "success":
-      return PALETTE.dark.green["09"];
-    case "error":
-      return PALETTE.dark.red["09"];
-    case "warning":
-      return PALETTE.dark.amber["09"];
-    case "secondary":
-      return PALETTE.dark.gray["11"];
-    case "primary":
-    default:
-      return PALETTE.dark.lilac["09"];
-  }
-};
+const getIconColor = (variant: ToastVariant): string =>
+  variantColors[variant].iconColor;
 
 const ToastWrapper = styled.View`
   width: 100%;

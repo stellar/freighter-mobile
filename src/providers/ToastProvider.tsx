@@ -7,8 +7,7 @@ import React, {
   useState,
   useMemo,
 } from "react";
-import { View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
 export interface ToastOptions {
@@ -30,7 +29,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-const ToastContainer = styled(View)`
+const ToastContainer = styled.View`
   position: absolute;
   top: 0;
   left: 0;
@@ -40,10 +39,13 @@ const ToastContainer = styled(View)`
   pointer-events: none;
 `;
 
-const ToastWrapper = styled(View)`
+interface ToastWrapperProps {
+  $insets: EdgeInsets;
+}
+
+const ToastWrapper = styled.View<ToastWrapperProps>`
   width: 100%;
-  padding-top: ${px(16)};
-  pointer-events: auto;
+  padding-top: ${({ $insets }: ToastWrapperProps) => px($insets.top + 16)};
 `;
 
 interface ToastPropsWithId extends ToastProps {
@@ -85,6 +87,7 @@ interface ToastProviderProps {
  */
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastPropsWithId[]>([]);
+  const insets = useSafeAreaInsets();
 
   const showToast = useCallback((options: ToastOptions) => {
     const newToast: ToastPropsWithId = {
@@ -110,20 +113,18 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 
   return (
     <ToastContext.Provider value={contextValue}>
-      {children}
       <ToastContainer>
-        <SafeAreaView edges={["top"]} style={{ width: "100%" }}>
-          <ToastWrapper>
-            {toasts.map((toast) => (
-              <Toast
-                key={toast.id}
-                {...toast}
-                onDismiss={() => handleDismiss(toast)}
-              />
-            ))}
-          </ToastWrapper>
-        </SafeAreaView>
+        <ToastWrapper $insets={insets}>
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              {...toast}
+              onDismiss={() => handleDismiss(toast)}
+            />
+          ))}
+        </ToastWrapper>
       </ToastContainer>
+      {children}
     </ToastContext.Provider>
   );
 };
