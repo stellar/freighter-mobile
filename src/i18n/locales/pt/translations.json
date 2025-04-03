@@ -61,7 +61,7 @@
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
     "skip": "Pular",
-    "pastFromClipboard": "Colar da área de transferência"
+    "pasteFromClipboard": "Colar da área de transferência"
   },
   "discovery": {
     "title": "Explorar"
@@ -78,17 +78,20 @@
   },
   "authStore": {
     "error": {
-      "failedToDeriveHashKey": "Falha ao derivar chave hash",
-      "failedToCreateAccount": "Falha ao criar conta",
+      "accountListNotFound": "Lista de contas não encontrada",
+      "accountNotFound": "Conta não encontrada",
+      "hashKeyNotFound": "Hash key não encontrada",
+      "temporaryStoreNotFound": "Temporary store não encontrado",
+      "privateKeyNotFound": "Chave privada não encontrada",
+      "authenticationExpired": "Autenticação expirada",
       "failedToLogout": "Falha ao sair",
       "noActiveAccount": "Nenhuma conta ativa",
-      "failedToGetActivePassword": "Falha ao obter senha ativa",
       "noKeyPairFound": "Nenhum par de chaves encontrado",
-      "failedToSignUp": "Falha ao se inscrever",
-      "failedToCheckAuthenticationStatus": "Falha ao verificar status de autenticação",
-      "failedToGetActiveKeyPair": "Falha ao obter par de chaves ativo",
-      "invalidPassword": "Senha inválida. Por favor, tente novamente.",
-      "invalidMnemonic": "Frase de recuperação inválida"
+      "failedToSignUp": "Falha ao criar conta",
+      "failedToSignIn": "Falha ao entrar",
+      "failedToImportWallet": "Falha ao importar carteira",
+      "failedToLoadAccount": "Falha ao carregar conta",
+      "invalidPassword": "Senha inválida. Por favor, tente novamente."
     },
     "account": "Conta {{number}}"
   },
