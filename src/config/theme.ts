@@ -157,3 +157,26 @@ export const THEME = {
     disabled: 0.6,
   },
 } as const;
+
+export const NOTIFICATION_VARIANTS = {
+  success: {
+    iconColor: PALETTE.dark.green["09"],
+    backgroundColor: PALETTE.dark.green["03"],
+  },
+  error: {
+    iconColor: PALETTE.dark.red["09"],
+    backgroundColor: PALETTE.dark.red["02"],
+  },
+  warning: {
+    iconColor: PALETTE.dark.amber["09"],
+    backgroundColor: PALETTE.dark.amber["03"],
+  },
+  secondary: {
+    iconColor: PALETTE.dark.gray["11"],
+    backgroundColor: PALETTE.dark.gray["03"],
+  },
+  primary: {
+    iconColor: PALETTE.dark.lilac["09"],
+    backgroundColor: PALETTE.dark.gray["01"],
+  },
+} as const;

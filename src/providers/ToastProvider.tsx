@@ -1,5 +1,6 @@
 import { Toast, ToastProps, ToastVariant } from "components/sds/Toast";
-import { pxValue } from "helpers/dimensions";
+import { DEFAULT_PADDING } from "config/constants";
+import { px, pxValue } from "helpers/dimensions";
 import React, {
   createContext,
   useCallback,
@@ -47,6 +48,8 @@ const ToastWrapper = styled.View<ToastWrapperProps>`
   width: 100%;
   padding-top: ${({ $insets }: ToastWrapperProps) =>
     `${$insets.top + pxValue(16)}px`};
+  padding-horizontal: ${px(DEFAULT_PADDING)};
+  gap: ${px(16)};
 `;
 
 interface ToastPropsWithId extends ToastProps {

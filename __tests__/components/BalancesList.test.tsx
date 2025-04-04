@@ -1,5 +1,5 @@
 import { AssetType } from "@stellar/stellar-sdk";
-import { act } from "@testing-library/react-native";
+import { act, userEvent } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalancesList } from "components/BalancesList";
 import { NETWORKS } from "config/constants";
@@ -16,6 +16,7 @@ import { usePricesStore } from "ducks/prices";
 import * as balancesHelpers from "helpers/balances";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { Linking } from "react-native";
 
 // Mock the stores
 jest.mock("ducks/balances", () => ({
@@ -155,6 +156,7 @@ describe("BalancesList", () => {
       isLoading: boolean;
       error: string | null;
       fetchAccountBalances: jest.Mock;
+      isFunded: boolean;
     }> = {},
   ) => ({
     balances: {},
@@ -162,6 +164,7 @@ describe("BalancesList", () => {
     isLoading: false,
     error: null,
     fetchAccountBalances: jest.fn().mockResolvedValue(undefined),
+    isFunded: false,
     ...overrides,
   });
 
@@ -217,12 +220,86 @@ describe("BalancesList", () => {
     });
 
     it("should show empty state when no balances are found", () => {
-      mockUseBalancesStore.mockReturnValue(createMockStoreState());
+      mockUseBalancesStore.mockReturnValue(
+        createMockStoreState({
+          isFunded: false,
+          balances: {},
+          pricedBalances: {},
+        }),
+      );
 
       const { getByText } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
+
+      // Verify Friendbot button is visible
       expect(getByText("Fund with Friendbot")).toBeTruthy();
+
+      // Verify notification text is visible
+      expect(
+        getByText(/To start using this account, fund it with at least 1 XLM./),
+      ).toBeTruthy();
+      expect(getByText(/Learn more/)).toBeTruthy();
+    });
+
+    it("should open funding documentation when clicking the notification", async () => {
+      // Mock Linking.openURL
+      const mockOpenURL = jest.fn();
+      jest.spyOn(Linking, "openURL").mockImplementation(mockOpenURL);
+
+      mockUseBalancesStore.mockReturnValue(
+        createMockStoreState({
+          isFunded: false,
+          balances: {},
+          pricedBalances: {},
+        }),
+      );
+
+      const { getByRole } = renderWithProviders(
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
+      );
+
+      // Find and click the notification
+      const notification = getByRole("button");
+      await act(async () => {
+        await userEvent.press(notification);
+      });
+
+      // Verify the URL was opened
+      expect(mockOpenURL).toHaveBeenCalledWith(
+        "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
+      );
+
+      // Cleanup
+      jest.restoreAllMocks();
+    });
+
+    it("should show empty state without notification on public network when funded", () => {
+      mockUseBalancesStore.mockReturnValue(
+        createMockStoreState({
+          isFunded: true,
+          balances: {},
+          pricedBalances: {},
+        }),
+      );
+
+      const { queryByText } = renderWithProviders(
+        <BalancesList publicKey={testPublicKey} network={NETWORKS.PUBLIC} />,
+      );
+
+      // Verify empty state message is shown
+      expect(queryByText(/Tokens/)).toBeTruthy();
+
+      // Verify notification is not shown
+      expect(
+        queryByText(
+          "To start using this account, fund it with at least 1 XLM.",
+        ),
+      ).toBeNull();
+      expect(queryByText("Learn more")).toBeNull();
+
+      // Verify Friendbot is not shown on public network
+      expect(queryByText("Fund with Friendbot")).toBeNull();
     });
 
     it("should render the list of balances correctly", () => {

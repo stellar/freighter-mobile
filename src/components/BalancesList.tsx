@@ -1,5 +1,6 @@
 import { AssetIcon } from "components/AssetIcon";
 import { FriendbotButton } from "components/FriendbotButton";
+import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
@@ -14,7 +15,7 @@ import {
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl } from "react-native";
+import { FlatList, Linking, RefreshControl, View } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -64,6 +65,10 @@ const RightSection = styled.View<RightSectionProps>`
   width: ${({ isLP }: RightSectionProps) => px(isLP ? 20 : 115)};
 `;
 
+const NotificationWrapper = styled.View`
+  margin-bottom: ${px(24)};
+`;
+
 /**
  * Extended PricedBalance type with an id field for use in FlatList
  */
@@ -105,6 +110,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     pricedBalances,
     isLoading: isBalancesLoading,
     error: balancesError,
+    isFunded,
     fetchAccountBalances,
   } = useBalancesStore();
 
@@ -175,12 +181,33 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   }
 
   // If still no balances after fetching, then show the empty state
-  if (noBalances) {
+  if (noBalances && !isFunded && !balancesError) {
     return (
       <ListWrapper>
         <ListTitle>
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
+
+        <NotificationWrapper>
+          <Notification
+            variant="primary"
+            onPress={() => {
+              Linking.openURL(
+                "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
+              );
+            }}
+            customContent={
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text sm>
+                  {t("balancesList.unfundedAccount.message")}{" "}
+                  <Text sm semiBold color={THEME.colors.primary}>
+                    {t("balancesList.unfundedAccount.learnMore")}
+                  </Text>
+                </Text>
+              </View>
+            }
+          />
+        </NotificationWrapper>
 
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />
