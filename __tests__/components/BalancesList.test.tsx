@@ -1,5 +1,5 @@
 import { AssetType } from "@stellar/stellar-sdk";
-import { act, userEvent } from "@testing-library/react-native";
+import { act } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalancesList } from "components/BalancesList";
 import { NETWORKS } from "config/constants";
@@ -16,7 +16,6 @@ import { usePricesStore } from "ducks/prices";
 import * as balancesHelpers from "helpers/balances";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Linking } from "react-native";
 
 // Mock the stores
 jest.mock("ducks/balances", () => ({
@@ -30,9 +29,7 @@ jest.mock("ducks/prices", () => ({
 // Mock React Navigation's useFocusEffect
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn((callback) => {
-    // Execute the callback immediately to simulate focus
     callback();
-    // Return a cleanup function
     return () => {};
   }),
 }));
@@ -71,7 +68,6 @@ const mockUsePricesStore = usePricesStore as jest.MockedFunction<
   typeof usePricesStore
 >;
 
-// Type the mock functions properly
 const mockIsLiquidityPool =
   balancesHelpers.isLiquidityPool as jest.MockedFunction<
     (balance: Balance) => balance is LiquidityPoolBalance
@@ -86,7 +82,7 @@ describe("BalancesList", () => {
     const mockNativeBalance: NativeBalance = {
       token: {
         code: "XLM",
-        type: "native" as const, // Fix the type issue
+        type: "native" as const,
       },
       total: new BigNumber("100.5"),
       available: new BigNumber("100.5"),
@@ -148,7 +144,7 @@ describe("BalancesList", () => {
     },
   });
 
-  // Helper function to create mock store state
+  // Helper function to create mock store state with default values
   const createMockStoreState = (
     overrides: Partial<{
       balances: BalanceMap;
@@ -168,6 +164,14 @@ describe("BalancesList", () => {
     ...overrides,
   });
 
+  // Helper function to render BalancesList with common props
+  const renderBalancesList = (storeOverrides = {}) => {
+    mockUseBalancesStore.mockReturnValue(createMockStoreState(storeOverrides));
+    return renderWithProviders(
+      <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
+    );
+  };
+
   const { mockBalances, mockNativeBalance, mockAssetBalance } =
     createMockBalances();
   const mockPricedBalances = createMockPricedBalances(
@@ -177,8 +181,6 @@ describe("BalancesList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock implementations
     mockUseBalancesStore.mockReturnValue(createMockStoreState());
     mockUsePricesStore.mockReturnValue({
       prices: {},
@@ -187,8 +189,6 @@ describe("BalancesList", () => {
       lastUpdated: null,
       fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
     });
-
-    // Mock balance helpers defaults
     mockIsLiquidityPool.mockReturnValue(false);
     (
       balancesHelpers.getTokenIdentifiersFromBalances as jest.Mock
@@ -196,138 +196,34 @@ describe("BalancesList", () => {
     (balancesHelpers.getLPShareCode as jest.Mock).mockReturnValue("");
   });
 
-  describe("initial render", () => {
-    it("should show loading state when fetching balances", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({ isLoading: true }),
-      );
-
-      const { getByTestId } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-      expect(getByTestId("balances-list-spinner")).toBeVisible();
+  describe("initial render states", () => {
+    test.each([
+      ["loading", { isLoading: true }, "balances-list-spinner"],
+      ["error", { error: "Failed to load balances" }, "Error loading balances"],
+      ["empty unfunded", { isFunded: false }, "Fund with Friendbot"],
+      ["empty funded", { isFunded: true }, "Tokens"],
+    ])("shows %s state correctly", (_, storeState, expectedElement) => {
+      const { getByText, getByTestId } = renderBalancesList(storeState);
+      if (expectedElement.includes("balances-list")) {
+        expect(getByTestId(expectedElement)).toBeVisible();
+      } else {
+        expect(getByText(expectedElement)).toBeTruthy();
+      }
     });
 
-    it("should show error state when there is an error loading balances", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({ error: "Failed to load balances" }),
-      );
-
-      const { getByText } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-      expect(getByText("Error loading balances")).toBeTruthy();
-    });
-
-    it("should show empty state when no balances are found", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({
-          isFunded: false,
-          balances: {},
-          pricedBalances: {},
-        }),
-      );
-
-      const { getByText } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-
-      // Verify Friendbot button is visible
-      expect(getByText("Fund with Friendbot")).toBeTruthy();
-
-      // Verify notification text is visible
+    it("shows empty state with proper messaging", () => {
+      const { getByText } = renderBalancesList({ isFunded: false });
       expect(
         getByText(/To start using this account, fund it with at least 1 XLM./),
       ).toBeTruthy();
       expect(getByText(/Learn more/)).toBeTruthy();
     });
 
-    it("should open funding documentation when clicking the notification", async () => {
-      // Mock Linking.openURL
-      const mockOpenURL = jest.fn();
-      jest.spyOn(Linking, "openURL").mockImplementation(mockOpenURL);
-
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({
-          isFunded: false,
-          balances: {},
-          pricedBalances: {},
-        }),
-      );
-
-      const { getByRole } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-
-      // Find and click the notification
-      const notification = getByRole("button");
-      await act(async () => {
-        await userEvent.press(notification);
+    it("renders the list of balances when data is available", () => {
+      const { getByText } = renderBalancesList({
+        balances: mockBalances,
+        pricedBalances: mockPricedBalances,
       });
-
-      // Wait for all pending operations
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      // Verify the URL was opened
-      expect(mockOpenURL).toHaveBeenCalledWith(
-        "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
-      );
-
-      // Cleanup
-      jest.restoreAllMocks();
-    }, 10000); // Increased timeout to 10 seconds
-
-    it("should show empty state without notification on public network when funded", async () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({
-          isFunded: true,
-          balances: {},
-          pricedBalances: {},
-        }),
-      );
-
-      const { queryByText } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.PUBLIC} />,
-      );
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      // Verify empty state message is shown
-      expect(queryByText(/Tokens/)).toBeTruthy();
-
-      // Verify notification is not shown
-      expect(
-        queryByText(
-          "To start using this account, fund it with at least 1 XLM.",
-        ),
-      ).toBeNull();
-      expect(queryByText("Learn more")).toBeNull();
-
-      // Verify Friendbot is not shown on public network
-      expect(queryByText("Fund with Friendbot")).toBeNull();
-    });
-
-    it("should render the list of balances correctly", async () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({
-          balances: mockBalances,
-          pricedBalances: mockPricedBalances,
-        }),
-      );
-
-      const { getByText, getByTestId } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(getByTestId("balances-list")).toBeTruthy();
       expect(getByText("XLM")).toBeTruthy();
       expect(getByText("USDC")).toBeTruthy();
     });

@@ -30,5 +30,15 @@ jest.mock("helpers/getOsLanguage");
  * const { getByText } = renderWithProviders(<MyComponent />);
  * expect(getByText('Hello')).toBeTruthy();
  */
-export const renderWithProviders: RenderWithProviderType = (component) =>
-  render(<I18nextProvider i18n={i18n}>{component}</I18nextProvider>);
+export const renderWithProviders: RenderWithProviderType = (component) => {
+  try {
+    return render(
+      <I18nextProvider i18n={i18n}>
+        {React.Children.only(component)}
+      </I18nextProvider>,
+    );
+  } catch (error) {
+    console.error("Error rendering component:", error);
+    throw error;
+  }
+};
