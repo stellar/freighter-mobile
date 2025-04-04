@@ -105,7 +105,11 @@
   "balancesList": {
     "title": "Tokens",
     "error": "Error loading balances",
-    "empty": "No balances found"
+    "empty": "No balances found",
+    "unfundedAccount": {
+      "message": "To start using this account, fund it with at least 1 XLM.",
+      "learnMore": "Learn more"
+    }
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
