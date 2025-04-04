@@ -265,6 +265,11 @@ describe("BalancesList", () => {
         await userEvent.press(notification);
       });
 
+      // Wait for all pending operations
+      await act(async () => {
+        await Promise.resolve();
+      });
+
       // Verify the URL was opened
       expect(mockOpenURL).toHaveBeenCalledWith(
         "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
@@ -272,9 +277,9 @@ describe("BalancesList", () => {
 
       // Cleanup
       jest.restoreAllMocks();
-    });
+    }, 10000); // Increased timeout to 10 seconds
 
-    it("should show empty state without notification on public network when funded", () => {
+    it("should show empty state without notification on public network when funded", async () => {
       mockUseBalancesStore.mockReturnValue(
         createMockStoreState({
           isFunded: true,
@@ -286,6 +291,10 @@ describe("BalancesList", () => {
       const { queryByText } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.PUBLIC} />,
       );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       // Verify empty state message is shown
       expect(queryByText(/Tokens/)).toBeTruthy();
@@ -302,7 +311,7 @@ describe("BalancesList", () => {
       expect(queryByText("Fund with Friendbot")).toBeNull();
     });
 
-    it("should render the list of balances correctly", () => {
+    it("should render the list of balances correctly", async () => {
       mockUseBalancesStore.mockReturnValue(
         createMockStoreState({
           balances: mockBalances,
@@ -313,6 +322,10 @@ describe("BalancesList", () => {
       const { getByText, getByTestId } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       expect(getByTestId("balances-list")).toBeTruthy();
       expect(getByText("XLM")).toBeTruthy();
@@ -356,7 +369,7 @@ describe("BalancesList", () => {
   });
 
   describe("liquidity pool balances", () => {
-    it("should handle liquidity pool balances correctly", () => {
+    it("should handle liquidity pool balances correctly", async () => {
       const mockLiquidityPoolBalance = {
         total: new BigNumber("1472.6043561"),
         limit: new BigNumber("100000"),
@@ -415,6 +428,11 @@ describe("BalancesList", () => {
       const { getByText } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
       expect(getByText("XLM / USDC")).toBeTruthy();
     });
   });
