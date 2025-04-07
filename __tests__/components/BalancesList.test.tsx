@@ -325,8 +325,8 @@ describe("BalancesList", () => {
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
 
-      await act(async () => {
-        await Promise.resolve();
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
       });
 
       expect(getByText("XLM / USDC")).toBeTruthy();
