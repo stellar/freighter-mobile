@@ -9,6 +9,8 @@ export const PASSWORD_MAX_LENGTH = 32;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
+export const CREATE_ACCOUNT_URL =
+  "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
 export enum FRIENDBOT_URLS {
   TESTNET = "https://friendbot.stellar.org",

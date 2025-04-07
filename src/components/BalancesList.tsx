@@ -2,7 +2,7 @@ import { AssetIcon } from "components/AssetIcon";
 import { FriendbotButton } from "components/FriendbotButton";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
+import { CREATE_ACCOUNT_URL, NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
@@ -15,7 +15,7 @@ import {
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, Linking, RefreshControl, View } from "react-native";
+import { FlatList, Linking, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -67,6 +67,11 @@ const RightSection = styled.View<RightSectionProps>`
 
 const NotificationWrapper = styled.View`
   margin-bottom: ${px(24)};
+`;
+
+const NotificationContent = styled.View`
+  flex-direction: row;
+  align-items: center;
 `;
 
 /**
@@ -181,7 +186,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   }
 
   // If still no balances after fetching, then show the empty state
-  if (noBalances && !isFunded && !balancesError) {
+  if (noBalances && !isFunded) {
     return (
       <ListWrapper>
         <ListTitle>
@@ -192,19 +197,17 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <Notification
             variant="primary"
             onPress={() => {
-              Linking.openURL(
-                "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
-              );
+              Linking.openURL(CREATE_ACCOUNT_URL);
             }}
             customContent={
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <NotificationContent>
                 <Text sm>
                   {t("balancesList.unfundedAccount.message")}{" "}
                   <Text sm semiBold color={THEME.colors.primary}>
                     {t("balancesList.unfundedAccount.learnMore")}
                   </Text>
                 </Text>
-              </View>
+              </NotificationContent>
             }
           />
         </NotificationWrapper>
@@ -212,7 +215,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />
         )}
-        {!isTestNetwork && <Text md>{t("balancesList.empty")}</Text>}
       </ListWrapper>
     );
   }
