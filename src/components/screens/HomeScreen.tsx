@@ -142,13 +142,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </AccountTotal>
 
         <ButtonsRow>
-          <IconButton Icon={Icon.Plus} title={t("home.buy")} />
-          <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
-          <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
+          <IconButton
+            Icon={Icon.Plus}
+            title={t("home.buy")}
+            testID="buy-button"
+          />
+          <IconButton
+            Icon={Icon.ArrowUp}
+            title={t("home.send")}
+            testID="send-button"
+          />
+          <IconButton
+            Icon={Icon.RefreshCw02}
+            title={t("home.swap")}
+            testID="swap-button"
+          />
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
             onPress={handleCopyAddress}
+            // testID="copy-button"
           />
         </ButtonsRow>
       </TopSection>

@@ -27,6 +27,7 @@ export const MAIN_TAB_ROUTES = {
 
 export const MANAGE_ASSETS_ROUTES = {
   MANAGE_ASSETS_SCREEN: "ManageAssetsScreen",
+  ADD_ASSET_SCREEN: "AddAssetScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -69,4 +70,5 @@ export type MainTabStackParamList = {
 
 export type ManageAssetsStackParamList = {
   [MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN]: undefined;
+  [MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN]: undefined;
 };

@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
+import AddAssetScreen from "components/screens/AddAssetScreen";
 import ManageAssetsScreen from "components/screens/ManageAssetsScreen";
 import {
   MANAGE_ASSETS_ROUTES,
@@ -26,6 +27,13 @@ export const ManageAssetsStackNavigator = () => {
         component={ManageAssetsScreen}
         options={{
           headerTitle: t("manageAssetsScreen.title"),
+        }}
+      />
+      <ManageAssetsStack.Screen
+        name={MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN}
+        component={AddAssetScreen}
+        options={{
+          headerTitle: t("addAssetScreen.title"),
         }}
       />
     </ManageAssetsStack.Navigator>

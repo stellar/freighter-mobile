@@ -121,14 +121,8 @@
   },
   "manageAssetsScreen": {
     "title": "Manage assets",
-    "searchPlaceholder": "Search token name or address",
     "hiddenTokens": "Hidden tokens",
-    "pasteFromClipboard": "Paste from clipboard",
-    "addAssetTrustline": "Add Asset Trustline",
-    "disclaimer": "Allow asset to be viewable and tradeable from your wallet. Only add assets you recognize and trust.",
-    "cancel": "Cancel",
-    "addAsset": "Add asset",
-    "successMessage": "{{assetName}} successfully added as an asset",
+    "addAssetButton": "Add an asset",
     "moreInfo": {
       "title": "Manage Assets",
       "block1": "When you manage assets on the Stellar blockchain, you're creating and controlling digital representations of value, such as currencies or tokens.",
@@ -140,6 +134,22 @@
       "unhideAsset": "Unhide asset",
       "removeAsset": "Remove asset"
     }
+  },
+  "addAssetScreen": {
+    "title": "Add an asset",
+    "addAssetButton": "Add asset",
+    "searchPlaceholder": "Search token name or address",
+    "pasteFromClipboard": "Paste from clipboard",
+    "popular": "Popular",
+    "native": "Native",
+    "add": "Add",
+    "onYourList": "On your list",
+    "addAssetTrustline": "Add Asset Trustline",
+    "disclaimer": "Allow asset to be viewable and tradeable from your wallet. Only add assets you recognize and trust.",
+    "cancel": "Cancel",
+    "addAsset": "Add asset",
+    "toastSuccess": "{{assetName}} successfully added as an asset",
+    "toastError": "Error adding asset {{assetName}}"
   },
   "logout": "Log out",
   "clipboard": {

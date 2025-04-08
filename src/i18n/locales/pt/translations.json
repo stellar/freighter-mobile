@@ -124,6 +124,7 @@
     "disclaimer": "Permita que o ativo seja visualizado e negociado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
     "cancel": "Cancelar",
     "addAsset": "Adicionar ativo",
+    "addAssetButton": "Adicionar um ativo",
     "successMessage": "{{assetName}} adicionado com sucesso como um ativo",
     "moreInfo": {
       "title": "Gerenciar Ativos",
@@ -136,6 +137,22 @@
       "unhideAsset": "Reexibir ativo",
       "removeAsset": "Remover ativo"
     }
+  },
+  "addAssetScreen": {
+    "title": "Adicionar um ativo",
+    "addAssetButton": "Adicionar ativo",
+    "searchPlaceholder": "Buscar nome ou endereço do token",
+    "pasteFromClipboard": "Colar da área de transferência",
+    "popular": "Popular",
+    "native": "Nativo",
+    "add": "Adicionar",
+    "onYourList": "Em sua lista",
+    "addAssetTrustline": "Adicionar Trustline do Ativo",
+    "disclaimer": "Permita que o ativo seja visualizado e negociado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
+    "cancel": "Cancelar",
+    "addAsset": "Adicionar ativo",
+    "toastSuccess": "{{assetName}} adicionado com sucesso como um ativo",
+    "toastError": "Erro ao adicionar ativo {{assetName}}"
   },
   "logout": "Sair",
   "clipboard": {
