@@ -87,9 +87,38 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "home.swap": "Swap",
       "home.copy": "Copy",
       accountAddressCopied: "Address copied",
+      "home.actions.settings": "Settings",
+      "home.actions.manageAssets": "Manage Assets",
+      "home.actions.myQRCode": "My QR Code",
     };
     return translations[key] || key;
   },
+}));
+
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(() => ({
+    network: "TESTNET",
+  })),
+}));
+
+// Mock the hooks
+jest.mock("hooks/useBalancesList", () => ({
+  useBalancesList: jest.fn(() => ({
+    balanceItems: [],
+    isLoading: false,
+    error: null,
+    noBalances: false,
+    isRefreshing: false,
+    isFunded: true,
+    handleRefresh: jest.fn(),
+  })),
+}));
+
+jest.mock("hooks/useTotalBalance", () => ({
+  useTotalBalance: jest.fn(() => ({
+    formattedBalance: "$350.75",
+    totalBalance: "350.75",
+  })),
 }));
 
 describe("HomeScreen", () => {
@@ -97,20 +126,21 @@ describe("HomeScreen", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly", () => {
+  it("renders correctly with account information", () => {
     const { getByText } = renderWithProviders(
       <HomeScreen
-        navigation={{ replace: jest.fn() } as never}
+        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
         route={{} as never}
       />,
     );
     expect(getByText("Test Account")).toBeTruthy();
+    expect(getByText("$350.75")).toBeTruthy();
   });
 
-  it.skip("handles clipboard copy when copy button is pressed", async () => {
+  it("handles clipboard copy when copy button is pressed", async () => {
     const { getByTestId } = renderWithProviders(
       <HomeScreen
-        navigation={{ replace: jest.fn() } as never}
+        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
         route={{} as never}
       />,
     );
@@ -118,6 +148,22 @@ describe("HomeScreen", () => {
     const copyButton = getByTestId("icon-button-copy");
     await userEvent.press(copyButton);
 
-    expect(mockCopyToClipboard).toHaveBeenCalled();
-  }, 10000);
+    expect(mockCopyToClipboard).toHaveBeenCalledWith("test-public-key", {
+      notificationMessage: "Address copied",
+    });
+  });
+
+  it("renders action buttons correctly", () => {
+    const { getByText } = renderWithProviders(
+      <HomeScreen
+        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
+        route={{} as never}
+      />,
+    );
+
+    expect(getByText("Buy")).toBeTruthy();
+    expect(getByText("Send")).toBeTruthy();
+    expect(getByText("Swap")).toBeTruthy();
+    expect(getByText("Copy")).toBeTruthy();
+  });
 });
