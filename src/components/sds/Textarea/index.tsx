@@ -53,6 +53,10 @@ const LINES_MULTIPLIER = 28;
 
 const Container = styled.View<Pick<StyledProps, "$fieldSize">>`
   width: 100%;
+`;
+
+const TextAreaContainer = styled.View<Pick<StyledProps, "$fieldSize">>`
+  width: 100%;
   height: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
     px(TEXTAREA_SIZES[$fieldSize].lines * LINES_MULTIPLIER)};
 `;
@@ -209,21 +213,23 @@ export const Textarea: React.FC<TextareaProps> = ({
         </Text>
       )}
 
-      <StyledTextInput
-        testID={testID}
-        $fieldSize={fieldSize}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        multiline
-        numberOfLines={TEXTAREA_SIZES[fieldSize].lines}
-        textAlignVertical="top"
-        $isError={isError || !!error}
-        $isDisabled={!editable}
-        placeholderTextColor={THEME.colors.text.secondary}
-        editable={editable}
-        {...props}
-      />
+      <TextAreaContainer $fieldSize={fieldSize}>
+        <StyledTextInput
+          testID={testID}
+          $fieldSize={fieldSize}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          multiline
+          numberOfLines={TEXTAREA_SIZES[fieldSize].lines}
+          textAlignVertical="top"
+          $isError={isError || !!error}
+          $isDisabled={!editable}
+          placeholderTextColor={THEME.colors.text.secondary}
+          editable={editable}
+          {...props}
+        />
+      </TextAreaContainer>
 
       {note && (
         <FieldNoteWrapper>

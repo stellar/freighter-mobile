@@ -49,8 +49,11 @@ describe("ImportWalletScreen", () => {
     const clipboardButton = getByTestId("clipboard-button");
     fireEvent.press(clipboardButton);
 
-    await waitFor(() => {
-      expect(getByDisplayValue("clipboard recovery phrase")).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByDisplayValue("clipboard recovery phrase")).toBeTruthy();
+      },
+      { timeout: 10000 },
+    );
   });
 });

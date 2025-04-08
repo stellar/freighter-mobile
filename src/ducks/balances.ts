@@ -26,6 +26,7 @@ let pollingIntervalId: NodeJS.Timeout | null = null;
  * @property {BalanceMap} balances - Object mapping balance IDs to Balance objects
  * @property {PricedBalanceMap} pricedBalances - Object mapping balance IDs to PricedBalance objects
  * @property {boolean} isLoading - Indicates if balance data is currently being fetched
+ * @property {boolean} isFunded - Whether the account is funded
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
  * @property {Function} startPolling - Function to start polling for balance updates
@@ -35,6 +36,7 @@ interface BalancesState {
   balances: BalanceMap;
   pricedBalances: PricedBalanceMap;
   isLoading: boolean;
+  isFunded: boolean;
   error: string | null;
   fetchAccountBalances: (params: {
     publicKey: string;
@@ -189,20 +191,26 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   balances: {} as BalanceMap,
   pricedBalances: {} as PricedBalanceMap,
   isLoading: false,
+  isFunded: false,
   error: null,
   fetchAccountBalances: async (params) => {
     try {
+      // It can happen that the public key is not available yet during app initialization
+      // In this case, we should early return and wait for the public key to be available
+      // to prevent UI glitches due to balances fetching error
+      if (!params.publicKey) return;
+
       set({ isLoading: true, error: null });
 
       // Fetch balances
-      const { balances } = await fetchBalances(params);
+      const { balances, isFunded } = await fetchBalances(params);
 
       if (!balances) {
         throw new Error("No balances returned from API");
       }
 
       // Set the "raw" balances right away as they don't depend on prices
-      set({ balances });
+      set({ balances, isFunded: isFunded ?? false });
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;

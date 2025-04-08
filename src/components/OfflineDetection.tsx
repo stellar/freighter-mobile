@@ -8,42 +8,39 @@ interface Props {
   children: React.ReactNode;
 }
 
+const NETWORK_CHECK_INITIAL_DELAY = 1000;
+
 export const OfflineDetection = ({ children }: Props) => {
   const { isConnected, isInternetReachable, isOffline, setNetworkInfo } =
     useNetworkStore();
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((event) => {
-      debug(
-        "network",
-        `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
-      );
+    let unsubscribe: (() => void) | undefined;
 
-      setNetworkInfo({
-        isConnected: event.isConnected,
-        isInternetReachable: event.isInternetReachable,
-      });
-    });
+    // Initial network check to consume initial "null" values
+    // and avoid UI glitches due to initial network state
+    NetInfo.fetch();
 
-    // Initial network check
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    NetInfo.fetch()
-      .then((networkState) => {
+    // We still need to wait a while before subscribing to the network change event
+    // otherwise we could get the initial transient "null" values which would cause a UI glitch
+    const initialSetupTimeout = setTimeout(() => {
+      unsubscribe = NetInfo.addEventListener((event) => {
         debug(
           "network",
-          `Initial network state: connected=${networkState.isConnected}, reachable=${networkState.isInternetReachable}`,
+          `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
         );
-      })
-      .catch((error: Error) => {
-        debug(
-          "network",
-          `Failed to fetch initial network state: ${error.message}`,
-        );
+
+        setNetworkInfo({
+          isConnected: event.isConnected,
+          isInternetReachable: event.isInternetReachable,
+        });
       });
+    }, NETWORK_CHECK_INITIAL_DELAY);
 
     return () => {
       debug("network", "Cleaning up network listener");
-      unsubscribe();
+      clearTimeout(initialSetupTimeout);
+      unsubscribe?.();
     };
   }, [setNetworkInfo]);
 

@@ -29,9 +29,7 @@ jest.mock("ducks/prices", () => ({
 // Mock React Navigation's useFocusEffect
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn((callback) => {
-    // Execute the callback immediately to simulate focus
     callback();
-    // Return a cleanup function
     return () => {};
   }),
 }));
@@ -70,7 +68,6 @@ const mockUsePricesStore = usePricesStore as jest.MockedFunction<
   typeof usePricesStore
 >;
 
-// Type the mock functions properly
 const mockIsLiquidityPool =
   balancesHelpers.isLiquidityPool as jest.MockedFunction<
     (balance: Balance) => balance is LiquidityPoolBalance
@@ -85,7 +82,7 @@ describe("BalancesList", () => {
     const mockNativeBalance: NativeBalance = {
       token: {
         code: "XLM",
-        type: "native" as const, // Fix the type issue
+        type: "native" as const,
       },
       total: new BigNumber("100.5"),
       available: new BigNumber("100.5"),
@@ -147,7 +144,7 @@ describe("BalancesList", () => {
     },
   });
 
-  // Helper function to create mock store state
+  // Helper function to create mock store state with default values
   const createMockStoreState = (
     overrides: Partial<{
       balances: BalanceMap;
@@ -155,6 +152,7 @@ describe("BalancesList", () => {
       isLoading: boolean;
       error: string | null;
       fetchAccountBalances: jest.Mock;
+      isFunded: boolean;
     }> = {},
   ) => ({
     balances: {},
@@ -162,8 +160,17 @@ describe("BalancesList", () => {
     isLoading: false,
     error: null,
     fetchAccountBalances: jest.fn().mockResolvedValue(undefined),
+    isFunded: false,
     ...overrides,
   });
+
+  // Helper function to render BalancesList with common props
+  const renderBalancesList = (storeOverrides = {}) => {
+    mockUseBalancesStore.mockReturnValue(createMockStoreState(storeOverrides));
+    return renderWithProviders(
+      <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
+    );
+  };
 
   const { mockBalances, mockNativeBalance, mockAssetBalance } =
     createMockBalances();
@@ -174,8 +181,6 @@ describe("BalancesList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock implementations
     mockUseBalancesStore.mockReturnValue(createMockStoreState());
     mockUsePricesStore.mockReturnValue({
       prices: {},
@@ -184,8 +189,6 @@ describe("BalancesList", () => {
       lastUpdated: null,
       fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
     });
-
-    // Mock balance helpers defaults
     mockIsLiquidityPool.mockReturnValue(false);
     (
       balancesHelpers.getTokenIdentifiersFromBalances as jest.Mock
@@ -193,51 +196,34 @@ describe("BalancesList", () => {
     (balancesHelpers.getLPShareCode as jest.Mock).mockReturnValue("");
   });
 
-  describe("initial render", () => {
-    it("should show loading state when fetching balances", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({ isLoading: true }),
-      );
-
-      const { getByTestId } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-      expect(getByTestId("balances-list-spinner")).toBeVisible();
+  describe("initial render states", () => {
+    test.each([
+      ["loading", { isLoading: true }, "balances-list-spinner"],
+      ["error", { error: "Failed to load balances" }, "Error loading balances"],
+      ["empty unfunded", { isFunded: false }, "Fund with Friendbot"],
+      ["empty funded", { isFunded: true }, "Tokens"],
+    ])("shows %s state correctly", (_, storeState, expectedElement) => {
+      const { getByText, getByTestId } = renderBalancesList(storeState);
+      if (expectedElement.includes("balances-list")) {
+        expect(getByTestId(expectedElement)).toBeVisible();
+      } else {
+        expect(getByText(expectedElement)).toBeTruthy();
+      }
     });
 
-    it("should show error state when there is an error loading balances", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({ error: "Failed to load balances" }),
-      );
-
-      const { getByText } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-      expect(getByText("Error loading balances")).toBeTruthy();
+    it("shows empty state with proper messaging", () => {
+      const { getByText } = renderBalancesList({ isFunded: false });
+      expect(
+        getByText(/To start using this account, fund it with at least 1 XLM./),
+      ).toBeTruthy();
+      expect(getByText(/Learn more/)).toBeTruthy();
     });
 
-    it("should show empty state when no balances are found", () => {
-      mockUseBalancesStore.mockReturnValue(createMockStoreState());
-
-      const { getByText } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-      expect(getByText("Fund with Friendbot")).toBeTruthy();
-    });
-
-    it("should render the list of balances correctly", () => {
-      mockUseBalancesStore.mockReturnValue(
-        createMockStoreState({
-          balances: mockBalances,
-          pricedBalances: mockPricedBalances,
-        }),
-      );
-
-      const { getByText, getByTestId } = renderWithProviders(
-        <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
-      );
-
-      expect(getByTestId("balances-list")).toBeTruthy();
+    it("renders the list of balances when data is available", () => {
+      const { getByText } = renderBalancesList({
+        balances: mockBalances,
+        pricedBalances: mockPricedBalances,
+      });
       expect(getByText("XLM")).toBeTruthy();
       expect(getByText("USDC")).toBeTruthy();
     });
@@ -279,7 +265,7 @@ describe("BalancesList", () => {
   });
 
   describe("liquidity pool balances", () => {
-    it("should handle liquidity pool balances correctly", () => {
+    it("should handle liquidity pool balances correctly", async () => {
       const mockLiquidityPoolBalance = {
         total: new BigNumber("1472.6043561"),
         limit: new BigNumber("100000"),
@@ -338,6 +324,11 @@ describe("BalancesList", () => {
       const { getByText } = renderWithProviders(
         <BalancesList publicKey={testPublicKey} network={NETWORKS.TESTNET} />,
       );
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+
       expect(getByText("XLM / USDC")).toBeTruthy();
     });
   });

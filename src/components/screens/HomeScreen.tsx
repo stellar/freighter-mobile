@@ -1,4 +1,3 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import ContextMenuButton from "components/ContextMenuButton";
@@ -18,6 +17,7 @@ import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
@@ -84,6 +84,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const publicKey = account?.publicKey;
 
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
 
   const { formattedBalance } = useTotalBalance();
 
@@ -105,6 +106,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       onPress: () => logger.debug("HomeScreen", "Not implemented"),
     },
   ];
+
+  const handleCopyAddress = () => {
+    if (!publicKey) return;
+
+    copyToClipboard(publicKey, {
+      notificationMessage: t("accountAddressCopied"),
+    });
+  };
 
   return (
     <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
@@ -139,7 +148,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
-            onPress={() => Clipboard.setString(publicKey ?? "")}
+            onPress={handleCopyAddress}
           />
         </ButtonsRow>
       </TopSection>

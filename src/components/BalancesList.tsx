@@ -1,7 +1,8 @@
 import { AssetIcon } from "components/AssetIcon";
 import { FriendbotButton } from "components/FriendbotButton";
+import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
+import { CREATE_ACCOUNT_URL, NETWORKS } from "config/constants";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
@@ -14,7 +15,7 @@ import {
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl } from "react-native";
+import { FlatList, Linking, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -64,6 +65,15 @@ const RightSection = styled.View<RightSectionProps>`
   width: ${({ isLP }: RightSectionProps) => px(isLP ? 20 : 115)};
 `;
 
+const NotificationWrapper = styled.View`
+  margin-bottom: ${px(24)};
+`;
+
+const NotificationContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
 /**
  * Extended PricedBalance type with an id field for use in FlatList
  */
@@ -105,6 +115,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     pricedBalances,
     isLoading: isBalancesLoading,
     error: balancesError,
+    isFunded,
     fetchAccountBalances,
   } = useBalancesStore();
 
@@ -175,17 +186,35 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   }
 
   // If still no balances after fetching, then show the empty state
-  if (noBalances) {
+  if (noBalances && !isFunded) {
     return (
       <ListWrapper>
         <ListTitle>
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
 
+        <NotificationWrapper>
+          <Notification
+            variant="primary"
+            onPress={() => {
+              Linking.openURL(CREATE_ACCOUNT_URL);
+            }}
+            customContent={
+              <NotificationContent>
+                <Text sm>
+                  {t("balancesList.unfundedAccount.message")}{" "}
+                  <Text sm semiBold color={THEME.colors.primary}>
+                    {t("balancesList.unfundedAccount.learnMore")}
+                  </Text>
+                </Text>
+              </NotificationContent>
+            }
+          />
+        </NotificationWrapper>
+
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />
         )}
-        {!isTestNetwork && <Text md>{t("balancesList.empty")}</Text>}
       </ListWrapper>
     );
   }

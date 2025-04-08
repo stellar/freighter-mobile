@@ -1,6 +1,7 @@
 {
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "Sem conexão com a internet",
+  "accountAddressCopied": "Endereço da conta copiado!",
   "home": {
     "title": "Início",
     "buy": "Comprar",
@@ -44,7 +45,7 @@
   "recoveryPhraseScreen": {
     "title": "Sua Frase de Recuperação",
     "warning": "Isso é apenas para você. Nunca compartilhe isto.",
-    "copyButtonText": "Copiar",
+    "copyButtonText": "Copiar para a área de transferência",
     "defaultActionButtonText": "Continuar",
     "footerNoteText": "Certifique-se de guardá-la em um lugar seguro\nantes de continuar"
   },
@@ -136,5 +137,9 @@
       "removeAsset": "Remover ativo"
     }
   },
-  "logout": "Sair"
+  "logout": "Sair",
+  "clipboard": {
+    "copied": "Copiado para a área de transferência!",
+    "failed": "Falha ao copiar para a área de transferência"
+  }
 }
