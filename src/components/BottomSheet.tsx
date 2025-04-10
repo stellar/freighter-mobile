@@ -38,7 +38,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   icon,
   customContent,
 }) => {
-  // Appearance.setColorScheme("light");
   const theme = colorScheme.get() ?? "dark";
 
   const MapIcons = {
