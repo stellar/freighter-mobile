@@ -122,7 +122,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               </View>
             )}
             <View className="flex-row items-center justify-between">
-              <Text xl weight="medium">
+              <Text xl medium>
                 {title}
               </Text>
               {!IconData && (
