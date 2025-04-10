@@ -10,6 +10,7 @@ interface ListItemProps {
   titleColor?: string;
   trailingContent?: React.ReactNode;
   onPress?: () => void;
+  testID?: string;
 }
 
 interface ListProps {
@@ -40,9 +41,9 @@ const Divider = styled.View`
 
 export const List: React.FC<ListProps> = ({ items }) => (
   <ListContainer>
-    {items.map((item) => (
+    {items.map((item, index) => (
       <React.Fragment key={item.title}>
-        <ListItem onPress={item.onPress}>
+        <ListItem onPress={item.onPress} testID={item.testID}>
           {item.icon}
           <TitleContainer>
             <Text
@@ -55,7 +56,7 @@ export const List: React.FC<ListProps> = ({ items }) => (
           </TitleContainer>
           {item.trailingContent}
         </ListItem>
-        {items.indexOf(item) < items.length - 1 && <Divider />}
+        {index < items.length - 1 && <Divider testID={`divider-${index}`} />}
       </React.Fragment>
     ))}
   </ListContainer>
