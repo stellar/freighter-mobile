@@ -6,7 +6,6 @@ import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -16,7 +15,7 @@ const Header = styled.View`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: ${px(DEFAULT_PADDING)};
+  margin-bottom: ${DEFAULT_PADDING}px;
 `;
 
 const TitleContainer = styled.View`

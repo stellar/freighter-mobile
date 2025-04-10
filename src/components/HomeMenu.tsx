@@ -12,7 +12,6 @@ import Icon from "components/sds/Icon";
 import { DEFAULT_PADDING } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -44,7 +43,7 @@ const HeaderContainer = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${px(DEFAULT_PADDING)};
+  margin-bottom: ${DEFAULT_PADDING}px;
 `;
 
 /**
