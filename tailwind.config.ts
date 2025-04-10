@@ -7,6 +7,35 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: "var(--color-lilac-9)",
+        secondary: "var(--color-gray-12)",
+        background: {
+          primary: "var(--color-gray-1)",
+          secondary: "var(--color-gray-2)",
+          tertiary: "var(--color-gray-3)",
+        },
+        state: {
+          primary: "var(--color-gray-4)",
+          secondary: "var(--color-gray-5)",
+        },
+        border: {
+          primary: "var(--color-gray-6)",
+          secondary: "var(--color-gray-7)",
+          tertiary: "var(--color-gray-8)",
+        },
+        foreground: {
+          primary: "var(--color-gray-9)",
+          secondary: "var(--color-gray-10)",
+        },
+        text: {
+          primary: "var(--color-gray-12)",
+          secondary: "var(--color-gray-11)",
+        },
+        status: {
+          success: "var(--color-green-9)",
+          error: "var(--color-red-9)",
+          warning: "var(--color-amber-9)",
+        },
         gray: {
           1: "var(--color-gray-1)",
           2: "var(--color-gray-2)",

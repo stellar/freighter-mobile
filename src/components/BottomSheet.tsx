@@ -14,14 +14,14 @@ import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export const Icons = {
+const Icons = {
   Assets: "Assets",
   Announcement: "Announcement",
   Danger: "Danger",
   Wallet: "Wallet",
 };
 
-export type BottomSheetProps = {
+type BottomSheetProps = {
   title: string;
   description: string;
   modalRef: React.RefObject<BottomSheetModal | null>;
@@ -38,6 +38,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   icon,
   customContent,
 }) => {
+  // Appearance.setColorScheme("light");
   const theme = colorScheme.get() ?? "dark";
 
   const MapIcons = {
@@ -79,8 +80,8 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
 
   const renderHandle = useCallback(
     () => (
-      <View className="bg-gray-1 w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
-        <View className="h-1.5 w-10 rounded-full bg-gray-8 opacity-35" />
+      <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
+        <View className="h-1.5 w-10 rounded-full bg-border-primary opacity-35" />
       </View>
     ),
     [],
@@ -96,7 +97,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       handleComponent={renderHandle}
     >
       <BottomSheetView
-        className="flex-1 bg-gray-1 pl-6 pr-6 pt-6 gap-6"
+        className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
           paddingBottom: insets.bottom,
         }}

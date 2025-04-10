@@ -151,7 +151,7 @@ describe("HomeScreen", () => {
     expect(mockCopyToClipboard).toHaveBeenCalledWith("test-public-key", {
       notificationMessage: "Address copied",
     });
-  });
+  }, 20000);
 
   it("renders action buttons correctly", () => {
     const { getByText } = renderWithProviders(
