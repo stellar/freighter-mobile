@@ -51,7 +51,7 @@ const CustomNavigationHeader = (
         </TouchableOpacity>
       )}
       {typeof options.headerTitle === "string" && (
-        <HeaderTitle primary>{options.headerTitle}</HeaderTitle>
+        <Text md primary semiBold>{options.headerTitle}</Text>
       )}
       {options.headerRight ? (
         options.headerRight({
