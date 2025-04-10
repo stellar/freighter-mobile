@@ -193,6 +193,7 @@ export interface TokenPricesMap {
 export type PricedBalance = Balance &
   TokenPrice & {
     tokenCode?: string;
+    id?: string;
     fiatCode?: string;
     fiatTotal?: BigNumber | null;
     displayName?: string;

@@ -15,6 +15,8 @@ interface CopyToClipboardOptions {
 interface UseClipboardResult {
   /** Copy text to clipboard and optionally show a toast notification */
   copyToClipboard: (text: string, options?: CopyToClipboardOptions) => void;
+  /** Get text from clipboard */
+  getClipboardText: () => Promise<string>;
 }
 
 /**
@@ -60,5 +62,7 @@ export const useClipboard = (): UseClipboardResult => {
     [showToast, t],
   );
 
-  return { copyToClipboard };
+  const getClipboardText = useCallback(() => Clipboard.getString(), []);
+
+  return { copyToClipboard, getClipboardText };
 };

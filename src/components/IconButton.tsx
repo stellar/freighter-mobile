@@ -31,6 +31,7 @@ interface IconButtonProps {
   title: string;
   onPress?: () => void;
   disabled?: boolean;
+  testID?: string;
 }
 
 /**
@@ -73,11 +74,15 @@ export const IconButton: React.FC<IconButtonProps> = ({
   title,
   onPress,
   disabled = false,
+  testID,
 }) => {
   const isDisabled = disabled || !onPress;
 
   return (
-    <ButtonContainer disabled={isDisabled} testID="icon-button-container">
+    <ButtonContainer
+      disabled={isDisabled}
+      testID={testID ?? "icon-button-container"}
+    >
       <IconWrapper
         onPress={onPress}
         disabled={isDisabled}

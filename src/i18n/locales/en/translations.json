@@ -7,7 +7,12 @@
     "buy": "Buy",
     "send": "Send",
     "swap": "Swap",
-    "copy": "Copy"
+    "copy": "Copy",
+    "actions": {
+      "settings": "Settings",
+      "manageAssets": "Manage assets",
+      "myQRCode": "My QR code"
+    }
   },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",
@@ -113,6 +118,40 @@
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
+  },
+  "manageAssetsScreen": {
+    "title": "Manage assets",
+    "hiddenTokens": "Hidden tokens",
+    "addAssetButton": "Add an asset",
+    "tokenAddressCopied": "Token address copied!",
+    "moreInfo": {
+      "title": "Manage Assets",
+      "block1": "When you manage assets on the Stellar blockchain, you're creating and controlling digital representations of value, such as currencies or tokens.",
+      "block2": "This involves setting up trustlines, which allow users to hold and trade your assets, and configuring flags to control access and usage. By leveraging these features, you can securely issue, distribute, and manage your assets while maintaining compliance and flexibility."
+    },
+    "actions": {
+      "copyAddress": "Copy address",
+      "hideAsset": "Hide asset",
+      "unhideAsset": "Unhide asset",
+      "removeAsset": "Remove asset"
+    }
+  },
+  "addAssetScreen": {
+    "title": "Add an asset",
+    "addAssetButton": "Add asset",
+    "searchPlaceholder": "Search token name or address",
+    "pasteFromClipboard": "Paste from clipboard",
+    "tokenAddressCopied": "Token address copied!",
+    "popular": "Popular",
+    "native": "Native",
+    "add": "Add",
+    "onYourList": "On your list",
+    "addAssetTrustline": "Add Asset Trustline",
+    "disclaimer": "Allow asset to be viewable and tradeable from your wallet. Only add assets you recognize and trust.",
+    "cancel": "Cancel",
+    "addAsset": "Add asset",
+    "toastSuccess": "{{assetName}} successfully added as an asset",
+    "toastError": "Error adding asset {{assetName}}"
   },
   "logout": "Log out",
   "clipboard": {

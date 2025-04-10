@@ -103,9 +103,9 @@ const StyledTextInput = styled.TextInput<
   })};
 `;
 
-const SideElement = styled.View<{ position: "left" | "right" }>`
+const SideElement = styled.View<{ marginSide: "left" | "right" }>`
   justify-content: center;
-  margin-${({ position }: { position: "left" | "right" }) => position}: ${px(8)};
+  margin-${({ marginSide }: { marginSide: "left" | "right" }) => marginSide}: ${px(8)};
 `;
 
 const FieldNoteWrapper = styled.View`
@@ -290,7 +290,7 @@ export const Input: React.FC<InputProps> = ({
       >
         {copyButton?.position === "left" && renderCopyButton("left")}
         {leftElement && (
-          <SideElement position="left">{leftElement}</SideElement>
+          <SideElement marginSide="right">{leftElement}</SideElement>
         )}
 
         <StyledTextInput
@@ -308,7 +308,7 @@ export const Input: React.FC<InputProps> = ({
         />
 
         {rightElement && (
-          <SideElement position="right">{rightElement}</SideElement>
+          <SideElement marginSide="left">{rightElement}</SideElement>
         )}
         {copyButton?.position === "right" && renderCopyButton("right")}
       </InputContainer>
