@@ -1,4 +1,5 @@
 import { BalancesList } from "components/BalancesList";
+import { HomeMenu } from "components/HomeMenu";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
@@ -17,6 +18,9 @@ import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
 
+/**
+ * Top section of the home screen containing account info and actions
+ */
 const TopSection = styled.View`
   margin-top: ${px(50)};
   padding-top: ${px(22)};
@@ -24,18 +28,27 @@ const TopSection = styled.View`
   align-items: center;
 `;
 
+/**
+ * Container for account total and name
+ */
 const AccountTotal = styled.View`
   flex-direction: column;
   gap: ${px(12)};
   align-items: center;
 `;
 
+/**
+ * Row containing account name and avatar
+ */
 const AccountNameRow = styled.View`
   flex-direction: row;
   gap: ${px(6)};
   align-items: center;
 `;
 
+/**
+ * Row containing action buttons
+ */
 const ButtonsRow = styled.View`
   flex-direction: row;
   gap: ${px(24)};
@@ -44,6 +57,9 @@ const ButtonsRow = styled.View`
   margin-vertical: ${px(32)};
 `;
 
+/**
+ * Divider line between sections
+ */
 const BorderLine = styled.View`
   width: ${width}px;
   margin-left: ${px(-24)};
@@ -52,6 +68,9 @@ const BorderLine = styled.View`
   margin-bottom: ${px(24)};
 `;
 
+/**
+ * Home screen component displaying account information and balances
+ */
 export const HomeScreen = () => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -72,6 +91,8 @@ export const HomeScreen = () => {
 
   return (
     <BaseLayout>
+      <HomeMenu />
+
       <TopSection>
         <AccountTotal>
           <AccountNameRow>

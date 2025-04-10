@@ -9,6 +9,10 @@
     "swap": "Trocar",
     "copy": "Copiar"
   },
+  "settings": {
+    "title": "Configurações",
+    "logout": "Sair"
+  },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",
     "iAlreadyHaveWallet": "Já tenho uma carteira",

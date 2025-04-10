@@ -1,6 +1,7 @@
 export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
+  SETTINGS: "Settings",
 
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -23,12 +24,14 @@ export const MAIN_TAB_ROUTES = {
   TAB_HISTORY: "History",
   TAB_HOME: "Home",
   TAB_DISCOVERY: "Discovery",
+  SETTINGS: "Settings",
 } as const;
 
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
+  Settings: undefined;
 };
 
 export type AuthStackParamList = {

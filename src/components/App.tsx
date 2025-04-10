@@ -11,8 +11,10 @@ import { RootNavigator } from "navigators/RootNavigator";
 import { ToastProvider } from "providers/ToastProvider";
 import React from "react";
 import { I18nextProvider } from "react-i18next";
-import { StatusBar } from "react-native";
+import { StatusBar, Appearance } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+Appearance.setColorScheme("dark");
 
 // Create a navigation ref that can be used outside of the Navigation Provider
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();

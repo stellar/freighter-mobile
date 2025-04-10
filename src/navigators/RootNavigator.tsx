@@ -3,6 +3,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
+import { SettingsScreen } from "components/screens/SettingsScreen";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -53,10 +54,13 @@ export const RootNavigator = () => {
       }}
     >
       {authStatus === AUTH_STATUS.AUTHENTICATED ? (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
-          component={TabNavigator}
-        />
+        <>
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
+            component={TabNavigator}
+          />
+          <RootStack.Screen name="Settings" component={SettingsScreen} />
+        </>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
