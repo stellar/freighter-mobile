@@ -116,7 +116,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
+    <BaseLayout insets={{ bottom: false }}>
       <ContextMenuButton
         contextMenuProps={{
           onPress: (e) => {

@@ -12,10 +12,10 @@ interface BaseLayoutProps {
   backgroundColor?: string;
   useKeyboardAvoidingView?: boolean;
   insets?: {
-    top: boolean;
-    right: boolean;
-    bottom: boolean;
-    left: boolean;
+    top?: boolean;
+    right?: boolean;
+    bottom?: boolean;
+    left?: boolean;
   };
 }
 
@@ -23,10 +23,10 @@ interface StyledViewProps {
   $backgroundColor: string;
   $insets: EdgeInsets;
   $insetsConfig?: {
-    top: boolean;
-    right: boolean;
-    bottom: boolean;
-    left: boolean;
+    top?: boolean;
+    right?: boolean;
+    bottom?: boolean;
+    left?: boolean;
   };
 }
 
@@ -50,20 +50,25 @@ const StyledView = styled.View<StyledViewProps>`
     $backgroundColor};
 `;
 
+const DEFAULT_INSETS = {
+  top: true,
+  right: true,
+  bottom: true,
+  left: true,
+};
+
 export const BaseLayout = ({
   children,
   useSafeArea = true,
   useKeyboardAvoidingView = false,
   backgroundColor = THEME.colors.background.default,
-  insets = {
-    top: true,
-    right: true,
-    bottom: true,
-    left: true,
-  },
+  insets = DEFAULT_INSETS,
 }: BaseLayoutProps) => {
   const safeAreaInsets = useSafeAreaInsets();
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
+
+  // Merge provided insets with defaults to maintain default values for unspecified props
+  const mergedInsets = { ...DEFAULT_INSETS, ...insets };
 
   if (useKeyboardAvoidingView) {
     return (
@@ -71,7 +76,7 @@ export const BaseLayout = ({
         <Container
           $insets={safeAreaInsets}
           $backgroundColor={backgroundColor}
-          $insetsConfig={insets}
+          $insetsConfig={mergedInsets}
         >
           {children}
         </Container>
@@ -83,7 +88,7 @@ export const BaseLayout = ({
     <Container
       $insets={safeAreaInsets}
       $backgroundColor={backgroundColor}
-      $insetsConfig={insets}
+      $insetsConfig={mergedInsets}
     >
       {children}
     </Container>

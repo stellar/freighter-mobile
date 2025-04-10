@@ -37,7 +37,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   };
 
   return (
-    <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
+    <BaseLayout insets={{ bottom: false }}>
       <Display sm style={{ alignSelf: "center" }}>
         {t("history.title")}
       </Display>

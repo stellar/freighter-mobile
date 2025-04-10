@@ -7,7 +7,7 @@ export const DiscoveryScreen = () => {
   const { t } = useAppTranslation();
 
   return (
-    <BaseLayout insets={{ bottom: false, left: true, right: true, top: true }}>
+    <BaseLayout insets={{ bottom: false }}>
       <Display sm style={{ alignSelf: "center" }}>
         {t("discovery.title")}
       </Display>

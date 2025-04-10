@@ -150,10 +150,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout
-      insets={{ bottom: true, left: true, right: true, top: false }}
-      useKeyboardAvoidingView
-    >
+    <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <BottomSheet
         title={t("manageAssetsScreen.moreInfo.title")}
         description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}

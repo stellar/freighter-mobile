@@ -122,7 +122,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   );
 
   return (
-    <BaseLayout insets={{ bottom: true, left: true, right: true, top: false }}>
+    <BaseLayout insets={{ top: false }}>
       <BottomSheet
         title={t("manageAssetsScreen.moreInfo.title")}
         description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}

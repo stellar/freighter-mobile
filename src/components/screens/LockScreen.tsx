@@ -111,10 +111,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
       useSafeArea
       useKeyboardAvoidingView
       insets={{
-        top: true,
-        right: true,
         bottom: false,
-        left: true,
       }}
     >
       <Container>
