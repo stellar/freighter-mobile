@@ -18,6 +18,7 @@ module.exports = {
       "react-native-safe-area-context",
       "react-native-responsive-screen",
       "@shopify/react-native-skia",
+      "zeego",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
