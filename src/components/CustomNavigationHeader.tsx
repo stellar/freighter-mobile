@@ -24,11 +24,6 @@ const StyledContainer = styled.View<StyledProps>`
   background-color: ${THEME.colors.background.default};
 `;
 
-const HeaderTitle = styled(Text)`
-  font-size: ${px(16)};
-  font-weight: 600;
-  color: ${THEME.colors.text.primary};
-`;
 
 const HeaderRight = styled.View`
   width: ${px(24)};
