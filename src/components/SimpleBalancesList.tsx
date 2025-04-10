@@ -33,7 +33,11 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   renderRightContent,
   rightSectionWidth,
 }) => {
-  const { balanceItems } = useBalancesList(publicKey, network, false);
+  const { balanceItems } = useBalancesList({
+    publicKey,
+    network,
+    shouldPoll: false,
+  });
 
   if (!balanceItems.length) {
     return null;

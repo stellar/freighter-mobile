@@ -13,11 +13,17 @@ interface UseBalancesListResult {
   handleRefresh: () => void;
 }
 
-export const useBalancesList = (
-  publicKey: string,
-  network: NETWORKS,
+interface UseBalancesListProps {
+  publicKey: string;
+  network: NETWORKS;
+  shouldPoll?: boolean;
+}
+
+export const useBalancesList = ({
+  publicKey,
+  network,
   shouldPoll = true,
-): UseBalancesListResult => {
+}: UseBalancesListProps): UseBalancesListResult => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMounting, setIsMounting] = useState(true);
   const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);

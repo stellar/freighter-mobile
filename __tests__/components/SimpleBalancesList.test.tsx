@@ -121,11 +121,11 @@ describe("SimpleBalancesList", () => {
       />,
     );
 
-    expect(useBalancesList).toHaveBeenCalledWith(
-      testPublicKey,
-      NETWORKS.TESTNET,
-      false,
-    );
+    expect(useBalancesList).toHaveBeenCalledWith({
+      publicKey: testPublicKey,
+      network: NETWORKS.TESTNET,
+      shouldPoll: false,
+    });
   });
 
   it("should render ScrollView with correct props", () => {

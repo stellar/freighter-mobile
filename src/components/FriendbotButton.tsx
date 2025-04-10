@@ -16,7 +16,7 @@ export const FriendbotButton = ({
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const { handleRefresh } = useBalancesList(publicKey, network);
+  const { handleRefresh } = useBalancesList({ publicKey, network });
 
   const handleFundAccount = async () => {
     setIsLoading(true);

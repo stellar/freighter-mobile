@@ -66,7 +66,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     isRefreshing,
     isFunded,
     handleRefresh,
-  } = useBalancesList(publicKey, network, true);
+  } = useBalancesList({ publicKey, network, shouldPoll: true });
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,
