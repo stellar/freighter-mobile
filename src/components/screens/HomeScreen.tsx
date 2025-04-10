@@ -123,6 +123,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             actions[e.nativeEvent.index].onPress();
           },
           actions,
+          style: {
+            alignSelf: "flex-start",
+          },
         }}
       >
         <Icon.DotsHorizontal

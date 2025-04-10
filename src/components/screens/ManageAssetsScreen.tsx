@@ -1,6 +1,8 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -17,7 +19,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 
@@ -49,6 +51,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -58,7 +61,9 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
         </TouchableOpacity>
       ),
       headerRight: () => (
-        <TouchableOpacity onPress={() => {}}>
+        <TouchableOpacity
+          onPress={() => bottomSheetModalRef.current?.present()}
+        >
           <Icon.HelpCircle
             size={pxValue(24)}
             color={THEME.colors.base.secondary}
@@ -118,6 +123,12 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ bottom: true, left: true, right: true, top: false }}>
+      <BottomSheet
+        title={t("manageAssetsScreen.moreInfo.title")}
+        description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+        modalRef={bottomSheetModalRef}
+        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
+      />
       <SimpleBalancesList
         publicKey={account?.publicKey ?? ""}
         network={network}

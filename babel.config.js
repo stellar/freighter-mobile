@@ -2,7 +2,7 @@
 const getSrcDirs = require("./config/getSrcDirs");
 
 module.exports = {
-  presets: ["module:@react-native/babel-preset"],
+  presets: ["module:@react-native/babel-preset", "nativewind/babel"],
   plugins: [
     "babel-plugin-styled-components",
     [
@@ -21,5 +21,6 @@ module.exports = {
         alias: getSrcDirs(__dirname),
       },
     ],
+    "react-native-reanimated/plugin",
   ],
 };

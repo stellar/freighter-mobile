@@ -7,7 +7,7 @@ import React from "react";
 
 /* eslint-disable */
 // Mock the Skia canvas functionality with proper React components
-jest.mock("@shopify/react-native-skia", () => {
+jest.doMock("@shopify/react-native-skia", () => {
   const React = require("react");
 
   // Create mock components that actually render

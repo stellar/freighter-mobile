@@ -1,6 +1,8 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -18,7 +20,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 
@@ -48,6 +50,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const [search, setSearch] = useState("");
 
@@ -59,7 +62,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       ),
       headerRight: () => (
-        <TouchableOpacity onPress={() => {}}>
+        <TouchableOpacity
+          onPress={() => bottomSheetModalRef.current?.present()}
+        >
           <Icon.HelpCircle
             size={pxValue(24)}
             color={THEME.colors.base.secondary}
@@ -117,6 +122,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     </ContextMenuButton>
   );
 
+  // TODO: Use that component when integrating the add asset feature
   // const addAssetRightContent = (balance: PricedBalance) => (
   //   <Button
   //     secondary
@@ -148,6 +154,12 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       insets={{ bottom: true, left: true, right: true, top: false }}
       useKeyboardAvoidingView
     >
+      <BottomSheet
+        title={t("manageAssetsScreen.moreInfo.title")}
+        description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+        modalRef={bottomSheetModalRef}
+        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
+      />
       <Input
         placeholder={t("addAssetScreen.searchPlaceholder")}
         value={search}
