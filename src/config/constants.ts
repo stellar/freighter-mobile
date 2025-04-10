@@ -84,6 +84,9 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   TESTNET_NETWORK_DETAILS,
 ];
 
+export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
+export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
+
 /**
  * Non-sensitive storage keys.
  *

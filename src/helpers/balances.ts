@@ -237,3 +237,19 @@ export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
   // Convert back to object
   return Object.fromEntries(sortedEntries);
 };
+
+export const formatAssetIdentifier = (assetIdentifier: string) => {
+  const formattedAssetIdentifier = assetIdentifier.split(":");
+
+  if (formattedAssetIdentifier.length === 1) {
+    return {
+      assetCode: formattedAssetIdentifier[0],
+      issuer: "",
+    };
+  }
+
+  return {
+    assetCode: formattedAssetIdentifier[0],
+    issuer: formattedAssetIdentifier[1],
+  };
+};
