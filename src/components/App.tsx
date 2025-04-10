@@ -1,4 +1,3 @@
-/* eslint-disable @fnando/consistent-import/consistent-import */
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import {
   NavigationContainer,
