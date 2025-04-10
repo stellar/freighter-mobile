@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import Clipboard from "@react-native-clipboard/clipboard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
@@ -18,6 +17,7 @@ import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useRef } from "react";
 import { Platform, TouchableOpacity } from "react-native";
@@ -51,6 +51,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
@@ -73,9 +74,21 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     });
   }, [navigation, t]);
 
+  const copyTokenAddress = (balance: PricedBalance) => {
+    if (!balance.id) return;
+
+    const splittedId = balance.id.split(":");
+
+    // If the ID is a liquidity pool or any asset aside from the native token, we need to copy the issuer
+    // Otherwise, we can just copy the ID (native token)
+    copyToClipboard(splittedId.length === 2 ? splittedId[1] : balance.id, {
+      notificationMessage: t("manageAssetsScreen.tokenAddressCopied"),
+    });
+  };
+
   const actionsOnPress = {
     [t("manageAssetsScreen.actions.copyAddress")]: (balance: PricedBalance) =>
-      Clipboard.setString(balance.tokenCode ?? ""),
+      copyTokenAddress(balance),
     [t("manageAssetsScreen.actions.hideAsset")]: () =>
       logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
     [t("manageAssetsScreen.actions.removeAsset")]: () =>
