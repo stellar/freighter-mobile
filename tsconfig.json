@@ -10,6 +10,7 @@
     "*.js",
     "*.ts",
     "__mocks__",
-    "eslint.config.mjs"
+    "eslint.config.mjs",
+    "nativewind-env.d.ts"
   ]
 }

@@ -7,7 +7,12 @@
     "buy": "Comprar",
     "send": "Enviar",
     "swap": "Trocar",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "actions": {
+      "settings": "Configurações",
+      "manageAssets": "Gerenciar ativos",
+      "myQRCode": "Meu QR code"
+    }
   },
   "settings": {
     "title": "Configurações",
@@ -113,6 +118,40 @@
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
+  },
+  "manageAssetsScreen": {
+    "title": "Gerenciar ativos",
+    "hiddenTokens": "Tokens ocultos",
+    "addAssetButton": "Adicionar um ativo",
+    "tokenAddressCopied": "Endereço do token copiado!",
+    "moreInfo": {
+      "title": "Gerenciar Ativos",
+      "block1": "Ao gerenciar ativos na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
+      "block2": "Isso envolve a configuração de trustlines, que permitem que os usuários possuam e negociem seus ativos, além da definição de flags para controlar acesso e uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus ativos com segurança, mantendo conformidade e flexibilidade."
+    },
+    "actions": {
+      "copyAddress": "Copiar endereço",
+      "hideAsset": "Ocultar ativo",
+      "unhideAsset": "Reexibir ativo",
+      "removeAsset": "Remover ativo"
+    }
+  },
+  "addAssetScreen": {
+    "title": "Adicionar um ativo",
+    "addAssetButton": "Adicionar ativo",
+    "searchPlaceholder": "Buscar nome ou endereço do token",
+    "pasteFromClipboard": "Colar da área de transferência",
+    "tokenAddressCopied": "Endereço do token copiado!",
+    "popular": "Popular",
+    "native": "Nativo",
+    "add": "Adicionar",
+    "onYourList": "Em sua lista",
+    "addAssetTrustline": "Adicionar Trustline do Ativo",
+    "disclaimer": "Permita que o ativo seja visualizado e negociado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
+    "cancel": "Cancelar",
+    "addAsset": "Adicionar ativo",
+    "toastSuccess": "{{assetName}} adicionado com sucesso como um ativo",
+    "toastError": "Erro ao adicionar ativo {{assetName}}"
   },
   "logout": "Sair",
   "clipboard": {

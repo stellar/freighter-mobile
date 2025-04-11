@@ -1,19 +1,28 @@
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
+import ContextMenuButton from "components/ContextMenuButton";
 import { HomeMenu } from "components/HomeMenu";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { logger } from "config/logger";
+import {
+  MainTabStackParamList,
+  MAIN_TAB_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { px } from "helpers/dimensions";
+import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import React from "react";
-import { Dimensions } from "react-native";
+import { Dimensions, Platform } from "react-native";
 import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
@@ -21,8 +30,12 @@ const { width } = Dimensions.get("window");
 /**
  * Top section of the home screen containing account info and actions
  */
+type HomeScreenProps = BottomTabScreenProps<
+  MainTabStackParamList & RootStackParamList,
+  typeof MAIN_TAB_ROUTES.TAB_HOME
+>;
+
 const TopSection = styled.View`
-  margin-top: ${px(50)};
   padding-top: ${px(22)};
   width: 100%;
   align-items: center;
@@ -71,7 +84,7 @@ const BorderLine = styled.View`
 /**
  * Home screen component displaying account information and balances
  */
-export const HomeScreen = () => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
@@ -80,6 +93,38 @@ export const HomeScreen = () => {
   const { copyToClipboard } = useClipboard();
 
   const { formattedBalance } = useTotalBalance();
+
+  const Icons = Platform.select({
+    ios: {
+      settings: "gear",
+      manageAssets: "pencil",
+      myQrCode: "qrcode",
+    },
+    android: {
+      settings: "baseline_format_paint",
+      manageAssets: "baseline_delete",
+      myQrCode: "outline_circle",
+    },
+  });
+
+  const actions = [
+    {
+      title: t("home.actions.settings"),
+      systemIcon: Icons!.settings,
+      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+    },
+    {
+      title: t("home.actions.manageAssets"),
+      systemIcon: Icons!.manageAssets,
+      onPress: () =>
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
+    },
+    {
+      title: t("home.actions.myQRCode"),
+      systemIcon: Icons!.myQrCode,
+      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+    },
+  ];
 
   const handleCopyAddress = () => {
     if (!publicKey) return;
@@ -90,9 +135,25 @@ export const HomeScreen = () => {
   };
 
   return (
-    <BaseLayout>
+    <BaseLayout insets={{ bottom: false }}>
       <HomeMenu />
 
+      <ContextMenuButton
+        contextMenuProps={{
+          onPress: (e) => {
+            actions[e.nativeEvent.index].onPress();
+          },
+          actions,
+          style: {
+            alignSelf: "flex-start",
+          },
+        }}
+      >
+        <Icon.DotsHorizontal
+          size={pxValue(24)}
+          color={THEME.colors.base.secondary}
+        />
+      </ContextMenuButton>
       <TopSection>
         <AccountTotal>
           <AccountNameRow>

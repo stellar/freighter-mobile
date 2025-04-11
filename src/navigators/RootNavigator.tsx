@@ -4,15 +4,22 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { SettingsScreen } from "components/screens/SettingsScreen";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import {
+  ManageAssetsStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { AuthNavigator } from "navigators/AuthNavigator";
+import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 
-const RootStack = createNativeStackNavigator<RootStackParamList>();
+const RootStack = createNativeStackNavigator<
+  RootStackParamList & ManageAssetsStackParamList
+>();
 
 export const RootNavigator = () => {
   const { authStatus, getAuthStatus } = useAuthenticationStore();
@@ -54,13 +61,20 @@ export const RootNavigator = () => {
       }}
     >
       {authStatus === AUTH_STATUS.AUTHENTICATED ? (
-        <>
+        <RootStack.Group>
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
             component={TabNavigator}
           />
-          <RootStack.Screen name="Settings" component={SettingsScreen} />
-        </>
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK}
+            component={ManageAssetsStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SETTINGS}
+            component={SettingsScreen}
+          />
+        </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}

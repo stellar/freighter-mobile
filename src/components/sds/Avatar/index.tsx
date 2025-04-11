@@ -1,4 +1,4 @@
-import { Canvas, Paint, Rect } from "@shopify/react-native-skia";
+import { Canvas, Rect } from "@shopify/react-native-skia";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
@@ -17,22 +17,22 @@ const AVATAR_SIZES = {
   sm: {
     dimension: 24,
     fontSize: 12,
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     iconSize: 12,
   },
   md: {
     dimension: 36,
     fontSize: 16,
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     iconSize: 18,
   },
   lg: {
     dimension: 48,
     fontSize: 18,
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     iconSize: 24,
   },
 } as const;
@@ -142,7 +142,7 @@ export type AvatarProps = (
  * Avatar component
  *
  * A customizable avatar component that displays:
- * - A Stellar identicon for a public address
+ * - A Stellar identicon based on a public Stellar address
  * - Initials for a userName
  * - A default user icon when no data is provided
  *
@@ -197,17 +197,16 @@ export const Avatar: React.FC<AvatarProps> = ({
 
     const dimension = getDimension();
 
-    // Increase padding to 20% of dimension for more margin inside the circle
+    // Increase padding to 25% of dimension for more margin inside the circle
     const padding = Math.max(2, Math.floor(dimension * 0.2));
     const availableSpace = dimension - padding * 2;
 
-    // First calculate perfect integer cell size
-    const perfectCellSize = Math.floor(availableSpace / DEFAULT_MATRIX_SIZE);
-    // Then recalculate available space to ensure perfect alignment
-    const adjustedAvailableSpace = perfectCellSize * DEFAULT_MATRIX_SIZE;
+    // Use integer math to ensure perfect symmetry
+    const cellSize = Math.floor(availableSpace / DEFAULT_MATRIX_SIZE);
+    const totalSize = cellSize * DEFAULT_MATRIX_SIZE;
 
-    // Draw one cell larger to eliminate all gaps
-    const adjustedCellSize = perfectCellSize + 1;
+    // Center the matrix in the available space
+    const offset = (availableSpace - totalSize) / 2;
 
     return (
       <CircleContainer $size={size} testID={testID}>
@@ -221,8 +220,8 @@ export const Avatar: React.FC<AvatarProps> = ({
         >
           <Canvas
             style={{
-              width: adjustedAvailableSpace,
-              height: adjustedAvailableSpace,
+              width: availableSpace,
+              height: availableSpace,
             }}
           >
             {matrix.map((row, rowIndex) =>
@@ -232,13 +231,12 @@ export const Avatar: React.FC<AvatarProps> = ({
                     <Rect
                       // eslint-disable-next-line react/no-array-index-key
                       key={`cell-${rowIndex}-${colIndex}`}
-                      x={perfectCellSize * colIndex}
-                      y={perfectCellSize * rowIndex}
-                      width={adjustedCellSize}
-                      height={adjustedCellSize}
-                    >
-                      <Paint color={rgbColor} />
-                    </Rect>
+                      x={offset + cellSize * colIndex}
+                      y={offset + cellSize * rowIndex}
+                      width={cellSize + 0.5}
+                      height={cellSize + 0.5}
+                      color={rgbColor}
+                    />
                   ),
               ),
             )}

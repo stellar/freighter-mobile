@@ -107,7 +107,13 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   }, []);
 
   return (
-    <BaseLayout useSafeArea useKeyboardAvoidingView>
+    <BaseLayout
+      useSafeArea
+      useKeyboardAvoidingView
+      insets={{
+        bottom: false,
+      }}
+    >
       <Container>
         <StyledIconContainer>
           <FreighterLogo width={px(48)} height={px(48)} />

@@ -1,6 +1,7 @@
 import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import React from "react";
@@ -18,22 +19,51 @@ const StyledContainer = styled.View<StyledProps>`
   padding-right: ${px(24)};
   padding-bottom: ${px(16)};
   flex-direction: row;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   background-color: ${THEME.colors.background.default};
+`;
+
+const HeaderRight = styled.View`
+  width: ${px(24)};
+  height: ${px(24)};
 `;
 
 const CustomNavigationHeader = (
   props: NativeStackHeaderProps | BottomTabHeaderProps,
 ) => {
-  const { navigation } = props;
+  const { navigation, options } = props;
   const insets = useSafeAreaInsets();
 
   return (
     <StyledContainer $insets={insets}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Icon.ArrowLeft color={THEME.colors.base.secondary} />
-      </TouchableOpacity>
+      {options.headerLeft ? (
+        options.headerLeft({
+          canGoBack: navigation.canGoBack(),
+          tintColor: THEME.colors.base.secondary,
+          pressColor: THEME.colors.base.secondary,
+          pressOpacity: 0.5,
+        })
+      ) : (
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon.ArrowLeft color={THEME.colors.base.secondary} />
+        </TouchableOpacity>
+      )}
+      {typeof options.headerTitle === "string" && (
+        <Text md primary semiBold>
+          {options.headerTitle}
+        </Text>
+      )}
+      {options.headerRight ? (
+        options.headerRight({
+          canGoBack: navigation.canGoBack(),
+          tintColor: THEME.colors.base.secondary,
+          pressColor: THEME.colors.base.secondary,
+          pressOpacity: 0.5,
+        })
+      ) : (
+        <HeaderRight />
+      )}
     </StyledContainer>
   );
 };

@@ -3,6 +3,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   MAIN_TAB_STACK: "MainTabStack",
   SETTINGS: "Settings",
 
+  MANAGE_ASSETS_STACK: "ManageAssetsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
 } as const;
@@ -27,9 +28,15 @@ export const MAIN_TAB_ROUTES = {
   SETTINGS: "Settings",
 } as const;
 
+export const MANAGE_ASSETS_ROUTES = {
+  MANAGE_ASSETS_SCREEN: "ManageAssetsScreen",
+  ADD_ASSET_SCREEN: "AddAssetScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   Settings: undefined;
 };
@@ -63,4 +70,9 @@ export type MainTabStackParamList = {
   [MAIN_TAB_ROUTES.TAB_HISTORY]: undefined;
   [MAIN_TAB_ROUTES.TAB_HOME]: undefined;
   [MAIN_TAB_ROUTES.TAB_DISCOVERY]: undefined;
+};
+
+export type ManageAssetsStackParamList = {
+  [MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN]: undefined;
+  [MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN]: undefined;
 };
