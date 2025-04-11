@@ -1,4 +1,4 @@
-import { Asset } from "@stellar/stellar-sdk";
+import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   Balance,
@@ -253,3 +253,6 @@ export const formatAssetIdentifier = (assetIdentifier: string) => {
     issuer: formattedAssetIdentifier[1],
   };
 };
+
+export const isPublicKeyValid = (publicKey: string) =>
+  StrKey.isValidEd25519PublicKey(publicKey);

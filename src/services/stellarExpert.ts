@@ -11,9 +11,11 @@ export const searchAsset = async (asset: string, network: NETWORKS) => {
   });
 
   try {
-    const response = await stellarExpertApi.get<SearchAssetResponse>(
-      `/asset?search=${asset}`,
-    );
+    const response = await stellarExpertApi.get<SearchAssetResponse>("/asset", {
+      params: {
+        search: asset,
+      },
+    });
 
     if (!response.data || !response.data._embedded) {
       logger.error(

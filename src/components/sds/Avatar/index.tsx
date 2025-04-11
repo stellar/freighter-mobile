@@ -41,11 +41,13 @@ export type AvatarSize = "sm" | "md" | "lg";
 
 const CircleContainer = styled.View<{
   $size: AvatarSize;
+  $hasBorder: boolean;
 }>`
   width: ${({ $size }: { $size: AvatarSize }) => px(AVATAR_SIZES[$size].width)};
   height: ${({ $size }: { $size: AvatarSize }) =>
     px(AVATAR_SIZES[$size].height)};
-  border-color: ${THEME.colors.border.default};
+  border-color: ${({ $hasBorder }: { $hasBorder: boolean }) =>
+    $hasBorder ? THEME.colors.border.default : "transparent"};
   background-color: ${THEME.colors.background.default};
   border-width: 1px;
   border-radius: 50%;
@@ -70,6 +72,7 @@ export interface AvatarBaseProps {
   /** Avatar size */
   size: AvatarSize;
   testID?: string;
+  hasBorder?: boolean;
 }
 
 /**
@@ -174,6 +177,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   publicAddress,
   userName,
   testID,
+  hasBorder = true,
 }) => {
   // Get initials from username
   const getInitials = (name: string): string => {
@@ -209,7 +213,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     const offset = (availableSpace - totalSize) / 2;
 
     return (
-      <CircleContainer $size={size} testID={testID}>
+      <CircleContainer $size={size} $hasBorder={hasBorder} testID={testID}>
         <View
           style={{
             width: dimension,
@@ -247,7 +251,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   };
 
   const renderDefaultIcon = () => (
-    <CircleContainer $size={size} testID={testID}>
+    <CircleContainer $size={size} $hasBorder={hasBorder} testID={testID}>
       <Icon.User01
         size={AVATAR_SIZES[size].iconSize}
         color={THEME.colors.text.secondary}
@@ -263,7 +267,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     if (userName) {
       const initials = getInitials(userName);
       return (
-        <CircleContainer $size={size} testID={testID}>
+        <CircleContainer $size={size} $hasBorder={hasBorder} testID={testID}>
           <InitialsText $size={size}>{initials}</InitialsText>
         </CircleContainer>
       );

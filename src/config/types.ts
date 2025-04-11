@@ -245,3 +245,17 @@ export interface SearchAssetResponse {
     }[];
   };
 }
+
+export interface TokenDetailsResponse {
+  name: string;
+  decimals: number;
+  symbol: string;
+  balance?: string;
+}
+
+export interface GetTokenDetailsParams {
+  contractId: string;
+  publicKey: string;
+  network: NETWORKS;
+  shouldFetchBalance?: boolean;
+}

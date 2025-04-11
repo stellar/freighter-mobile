@@ -2,8 +2,10 @@ import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
   BottomSheetModal,
+  BottomSheetModalProps,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { getColor } from "config/colors";
@@ -22,12 +24,15 @@ const Icons = {
 };
 
 type BottomSheetProps = {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   modalRef: React.RefObject<BottomSheetModal | null>;
   handleCloseModal?: () => void;
   icon?: keyof typeof Icons;
   customContent?: React.ReactNode;
+  bottomSheetModalProps?: Partial<BottomSheetModalProps>;
+  bottomSheetViewProps?: Partial<BottomSheetViewProps>;
+  shouldCloseOnPressBackdrop?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -37,6 +42,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   handleCloseModal,
   icon,
   customContent,
+  bottomSheetModalProps,
+  bottomSheetViewProps,
+  shouldCloseOnPressBackdrop = true,
 }) => {
   const theme = colorScheme.get() ?? "dark";
 
@@ -70,11 +78,12 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
+        pressBehavior={shouldCloseOnPressBackdrop ? "close" : "none"}
         appearsOnIndex={0}
         opacity={0.7}
       />
     ),
-    [],
+    [shouldCloseOnPressBackdrop],
   );
 
   const renderHandle = useCallback(
@@ -94,12 +103,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
+      {...bottomSheetModalProps}
     >
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
           paddingBottom: insets.bottom,
         }}
+        {...bottomSheetViewProps}
       >
         {customContent || (
           <>

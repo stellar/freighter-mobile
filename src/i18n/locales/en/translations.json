@@ -1,4 +1,5 @@
 {
+  "wallet": "Wallet",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
@@ -151,7 +152,9 @@
     "cancel": "Cancel",
     "addAsset": "Add asset",
     "toastSuccess": "{{assetName}} successfully added as an asset",
-    "toastError": "Error adding asset {{assetName}}"
+    "toastError": "Error adding asset {{assetName}}",
+    "emptyState": "No assets found",
+    "somethingWentWrong": "Something went wrong, please try again later"
   },
   "logout": "Log out",
   "clipboard": {

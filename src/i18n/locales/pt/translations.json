@@ -1,4 +1,5 @@
 {
+  "wallet": "Carteira",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
@@ -147,7 +148,9 @@
     "cancel": "Cancelar",
     "addAsset": "Adicionar ativo",
     "toastSuccess": "{{assetName}} adicionado com sucesso como um ativo",
-    "toastError": "Erro ao adicionar ativo {{assetName}}"
+    "toastError": "Erro ao adicionar ativo {{assetName}}",
+    "emptyState": "Nenhum ativo encontrado",
+    "somethingWentWrong": "Algo deu errado, por favor, tente novamente mais tarde"
   },
   "logout": "Sair",
   "clipboard": {
