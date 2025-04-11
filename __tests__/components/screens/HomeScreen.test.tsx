@@ -3,30 +3,56 @@ import { HomeScreen } from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
-jest.mock("react-native-context-menu-view", () => {
-  const ContextMenu = ({
+jest.mock("components/primitives/Menu", () => {
+  const MenuRoot = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="menu-root">{children}</div>
+  );
+  const MenuTrigger = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="menu-trigger">{children}</div>
+  );
+  const MenuContent = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="menu-content">{children}</div>
+  );
+  const MenuItemComponent = ({
     children,
-    onPress,
+    onSelect,
   }: {
     children: React.ReactNode;
-    onPress?: (e: { nativeEvent: { index: number } }) => void;
-  }) => {
-    const handlePress = () => {
-      if (onPress) {
-        onPress({ nativeEvent: { index: 0 } });
-      }
-    };
-
-    return (
-      <button onClick={handlePress} data-testid="context-menu" type="button">
-        {children}
-      </button>
-    );
-  };
+    onSelect: () => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="menu-item"
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onSelect();
+        }
+      }}
+      role="menuitem"
+      tabIndex={0}
+    >
+      {children}
+    </button>
+  );
+  const MenuItemTitle = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="menu-item-title">{children}</div>
+  );
+  const MenuItemIcon = ({
+    ios,
+    androidIconName,
+  }: {
+    ios?: { name: string };
+    androidIconName?: string;
+  }) => <div data-testid="menu-item-icon">{ios?.name || androidIconName}</div>;
 
   return {
-    __esModule: true,
-    default: ContextMenu,
+    MenuRoot,
+    MenuTrigger,
+    MenuContent,
+    MenuItem: MenuItemComponent,
+    MenuItemTitle,
+    MenuItemIcon,
   };
 });
 

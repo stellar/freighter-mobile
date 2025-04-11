@@ -14,6 +14,10 @@
       "myQRCode": "Meu QR code"
     }
   },
+  "settings": {
+    "title": "Configurações",
+    "logout": "Sair"
+  },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",
     "iAlreadyHaveWallet": "Já tenho uma carteira",

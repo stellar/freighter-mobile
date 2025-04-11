@@ -24,7 +24,6 @@ const StyledContainer = styled.View<StyledProps>`
   background-color: ${THEME.colors.background.default};
 `;
 
-
 const HeaderRight = styled.View`
   width: ${px(24)};
   height: ${px(24)};
@@ -51,7 +50,9 @@ const CustomNavigationHeader = (
         </TouchableOpacity>
       )}
       {typeof options.headerTitle === "string" && (
-        <Text md primary semiBold>{options.headerTitle}</Text>
+        <Text md primary semiBold>
+          {options.headerTitle}
+        </Text>
       )}
       {options.headerRight ? (
         options.headerRight({
