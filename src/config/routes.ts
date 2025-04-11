@@ -1,7 +1,7 @@
 export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
-  SETTINGS: "Settings",
+  SETTINGS_STACK: "SettingsStack",
 
   MANAGE_ASSETS_STACK: "ManageAssetsStack",
   // This screen can be called on both stacks.
@@ -33,12 +33,16 @@ export const MANAGE_ASSETS_ROUTES = {
   ADD_ASSET_SCREEN: "AddAssetScreen",
 } as const;
 
+export const SETTINGS_ROUTES = {
+  SETTINGS_SCREEN: "SettingsScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
-  Settings: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
 };
 
 export type AuthStackParamList = {
@@ -75,4 +79,8 @@ export type MainTabStackParamList = {
 export type ManageAssetsStackParamList = {
   [MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN]: undefined;
   [MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN]: undefined;
+};
+
+export type SettingsStackParamList = {
+  [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
 };

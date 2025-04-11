@@ -1,7 +1,19 @@
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import { SettingsScreen } from "components/screens/SettingsScreen";
+import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+
+type SettingsScreenNavigationProp = NativeStackScreenProps<
+  SettingsStackParamList,
+  typeof SETTINGS_ROUTES.SETTINGS_SCREEN
+>["navigation"];
+
+type SettingsScreenRouteProp = NativeStackScreenProps<
+  SettingsStackParamList,
+  typeof SETTINGS_ROUTES.SETTINGS_SCREEN
+>["route"];
 
 // Mock useNavigation hook
 const mockGoBack = jest.fn();
@@ -33,28 +45,32 @@ jest.mock("hooks/useAppTranslation", () => ({
   }),
 }));
 
+const mockNavigation = {
+  goBack: mockGoBack,
+  setOptions: jest.fn(),
+} as unknown as SettingsScreenNavigationProp;
+
+const mockRoute = {
+  key: "settings",
+  name: SETTINGS_ROUTES.SETTINGS_SCREEN,
+} as unknown as SettingsScreenRouteProp;
+
 describe("SettingsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("renders correctly", () => {
-    const { getByText } = renderWithProviders(<SettingsScreen />);
-    expect(getByText("Settings")).toBeTruthy();
+    const { getByText } = renderWithProviders(
+      <SettingsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
     expect(getByText("Logout")).toBeTruthy();
   });
 
-  it("navigates back when back button is pressed", () => {
-    const { getByTestId } = renderWithProviders(<SettingsScreen />);
-
-    const backButton = getByTestId("back-button");
-    fireEvent.press(backButton);
-
-    expect(mockGoBack).toHaveBeenCalled();
-  });
-
   it("calls logout when logout button is pressed", () => {
-    const { getByTestId } = renderWithProviders(<SettingsScreen />);
+    const { getByTestId } = renderWithProviders(
+      <SettingsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
 
     const logoutButton = getByTestId("logout-button");
     fireEvent.press(logoutButton);

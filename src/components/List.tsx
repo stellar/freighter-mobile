@@ -1,8 +1,7 @@
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
 import React from "react";
-import styled from "styled-components/native";
+import { View, TouchableOpacity } from "react-native";
 
 interface ListItemProps {
   icon?: React.ReactNode;
@@ -15,37 +14,22 @@ interface ListItemProps {
 
 interface ListProps {
   items: ListItemProps[];
+  variant?: "filled" | "transparent";
 }
 
-const ListContainer = styled.View`
-  background-color: ${THEME.colors.background.secondary};
-  border-radius: ${px(12)};
-`;
-
-const ListItem = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-  padding: ${px(16)};
-  gap: ${px(12)};
-`;
-
-const TitleContainer = styled.View`
-  flex: 1;
-`;
-
-const Divider = styled.View`
-  height: 1px;
-  background-color: ${THEME.colors.border.default};
-  margin: 0 ${px(16)};
-`;
-
-export const List: React.FC<ListProps> = ({ items }) => (
-  <ListContainer>
+export const List: React.FC<ListProps> = ({ items, variant = "filled" }) => (
+  <View
+    className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""}`}
+  >
     {items.map((item, index) => (
       <React.Fragment key={item.title}>
-        <ListItem onPress={item.onPress} testID={item.testID}>
+        <TouchableOpacity
+          onPress={item.onPress}
+          testID={item.testID}
+          className="flex-row items-center p-4 gap-3"
+        >
           {item.icon}
-          <TitleContainer>
+          <View className="flex-1">
             <Text
               md
               semiBold
@@ -53,11 +37,16 @@ export const List: React.FC<ListProps> = ({ items }) => (
             >
               {item.title}
             </Text>
-          </TitleContainer>
+          </View>
           {item.trailingContent}
-        </ListItem>
-        {index < items.length - 1 && <Divider testID={`divider-${index}`} />}
+        </TouchableOpacity>
+        {index < items.length - 1 && (
+          <View
+            testID={`divider-${index}`}
+            className="h-[1px] mx-4 bg-border-primary"
+          />
+        )}
       </React.Fragment>
     ))}
-  </ListContainer>
+  </View>
 );

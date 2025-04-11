@@ -1,13 +1,12 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import ContextMenuButton from "components/ContextMenuButton";
-import { HomeMenu } from "components/HomeMenu";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { logger } from "config/logger";
+import { DEFAULT_PADDING } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -34,6 +33,16 @@ type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
+
+/**
+ * Header container for the home screen menu
+ */
+const HeaderContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${DEFAULT_PADDING}px;
+`;
 
 const TopSection = styled.View`
   padding-top: ${px(22)};
@@ -94,35 +103,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const { formattedBalance } = useTotalBalance();
 
-  const Icons = Platform.select({
-    ios: {
-      settings: "gear",
-      manageAssets: "pencil",
-      myQrCode: "qrcode",
-    },
-    android: {
-      settings: "baseline_format_paint",
-      manageAssets: "baseline_delete",
-      myQrCode: "outline_circle",
-    },
-  });
-
   const actions = [
     {
       title: t("home.actions.settings"),
-      systemIcon: Icons!.settings,
-      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+      systemIcon: Platform.select({
+        ios: "gear",
+        android: "baseline_settings",
+      }),
+      onPress: () => navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
     },
     {
       title: t("home.actions.manageAssets"),
-      systemIcon: Icons!.manageAssets,
+      systemIcon: Platform.select({
+        ios: "pencil",
+        android: "baseline_delete",
+      }),
       onPress: () =>
         navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
     },
     {
       title: t("home.actions.myQRCode"),
-      systemIcon: Icons!.myQrCode,
-      onPress: () => logger.debug("HomeScreen", "Not implemented"),
+      systemIcon: Platform.select({
+        ios: "qrcode",
+        android: "outline_circle",
+      }),
+      onPress: () => {}, // TODO: Implement QR code functionality
     },
   ];
 
@@ -136,24 +141,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <BaseLayout insets={{ bottom: false }}>
-      <HomeMenu />
+      <HeaderContainer>
+        <ContextMenuButton
+          contextMenuProps={{
+            actions,
+          }}
+        >
+          <Icon.DotsHorizontal
+            size={pxValue(24)}
+            color={THEME.colors.base.secondary}
+          />
+        </ContextMenuButton>
+      </HeaderContainer>
 
-      <ContextMenuButton
-        contextMenuProps={{
-          onPress: (e) => {
-            actions[e.nativeEvent.index].onPress();
-          },
-          actions,
-          style: {
-            alignSelf: "flex-start",
-          },
-        }}
-      >
-        <Icon.DotsHorizontal
-          size={pxValue(24)}
-          color={THEME.colors.base.secondary}
-        />
-      </ContextMenuButton>
       <TopSection>
         <AccountTotal>
           <AccountNameRow>

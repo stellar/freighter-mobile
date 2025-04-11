@@ -1,32 +1,36 @@
-import { useNavigation } from "@react-navigation/native";
+/* eslint-disable react/no-unstable-nested-components */
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING } from "config/constants";
+import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import React from "react";
-import { TouchableOpacity, View } from "react-native";
-import styled from "styled-components/native";
+import React, { useEffect } from "react";
+import { TouchableOpacity } from "react-native";
 
-const Header = styled.View`
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${DEFAULT_PADDING}px;
-`;
+type SettingsScreenProps = NativeStackScreenProps<
+  SettingsStackParamList,
+  typeof SETTINGS_ROUTES.SETTINGS_SCREEN
+>;
 
-const TitleContainer = styled.View`
-  flex: 1;
-  align-items: center;
-`;
-
-export const SettingsScreen = () => {
-  const navigation = useNavigation();
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  navigation,
+}) => {
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon.X size={pxValue(24)} color={THEME.colors.base.secondary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, t]);
 
   const handleLogout = () => {
     logout();
@@ -43,21 +47,7 @@ export const SettingsScreen = () => {
   ];
 
   return (
-    <BaseLayout>
-      <Header>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          testID="back-button"
-        >
-          <Icon.X size={24} color={THEME.colors.text.primary} />
-        </TouchableOpacity>
-        <TitleContainer>
-          <Text md semiBold>
-            {t("settings.title")}
-          </Text>
-        </TitleContainer>
-        <View style={{ width: 24 }} />
-      </Header>
+    <BaseLayout insets={{ top: false }}>
       <List items={listItems} />
     </BaseLayout>
   );

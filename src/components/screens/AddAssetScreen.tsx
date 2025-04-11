@@ -87,53 +87,43 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     });
   };
 
-  const actionsOnPress = {
-    [t("manageAssetsScreen.actions.copyAddress")]: (balance: PricedBalance) =>
-      copyTokenAddress(balance),
-    [t("manageAssetsScreen.actions.hideAsset")]: () =>
-      logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
-    [t("manageAssetsScreen.actions.removeAsset")]: () =>
-      logger.debug("ManageAssetsScreen", "removeAsset Not implemented"),
+  const defaultRightContent = (balance: PricedBalance) => {
+    const menuActions = [
+      {
+        title: t("manageAssetsScreen.actions.copyAddress"),
+        systemIcon: icons!.copyAddress,
+        onPress: () => copyTokenAddress(balance),
+        disabled: true,
+      },
+      {
+        title: t("manageAssetsScreen.actions.hideAsset"),
+        systemIcon: icons!.hideAsset,
+        onPress: () =>
+          logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
+        disabled: true,
+      },
+      {
+        title: t("manageAssetsScreen.actions.removeAsset"),
+        systemIcon: icons!.removeAsset,
+        onPress: () =>
+          logger.debug("ManageAssetsScreen", "removeAsset Not implemented"),
+        destructive: true,
+      },
+    ];
+
+    return (
+      <ContextMenuButton
+        contextMenuProps={{
+          actions: menuActions,
+        }}
+      >
+        <Icon.DotsHorizontal
+          size={pxValue(24)}
+          color={THEME.colors.foreground.primary}
+        />
+      </ContextMenuButton>
+    );
   };
-
-  const actions = [
-    {
-      inlineChildren: true,
-      disabled: true,
-      actions: [
-        {
-          title: t("manageAssetsScreen.actions.copyAddress"),
-          systemIcon: icons!.copyAddress,
-        },
-        {
-          title: t("manageAssetsScreen.actions.hideAsset"),
-          systemIcon: icons!.hideAsset,
-        },
-      ],
-      title: "",
-    },
-    {
-      title: t("manageAssetsScreen.actions.removeAsset"),
-      systemIcon: icons!.removeAsset,
-      destructive: true,
-    },
-  ];
-
-  const defaultRightContent = (balance: PricedBalance) => (
-    <ContextMenuButton
-      contextMenuProps={{
-        onPress: (e) => {
-          actionsOnPress[e.nativeEvent.name](balance);
-        },
-        actions,
-      }}
-    >
-      <Icon.DotsHorizontal
-        size={pxValue(24)}
-        color={THEME.colors.foreground.primary}
-      />
-    </ContextMenuButton>
-  );
 
   // TODO: Use that component when integrating the add asset feature
   // const addAssetRightContent = (balance: PricedBalance) => (

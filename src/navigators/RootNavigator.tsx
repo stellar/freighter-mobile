@@ -3,22 +3,23 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
-import { SettingsScreen } from "components/screens/SettingsScreen";
 import {
   ManageAssetsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
+  SettingsStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
+import { SettingsStackNavigator } from "navigators/SettingsNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
-  RootStackParamList & ManageAssetsStackParamList
+  RootStackParamList & ManageAssetsStackParamList & SettingsStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -71,8 +72,8 @@ export const RootNavigator = () => {
             component={ManageAssetsStackNavigator}
           />
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SETTINGS}
-            component={SettingsScreen}
+            name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
+            component={SettingsStackNavigator}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

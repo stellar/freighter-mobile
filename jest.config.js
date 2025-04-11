@@ -19,7 +19,6 @@ module.exports = {
       "react-native-responsive-screen",
       "@shopify/react-native-skia",
       "zeego",
-      "react-native-context-menu-view",
       "nativewind",
       "tailwindcss",
       "react-native-css-interop",
