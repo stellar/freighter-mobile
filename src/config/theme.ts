@@ -158,7 +158,7 @@ export const THEME = {
       secondary: PALETTE.dark.base["01"],
     },
     list: {
-      error: PALETTE.dark.red["11"],
+      destructive: PALETTE.dark.red["11"],
     },
   },
   opacity: {

@@ -15,10 +15,10 @@ import {
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { px, pxValue } from "helpers/dimensions";
+import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useTokenOperations } from "hooks/useTokenOperations";
 import React, { useEffect, useRef } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
@@ -51,39 +51,28 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyToClipboard } = useClipboard();
+  const { copyTokenAddress } = useTokenOperations();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={pxValue(24)} color={THEME.colors.base.secondary} />
+          <Icon.X size={24} color={THEME.colors.base.secondary} />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={() => bottomSheetModalRef.current?.present()}
         >
-          <Icon.HelpCircle
-            size={pxValue(24)}
-            color={THEME.colors.base.secondary}
-          />
+          <Icon.HelpCircle size={24} color={THEME.colors.base.secondary} />
         </TouchableOpacity>
       ),
     });
   }, [navigation, t]);
 
-  const copyTokenAddress = (balance: PricedBalance) => {
-    if (!balance.id) return;
-
-    const splittedId = balance.id.split(":");
-
-    // If the ID is a liquidity pool or any asset aside from the native token, we need to copy the issuer
-    // Otherwise, we can just copy the ID (native token)
-    copyToClipboard(splittedId.length === 2 ? splittedId[1] : balance.id, {
-      notificationMessage: t("manageAssetsScreen.tokenAddressCopied"),
-    });
+  const handleCopyTokenAddress = (balance: PricedBalance) => {
+    copyTokenAddress(balance, "manageAssetsScreen.tokenAddressCopied");
   };
 
   const rightContent = (balance: PricedBalance) => {
@@ -91,7 +80,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       {
         title: t("manageAssetsScreen.actions.copyAddress"),
         systemIcon: icons!.copyAddress,
-        onPress: () => copyTokenAddress(balance),
+        onPress: () => handleCopyTokenAddress(balance),
         disabled: true,
       },
       {
@@ -117,7 +106,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
         }}
       >
         <Icon.DotsHorizontal
-          size={pxValue(24)}
+          size={24}
           color={THEME.colors.foreground.primary}
         />
       </ContextMenuButton>

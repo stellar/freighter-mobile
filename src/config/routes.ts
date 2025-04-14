@@ -25,7 +25,6 @@ export const MAIN_TAB_ROUTES = {
   TAB_HISTORY: "History",
   TAB_HOME: "Home",
   TAB_DISCOVERY: "Discovery",
-  SETTINGS: "Settings",
 } as const;
 
 export const MANAGE_ASSETS_ROUTES = {

@@ -15,7 +15,7 @@ import {
 } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { px, pxValue } from "helpers/dimensions";
+import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -147,10 +147,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             actions,
           }}
         >
-          <Icon.DotsHorizontal
-            size={pxValue(24)}
-            color={THEME.colors.base.secondary}
-          />
+          <Icon.DotsHorizontal size={24} color={THEME.colors.base.secondary} />
         </ContextMenuButton>
       </HeaderContainer>
 

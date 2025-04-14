@@ -6,7 +6,6 @@ import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect } from "react";
 import { TouchableOpacity } from "react-native";
@@ -26,7 +25,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={pxValue(24)} color={THEME.colors.base.secondary} />
+          <Icon.X size={24} color={THEME.colors.base.secondary} />
         </TouchableOpacity>
       ),
     });
@@ -38,9 +37,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const listItems = [
     {
-      icon: <Icon.LogOut01 size={24} color={THEME.colors.list.error} />,
+      icon: <Icon.LogOut01 size={24} color={THEME.colors.list.destructive} />,
       title: t("settings.logout"),
-      titleColor: THEME.colors.list.error,
+      titleColor: THEME.colors.list.destructive,
       onPress: handleLogout,
       testID: "logout-button",
     },

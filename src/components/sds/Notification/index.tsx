@@ -126,13 +126,7 @@ export const Notification: React.FC<NotificationProps> = ({
     <NotificationContainer variant={variant} isFilled={isFilled}>
       <NotificationContentContainer>
         <IconContainer>
-          {icon || (
-            <Icon.InfoCircle
-              size={16}
-              color={getIconColor(variant)}
-              accessibilityLabel={`${variant} notification icon`}
-            />
-          )}
+          {icon || <Icon.InfoCircle size={16} color={getIconColor(variant)} />}
         </IconContainer>
         <CustomContentContainer>
           {customContent || (
