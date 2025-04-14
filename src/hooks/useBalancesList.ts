@@ -1,7 +1,7 @@
 import { NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UseBalancesListResult {
   balanceItems: Array<PricedBalance & { id: string }>;
@@ -91,12 +91,16 @@ export const useBalancesList = ({
   }, [fetchAccountBalances, publicKey, network]);
 
   // Convert balances object to array
-  const balanceItems = Object.entries(pricedBalances).map(
-    ([id, balance]) =>
-      ({
-        id,
-        ...balance,
-      }) as PricedBalance & { id: string },
+  const balanceItems = useMemo(
+    () =>
+      Object.entries(pricedBalances).map(
+        ([id, balance]) =>
+          ({
+            id,
+            ...balance,
+          }) as PricedBalance & { id: string },
+      ),
+    [pricedBalances],
   );
 
   // Only show error if we're not in the initial loading state and there is an error

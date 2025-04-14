@@ -1,7 +1,8 @@
 import { Button } from "components/sds/Button";
 import { NETWORKS } from "config/constants";
+import { useBalancesStore } from "ducks/balances";
+import { debug } from "helpers/debug";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBalancesList } from "hooks/useBalancesList";
 import React, { useState } from "react";
 import { fundAccount } from "services/friendbot";
 
@@ -13,17 +14,19 @@ export const FriendbotButton = ({
   network: NETWORKS;
 }) => {
   const { t } = useAppTranslation();
-
   const [isLoading, setIsLoading] = useState(false);
-
-  const { handleRefresh } = useBalancesList({ publicKey, network });
+  const { fetchAccountBalances } = useBalancesStore();
 
   const handleFundAccount = async () => {
     setIsLoading(true);
-    await fundAccount(publicKey, network);
-    setIsLoading(false);
-
-    handleRefresh();
+    try {
+      await fundAccount(publicKey, network);
+      await fetchAccountBalances({ publicKey, network });
+    } catch (error) {
+      debug("FriendbotButton", "Error funding account:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

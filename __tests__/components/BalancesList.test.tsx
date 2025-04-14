@@ -7,7 +7,15 @@ import React from "react";
 
 // Mock the stores
 jest.mock("ducks/balances", () => ({
-  useBalancesStore: jest.fn(),
+  useBalancesStore: jest.fn(() => ({
+    fetchAccountBalances: jest.fn(),
+    startPolling: jest.fn(),
+    stopPolling: jest.fn(),
+    pricedBalances: {},
+    isLoading: false,
+    error: null,
+    isFunded: false,
+  })),
 }));
 
 jest.mock("ducks/prices", () => ({
