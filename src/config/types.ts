@@ -203,6 +203,13 @@ export type PricedBalance = Balance &
     fiatCode?: string;
     fiatTotal?: BigNumber | null;
     displayName?: string;
+    token: {
+      code: string;
+      type: AssetType;
+      issuer: {
+        key: string;
+      };
+    };
   };
 
 /**

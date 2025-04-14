@@ -135,7 +135,15 @@
       "hideAsset": "Ocultar ativo",
       "unhideAsset": "Reexibir ativo",
       "removeAsset": "Remover ativo"
-    }
+    },
+    "removeAssetAlert": {
+      "title": "Remover ativo",
+      "message": "Tem certeza que deseja remover este ativo?",
+      "cancel": "Cancelar",
+      "remove": "Remover"
+    },
+    "removeAssetError": "Erro ao remover ativo {{assetName}}",
+    "removeAssetSuccess": "{{assetName}} removido com sucesso"
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",

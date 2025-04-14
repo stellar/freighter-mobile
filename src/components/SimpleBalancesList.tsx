@@ -10,6 +10,7 @@ interface SimpleBalancesListProps {
   network: NETWORKS;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   rightSectionWidth?: number;
+  hideNativeAsset?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   network,
   renderRightContent,
   rightSectionWidth,
+  hideNativeAsset,
 }) => {
   const { balanceItems } = useBalancesList({
     publicKey,
@@ -43,13 +45,17 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     return null;
   }
 
+  const filteredBalanceItems = balanceItems.filter(
+    (item) => !hideNativeAsset || item.token.type !== "native",
+  );
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       alwaysBounceVertical={false}
       testID="simple-balances-list"
     >
-      {balanceItems.map((item) => (
+      {filteredBalanceItems.map((item) => (
         <BalanceRow
           key={item.id}
           balance={item}

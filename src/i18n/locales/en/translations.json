@@ -139,7 +139,15 @@
       "hideAsset": "Hide asset",
       "unhideAsset": "Unhide asset",
       "removeAsset": "Remove asset"
-    }
+    },
+    "removeAssetAlert": {
+      "title": "Remove asset",
+      "message": "Are you sure you want to remove this asset?",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    },
+    "removeAssetError": "Error removing asset {{assetName}}",
+    "removeAssetSuccess": "{{assetName}} successfully removed"
   },
   "addAssetScreen": {
     "title": "Add an asset",

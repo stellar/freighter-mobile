@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
@@ -14,23 +15,24 @@ import {
 } from "config/routes";
 import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAssetActions } from "hooks/useAssetActions";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { ToastOptions, useToast } from "providers/ToastProvider";
 import React, { useEffect, useRef } from "react";
-import { Platform, TouchableOpacity } from "react-native";
-import styled from "styled-components/native";
+import { Alert, Platform, TouchableOpacity, View } from "react-native";
+import {
+  buildChangeTrustTx,
+  submitTx,
+  signTransaction,
+} from "services/stellar";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
   typeof MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN
 >;
-
-const Spacer = styled.View`
-  height: ${px(16)};
-`;
 
 const icons = Platform.select({
   ios: {
@@ -54,6 +56,12 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { copyAssetAddress } = useAssetActions();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { themeColors } = useColors();
+  const { showToast } = useToast();
+  const { handleRefresh } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
 
   useEffect(() => {
     navigation.setOptions({
@@ -76,25 +84,88 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     copyAssetAddress(balance, "manageAssetsScreen.tokenAddressCopied");
   };
 
+  const handleRemoveAsset = async (balance: PricedBalance) => {
+    let toastOptions: ToastOptions = {
+      title: t("manageAssetsScreen.removeAssetSuccess", {
+        assetName: balance.token.code,
+      }),
+      variant: "success",
+    };
+
+    try {
+      const addAssetTrustlineTx = await buildChangeTrustTx({
+        assetIdentifier: balance.id ?? "",
+        network,
+        publicKey: account?.publicKey ?? "",
+        isRemove: true,
+      });
+
+      const signedTx = signTransaction({
+        tx: addAssetTrustlineTx,
+        secretKey: account?.privateKey ?? "",
+        network,
+      });
+
+      await submitTx({
+        network,
+        tx: signedTx,
+      });
+    } catch (error) {
+      logger.error("ManageAssetsScreen", "Error removing asset", error);
+      toastOptions = {
+        title: t("manageAssetsScreen.removeAssetError", {
+          assetName: balance.token.code,
+        }),
+        variant: "error",
+      };
+    } finally {
+      handleRefresh();
+      showToast(toastOptions);
+    }
+  };
+
+  const showRemoveAssetAlert = (balance: PricedBalance) => {
+    Alert.alert(
+      t("manageAssetsScreen.removeAssetAlert.title"),
+      t("manageAssetsScreen.removeAssetAlert.message"),
+      [
+        {
+          text: t("manageAssetsScreen.removeAssetAlert.cancel"),
+          style: "cancel",
+        },
+        {
+          text: t("manageAssetsScreen.removeAssetAlert.remove"),
+          onPress: () => handleRemoveAsset(balance),
+          style: "destructive",
+        },
+      ],
+    );
+  };
+
   const rightContent = (balance: PricedBalance) => {
-    const menuActions = [
+    const menuActions: MenuItem[] = [
       {
-        title: t("manageAssetsScreen.actions.copyAddress"),
-        systemIcon: icons!.copyAddress,
-        onPress: () => handleCopyTokenAddress(balance),
-      },
-      {
-        title: t("manageAssetsScreen.actions.hideAsset"),
-        systemIcon: icons!.hideAsset,
-        onPress: () =>
-          logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
-        disabled: true,
+        actions: [
+          {
+            title: t("manageAssetsScreen.actions.copyAddress"),
+            systemIcon: icons!.copyAddress,
+            onPress: () => handleCopyTokenAddress(balance),
+          },
+          {
+            title: t("manageAssetsScreen.actions.hideAsset"),
+            systemIcon: icons!.hideAsset,
+            onPress: () =>
+              logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
+            // TODO: Implement hide asset
+            disabled: true,
+          },
+        ],
       },
       {
         title: t("manageAssetsScreen.actions.removeAsset"),
         systemIcon: icons!.removeAsset,
-        onPress: () =>
-          logger.debug("ManageAssetsScreen", "removeAsset Not implemented"),
+        onPress: () => showRemoveAssetAlert(balance),
+        destructive: true,
       },
     ];
 
@@ -121,8 +192,9 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
         publicKey={account?.publicKey ?? ""}
         network={network}
         renderRightContent={rightContent}
+        hideNativeAsset
       />
-      <Spacer />
+      <View className="h-4" />
       <Button
         tertiary
         lg
