@@ -159,6 +159,7 @@ export const THEME = {
     },
     list: {
       destructive: PALETTE.dark.red["11"],
+      disabled: PALETTE.dark.gray["09"],
     },
   },
   opacity: {

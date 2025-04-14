@@ -16,7 +16,8 @@
   },
   "settings": {
     "title": "Settings",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "version": "Version {{version}}"
   },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",

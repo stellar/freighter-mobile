@@ -2,7 +2,10 @@
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
     "types": ["styled-components-react-native", "@types/jest"],
-    "baseUrl": "src/"
+    "baseUrl": "src/",
+    "paths": {
+      "package.json": ["../package.json"]
+    }
   },
   "include": [
     "src",

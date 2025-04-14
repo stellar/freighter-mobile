@@ -16,7 +16,8 @@
   },
   "settings": {
     "title": "Configurações",
-    "logout": "Sair"
+    "logout": "Sair",
+    "version": "Versão {{version}}"
   },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",
