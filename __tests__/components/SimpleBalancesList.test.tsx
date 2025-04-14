@@ -1,11 +1,10 @@
-import { render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
-import { Text } from "react-native";
 
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(),
@@ -71,10 +70,11 @@ describe("SimpleBalancesList", () => {
       balanceItems: [],
     });
 
-    const { queryByText } = render(
+    const { queryByText } = renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
+        handleRemoveAsset={() => {}}
       />,
     );
 
@@ -83,10 +83,11 @@ describe("SimpleBalancesList", () => {
   });
 
   it("should render all balance items", () => {
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
+        handleRemoveAsset={() => {}}
       />,
     );
 
@@ -94,30 +95,12 @@ describe("SimpleBalancesList", () => {
     expect(getByText("USDC")).toBeTruthy();
   });
 
-  it("should render custom right content when provided", () => {
-    const customContent = "Custom Content";
-    const renderRightContent = (balance: PricedBalance) => (
-      <Text>{`${customContent} ${balance.tokenCode}`}</Text>
-    );
-
-    const { getByText } = render(
-      <SimpleBalancesList
-        publicKey={testPublicKey}
-        network={NETWORKS.TESTNET}
-        renderRightContent={renderRightContent}
-        rightSectionWidth={100}
-      />,
-    );
-
-    expect(getByText("Custom Content XLM")).toBeTruthy();
-    expect(getByText("Custom Content USDC")).toBeTruthy();
-  });
-
   it("should call useBalancesList with correct parameters", () => {
-    render(
+    renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
+        handleRemoveAsset={() => {}}
       />,
     );
 
@@ -129,10 +112,11 @@ describe("SimpleBalancesList", () => {
   });
 
   it("should render ScrollView with correct props", () => {
-    const { getByTestId } = render(
+    const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
+        handleRemoveAsset={() => {}}
       />,
     );
 

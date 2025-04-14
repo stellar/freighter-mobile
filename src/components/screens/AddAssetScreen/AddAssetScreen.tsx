@@ -81,30 +81,42 @@ const formatSearchAssetRecords = (
     id: string;
   })[],
 ): FormattedSearchAssetRecord[] =>
-  records.map((record) => {
-    if ("assetCode" in record) {
+  records
+    .map((record) => {
+      if ("assetCode" in record) {
+        return {
+          ...record,
+          hasTrustline: checkIfUserHasTrustline(
+            currentBalances,
+            record.assetCode,
+            record.issuer,
+          ),
+        };
+      }
+
+      const formattedTokenRecord = record.asset.split("-");
+      const assetCode = formattedTokenRecord[0];
+      const issuer = formattedTokenRecord[1] ?? "";
+
       return {
-        ...record,
+        assetCode,
+        domain: record.domain ?? "",
         hasTrustline: checkIfUserHasTrustline(
           currentBalances,
-          record.assetCode,
-          record.issuer,
+          assetCode,
+          issuer,
         ),
+        issuer,
+        isNative: record.asset === "XLM",
       };
-    }
+    })
+    .sort((a) => {
+      if (a.hasTrustline) {
+        return -1;
+      }
 
-    const formattedTokenRecord = record.asset.split("-");
-    const assetCode = formattedTokenRecord[0];
-    const issuer = formattedTokenRecord[1] ?? "";
-
-    return {
-      assetCode,
-      domain: record.domain ?? "",
-      hasTrustline: checkIfUserHasTrustline(currentBalances, assetCode, issuer),
-      issuer,
-      isNative: record.asset === "XLM",
-    };
-  });
+      return 1;
+    });
 
 const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
@@ -266,6 +278,49 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleRemoveAssetTrustline = async (
+    asset: FormattedSearchAssetRecord,
+  ) => {
+    let toastOptions: ToastOptions = {
+      title: t("addAssetScreen.toastSuccess", {
+        assetName: asset.assetCode,
+      }),
+      variant: "success",
+    };
+
+    try {
+      const removeAssetTrustlineTx = await buildChangeTrustTx({
+        assetIdentifier: `${asset.assetCode}:${asset.issuer}`,
+        network,
+        publicKey: account?.publicKey ?? "",
+        isRemove: true,
+      });
+
+      const signedTx = signTransaction({
+        tx: removeAssetTrustlineTx,
+        secretKey: account?.privateKey ?? "",
+        network,
+      });
+
+      await submitTx({
+        network,
+        tx: signedTx,
+      });
+
+      resetPageState();
+    } catch (error) {
+      logger.error("AddAssetScreen", "Error removing asset", error);
+      toastOptions = {
+        title: t("addAssetScreen.toastError", {
+          assetName: asset.assetCode,
+        }),
+        variant: "error",
+      };
+    } finally {
+      showToast(toastOptions);
+    }
+  };
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
@@ -322,7 +377,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
                 <AssetItem
                   key={index}
                   asset={asset}
-                  onPress={() => handleAddAsset(asset)}
+                  handleAddAsset={() => handleAddAsset(asset)}
+                  handleRemoveAsset={() => handleRemoveAssetTrustline(asset)}
                 />
               ))
             ) : (

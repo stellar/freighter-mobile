@@ -3,7 +3,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
@@ -13,20 +12,18 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useAssetActions } from "hooks/useAssetActions";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
 import React, { useEffect, useRef } from "react";
-import { Alert, Platform, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import {
   buildChangeTrustTx,
-  submitTx,
   signTransaction,
+  submitTx,
 } from "services/stellar";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
@@ -34,26 +31,12 @@ type ManageAssetsScreenProps = NativeStackScreenProps<
   typeof MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN
 >;
 
-const icons = Platform.select({
-  ios: {
-    copyAddress: "doc.on.doc",
-    hideAsset: "eye.slash",
-    removeAsset: "minus.circle",
-  },
-  android: {
-    copyAddress: "baseline_format_paint",
-    hideAsset: "baseline_delete",
-    removeAsset: "outline_circle",
-  },
-});
-
 const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   navigation,
 }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyAssetAddress } = useAssetActions();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { themeColors } = useColors();
   const { showToast } = useToast();
@@ -80,28 +63,26 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     });
   }, [navigation, t, themeColors]);
 
-  const handleCopyTokenAddress = (balance: PricedBalance) => {
-    copyAssetAddress(balance, "manageAssetsScreen.tokenAddressCopied");
-  };
+  const handleRemoveAsset = async (assetId: string) => {
+    const assetCode = assetId.split(":")[0];
 
-  const handleRemoveAsset = async (balance: PricedBalance) => {
     let toastOptions: ToastOptions = {
       title: t("manageAssetsScreen.removeAssetSuccess", {
-        assetName: balance.token.code,
+        assetName: assetCode,
       }),
       variant: "success",
     };
 
     try {
-      const addAssetTrustlineTx = await buildChangeTrustTx({
-        assetIdentifier: balance.id ?? "",
+      const removeAssetTrustlineTx = await buildChangeTrustTx({
+        assetIdentifier: assetId,
         network,
         publicKey: account?.publicKey ?? "",
         isRemove: true,
       });
 
       const signedTx = signTransaction({
-        tx: addAssetTrustlineTx,
+        tx: removeAssetTrustlineTx,
         secretKey: account?.privateKey ?? "",
         network,
       });
@@ -114,7 +95,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       logger.error("ManageAssetsScreen", "Error removing asset", error);
       toastOptions = {
         title: t("manageAssetsScreen.removeAssetError", {
-          assetName: balance.token.code,
+          assetName: assetCode,
         }),
         variant: "error",
       };
@@ -122,62 +103,6 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       handleRefresh();
       showToast(toastOptions);
     }
-  };
-
-  const showRemoveAssetAlert = (balance: PricedBalance) => {
-    Alert.alert(
-      t("manageAssetsScreen.removeAssetAlert.title"),
-      t("manageAssetsScreen.removeAssetAlert.message"),
-      [
-        {
-          text: t("manageAssetsScreen.removeAssetAlert.cancel"),
-          style: "cancel",
-        },
-        {
-          text: t("manageAssetsScreen.removeAssetAlert.remove"),
-          onPress: () => handleRemoveAsset(balance),
-          style: "destructive",
-        },
-      ],
-    );
-  };
-
-  const rightContent = (balance: PricedBalance) => {
-    const menuActions: MenuItem[] = [
-      {
-        actions: [
-          {
-            title: t("manageAssetsScreen.actions.copyAddress"),
-            systemIcon: icons!.copyAddress,
-            onPress: () => handleCopyTokenAddress(balance),
-          },
-          {
-            title: t("manageAssetsScreen.actions.hideAsset"),
-            systemIcon: icons!.hideAsset,
-            onPress: () =>
-              logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
-            // TODO: Implement hide asset
-            disabled: true,
-          },
-        ],
-      },
-      {
-        title: t("manageAssetsScreen.actions.removeAsset"),
-        systemIcon: icons!.removeAsset,
-        onPress: () => showRemoveAssetAlert(balance),
-        destructive: true,
-      },
-    ];
-
-    return (
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: menuActions,
-        }}
-      >
-        <Icon.DotsHorizontal size={24} color={themeColors.foreground.primary} />
-      </ContextMenuButton>
-    );
   };
 
   return (
@@ -191,8 +116,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       <SimpleBalancesList
         publicKey={account?.publicKey ?? ""}
         network={network}
-        renderRightContent={rightContent}
-        hideNativeAsset
+        handleRemoveAsset={handleRemoveAsset}
       />
       <View className="h-4" />
       <Button

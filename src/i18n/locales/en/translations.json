@@ -168,6 +168,19 @@
     "emptyState": "No assets found",
     "somethingWentWrong": "Something went wrong, please try again later"
   },
+  "manageAssetRightContent": {
+    "copyAddress": "Copy address",
+    "hideAsset": "Hide asset",
+    "unhideAsset": "Unhide asset",
+    "removeAsset": "Remove asset",
+    "tokenAddressCopied": "Token address copied!",
+    "removeAssetAlert": {
+      "title": "Remove asset",
+      "message": "Are you sure you want to remove this asset?",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    }
+  },
   "logout": "Log out",
   "clipboard": {
     "copied": "Copied to clipboard!",

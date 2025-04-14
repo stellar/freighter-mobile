@@ -206,7 +206,7 @@ export type PricedBalance = Balance &
     token: {
       code: string;
       type: AssetType;
-      issuer: {
+      issuer?: {
         key: string;
       };
     };

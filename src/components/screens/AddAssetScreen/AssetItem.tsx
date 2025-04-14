@@ -1,4 +1,5 @@
 import { AssetIcon } from "components/AssetIcon";
+import ManageAssetRightContent from "components/ManageAssetRightContent";
 import AddAssetRightContent from "components/screens/AddAssetScreen/AddAssetRightContent";
 import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/types";
 import { Text } from "components/sds/Typography";
@@ -7,10 +8,15 @@ import { View } from "react-native";
 
 type AssetItemProps = {
   asset: FormattedSearchAssetRecord;
-  onPress: () => void;
+  handleAddAsset: () => void;
+  handleRemoveAsset: () => void;
 };
 
-const AssetItem: React.FC<AssetItemProps> = ({ asset, onPress }) => (
+const AssetItem: React.FC<AssetItemProps> = ({
+  asset,
+  handleAddAsset,
+  handleRemoveAsset,
+}) => (
   <View className="mb-4 flex-row justify-between items-center flex-1">
     <View className="flex-row items-center flex-1">
       <AssetIcon
@@ -35,7 +41,17 @@ const AssetItem: React.FC<AssetItemProps> = ({ asset, onPress }) => (
         </Text>
       </View>
     </View>
-    <AddAssetRightContent hasTrustline={asset.hasTrustline} onPress={onPress} />
+    {asset.hasTrustline ? (
+      <ManageAssetRightContent
+        asset={{
+          isNative: asset.isNative,
+          id: `${asset.assetCode}:${asset.issuer}`,
+        }}
+        handleRemoveAsset={handleRemoveAsset}
+      />
+    ) : (
+      <AddAssetRightContent handleAddAsset={handleAddAsset} />
+    )}
   </View>
 );
 

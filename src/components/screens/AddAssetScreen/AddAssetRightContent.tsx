@@ -6,13 +6,11 @@ import useColors from "hooks/useColors";
 import React from "react";
 
 type AddAssetRightContentProps = {
-  hasTrustline: boolean;
-  onPress: () => void;
+  handleAddAsset: () => void;
 };
 
 const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
-  hasTrustline,
-  onPress,
+  handleAddAsset,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -22,7 +20,6 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       secondary
       squared
       lg
-      disabled={hasTrustline}
       testID="add-asset-button"
       icon={
         <Icon.PlusCircle
@@ -31,7 +28,7 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
         />
       }
       iconPosition={IconPosition.RIGHT}
-      onPress={onPress}
+      onPress={handleAddAsset}
     >
       {t("addAssetScreen.add")}
     </Button>

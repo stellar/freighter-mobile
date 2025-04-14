@@ -95,7 +95,7 @@ const getExistingPricedBalances = (
   });
 
   // Convert the entries array to an object and sort it
-  return sortBalances(Object.fromEntries(entries));
+  return sortBalances(Object.fromEntries(entries) as PricedBalanceMap);
 };
 
 /**

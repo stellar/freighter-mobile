@@ -15,12 +15,13 @@ import {
 } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
-import React from "react";
+import React, { useMemo } from "react";
 import { Dimensions, Platform } from "react-native";
 import styled from "styled-components/native";
 
@@ -102,6 +103,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { copyToClipboard } = useClipboard();
 
   const { formattedBalance } = useTotalBalance();
+  const balances = useBalancesStore((state) => state.balances);
+
+  const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
 
   const actions = [
     {
@@ -112,15 +116,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       }),
       onPress: () => navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
     },
-    {
-      title: t("home.actions.manageAssets"),
-      systemIcon: Platform.select({
-        ios: "pencil",
-        android: "baseline_delete",
-      }),
-      onPress: () =>
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
-    },
+    ...(hasAssets
+      ? [
+          {
+            title: t("home.actions.manageAssets"),
+            systemIcon: Platform.select({
+              ios: "pencil",
+              android: "baseline_delete",
+            }),
+            onPress: () =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
+          },
+        ]
+      : []),
     {
       title: t("home.actions.myQRCode"),
       systemIcon: Platform.select({
