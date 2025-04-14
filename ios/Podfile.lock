@@ -1264,6 +1264,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-get-random-values (1.11.0):
+    - React-Core
   - react-native-ios-context-menu (3.1.0):
     - ContextMenuAuxiliaryPreview (~> 0.5)
     - DGSwiftUtilities
@@ -2072,6 +2074,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - "react-native-compat (from `../node_modules/@walletconnect/react-native-compat`)"
+  - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-ios-context-menu (from `../node_modules/react-native-ios-context-menu`)
   - react-native-ios-utilities (from `../node_modules/react-native-ios-utilities`)
   - "react-native-menu (from `../node_modules/@react-native-menu/menu`)"
@@ -2203,6 +2206,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-compat:
     :path: "../node_modules/@walletconnect/react-native-compat"
+  react-native-get-random-values:
+    :path: "../node_modules/react-native-get-random-values"
   react-native-ios-context-menu:
     :path: "../node_modules/react-native-ios-context-menu"
   react-native-ios-utilities:
@@ -2336,6 +2341,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 3c11cee7737609275c7b66bd0b1de475f094cedf
   React-microtasksnativemodule: 843f352b32aacbe13a9c750190d34df44c3e6c2c
   react-native-compat: 8c0d97bb1e0ace7d4899afb277f990fef8d7e5a2
+  react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-ios-context-menu: 4a750e3ae633536e5fe30736ab7ebbfdbf042506
   react-native-ios-utilities: 1e2d29936bc4f67d869f6761c76644342bfa2ff4
   react-native-menu: 6aecfc8763189927c5f0654ead8aa709e32b7a46
