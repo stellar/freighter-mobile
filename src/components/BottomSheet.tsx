@@ -8,10 +8,8 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { getColor } from "config/colors";
-import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
-import { colorScheme } from "nativewind";
+import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,27 +44,27 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   bottomSheetViewProps,
   shouldCloseOnPressBackdrop = true,
 }) => {
-  const theme = colorScheme.get() ?? "dark";
+  const { themeColors } = useColors();
 
   const MapIcons = {
     [Icons.Assets]: {
       IconComponent: Icon.Coins01,
-      iconColor: getColor(theme, "mint", 9),
+      iconColor: themeColors.mint[9],
       backgroundColorClassName: "bg-mint-3",
     },
     [Icons.Announcement]: {
       IconComponent: Icon.Announcement01,
-      iconColor: getColor(theme, "lime", 9),
+      iconColor: themeColors.lime[9],
       backgroundColorClassName: "bg-lime-3",
     },
     [Icons.Danger]: {
       IconComponent: Icon.AlertTriangle,
-      iconColor: getColor(theme, "red", 9),
+      iconColor: themeColors.red[9],
       backgroundColorClassName: "bg-red-3",
     },
     [Icons.Wallet]: {
       IconComponent: Icon.Wallet01,
-      iconColor: getColor(theme, "gold", 9),
+      iconColor: themeColors.gold[9],
       backgroundColorClassName: "bg-gold-3",
     },
   };
@@ -125,10 +123,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                   />
                 </View>
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X
-                    size={pxValue(24)}
-                    color={THEME.colors.base.secondary}
-                  />
+                  <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
                 </TouchableOpacity>
               </View>
             )}
@@ -138,10 +133,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               </Text>
               {!IconData && (
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X
-                    size={pxValue(24)}
-                    color={THEME.colors.base.secondary}
-                  />
+                  <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
                 </TouchableOpacity>
               )}
             </View>

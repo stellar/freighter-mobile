@@ -20,7 +20,6 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { PALETTE, THEME } from "config/theme";
 import { PricedBalance, SearchAssetResponse } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatAssetIdentifier } from "helpers/balances";
@@ -29,6 +28,7 @@ import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
@@ -127,26 +127,24 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     shouldPoll: false,
   });
   const [search, setSearch] = useState("");
+  const { themeColors } = useColors();
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={pxValue(24)} color={THEME.colors.base.secondary} />
+          <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={() => moreInfoBottomSheetModalRef.current?.present()}
         >
-          <Icon.HelpCircle
-            size={pxValue(24)}
-            color={THEME.colors.base.secondary}
-          />
+          <Icon.HelpCircle size={pxValue(24)} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t]);
+  }, [navigation, t, themeColors]);
 
   const debouncedSearch = useDebounce(async () => {
     if (!search) {
@@ -187,18 +185,18 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     setStatus(PageStatus.SUCCESS);
   }, 500);
 
-  const handlePasteFromClipboard = () => {
-    getClipboardText().then((value) => {
-      setSearch(value);
-
-      debouncedSearch();
-    });
-  };
-
   const handleSearch = (text: string) => {
+    if (text === search) {
+      return;
+    }
+
     setSearch(text);
 
     debouncedSearch();
+  };
+
+  const handlePasteFromClipboard = () => {
+    getClipboardText().then(handleSearch);
   };
 
   const handleAddAsset = (asset: FormattedSearchAssetRecord) => {
@@ -303,10 +301,11 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
           value={search}
           onChangeText={handleSearch}
           fieldSize="lg"
+          autoCapitalize="none"
           leftElement={
             <Icon.SearchMd
               size={pxValue(16)}
-              color={THEME.colors.foreground.primary}
+              color={themeColors.foreground.primary}
             />
           }
         />
@@ -338,7 +337,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
           lg
           testID="paste-from-clipboard-button"
           onPress={handlePasteFromClipboard}
-          icon={<Icon.Clipboard size={16} color={PALETTE.dark.gray["09"]} />}
+          icon={
+            <Icon.Clipboard size={16} color={themeColors.foreground.primary} />
+          }
         >
           {t("addAssetScreen.pasteFromClipboard")}
         </Button>

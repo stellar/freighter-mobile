@@ -1,8 +1,8 @@
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { PALETTE } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 
 type AddAssetRightContentProps = {
@@ -15,6 +15,8 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
   onPress,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
   return (
     <Button
       secondary
@@ -23,7 +25,10 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       disabled={hasTrustline}
       testID="add-asset-button"
       icon={
-        <Icon.PlusCircle size={pxValue(16)} color={PALETTE.dark.gray["09"]} />
+        <Icon.PlusCircle
+          size={pxValue(16)}
+          color={themeColors.foreground.primary}
+        />
       }
       iconPosition={IconPosition.RIGHT}
       onPress={onPress}

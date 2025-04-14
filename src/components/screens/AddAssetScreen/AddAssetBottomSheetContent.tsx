@@ -5,12 +5,12 @@ import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { getColor } from "config/colors";
 import { ActiveAccount } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
-import { useColorScheme, View } from "react-native";
+import { View } from "react-native";
 
 type AddAssetBottomSheetContentProps = {
   asset: FormattedSearchAssetRecord | null;
@@ -27,7 +27,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
   onAddAsset,
   isAddingAsset,
 }) => {
-  const colorScheme = useColorScheme();
+  const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
   if (!asset) {
@@ -79,7 +79,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         <View className="flex-row items-center">
           <Icon.UserCircle
             size={pxValue(16)}
-            color={getColor(colorScheme ?? "dark", "gray", 9)}
+            color={themeColors.foreground.primary}
           />
           <Text
             md

@@ -12,12 +12,12 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useRef } from "react";
 import { Platform, TouchableOpacity } from "react-native";
@@ -53,26 +53,24 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { themeColors } = useColors();
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={pxValue(24)} color={THEME.colors.base.secondary} />
+          <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={() => bottomSheetModalRef.current?.present()}
         >
-          <Icon.HelpCircle
-            size={pxValue(24)}
-            color={THEME.colors.base.secondary}
-          />
+          <Icon.HelpCircle size={pxValue(24)} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t]);
+  }, [navigation, t, themeColors]);
 
   const copyTokenAddress = (balance: PricedBalance) => {
     if (!balance.id) return;
@@ -129,7 +127,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     >
       <Icon.DotsHorizontal
         size={pxValue(24)}
-        color={THEME.colors.foreground.primary}
+        color={themeColors.foreground.primary}
       />
     </ContextMenuButton>
   );
