@@ -18,9 +18,9 @@ import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useAssetActions } from "hooks/useAssetActions";
 import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useTokenOperations } from "hooks/useTokenOperations";
 import React, { useEffect, useRef, useState } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
@@ -48,11 +48,11 @@ const icons = Platform.select({
 });
 
 const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
+  const { copyAssetAddress } = useAssetActions();
   const { getClipboardText } = useClipboard();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyTokenAddress } = useTokenOperations();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const [search, setSearch] = useState("");
@@ -75,7 +75,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   }, [navigation, t]);
 
   const handleCopyTokenAddress = (balance: PricedBalance) => {
-    copyTokenAddress(balance, "addAssetScreen.tokenAddressCopied");
+    copyAssetAddress(balance, "addAssetScreen.tokenAddressCopied");
   };
 
   const defaultRightContent = (balance: PricedBalance) => {

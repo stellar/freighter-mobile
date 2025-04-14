@@ -17,8 +17,8 @@ import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useAssetActions } from "hooks/useAssetActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useTokenOperations } from "hooks/useTokenOperations";
 import React, { useEffect, useRef } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
@@ -51,7 +51,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyTokenAddress } = useTokenOperations();
+  const { copyAssetAddress } = useAssetActions();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   }, [navigation, t]);
 
   const handleCopyTokenAddress = (balance: PricedBalance) => {
-    copyTokenAddress(balance, "manageAssetsScreen.tokenAddressCopied");
+    copyAssetAddress(balance, "manageAssetsScreen.tokenAddressCopied");
   };
 
   const rightContent = (balance: PricedBalance) => {
