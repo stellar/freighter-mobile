@@ -79,6 +79,8 @@ export const FUTURENET_NETWORK_DETAILS: NetworkDetails = {
   sorobanRpcUrl: SOROBAN_RPC_URLS.FUTURENET,
 };
 
+export const DEFAULT_TRANSACTION_TIMEOUT = 180;
+
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
   TESTNET_NETWORK_DETAILS,
@@ -86,6 +88,19 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
 
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
+
+export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
+  switch (network) {
+    case NETWORKS.PUBLIC:
+      return PUBLIC_NETWORK_DETAILS;
+    case NETWORKS.TESTNET:
+      return TESTNET_NETWORK_DETAILS;
+    case NETWORKS.FUTURENET:
+      return FUTURENET_NETWORK_DETAILS;
+    default:
+      return PUBLIC_NETWORK_DETAILS;
+  }
+};
 
 /**
  * Non-sensitive storage keys.

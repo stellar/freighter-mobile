@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { INDEXER_URL, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { GetTokenDetailsParams, TokenDetailsResponse } from "config/types";
+import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService } from "services/apiFactory";
 
 const indexerApi = createApiService({
@@ -88,4 +89,44 @@ export const isSacContractExecutable = async (
     );
     return false;
   }
+};
+
+export const handleContractLookup = async (
+  contractId: string,
+  network: NETWORKS,
+  publicKey?: string,
+) => {
+  const nativeContractDetails = getNativeContractDetails(network);
+
+  if (nativeContractDetails.contract === contractId) {
+    return {
+      assetCode: nativeContractDetails.code,
+      domain: nativeContractDetails.domain,
+      hasTrustline: true,
+      issuer: nativeContractDetails.issuer,
+      isNative: true,
+    };
+  }
+
+  const tokenDetails = await getTokenDetails({
+    contractId,
+    publicKey: publicKey ?? "",
+    network,
+  });
+
+  if (!tokenDetails) {
+    return null;
+  }
+
+  const isSacContract = await isSacContractExecutable(contractId, network);
+
+  return {
+    assetCode: tokenDetails.symbol,
+    domain: "Stellar Network",
+    hasTrustline: false,
+    issuer: isSacContract
+      ? (tokenDetails.name.split(":")[1] ?? "")
+      : contractId,
+    isNative: false,
+  };
 };

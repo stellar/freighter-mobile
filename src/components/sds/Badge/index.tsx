@@ -47,8 +47,56 @@ export interface BadgeProps {
 }
 
 /**
- * `Badge` is used to label or categorize an item or show status.
- * There are six variants: `primary`, `secondary`, `tertiary`, `success`, `warning`, and `error`.
+ * Badge component used to label, categorize items or show status with various styling options.
+ *
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <Badge>New</Badge>
+ * ```
+ *
+ * @example
+ * With variant and size:
+ * ```tsx
+ * <Badge variant="success" size="md">Success</Badge>
+ * ```
+ *
+ * @example
+ * With status indicator:
+ * ```tsx
+ * <Badge isStatus variant="warning">Warning</Badge>
+ * ```
+ *
+ * @example
+ * With icon:
+ * ```tsx
+ * <Badge
+ *   icon={<SomeIcon />}
+ *   iconPosition="left"
+ *   variant="error"
+ * >
+ *   Error
+ * </Badge>
+ * ```
+ *
+ * @example
+ * Outlined and square:
+ * ```tsx
+ * <Badge isOutlined isSquare variant="secondary">
+ *   Draft
+ * </Badge>
+ * ```
+ *
+ * @param {BadgeProps} props - The component props
+ * @param {BadgeVariant} [props.variant="primary"] - Variant style of the badge ("primary" | "secondary" | "tertiary" | "success" | "warning" | "error")
+ * @param {BadgeSize} [props.size="sm"] - Size of the badge ("sm" | "md" | "lg")
+ * @param {boolean} [props.isOutlined=false] - Whether to use the outlined style instead of filled
+ * @param {boolean} [props.isSquare=false] - Whether to use square corners instead of rounded
+ * @param {ReactNode} [props.icon] - Icon element to display
+ * @param {IconPosition} [props.iconPosition="right"] - Position of the icon ("left" | "right")
+ * @param {boolean} [props.isStatus=false] - Whether to show a status dot
+ * @param {string} props.children - The text content of the badge
+ * @param {string} [props.testID] - Test ID for testing
  */
 export const Badge: React.FC<BadgeProps> = ({
   variant = BadgeVariants.PRIMARY,

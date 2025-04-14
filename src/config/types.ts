@@ -15,6 +15,12 @@ export type KeyPair = {
   privateKey: string;
 };
 
+export enum NetworkCongestion {
+  LOW = "Low",
+  MEDIUM = "Medium",
+  HIGH = "High",
+}
+
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;
