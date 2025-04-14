@@ -123,7 +123,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                   />
                 </View>
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
+                  <Icon.X size={24} color={themeColors.base[1]} />
                 </TouchableOpacity>
               </View>
             )}
@@ -133,7 +133,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               </Text>
               {!IconData && (
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
+                  <Icon.X size={24} color={themeColors.base[1]} />
                 </TouchableOpacity>
               )}
             </View>

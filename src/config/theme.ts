@@ -157,6 +157,9 @@ export const THEME = {
       primary: PALETTE.dark.base["00"],
       secondary: PALETTE.dark.base["01"],
     },
+    list: {
+      destructive: PALETTE.dark.red["11"],
+    },
   },
   opacity: {
     disabled: 0.6,

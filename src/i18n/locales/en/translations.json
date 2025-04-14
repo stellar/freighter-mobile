@@ -15,6 +15,10 @@
       "myQRCode": "My QR code"
     }
   },
+  "settings": {
+    "title": "Settings",
+    "logout": "Log Out"
+  },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",
     "iAlreadyHaveWallet": "I already have a wallet",
