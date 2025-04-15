@@ -146,8 +146,8 @@
       "cancel": "Cancel",
       "remove": "Remove"
     },
-    "removeAssetError": "Error removing asset {{assetName}}",
-    "removeAssetSuccess": "{{assetName}} successfully removed"
+    "removeAssetError": "Error removing asset {{assetCode}}",
+    "removeAssetSuccess": "{{assetCode}} successfully removed"
   },
   "addAssetScreen": {
     "title": "Add an asset",
@@ -163,8 +163,8 @@
     "disclaimer": "Allow asset to be viewable and tradeable from your wallet. Only add assets you recognize and trust.",
     "cancel": "Cancel",
     "addAsset": "Add asset",
-    "toastSuccess": "{{assetName}} successfully added as an asset",
-    "toastError": "Error adding asset {{assetName}}",
+    "toastSuccess": "{{assetCode}} successfully added as an asset",
+    "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
     "somethingWentWrong": "Something went wrong, please try again later"
   },
@@ -174,9 +174,9 @@
     "unhideAsset": "Unhide asset",
     "removeAsset": "Remove asset",
     "tokenAddressCopied": "Token address copied!",
-    "removeAssetAlert": {
-      "title": "Remove asset",
-      "message": "Are you sure you want to remove this asset?",
+    "removeAssetModal": {
+      "title": "Remove {{assetCode}}?",
+      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later.",
       "cancel": "Cancel",
       "remove": "Remove"
     }

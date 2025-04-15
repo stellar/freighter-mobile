@@ -129,6 +129,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   >([]);
   const [status, setStatus] = useState<PageStatus>(PageStatus.IDLE);
   const [isAddingAsset, setIsAddingAsset] = useState(false);
+  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
   const [selectedAsset, setSelectedAsset] =
     useState<FormattedSearchAssetRecord | null>(null);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -235,7 +236,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
     let toastOptions: ToastOptions = {
       title: t("addAssetScreen.toastSuccess", {
-        assetName: assetCode,
+        assetCode,
       }),
       variant: "success",
     };
@@ -267,7 +268,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       );
       toastOptions = {
         title: t("addAssetScreen.toastError", {
-          assetName: assetCode,
+          assetCode,
         }),
         variant: "error",
       };
@@ -283,10 +284,11 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   ) => {
     let toastOptions: ToastOptions = {
       title: t("addAssetScreen.toastSuccess", {
-        assetName: asset.assetCode,
+        assetCode: asset.assetCode,
       }),
       variant: "success",
     };
+    setIsRemovingAsset(true);
 
     try {
       const removeAssetTrustlineTx = await buildChangeTrustTx({
@@ -312,11 +314,12 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       logger.error("AddAssetScreen", "Error removing asset", error);
       toastOptions = {
         title: t("addAssetScreen.toastError", {
-          assetName: asset.assetCode,
+          assetCode: asset.assetCode,
         }),
         variant: "error",
       };
     } finally {
+      setIsRemovingAsset(false);
       showToast(toastOptions);
     }
   };
@@ -379,6 +382,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
                   handleRemoveAsset={() => handleRemoveAssetTrustline(asset)}
+                  isRemovingAsset={isRemovingAsset}
                 />
               ))
             ) : (

@@ -10,12 +10,14 @@ type AssetItemProps = {
   asset: FormattedSearchAssetRecord;
   handleAddAsset: () => void;
   handleRemoveAsset: () => void;
+  isRemovingAsset: boolean;
 };
 
 const AssetItem: React.FC<AssetItemProps> = ({
   asset,
   handleAddAsset,
   handleRemoveAsset,
+  isRemovingAsset,
 }) => (
   <View className="mb-4 flex-row justify-between items-center flex-1">
     <View className="flex-row items-center flex-1">
@@ -48,6 +50,7 @@ const AssetItem: React.FC<AssetItemProps> = ({
           id: `${asset.assetCode}:${asset.issuer}`,
         }}
         handleRemoveAsset={handleRemoveAsset}
+        isRemovingAsset={isRemovingAsset}
       />
     ) : (
       <AddAssetRightContent handleAddAsset={handleAddAsset} />

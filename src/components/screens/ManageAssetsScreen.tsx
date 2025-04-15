@@ -13,12 +13,13 @@ import {
   ManageAssetsStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { formatAssetIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import {
   buildChangeTrustTx,
@@ -40,6 +41,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { themeColors } = useColors();
   const { showToast } = useToast();
+  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
   const { handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -63,12 +65,12 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     });
   }, [navigation, t, themeColors]);
 
-  const handleRemoveAsset = async (assetId: string) => {
-    const assetCode = assetId.split(":")[0];
-
+  const removeAsset = async (assetId: string) => {
+    const { assetCode } = formatAssetIdentifier(assetId);
+    setIsRemovingAsset(true);
     let toastOptions: ToastOptions = {
       title: t("manageAssetsScreen.removeAssetSuccess", {
-        assetName: assetCode,
+        assetCode,
       }),
       variant: "success",
     };
@@ -95,12 +97,13 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       logger.error("ManageAssetsScreen", "Error removing asset", error);
       toastOptions = {
         title: t("manageAssetsScreen.removeAssetError", {
-          assetName: assetCode,
+          assetCode,
         }),
         variant: "error",
       };
     } finally {
       handleRefresh();
+      setIsRemovingAsset(false);
       showToast(toastOptions);
     }
   };
@@ -116,7 +119,8 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       <SimpleBalancesList
         publicKey={account?.publicKey ?? ""}
         network={network}
-        handleRemoveAsset={handleRemoveAsset}
+        handleRemoveAsset={removeAsset}
+        isRemovingAsset={isRemovingAsset}
       />
       <View className="h-4" />
       <Button

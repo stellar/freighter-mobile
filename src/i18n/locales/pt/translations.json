@@ -142,8 +142,8 @@
       "cancel": "Cancelar",
       "remove": "Remover"
     },
-    "removeAssetError": "Erro ao remover ativo {{assetName}}",
-    "removeAssetSuccess": "{{assetName}} removido com sucesso"
+    "removeAssetError": "Erro ao remover ativo {{assetCode}}",
+    "removeAssetSuccess": "{{assetCode}} removido com sucesso"
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",
@@ -159,10 +159,23 @@
     "disclaimer": "Permita que o ativo seja visualizado e negociado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
     "cancel": "Cancelar",
     "addAsset": "Adicionar ativo",
-    "toastSuccess": "{{assetName}} adicionado com sucesso como um ativo",
-    "toastError": "Erro ao adicionar ativo {{assetName}}",
+    "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
+    "toastError": "Erro ao adicionar ativo {{assetCode}}",
     "emptyState": "Nenhum ativo encontrado",
     "somethingWentWrong": "Algo deu errado, por favor, tente novamente mais tarde"
+  },
+  "manageAssetRightContent": {
+    "copyAddress": "Copiar endereço",
+    "hideAsset": "Ocultar ativo",
+    "unhideAsset": "Reexibir ativo",
+    "removeAsset": "Remover ativo",
+    "tokenAddressCopied": "Endereço do token copiado!",
+    "removeAssetModal": {
+      "title": "Remover {{assetCode}}?",
+      "message": "Tem certeza que deseja remover este ativo?\nUma vez que você remova um ativo, você precisará adicioná-lo novamente mais tarde.",
+      "cancel": "Cancelar",
+      "remove": "Remover"
+    }
   },
   "logout": "Sair",
   "clipboard": {

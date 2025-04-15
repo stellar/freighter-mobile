@@ -78,7 +78,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         disappearsOnIndex={-1}
         pressBehavior={shouldCloseOnPressBackdrop ? "close" : "none"}
         appearsOnIndex={0}
-        opacity={0.7}
+        opacity={0.9}
       />
     ),
     [shouldCloseOnPressBackdrop],
@@ -115,7 +115,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             {IconData && (
               <View className="flex-row items-center justify-between">
                 <View
-                  className={`rounded-full p-2 self-start ${IconData.backgroundColorClassName}`}
+                  className={`rounded-[32px] p-2 self-start ${IconData.backgroundColorClassName}`}
                 >
                   <IconData.IconComponent
                     size={pxValue(25)}

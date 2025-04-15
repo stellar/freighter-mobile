@@ -136,6 +136,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         android: "outline_circle",
       }),
       onPress: () => {}, // TODO: Implement QR code functionality
+      disabled: true,
     },
   ];
 

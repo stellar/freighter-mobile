@@ -11,6 +11,7 @@ interface SimpleBalancesListProps {
   rightSectionWidth?: number;
   hideNativeAsset?: boolean;
   handleRemoveAsset: (assetId: string) => void;
+  isRemovingAsset: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   rightSectionWidth,
   hideNativeAsset,
   handleRemoveAsset,
+  isRemovingAsset,
 }) => {
   const { balanceItems } = useBalancesList({
     publicKey,
@@ -66,6 +68,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
                 isNative: item.token.type === "native",
               }}
               handleRemoveAsset={() => handleRemoveAsset(item.id)}
+              isRemovingAsset={isRemovingAsset}
             />
           }
           rightSectionWidth={rightSectionWidth}
