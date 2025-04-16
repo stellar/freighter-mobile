@@ -129,7 +129,6 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
           </Button>
         </View>
       </View>
-      <View className="mt-6" />
     </View>
   );
 };

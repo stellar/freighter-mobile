@@ -8,7 +8,7 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { pxValue } from "helpers/dimensions";
+import { calculateSpacing, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -106,7 +106,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
-          paddingBottom: insets.bottom,
+          paddingBottom: calculateSpacing(insets.bottom, {
+            toNumber: true,
+          }) as number,
         }}
         {...bottomSheetViewProps}
       >

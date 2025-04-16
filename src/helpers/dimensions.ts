@@ -1,3 +1,5 @@
+import { DEFAULT_PADDING } from "config/constants";
+import { hasNotch } from "helpers/device";
 import { Dimensions } from "react-native";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 
@@ -101,3 +103,42 @@ export function fsValue(designFontSize: number): number {
 export function fs(designFontSize: number): string {
   return `${fsValue(designFontSize)}px`;
 }
+
+/**
+ * Calculates responsive spacing that adapts to the device's notch status and platform
+ *
+ * This function provides consistent spacing across different device types by:
+ * - Accepting a base spacing value from design specs
+ * - Applying platform-specific adjustments (Android devices with notch get additional padding)
+ * - Allowing optional multiplier to easily create spacing variants
+ * - Converting the result to responsive pixel values with proper units
+ *
+ * @param {number} baseSpacing - The base spacing value from design specifications
+ * @param {Object} options - Optional configuration parameters
+ * @param {number} options.multiplier - Multiplier to scale the spacing (default: 1)
+ * @returns {string} Responsive spacing value as a string with "px" suffix
+ *
+ * @example
+ * // Basic usage for default spacing
+ * const padding = calculateSpacing(24);
+ *
+ * @example
+ * // Create double spacing with notch adjustment
+ * const largeMargin = calculateSpacing(24, { multiplier: 2 });
+ *
+ * @example
+ * // Create spacing with no notch adjustment
+ * const fixedSpacing = calculateSpacing(16, { ignoreNotch: true });
+ */
+export const calculateSpacing = (
+  baseSpacing: number,
+  options?: { multiplier?: number; toNumber?: boolean },
+): string | number => {
+  const { multiplier = 1, toNumber = false } = options || {};
+  const scaledBaseSpacing = baseSpacing * multiplier;
+  const notchAdjustment = !hasNotch ? DEFAULT_PADDING : 0;
+
+  return toNumber
+    ? pxValue(scaledBaseSpacing + notchAdjustment)
+    : px(scaledBaseSpacing + notchAdjustment);
+};

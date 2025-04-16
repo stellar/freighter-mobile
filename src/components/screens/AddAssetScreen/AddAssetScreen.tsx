@@ -360,6 +360,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
           onChangeText={handleSearch}
           fieldSize="lg"
           autoCapitalize="none"
+          autoCorrect={false}
           leftElement={
             <Icon.SearchMd
               size={pxValue(16)}
