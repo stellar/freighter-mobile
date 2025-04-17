@@ -37,7 +37,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     logout();
   };
 
-  const listItems = [
+  const topListItems = [
     {
       icon: <Icon.LogOut01 size={24} color={THEME.colors.list.destructive} />,
       title: t("settings.logout"),
@@ -47,7 +47,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     },
   ];
 
-  const updateListItems = [
+  const bottomListItems = [
     {
       icon: <Icon.GitCommit size={24} color={THEME.colors.list.disabled} />,
       title: t("settings.version", { version: appVersion }),
@@ -58,8 +58,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex flex-col gap-6">
-        <List items={listItems} />
-        <List items={updateListItems} />
+        <List items={topListItems} />
+        <List items={bottomListItems} />
       </View>
     </BaseLayout>
   );
