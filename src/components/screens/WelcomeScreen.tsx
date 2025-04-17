@@ -28,12 +28,9 @@ const StyledDisplay = styled(Display)`
 
 const StyledIconContainer = styled.View`
   align-items: center;
-  margin-top: ${px(32)};
 `;
 
-const StyledTermsTextContainer = styled.View`
-  margin-bottom: ${px(70)};
-`;
+const StyledTermsTextContainer = styled.View``;
 
 const StyledTermsText = styled(Text)`
   text-align: center;

@@ -1,15 +1,17 @@
 import { BalanceRow } from "components/BalanceRow";
+import ManageAssetRightContent from "components/ManageAssetRightContent";
 import { NETWORKS } from "config/constants";
-import { PricedBalance } from "config/types";
 import { useBalancesList } from "hooks/useBalancesList";
-import React, { ReactNode } from "react";
+import React from "react";
 import { ScrollView } from "react-native";
 
 interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
-  renderRightContent?: (balance: PricedBalance) => ReactNode;
   rightSectionWidth?: number;
+  hideNativeAsset?: boolean;
+  handleRemoveAsset: (assetId: string) => void;
+  isRemovingAsset: boolean;
 }
 
 /**
@@ -30,8 +32,10 @@ interface SimpleBalancesListProps {
 export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   publicKey,
   network,
-  renderRightContent,
   rightSectionWidth,
+  hideNativeAsset,
+  handleRemoveAsset,
+  isRemovingAsset,
 }) => {
   const { balanceItems } = useBalancesList({
     publicKey,
@@ -43,17 +47,30 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     return null;
   }
 
+  const filteredBalanceItems = balanceItems.filter(
+    (item) => !hideNativeAsset || item.token.type !== "native",
+  );
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       alwaysBounceVertical={false}
       testID="simple-balances-list"
     >
-      {balanceItems.map((item) => (
+      {filteredBalanceItems.map((item) => (
         <BalanceRow
           key={item.id}
           balance={item}
-          rightContent={renderRightContent?.(item)}
+          rightContent={
+            <ManageAssetRightContent
+              asset={{
+                id: item.id,
+                isNative: item.token.type === "native",
+              }}
+              handleRemoveAsset={() => handleRemoveAsset(item.id)}
+              isRemovingAsset={isRemovingAsset}
+            />
+          }
           rightSectionWidth={rightSectionWidth}
         />
       ))}

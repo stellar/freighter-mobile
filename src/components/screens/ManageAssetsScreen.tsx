@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
@@ -12,38 +12,25 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { THEME } from "config/theme";
-import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { px } from "helpers/dimensions";
+import { formatAssetIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useAssetActions } from "hooks/useAssetActions";
+import { useBalancesList } from "hooks/useBalancesList";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useRef } from "react";
-import { Platform, TouchableOpacity } from "react-native";
-import styled from "styled-components/native";
+import { ToastOptions, useToast } from "providers/ToastProvider";
+import React, { useEffect, useRef, useState } from "react";
+import { TouchableOpacity, View } from "react-native";
+import {
+  buildChangeTrustTx,
+  signTransaction,
+  submitTx,
+} from "services/stellar";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
   typeof MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN
 >;
-
-const Spacer = styled.View`
-  height: ${px(16)};
-`;
-
-const icons = Platform.select({
-  ios: {
-    copyAddress: "doc.on.doc",
-    hideAsset: "eye.slash",
-    removeAsset: "minus.circle",
-  },
-  android: {
-    copyAddress: "baseline_format_paint",
-    hideAsset: "baseline_delete",
-    removeAsset: "outline_circle",
-  },
-});
 
 const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   navigation,
@@ -51,66 +38,74 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyAssetAddress } = useAssetActions();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { themeColors } = useColors();
+  const { showToast } = useToast();
+  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
+  const { handleRefresh } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={THEME.colors.base.secondary} />
+          <Icon.X size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={() => bottomSheetModalRef.current?.present()}
         >
-          <Icon.HelpCircle size={24} color={THEME.colors.base.secondary} />
+          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t]);
+  }, [navigation, t, themeColors]);
 
-  const handleCopyTokenAddress = (balance: PricedBalance) => {
-    copyAssetAddress(balance, "manageAssetsScreen.tokenAddressCopied");
-  };
+  const removeAsset = async (assetId: string) => {
+    const { assetCode } = formatAssetIdentifier(assetId);
+    setIsRemovingAsset(true);
+    let toastOptions: ToastOptions = {
+      title: t("manageAssetsScreen.removeAssetSuccess", {
+        assetCode,
+      }),
+      variant: "success",
+    };
 
-  const rightContent = (balance: PricedBalance) => {
-    const menuActions = [
-      {
-        title: t("manageAssetsScreen.actions.copyAddress"),
-        systemIcon: icons!.copyAddress,
-        onPress: () => handleCopyTokenAddress(balance),
-        disabled: true,
-      },
-      {
-        title: t("manageAssetsScreen.actions.hideAsset"),
-        systemIcon: icons!.hideAsset,
-        onPress: () =>
-          logger.debug("ManageAssetsScreen", "hideAsset Not implemented"),
-        disabled: true,
-      },
-      {
-        title: t("manageAssetsScreen.actions.removeAsset"),
-        systemIcon: icons!.removeAsset,
-        onPress: () =>
-          logger.debug("ManageAssetsScreen", "removeAsset Not implemented"),
-        destructive: true,
-      },
-    ];
+    try {
+      const removeAssetTrustlineTx = await buildChangeTrustTx({
+        assetIdentifier: assetId,
+        network,
+        publicKey: account?.publicKey ?? "",
+        isRemove: true,
+      });
 
-    return (
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: menuActions,
-        }}
-      >
-        <Icon.DotsHorizontal
-          size={24}
-          color={THEME.colors.foreground.primary}
-        />
-      </ContextMenuButton>
-    );
+      const signedTx = signTransaction({
+        tx: removeAssetTrustlineTx,
+        secretKey: account?.privateKey ?? "",
+        network,
+      });
+
+      await submitTx({
+        network,
+        tx: signedTx,
+      });
+    } catch (error) {
+      logger.error("ManageAssetsScreen", "Error removing asset", error);
+      toastOptions = {
+        title: t("manageAssetsScreen.removeAssetError", {
+          assetCode,
+        }),
+        variant: "error",
+      };
+    } finally {
+      handleRefresh();
+      setIsRemovingAsset(false);
+      showToast(toastOptions);
+    }
   };
 
   return (
@@ -124,9 +119,10 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       <SimpleBalancesList
         publicKey={account?.publicKey ?? ""}
         network={network}
-        renderRightContent={rightContent}
+        handleRemoveAsset={removeAsset}
+        isRemovingAsset={isRemovingAsset}
       />
-      <Spacer />
+      <View className="h-4" />
       <Button
         tertiary
         lg

@@ -15,6 +15,12 @@ export type KeyPair = {
   privateKey: string;
 };
 
+export enum NetworkCongestion {
+  LOW = "Low",
+  MEDIUM = "Medium",
+  HIGH = "High",
+}
+
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;
@@ -197,6 +203,13 @@ export type PricedBalance = Balance &
     fiatCode?: string;
     fiatTotal?: BigNumber | null;
     displayName?: string;
+    token: {
+      code: string;
+      type: AssetType;
+      issuer?: {
+        key: string;
+      };
+    };
   };
 
 /**
@@ -207,3 +220,55 @@ export type PricedBalance = Balance &
 export type PricedBalanceMap = {
   [tokenIdentifier: TokenIdentifier]: PricedBalance;
 };
+
+export interface SearchAssetResponse {
+  _links: {
+    self: {
+      href: string;
+    };
+    prev: {
+      href: string;
+    };
+    next: {
+      href: string;
+    };
+  };
+  _embedded: {
+    records: {
+      asset: string;
+      supply: number;
+      traded_amount: number;
+      payments_amount: number;
+      created: number;
+      trustlines: number[];
+      payments: number;
+      domain?: string;
+      rating: {
+        age: number;
+        trades: number;
+        payments: number;
+        trustlines: number;
+        volume7d: number;
+        interop: number;
+        liquidity: number;
+        average: number;
+      };
+      score: number;
+      paging_token: number;
+    }[];
+  };
+}
+
+export interface TokenDetailsResponse {
+  name: string;
+  decimals: number;
+  symbol: string;
+  balance?: string;
+}
+
+export interface GetTokenDetailsParams {
+  contractId: string;
+  publicKey: string;
+  network: NETWORKS;
+  shouldFetchBalance?: boolean;
+}

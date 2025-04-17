@@ -4,10 +4,9 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { PALETTE, THEME } from "config/theme";
-import { px } from "helpers/dimensions";
+import { calculateSpacing, px } from "helpers/dimensions";
 import { t } from "i18next";
 import React from "react";
-import { Platform } from "react-native";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
@@ -32,7 +31,8 @@ interface StyledProps {
 const StyledContainer = styled.View<StyledProps>`
   padding-left: ${px(24)};
   padding-right: ${px(24)};
-  padding-bottom: ${({ $insets }: StyledProps) => px($insets.bottom)};
+  padding-bottom: ${({ $insets }: StyledProps) =>
+    calculateSpacing($insets.bottom)};
   flex: 1;
   justify-content: space-between;
   background-color: ${THEME.colors.background.default};
@@ -47,7 +47,6 @@ const StyledContentContainer = styled.View`
 const FooterContainer = styled.View`
   gap: ${px(24)};
   background-color: ${THEME.colors.background.default};
-  padding-bottom: ${Platform.OS === "ios" ? 0 : px(24)};
 `;
 
 const FooterNoteText = styled(Text)`

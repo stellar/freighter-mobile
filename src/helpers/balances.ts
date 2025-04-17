@@ -1,4 +1,4 @@
-import { Asset } from "@stellar/stellar-sdk";
+import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   Balance,
@@ -237,3 +237,22 @@ export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
   // Convert back to object
   return Object.fromEntries(sortedEntries);
 };
+
+export const formatAssetIdentifier = (assetIdentifier: string) => {
+  const formattedAssetIdentifier = assetIdentifier.split(":");
+
+  if (formattedAssetIdentifier.length === 1) {
+    return {
+      assetCode: formattedAssetIdentifier[0],
+      issuer: "",
+    };
+  }
+
+  return {
+    assetCode: formattedAssetIdentifier[0],
+    issuer: formattedAssetIdentifier[1],
+  };
+};
+
+export const isPublicKeyValid = (publicKey: string) =>
+  StrKey.isValidEd25519PublicKey(publicKey);

@@ -1,6 +1,41 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 /* eslint-disable import/extensions */
 import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
+import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
+
+// Create a direct mock for the specific functions from react-native-responsive-screen
+// This ensures these functions are defined before any module imports them
+global.heightPercentageToDP = jest.fn((height) => height);
+global.widthPercentageToDP = jest.fn((width) => width);
+
+// Mock the module itself
+jest.mock("react-native-responsive-screen", () => ({
+  heightPercentageToDP: global.heightPercentageToDP,
+  widthPercentageToDP: global.widthPercentageToDP,
+}));
+
+// Mock dimensions helper explicitly
+jest.mock("helpers/dimensions", () => ({
+  pxValue: (value) => value,
+  px: (value) => `${value}px`,
+  fsValue: (value) => value,
+  fs: (value) => `${value}px`,
+  deviceAspectRatio: 0.5,
+  calculateSpacing: (baseSpacing, options) => {
+    const { multiplier = 1, toNumber = false } = options || {};
+    const scaledValue = baseSpacing * multiplier;
+    return toNumber ? scaledValue : `${scaledValue}px`;
+  },
+}));
+
+// Mock react-native
+jest.mock("react-native", () => {
+  const RN = jest.requireActual("react-native");
+  RN.Dimensions = {
+    get: jest.fn().mockReturnValue({ width: 400, height: 800 }),
+  };
+  return RN;
+});
 
 // Mock navigation
 jest.mock("@react-navigation/native", () => {
@@ -58,12 +93,6 @@ jest.mock("react-native-safe-area-context", () => {
     useSafeAreaInsets: jest.fn(() => inset),
   };
 });
-
-// Mock react-native-responsive-screen
-jest.mock("react-native-responsive-screen", () => ({
-  widthPercentageToDP: jest.fn((width) => width),
-  heightPercentageToDP: jest.fn((height) => height),
-}));
 
 jest.mock("@react-native-clipboard/clipboard", () => mockClipboard);
 
@@ -135,3 +164,5 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
     Group: jest.fn(),
   }),
 }));
+
+jest.mock("react-native-device-info", () => mockRNDeviceInfo);

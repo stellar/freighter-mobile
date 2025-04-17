@@ -1,5 +1,6 @@
 import {
   MenuContent,
+  MenuGroup,
   MenuItem as MenuItemComponent,
   MenuItemIcon,
   MenuItemTitle,
@@ -10,12 +11,13 @@ import React from "react";
 import { View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-interface MenuItem {
-  title: string;
+export interface MenuItem {
+  title?: string;
   systemIcon?: string;
   destructive?: boolean;
   disabled?: boolean;
-  onPress: () => void;
+  onPress?: () => void;
+  actions?: MenuItem[];
 }
 
 interface ContextMenuButtonProps {
@@ -41,36 +43,46 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
     };
   };
 
+  const renderMenuItem = (item: MenuItem) => (
+    <MenuItemComponent
+      key={item.title ?? Math.random().toString()}
+      onSelect={() => {
+        if (onPress) {
+          onPress({ nativeEvent: { name: item.title ?? "" } });
+        } else {
+          item.onPress?.();
+        }
+      }}
+      disabled={item.disabled}
+      destructive={item.destructive}
+    >
+      <MenuItemTitle>{item.title}</MenuItemTitle>
+      {item.systemIcon && (
+        <MenuItemIcon
+          ios={getIconName(item.systemIcon)?.ios}
+          androidIconName={getIconName(item.systemIcon)?.androidIconName}
+        />
+      )}
+    </MenuItemComponent>
+  );
+
   return (
     <MenuRoot>
       <MenuTrigger>
         <View>{children}</View>
       </MenuTrigger>
       <MenuContent>
-        {actions.map((action) => (
-          <MenuItemComponent
-            key={action.title}
-            onSelect={() => {
-              if (onPress) {
-                onPress({ nativeEvent: { name: action.title } });
-              } else {
-                action.onPress();
-              }
-            }}
-            disabled={action.disabled}
-            destructive={action.destructive}
-          >
-            <MenuItemTitle>{action.title}</MenuItemTitle>
-            {action.systemIcon && (
-              <MenuItemIcon
-                ios={getIconName(action.systemIcon)?.ios}
-                androidIconName={
-                  getIconName(action.systemIcon)?.androidIconName
-                }
-              />
-            )}
-          </MenuItemComponent>
-        ))}
+        {actions.map((action) =>
+          action.actions ? (
+            <MenuGroup key={action.title ?? Math.random().toString()}>
+              {action.actions.map((nestedAction) =>
+                renderMenuItem(nestedAction),
+              )}
+            </MenuGroup>
+          ) : (
+            renderMenuItem(action)
+          ),
+        )}
       </MenuContent>
     </MenuRoot>
   );

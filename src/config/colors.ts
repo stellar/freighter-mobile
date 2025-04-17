@@ -1,5 +1,34 @@
 const colors = {
   light: {
+    primary: "#6e56cf",
+    secondary: "#171717",
+    background: {
+      primary: "#fcfcfc",
+      secondary: "#f8f8f8",
+      tertiary: "#f3f3f3",
+    },
+    state: {
+      primary: "#ededed",
+      secondary: "#e8e8e8",
+    },
+    border: {
+      primary: "#e2e2e2",
+      secondary: "#dbdbdb",
+      tertiary: "#c7c7c7",
+    },
+    foreground: {
+      primary: "#8f8f8f",
+      secondary: "#858585",
+    },
+    text: {
+      primary: "#171717",
+      secondary: "#6f6f6f",
+    },
+    status: {
+      success: "#30a46c",
+      error: "#e5484d",
+      warning: "#ffb224",
+    },
     gray: {
       1: "#fcfcfc",
       2: "#f8f8f8",
@@ -173,6 +202,35 @@ const colors = {
     },
   },
   dark: {
+    primary: "#6e56cf",
+    secondary: "#ededed",
+    background: {
+      primary: "#161616",
+      secondary: "#1c1c1c",
+      tertiary: "#232323",
+    },
+    state: {
+      primary: "#282828",
+      secondary: "#2e2e2e",
+    },
+    border: {
+      primary: "#343434",
+      secondary: "#3e3e3e",
+      tertiary: "#505050",
+    },
+    foreground: {
+      primary: "#707070",
+      secondary: "#7e7e7e",
+    },
+    text: {
+      primary: "#ededed",
+      secondary: "#a0a0a0",
+    },
+    status: {
+      success: "#30a46c",
+      error: "#e5484d",
+      warning: "#ffb224",
+    },
     gray: {
       1: "#161616",
       2: "#1c1c1c",
@@ -347,13 +405,6 @@ const colors = {
   },
 };
 
-const getColor = (
-  theme: "light" | "dark",
-  color: keyof (typeof colors)[typeof theme],
-  variant: number,
-) =>
-  colors[theme][color][
-    variant as keyof (typeof colors)[typeof theme][typeof color]
-  ];
+const getThemeColors = (theme: "light" | "dark") => colors[theme];
 
-export { colors, getColor };
+export { colors, getThemeColors };
