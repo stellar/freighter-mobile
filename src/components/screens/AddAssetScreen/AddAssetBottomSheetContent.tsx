@@ -63,7 +63,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       <Badge
         variant="secondary"
         size="md"
-        icon={<Icon.ShieldPlus size={pxValue(16)} />}
+        icon={<Icon.ShieldPlus size={16} />}
         iconPosition={IconPosition.LEFT}
       >
         {t("addAssetScreen.addAssetTrustline")}
@@ -77,10 +77,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       <View className="mt-6" />
       <View className="w-full flex-row items-center px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
         <View className="flex-row items-center">
-          <Icon.UserCircle
-            size={pxValue(16)}
-            color={themeColors.foreground.primary}
-          />
+          <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
           <Text
             md
             secondary

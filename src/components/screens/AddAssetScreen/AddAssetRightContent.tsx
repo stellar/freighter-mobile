@@ -1,6 +1,5 @@
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -22,10 +21,7 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       lg
       testID="add-asset-button"
       icon={
-        <Icon.PlusCircle
-          size={pxValue(16)}
-          color={themeColors.foreground.primary}
-        />
+        <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />
       }
       iconPosition={IconPosition.RIGHT}
       onPress={handleAddAsset}
