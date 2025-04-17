@@ -32,3 +32,17 @@ export const MenuItemIcon = DropdownMenu.create(
   ),
   "ItemIcon",
 );
+
+export const MenuGroup = DropdownMenu.create(
+  (props: React.ComponentProps<typeof DropdownMenu.Group>) => (
+    <DropdownMenu.Group {...props} />
+  ),
+  "Group",
+);
+
+export const MenuSeparator = DropdownMenu.create(
+  (props: React.ComponentProps<typeof DropdownMenu.Separator>) => (
+    <DropdownMenu.Separator {...props} />
+  ),
+  "Separator",
+);
