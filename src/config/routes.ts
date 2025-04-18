@@ -2,7 +2,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
   SETTINGS_STACK: "SettingsStack",
-
+  SEND_PAYMENT_STACK: "SendPaymentStack",
   MANAGE_ASSETS_STACK: "ManageAssetsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -36,12 +36,17 @@ export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
 } as const;
 
+export const SEND_PAYMENT_ROUTES = {
+  SEND_PAYMENT_SCREEN: "SendPaymentScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
 };
 
 export type AuthStackParamList = {
@@ -82,4 +87,8 @@ export type ManageAssetsStackParamList = {
 
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
+};
+
+export type SendPaymentStackParamList = {
+  [SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN]: undefined;
 };

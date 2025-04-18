@@ -158,6 +158,9 @@
     "toastSuccess": "{{assetName}} successfully added as an asset",
     "toastError": "Error adding asset {{assetName}}"
   },
+  "sendPaymentScreen": {
+    "title": "Send Payment"
+  },
   "logout": "Log out",
   "clipboard": {
     "copied": "Copied to clipboard!",

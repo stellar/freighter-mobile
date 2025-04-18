@@ -8,18 +8,23 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SettingsStackParamList,
+  SendPaymentStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
+import { SendPaymentStackNavigator } from "navigators/SendPaymentNavigator";
 import { SettingsStackNavigator } from "navigators/SettingsNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
-  RootStackParamList & ManageAssetsStackParamList & SettingsStackParamList
+  RootStackParamList &
+    ManageAssetsStackParamList &
+    SettingsStackParamList &
+    SendPaymentStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -74,6 +79,10 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
             component={SettingsStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
+            component={SendPaymentStackNavigator}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

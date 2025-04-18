@@ -164,7 +164,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <ButtonsRow>
           <IconButton Icon={Icon.Plus} title={t("home.buy")} />
-          <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
+          <IconButton
+            Icon={Icon.ArrowUp}
+            title={t("home.send")}
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK)
+            }
+          />
           <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
           <IconButton
             Icon={Icon.Copy01}
