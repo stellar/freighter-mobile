@@ -5,8 +5,11 @@ import {
 } from "@react-navigation/native";
 import { AuthCheckProvider } from "components/AuthCheckProvider";
 import { OfflineDetection } from "components/OfflineDetection";
+import { logger } from "config/logger";
 import { RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
+import useInitializeWalletKit from "hooks/useInitializeWalletKit";
+import useWalletKitEventsManager from "hooks/useWalletKitEventsManager";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
 import { ToastProvider } from "providers/ToastProvider";
@@ -20,9 +23,21 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export const App = (): React.JSX.Element => {
+  // Step 1 - Initialize wallets and wallet connect client
+  const initialized = useInitializeWalletKit();
+
+  // Step 2 - Once initialized, set up wallet connect event manager
+  useWalletKitEventsManager(initialized);
+  
   useEffect(() => {
     Appearance.setColorScheme("dark");
   }, []);
+
+  useEffect(() => {
+    if (initialized) {
+      logger.debug("WalletKit", "initialized");
+    }
+  }, [initialized]);
 
   return (
     <GestureHandlerRootView>
