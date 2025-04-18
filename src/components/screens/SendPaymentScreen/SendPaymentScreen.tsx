@@ -2,7 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
+import { Input } from "components/sds/Input";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -31,7 +31,20 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
-      <Text>Send Payment</Text>
+      <Input
+        leftElement={
+          <Icon.UserCircle size={16} color={THEME.colors.foreground.primary} />
+        }
+        placeholder={t("sendPaymentScreen.inputPlaceholder")}
+        onChangeText={() => {}}
+        endButton={{
+          content: "Paste",
+          onPress: () => {
+            console.log("End button pressed");
+          },
+          disabled: false,
+        }}
+      />
     </BaseLayout>
   );
 };

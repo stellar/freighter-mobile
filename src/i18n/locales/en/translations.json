@@ -159,7 +159,8 @@
     "toastError": "Error adding asset {{assetName}}"
   },
   "sendPaymentScreen": {
-    "title": "Send Payment"
+    "title": "Send Payment",
+    "inputPlaceholder": "Enter address"
   },
   "logout": "Log out",
   "clipboard": {
