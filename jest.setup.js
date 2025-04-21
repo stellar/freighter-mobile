@@ -21,7 +21,7 @@ jest.mock("helpers/dimensions", () => ({
   fsValue: (value) => value,
   fs: (value) => `${value}px`,
   deviceAspectRatio: 0.5,
-  calculateSpacing: (baseSpacing, options) => {
+  calculateEdgeSpacing: (baseSpacing, options) => {
     const { multiplier = 1, toNumber = false } = options || {};
     const scaledValue = baseSpacing * multiplier;
     return toNumber ? scaledValue : `${scaledValue}px`;

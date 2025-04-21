@@ -120,17 +120,17 @@ export function fs(designFontSize: number): string {
  *
  * @example
  * // Basic usage for default spacing
- * const padding = calculateSpacing(24);
+ * const padding = calculateEdgeSpacing(24);
  *
  * @example
  * // Create double spacing with notch adjustment
- * const largeMargin = calculateSpacing(24, { multiplier: 2 });
+ * const largeMargin = calculateEdgeSpacing(24, { multiplier: 2 });
  *
  * @example
  * // Create spacing with no notch adjustment
- * const fixedSpacing = calculateSpacing(16, { ignoreNotch: true });
+ * const fixedSpacing = calculateEdgeSpacing(16, { toNumber: true });
  */
-export const calculateSpacing = (
+export const calculateEdgeSpacing = (
   baseSpacing: number,
   options?: { multiplier?: number; toNumber?: boolean },
 ): string | number => {

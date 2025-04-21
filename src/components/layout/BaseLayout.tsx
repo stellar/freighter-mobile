@@ -2,7 +2,7 @@
 import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
-import { calculateSpacing } from "helpers/dimensions";
+import { calculateEdgeSpacing } from "helpers/dimensions";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
@@ -37,13 +37,13 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     $backgroundColor};
   padding-top: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.top) return 0;
-    return calculateSpacing($insets.top, { toNumber: true });
+    return calculateEdgeSpacing($insets.top, { toNumber: true });
   }}px;
   padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) =>
     ($insetsConfig?.right ? $insets.right : 0) + DEFAULT_PADDING}px;
   padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    return calculateSpacing($insets.bottom, { toNumber: true });
+    return calculateEdgeSpacing($insets.bottom, { toNumber: true });
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) =>
     ($insetsConfig?.left ? $insets.left : 0) + DEFAULT_PADDING}px;

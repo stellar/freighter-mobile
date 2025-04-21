@@ -33,9 +33,9 @@ export function fs(designFontSize: number): string {
 }
 
 /**
- * Mock implementation of calculateSpacing
+ * Mock implementation of calculateEdgeSpacing
  */
-export const calculateSpacing = (
+export const calculateEdgeSpacing = (
   baseSpacing: number,
   options?: { multiplier?: number; toNumber?: boolean },
 ): string | number => {
