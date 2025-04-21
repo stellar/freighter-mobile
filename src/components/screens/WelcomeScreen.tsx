@@ -30,8 +30,6 @@ const StyledIconContainer = styled.View`
   align-items: center;
 `;
 
-const StyledTermsTextContainer = styled.View``;
-
 const StyledTermsText = styled(Text)`
   text-align: center;
   padding-horizontal: ${px(32)};
@@ -71,14 +69,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             {t("welcomeScreen.iAlreadyHaveWallet")}
           </Button>
         </View>
-        <StyledTermsTextContainer>
+        <View>
           <StyledTermsText md secondary medium>
             {t("welcomeScreen.terms.byProceeding")}
             <Text md medium url="https://stellar.org/terms-of-service">
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
           </StyledTermsText>
-        </StyledTermsTextContainer>
+        </View>
       </Container>
     </BaseLayout>
   );
