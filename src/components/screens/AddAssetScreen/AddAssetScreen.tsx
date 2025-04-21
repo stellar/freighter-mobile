@@ -1,5 +1,3 @@
-/* eslint-disable react/no-array-index-key */
-/* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -19,107 +17,27 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { PricedBalance, SearchAssetResponse } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatAssetIdentifier } from "helpers/balances";
-import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
+import { AssetLookupStatus, useAssetLookup } from "hooks/useAssetLookup";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
-import { handleContractLookup } from "services/backend";
-import { searchAsset } from "services/stellarExpert";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
   typeof MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN
 >;
 
-enum PageStatus {
-  IDLE = "idle",
-  LOADING = "loading",
-  SUCCESS = "success",
-  ERROR = "error",
-}
-
-const checkIfUserHasTrustline = (
-  currentBalances: (PricedBalance & {
-    id: string;
-  })[],
-  assetCode: string,
-  issuer: string,
-) => {
-  const balance = currentBalances.find((currentBalance) => {
-    const formattedCurrentBalance = formatAssetIdentifier(currentBalance.id);
-
-    return (
-      formattedCurrentBalance.assetCode === assetCode &&
-      formattedCurrentBalance.issuer === issuer
-    );
-  });
-
-  return !!balance;
-};
-
-const formatSearchAssetRecords = (
-  records:
-    | SearchAssetResponse["_embedded"]["records"]
-    | FormattedSearchAssetRecord[],
-  currentBalances: (PricedBalance & {
-    id: string;
-  })[],
-): FormattedSearchAssetRecord[] =>
-  records
-    .map((record) => {
-      if ("assetCode" in record) {
-        return {
-          ...record,
-          hasTrustline: checkIfUserHasTrustline(
-            currentBalances,
-            record.assetCode,
-            record.issuer,
-          ),
-        };
-      }
-
-      const formattedTokenRecord = record.asset.split("-");
-      const assetCode = formattedTokenRecord[0];
-      const issuer = formattedTokenRecord[1] ?? "";
-
-      return {
-        assetCode,
-        domain: record.domain ?? "",
-        hasTrustline: checkIfUserHasTrustline(
-          currentBalances,
-          assetCode,
-          issuer,
-        ),
-        issuer,
-        isNative: record.asset === "XLM",
-      };
-    })
-    .sort((a) => {
-      if (a.hasTrustline) {
-        return -1;
-      }
-
-      return 1;
-    });
-
 const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
-  const [searchResults, setSearchResults] = useState<
-    FormattedSearchAssetRecord[]
-  >([]);
-  const [status, setStatus] = useState<PageStatus>(PageStatus.IDLE);
   const [selectedAsset, setSelectedAsset] =
     useState<FormattedSearchAssetRecord | null>(null);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -129,14 +47,18 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     network,
     shouldPoll: false,
   });
-  const [searchTerm, setSearchTerm] = useState("");
   const { themeColors } = useColors();
+
+  const { searchTerm, searchResults, status, handleSearch, resetSearch } =
+    useAssetLookup({
+      network,
+      publicKey: account?.publicKey,
+      balanceItems,
+    });
 
   const resetPageState = () => {
     handleRefresh();
-    setStatus(PageStatus.IDLE);
-    setSearchResults([]);
-    setSearchTerm("");
+    resetSearch();
   };
 
   const { addAsset, removeAsset, isAddingAsset, isRemovingAsset } =
@@ -163,55 +85,6 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       ),
     });
   }, [navigation, t, themeColors]);
-
-  const debouncedSearch = useDebounce(async () => {
-    if (!searchTerm) {
-      setStatus(PageStatus.IDLE);
-      setSearchResults([]);
-      return;
-    }
-
-    setStatus(PageStatus.LOADING);
-
-    let resJson;
-
-    if (isContractId(searchTerm)) {
-      const lookupResult = await handleContractLookup(
-        searchTerm,
-        network,
-        account?.publicKey,
-      ).catch(() => {
-        setStatus(PageStatus.ERROR);
-        return null;
-      });
-
-      resJson = lookupResult ? [lookupResult] : [];
-    } else {
-      const response = await searchAsset(searchTerm, network);
-
-      resJson = response?._embedded.records;
-    }
-
-    if (!resJson) {
-      setStatus(PageStatus.ERROR);
-      return;
-    }
-
-    const formattedRecords = formatSearchAssetRecords(resJson, balanceItems);
-
-    setSearchResults(formattedRecords);
-    setStatus(PageStatus.SUCCESS);
-  });
-
-  const handleSearch = (text: string) => {
-    if (text === searchTerm) {
-      return;
-    }
-
-    setSearchTerm(text);
-
-    debouncedSearch();
-  };
 
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
@@ -273,17 +146,17 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
           }
         />
         <View className="h-4" />
-        {status === PageStatus.LOADING && <Spinner />}
-        {status === PageStatus.SUCCESS && (
+        {status === AssetLookupStatus.LOADING && <Spinner />}
+        {status === AssetLookupStatus.SUCCESS && (
           <ScrollView
             className="flex-1"
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={false}
           >
             {searchResults.length > 0 ? (
-              searchResults.map((asset, index) => (
+              searchResults.map((asset) => (
                 <AssetItem
-                  key={index}
+                  key={asset.assetCode}
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
                   handleRemoveAsset={() => removeAsset(asset)}
@@ -295,7 +168,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
             )}
           </ScrollView>
         )}
-        {status === PageStatus.ERROR && <ErrorState />}
+        {status === AssetLookupStatus.ERROR && <ErrorState />}
         <View className="h-4" />
         <Button
           secondary
