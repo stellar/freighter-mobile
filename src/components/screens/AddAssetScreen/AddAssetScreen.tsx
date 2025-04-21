@@ -23,7 +23,6 @@ import {
 import { PricedBalance, SearchAssetResponse } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatAssetIdentifier } from "helpers/balances";
-import { pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -139,28 +138,28 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     network,
     shouldPoll: false,
   });
-  const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { themeColors } = useColors();
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={pxValue(24)} color={themeColors.base[1]} />
+          <Icon.X size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={() => moreInfoBottomSheetModalRef.current?.present()}
         >
-          <Icon.HelpCircle size={pxValue(24)} color={themeColors.base[1]} />
+          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
   }, [navigation, t, themeColors]);
 
   const debouncedSearch = useDebounce(async () => {
-    if (!search) {
+    if (!searchTerm) {
       setStatus(PageStatus.IDLE);
       setSearchResults([]);
       return;
@@ -170,9 +169,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
     let resJson;
 
-    if (isContractId(search)) {
+    if (isContractId(searchTerm)) {
       const lookupResult = await handleContractLookup(
-        search,
+        searchTerm,
         network,
         account?.publicKey,
       ).catch(() => {
@@ -182,7 +181,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
       resJson = lookupResult ? [lookupResult] : [];
     } else {
-      const response = await searchAsset(search, network);
+      const response = await searchAsset(searchTerm, network);
 
       resJson = response?._embedded.records;
     }
@@ -196,14 +195,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
     setSearchResults(formattedRecords);
     setStatus(PageStatus.SUCCESS);
-  }, 500);
+  });
 
   const handleSearch = (text: string) => {
-    if (text === search) {
+    if (text === searchTerm) {
       return;
     }
 
-    setSearch(text);
+    setSearchTerm(text);
 
     debouncedSearch();
   };
@@ -222,7 +221,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     handleRefresh();
     setStatus(PageStatus.IDLE);
     setSearchResults([]);
-    setSearch("");
+    setSearchTerm("");
   };
 
   const handleAddAssetTrustline = async () => {
@@ -356,16 +355,13 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
         />
         <Input
           placeholder={t("addAssetScreen.searchPlaceholder")}
-          value={search}
+          value={searchTerm}
           onChangeText={handleSearch}
           fieldSize="lg"
           autoCapitalize="none"
           autoCorrect={false}
           leftElement={
-            <Icon.SearchMd
-              size={pxValue(16)}
-              color={themeColors.foreground.primary}
-            />
+            <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
           }
         />
         <View className="h-4" />

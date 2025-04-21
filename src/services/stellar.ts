@@ -8,6 +8,7 @@ import {
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
 import {
+  DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
   NETWORKS,
@@ -105,7 +106,7 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     }
   } catch (e) {
     // use default values
-    recommendedFee = "100";
+    recommendedFee = DEFAULT_RECOMMENDED_STELLAR_FEE;
     networkCongestion = NetworkCongestion.LOW;
   }
 

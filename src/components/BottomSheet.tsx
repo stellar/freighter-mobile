@@ -8,7 +8,7 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { calculateSpacing, pxValue } from "helpers/dimensions";
+import { calculateSpacing } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -120,7 +120,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                   className={`rounded-[32px] p-2 self-start ${IconData.backgroundColorClassName}`}
                 >
                   <IconData.IconComponent
-                    size={pxValue(25)}
+                    size={25}
                     color={IconData.iconColor}
                   />
                 </View>
