@@ -28,11 +28,6 @@ const StyledDisplay = styled(Display)`
 
 const StyledIconContainer = styled.View`
   align-items: center;
-  margin-top: ${px(32)};
-`;
-
-const StyledTermsTextContainer = styled.View`
-  margin-bottom: ${px(70)};
 `;
 
 const StyledTermsText = styled(Text)`
@@ -74,14 +69,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             {t("welcomeScreen.iAlreadyHaveWallet")}
           </Button>
         </View>
-        <StyledTermsTextContainer>
+        <View>
           <StyledTermsText md secondary medium>
             {t("welcomeScreen.terms.byProceeding")}
             <Text md medium url="https://stellar.org/terms-of-service">
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
           </StyledTermsText>
-        </StyledTermsTextContainer>
+        </View>
       </Container>
     </BaseLayout>
   );

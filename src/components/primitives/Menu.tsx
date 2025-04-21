@@ -5,7 +5,7 @@ import * as DropdownMenu from "zeego/dropdown-menu";
 export const MenuRoot = DropdownMenu.Root;
 export const MenuTrigger = DropdownMenu.create(
   (props: React.ComponentProps<typeof DropdownMenu.Trigger>) => (
-    <DropdownMenu.Trigger {...props} asChild>
+    <DropdownMenu.Trigger className="p-2" {...props} asChild>
       <View>{props.children}</View>
     </DropdownMenu.Trigger>
   ),
