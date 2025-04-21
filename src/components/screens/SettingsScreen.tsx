@@ -6,9 +6,10 @@ import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect } from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -20,6 +21,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const appVersion = getAppVersion();
 
   useEffect(() => {
     navigation.setOptions({
@@ -35,7 +37,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     logout();
   };
 
-  const listItems = [
+  const topListItems = [
     {
       icon: <Icon.LogOut01 size={24} color={THEME.colors.list.destructive} />,
       title: t("settings.logout"),
@@ -45,9 +47,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     },
   ];
 
+  const bottomListItems = [
+    {
+      icon: <Icon.GitCommit size={24} color={THEME.colors.list.disabled} />,
+      title: t("settings.version", { version: appVersion }),
+      testID: "update-button",
+    },
+  ];
+
   return (
     <BaseLayout insets={{ top: false }}>
-      <List items={listItems} />
+      <View className="flex flex-col gap-6">
+        <List items={topListItems} />
+        <List items={bottomListItems} />
+      </View>
     </BaseLayout>
   );
 };
