@@ -1,11 +1,20 @@
-import { INDEXER_URL, NETWORKS } from "config/constants";
-import { BalanceMap, TokenIdentifier, TokenPricesMap } from "config/types";
+import { AxiosError } from "axios";
+import { FREIGHTER_BACKEND_URL, NETWORKS } from "config/constants";
+import { logger } from "config/logger";
+import {
+  BalanceMap,
+  GetTokenDetailsParams,
+  TokenDetailsResponse,
+  TokenIdentifier,
+  TokenPricesMap,
+} from "config/types";
 import { bigize } from "helpers/bigize";
+import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService } from "services/apiFactory";
 
 // Create a dedicated API service for backend operations
-const backendApi = createApiService({
-  baseURL: INDEXER_URL,
+const freighterBackend = createApiService({
+  baseURL: FREIGHTER_BACKEND_URL,
 });
 
 export type FetchBalancesResponse = {
@@ -38,7 +47,7 @@ export const fetchBalances = async ({
     });
   }
 
-  const { data } = await backendApi.get<FetchBalancesResponse>(
+  const { data } = await freighterBackend.get<FetchBalancesResponse>(
     `/account-balances/${publicKey}?${params.toString()}`,
   );
 
@@ -109,9 +118,12 @@ export interface FetchTokenPricesParams {
 export const fetchTokenPrices = async ({
   tokens,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
-  const { data } = await backendApi.post<TokenPricesResponse>("/token-prices", {
-    tokens,
-  });
+  const { data } = await freighterBackend.post<TokenPricesResponse>(
+    "/token-prices",
+    {
+      tokens,
+    },
+  );
 
   /*
   // ========================================================
@@ -164,4 +176,125 @@ export const fetchTokenPrices = async ({
 
   // Make sure to convert the response values to BigNumber for convenience
   return bigize(pricesMap, ["currentPrice", "percentagePriceChange24h"]);
+};
+
+export const getTokenDetails = async ({
+  contractId,
+  publicKey,
+  network,
+  shouldFetchBalance,
+}: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
+  try {
+    // TODO: Add verification for custom network.
+
+    const response = await freighterBackend.get<TokenDetailsResponse>(
+      `/token-details/${contractId}`,
+      {
+        params: {
+          pub_key: publicKey,
+          network,
+          shouldFetchBalance: shouldFetchBalance ? "true" : "false",
+        },
+      },
+    );
+
+    if (!response.data) {
+      logger.error(
+        "indexerApi.getTokenDetails",
+        "Invalid response from indexer",
+        response.data,
+      );
+      throw new Error("Invalid response from indexer");
+    }
+
+    return response.data;
+  } catch (error) {
+    if ((error as AxiosError).status === 400) {
+      // That means the contract is not a SAC token.
+      return null;
+    }
+
+    logger.error(
+      "indexerApi.getTokenDetails",
+      "Error fetching token details",
+      error,
+    );
+    return null;
+  }
+};
+
+export const isSacContractExecutable = async (
+  contractId: string,
+  network: NETWORKS,
+) => {
+  // TODO: Add verification for custom network.
+
+  try {
+    const response = await freighterBackend.get<{ isSacContract: boolean }>(
+      `/is-sac-contract/${contractId}`,
+      {
+        params: {
+          network,
+        },
+      },
+    );
+
+    if (!response.data) {
+      logger.error(
+        "indexerApi.isSacContractExecutable",
+        "Invalid response from indexer",
+        response.data,
+      );
+      throw new Error("Invalid response from indexer");
+    }
+
+    return response.data.isSacContract;
+  } catch (error) {
+    logger.error(
+      "indexerApi.isSacContractExecutable",
+      "Error fetching sac contract executable",
+      error,
+    );
+    return false;
+  }
+};
+
+export const handleContractLookup = async (
+  contractId: string,
+  network: NETWORKS,
+  publicKey?: string,
+) => {
+  const nativeContractDetails = getNativeContractDetails(network);
+
+  if (nativeContractDetails.contract === contractId) {
+    return {
+      assetCode: nativeContractDetails.code,
+      domain: nativeContractDetails.domain,
+      hasTrustline: true,
+      issuer: nativeContractDetails.issuer,
+      isNative: true,
+    };
+  }
+
+  const tokenDetails = await getTokenDetails({
+    contractId,
+    publicKey: publicKey ?? "",
+    network,
+  });
+
+  if (!tokenDetails) {
+    return null;
+  }
+
+  const isSacContract = await isSacContractExecutable(contractId, network);
+
+  return {
+    assetCode: tokenDetails.symbol,
+    domain: "Stellar Network",
+    hasTrustline: false,
+    issuer: isSacContract
+      ? (tokenDetails.name.split(":")[1] ?? "")
+      : contractId,
+    isNative: false,
+  };
 };

@@ -65,7 +65,7 @@ export const submitTx = async (
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
   const server = stellarSdkServer(networkUrl);
 
-  const txXdr =
+  const transaction =
     typeof tx === "string"
       ? TransactionBuilder.fromXDR(tx, networkPassphrase)
       : tx;
@@ -73,7 +73,7 @@ export const submitTx = async (
   let submittedTx;
 
   try {
-    submittedTx = await server.submitTransaction(txXdr);
+    submittedTx = await server.submitTransaction(transaction);
   } catch (e: unknown) {
     if (isHorizonError(e) && e.response.status === 504) {
       // in case of 504, keep retrying this tx until submission succeeds or we get a different error
@@ -122,27 +122,29 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   const account = await server.loadAccount(publicKey);
   const { recommendedFee } = await getNetworkFees(server);
 
-  const tx = new TransactionBuilder(account, {
+  const txBuilder = new TransactionBuilder(account, {
     fee: xlmToStroop(recommendedFee).toFixed(),
     networkPassphrase,
   });
 
-  tx.addOperation(
-    Operation.changeTrust({
-      asset: new Asset(assetCode, issuer),
-      // Setting the limit to 0 will remove the trustline.
-      ...(isRemove && { limit: "0" }),
-    }),
-  ).setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
+  txBuilder
+    .addOperation(
+      Operation.changeTrust({
+        asset: new Asset(assetCode, issuer),
+        // Setting the limit to 0 will remove the trustline.
+        ...(isRemove && { limit: "0" }),
+      }),
+    )
+    .setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
 
-  return tx.build().toXDR();
+  return txBuilder.build().toXDR();
 };
 
 export const signTransaction = (input: SignTxParams): string => {
   const { tx, secretKey, network } = input;
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
-  const txXdr = typeof tx === "string" ? tx : tx.toXDR();
-  const txEnvelope = TransactionBuilder.fromXDR(txXdr, networkPassphrase);
+  const transaction = typeof tx === "string" ? tx : tx.toXDR();
+  const txEnvelope = TransactionBuilder.fromXDR(transaction, networkPassphrase);
 
   const keypair = Keypair.fromSecret(secretKey);
   txEnvelope.sign(keypair);

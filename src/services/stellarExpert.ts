@@ -5,10 +5,19 @@ import { SearchAssetResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
 import { createApiService } from "services/apiFactory";
 
+const stellarExpertApiTestnet = createApiService({
+  baseURL: getApiStellarExpertUrl(NETWORKS.TESTNET),
+});
+
+const stellarExpertApiPublic = createApiService({
+  baseURL: getApiStellarExpertUrl(NETWORKS.PUBLIC),
+});
+
 export const searchAsset = async (asset: string, network: NETWORKS) => {
-  const stellarExpertApi = createApiService({
-    baseURL: getApiStellarExpertUrl(network),
-  });
+  const stellarExpertApi =
+    network === NETWORKS.TESTNET
+      ? stellarExpertApiTestnet
+      : stellarExpertApiPublic;
 
   try {
     const response = await stellarExpertApi.get<SearchAssetResponse>("/asset", {

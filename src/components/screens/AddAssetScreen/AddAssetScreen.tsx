@@ -15,7 +15,6 @@ import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/ty
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { logger } from "config/logger";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
@@ -30,15 +29,10 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { ToastOptions, useToast } from "providers/ToastProvider";
+import { useManageAssets } from "hooks/useManageAssets";
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
-import { handleContractLookup } from "services/indexer";
-import {
-  buildChangeTrustTx,
-  signTransaction,
-  submitTx,
-} from "services/stellar";
+import { handleContractLookup } from "services/backend";
 import { searchAsset } from "services/stellarExpert";
 
 type AddAssetScreenProps = NativeStackScreenProps<
@@ -121,14 +115,11 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
-  const { showToast } = useToast();
   const { getClipboardText } = useClipboard();
   const [searchResults, setSearchResults] = useState<
     FormattedSearchAssetRecord[]
   >([]);
   const [status, setStatus] = useState<PageStatus>(PageStatus.IDLE);
-  const [isAddingAsset, setIsAddingAsset] = useState(false);
-  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
   const [selectedAsset, setSelectedAsset] =
     useState<FormattedSearchAssetRecord | null>(null);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -140,6 +131,21 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const { themeColors } = useColors();
+
+  const resetPageState = () => {
+    handleRefresh();
+    setStatus(PageStatus.IDLE);
+    setSearchResults([]);
+    setSearchTerm("");
+  };
+
+  const { addAsset, removeAsset, isAddingAsset, isRemovingAsset } =
+    useManageAssets({
+      network,
+      publicKey: account?.publicKey ?? "",
+      privateKey: account?.privateKey ?? "",
+      onSuccess: resetPageState,
+    });
 
   useEffect(() => {
     navigation.setOptions({
@@ -213,15 +219,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
   const handleAddAsset = (asset: FormattedSearchAssetRecord) => {
     setSelectedAsset(asset);
-
     addAssetBottomSheetModalRef.current?.present();
-  };
-
-  const resetPageState = () => {
-    handleRefresh();
-    setStatus(PageStatus.IDLE);
-    setSearchResults([]);
-    setSearchTerm("");
   };
 
   const handleAddAssetTrustline = async () => {
@@ -229,98 +227,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       return;
     }
 
-    setIsAddingAsset(true);
-
-    const { assetCode, issuer } = selectedAsset;
-
-    let toastOptions: ToastOptions = {
-      title: t("addAssetScreen.toastSuccess", {
-        assetCode,
-      }),
-      variant: "success",
-    };
-
-    try {
-      const addAssetTrustlineTx = await buildChangeTrustTx({
-        assetIdentifier: `${assetCode}:${issuer}`,
-        network,
-        publicKey: account?.publicKey ?? "",
-      });
-
-      const signedTx = signTransaction({
-        tx: addAssetTrustlineTx,
-        secretKey: account?.privateKey ?? "",
-        network,
-      });
-
-      await submitTx({
-        network,
-        tx: signedTx,
-      });
-
-      resetPageState();
-    } catch (error) {
-      logger.error(
-        "AddAssetScreen.handleAddAssetTrustline",
-        "Error adding asset trustline",
-        error,
-      );
-      toastOptions = {
-        title: t("addAssetScreen.toastError", {
-          assetCode,
-        }),
-        variant: "error",
-      };
-    } finally {
-      addAssetBottomSheetModalRef.current?.dismiss();
-      setIsAddingAsset(false);
-      showToast(toastOptions);
-    }
-  };
-
-  const handleRemoveAssetTrustline = async (
-    asset: FormattedSearchAssetRecord,
-  ) => {
-    let toastOptions: ToastOptions = {
-      title: t("addAssetScreen.toastSuccess", {
-        assetCode: asset.assetCode,
-      }),
-      variant: "success",
-    };
-    setIsRemovingAsset(true);
-
-    try {
-      const removeAssetTrustlineTx = await buildChangeTrustTx({
-        assetIdentifier: `${asset.assetCode}:${asset.issuer}`,
-        network,
-        publicKey: account?.publicKey ?? "",
-        isRemove: true,
-      });
-
-      const signedTx = signTransaction({
-        tx: removeAssetTrustlineTx,
-        secretKey: account?.privateKey ?? "",
-        network,
-      });
-
-      await submitTx({
-        network,
-        tx: signedTx,
-      });
-
-      resetPageState();
-    } catch (error) {
-      logger.error("AddAssetScreen", "Error removing asset", error);
-      toastOptions = {
-        title: t("addAssetScreen.toastError", {
-          assetCode: asset.assetCode,
-        }),
-        variant: "error",
-      };
-    } finally {
-      setIsRemovingAsset(false);
-      showToast(toastOptions);
-    }
+    await addAsset(selectedAsset);
+    addAssetBottomSheetModalRef.current?.dismiss();
   };
 
   return (
@@ -377,7 +285,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
                   key={index}
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
-                  handleRemoveAsset={() => handleRemoveAssetTrustline(asset)}
+                  handleRemoveAsset={() => removeAsset(asset)}
                   isRemovingAsset={isRemovingAsset}
                 />
               ))

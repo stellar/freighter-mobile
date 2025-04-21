@@ -7,25 +7,18 @@ import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { logger } from "config/logger";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatAssetIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { ToastOptions, useToast } from "providers/ToastProvider";
-import React, { useEffect, useRef, useState } from "react";
+import { useManageAssets } from "hooks/useManageAssets";
+import React, { useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
-import {
-  buildChangeTrustTx,
-  signTransaction,
-  submitTx,
-} from "services/stellar";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -40,12 +33,17 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { t } = useAppTranslation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { themeColors } = useColors();
-  const { showToast } = useToast();
-  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
   const { handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
     shouldPoll: false,
+  });
+
+  const { removeAsset, isRemovingAsset } = useManageAssets({
+    network,
+    publicKey: account?.publicKey ?? "",
+    privateKey: account?.privateKey ?? "",
+    onSuccess: handleRefresh,
   });
 
   useEffect(() => {
@@ -64,49 +62,6 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
       ),
     });
   }, [navigation, t, themeColors]);
-
-  const removeAsset = async (assetId: string) => {
-    const { assetCode } = formatAssetIdentifier(assetId);
-    setIsRemovingAsset(true);
-    let toastOptions: ToastOptions = {
-      title: t("manageAssetsScreen.removeAssetSuccess", {
-        assetCode,
-      }),
-      variant: "success",
-    };
-
-    try {
-      const removeAssetTrustlineTx = await buildChangeTrustTx({
-        assetIdentifier: assetId,
-        network,
-        publicKey: account?.publicKey ?? "",
-        isRemove: true,
-      });
-
-      const signedTx = signTransaction({
-        tx: removeAssetTrustlineTx,
-        secretKey: account?.privateKey ?? "",
-        network,
-      });
-
-      await submitTx({
-        network,
-        tx: signedTx,
-      });
-    } catch (error) {
-      logger.error("ManageAssetsScreen", "Error removing asset", error);
-      toastOptions = {
-        title: t("manageAssetsScreen.removeAssetError", {
-          assetCode,
-        }),
-        variant: "error",
-      };
-    } finally {
-      handleRefresh();
-      setIsRemovingAsset(false);
-      showToast(toastOptions);
-    }
-  };
 
   return (
     <BaseLayout insets={{ top: false }}>
