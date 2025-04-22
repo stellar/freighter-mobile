@@ -10,6 +10,7 @@ import { logger } from "config/logger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import Clipboard from "@react-native-clipboard/clipboard";
+import { QRScanner } from "../QRScanner";
 
 const styles = StyleSheet.create({
   container: {
@@ -33,6 +34,7 @@ export const DiscoveryScreen = () => {
   const [uri, setUri] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
 
   const handlePair = async () => {
     if (!uri) {
@@ -67,6 +69,16 @@ export const DiscoveryScreen = () => {
       logger.error("DiscoveryScreen", "error pasting from clipboard", err);
     }
   };
+
+  const handleScan = (data: string) => {
+    logger.debug("DiscoveryScreen", "QR code scanned", { data });
+    setUri(data);
+    setShowScanner(false);
+  };
+
+  if (showScanner) {
+    return <QRScanner onRead={handleScan} onClose={() => setShowScanner(false)} />;
+  }
 
   return (
     <BaseLayout insets={{ bottom: false }}>
@@ -112,6 +124,17 @@ export const DiscoveryScreen = () => {
           Paste from Clipboard
         </Button>
       </View>
+
+      <View style={{ height: pxValue(40) }} />
+      
+      <Button
+          onPress={() => setShowScanner(true)}
+          secondary
+          icon={<Icon.Camera01 />}
+          iconPosition={IconPosition.LEFT}
+        >
+          Scan QR Code
+        </Button>
     </BaseLayout>
   );
 };
