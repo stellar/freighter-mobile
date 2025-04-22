@@ -41,8 +41,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
 
   const { removeAsset, isRemovingAsset } = useManageAssets({
     network,
-    publicKey: account?.publicKey ?? "",
-    privateKey: account?.privateKey ?? "",
+    account,
     onSuccess: handleRefresh,
   });
 
@@ -65,29 +64,31 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <BottomSheet
-        title={t("manageAssetsScreen.moreInfo.title")}
-        description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
-        modalRef={bottomSheetModalRef}
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
-      />
-      <SimpleBalancesList
-        publicKey={account?.publicKey ?? ""}
-        network={network}
-        handleRemoveAsset={removeAsset}
-        isRemovingAsset={isRemovingAsset}
-      />
-      <View className="h-4" />
-      <Button
-        tertiary
-        lg
-        testID="default-action-button"
-        onPress={() => {
-          navigation.navigate(MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN);
-        }}
-      >
-        {t("manageAssetsScreen.addAssetButton")}
-      </Button>
+      <View className="flex-1 justify-between">
+        <BottomSheet
+          title={t("manageAssetsScreen.moreInfo.title")}
+          description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+          modalRef={bottomSheetModalRef}
+          handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
+        />
+        <SimpleBalancesList
+          publicKey={account?.publicKey ?? ""}
+          network={network}
+          handleRemoveAsset={removeAsset}
+          isRemovingAsset={isRemovingAsset}
+        />
+        <View className="h-4" />
+        <Button
+          tertiary
+          lg
+          testID="default-action-button"
+          onPress={() => {
+            navigation.navigate(MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN);
+          }}
+        >
+          {t("manageAssetsScreen.addAssetButton")}
+        </Button>
+      </View>
     </BaseLayout>
   );
 };

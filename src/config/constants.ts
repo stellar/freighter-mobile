@@ -9,6 +9,7 @@ export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const VISUAL_DELAY_MS = 500;
 
 export const FREIGHTER_BACKEND_URL =
   "https://freighter-backend-prd.stellar.org/api/v1";
@@ -110,10 +111,13 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * ACTIVE_ACCOUNT The active account is the account that is currently being used.
  * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
+ * CUSTOM_TOKEN_LIST The custom token list is used to keep track of all the custom soroban tokens stored in the key manager.
+ * Formatted as: { [publicKey: string]: { network: NETWORKS, contractId: string, symbol: string }[]} @see CustomTokenStorage
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
+  CUSTOM_TOKEN_LIST = "customTokenList",
 }
 
 /**

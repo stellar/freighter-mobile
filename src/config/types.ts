@@ -15,6 +15,8 @@ export type KeyPair = {
   privateKey: string;
 };
 
+export type AssetTypeWithCustomToken = AssetType | "custom_token";
+
 export enum NetworkCongestion {
   LOW = "Low",
   MEDIUM = "Medium",
@@ -73,7 +75,7 @@ export type Issuer = {
 export type AssetToken = {
   code: string;
   issuer: Issuer;
-  type?: AssetType;
+  type?: AssetTypeWithCustomToken;
   anchorAsset?: string;
   numAccounts?: BigNumber;
   amount?: BigNumber;
@@ -203,13 +205,6 @@ export type PricedBalance = Balance &
     fiatCode?: string;
     fiatTotal?: BigNumber | null;
     displayName?: string;
-    token: {
-      code: string;
-      type: AssetType;
-      issuer?: {
-        key: string;
-      };
-    };
   };
 
 /**
@@ -272,3 +267,30 @@ export interface GetTokenDetailsParams {
   network: NETWORKS;
   shouldFetchBalance?: boolean;
 }
+
+export type FormattedSearchAssetRecord = {
+  assetCode: string;
+  domain: string;
+  hasTrustline: boolean;
+  issuer: string;
+  isNative: boolean;
+  assetType?: AssetTypeWithCustomToken;
+};
+
+/**
+ * Custom token metadata for a single token
+ */
+export type CustomToken = {
+  contractId: string;
+  symbol: string;
+};
+
+/**
+ * Storage structure for custom tokens, organized by publicKey -> network -> tokens
+ * This allows efficiently storing and retrieving custom tokens for any account across networks
+ */
+export type CustomTokenStorage = {
+  [publicKey: string]: {
+    [network: string]: CustomToken[];
+  };
+};

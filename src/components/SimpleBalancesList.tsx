@@ -1,6 +1,7 @@
 import { BalanceRow } from "components/BalanceRow";
 import ManageAssetRightContent from "components/ManageAssetRightContent";
 import { NETWORKS } from "config/constants";
+import { AssetTypeWithCustomToken } from "config/types";
 import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
 import { ScrollView } from "react-native";
@@ -9,8 +10,11 @@ interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   rightSectionWidth?: number;
-  hideNativeAsset?: boolean;
-  handleRemoveAsset: (assetId: string) => void;
+  handleRemoveAsset: (
+    assetId: string,
+    assetType: AssetTypeWithCustomToken,
+    onComplete?: () => void,
+  ) => void;
   isRemovingAsset: boolean;
 }
 
@@ -33,7 +37,6 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   publicKey,
   network,
   rightSectionWidth,
-  hideNativeAsset,
   handleRemoveAsset,
   isRemovingAsset,
 }) => {
@@ -47,17 +50,13 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     return null;
   }
 
-  const filteredBalanceItems = balanceItems.filter(
-    (item) => !hideNativeAsset || item.token.type !== "native",
-  );
-
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       alwaysBounceVertical={false}
       testID="simple-balances-list"
     >
-      {filteredBalanceItems.map((item) => (
+      {balanceItems.map((item) => (
         <BalanceRow
           key={item.id}
           balance={item}
@@ -65,9 +64,11 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
             <ManageAssetRightContent
               asset={{
                 id: item.id,
-                isNative: item.token.type === "native",
+                isNative: item.id === "XLM",
               }}
-              handleRemoveAsset={() => handleRemoveAsset(item.id)}
+              handleRemoveAsset={(onComplete) =>
+                handleRemoveAsset(item.id, item.assetType, onComplete)
+              }
               isRemovingAsset={isRemovingAsset}
             />
           }

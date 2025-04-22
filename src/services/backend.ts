@@ -3,11 +3,13 @@ import { FREIGHTER_BACKEND_URL, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
+  FormattedSearchAssetRecord,
   GetTokenDetailsParams,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
+import { getAssetType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService } from "services/apiFactory";
@@ -182,7 +184,6 @@ export const getTokenDetails = async ({
   contractId,
   publicKey,
   network,
-  shouldFetchBalance,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
@@ -193,7 +194,6 @@ export const getTokenDetails = async ({
         params: {
           pub_key: publicKey,
           network,
-          shouldFetchBalance: shouldFetchBalance ? "true" : "false",
         },
       },
     );
@@ -263,7 +263,7 @@ export const handleContractLookup = async (
   contractId: string,
   network: NETWORKS,
   publicKey?: string,
-) => {
+): Promise<FormattedSearchAssetRecord | null> => {
   const nativeContractDetails = getNativeContractDetails(network);
 
   if (nativeContractDetails.contract === contractId) {
@@ -273,6 +273,7 @@ export const handleContractLookup = async (
       hasTrustline: true,
       issuer: nativeContractDetails.issuer,
       isNative: true,
+      assetType: "native",
     };
   }
 
@@ -288,14 +289,17 @@ export const handleContractLookup = async (
 
   const isSacContract = await isSacContractExecutable(contractId, network);
 
+  const issuer = isSacContract
+    ? (tokenDetails.name.split(":")[1] ?? "")
+    : contractId;
+
   return {
     assetCode: tokenDetails.symbol,
     domain: "Stellar Network",
     hasTrustline: false,
-    issuer: isSacContract
-      ? (tokenDetails.name.split(":")[1] ?? "")
-      : contractId,
+    issuer,
     isNative: false,
+    assetType: isSacContract ? getAssetType(contractId) : "custom_token",
   };
 };
 

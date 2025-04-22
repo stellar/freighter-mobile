@@ -39,6 +39,7 @@ export const renderWithProviders: RenderWithProviderType = (component) => {
       </I18nextProvider>,
     );
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error rendering component:", error);
     throw error;
   }

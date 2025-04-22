@@ -9,7 +9,6 @@ import AddAssetBottomSheetContent from "components/screens/AddAssetScreen/AddAss
 import AssetItem from "components/screens/AddAssetScreen/AssetItem";
 import EmptyState from "components/screens/AddAssetScreen/EmptyState";
 import ErrorState from "components/screens/AddAssetScreen/ErrorState";
-import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/types";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -17,6 +16,7 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
+import { FormattedSearchAssetRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { AssetLookupStatus, useAssetLookup } from "hooks/useAssetLookup";
@@ -64,8 +64,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
   const { addAsset, removeAsset, isAddingAsset, isRemovingAsset } =
     useManageAssets({
       network,
-      publicKey: account?.publicKey ?? "",
-      privateKey: account?.privateKey ?? "",
+      account,
       onSuccess: resetPageState,
     });
 
@@ -156,10 +155,10 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
             {searchResults.length > 0 ? (
               searchResults.map((asset) => (
                 <AssetItem
-                  key={asset.assetCode}
+                  key={`${asset.assetCode}:${asset.issuer}`}
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
-                  handleRemoveAsset={() => removeAsset(asset)}
+                  handleRemoveAsset={() => removeAsset(asset, asset.assetType)}
                   isRemovingAsset={isRemovingAsset}
                 />
               ))

@@ -1,8 +1,11 @@
 import { AssetIcon } from "components/AssetIcon";
 import ManageAssetRightContent from "components/ManageAssetRightContent";
 import AddAssetRightContent from "components/screens/AddAssetScreen/AddAssetRightContent";
-import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/types";
 import { Text } from "components/sds/Typography";
+import {
+  AssetTypeWithCustomToken,
+  FormattedSearchAssetRecord,
+} from "config/types";
 import React from "react";
 import { View } from "react-native";
 
@@ -23,11 +26,7 @@ const AssetItem: React.FC<AssetItemProps> = ({
     <View className="flex-row items-center flex-1">
       <AssetIcon
         token={{
-          ...(asset.isNative
-            ? { type: "native" }
-            : {
-                type: "credit_alphanum4",
-              }),
+          type: asset.assetType as AssetTypeWithCustomToken,
           code: asset.assetCode,
           issuer: {
             key: asset.issuer,
@@ -57,5 +56,4 @@ const AssetItem: React.FC<AssetItemProps> = ({
     )}
   </View>
 );
-
 export default AssetItem;

@@ -1,8 +1,11 @@
 /* eslint-disable no-underscore-dangle */
-import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/types";
 import { NETWORKS } from "config/constants";
-import { PricedBalance, SearchAssetResponse } from "config/types";
-import { formatAssetIdentifier } from "helpers/balances";
+import {
+  PricedBalance,
+  SearchAssetResponse,
+  FormattedSearchAssetRecord,
+} from "config/types";
+import { formatAssetIdentifier, getAssetType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
 import useDebounce from "hooks/useDebounce";
 import { useState } from "react";
@@ -66,6 +69,7 @@ export const useAssetLookup = ({
   ): FormattedSearchAssetRecord[] =>
     records
       .map((record) => {
+        // Came from freighter-backend
         if ("assetCode" in record) {
           return {
             ...record,
@@ -81,6 +85,7 @@ export const useAssetLookup = ({
         const assetCode = formattedTokenRecord[0];
         const issuer = formattedTokenRecord[1] ?? "";
 
+        // Came from stellarExpert
         return {
           assetCode,
           domain: record.domain ?? "",
@@ -91,6 +96,7 @@ export const useAssetLookup = ({
           ),
           issuer,
           isNative: record.asset === "XLM",
+          assetType: getAssetType(`${assetCode}:${issuer}`),
         };
       })
       .sort((a) => {

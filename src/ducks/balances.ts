@@ -1,5 +1,11 @@
-import { NETWORKS } from "config/constants";
-import { BalanceMap, PricedBalanceMap, TokenPricesMap } from "config/types";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
+import { logger } from "config/logger";
+import {
+  BalanceMap,
+  CustomTokenStorage,
+  PricedBalanceMap,
+  TokenPricesMap,
+} from "config/types";
 import { usePricesStore } from "ducks/prices";
 import {
   getLPShareCode,
@@ -7,6 +13,7 @@ import {
   sortBalances,
 } from "helpers/balances";
 import { fetchBalances } from "services/backend";
+import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
 // Polling interval in milliseconds
@@ -182,6 +189,47 @@ const fetchPricedBalances = async (
 };
 
 /**
+ * Retrieves custom tokens from local storage
+ *
+ * @param params The network and publicKey to retrieve tokens for
+ * @returns An array of custom token contract IDs for the specified network and publicKey
+ */
+const retrieveCustomTokens = async (params: {
+  network: NETWORKS;
+  publicKey: string;
+}): Promise<string[]> => {
+  const { network, publicKey } = params;
+
+  try {
+    const customTokenList = await dataStorage.getItem(
+      STORAGE_KEYS.CUSTOM_TOKEN_LIST,
+    );
+
+    if (!customTokenList) {
+      return [];
+    }
+
+    const storage = JSON.parse(customTokenList) as CustomTokenStorage;
+
+    // Check if user has tokens for this public key and network
+    if (!storage[publicKey] || !storage[publicKey][network]) {
+      return [];
+    }
+
+    // Map tokens to contract IDs
+    return storage[publicKey][network].map((token) => token.contractId);
+  } catch (error) {
+    // Log error but don't break the flow - return empty array instead
+    logger.error(
+      "retrieveCustomTokens",
+      "Error retrieving custom tokens:",
+      error,
+    );
+    return [];
+  }
+};
+
+/**
  * Balances Store
  *
  * A Zustand store that manages the state of account balances in the application.
@@ -202,8 +250,22 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
 
       set({ isLoading: true, error: null });
 
-      // Fetch balances
-      const { balances, isFunded } = await fetchBalances(params);
+      const customTokensContractsIds = await retrieveCustomTokens({
+        network: params.network,
+        publicKey: params.publicKey,
+      });
+
+      // Combine provided contract IDs with custom token contract IDs
+      const allContractIds = [
+        ...(params.contractIds || []),
+        ...customTokensContractsIds,
+      ];
+
+      // Fetch balances with combined contract IDs
+      const { balances, isFunded } = await fetchBalances({
+        ...params,
+        contractIds: allContractIds,
+      });
 
       if (!balances) {
         throw new Error("No balances returned from API");

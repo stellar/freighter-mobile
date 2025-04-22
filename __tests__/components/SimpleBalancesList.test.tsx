@@ -75,6 +75,7 @@ describe("SimpleBalancesList", () => {
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
         handleRemoveAsset={() => {}}
+        isRemovingAsset={false}
       />,
     );
 
@@ -88,6 +89,7 @@ describe("SimpleBalancesList", () => {
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
         handleRemoveAsset={() => {}}
+        isRemovingAsset={false}
       />,
     );
 
@@ -101,6 +103,7 @@ describe("SimpleBalancesList", () => {
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
         handleRemoveAsset={() => {}}
+        isRemovingAsset={false}
       />,
     );
 
@@ -117,6 +120,7 @@ describe("SimpleBalancesList", () => {
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
         handleRemoveAsset={() => {}}
+        isRemovingAsset={false}
       />,
     );
 

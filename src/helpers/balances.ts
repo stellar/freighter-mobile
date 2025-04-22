@@ -10,6 +10,7 @@ import {
   TokenPricesMap,
   PricedBalanceMap,
   PricedBalance,
+  AssetTypeWithCustomToken,
 } from "config/types";
 
 /**
@@ -252,6 +253,46 @@ export const formatAssetIdentifier = (assetIdentifier: string) => {
     assetCode: formattedAssetIdentifier[0],
     issuer: formattedAssetIdentifier[1],
   };
+};
+
+/**
+ * Determines the asset type based on the asset identifier
+ *
+ * This function takes an asset identifier (e.g., "XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+ * and returns the corresponding asset type from the Stellar SDK.
+ *
+ * @param {string} assetIdentifier - The asset identifier to determine the type of
+ * @returns {AssetType} The corresponding asset type from the Stellar SDK
+ *
+ * @example
+ * // Get asset type for an asset identifier
+ * const assetType = getAssetType("USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
+ * // assetType will be "credit_alphanum4"
+ */
+export const getAssetType = (
+  assetIdentifier: string,
+): AssetTypeWithCustomToken => {
+  if (assetIdentifier === "XLM") {
+    return "native";
+  }
+
+  if (assetIdentifier.includes(":")) {
+    const { assetCode, issuer } = formatAssetIdentifier(assetIdentifier);
+
+    if (issuer.startsWith("C")) {
+      return "custom_token";
+    }
+
+    if (assetCode.length <= 4) {
+      return "credit_alphanum4";
+    }
+
+    if (assetCode.length >= 5 && assetCode.length <= 12) {
+      return "credit_alphanum12";
+    }
+  }
+
+  return "liquidity_pool_shares";
 };
 
 export const isPublicKeyValid = (publicKey: string) =>

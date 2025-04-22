@@ -1,10 +1,13 @@
 import { AssetIcon } from "components/AssetIcon";
-import { FormattedSearchAssetRecord } from "components/screens/AddAssetScreen/types";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import {
+  AssetTypeWithCustomToken,
+  FormattedSearchAssetRecord,
+} from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -38,11 +41,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
     <View className="flex-1 justify-center items-center mt-2">
       <AssetIcon
         token={{
-          ...(asset.isNative
-            ? { type: "native" }
-            : {
-                type: "credit_alphanum4",
-              }),
+          type: asset.assetType as AssetTypeWithCustomToken,
           code: asset.assetCode,
           issuer: {
             key: asset.issuer,

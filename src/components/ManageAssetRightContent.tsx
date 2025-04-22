@@ -30,7 +30,7 @@ type ManageAssetRightContentProps = {
     isNative: boolean;
     id: string;
   };
-  handleRemoveAsset: () => void;
+  handleRemoveAsset: (onComplete: () => void) => void;
   isRemovingAsset: boolean;
 };
 
@@ -47,6 +47,12 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
 
   const showRemoveAssetAlert = () => {
     setModalVisible(true);
+  };
+
+  const handleRemoveAssetClick = () => {
+    handleRemoveAsset(() => setModalVisible(false));
+    // The modal will be closed by the callback when removal is complete
+    // No need to set modalVisible to false immediately
   };
 
   const menuActions: MenuItem[] = [
@@ -118,7 +124,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               lg
               destructive
               isFullWidth
-              onPress={handleRemoveAsset}
+              onPress={handleRemoveAssetClick}
               isLoading={isRemovingAsset}
             >
               {t("manageAssetRightContent.removeAssetModal.remove")}
