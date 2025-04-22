@@ -3,14 +3,30 @@ import { WalletKitTypes } from "@reown/walletkit";
 import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from '@walletconnect/utils'
 import { walletKit } from 'helpers/walletKitUtil';
 import { logger } from 'config/logger';
+import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
+
+const stellarNamespaceMethods = ["stellar_signXDR", "stellar_signAndSubmitXDR"];
 
 // TODO: get address from wallet
 // This is Cassio's main address on Freighter for both testnet and pubnet
-const address = "GDAFOKARX4VPZHPDBY5UTIRK32GUGCC7PQJ4SGQYGOEYNV2XSE5TY4KE";
+// const address = "GDAFOKARX4VPZHPDBY5UTIRK32GUGCC7PQJ4SGQYGOEYNV2XSE5TY4KE";
+const address = "GBRGAB3UICU2JII4HW67KATOKDGCGW5LKPGFAOOQL623EH4EYGR2MXRR";
+
+// TODO: get keypair from wallet
+const signTransaction = (transaction: string): string => {
+  const networkPassphrase = "Public Global Stellar Network ; September 2015";
+  const txEnvelope = TransactionBuilder.fromXDR(transaction, networkPassphrase);
+
+  // GBRGAB3UICU2JII4HW67KATOKDGCGW5LKPGFAOOQL623EH4EYGR2MXRR
+  const keypair = Keypair.fromSecret("SC7Z3SVDYNT5RHE7F33F52WNWWIVULXWBYBCDJ6Z3WWX5USRHATQFTVO");
+  txEnvelope.sign(keypair);
+
+  return txEnvelope.toXDR();
+};
 
 export default function useWalletKitEventsManager(initialized: boolean) {
 
-  const onSessionProposal = useCallback(async ({ id, params }: WalletKitTypes.SessionProposal) => {
+  const onSessionProposal = useCallback(async (args: WalletKitTypes.SessionProposal) => {
     // [18:30:03.094] [[WalletKit] onSessionProposal: ] {
     //   "id": 1745011791679858,
     //   "params": {
@@ -48,7 +64,10 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     //     }
     //   }
     // }
-    logger.debug("WalletKit", "onSessionProposal: ", { id, params });
+    logger.debug("WalletKit", "onSessionProposal: ", args);
+
+    const { id, params } = args;
+
     try{
       
       // ------- namespaces builder util ------------ //
@@ -56,7 +75,7 @@ export default function useWalletKitEventsManager(initialized: boolean) {
         proposal: params,
         supportedNamespaces: {
           stellar: {
-            methods: ['stellar_signXDR', "stellar_signAndSubmitXDR"],
+            methods: stellarNamespaceMethods,
             chains: ['stellar:testnet', 'stellar:pubnet'],
             events: ['accountsChanged'],
             accounts: [`stellar:testnet:${address}`, `stellar:pubnet:${address}`],
@@ -83,53 +102,96 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     }
   }, []);
   
-  const onSessionRequest = useCallback(async ({ id, params, topic }: WalletKitTypes.SessionRequest) => {
-    logger.debug("WalletKit", "onSessionRequest: ", { id, params, topic });
-  
-    // const { xdr } = params;
-    // const requestParamsTxXdr = request.params[0];
-  
-    // convert `requestParamsMessage` by using a method like hexToUtf8
-    // const message = hexToUtf8(requestParamsMessage);
-  
-    // sign the message
-    // const signedTransaction = await signTransaction(xdr);
-  
-    // const response = { id, result: { signedXDR: signedTransaction }, jsonrpc: "2.0" };
-  
-    // To reject a session request, the response should be similar to this.
-    // const response = {
-    //   id,
-    //   jsonrpc: "2.0",
-    //   error: {
-    //     code: 5000,
-    //     message: "User rejected.",
+  const onSessionRequest = useCallback(async (args: WalletKitTypes.SessionRequest) => {  
+    // [16:05:07.037] [[WalletKit] onSessionRequest: ] {
+    //   "id": 1745262306574617,
+    //   "params": {
+    //     "request": {
+    //       "method": "stellar_signXDR",
+    //       "params": {
+    //         "xdr": "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"
+    //       },
+    //       "expiryTimestamp": 1745262606
+    //     },
+    //     "chainId": "stellar:pubnet"
     //   },
-    // };
+    //   "topic": "ce898b9d89adf9ad7ab7aaa51a6a63955a67b2674869d3365aaedb5d1b93ea33"
+    // }
+    logger.debug("WalletKit", "onSessionRequest: ", args);
   
-    // await walletKit.respondSessionRequest({ topic, response });
+    const { id, params, topic } = args;
+    const { request } = params || {};
+    const { method, params: requestParams } = request || {};
+
+    if (!stellarNamespaceMethods.includes(method)) { 
+      const message = `Invalid or unsupported namespace method: ${method}`;
+      logger.error("WalletKit", message, { method });
+
+      const response = {
+        id,
+        jsonrpc: "2.0",
+        error: {
+          code: 5000,
+          message,
+        },
+      };
+
+      await walletKit.respondSessionRequest({ topic, response });
+      return;
+    }
+    const { xdr } = requestParams;
+    
+    let signedTransaction;
+    try {
+      signedTransaction = signTransaction(xdr);
+    } catch (error) {
+      const message = `Failed to sign transaction: ${error?.toString()}`;
+      logger.error("WalletKit", "signTransaction Error: ", error);
+
+      const response = {
+        id,
+        jsonrpc: "2.0",
+        error: {
+          code: 5000,
+          message,
+        },
+      };
+
+      await walletKit.respondSessionRequest({ topic, response });
+      return;
+    }
   
+    const response = { id, result: { signedXDR: signedTransaction }, jsonrpc: "2.0" };
+  
+    logger.debug("WalletKit", "onSessionRequest wallet response: ", { response });
+
+    try {
+      const res = await walletKit.respondSessionRequest({ topic, response });
+      logger.debug("WalletKit", "onSessionRequest respondSessionRequest response: ", { res });
+    } catch (error) {
+      logger.error("WalletKit", "walletKit.respondSessionRequest Error: ", error);
+    }
   }, []);
   
-  const onSessionDelete = useCallback(async ({ id, topic }: WalletKitTypes.SessionDelete) => {
-    logger.debug("WalletKit", "onSessionDelete: ", id);
+  const onSessionDelete = useCallback((args: WalletKitTypes.SessionDelete) => {
+    logger.debug("WalletKit", "onSessionDelete: ", args);
   
-    // await walletKit.disconnectSession({
-    //   topic,
-    //   reason: getSdkError("USER_DISCONNECTED"),
-    // });
+    walletKit.disconnectSession({
+      topic: args.topic,
+      reason: getSdkError("USER_DISCONNECTED"),
+    });
   }, []);
   
-  const onProposalExpire = useCallback(async ({ id }: WalletKitTypes.ProposalExpire) => {
-    logger.debug("WalletKit", "onProposalExpire: ", id);
+  const onProposalExpire = useCallback((args: WalletKitTypes.ProposalExpire) => {
+    logger.debug("WalletKit", "> > > > > onProposalExpire: ", args);
   }, []);
   
-  const onSessionRequestExpire = useCallback(async ({ id }: WalletKitTypes.SessionRequestExpire) => {
-    logger.debug("WalletKit", "onSessionRequestExpire: ", id);
+  const onSessionRequestExpire = useCallback((args: WalletKitTypes.SessionRequestExpire) => {
+    logger.debug("WalletKit", "> > > > > onSessionRequestExpire: ", args);
   }, []);
   
-  const onSessionAuthenticate = useCallback(async ({ id, topic }: WalletKitTypes.SessionAuthenticate) => {
-    logger.debug("WalletKit", "onSessionAuthenticate: ", id);
+  const onSessionAuthenticate = useCallback((args: WalletKitTypes.SessionAuthenticate) => {
+    logger.debug("WalletKit", "> > > > > onSessionAuthenticate: ", args);
   }, []);
 
   /******************************************************************************
@@ -140,30 +202,29 @@ export default function useWalletKitEventsManager(initialized: boolean) {
       //sign
       walletKit.on('session_proposal', onSessionProposal);
       walletKit.on('session_request', onSessionRequest);
-      // auth
+      
       walletKit.on('session_authenticate', onSessionAuthenticate);
-
       walletKit.on('session_delete', onSessionDelete);
       walletKit.on('proposal_expire', onProposalExpire);
       walletKit.on('session_request_expire', onSessionRequestExpire);
-
-      walletKit.engine.signClient.events.on('session_ping', data => {
-        logger.debug("WalletKit", "session_ping received", data);
-      });
       
       // load sessions on init
       const activeSessions = walletKit.getActiveSessions();
       logger.debug("WalletKit", "activeSessions: ", activeSessions);
+
+      // for (const session of Object.values(activeSessions)) {
+      //   logger.debug("WalletKit", "disconnecting activeSession: ", session);
+
+      //   walletKit.disconnectSession({
+      //     topic: session.topic,
+      //     reason: getSdkError("USER_DISCONNECTED"),
+      //   });
+      // }
     }
   }, [initialized, onSessionProposal, onSessionRequest, onSessionDelete, onProposalExpire, onSessionRequestExpire, onSessionAuthenticate]);
 }
 
 /*
-// await walletKit.disconnectSession({
-//   topic,
-//   reason: getSdkError("USER_DISCONNECTED"),
-// });
-
 // Updating a Session
 // The session_update event is emitted from the wallet when the session is updated by calling updateSession. To update a session, pass in the topic and the new namespace.
 // await walletKit.updateSession({ topic, namespaces: newNs });
