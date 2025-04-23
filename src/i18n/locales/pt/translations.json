@@ -1,4 +1,5 @@
 {
+  "wallet": "Carteira",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
@@ -135,7 +136,15 @@
       "hideAsset": "Ocultar ativo",
       "unhideAsset": "Reexibir ativo",
       "removeAsset": "Remover ativo"
-    }
+    },
+    "removeAssetAlert": {
+      "title": "Remover ativo",
+      "message": "Tem certeza que deseja remover este ativo?",
+      "cancel": "Cancelar",
+      "remove": "Remover"
+    },
+    "removeAssetError": "Erro ao remover ativo {{assetCode}}",
+    "removeAssetSuccess": "{{assetCode}} removido com sucesso"
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",
@@ -147,12 +156,26 @@
     "native": "Nativo",
     "add": "Adicionar",
     "onYourList": "Em sua lista",
-    "addAssetTrustline": "Adicionar Trustline do Ativo",
-    "disclaimer": "Permita que o ativo seja visualizado e negociado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
-    "cancel": "Cancelar",
     "addAsset": "Adicionar ativo",
-    "toastSuccess": "{{assetName}} adicionado com sucesso como um ativo",
-    "toastError": "Erro ao adicionar ativo {{assetName}}"
+    "disclaimer": "Permita que o ativo seja visualizado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
+    "cancel": "Cancelar",
+    "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
+    "toastError": "Erro ao adicionar ativo {{assetCode}}",
+    "emptyState": "Nenhum ativo encontrado",
+    "somethingWentWrong": "Algo deu errado, por favor, tente novamente mais tarde"
+  },
+  "manageAssetRightContent": {
+    "copyAddress": "Copiar endereço",
+    "hideAsset": "Ocultar ativo",
+    "unhideAsset": "Reexibir ativo",
+    "removeAsset": "Remover ativo",
+    "tokenAddressCopied": "Endereço do token copiado!",
+    "removeAssetModal": {
+      "title": "Remover {{assetCode}}?",
+      "message": "Tem certeza que deseja remover este ativo?\nUma vez que você remova um ativo, você precisará adicioná-lo novamente mais tarde.",
+      "cancel": "Cancelar",
+      "remove": "Remover"
+    }
   },
   "logout": "Sair",
   "clipboard": {

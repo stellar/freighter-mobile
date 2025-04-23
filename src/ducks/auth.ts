@@ -95,7 +95,7 @@ interface StoreAccountParams {
  * @property {string} accountName - The account's display name
  * @property {string} id - The account's unique identifier
  */
-interface ActiveAccount {
+export interface ActiveAccount {
   publicKey: string;
   privateKey: string;
   accountName: string;

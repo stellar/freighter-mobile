@@ -1,4 +1,5 @@
 {
+  "wallet": "Wallet",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
@@ -139,7 +140,15 @@
       "hideAsset": "Hide asset",
       "unhideAsset": "Unhide asset",
       "removeAsset": "Remove asset"
-    }
+    },
+    "removeAssetAlert": {
+      "title": "Remove asset",
+      "message": "Are you sure you want to remove this asset?",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    },
+    "removeAssetError": "Error removing asset {{assetCode}}",
+    "removeAssetSuccess": "{{assetCode}} successfully removed"
   },
   "addAssetScreen": {
     "title": "Add an asset",
@@ -151,12 +160,26 @@
     "native": "Native",
     "add": "Add",
     "onYourList": "On your list",
-    "addAssetTrustline": "Add Asset Trustline",
-    "disclaimer": "Allow asset to be viewable and tradeable from your wallet. Only add assets you recognize and trust.",
+    "addAsset": "Add Asset",
+    "disclaimer": "Allow asset to be viewable from your wallet. Only add assets you recognize and trust.",
     "cancel": "Cancel",
-    "addAsset": "Add asset",
-    "toastSuccess": "{{assetName}} successfully added as an asset",
-    "toastError": "Error adding asset {{assetName}}"
+    "toastSuccess": "{{assetCode}} successfully added as an asset",
+    "toastError": "Error adding asset {{assetCode}}",
+    "emptyState": "No assets found",
+    "somethingWentWrong": "Something went wrong, please try again later"
+  },
+  "manageAssetRightContent": {
+    "copyAddress": "Copy address",
+    "hideAsset": "Hide asset",
+    "unhideAsset": "Unhide asset",
+    "removeAsset": "Remove asset",
+    "tokenAddressCopied": "Token address copied!",
+    "removeAssetModal": {
+      "title": "Remove {{assetCode}}?",
+      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later.",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    }
   },
   "logout": "Log out",
   "clipboard": {

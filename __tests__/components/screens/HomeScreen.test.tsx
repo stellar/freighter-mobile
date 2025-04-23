@@ -82,10 +82,6 @@ jest.mock("ducks/prices", () => ({
   })),
 }));
 
-jest.mock("providers/ToastProvider", () => ({
-  useToast: () => ({ showToast: jest.fn() }),
-}));
-
 const mockCopyToClipboard = jest.fn();
 
 jest.mock("hooks/useClipboard", () => ({

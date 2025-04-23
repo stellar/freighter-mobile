@@ -1,4 +1,4 @@
-import { Asset } from "@stellar/stellar-sdk";
+import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   Balance,
@@ -10,6 +10,7 @@ import {
   TokenPricesMap,
   PricedBalanceMap,
   PricedBalance,
+  AssetTypeWithCustomToken,
 } from "config/types";
 
 /**
@@ -237,3 +238,62 @@ export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
   // Convert back to object
   return Object.fromEntries(sortedEntries);
 };
+
+export const formatAssetIdentifier = (assetIdentifier: string) => {
+  const formattedAssetIdentifier = assetIdentifier.split(":");
+
+  if (formattedAssetIdentifier.length === 1) {
+    return {
+      assetCode: formattedAssetIdentifier[0],
+      issuer: "",
+    };
+  }
+
+  return {
+    assetCode: formattedAssetIdentifier[0],
+    issuer: formattedAssetIdentifier[1],
+  };
+};
+
+/**
+ * Determines the asset type based on the asset identifier
+ *
+ * This function takes an asset identifier (e.g., "XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+ * and returns the corresponding asset type from the Stellar SDK.
+ *
+ * @param {string} assetIdentifier - The asset identifier to determine the type of
+ * @returns {AssetType} The corresponding asset type from the Stellar SDK
+ *
+ * @example
+ * // Get asset type for an asset identifier
+ * const assetType = getAssetType("USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
+ * // assetType will be "credit_alphanum4"
+ */
+export const getAssetType = (
+  assetIdentifier: string,
+): AssetTypeWithCustomToken => {
+  if (assetIdentifier === "XLM") {
+    return AssetTypeWithCustomToken.NATIVE;
+  }
+
+  if (assetIdentifier.includes(":")) {
+    const { assetCode, issuer } = formatAssetIdentifier(assetIdentifier);
+
+    if (issuer.startsWith("C")) {
+      return AssetTypeWithCustomToken.CUSTOM_TOKEN;
+    }
+
+    if (assetCode.length <= 4) {
+      return AssetTypeWithCustomToken.CREDIT_ALPHANUM4;
+    }
+
+    if (assetCode.length >= 5 && assetCode.length <= 12) {
+      return AssetTypeWithCustomToken.CREDIT_ALPHANUM12;
+    }
+  }
+
+  return AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES;
+};
+
+export const isPublicKeyValid = (publicKey: string) =>
+  StrKey.isValidEd25519PublicKey(publicKey);
