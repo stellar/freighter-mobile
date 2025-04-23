@@ -273,26 +273,26 @@ export const getAssetType = (
   assetIdentifier: string,
 ): AssetTypeWithCustomToken => {
   if (assetIdentifier === "XLM") {
-    return "native";
+    return AssetTypeWithCustomToken.NATIVE;
   }
 
   if (assetIdentifier.includes(":")) {
     const { assetCode, issuer } = formatAssetIdentifier(assetIdentifier);
 
     if (issuer.startsWith("C")) {
-      return "custom_token";
+      return AssetTypeWithCustomToken.CUSTOM_TOKEN;
     }
 
     if (assetCode.length <= 4) {
-      return "credit_alphanum4";
+      return AssetTypeWithCustomToken.CREDIT_ALPHANUM4;
     }
 
     if (assetCode.length >= 5 && assetCode.length <= 12) {
-      return "credit_alphanum12";
+      return AssetTypeWithCustomToken.CREDIT_ALPHANUM12;
     }
   }
 
-  return "liquidity_pool_shares";
+  return AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES;
 };
 
 export const isPublicKeyValid = (publicKey: string) =>

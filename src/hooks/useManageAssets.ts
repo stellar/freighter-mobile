@@ -114,7 +114,7 @@ export const useManageAssets = ({
     };
 
     try {
-      if (asset.assetType === "custom_token") {
+      if (asset.assetType === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
         // Create new custom token entry
         const customToken: CustomToken = {
           contractId: asset.issuer,
@@ -218,7 +218,7 @@ export const useManageAssets = ({
     };
 
     try {
-      if (assetType === "custom_token") {
+      if (assetType === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
         // Get current storage
         const storage = await getCustomTokenStorage();
 

@@ -2,7 +2,12 @@ import { logos } from "assets/logos";
 import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
 import { Asset, AssetSize } from "components/sds/Asset";
 import { Text } from "components/sds/Typography";
-import { AssetToken, Balance, NativeToken } from "config/types";
+import {
+  AssetToken,
+  AssetTypeWithCustomToken,
+  Balance,
+  NativeToken,
+} from "config/types";
 import { useAssetIconsStore } from "ducks/assetIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import React from "react";
@@ -84,7 +89,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   if ("contractId" in tokenProp) {
     token = {
       ...tokenProp,
-      type: "custom_token",
+      type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
       code: tokenProp.symbol,
       issuer: {
         key: tokenProp.contractId,
@@ -97,7 +102,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   }
 
   // For native XLM token, use the Stellar logo
-  if (token.type === "native") {
+  if (token.type === AssetTypeWithCustomToken.NATIVE) {
     return (
       <Asset
         variant="single"
@@ -111,7 +116,8 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
     );
   }
 
-  if (token.type === "custom_token") {
+  // For Soroban custom tokens, use the Soroban logo
+  if (token.type === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
     return (
       <Asset
         variant="single"

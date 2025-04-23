@@ -15,7 +15,13 @@ export type KeyPair = {
   privateKey: string;
 };
 
-export type AssetTypeWithCustomToken = AssetType | "custom_token";
+export enum AssetTypeWithCustomToken {
+  CUSTOM_TOKEN = "custom_token",
+  NATIVE = "native",
+  CREDIT_ALPHANUM4 = "credit_alphanum4",
+  CREDIT_ALPHANUM12 = "credit_alphanum12",
+  LIQUIDITY_POOL_SHARES = "liquidity_pool_shares",
+}
 
 export enum NetworkCongestion {
   LOW = "Low",
