@@ -40,7 +40,7 @@ export const useAssetLookup = ({
     AssetLookupStatus.IDLE,
   );
 
-  const checkIfUserHasTrustline = (
+  const checkHasTrustline = (
     currentBalances: (PricedBalance & {
       id: string;
     })[],
@@ -73,7 +73,7 @@ export const useAssetLookup = ({
         if ("assetCode" in record) {
           return {
             ...record,
-            hasTrustline: checkIfUserHasTrustline(
+            hasTrustline: checkHasTrustline(
               currentBalances,
               record.assetCode,
               record.issuer,
@@ -89,11 +89,7 @@ export const useAssetLookup = ({
         return {
           assetCode,
           domain: record.domain ?? "",
-          hasTrustline: checkIfUserHasTrustline(
-            currentBalances,
-            assetCode,
-            issuer,
-          ),
+          hasTrustline: checkHasTrustline(currentBalances, assetCode, issuer),
           issuer,
           isNative: record.asset === "XLM",
           assetType: getAssetType(`${assetCode}:${issuer}`),

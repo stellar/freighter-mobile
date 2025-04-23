@@ -65,7 +65,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         icon={<Icon.ShieldPlus size={16} />}
         iconPosition={IconPosition.LEFT}
       >
-        {t("addAssetScreen.addAssetTrustline")}
+        {t("addAssetScreen.addAsset")}
       </Badge>
       <View className="mt-6" />
       <View className="flex-row items-center p-6 bg-background-tertiary rounded-xl justify-center">

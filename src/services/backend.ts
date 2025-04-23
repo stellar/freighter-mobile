@@ -317,13 +317,3 @@ export const handleContractLookup = async (
     name: tokenDetails.name,
   };
 };
-
-export const scanAssetBulk = async (assetIds: string[]) => {
-  const response = await freighterBackend.get("/scan-asset-bulk", {
-    params: {
-      asset_ids: assetIds.join(","),
-    },
-  });
-
-  return response.data;
-};

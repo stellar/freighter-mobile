@@ -143,11 +143,14 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
 export const signTransaction = (input: SignTxParams): string => {
   const { tx, secretKey, network } = input;
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
-  const transaction = typeof tx === "string" ? tx : tx.toXDR();
-  const txEnvelope = TransactionBuilder.fromXDR(transaction, networkPassphrase);
+  const transactionXDR = typeof tx === "string" ? tx : tx.toXDR();
+  const transaction = TransactionBuilder.fromXDR(
+    transactionXDR,
+    networkPassphrase,
+  );
 
   const keypair = Keypair.fromSecret(secretKey);
-  txEnvelope.sign(keypair);
+  transaction.sign(keypair);
 
-  return txEnvelope.toXDR();
+  return transaction.toXDR();
 };
