@@ -5,6 +5,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "android": "react-native run-android",
+    "android-release": "yarn android --mode release",
+    "android:bundle:release": "npx react-native build-android --mode=release",
     "ios": "react-native run-ios",
     "lint": "eslint ./src ./__tests__ --fix",
     "lint:ts": "tsc --noEmit",
