@@ -34,13 +34,16 @@ interface UseManageAssetsReturn {
     asset: FormattedSearchAssetRecord,
     onComplete?: () => void,
   ) => Promise<void>;
-  removeAsset: (
-    assetId: string | FormattedSearchAssetRecord,
-    assetType?: AssetTypeWithCustomToken,
-    onComplete?: () => void,
-  ) => Promise<void>;
+  removeAsset: (input: RemoveAssetParams) => Promise<void>;
   isAddingAsset: boolean;
   isRemovingAsset: boolean;
+}
+
+export interface RemoveAssetParams {
+  assetId?: string;
+  assetRecord?: FormattedSearchAssetRecord;
+  assetType?: AssetTypeWithCustomToken;
+  onComplete?: () => void;
 }
 
 /**
@@ -195,24 +198,24 @@ export const useManageAssets = ({
     }
   };
 
-  const removeAsset = async (
-    assetId: string | FormattedSearchAssetRecord,
-    assetType?: AssetTypeWithCustomToken,
-    onComplete?: () => void,
-  ) => {
+  const removeAsset = async (input: RemoveAssetParams) => {
+    const { assetId, assetRecord, assetType, onComplete } = input;
+
     let assetCode: string;
     let assetIssuer: string;
     let assetIdentifier: string;
 
-    if (typeof assetId === "string") {
+    if (assetId) {
       const formattedAsset = formatAssetIdentifier(assetId);
       assetCode = formattedAsset.assetCode;
       assetIssuer = formattedAsset.issuer;
       assetIdentifier = assetId;
+    } else if (assetRecord) {
+      assetCode = assetRecord.assetCode;
+      assetIssuer = assetRecord.issuer;
+      assetIdentifier = `${assetRecord.assetCode}:${assetRecord.issuer}`;
     } else {
-      assetCode = assetId.assetCode;
-      assetIssuer = assetId.issuer;
-      assetIdentifier = `${assetId.assetCode}:${assetId.issuer}`;
+      throw new Error("No asset ID or asset record provided");
     }
 
     setIsRemovingAsset(true);

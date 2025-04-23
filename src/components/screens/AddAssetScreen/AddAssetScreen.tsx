@@ -158,7 +158,12 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
                   key={`${asset.assetCode}:${asset.issuer}`}
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
-                  handleRemoveAsset={() => removeAsset(asset, asset.assetType)}
+                  handleRemoveAsset={() =>
+                    removeAsset({
+                      assetRecord: asset,
+                      assetType: asset.assetType,
+                    })
+                  }
                   isRemovingAsset={isRemovingAsset}
                 />
               ))

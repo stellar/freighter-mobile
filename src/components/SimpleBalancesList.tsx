@@ -1,8 +1,8 @@
 import { BalanceRow } from "components/BalanceRow";
 import ManageAssetRightContent from "components/ManageAssetRightContent";
 import { NETWORKS } from "config/constants";
-import { AssetTypeWithCustomToken } from "config/types";
 import { useBalancesList } from "hooks/useBalancesList";
+import { RemoveAssetParams } from "hooks/useManageAssets";
 import React from "react";
 import { ScrollView } from "react-native";
 
@@ -10,11 +10,7 @@ interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   rightSectionWidth?: number;
-  handleRemoveAsset: (
-    assetId: string,
-    assetType: AssetTypeWithCustomToken,
-    onComplete?: () => void,
-  ) => void;
+  handleRemoveAsset: (input: RemoveAssetParams) => void;
   isRemovingAsset: boolean;
 }
 
@@ -67,7 +63,11 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
                 isNative: item.id === "XLM",
               }}
               handleRemoveAsset={(onComplete) =>
-                handleRemoveAsset(item.id, item.assetType, onComplete)
+                handleRemoveAsset({
+                  assetId: item.id,
+                  assetType: item.assetType,
+                  onComplete,
+                })
               }
               isRemovingAsset={isRemovingAsset}
             />

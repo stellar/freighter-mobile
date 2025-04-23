@@ -299,7 +299,7 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockAssetId);
+        await result.current.removeAsset({ assetId: mockAssetId });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalledWith({
@@ -335,7 +335,7 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockAsset);
+        await result.current.removeAsset({ assetRecord: mockAsset });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalledWith({
@@ -371,7 +371,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockAsset, undefined, mockOnComplete);
+        await result.current.removeAsset({
+          assetRecord: mockAsset,
+          onComplete: mockOnComplete,
+        });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalled();
@@ -422,10 +425,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(
-          mockCustomAsset,
-          AssetTypeWithCustomToken.CUSTOM_TOKEN,
-        );
+        await result.current.removeAsset({
+          assetRecord: mockCustomAsset,
+          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        });
       });
 
       // Run all timers to handle the setTimeout in finally block
@@ -493,10 +496,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(
-          mockCustomAsset,
-          AssetTypeWithCustomToken.CUSTOM_TOKEN,
-        );
+        await result.current.removeAsset({
+          assetRecord: mockCustomAsset,
+          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        });
       });
 
       // Run all timers to handle the setTimeout in finally block
@@ -535,10 +538,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(
-          mockCustomAsset,
-          AssetTypeWithCustomToken.CUSTOM_TOKEN,
-        );
+        await result.current.removeAsset({
+          assetRecord: mockCustomAsset,
+          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        });
       });
 
       // Verify storage cleanup
@@ -563,7 +566,7 @@ describe("useManageAssets", () => {
 
       await act(async () => {
         try {
-          await result.current.removeAsset(mockAsset);
+          await result.current.removeAsset({ assetRecord: mockAsset });
         } catch (error) {
           // Error is expected
         }
