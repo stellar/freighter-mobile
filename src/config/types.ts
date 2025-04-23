@@ -281,6 +281,8 @@ export type FormattedSearchAssetRecord = {
   issuer: string;
   isNative: boolean;
   assetType?: AssetTypeWithCustomToken;
+  name?: string;
+  decimals?: number;
 };
 
 /**
@@ -289,6 +291,8 @@ export type FormattedSearchAssetRecord = {
 export type CustomToken = {
   contractId: string;
   symbol: string;
+  name: string;
+  decimals: number;
 };
 
 /**

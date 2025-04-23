@@ -1,4 +1,9 @@
-import { NETWORKS, STORAGE_KEYS, VISUAL_DELAY_MS } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NETWORKS,
+  STORAGE_KEYS,
+  VISUAL_DELAY_MS,
+} from "config/constants";
 import { logger } from "config/logger";
 import {
   AssetTypeWithCustomToken,
@@ -119,6 +124,8 @@ export const useManageAssets = ({
         const customToken: CustomToken = {
           contractId: asset.issuer,
           symbol: asset.assetCode,
+          name: asset.name ?? asset.assetCode,
+          decimals: asset.decimals ?? DEFAULT_DECIMALS,
         };
 
         // Get current storage

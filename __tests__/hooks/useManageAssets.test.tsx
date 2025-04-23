@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
-import { NETWORKS, STORAGE_KEYS } from "config/constants";
-import { CustomTokenStorage, FormattedSearchAssetRecord } from "config/types";
+import { DEFAULT_DECIMALS, NETWORKS, STORAGE_KEYS } from "config/constants";
+import {
+  AssetTypeWithCustomToken,
+  CustomTokenStorage,
+  FormattedSearchAssetRecord,
+} from "config/types";
 import { useManageAssets } from "hooks/useManageAssets";
 import {
   BuildChangeTrustTxParams,
@@ -108,7 +112,9 @@ describe("useManageAssets", () => {
     domain: "custom.com",
     hasTrustline: false,
     isNative: false,
-    assetType: "custom_token",
+    assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+    decimals: 6,
+    name: "Custom Token",
   };
   const mockXdr = "mockXdrTransaction";
   const mockSignedXdr = "mockSignedXdrTransaction";
@@ -210,6 +216,8 @@ describe("useManageAssets", () => {
       expect(storageData[mockPublicKey][mockNetwork][0]).toEqual({
         contractId: mockCustomAsset.issuer,
         symbol: mockCustomAsset.assetCode,
+        decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
+        name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
       });
 
       expect(mockOnSuccess).toHaveBeenCalled();
@@ -381,6 +389,8 @@ describe("useManageAssets", () => {
             {
               contractId: mockCustomAsset.issuer,
               symbol: mockCustomAsset.assetCode,
+              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
             },
           ],
         },
@@ -412,7 +422,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockCustomAsset, "custom_token");
+        await result.current.removeAsset(
+          mockCustomAsset,
+          AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        );
       });
 
       // Run all timers to handle the setTimeout in finally block
@@ -447,6 +460,8 @@ describe("useManageAssets", () => {
             {
               contractId: mockCustomAsset.issuer,
               symbol: mockCustomAsset.assetCode,
+              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
             },
           ],
         },
@@ -478,7 +493,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockCustomAsset, "custom_token");
+        await result.current.removeAsset(
+          mockCustomAsset,
+          AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        );
       });
 
       // Run all timers to handle the setTimeout in finally block
@@ -499,6 +517,8 @@ describe("useManageAssets", () => {
             {
               contractId: mockCustomAsset.issuer,
               symbol: mockCustomAsset.assetCode,
+              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
             },
           ],
         },
@@ -515,7 +535,10 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset(mockCustomAsset, "custom_token");
+        await result.current.removeAsset(
+          mockCustomAsset,
+          AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        );
       });
 
       // Verify storage cleanup

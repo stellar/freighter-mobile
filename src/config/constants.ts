@@ -11,6 +11,8 @@ export const PASSWORD_MAX_LENGTH = 32;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
+export const DEFAULT_DECIMALS = 7;
+
 export const FREIGHTER_BACKEND_URL =
   "https://freighter-backend-prd.stellar.org/api/v1";
 export const CREATE_ACCOUNT_URL =

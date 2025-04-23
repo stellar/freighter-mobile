@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 import { FREIGHTER_BACKEND_URL, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
+  AssetTypeWithCustomToken,
   BalanceMap,
   FormattedSearchAssetRecord,
   GetTokenDetailsParams,
@@ -17,6 +18,7 @@ import { createApiService } from "services/apiFactory";
 // Create a dedicated API service for backend operations
 const freighterBackend = createApiService({
   baseURL: FREIGHTER_BACKEND_URL,
+  logRequests: true,
 });
 
 export type FetchBalancesResponse = {
@@ -120,10 +122,19 @@ export interface FetchTokenPricesParams {
 export const fetchTokenPrices = async ({
   tokens,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
+  // NOTE: API does not accept LP IDs or custom tokens
+  const filteredTokens = tokens.filter((tokenId) => {
+    const asset = getAssetType(tokenId);
+    return (
+      asset !== AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
+      asset !== AssetTypeWithCustomToken.CUSTOM_TOKEN
+    );
+  });
+
   const { data } = await freighterBackend.post<TokenPricesResponse>(
     "/token-prices",
     {
-      tokens,
+      tokens: filteredTokens,
     },
   );
 
@@ -273,7 +284,7 @@ export const handleContractLookup = async (
       hasTrustline: true,
       issuer: nativeContractDetails.issuer,
       isNative: true,
-      assetType: "native",
+      assetType: AssetTypeWithCustomToken.NATIVE,
     };
   }
 
@@ -299,7 +310,11 @@ export const handleContractLookup = async (
     hasTrustline: false,
     issuer,
     isNative: false,
-    assetType: isSacContract ? getAssetType(contractId) : "custom_token",
+    assetType: isSacContract
+      ? getAssetType(contractId)
+      : AssetTypeWithCustomToken.CUSTOM_TOKEN,
+    decimals: tokenDetails.decimals,
+    name: tokenDetails.name,
   };
 };
 
