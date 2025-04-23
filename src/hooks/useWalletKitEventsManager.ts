@@ -4,6 +4,7 @@ import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from '@walletconnec
 import { walletKit } from 'helpers/walletKitUtil';
 import { logger } from 'config/logger';
 import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
+import { Linking } from 'react-native';
 
 const stellarNamespaceMethods = ["stellar_signXDR", "stellar_signAndSubmitXDR"];
 
@@ -91,6 +92,16 @@ export default function useWalletKitEventsManager(initialized: boolean) {
   
       // Call this after WCURI is receive
       logger.debug("WalletKit", "onSessionProposal Success: ", session);
+
+      const dappScheme = session.peer.metadata.redirect?.native;
+
+      if (dappScheme) {
+        logger.debug("WalletKit", "onSessionProposal Success DAPP SCHEME FOUND: ", dappScheme);
+        Linking.openURL(dappScheme);
+      } else {
+        // Inform the user to manually return to the DApp
+        logger.debug("WalletKit", "onSessionProposal NO DAPP SCHEME FOUND, please return to the DApp. Metadata: ", session.peer.metadata);
+      }
     }catch(error){
       // use the error.message to show toast/info-box letting the user know that the connection attempt was unsuccessful
      logger.error("WalletKit", "onSessionProposal Error: ", error);

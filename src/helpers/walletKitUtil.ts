@@ -10,9 +10,10 @@ const metadata = {
   description: "Freighter Test RN Wallet to interface with Dapps",
   url: "https://freighter.app",
   icons: ["https://lh3.googleusercontent.com/_IWkBPJYpuslJcxNCIxeoJqmKJ8WOek43XeEsE_EiDrMzawR31KTAVweF-oyGVKJjW9kbDkxByD6mpYoV7H8uGQA=s60"],
+  // TODO: should we avoid setting redirect when using QR code?
   redirect: {
     // TODO: implement deep link
-    native: "freighterwallet://",
+    native: "freighterwallet://test-link",
   },
 };
 
