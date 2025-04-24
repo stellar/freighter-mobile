@@ -97,6 +97,11 @@ export default function useWalletKitEventsManager(initialized: boolean) {
 
       if (dappScheme) {
         logger.debug("WalletKit", "onSessionProposal Success DAPP SCHEME FOUND: ", dappScheme);
+        // TODO: we should only open URL here if the session was initiated by a deep-link, which
+        // means it would make sense to redirect users back to the dapp.
+        // In case the session was initiated by a QR code, we should show a toast/info-box letting
+        // the user know that they can manually return to the DApp since they are probably handling
+        // the dApp session in a desktop browser or another device.
         Linking.openURL(dappScheme);
       } else {
         // Inform the user to manually return to the DApp
