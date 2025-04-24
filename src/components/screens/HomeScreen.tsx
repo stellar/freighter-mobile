@@ -1,9 +1,12 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
-import ContextMenuButton from "components/ContextMenuButton";
+import BottomSheet from "components/BottomSheet";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
@@ -14,15 +17,23 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { THEME } from "config/theme";
-import { useAuthenticationStore } from "ducks/auth";
+import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { px } from "helpers/dimensions";
+import { truncatePublicKey } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
-import React, { useMemo } from "react";
-import { Dimensions, Platform } from "react-native";
+import React, { useMemo, useRef } from "react";
+import {
+  Dimensions,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
@@ -61,15 +72,6 @@ const AccountTotal = styled.View`
 `;
 
 /**
- * Row containing account name and avatar
- */
-const AccountNameRow = styled.View`
-  flex-direction: row;
-  gap: ${px(6)};
-  align-items: center;
-`;
-
-/**
  * Row containing action buttons
  */
 const ButtonsRow = styled.View`
@@ -91,13 +93,109 @@ const BorderLine = styled.View`
   margin-bottom: ${px(24)};
 `;
 
+const AccountItemRow: React.FC<{
+  account: ActiveAccount | null;
+  handleCopyAddress: (publicKey: string) => void;
+}> = ({ account, handleCopyAddress }) => {
+  const { themeColors } = useColors();
+  const { t } = useAppTranslation();
+  if (!account) return null;
+
+  const truncatedPublicKey = truncatePublicKey({
+    publicKey: account.publicKey,
+    length: 5,
+  });
+
+  const icons = Platform.select({
+    ios: {
+      renameWallet: "pencil",
+      copyAddress: "doc.on.doc",
+    },
+    android: {
+      renameWallet: "baseline_edit",
+      copyAddress: "copy",
+    },
+  });
+
+  const actions: MenuItem[] = [
+    {
+      title: t("home.manageAccount.renameWallet"),
+      systemIcon: icons!.renameWallet,
+      onPress: () => {},
+    },
+    {
+      title: t("home.manageAccount.copyAddress"),
+      systemIcon: icons!.copyAddress,
+      onPress: () => handleCopyAddress(account.publicKey),
+    },
+  ];
+
+  return (
+    <View className="mb-4 mt-8 flex-row justify-between items-center flex-1">
+      <View className="flex-row items-center flex-1">
+        <Avatar size="md" publicAddress={account.publicKey} />
+        <View className="ml-4 flex-1 mr-2">
+          <Text md primary medium numberOfLines={1}>
+            {account.accountName}
+          </Text>
+          <Text sm secondary medium numberOfLines={1}>
+            {truncatedPublicKey}
+          </Text>
+        </View>
+      </View>
+      <ContextMenuButton contextMenuProps={{ actions }}>
+        <Icon.DotsHorizontal size={24} color={themeColors.foreground.primary} />
+      </ContextMenuButton>
+    </View>
+  );
+};
+const ManageAccountBottomSheet: React.FC<{
+  handleCloseModal: () => void;
+  onPressAddAnotherWallet: () => void;
+  handleCopyAddress: (publicKey: string) => void;
+}> = ({ handleCloseModal, onPressAddAnotherWallet, handleCopyAddress }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const { account } = useGetActiveAccount();
+
+  return (
+    <View className="flex-1 justify-between items-center">
+      <View className="flex-row items-center justify-between w-full">
+        <TouchableOpacity onPress={handleCloseModal}>
+          <Icon.X size={24} color={themeColors.base[1]} />
+        </TouchableOpacity>
+        <Text md primary semiBold>
+          {t("home.manageAccount.title")}
+        </Text>
+        <TouchableOpacity onPress={onPressAddAnotherWallet}>
+          <Icon.PlusCircle size={24} color={themeColors.base[1]} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView
+        className="w-full flex-1"
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
+      >
+        <AccountItemRow
+          account={account}
+          handleCopyAddress={handleCopyAddress}
+        />
+      </ScrollView>
+      <Button tertiary isFullWidth lg onPress={onPressAddAnotherWallet}>
+        {t("home.manageAccount.addWallet")}
+      </Button>
+    </View>
+  );
+};
+
 /**
  * Home screen component displaying account information and balances
  */
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const publicKey = account?.publicKey;
+  const { themeColors } = useColors();
+  const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -140,7 +238,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     },
   ];
 
-  const handleCopyAddress = () => {
+  const handleCopyAddress = (publicKey?: string) => {
     if (!publicKey) return;
 
     copyToClipboard(publicKey, {
@@ -148,24 +246,56 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     });
   };
 
+  const handleAddAnotherWallet = () => {
+    manageAccountBottomSheetModalRef.current?.dismiss();
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
+  };
+
   return (
     <BaseLayout insets={{ bottom: false }}>
+      <BottomSheet
+        snapPoints={["80%"]}
+        modalRef={manageAccountBottomSheetModalRef}
+        handleCloseModal={() =>
+          manageAccountBottomSheetModalRef.current?.dismiss()
+        }
+        bottomSheetModalProps={{
+          enablePanDownToClose: false,
+        }}
+        customContent={
+          <ManageAccountBottomSheet
+            handleCloseModal={() =>
+              manageAccountBottomSheetModalRef.current?.dismiss()
+            }
+            onPressAddAnotherWallet={handleAddAnotherWallet}
+            handleCopyAddress={handleCopyAddress}
+          />
+        }
+      />
       <HeaderContainer>
         <ContextMenuButton
           contextMenuProps={{
             actions,
           }}
         >
-          <Icon.DotsHorizontal size={24} color={THEME.colors.base.secondary} />
+          <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
         </ContextMenuButton>
       </HeaderContainer>
 
       <TopSection>
         <AccountTotal>
-          <AccountNameRow>
-            <Avatar size="sm" publicAddress={publicKey ?? ""} />
-            <Text>{account?.accountName ?? t("home.title")}</Text>
-          </AccountNameRow>
+          <TouchableOpacity
+            onPress={() => manageAccountBottomSheetModalRef.current?.present()}
+          >
+            <View className="flex-row items-center gap-2">
+              <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+              <Text>{account?.accountName ?? t("home.title")}</Text>
+              <Icon.ChevronDown
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            </View>
+          </TouchableOpacity>
           <Display lg medium>
             {formattedBalance}
           </Display>
@@ -178,14 +308,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
-            onPress={handleCopyAddress}
+            onPress={() => handleCopyAddress(account?.publicKey)}
           />
         </ButtonsRow>
       </TopSection>
 
       <BorderLine />
 
-      <BalancesList publicKey={publicKey ?? ""} network={network} />
+      <BalancesList publicKey={account?.publicKey ?? ""} network={network} />
     </BaseLayout>
   );
 };

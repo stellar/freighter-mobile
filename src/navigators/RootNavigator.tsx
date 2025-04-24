@@ -5,6 +5,7 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import {
   ManageAssetsStackParamList,
+  ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SettingsStackParamList,
@@ -13,13 +14,17 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
+import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
 import { SettingsStackNavigator } from "navigators/SettingsNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
-  RootStackParamList & ManageAssetsStackParamList & SettingsStackParamList
+  RootStackParamList &
+    ManageAssetsStackParamList &
+    SettingsStackParamList &
+    ManageWalletsStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -70,6 +75,10 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK}
             component={ManageAssetsStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
+            component={ManageWalletsStackNavigator}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}

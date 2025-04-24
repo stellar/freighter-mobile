@@ -13,6 +13,12 @@
       "settings": "Configurações",
       "manageAssets": "Gerenciar ativos",
       "myQRCode": "Meu QR code"
+    },
+    "manageAccount": {
+      "title": "Carteiras",
+      "addWallet": "Adicionar uma carteira",
+      "renameWallet": "Renomear carteira",
+      "copyAddress": "Copiar endereço"
     }
   },
   "settings": {
@@ -175,6 +181,19 @@
       "message": "Tem certeza que deseja remover este ativo?\nUma vez que você remova um ativo, você precisará adicioná-lo novamente mais tarde.",
       "cancel": "Cancelar",
       "remove": "Remover"
+    }
+  },
+  "addAnotherWalletScreen": {
+    "title": "Adicionar outra carteira",
+    "actions": {
+      "createNewWallet": "Criar uma nova carteira",
+      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "importStellarSecretKey": "Importar uma chave secreta Stellar",
+      "importStellarSecretKeyDescription": "Adicionar uma carteira usando uma frase de recuperação"
+    },
+    "helperBottomSheet": {
+      "title": "Adicionar outra carteira",
+      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
     }
   },
   "logout": "Sair",

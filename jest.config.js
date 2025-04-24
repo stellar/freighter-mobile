@@ -22,6 +22,8 @@ module.exports = {
       "nativewind",
       "tailwindcss",
       "react-native-css-interop",
+      "react-native-reanimated",
+      "@gorhom/bottom-sheet",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],

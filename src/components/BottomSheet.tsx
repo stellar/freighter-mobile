@@ -15,11 +15,23 @@ import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Icons = {
-  Assets: "Assets",
-  Announcement: "Announcement",
-  Danger: "Danger",
-  Wallet: "Wallet",
-};
+  Assets: {
+    icon: "Coins01",
+    color: "mint",
+  },
+  Announcement: {
+    icon: "Announcement01",
+    color: "lime",
+  },
+  Danger: {
+    icon: "AlertTriangle",
+    color: "red",
+  },
+  Wallet: {
+    icon: "Wallet01",
+    color: "gold",
+  },
+} as const;
 
 type BottomSheetProps = {
   title?: string;
@@ -31,6 +43,7 @@ type BottomSheetProps = {
   bottomSheetModalProps?: Partial<BottomSheetModalProps>;
   bottomSheetViewProps?: Partial<BottomSheetViewProps>;
   shouldCloseOnPressBackdrop?: boolean;
+  snapPoints?: string[];
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -43,32 +56,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   bottomSheetModalProps,
   bottomSheetViewProps,
   shouldCloseOnPressBackdrop = true,
+  snapPoints,
 }) => {
   const { themeColors } = useColors();
-
-  const MapIcons = {
-    [Icons.Assets]: {
-      IconComponent: Icon.Coins01,
-      iconColor: themeColors.mint[9],
-      backgroundColorClassName: "bg-mint-3",
-    },
-    [Icons.Announcement]: {
-      IconComponent: Icon.Announcement01,
-      iconColor: themeColors.lime[9],
-      backgroundColorClassName: "bg-lime-3",
-    },
-    [Icons.Danger]: {
-      IconComponent: Icon.AlertTriangle,
-      iconColor: themeColors.red[9],
-      backgroundColorClassName: "bg-red-3",
-    },
-    [Icons.Wallet]: {
-      IconComponent: Icon.Wallet01,
-      iconColor: themeColors.gold[9],
-      backgroundColorClassName: "bg-gold-3",
-    },
-  };
-  const IconData = icon ? MapIcons[icon] : null;
+  const IconData = icon ? Icons[icon] : null;
   const insets = useSafeAreaInsets();
 
   const renderBackdrop = useCallback(
@@ -98,6 +89,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       ref={modalRef}
       enablePanDownToClose
       enableDynamicSizing
+      snapPoints={snapPoints}
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
@@ -119,13 +111,12 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           <>
             {IconData && (
               <View className="flex-row items-center justify-between">
-                <View
-                  className={`rounded-[32px] p-2 self-start ${IconData.backgroundColorClassName}`}
-                >
-                  <IconData.IconComponent
-                    size={25}
-                    color={IconData.iconColor}
-                  />
+                <View>
+                  {React.createElement(Icon[IconData.icon], {
+                    size: 25,
+                    themeColor: IconData.color,
+                    withBackground: true,
+                  })}
                 </View>
                 <TouchableOpacity onPress={handleCloseModal}>
                   <Icon.X size={24} color={themeColors.base[1]} />

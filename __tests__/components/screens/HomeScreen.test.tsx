@@ -148,24 +148,22 @@ describe("HomeScreen", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with account information", () => {
-    const { getByText } = renderWithProviders(
+  const renderHomeScreen = () =>
+    renderWithProviders(
       <HomeScreen
         navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
         route={{} as never}
       />,
     );
+
+  it("renders correctly with account information", () => {
+    const { getByText } = renderHomeScreen();
     expect(getByText("Test Account")).toBeTruthy();
     expect(getByText("$350.75")).toBeTruthy();
   });
 
   it("handles clipboard copy when copy button is pressed", async () => {
-    const { getByTestId } = renderWithProviders(
-      <HomeScreen
-        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
-        route={{} as never}
-      />,
-    );
+    const { getByTestId } = renderHomeScreen();
 
     const copyButton = getByTestId("icon-button-copy");
     await userEvent.press(copyButton);
@@ -176,12 +174,7 @@ describe("HomeScreen", () => {
   }, 20000);
 
   it("renders action buttons correctly", () => {
-    const { getByText } = renderWithProviders(
-      <HomeScreen
-        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
-        route={{} as never}
-      />,
-    );
+    const { getByText } = renderHomeScreen();
 
     expect(getByText("Buy")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();

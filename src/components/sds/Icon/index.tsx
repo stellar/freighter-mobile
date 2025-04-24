@@ -1173,9 +1173,10 @@ import Zap from "assets/icons/zap.svg";
 import ZoomIn from "assets/icons/zoom-in.svg";
 import ZoomOut from "assets/icons/zoom-out.svg";
 import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
+import { px, pxValue } from "helpers/dimensions";
+import useColors from "hooks/useColors";
 import React from "react";
-import styled from "styled-components/native";
+import { View } from "react-native";
 
 export const Icons = {
   ActivityHeart,
@@ -2354,6 +2355,18 @@ export const Icons = {
   ZoomOut,
 };
 
+/**
+ * Props for the Icon component
+ * @interface IconProps
+ * @property {keyof typeof Icons} [name] - The name of the icon to display
+ * @property {boolean} [circle] - Whether to display the icon in a circular container
+ * @property {number} [size=24] - The size of the icon in pixels
+ * @property {string} [color] - The color of the icon (use this or themeColor, not both)
+ * @property {string} [testID] - Test ID for testing purposes
+ * @property {() => void} [onPress] - Function to call when the icon is pressed
+ * @property {'mint' | 'lime' | 'gold' | 'navy' | 'teal' | 'red' | 'amber' | 'pink' | 'lilac' | 'green'} [themeColor] - Theme color to use for the icon. Uses variant 9 for the icon color
+ * @property {boolean} [withBackground] - When true and themeColor is set, adds a background using variant 3 of the theme color
+ */
 export interface IconProps {
   name?: keyof typeof Icons;
   circle?: boolean;
@@ -2361,20 +2374,51 @@ export interface IconProps {
   color?: string;
   testID?: string;
   onPress?: () => void;
+  themeColor?:
+    | "mint"
+    | "lime"
+    | "gold"
+    | "navy"
+    | "teal"
+    | "red"
+    | "amber"
+    | "pink"
+    | "lilac"
+    | "green";
+  withBackground?: boolean;
 }
 
-const CircleContainer = styled.View`
-  width: ${({ size }: { size: number }) => px(size * 1.5)};
-  height: ${({ size }: { size: number }) => px(size * 1.5)};
-  border-radius: 50%;
-  background-color: ${THEME.colors.background.default};
-  border-color: ${THEME.colors.border.default};
-  border-width: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
+/**
+ * A flexible icon component that supports both direct color values and theme-based colors with optional backgrounds.
+ *
+ * @example Basic usage with direct color
+ * ```tsx
+ * <Icon.AlertTriangle size={24} color="#000000" />
+ * ```
+ *
+ * @example Using theme colors
+ * ```tsx
+ * <Icon.AlertTriangle size={24} themeColor="mint" />
+ * ```
+ *
+ * @example With themed background
+ * ```tsx
+ * <Icon.AlertTriangle
+ *   size={24}
+ *   themeColor="mint"
+ *   withBackground
+ * />
+ * ```
+ *
+ * @example In a circle container
+ * ```tsx
+ * <Icon.AlertTriangle
+ *   size={24}
+ *   themeColor="mint"
+ *   circle
+ * />
+ * ```
+ */
 const IconComponent: React.FC<IconProps> = ({
   name,
   size = 24,
@@ -2382,8 +2426,11 @@ const IconComponent: React.FC<IconProps> = ({
   circle,
   testID,
   onPress,
+  themeColor,
+  withBackground,
 }) => {
   const IconSvg = name ? Icons[name] : null;
+  const { themeColors } = useColors();
 
   if (!IconSvg) {
     return null;
@@ -2393,7 +2440,7 @@ const IconComponent: React.FC<IconProps> = ({
     <IconSvg
       width={px(size)}
       height={px(size)}
-      color={color}
+      color={themeColor ? themeColors[themeColor][9] : color}
       testID={testID}
       onPress={onPress}
     />
@@ -2401,9 +2448,30 @@ const IconComponent: React.FC<IconProps> = ({
 
   if (circle) {
     return (
-      <CircleContainer size={size} onPress={onPress}>
+      <View
+        className="items-center justify-center rounded-full bg-background-primary border border-border-primary"
+        style={{
+          width: pxValue(size * 1.5),
+          height: pxValue(size * 1.5),
+        }}
+      >
         {iconElement}
-      </CircleContainer>
+      </View>
+    );
+  }
+
+  if (withBackground && themeColor) {
+    return (
+      <View
+        className="items-center justify-center rounded-full"
+        style={{
+          backgroundColor: themeColors[themeColor][3],
+          width: pxValue(size * 2),
+          height: pxValue(size * 2),
+        }}
+      >
+        {iconElement}
+      </View>
     );
   }
 

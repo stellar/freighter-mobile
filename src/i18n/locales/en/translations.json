@@ -13,6 +13,12 @@
       "settings": "Settings",
       "manageAssets": "Manage assets",
       "myQRCode": "My QR code"
+    },
+    "manageAccount": {
+      "title": "Wallets",
+      "addWallet": "Add a wallet",
+      "renameWallet": "Rename wallet",
+      "copyAddress": "Copy address"
     }
   },
   "settings": {
@@ -179,6 +185,19 @@
       "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later.",
       "cancel": "Cancel",
       "remove": "Remove"
+    }
+  },
+  "addAnotherWalletScreen": {
+    "title": "Add another wallet",
+    "actions": {
+      "createNewWallet": "Create a new wallet",
+      "createNewWalletDescription": "Create a wallet on your seed phrase",
+      "importStellarSecretKey": "Import a Stellar secret key",
+      "importStellarSecretKeyDescription": "Add a wallet using a recovery phrase"
+    },
+    "helperBottomSheet": {
+      "title": "Add another wallet",
+      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
     }
   },
   "logout": "Log out",

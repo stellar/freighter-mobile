@@ -26,25 +26,25 @@ export const App = (): React.JSX.Element => {
 
   return (
     <GestureHandlerRootView>
-      <BottomSheetModalProvider>
-        <SafeAreaProvider>
-          <I18nextProvider i18n={i18n}>
-            <NavigationContainer ref={navigationRef}>
-              <AuthCheckProvider>
-                <OfflineDetection>
-                  <StatusBar
-                    backgroundColor={THEME.colors.background.default}
-                    barStyle="light-content"
-                  />
-                  <ToastProvider>
+      <SafeAreaProvider>
+        <I18nextProvider i18n={i18n}>
+          <NavigationContainer ref={navigationRef}>
+            <AuthCheckProvider>
+              <OfflineDetection>
+                <StatusBar
+                  backgroundColor={THEME.colors.background.default}
+                  barStyle="light-content"
+                />
+                <ToastProvider>
+                  <BottomSheetModalProvider>
                     <RootNavigator />
-                  </ToastProvider>
-                </OfflineDetection>
-              </AuthCheckProvider>
-            </NavigationContainer>
-          </I18nextProvider>
-        </SafeAreaProvider>
-      </BottomSheetModalProvider>
+                  </BottomSheetModalProvider>
+                </ToastProvider>
+              </OfflineDetection>
+            </AuthCheckProvider>
+          </NavigationContainer>
+        </I18nextProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 };

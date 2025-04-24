@@ -4,6 +4,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   SETTINGS_STACK: "SettingsStack",
 
   MANAGE_ASSETS_STACK: "ManageAssetsStack",
+  MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
 } as const;
@@ -36,10 +37,15 @@ export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
 } as const;
 
+export const MANAGE_WALLETS_ROUTES = {
+  MANAGE_WALLETS_SCREEN: "ManageWalletsScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
 };
@@ -82,4 +88,8 @@ export type ManageAssetsStackParamList = {
 
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
+};
+
+export type ManageWalletsStackParamList = {
+  [MANAGE_WALLETS_ROUTES.MANAGE_WALLETS_SCREEN]: undefined;
 };
