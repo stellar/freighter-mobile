@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { Avatar, AvatarSize } from "components/sds/Avatar";
+import { Avatar, AvatarSizes } from "components/sds/Avatar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -53,15 +53,20 @@ const TEST_USER_NAME = "John Doe";
 
 describe("Avatar", () => {
   describe("Size handling", () => {
-    const sizes: AvatarSize[] = ["sm", "md", "lg"];
+    const sizes = [AvatarSizes.SMALL, AvatarSizes.MEDIUM, AvatarSizes.LARGE];
+    const sizeClasses = {
+      [AvatarSizes.SMALL]: "w-[26px] h-[26px]",
+      [AvatarSizes.MEDIUM]: "w-[38px] h-[38px]",
+      [AvatarSizes.LARGE]: "w-[50px] h-[50px]",
+    };
 
-    it.each(sizes)("renders with correct size: %s", (size) => {
+    it.each(sizes)("renders with correct size class: %s", (size) => {
       const { getByTestId } = renderWithProviders(
         <Avatar size={size} testID={`avatar-${size}`} />,
       );
 
       const avatar = getByTestId(`avatar-${size}`);
-      expect(avatar).toBeDefined();
+      expect(avatar.props.className).toContain(sizeClasses[size]);
     });
 
     it("renders default icon with all sizes", () => {
@@ -71,7 +76,8 @@ describe("Avatar", () => {
         );
 
         const avatar = getByTestId(`default-${size}`);
-        expect(avatar).toBeDefined();
+        expect(avatar.props.className).toContain(sizeClasses[size]);
+        expect(avatar.props.className).toContain("rounded-full");
       });
     });
   });
@@ -80,37 +86,45 @@ describe("Avatar", () => {
     it("renders with Stellar address", () => {
       const { getByTestId } = renderWithProviders(
         <Avatar
-          size="md"
+          size={AvatarSizes.MEDIUM}
           publicAddress={TEST_PUBLIC_ADDRESS}
           testID="stellar-avatar"
         />,
       );
 
       const avatar = getByTestId("stellar-avatar");
-      expect(avatar).toBeDefined();
-
-      expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
+      expect(avatar.props.className).toContain("bg-background-primary");
+      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("rounded-full");
     });
 
     it("renders with user name (initials)", () => {
       const { getByTestId, getByText } = renderWithProviders(
-        <Avatar size="md" userName={TEST_USER_NAME} testID="initials-avatar" />,
+        <Avatar
+          size={AvatarSizes.MEDIUM}
+          userName={TEST_USER_NAME}
+          testID="initials-avatar"
+        />,
       );
 
       const avatar = getByTestId("initials-avatar");
-      expect(avatar).toBeDefined();
+      expect(avatar.props.className).toContain("bg-background-primary");
+      expect(avatar.props.className).toContain("border-border-primary");
 
       const initials = getByText("JD");
-      expect(initials).toBeDefined();
+      expect(initials.props.className).toContain("font-bold");
+      expect(initials.props.className).toContain("text-text-secondary");
     });
 
     it("renders default icon when no publicAddress or userName provided", () => {
       const { getByTestId } = renderWithProviders(
-        <Avatar size="md" testID="default-avatar" />,
+        <Avatar size={AvatarSizes.MEDIUM} testID="default-avatar" />,
       );
 
       const avatar = getByTestId("default-avatar");
-      expect(avatar).toBeDefined();
+      expect(avatar.props.className).toContain("bg-background-primary");
+      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("rounded-full");
 
       const icon = getByTestId("SvgMock");
       expect(icon).toBeDefined();
@@ -119,21 +133,37 @@ describe("Avatar", () => {
 
   describe("Initials generation", () => {
     it("renders first letter of single name", () => {
-      const { getByText } = renderWithProviders(
-        <Avatar size="md" userName="John" testID="single-name-avatar" />,
+      const { getByText, getByTestId } = renderWithProviders(
+        <Avatar
+          size={AvatarSizes.MEDIUM}
+          userName="John"
+          testID="single-name-avatar"
+        />,
       );
 
+      const avatar = getByTestId("single-name-avatar");
+      expect(avatar.props.className).toContain("justify-center");
+      expect(avatar.props.className).toContain("items-center");
+
       const initial = getByText("J");
-      expect(initial).toBeDefined();
+      expect(initial.props.className).toContain("text-text-secondary");
     });
 
     it("renders first letters of first and last name", () => {
-      const { getByText } = renderWithProviders(
-        <Avatar size="md" userName="John Doe" testID="double-name-avatar" />,
+      const { getByText, getByTestId } = renderWithProviders(
+        <Avatar
+          size={AvatarSizes.MEDIUM}
+          userName="John Doe"
+          testID="double-name-avatar"
+        />,
       );
 
+      const avatar = getByTestId("double-name-avatar");
+      expect(avatar.props.className).toContain("justify-center");
+      expect(avatar.props.className).toContain("items-center");
+
       const initials = getByText("JD");
-      expect(initials).toBeDefined();
+      expect(initials.props.className).toContain("text-text-secondary");
     });
   });
 
@@ -141,16 +171,16 @@ describe("Avatar", () => {
     it("generates correct identicon for a Stellar address", () => {
       const { getByTestId } = renderWithProviders(
         <Avatar
-          size="md"
+          size={AvatarSizes.MEDIUM}
           publicAddress={TEST_PUBLIC_ADDRESS}
           testID="identicon-avatar"
         />,
       );
 
       const avatar = getByTestId("identicon-avatar");
-      expect(avatar).toBeDefined();
-
-      expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
+      expect(avatar.props.className).toContain("bg-background-primary");
+      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("rounded-full");
     });
 
     it("renders different identicons for different addresses", () => {
@@ -160,8 +190,16 @@ describe("Avatar", () => {
 
       const { getAllByTestId } = renderWithProviders(
         <>
-          <Avatar size="md" publicAddress={address1} testID="identicon-test" />
-          <Avatar size="md" publicAddress={address2} testID="identicon-test" />
+          <Avatar
+            size={AvatarSizes.MEDIUM}
+            publicAddress={address1}
+            testID="identicon-test"
+          />
+          <Avatar
+            size={AvatarSizes.MEDIUM}
+            publicAddress={address2}
+            testID="identicon-test"
+          />
         </>,
       );
 
@@ -169,15 +207,43 @@ describe("Avatar", () => {
       expect(avatars).toHaveLength(2);
 
       avatars.forEach((avatar) => {
-        expect(avatar).toHaveStyle({ backgroundColor: "#161616" });
+        expect(avatar.props.className).toContain("bg-background-primary");
+        expect(avatar.props.className).toContain("border-border-primary");
+        expect(avatar.props.className).toContain("rounded-full");
       });
+    });
+  });
+
+  describe("Border handling", () => {
+    it("renders with border by default", () => {
+      const { getByTestId } = renderWithProviders(
+        <Avatar size={AvatarSizes.MEDIUM} testID="border-avatar" />,
+      );
+
+      const avatar = getByTestId("border-avatar");
+      expect(avatar.props.className).toContain("border");
+      expect(avatar.props.className).toContain("border-border-primary");
+    });
+
+    it("renders without border when hasBorder is false", () => {
+      const { getByTestId } = renderWithProviders(
+        <Avatar
+          size={AvatarSizes.MEDIUM}
+          hasBorder={false}
+          testID="no-border-avatar"
+        />,
+      );
+
+      const avatar = getByTestId("no-border-avatar");
+      expect(avatar.props.className).not.toContain("border");
+      expect(avatar.props.className).not.toContain("border-border-primary");
     });
   });
 
   describe("Accessibility", () => {
     it("passes testID to the container", () => {
       const { getByTestId } = renderWithProviders(
-        <Avatar size="md" testID="test-id-avatar" />,
+        <Avatar size={AvatarSizes.MEDIUM} testID="test-id-avatar" />,
       );
 
       const avatar = getByTestId("test-id-avatar");
