@@ -183,7 +183,8 @@
   },
   "sendPaymentScreen": {
     "title": "Send to",
-    "inputPlaceholder": "Enter address"
+    "inputPlaceholder": "Enter address",
+    "recents": "Recents"
   },
   "logout": "Log out",
   "clipboard": {

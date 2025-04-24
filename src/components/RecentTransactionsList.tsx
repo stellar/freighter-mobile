@@ -1,0 +1,58 @@
+import { ContactRow } from "components/ContactRow";
+import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
+import { THEME } from "config/theme";
+import useAppTranslation from "hooks/useAppTranslation";
+import React from "react";
+import { FlatList, View, KeyboardAvoidingView, Platform } from "react-native";
+
+interface RecentTransaction {
+  id: string;
+  address: string;
+  name?: string;
+}
+
+interface RecentTransactionsListProps {
+  transactions: RecentTransaction[];
+}
+
+const ListHeader = () => {
+  const { t } = useAppTranslation();
+
+  return (
+    <View className="mb-[24px]">
+      <View className="flex-row items-center gap-2">
+        <Icon.Clock size={16} color={THEME.colors.foreground.primary} />
+        <Text md medium secondary>
+          {t("sendPaymentScreen.recents")}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
+  transactions,
+}) => {
+  if (!transactions.length) {
+    return null;
+  }
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1"
+    >
+      <View className="flex-1">
+        <FlatList
+          data={transactions}
+          ListHeaderComponent={ListHeader}
+          renderItem={({ item }) => (
+            <ContactRow address={item.address} name={item.name} />
+          )}
+          keyExtractor={(item) => item.id}
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+};

@@ -29,6 +29,13 @@ const AVATAR_SIZES = {
     iconSize: 18,
   },
   lg: {
+    dimension: 40,
+    fontSize: 16,
+    width: 40,
+    height: 40,
+    iconSize: 16,
+  },
+  xl: {
     dimension: 48,
     fontSize: 18,
     width: 50,
@@ -37,7 +44,7 @@ const AVATAR_SIZES = {
   },
 } as const;
 
-export type AvatarSize = "sm" | "md" | "lg";
+export type AvatarSize = "sm" | "md" | "lg" | "xl";
 
 const CircleContainer = styled.View<{
   $size: AvatarSize;
@@ -226,6 +233,9 @@ export const Avatar: React.FC<AvatarProps> = ({
             style={{
               width: availableSpace,
               height: availableSpace,
+              transform: [
+                { scale: AVATAR_SIZES[size].iconSize / availableSpace },
+              ],
             }}
           >
             {matrix.map((row, rowIndex) =>
