@@ -124,6 +124,13 @@ const ButtonContainer = styled.View<
   padding: ${px(8)} 0 ${px(8)} ${px(12)};
   border-left-width: 1px;
   border-left-color: ${THEME.colors.border.default};
+  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    px(
+      INPUT_SIZES[$fieldSize].lineHeight +
+        3 * INPUT_SIZES[$fieldSize].paddingVertical,
+    )};
+  align-items: center;
+  justify-content: center;
 `;
 
 // =============================================================================

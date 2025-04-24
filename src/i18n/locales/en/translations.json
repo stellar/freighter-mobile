@@ -182,7 +182,7 @@
     }
   },
   "sendPaymentScreen": {
-    "title": "Send Payment",
+    "title": "Send to",
     "inputPlaceholder": "Enter address"
   },
   "logout": "Log out",
