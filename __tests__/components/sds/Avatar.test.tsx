@@ -45,6 +45,19 @@ jest.doMock("@shopify/react-native-skia", () => {
     useValue: jest.fn(() => ({ current: 0 })),
   };
 });
+
+// Mock the useColors hook
+jest.mock("hooks/useColors", () => ({
+  __esModule: true,
+  default: () => ({
+    themeColors: {
+      base: ["#000000", "#FFFFFF"],
+      text: {
+        secondary: "#666666",
+      },
+    },
+  }),
+}));
 /* eslint-enable */
 
 const TEST_PUBLIC_ADDRESS =
@@ -131,85 +144,83 @@ describe("Avatar", () => {
     });
   });
 
-  describe("Initials generation", () => {
-    it("renders first letter of single name", () => {
-      const { getByText, getByTestId } = renderWithProviders(
-        <Avatar
-          size={AvatarSizes.MEDIUM}
-          userName="John"
-          testID="single-name-avatar"
-        />,
+  describe("Selection indicator", () => {
+    it("does not show indicator by default", () => {
+      const { queryByTestId } = renderWithProviders(
+        <Avatar size={AvatarSizes.MEDIUM} testID="avatar" />,
       );
 
-      const avatar = getByTestId("single-name-avatar");
-      expect(avatar.props.className).toContain("justify-center");
-      expect(avatar.props.className).toContain("items-center");
-
-      const initial = getByText("J");
-      expect(initial.props.className).toContain("text-text-secondary");
+      expect(queryByTestId("avatar-indicator")).toBeNull();
     });
 
-    it("renders first letters of first and last name", () => {
-      const { getByText, getByTestId } = renderWithProviders(
-        <Avatar
-          size={AvatarSizes.MEDIUM}
-          userName="John Doe"
-          testID="double-name-avatar"
-        />,
-      );
-
-      const avatar = getByTestId("double-name-avatar");
-      expect(avatar.props.className).toContain("justify-center");
-      expect(avatar.props.className).toContain("items-center");
-
-      const initials = getByText("JD");
-      expect(initials.props.className).toContain("text-text-secondary");
-    });
-  });
-
-  describe("Stellar identicon rendering", () => {
-    it("generates correct identicon for a Stellar address", () => {
+    it("shows indicator when isSelected is true", () => {
       const { getByTestId } = renderWithProviders(
-        <Avatar
-          size={AvatarSizes.MEDIUM}
-          publicAddress={TEST_PUBLIC_ADDRESS}
-          testID="identicon-avatar"
-        />,
+        <Avatar size={AvatarSizes.MEDIUM} isSelected testID="avatar" />,
       );
 
-      const avatar = getByTestId("identicon-avatar");
-      expect(avatar.props.className).toContain("bg-background-primary");
-      expect(avatar.props.className).toContain("border-border-primary");
-      expect(avatar.props.className).toContain("rounded-full");
+      const indicator = getByTestId("avatar-indicator");
+      expect(indicator.props.className).toContain("absolute");
+      expect(indicator.props.className).toContain("-bottom-1");
+      expect(indicator.props.className).toContain("bg-primary");
+      expect(indicator.props.className).toContain("justify-center");
+      expect(indicator.props.className).toContain("items-center");
+
+      // Check icon should be present
+      const checkIcon = indicator.findByProps({ testID: "SvgMock" });
+      expect(checkIcon).toBeDefined();
     });
 
-    it("renders different identicons for different addresses", () => {
-      const address1 = TEST_PUBLIC_ADDRESS;
-      const address2 =
-        "GBUZ6T3M2XSCQPXDEPINQJZQZZNZZBYFRJ6QTIGWKPMI7JAJQNWU7YHE";
+    it("shows indicator with correct size based on avatar size", () => {
+      const sizes = [AvatarSizes.SMALL, AvatarSizes.MEDIUM, AvatarSizes.LARGE];
+      const indicatorSizes = {
+        [AvatarSizes.SMALL]: "w-3 h-3",
+        [AvatarSizes.MEDIUM]: "w-4 h-4",
+        [AvatarSizes.LARGE]: "w-5 h-5",
+      };
 
+      sizes.forEach((size) => {
+        const { getByTestId } = renderWithProviders(
+          <Avatar size={size} isSelected testID={`avatar-${size}`} />,
+        );
+
+        const indicator = getByTestId(`avatar-${size}-indicator`);
+        expect(indicator.props.className).toContain(indicatorSizes[size]);
+      });
+    });
+
+    it("shows indicator for all avatar types", () => {
       const { getAllByTestId } = renderWithProviders(
         <>
           <Avatar
             size={AvatarSizes.MEDIUM}
-            publicAddress={address1}
-            testID="identicon-test"
+            isSelected
+            testID="default-avatar"
           />
           <Avatar
             size={AvatarSizes.MEDIUM}
-            publicAddress={address2}
-            testID="identicon-test"
+            userName="John Doe"
+            isSelected
+            testID="initials-avatar"
+          />
+          <Avatar
+            size={AvatarSizes.MEDIUM}
+            publicAddress={TEST_PUBLIC_ADDRESS}
+            isSelected
+            testID="identicon-avatar"
           />
         </>,
       );
 
-      const avatars = getAllByTestId("identicon-test");
-      expect(avatars).toHaveLength(2);
+      const indicators = getAllByTestId(/-indicator$/);
+      expect(indicators).toHaveLength(3);
+      indicators.forEach((indicator) => {
+        expect(indicator.props.className).toContain("bg-primary");
+        expect(indicator.props.className).toContain("justify-center");
+        expect(indicator.props.className).toContain("items-center");
 
-      avatars.forEach((avatar) => {
-        expect(avatar.props.className).toContain("bg-background-primary");
-        expect(avatar.props.className).toContain("border-border-primary");
-        expect(avatar.props.className).toContain("rounded-full");
+        // Each indicator should have a check icon
+        const checkIcon = indicator.findByProps({ testID: "SvgMock" });
+        expect(checkIcon).toBeDefined();
       });
     });
   });

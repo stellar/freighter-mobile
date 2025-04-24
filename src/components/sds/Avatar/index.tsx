@@ -1,13 +1,13 @@
 /* eslint-disable react/no-array-index-key */
 import { Canvas, Rect } from "@shopify/react-native-skia";
 import Icon from "components/sds/Icon";
-import { THEME } from "config/theme";
 import {
   HSVtoRGB,
   publicKeyToBytes,
   generateMatrix,
   DEFAULT_MATRIX_SIZE,
 } from "helpers/stellarIdenticon";
+import useColors from "hooks/useColors";
 import React from "react";
 import { View, Text } from "react-native";
 
@@ -27,6 +27,7 @@ const AVATAR_DIMENSIONS = {
     width: 26,
     height: 26,
     iconSize: 12,
+    indicatorSize: 8,
   },
   [AvatarSizes.MEDIUM]: {
     dimension: 36,
@@ -34,6 +35,7 @@ const AVATAR_DIMENSIONS = {
     width: 38,
     height: 38,
     iconSize: 18,
+    indicatorSize: 10,
   },
   [AvatarSizes.LARGE]: {
     dimension: 48,
@@ -41,6 +43,7 @@ const AVATAR_DIMENSIONS = {
     width: 50,
     height: 50,
     iconSize: 24,
+    indicatorSize: 12,
   },
 } as const;
 
@@ -54,6 +57,8 @@ export interface AvatarBaseProps {
   testID?: string;
   /** Whether to show border */
   hasBorder?: boolean;
+  /** Whether to show selected indicator */
+  isSelected?: boolean;
 }
 
 /**
@@ -86,6 +91,62 @@ export type AvatarProps = (
     }
 ) &
   AvatarBaseProps;
+
+interface AvatarWrapperProps {
+  size: AvatarSize;
+  testID?: string;
+  hasBorder?: boolean;
+  isSelected?: boolean;
+  children: React.ReactNode;
+}
+
+const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
+  size,
+  testID,
+  hasBorder = true,
+  isSelected = false,
+  children,
+}) => {
+  const { themeColors } = useColors();
+  const getSizeClasses = () => {
+    const classes: Record<AvatarSize, string> = {
+      sm: "w-[26px] h-[26px]",
+      md: "w-[38px] h-[38px]",
+      lg: "w-[50px] h-[50px]",
+    };
+
+    return classes[size];
+  };
+
+  const getContainerClasses = () =>
+    `relative z-10 ${getSizeClasses()} rounded-full ${
+      hasBorder ? "border border-border-primary" : ""
+    } ${isSelected ? "border-primary" : ""} bg-background-primary`;
+
+  const getContentClasses = () =>
+    "w-full h-full rounded-full overflow-hidden justify-center items-center";
+
+  const getIndicatorClasses = () => {
+    const indicatorSizeClasses: Record<AvatarSize, string> = {
+      sm: "w-3 h-3",
+      md: "w-4 h-4",
+      lg: "w-5 h-5",
+    };
+
+    return `absolute z-20 -bottom-1 ${indicatorSizeClasses[size]} rounded-full bg-primary justify-center items-center`;
+  };
+
+  return (
+    <View className={getContainerClasses()} testID={testID}>
+      <View className={getContentClasses()}>{children}</View>
+      {isSelected && (
+        <View className={getIndicatorClasses()} testID={`${testID}-indicator`}>
+          <Icon.Check size={8} color={themeColors.base[1]} />
+        </View>
+      )}
+    </View>
+  );
+};
 
 /**
  * Avatar component
@@ -122,17 +183,9 @@ export const Avatar: React.FC<AvatarProps> = ({
   userName,
   testID,
   hasBorder = true,
+  isSelected = false,
 }) => {
-  const getSizeClasses = () => {
-    const classes: Record<AvatarSize, string> = {
-      sm: "w-[26px] h-[26px]",
-      md: "w-[38px] h-[38px]",
-      lg: "w-[50px] h-[50px]",
-    };
-
-    return classes[size];
-  };
-
+  const { themeColors } = useColors();
   const getTextSizeClass = () => {
     const classes: Record<AvatarSize, string> = {
       sm: "text-xs",
@@ -168,12 +221,13 @@ export const Avatar: React.FC<AvatarProps> = ({
     const totalSize = cellSize * DEFAULT_MATRIX_SIZE;
     const offset = (availableSpace - totalSize) / 2;
 
-    const containerClasses = `${getSizeClasses()} rounded-full overflow-hidden justify-center items-center ${
-      hasBorder ? "border border-border-primary" : ""
-    } bg-background-primary`;
-
     return (
-      <View className={containerClasses} testID={testID}>
+      <AvatarWrapper
+        size={size}
+        testID={testID}
+        hasBorder={hasBorder}
+        isSelected={isSelected}
+      >
         <View className="justify-center items-center">
           <Canvas
             style={{
@@ -198,38 +252,36 @@ export const Avatar: React.FC<AvatarProps> = ({
             )}
           </Canvas>
         </View>
-      </View>
+      </AvatarWrapper>
     );
   };
 
-  const renderDefaultIcon = () => {
-    const containerClasses = `${getSizeClasses()} rounded-full overflow-hidden justify-center items-center ${
-      hasBorder ? "border border-border-primary" : ""
-    } bg-background-primary`;
+  const renderDefaultIcon = () => (
+    <AvatarWrapper
+      size={size}
+      testID={testID}
+      hasBorder={hasBorder}
+      isSelected={isSelected}
+    >
+      <Icon.User01
+        size={AVATAR_DIMENSIONS[size].iconSize}
+        color={themeColors.text.secondary}
+      />
+    </AvatarWrapper>
+  );
 
-    return (
-      <View className={containerClasses} testID={testID}>
-        <Icon.User01
-          size={AVATAR_DIMENSIONS[size].iconSize}
-          color={THEME.colors.text.secondary}
-        />
-      </View>
-    );
-  };
-
-  const renderInitials = (initials: string) => {
-    const containerClasses = `${getSizeClasses()} rounded-full overflow-hidden justify-center items-center ${
-      hasBorder ? "border border-border-primary" : ""
-    } bg-background-primary`;
-
-    return (
-      <View className={containerClasses} testID={testID}>
-        <Text className={`font-bold text-text-secondary ${getTextSizeClass()}`}>
-          {initials}
-        </Text>
-      </View>
-    );
-  };
+  const renderInitials = (initials: string) => (
+    <AvatarWrapper
+      size={size}
+      testID={testID}
+      hasBorder={hasBorder}
+      isSelected={isSelected}
+    >
+      <Text className={`font-bold text-text-secondary ${getTextSizeClass()}`}>
+        {initials}
+      </Text>
+    </AvatarWrapper>
+  );
 
   const renderContent = () => {
     if (publicAddress) {

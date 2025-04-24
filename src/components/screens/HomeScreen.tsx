@@ -133,7 +133,7 @@ const AccountItemRow: React.FC<{
   return (
     <View className="mb-4 mt-8 flex-row justify-between items-center flex-1">
       <View className="flex-row items-center flex-1">
-        <Avatar size="md" publicAddress={account.publicKey} />
+        <Avatar size="md" publicAddress={account.publicKey} isSelected />
         <View className="ml-4 flex-1 mr-2">
           <Text md primary medium numberOfLines={1}>
             {account.accountName}
