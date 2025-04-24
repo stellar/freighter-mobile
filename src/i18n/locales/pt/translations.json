@@ -21,6 +21,12 @@
       "copyAddress": "Copiar endereço"
     }
   },
+  "renameAccountModal": {
+    "currentName": "Nome atual",
+    "skip": "Pular",
+    "saveName": "Salvar nome",
+    "nameInputPlaceholder": "Digite um nome para sua carteira"
+  },
   "settings": {
     "title": "Configurações",
     "logout": "Sair",

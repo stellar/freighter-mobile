@@ -4,12 +4,15 @@ import { BalancesList } from "components/BalancesList";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
+import Modal from "components/Modal";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
+import { logger } from "config/logger";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -26,7 +29,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Platform,
@@ -96,7 +99,8 @@ const BorderLine = styled.View`
 const AccountItemRow: React.FC<{
   account: ActiveAccount | null;
   handleCopyAddress: (publicKey: string) => void;
-}> = ({ account, handleCopyAddress }) => {
+  handleRenameAccount: () => void;
+}> = ({ account, handleCopyAddress, handleRenameAccount }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   if (!account) return null;
@@ -121,7 +125,7 @@ const AccountItemRow: React.FC<{
     {
       title: t("home.manageAccount.renameWallet"),
       systemIcon: icons!.renameWallet,
-      onPress: () => {},
+      onPress: handleRenameAccount,
     },
     {
       title: t("home.manageAccount.copyAddress"),
@@ -153,7 +157,13 @@ const ManageAccountBottomSheet: React.FC<{
   handleCloseModal: () => void;
   onPressAddAnotherWallet: () => void;
   handleCopyAddress: (publicKey: string) => void;
-}> = ({ handleCloseModal, onPressAddAnotherWallet, handleCopyAddress }) => {
+  handleRenameAccount: () => void;
+}> = ({
+  handleCloseModal,
+  onPressAddAnotherWallet,
+  handleCopyAddress,
+  handleRenameAccount,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -179,6 +189,7 @@ const ManageAccountBottomSheet: React.FC<{
         <AccountItemRow
           account={account}
           handleCopyAddress={handleCopyAddress}
+          handleRenameAccount={handleRenameAccount}
         />
       </ScrollView>
       <Button tertiary isFullWidth lg onPress={onPressAddAnotherWallet}>
@@ -195,6 +206,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { themeColors } = useColors();
+  const [modalVisible, setModalVisible] = useState(false);
   const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
@@ -251,8 +263,62 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
   };
 
+  const handleRenameAccount = (text: string) => {
+    logger.debug("text", text);
+  };
+
   return (
     <BaseLayout insets={{ bottom: false }}>
+      <Modal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        closeOnOverlayPress
+      >
+        <View className="justify-center items-center">
+          <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
+          <View className="h-4" />
+          <Text primary md medium>
+            {truncatePublicKey({ publicKey: account?.publicKey ?? "" })}
+          </Text>
+          <Text secondary sm regular>
+            {t("renameAccountModal.currentName")}
+          </Text>
+          <View className="h-8" />
+        </View>
+        <View>
+          <Input
+            placeholder={t("renameAccountModal.nameInputPlaceholder")}
+            fieldSize="lg"
+            leftElement={
+              <Icon.UserCircle
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            }
+            autoCapitalize="none"
+            value={account?.accountName}
+            onChangeText={handleRenameAccount}
+          />
+        </View>
+        <View className="h-4" />
+        <View className="flex-row justify-between w-full gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              lg
+              isFullWidth
+              onPress={() => setModalVisible(false)}
+            >
+              {t("renameAccountModal.skip")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button lg tertiary isFullWidth>
+              {t("renameAccountModal.saveName")}
+            </Button>
+          </View>
+        </View>
+      </Modal>
       <BottomSheet
         snapPoints={["80%"]}
         modalRef={manageAccountBottomSheetModalRef}
@@ -269,6 +335,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             }
             onPressAddAnotherWallet={handleAddAnotherWallet}
             handleCopyAddress={handleCopyAddress}
+            handleRenameAccount={() => setModalVisible(true)}
           />
         }
       />

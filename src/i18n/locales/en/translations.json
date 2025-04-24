@@ -21,6 +21,12 @@
       "copyAddress": "Copy address"
     }
   },
+  "renameAccountModal": {
+    "currentName": "Current name",
+    "skip": "Skip",
+    "saveName": "Save name",
+    "nameInputPlaceholder": "Enter a name for your account"
+  },
   "settings": {
     "title": "Settings",
     "logout": "Log Out",
