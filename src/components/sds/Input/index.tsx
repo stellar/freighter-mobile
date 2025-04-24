@@ -239,6 +239,7 @@ interface InputProps {
   secureTextEntry?: boolean;
   editable?: boolean;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCorrect?: boolean;
   keyboardType?:
     | "default"
     | "number-pad"
@@ -267,6 +268,7 @@ export const Input: React.FC<InputProps> = ({
   placeholder,
   editable = true,
   testID,
+  autoCorrect = true,
   ...props
 }) => {
   const handleCopy = () => {
@@ -326,6 +328,8 @@ export const Input: React.FC<InputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
+          autoCapitalize={isPassword ? "none" : undefined}
+          autoCorrect={autoCorrect}
           placeholderTextColor={THEME.colors.text.secondary}
           secureTextEntry={isPassword}
           editable={editable}

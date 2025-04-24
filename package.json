@@ -5,6 +5,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "android": "react-native run-android",
+    "android-release": "yarn android --mode release",
+    "android:bundle:release": "npx react-native build-android --mode=release",
     "ios": "react-native run-ios",
     "lint": "eslint ./src ./__tests__ --fix",
     "lint:ts": "tsc --noEmit",
@@ -115,7 +117,6 @@
     "@types/jest": "^29.5.14",
     "@types/lodash": "^4.17.16",
     "@types/react": "^19.0.0",
-    "@types/react-redux": "^7.1.34",
     "@types/react-test-renderer": "^19.0.0",
     "@types/styled-components": "^5.1.34",
     "@types/styled-components-react-native": "^5.2.5",

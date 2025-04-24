@@ -15,6 +15,20 @@ export type KeyPair = {
   privateKey: string;
 };
 
+export enum AssetTypeWithCustomToken {
+  CUSTOM_TOKEN = "custom_token",
+  NATIVE = "native",
+  CREDIT_ALPHANUM4 = "credit_alphanum4",
+  CREDIT_ALPHANUM12 = "credit_alphanum12",
+  LIQUIDITY_POOL_SHARES = "liquidity_pool_shares",
+}
+
+export enum NetworkCongestion {
+  LOW = "Low",
+  MEDIUM = "Medium",
+  HIGH = "High",
+}
+
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;
@@ -67,7 +81,7 @@ export type Issuer = {
 export type AssetToken = {
   code: string;
   issuer: Issuer;
-  type?: AssetType;
+  type?: AssetTypeWithCustomToken;
   anchorAsset?: string;
   numAccounts?: BigNumber;
   amount?: BigNumber;
@@ -206,4 +220,87 @@ export type PricedBalance = Balance &
  */
 export type PricedBalanceMap = {
   [tokenIdentifier: TokenIdentifier]: PricedBalance;
+};
+
+export interface SearchAssetResponse {
+  _links: {
+    self: {
+      href: string;
+    };
+    prev: {
+      href: string;
+    };
+    next: {
+      href: string;
+    };
+  };
+  _embedded: {
+    records: {
+      asset: string;
+      supply: number;
+      traded_amount: number;
+      payments_amount: number;
+      created: number;
+      trustlines: number[];
+      payments: number;
+      domain?: string;
+      rating: {
+        age: number;
+        trades: number;
+        payments: number;
+        trustlines: number;
+        volume7d: number;
+        interop: number;
+        liquidity: number;
+        average: number;
+      };
+      score: number;
+      paging_token: number;
+    }[];
+  };
+}
+
+export interface TokenDetailsResponse {
+  name: string;
+  decimals: number;
+  symbol: string;
+  balance?: string;
+}
+
+export interface GetTokenDetailsParams {
+  contractId: string;
+  publicKey: string;
+  network: NETWORKS;
+  shouldFetchBalance?: boolean;
+}
+
+export type FormattedSearchAssetRecord = {
+  assetCode: string;
+  domain: string;
+  hasTrustline: boolean;
+  issuer: string;
+  isNative: boolean;
+  assetType?: AssetTypeWithCustomToken;
+  name?: string;
+  decimals?: number;
+};
+
+/**
+ * Custom token metadata for a single token
+ */
+export type CustomToken = {
+  contractId: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+};
+
+/**
+ * Storage structure for custom tokens, organized by publicKey -> network -> tokens
+ * This allows efficiently storing and retrieving custom tokens for any account across networks
+ */
+export type CustomTokenStorage = {
+  [publicKey: string]: {
+    [network: string]: CustomToken[];
+  };
 };

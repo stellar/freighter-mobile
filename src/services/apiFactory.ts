@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import { debug } from "helpers/debug";
 
 /**
  * API factory module for creating API service instances with consistent behavior.
@@ -87,6 +88,8 @@ export interface ApiServiceOptions {
   timeout?: number;
   /** Default headers to include with every request */
   headers?: Record<string, string>;
+  /** Whether to log requests and responses */
+  logRequests?: boolean;
 }
 
 /**
@@ -130,6 +133,7 @@ export function createApiService(options: ApiServiceOptions) {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
+    logRequests = false,
   } = options;
 
   // Create axios instance
@@ -138,6 +142,18 @@ export function createApiService(options: ApiServiceOptions) {
     timeout,
     headers,
   });
+
+  if (logRequests) {
+    instance.interceptors.request.use((request) => {
+      debug("Starting Request", JSON.stringify(request, null, 2));
+      return request;
+    });
+
+    instance.interceptors.response.use((response) => {
+      debug("Response:", JSON.stringify(response, null, 2));
+      return response;
+    });
+  }
 
   // Add response interceptor for error handling
   instance.interceptors.response.use(

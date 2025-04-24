@@ -1,15 +1,22 @@
 import { AssetType } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { NativeBalance, ClassicBalance, TokenPricesMap } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
+import { dataStorage } from "services/storage/storageFactory";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
   fetchBalances: jest.fn(),
+}));
+
+jest.mock("services/storage/storageFactory", () => ({
+  dataStorage: {
+    getItem: jest.fn(),
+  },
 }));
 
 jest.mock("ducks/prices", () => ({
@@ -28,6 +35,7 @@ describe("balances duck", () => {
   const mockFetchBalances = fetchBalances as jest.MockedFunction<
     typeof fetchBalances
   >;
+  const mockGetItem = jest.fn();
 
   // Helper function to create a mock prices store state
   const createMockPricesStore = (
@@ -51,7 +59,7 @@ describe("balances duck", () => {
   const mockNativeBalance: NativeBalance = {
     token: {
       code: "XLM",
-      type: "native" as const, // Fix the type issue
+      type: "native" as const,
     },
     total: new BigNumber("100.5"),
     available: new BigNumber("100.5"),
@@ -93,6 +101,7 @@ describe("balances duck", () => {
   };
 
   const mockParams = {
+    contractIds: [],
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
   };
@@ -108,9 +117,14 @@ describe("balances duck", () => {
       });
     });
 
-    // Reset the mocks
+    // Reset all mocks
+    jest.clearAllMocks();
     mockFetchBalances.mockReset();
     (usePricesStore.getState as jest.Mock).mockReset();
+    mockGetItem.mockReset();
+
+    // Set up default storage mock
+    jest.spyOn(dataStorage, "getItem").mockImplementation(mockGetItem);
   });
 
   describe("store state", () => {
@@ -180,27 +194,73 @@ describe("balances duck", () => {
     });
 
     it("should handle fetch with contractIds", async () => {
-      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
-      (usePricesStore.getState as jest.Mock).mockReturnValue({
-        fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
-        prices: {},
-        error: null,
-        isLoading: false,
-        lastUpdated: null,
-      });
-
-      const { result } = renderHook(() => useBalancesStore());
-      const paramsWithContractIds = {
-        ...mockParams,
-        contractIds: ["contract1", "contract2"],
+      // Mock custom token storage
+      const mockCustomTokens = {
+        [mockParams.publicKey]: {
+          [mockParams.network]: [
+            { contractId: "customContract1", symbol: "TOKEN1" },
+            { contractId: "customContract2", symbol: "TOKEN2" },
+          ],
+        },
       };
 
-      await act(async () => {
-        await result.current.fetchAccountBalances(paramsWithContractIds);
+      // Set up storage mock for this test
+      mockGetItem.mockImplementation((key) => {
+        if (key === STORAGE_KEYS.CUSTOM_TOKEN_LIST) {
+          return Promise.resolve(JSON.stringify(mockCustomTokens));
+        }
+        return Promise.resolve(null);
       });
 
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      // Provided contract IDs in params
+      const providedContractIds = ["contract1", "contract2"];
+
+      // First ensure the storage is initialized
+      await mockGetItem(STORAGE_KEYS.CUSTOM_TOKEN_LIST);
+
+      await act(async () => {
+        await result.current.fetchAccountBalances({
+          ...mockParams,
+          contractIds: providedContractIds,
+        });
+      });
+
+      // Verify balances were fetched
       expect(result.current.balances).toEqual(mockBalances);
-      expect(mockFetchBalances).toHaveBeenCalledWith(paramsWithContractIds);
+
+      // Verify storage was queried with correct key
+      expect(mockGetItem).toHaveBeenCalledWith(STORAGE_KEYS.CUSTOM_TOKEN_LIST);
+
+      // Get the last call to fetchBalances
+      expect(mockFetchBalances).toHaveBeenCalled();
+      const lastCall =
+        mockFetchBalances.mock.calls[mockFetchBalances.mock.calls.length - 1];
+      expect(lastCall).toBeDefined();
+
+      const [lastCallArgs] = lastCall;
+      expect(lastCallArgs).toMatchObject({
+        publicKey: mockParams.publicKey,
+        network: mockParams.network,
+      });
+
+      // Verify that both custom tokens are included
+      expect(lastCallArgs.contractIds).toBeDefined();
+      expect(lastCallArgs.contractIds).toContain("customContract1");
+      expect(lastCallArgs.contractIds).toContain("customContract2");
+
+      // Verify that provided contract IDs are included
+      expect(lastCallArgs.contractIds).toContain("contract1");
+      expect(lastCallArgs.contractIds).toContain("contract2");
+
+      // Verify total length
+      expect(lastCallArgs.contractIds).toHaveLength(4);
     });
 
     it("should handle empty balances response", async () => {

@@ -13,6 +13,7 @@ import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View } from "react-native";
 import styled from "styled-components/native";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -36,10 +37,6 @@ const StyledFormContainer = styled.View`
   border-radius: ${px(24)};
   padding: ${px(24)};
   gap: ${px(8)};
-`;
-
-const ForgotPasswordContainer = styled.View`
-  margin-bottom: ${px(32)};
 `;
 
 const StyledInputContainer = styled.View`
@@ -107,13 +104,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   }, []);
 
   return (
-    <BaseLayout
-      useSafeArea
-      useKeyboardAvoidingView
-      insets={{
-        bottom: false,
-      }}
-    >
+    <BaseLayout useSafeArea useKeyboardAvoidingView>
       <Container>
         <StyledIconContainer>
           <FreighterLogo width={px(48)} height={px(48)} />
@@ -129,6 +120,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
               isPassword
               placeholder={t("lockScreen.passwordInputPlaceholder")}
               fieldSize="lg"
+              autoCapitalize="none"
               value={passwordValue}
               onChangeText={handlePasswordChange}
               error={error}
@@ -144,11 +136,11 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
             </Button>
           </StyledInputContainer>
         </StyledFormContainer>
-        <ForgotPasswordContainer>
+        <View>
           <Button secondary lg onPress={() => logout(true)}>
             {t("lockScreen.forgotPasswordButtonText")}
           </Button>
-        </ForgotPasswordContainer>
+        </View>
       </Container>
     </BaseLayout>
   );
