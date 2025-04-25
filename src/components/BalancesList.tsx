@@ -42,6 +42,7 @@ interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
   showTitleIcon?: boolean;
+  onTokenPress?: (tokenId: string) => void;
 }
 
 /**
@@ -62,6 +63,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
   showTitleIcon = false,
+  onTokenPress,
 }) => {
   const { t } = useAppTranslation();
   const {
@@ -162,7 +164,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         testID="balances-list"
         showsVerticalScrollIndicator={false}
         data={balanceItems}
-        renderItem={({ item }) => <BalanceRow balance={item} />}
+        renderItem={({ item }) => (
+          <BalanceRow
+            balance={item}
+            onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+            className="mb-[24px]"
+          />
+        )}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl

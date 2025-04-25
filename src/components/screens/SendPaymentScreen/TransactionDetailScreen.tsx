@@ -25,6 +25,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
 
+  const handleTokenPress = (tokenId: string) => {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_VALUE_SCREEN, {
+      address,
+      tokenId,
+    });
+  };
+
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
@@ -48,6 +55,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
             publicKey={publicKey ?? ""}
             network={network}
             showTitleIcon
+            onTokenPress={handleTokenPress}
           />
         </View>
       </View>

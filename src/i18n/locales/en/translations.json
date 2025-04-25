@@ -192,6 +192,9 @@
   "transactionDetailScreen": {
     "title": "Sending"
   },
+  "transactionValueScreen": {
+    "title": "Send"
+  },
   "logout": "Log out",
   "clipboard": {
     "copied": "Copied to clipboard!",
