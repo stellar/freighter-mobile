@@ -10,6 +10,8 @@ interface ContactRowProps {
   name?: string;
   onPress?: () => void;
   showDots?: boolean;
+  rightElement?: React.ReactNode;
+  className?: string;
 }
 
 export const ContactRow: React.FC<ContactRowProps> = ({
@@ -17,11 +19,16 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   name,
   onPress,
   showDots = true,
+  rightElement,
+  className,
 }) => {
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
-    <View className="flex-row w-full h-[44px] justify-between items-center mb-[24px]">
+    <TouchableOpacity
+      className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
+      onPress={onPress}
+    >
       <View className="flex-row items-center flex-1 mr-4">
         <Avatar size="lg" publicAddress={address} />
         <View className="flex-col ml-4 flex-1">
@@ -33,14 +40,13 @@ export const ContactRow: React.FC<ContactRowProps> = ({
           </Text>
         </View>
       </View>
-      {showDots && (
-        <TouchableOpacity onPress={onPress}>
+      {rightElement ||
+        (showDots && (
           <Icon.DotsHorizontal
             size={24}
             color={THEME.colors.foreground.secondary}
           />
-        </TouchableOpacity>
-      )}
-    </View>
+        ))}
+    </TouchableOpacity>
   );
 };

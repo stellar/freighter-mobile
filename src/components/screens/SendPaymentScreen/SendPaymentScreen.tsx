@@ -54,6 +54,12 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
     }
   };
 
+  const handleContactPress = (contactAddress: string) => {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN, {
+      address: contactAddress,
+    });
+  };
+
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
@@ -90,10 +96,16 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
         </View>
 
         {searchSuggestions.length > 0 ? (
-          <SearchSuggestionsList suggestions={searchSuggestions} />
+          <SearchSuggestionsList
+            suggestions={searchSuggestions}
+            onContactPress={handleContactPress}
+          />
         ) : (
           recentTransactions.length > 0 && (
-            <RecentTransactionsList transactions={recentTransactions} />
+            <RecentTransactionsList
+              transactions={recentTransactions}
+              onContactPress={handleContactPress}
+            />
           )
         )}
       </View>

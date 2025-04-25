@@ -8,14 +8,17 @@ import { FlatList, View } from "react-native";
 interface SearchSuggestion {
   id: string;
   address: string;
+  name?: string;
 }
 
 interface SearchSuggestionsListProps {
   suggestions: SearchSuggestion[];
+  onContactPress: (address: string) => void;
 }
 
 export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
   suggestions,
+  onContactPress,
 }) => {
   if (!suggestions.length) {
     return null;
@@ -34,7 +37,12 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
       <FlatList
         data={suggestions}
         renderItem={({ item }) => (
-          <ContactRow address={item.address} showDots={false} />
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => onContactPress(item.address)}
+            className="mb-[24px]"
+          />
         )}
         keyExtractor={(item) => item.id}
       />

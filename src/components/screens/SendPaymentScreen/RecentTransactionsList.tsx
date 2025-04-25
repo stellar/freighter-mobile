@@ -14,6 +14,7 @@ interface RecentTransaction {
 
 interface RecentTransactionsListProps {
   transactions: RecentTransaction[];
+  onContactPress: (address: string) => void;
 }
 
 const ListHeader = () => {
@@ -33,6 +34,7 @@ const ListHeader = () => {
 
 export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
   transactions,
+  onContactPress,
 }) => {
   if (!transactions.length) {
     return null;
@@ -48,7 +50,12 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
           data={transactions}
           ListHeaderComponent={ListHeader}
           renderItem={({ item }) => (
-            <ContactRow address={item.address} name={item.name} />
+            <ContactRow
+              address={item.address}
+              name={item.name}
+              onPress={() => onContactPress(item.address)}
+              className="mb-[24px]"
+            />
           )}
           keyExtractor={(item) => item.id}
         />

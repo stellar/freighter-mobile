@@ -3,6 +3,9 @@
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
+  "common": {
+    "edit": "Edit"
+  },
   "home": {
     "title": "Home",
     "buy": "Buy",
@@ -185,6 +188,9 @@
     "title": "Send to",
     "inputPlaceholder": "Enter address",
     "recents": "Recents"
+  },
+  "transactionDetailScreen": {
+    "title": "Sending"
   },
   "logout": "Log out",
   "clipboard": {

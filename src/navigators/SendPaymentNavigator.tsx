@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import SendPaymentScreen from "components/screens/SendPaymentScreen/SendPaymentScreen";
+import TransactionDetailScreen from "components/screens/SendPaymentScreen/TransactionDetailScreen";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -23,6 +24,13 @@ export const SendPaymentStackNavigator = () => {
         component={SendPaymentScreen}
         options={{
           headerTitle: t("sendPaymentScreen.title"),
+        }}
+      />
+      <SendPaymentStack.Screen
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN}
+        component={TransactionDetailScreen}
+        options={{
+          headerTitle: t("transactionDetailScreen.title"),
         }}
       />
     </SendPaymentStack.Navigator>
