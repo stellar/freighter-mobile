@@ -9,12 +9,14 @@ interface ContactRowProps {
   address: string;
   name?: string;
   onPress?: () => void;
+  showDots?: boolean;
 }
 
 export const ContactRow: React.FC<ContactRowProps> = ({
   address,
   name,
   onPress,
+  showDots = true,
 }) => {
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
@@ -31,12 +33,14 @@ export const ContactRow: React.FC<ContactRowProps> = ({
           </Text>
         </View>
       </View>
-      <TouchableOpacity onPress={onPress}>
-        <Icon.DotsHorizontal
-          size={24}
-          color={THEME.colors.foreground.secondary}
-        />
-      </TouchableOpacity>
+      {showDots && (
+        <TouchableOpacity onPress={onPress}>
+          <Icon.DotsHorizontal
+            size={24}
+            color={THEME.colors.foreground.secondary}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

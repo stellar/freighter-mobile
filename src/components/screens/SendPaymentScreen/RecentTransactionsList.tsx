@@ -1,4 +1,4 @@
-import { ContactRow } from "components/ContactRow";
+import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";

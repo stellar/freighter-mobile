@@ -1,7 +1,8 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RecentTransactionsList } from "components/RecentTransactionsList";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { RecentTransactionsList } from "components/screens/SendPaymentScreen/RecentTransactionsList";
+import { SearchSuggestionsList } from "components/screens/SendPaymentScreen/SearchSuggestionsList";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -32,6 +33,27 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
     },
   ]);
 
+  // Mock search suggestions data
+  const [searchSuggestions, setSearchSuggestions] = useState<
+    Array<{ id: string; address: string }>
+  >([]);
+
+  // Mock search function - will be replaced with actual API call later
+  const handleSearch = (text: string) => {
+    setAddress(text);
+    if (text.length > 0) {
+      // Mock search results
+      setSearchSuggestions([
+        {
+          id: "4",
+          address: "CB2GPQAQJAJIGBXVQBMZ4GXMV7QSTA4LQASUAJXCD4ZYUKH2C25HKFQR",
+        },
+      ]);
+    } else {
+      setSearchSuggestions([]);
+    }
+  };
+
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
@@ -45,7 +67,7 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
-        <View className="mb-6">
+        <View className="mb-8">
           <Input
             fieldSize="lg"
             leftElement={
@@ -55,7 +77,7 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
               />
             }
             placeholder={t("sendPaymentScreen.inputPlaceholder")}
-            onChangeText={setAddress}
+            onChangeText={handleSearch}
             endButton={{
               content: "Paste",
               onPress: () => {
@@ -67,7 +89,13 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
           />
         </View>
 
-        <RecentTransactionsList transactions={recentTransactions} />
+        {searchSuggestions.length > 0 ? (
+          <SearchSuggestionsList suggestions={searchSuggestions} />
+        ) : (
+          recentTransactions.length > 0 && (
+            <RecentTransactionsList transactions={recentTransactions} />
+          )
+        )}
       </View>
     </BaseLayout>
   );
