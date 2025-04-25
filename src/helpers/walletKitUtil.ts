@@ -21,10 +21,15 @@ export async function createWalletKit() {
   const core = new Core({
     projectId: PROJECT_ID,
   });
+
+  logger.debug("createWalletKit", 'WalletConnect Core: ', core);
+
   walletKit = await WalletKit.init({
     core,
     metadata,
   });
+
+  logger.debug("createWalletKit",'WalletConnect WalletKit: ', walletKit);
 
   try {
     const clientId =

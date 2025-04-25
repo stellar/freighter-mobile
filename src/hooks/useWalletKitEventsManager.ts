@@ -228,14 +228,16 @@ export default function useWalletKitEventsManager(initialized: boolean) {
       const activeSessions = walletKit.getActiveSessions();
       logger.debug("WalletKit", "activeSessions: ", activeSessions);
 
-      // for (const session of Object.values(activeSessions)) {
-      //   logger.debug("WalletKit", "disconnecting activeSession: ", session);
+      return;
 
-      //   walletKit.disconnectSession({
-      //     topic: session.topic,
-      //     reason: getSdkError("USER_DISCONNECTED"),
-      //   });
-      // }
+      for (const session of Object.values(activeSessions)) {
+        logger.debug("WalletKit", "disconnecting activeSession: ", session);
+
+        walletKit.disconnectSession({
+          topic: session.topic,
+          reason: getSdkError("USER_DISCONNECTED"),
+        });
+      }
     }
   }, [initialized, onSessionProposal, onSessionRequest, onSessionDelete, onProposalExpire, onSessionRequestExpire, onSessionAuthenticate]);
 }

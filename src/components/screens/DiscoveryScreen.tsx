@@ -42,6 +42,8 @@ export const DiscoveryScreen = () => {
       return;
     }
 
+    logger.debug("DiscoveryScreen", "pairing with URI", { uri });
+
     setLoading(true);
     setError("");
 
