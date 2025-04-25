@@ -1,13 +1,19 @@
 import { logos } from "assets/logos";
+import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
 import { Asset, AssetSize } from "components/sds/Asset";
 import { Text } from "components/sds/Typography";
-import { AssetToken, Balance, NativeToken } from "config/types";
+import {
+  AssetToken,
+  AssetTypeWithCustomToken,
+  Balance,
+  NativeToken,
+} from "config/types";
 import { useAssetIconsStore } from "ducks/assetIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import React from "react";
 
 /**
- * Union type representing either a native XLM token or a non-native Stellar asset
+ * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
  */
 type Token = AssetToken | NativeToken;
 
@@ -79,14 +85,24 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   }
 
   let token: Token;
-  if ("token" in tokenProp) {
+
+  if ("contractId" in tokenProp) {
+    token = {
+      ...tokenProp,
+      type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+      code: tokenProp.symbol,
+      issuer: {
+        key: tokenProp.contractId,
+      },
+    };
+  } else if ("token" in tokenProp) {
     token = tokenProp.token;
   } else {
     token = tokenProp as Token;
   }
 
   // For native XLM token, use the Stellar logo
-  if (token.type === "native") {
+  if (token.type === AssetTypeWithCustomToken.NATIVE) {
     return (
       <Asset
         variant="single"
@@ -95,6 +111,21 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
           image: logos.stellar,
           altText: "XLM token icon",
           backgroundColor,
+        }}
+      />
+    );
+  }
+
+  // For Soroban custom tokens, use the Soroban logo
+  if (token.type === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
+    return (
+      <Asset
+        variant="single"
+        size={size}
+        sourceOne={{
+          altText: `${token.code} token icon`,
+          backgroundColor,
+          renderContent: () => <SorobanAssetIcon />,
         }}
       />
     );

@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { VISUAL_DELAY_MS } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -12,8 +13,6 @@ type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
   AuthStackParamList,
   typeof AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN
 >;
-
-const DELAY_MS = 500;
 
 export const ValidateRecoveryPhraseScreen: React.FC<
   ValidateRecoveryPhraseScreenProps
@@ -43,7 +42,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       setTimeout(() => {
         setError(t("validateRecoveryPhraseScreen.errorText"));
         setIsLoading(false);
-      }, DELAY_MS);
+      }, VISUAL_DELAY_MS);
       return;
     }
 
@@ -61,7 +60,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         });
       }
       setIsLoading(false);
-    }, DELAY_MS);
+    }, VISUAL_DELAY_MS);
   }, [canContinue, currentIndex, password, recoveryPhrase, signUp, t]);
 
   const handleOnChangeText = useCallback((value: string) => {

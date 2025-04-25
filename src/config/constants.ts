@@ -3,12 +3,18 @@ import { Networks } from "@stellar/stellar-sdk";
 import { pxValue } from "helpers/dimensions";
 
 export const DEFAULT_PADDING = pxValue(24);
+export const DEFAULT_DEBOUNCE_DELAY = 500;
+export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const VISUAL_DELAY_MS = 500;
 
-export const INDEXER_URL = "https://freighter-backend-prd.stellar.org/api/v1";
+export const DEFAULT_DECIMALS = 7;
+
+export const FREIGHTER_BACKEND_URL =
+  "https://freighter-backend-prd.stellar.org/api/v1";
 export const CREATE_ACCOUNT_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
@@ -79,20 +85,42 @@ export const FUTURENET_NETWORK_DETAILS: NetworkDetails = {
   sorobanRpcUrl: SOROBAN_RPC_URLS.FUTURENET,
 };
 
+export const DEFAULT_TRANSACTION_TIMEOUT = 180;
+
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
   TESTNET_NETWORK_DETAILS,
 ];
+
+export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
+export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
+
+export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
+  switch (network) {
+    case NETWORKS.PUBLIC:
+      return PUBLIC_NETWORK_DETAILS;
+    case NETWORKS.TESTNET:
+      return TESTNET_NETWORK_DETAILS;
+    case NETWORKS.FUTURENET:
+      return FUTURENET_NETWORK_DETAILS;
+    default:
+      return PUBLIC_NETWORK_DETAILS;
+  }
+};
 
 /**
  * Non-sensitive storage keys.
  *
  * ACTIVE_ACCOUNT The active account is the account that is currently being used.
  * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
+ * CUSTOM_TOKEN_LIST The custom token list is used to keep track of all the custom soroban tokens stored in the key manager.
+ * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
+ * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
+  CUSTOM_TOKEN_LIST = "customTokenList",
 }
 
 /**

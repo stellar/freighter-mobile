@@ -104,7 +104,7 @@ type AssetVariant = "single" | "swap" | "pair" | "platform";
  */
 export type AssetSource = {
   /** Image URL */
-  image: ImageSourcePropType | string;
+  image?: ImageSourcePropType | string;
   /** Image alt text (for accessibility) */
   altText: string;
   /** Custom background color */

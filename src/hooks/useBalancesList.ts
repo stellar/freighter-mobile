@@ -1,10 +1,13 @@
 import { NETWORKS } from "config/constants";
-import { PricedBalance } from "config/types";
+import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
+import { getAssetType } from "helpers/balances";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UseBalancesListResult {
-  balanceItems: Array<PricedBalance & { id: string }>;
+  balanceItems: Array<
+    PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }
+  >;
   isLoading: boolean;
   error: string | null;
   noBalances: boolean;
@@ -93,13 +96,18 @@ export const useBalancesList = ({
   // Convert balances object to array
   const balanceItems = useMemo(
     () =>
-      Object.entries(pricedBalances).map(
-        ([id, balance]) =>
-          ({
-            id,
-            ...balance,
-          }) as PricedBalance & { id: string },
-      ),
+      Object.entries(pricedBalances).map(([id, balance]) => {
+        const assetType = getAssetType(id);
+
+        return {
+          id,
+          assetType,
+          ...balance,
+        } as PricedBalance & {
+          id: string;
+          assetType: AssetTypeWithCustomToken;
+        };
+      }),
     [pricedBalances],
   );
 
