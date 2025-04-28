@@ -223,5 +223,15 @@
     "seconds": "seconds",
     "setRecommended": "Set recommended",
     "save": "Save"
+  },
+  "transactionFeeScreen": {
+    "title": "Transaction Fee",
+    "setRecommended": "Set recommended",
+    "save": "Save",
+    "congestion": {
+      "low": "Low congestion",
+      "medium": "Medium congestion",
+      "high": "High congestion"
+    }
   }
 }

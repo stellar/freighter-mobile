@@ -66,7 +66,13 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
       {
         title: t("transactionValueScreen.menu.fee", { fee: "0.025" }),
         systemIcon: "arrow.trianglehead.swap",
-        onPress: () => {},
+        onPress: () => {
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN, {
+            address,
+            tokenId,
+            tokenCode: selectedBalance?.tokenCode ?? "XLM",
+          });
+        },
       },
       {
         title: t("transactionValueScreen.menu.timeout", { timeout: "180" }),
@@ -89,7 +95,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
         },
       },
     ],
-    [t, navigation, address, tokenId],
+    [t, navigation, address, tokenId, selectedBalance?.tokenCode],
   );
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import CustomNavigationHeader from "components/CustomNavigationHeader";
 import MemoScreen from "components/screens/SendPaymentScreen/MemoScreen";
 import SendPaymentScreen from "components/screens/SendPaymentScreen/SendPaymentScreen";
 import TransactionDetailScreen from "components/screens/SendPaymentScreen/TransactionDetailScreen";
+import TransactionFeeScreen from "components/screens/SendPaymentScreen/TransactionFeeScreen";
 import TransactionTimeoutScreen from "components/screens/SendPaymentScreen/TransactionTimeoutScreen";
 import TransactionValueScreen from "components/screens/SendPaymentScreen/TransactionValueScreen";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -55,6 +56,13 @@ export const SendPaymentStackNavigator = () => {
         component={TransactionTimeoutScreen}
         options={{
           headerTitle: t("transactionTimeoutScreen.title"),
+        }}
+      />
+      <SendPaymentStack.Screen
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN}
+        component={TransactionFeeScreen}
+        options={{
+          headerTitle: t("transactionFeeScreen.title"),
         }}
       />
     </SendPaymentStack.Navigator>

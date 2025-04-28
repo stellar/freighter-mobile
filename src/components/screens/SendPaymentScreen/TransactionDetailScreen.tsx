@@ -35,7 +35,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
-        <View className="rounded-[12px] py-[12px] px-[16px] bg-[#232323]">
+        <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
           <ContactRow
             address={address}
             showDots={false}
