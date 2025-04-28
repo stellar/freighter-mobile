@@ -64,22 +64,32 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   const menuActions = useMemo(
     () => [
       {
-        title: "Fee: 0.025 XLM",
+        title: t("transactionValueScreen.menu.fee", { fee: "0.025" }),
         systemIcon: "arrow.trianglehead.swap",
         onPress: () => {},
       },
       {
-        title: "Timeout: 180(s)",
+        title: t("transactionValueScreen.menu.timeout", { timeout: "180" }),
         systemIcon: "clock",
-        onPress: () => {},
+        onPress: () => {
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN, {
+            address,
+            tokenId,
+          });
+        },
       },
       {
-        title: "Add memo",
+        title: t("transactionValueScreen.menu.addMemo"),
         systemIcon: "text.page",
-        onPress: () => {},
+        onPress: () => {
+          navigation.navigate(SEND_PAYMENT_ROUTES.MEMO_SCREEN, {
+            address,
+            tokenId,
+          });
+        },
       },
     ],
-    [],
+    [t, navigation, address, tokenId],
   );
 
   useEffect(() => {

@@ -200,11 +200,28 @@
       "seventyFive": "75%",
       "max": "Max"
     },
-    "reviewButton": "Review"
+    "reviewButton": "Review",
+    "menu": {
+      "fee": "Fee: {{fee}} XLM",
+      "timeout": "Timeout: {{timeout}}(s)",
+      "addMemo": "Add memo"
+    }
   },
   "logout": "Log out",
   "clipboard": {
     "copied": "Copied to clipboard!",
     "failed": "Failed to copy to clipboard"
+  },
+  "memoScreen": {
+    "title": "Memo",
+    "placeholder": "Type your memo",
+    "optional": "(optional)",
+    "save": "Save"
+  },
+  "transactionTimeoutScreen": {
+    "title": "Transaction Timeout",
+    "seconds": "seconds",
+    "setRecommended": "Set recommended",
+    "save": "Save"
   }
 }
