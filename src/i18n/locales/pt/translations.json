@@ -201,6 +201,14 @@
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",
       "addMemo": "Adicionar memo"
+    },
+    "details": {
+      "from": "De",
+      "memo": "Memo",
+      "none": "Nenhum",
+      "fee": "Taxa",
+      "xdr": "XDR",
+      "xdrPlaceholder": "Ainda não disponível"
     }
   },
   "logout": "Sair",
@@ -229,5 +237,12 @@
       "medium": "Congestionamento médio",
       "high": "Congestionamento alto"
     }
+  },
+  "transactionReviewScreen": {
+    "title": "Você está enviando",
+    "previousSend": "1 envio anterior",
+    "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
   }
 }

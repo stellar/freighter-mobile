@@ -205,6 +205,14 @@
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
       "addMemo": "Add memo"
+    },
+    "details": {
+      "from": "From",
+      "memo": "Memo",
+      "none": "None",
+      "fee": "Fee",
+      "xdr": "XDR",
+      "xdrPlaceholder": "Not available yet"
     }
   },
   "logout": "Log out",
@@ -233,5 +241,12 @@
       "medium": "Medium congestion",
       "high": "High congestion"
     }
+  },
+  "transactionReviewScreen": {
+    "title": "You are sending",
+    "previousSend": "1 previous send",
+    "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   }
 }

@@ -1,11 +1,14 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
+import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
 import NumericKeyboard from "components/screens/SendPaymentScreen/NumericKeyboard";
+import TransactionReviewBottomSheet from "components/screens/SendPaymentScreen/TransactionReviewBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -17,7 +20,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionValueScreenProps = NativeStackScreenProps<
@@ -43,6 +46,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
+  const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
@@ -183,7 +187,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
         <View className="flex-1 items-center mt-[24px] gap-[24px]">
           <View className="p-[8px]">
             <View className="flex-row gap-[8px]">
-              <View style={{ width: 82.5 }}>
+              <View>
                 <Button
                   variant="secondary"
                   size="lg"
@@ -192,7 +196,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
                   {t("transactionValueScreen.percentageButtons.twentyFive")}
                 </Button>
               </View>
-              <View style={{ width: 82.5 }}>
+              <View>
                 <Button
                   variant="secondary"
                   size="lg"
@@ -201,7 +205,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
                   {t("transactionValueScreen.percentageButtons.fifty")}
                 </Button>
               </View>
-              <View style={{ width: 82.5 }}>
+              <View>
                 <Button
                   variant="secondary"
                   size="lg"
@@ -210,7 +214,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
                   {t("transactionValueScreen.percentageButtons.seventyFive")}
                 </Button>
               </View>
-              <View style={{ width: 82.5 }}>
+              <View>
                 <Button
                   variant="secondary"
                   size="lg"
@@ -225,11 +229,28 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
             <NumericKeyboard onPress={handleValueChange} />
           </View>
           <View className="w-full">
-            <Button variant="tertiary" size="xl" onPress={() => {}}>
+            <Button
+              variant="tertiary"
+              size="xl"
+              onPress={() => reviewBottomSheetModalRef.current?.present()}
+            >
               {t("transactionValueScreen.reviewButton")}
             </Button>
           </View>
         </View>
+        <BottomSheet
+          modalRef={reviewBottomSheetModalRef}
+          handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
+          customContent={
+            <TransactionReviewBottomSheet
+              selectedBalance={selectedBalance}
+              tokenValue={tokenValue}
+              address={address}
+              account={account}
+              publicKey={publicKey}
+            />
+          }
+        />
       </View>
     </BaseLayout>
   );
