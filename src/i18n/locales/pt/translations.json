@@ -181,5 +181,14 @@
   "clipboard": {
     "copied": "Copiado para a área de transferência!",
     "failed": "Falha ao copiar para a área de transferência"
+  },
+  "transactionValueScreen": {
+    "title": "Enviar",
+    "percentageButtons": {
+      "twentyFive": "25%",
+      "fifty": "50%",
+      "seventyFive": "75%",
+      "max": "Máx"
+    }
   }
 }

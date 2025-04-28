@@ -1,6 +1,8 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
+import ContextMenuButton from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
 import NumericKeyboard from "components/screens/SendPaymentScreen/NumericKeyboard";
@@ -10,11 +12,12 @@ import { Display, Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
+import React, { useEffect, useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionValueScreenProps = NativeStackScreenProps<
@@ -22,6 +25,15 @@ type TransactionValueScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_VALUE_SCREEN
 >;
 
+/**
+ * TransactionValueScreen Component
+ *
+ * A screen for entering transaction values in either token or fiat currency.
+ * Supports switching between token and fiat input modes with automatic conversion.
+ *
+ * @param {TransactionValueScreenProps} props - Component props
+ * @returns {JSX.Element} The rendered component
+ */
 const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   navigation,
   route,
@@ -31,7 +43,6 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
-  const [value, setValue] = React.useState("0.00");
 
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
@@ -41,48 +52,49 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
 
   const selectedBalance = balanceItems.find((item) => item.id === tokenId);
 
-  const handleKeyboardPress = (key: string) => {
-    if (key === "") {
-      // Handle delete
-      setValue((prev) => {
-        if (prev === "0.00") return "0.00";
-        // Remove the decimal point and work with the whole string
-        const withoutDecimal = prev.replace(".", "");
-        // Remove the last digit
-        const newStr = withoutDecimal.slice(0, -1);
-        // If we have no digits left, return 0.00
-        if (newStr === "" || newStr === "0") return "0.00";
-        // Add leading zeros if needed
-        const paddedStr = newStr.padStart(3, "0");
-        // Insert the decimal point
-        return `${paddedStr.slice(0, -2)}.${paddedStr.slice(-2)}`;
-      });
-    } else {
-      // Handle number input
-      setValue((prev) => {
-        // Remove the decimal point and work with the whole string
-        const withoutDecimal = prev.replace(".", "");
-        // If we're at 0.00, just start with the new digit
-        if (withoutDecimal === "000") {
-          return `0.0${key}`;
-        }
-        // Add the new digit
-        const newStr = withoutDecimal + key;
-        // Insert the decimal point
-        return `${newStr.slice(0, -2)}.${newStr.slice(-2)}`;
-      });
-    }
-  };
+  const {
+    tokenValue,
+    fiatValue,
+    showDollarValue,
+    setShowDollarValue,
+    handleValueChange,
+    handlePercentagePress,
+  } = useTokenFiatConverter({ selectedBalance });
+
+  const menuActions = useMemo(
+    () => [
+      {
+        title: "Fee: 0.025 XLM",
+        systemIcon: "arrow.trianglehead.swap",
+        onPress: () => {},
+      },
+      {
+        title: "Timeout: 180(s)",
+        systemIcon: "clock",
+        onPress: () => {},
+      },
+      {
+        title: "Add memo",
+        systemIcon: "text.page",
+        onPress: () => {},
+      },
+    ],
+    [],
+  );
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => {}}>
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: menuActions,
+          }}
+        >
           <Icon.Settings04 size={24} color={THEME.colors.base.secondary} />
-        </TouchableOpacity>
+        </ContextMenuButton>
       ),
     });
-  }, [navigation]);
+  }, [navigation, menuActions]);
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -92,15 +104,24 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
             <Display
               lg
               medium
-              {...(Number(value) > 0 ? { primary: true } : { secondary: true })}
+              {...(Number(showDollarValue ? fiatValue : tokenValue) > 0
+                ? { primary: true }
+                : { secondary: true })}
             >
-              {formatAssetAmount(value, selectedBalance?.tokenCode)}
+              {showDollarValue
+                ? formatFiatAmount(new BigNumber(fiatValue))
+                : formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
             </Display>
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
-                $0.00
+                {showDollarValue
+                  ? formatAssetAmount(tokenValue, selectedBalance?.tokenCode)
+                  : formatFiatAmount(new BigNumber(fiatValue))}
               </Text>
-              <TouchableOpacity className="ml-2">
+              <TouchableOpacity
+                className="ml-2"
+                onPress={() => setShowDollarValue(!showDollarValue)}
+              >
                 <Icon.RefreshCcw03
                   size={16}
                   color={THEME.colors.text.secondary}
@@ -147,29 +168,50 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
           <View className="p-[8px]">
             <View className="flex-row gap-[8px]">
               <View style={{ width: 82.5 }}>
-                <Button variant="secondary" size="lg" onPress={() => {}}>
-                  25%
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onPress={() => handlePercentagePress(25)}
+                >
+                  {t("transactionValueScreen.percentageButtons.twentyFive")}
                 </Button>
               </View>
               <View style={{ width: 82.5 }}>
-                <Button variant="secondary" size="lg" onPress={() => {}}>
-                  50%
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onPress={() => handlePercentagePress(50)}
+                >
+                  {t("transactionValueScreen.percentageButtons.fifty")}
                 </Button>
               </View>
               <View style={{ width: 82.5 }}>
-                <Button variant="secondary" size="lg" onPress={() => {}}>
-                  75%
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onPress={() => handlePercentagePress(75)}
+                >
+                  {t("transactionValueScreen.percentageButtons.seventyFive")}
                 </Button>
               </View>
               <View style={{ width: 82.5 }}>
-                <Button variant="secondary" size="lg" onPress={() => {}}>
-                  Max
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onPress={() => handlePercentagePress(100)}
+                >
+                  {t("transactionValueScreen.percentageButtons.max")}
                 </Button>
               </View>
             </View>
           </View>
           <View className="w-full">
-            <NumericKeyboard onPress={handleKeyboardPress} />
+            <NumericKeyboard onPress={handleValueChange} />
+          </View>
+          <View className="w-full">
+            <Button variant="tertiary" size="xl" onPress={() => {}}>
+              {t("transactionValueScreen.reviewButton")}
+            </Button>
           </View>
         </View>
       </View>

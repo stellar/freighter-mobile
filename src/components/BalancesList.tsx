@@ -168,7 +168,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <BalanceRow
             balance={item}
             onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
-            className="mb-[24px]"
           />
         )}
         keyExtractor={(item) => item.id}

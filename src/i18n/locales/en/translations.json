@@ -193,7 +193,14 @@
     "title": "Sending"
   },
   "transactionValueScreen": {
-    "title": "Send"
+    "title": "Send",
+    "percentageButtons": {
+      "twentyFive": "25%",
+      "fifty": "50%",
+      "seventyFive": "75%",
+      "max": "Max"
+    },
+    "reviewButton": "Review"
   },
   "logout": "Log out",
   "clipboard": {
