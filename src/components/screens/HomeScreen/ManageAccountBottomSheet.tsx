@@ -1,5 +1,5 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import AccountItemRow from "components/screens/HomeScreen/AccoutItemRow";
+import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
