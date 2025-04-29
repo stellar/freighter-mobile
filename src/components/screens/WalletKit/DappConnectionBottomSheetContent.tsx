@@ -39,7 +39,7 @@ const DappConnectionBottomSheetContent: React.FC<
       {/* TODO: port App component from SDS */}
       <Avatar size="lg" userName={sessionProposal.proposer.metadata.name} />
       <View className="mt-4" />
-      <Text lg primary medium>
+      <Text lg primary medium style={{ textAlign: "center" }}>
         {sessionProposal.proposer.metadata.name}
       </Text>
       <View className="mt-1" />
