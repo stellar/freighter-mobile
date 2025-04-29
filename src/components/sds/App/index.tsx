@@ -20,11 +20,13 @@ export type AppSize = "sm" | "md" | "lg" | "xl";
  * @property {string} appName - The name of the application
  * @property {AppSize} [size="md"] - The size of the app icon
  * @property {string} [favicon] - Optional URL to the app's favicon (supports PNG and SVG)
+ * @property {string} [testID] - Test ID for testing purposes
  */
 export interface AppProps {
   appName: string;
   size?: AppSize;
   favicon?: string;
+  testID?: string;
 }
 
 /**
@@ -58,13 +60,16 @@ const getAppDataKey = (appName: string): string | undefined => {
  * @param {Object} props - Component props
  * @param {string} props.appName - The name of the application
  * @param {AppSize} props.size - The size of the initials display
+ * @param {string} [props.testID] - Test ID for testing purposes
  * @returns {JSX.Element} A circular view containing the first two letters of the app name
  */
-const AppInitials: React.FC<{ appName: string; size: AppSize }> = ({
-  appName,
-  size,
-}) => (
+const AppInitials: React.FC<{
+  appName: string;
+  size: AppSize;
+  testID?: string;
+}> = ({ appName, size, testID }) => (
   <View
+    testID={testID}
     className={`${sizeMap[size]} border border-border-primary rounded-full items-center justify-center`}
   >
     <Text sm bold secondary>
@@ -93,7 +98,12 @@ const AppInitials: React.FC<{ appName: string; size: AppSize }> = ({
  * <App appName="MyApp" size="md" favicon="https://example.com/icon.png" />
  * ```
  */
-export const App: React.FC<AppProps> = ({ favicon, appName, size = "md" }) => {
+export const App: React.FC<AppProps> = ({
+  favicon,
+  appName,
+  size = "md",
+  testID,
+}) => {
   let imageUri = favicon;
   const [imageError, setImageError] = useState(false);
 
@@ -109,7 +119,10 @@ export const App: React.FC<AppProps> = ({ favicon, appName, size = "md" }) => {
     const isSvg = imageUri.toLowerCase().endsWith(".svg");
 
     return (
-      <View className={`${sizeMap[size]} rounded-lg overflow-hidden`}>
+      <View
+        testID={testID}
+        className={`${sizeMap[size]} rounded-lg overflow-hidden`}
+      >
         {isSvg ? (
           <SvgUri
             uri={imageUri}
@@ -129,5 +142,5 @@ export const App: React.FC<AppProps> = ({ favicon, appName, size = "md" }) => {
   }
 
   // Fallback to the app name initials
-  return <AppInitials appName={appName} size={size} />;
+  return <AppInitials appName={appName} size={size} testID={testID} />;
 };
