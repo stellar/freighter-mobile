@@ -17,7 +17,7 @@ import { TouchableOpacity, View } from "react-native";
 
 type AddAnotherWalletScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
-  typeof MANAGE_WALLETS_ROUTES.MANAGE_WALLETS_SCREEN
+  typeof MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN
 >;
 
 const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
@@ -44,6 +44,10 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
     });
   }, [navigation, t, themeColors]);
 
+  const handleCreateAccount = () => {
+    navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);
+  };
+
   return (
     <BaseLayout insets={{ top: false }}>
       <BottomSheet
@@ -52,7 +56,10 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
         modalRef={bottomSheetModalRef}
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
-      <TouchableOpacity className="bg-background-tertiary rounded-2xl p-5">
+      <TouchableOpacity
+        className="bg-background-tertiary rounded-2xl p-5"
+        onPress={handleCreateAccount}
+      >
         <Icon.PlusCircle themeColor="lime" size={20} withBackground />
         <View className="h-2" />
         <Text md primary medium>

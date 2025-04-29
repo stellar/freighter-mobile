@@ -1,5 +1,5 @@
 import { userEvent } from "@testing-library/react-native";
-import { HomeScreen } from "components/screens/HomeScreen";
+import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -120,6 +120,10 @@ jest.mock("hooks/useAppTranslation", () => () => ({
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({
     network: "TESTNET",
+    getAllAccounts: jest.fn().mockResolvedValue([]),
+    renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+    selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+    isRenamingAccount: false,
   })),
 }));
 

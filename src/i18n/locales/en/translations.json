@@ -121,7 +121,8 @@
       "failedToSignIn": "Failed to sign in",
       "failedToImportWallet": "Failed to import wallet",
       "failedToLoadAccount": "Failed to load account",
-      "invalidPassword": "Invalid password. Please try again."
+      "invalidPassword": "Invalid password. Please try again.",
+      "failedToCreateAccount": "Failed to create account. Please try again."
     },
     "account": "Account {{number}}"
   },
@@ -204,6 +205,15 @@
     "helperBottomSheet": {
       "title": "Add another wallet",
       "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
+    }
+  },
+  "verifyPasswordScreen": {
+    "title": "Verify Password",
+    "genericError": "Something went wrong. Please try again.",
+    "verifyPasswordTemplateTitle": "Enter your password",
+    "verifyPasswordTemplateDescription": "Enter your account password to verify your account.",
+    "actions": {
+      "createNewAddress": "Create New Address"
     }
   },
   "logout": "Log out",

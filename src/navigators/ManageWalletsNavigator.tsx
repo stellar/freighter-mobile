@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import AddAnotherWalletScreen from "components/screens/AddAnotherWallet";
+import VerifyPasswordScreen from "components/screens/VerifyPasswordScreen";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
@@ -22,10 +23,17 @@ export const ManageWalletsStackNavigator = () => {
       }}
     >
       <ManageWalletsStack.Screen
-        name={MANAGE_WALLETS_ROUTES.MANAGE_WALLETS_SCREEN}
+        name={MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN}
         component={AddAnotherWalletScreen}
         options={{
           headerTitle: t("addAnotherWalletScreen.title"),
+        }}
+      />
+      <ManageWalletsStack.Screen
+        name={MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN}
+        component={VerifyPasswordScreen}
+        options={{
+          headerTitle: t("verifyPasswordScreen.title"),
         }}
       />
     </ManageWalletsStack.Navigator>

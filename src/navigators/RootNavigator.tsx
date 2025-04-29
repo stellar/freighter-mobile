@@ -33,7 +33,6 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Check auth status when app starts
       await getAuthStatus();
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
@@ -83,6 +82,10 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
             component={SettingsStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
+            component={LockScreen}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

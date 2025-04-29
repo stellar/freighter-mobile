@@ -7,17 +7,19 @@ import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
+export type BaseLayoutInsets = {
+  top?: boolean;
+  right?: boolean;
+  bottom?: boolean;
+  left?: boolean;
+};
+
 interface BaseLayoutProps {
   children: React.ReactNode;
   useSafeArea?: boolean;
   backgroundColor?: string;
   useKeyboardAvoidingView?: boolean;
-  insets?: {
-    top?: boolean;
-    right?: boolean;
-    bottom?: boolean;
-    left?: boolean;
-  };
+  insets?: BaseLayoutInsets;
 }
 
 interface StyledViewProps {

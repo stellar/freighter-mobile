@@ -38,7 +38,8 @@ export const SETTINGS_ROUTES = {
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
-  MANAGE_WALLETS_SCREEN: "ManageWalletsScreen",
+  ADD_ANOTHER_WALLET_SCREEN: "AddAnotherWalletScreen",
+  VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -91,5 +92,6 @@ export type SettingsStackParamList = {
 };
 
 export type ManageWalletsStackParamList = {
-  [MANAGE_WALLETS_ROUTES.MANAGE_WALLETS_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: undefined;
 };

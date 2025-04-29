@@ -115,7 +115,8 @@
       "failedToSignIn": "Falha ao entrar",
       "failedToImportWallet": "Falha ao importar carteira",
       "failedToLoadAccount": "Falha ao carregar conta",
-      "invalidPassword": "Senha inválida. Por favor, tente novamente."
+      "invalidPassword": "Senha inválida. Por favor, tente novamente.",
+      "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente."
     },
     "account": "Conta {{number}}"
   },
@@ -200,6 +201,15 @@
     "helperBottomSheet": {
       "title": "Adicionar outra carteira",
       "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
+    }
+  },
+  "verifyPasswordScreen": {
+    "title": "Verificar Senha",
+    "genericError": "Algo deu errado. Por favor, tente novamente.",
+    "verifyPasswordTemplateTitle": "Digite sua senha",
+    "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
+    "actions": {
+      "createNewAddress": "Criar novo endereço"
     }
   },
   "logout": "Sair",

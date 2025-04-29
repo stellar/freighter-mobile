@@ -78,7 +78,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const renderHandle = useCallback(
     () => (
       <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
-        <View className="h-1.5 w-10 rounded-full bg-border-primary opacity-35" />
+        <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
       </View>
     ),
     [],
