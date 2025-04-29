@@ -16,7 +16,7 @@ export enum StellarRpcEvents {
 }
 
 export enum StellarRpcChains {
-  PUBNET = "stellar:pubnet",
+  PUBLIC = "stellar:pubnet",
   TESTNET = "stellar:testnet",
 }
 
