@@ -2,13 +2,14 @@ import { APP_DATA } from "components/sds/App/data";
 import { Text } from "components/sds/Typography";
 import React from "react";
 import { Image, View } from "react-native";
+import { SvgUri } from "react-native-svg";
 
 export type AppSize = "sm" | "md" | "lg" | "xl";
 
 export interface AppProps {
   appName: string;
   size?: AppSize;
-  faviconUrl?: string;
+  favicon?: string;
 }
 
 const sizeMap = {
@@ -26,24 +27,24 @@ const getAppDataKey = (appName: string): string | undefined => {
   return appDataKey;
 };
 
-export const App: React.FC<AppProps> = ({
-  faviconUrl,
-  appName,
-  size = "md",
-}) => {
-  let imageUri = faviconUrl;
+export const App: React.FC<AppProps> = ({ favicon, appName, size = "md" }) => {
+  let imageUri = favicon;
 
+  // Give priority to the app data image in case it exists
   const appDataKey = getAppDataKey(appName);
-
   const appData = APP_DATA[appDataKey || ""];
   if (appData) {
     imageUri = appData.src;
   }
 
+  // If there is an image, render it
   if (imageUri) {
+    const isSvg = imageUri.toLowerCase().endsWith(".svg");
+
     return (
       <View className={`${sizeMap[size]} rounded-lg overflow-hidden`}>
-        {imageUri && (
+        {isSvg && <SvgUri uri={imageUri} className="w-full h-full" />}
+        {!isSvg && (
           <Image
             source={{ uri: imageUri }}
             className="w-full h-full"
@@ -54,9 +55,10 @@ export const App: React.FC<AppProps> = ({
     );
   }
 
+  // Fallback to the app name initials
   return (
     <View
-      className={`${sizeMap[size]} border border-foreground-primary rounded-full items-center justify-center`}
+      className={`${sizeMap[size]} border border-border-primary rounded-full items-center justify-center`}
     >
       <Text sm bold secondary>
         {appName.slice(0, 2)}

@@ -41,7 +41,7 @@ const DappConnectionBottomSheetContent: React.FC<
       <App
         size="lg"
         appName={sessionProposal.proposer.metadata.name}
-        faviconUrl={sessionProposal.proposer.metadata.icons[0]}
+        favicon={sessionProposal.proposer.metadata.icons[0]}
       />
       <View className="mt-4" />
       <Text lg primary medium style={{ textAlign: "center" }}>
