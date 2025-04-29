@@ -1,3 +1,1 @@
-import SendPaymentScreen from "components/screens/SendPaymentScreen/SendPaymentScreen";
-
-export default SendPaymentScreen;
+export { default } from "./SendPaymentScreen";

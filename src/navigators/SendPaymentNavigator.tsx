@@ -1,12 +1,14 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
-import MemoScreen from "components/screens/SendPaymentScreen/MemoScreen";
 import SendPaymentScreen from "components/screens/SendPaymentScreen/SendPaymentScreen";
-import TransactionDetailScreen from "components/screens/SendPaymentScreen/TransactionDetailScreen";
-import TransactionFeeScreen from "components/screens/SendPaymentScreen/TransactionFeeScreen";
-import TransactionTimeoutScreen from "components/screens/SendPaymentScreen/TransactionTimeoutScreen";
-import TransactionValueScreen from "components/screens/SendPaymentScreen/TransactionValueScreen";
+import { 
+  MemoScreen,
+  TransactionDetailScreen,
+  TransactionFeeScreen,
+  TransactionTimeoutScreen,
+  TransactionValueScreen 
+} from "components/screens/SendPaymentScreen/screens";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";

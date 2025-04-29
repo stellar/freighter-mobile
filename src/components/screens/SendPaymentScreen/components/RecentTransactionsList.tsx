@@ -1,8 +1,8 @@
-import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
+import { ContactRow } from "components/screens/SendPaymentScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 import { FlatList, View, KeyboardAvoidingView, Platform } from "react-native";
 
@@ -19,11 +19,12 @@ interface RecentTransactionsListProps {
 
 const ListHeader = () => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   return (
     <View className="mb-[24px]">
       <View className="flex-row items-center gap-2">
-        <Icon.Clock size={16} color={THEME.colors.foreground.primary} />
+        <Icon.Clock size={16} color={themeColors.foreground.primary} />
         <Text md medium secondary>
           {t("sendPaymentScreen.recents")}
         </Text>
@@ -54,6 +55,7 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
               address={item.address}
               name={item.name}
               onPress={() => onContactPress(item.address)}
+              showDots={false}
               className="mb-[24px]"
             />
           )}

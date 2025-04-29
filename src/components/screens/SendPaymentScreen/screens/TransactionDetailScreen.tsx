@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
+import { ContactRow } from "components/screens/SendPaymentScreen/components";
 import { Button } from "components/sds/Button";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";

@@ -1,13 +1,13 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { RecentTransactionsList } from "components/screens/SendPaymentScreen/RecentTransactionsList";
-import { SearchSuggestionsList } from "components/screens/SendPaymentScreen/SearchSuggestionsList";
+import { RecentTransactionsList, SearchSuggestionsList } from "components/screens/SendPaymentScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
-import { THEME } from "config/theme";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -16,10 +16,21 @@ type SendPaymentScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
 >;
 
+/**
+ * SendPaymentScreen Component
+ * 
+ * The initial screen in the payment flow that allows users to search for 
+ * recipients by address or select from recent transactions.
+ * 
+ * @param {SendPaymentScreenProps} props - Component props including navigation
+ * @returns {JSX.Element} The rendered component
+ */
 const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
   const [recentTransactions] = useState([
     // This is just mock data for now, will be replaced with actual data later
@@ -60,15 +71,19 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
     });
   };
 
+  const handlePasteFromClipboard = () => {
+    getClipboardText().then(handleSearch);
+  };
+
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={THEME.colors.base.secondary} />
+          <Icon.X size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t]);
+  }, [navigation, themeColors]);
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -79,16 +94,14 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
             leftElement={
               <Icon.UserCircle
                 size={16}
-                color={THEME.colors.foreground.primary}
+                color={themeColors.foreground.primary}
               />
             }
             placeholder={t("sendPaymentScreen.inputPlaceholder")}
             onChangeText={handleSearch}
             endButton={{
               content: "Paste",
-              onPress: () => {
-                console.log("End button pressed");
-              },
+              onPress: handlePasteFromClipboard,
               disabled: false,
             }}
             value={address}

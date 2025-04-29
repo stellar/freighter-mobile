@@ -6,10 +6,12 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
-import NumericKeyboard from "components/screens/SendPaymentScreen/NumericKeyboard";
-import TransactionProcessingScreen from "components/screens/SendPaymentScreen/TransactionProcessingScreen";
-import TransactionReviewBottomSheet from "components/screens/SendPaymentScreen/TransactionReviewBottomSheet";
+import { 
+  ContactRow, 
+  NumericKeyboard, 
+  TransactionReviewBottomSheet 
+} from "components/screens/SendPaymentScreen/components";
+import { TransactionProcessingScreen } from "components/screens/SendPaymentScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";

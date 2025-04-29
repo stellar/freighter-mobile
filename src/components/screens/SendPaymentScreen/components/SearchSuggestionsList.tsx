@@ -1,7 +1,7 @@
-import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
+import { ContactItem } from "components/screens/SendPaymentScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import useColors from "hooks/useColors";
 import React from "react";
 import { FlatList, View } from "react-native";
 
@@ -20,6 +20,8 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
   suggestions,
   onContactPress,
 }) => {
+  const { themeColors } = useColors();
+  
   if (!suggestions.length) {
     return null;
   }
@@ -28,7 +30,7 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
     <View className="flex-1">
       <View className="mb-[24px]">
         <View className="flex-row items-center gap-2">
-          <Icon.SearchMd size={16} color={THEME.colors.foreground.primary} />
+          <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
           <Text md medium secondary>
             Suggestions
           </Text>
@@ -37,11 +39,9 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
       <FlatList
         data={suggestions}
         renderItem={({ item }) => (
-          <ContactRow
-            address={item.address}
-            name={item.name}
-            onPress={() => onContactPress(item.address)}
-            className="mb-[24px]"
+          <ContactItem
+            contact={item}
+            onPress={onContactPress}
           />
         )}
         keyExtractor={(item) => item.id}
