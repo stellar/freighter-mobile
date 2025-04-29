@@ -8,6 +8,7 @@ import ContextMenuButton from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ContactRow } from "components/screens/SendPaymentScreen/ContactRow";
 import NumericKeyboard from "components/screens/SendPaymentScreen/NumericKeyboard";
+import TransactionProcessingScreen from "components/screens/SendPaymentScreen/TransactionProcessingScreen";
 import TransactionReviewBottomSheet from "components/screens/SendPaymentScreen/TransactionReviewBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -20,7 +21,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionValueScreenProps = NativeStackScreenProps<
@@ -47,6 +48,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
@@ -115,6 +117,26 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
       ),
     });
   }, [navigation, menuActions]);
+
+  const handleTransactionConfirmation = () => {
+    reviewBottomSheetModalRef.current?.dismiss();
+    setIsProcessing(true);
+    // Implement the actual transaction submission logic here
+  };
+
+  if (isProcessing) {
+    return (
+      <TransactionProcessingScreen
+        selectedBalance={selectedBalance}
+        tokenValue={tokenValue}
+        address={address}
+        onClose={() => {
+          setIsProcessing(false);
+          navigation.navigate(SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN);
+        }}
+      />
+    );
+  }
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -246,8 +268,12 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
               address={address}
               account={account}
               publicKey={publicKey}
+              onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
+              onConfirm={handleTransactionConfirmation}
             />
           }
+          bottomSheetModalProps={{ enablePanDownToClose: false }}
+          shouldCloseOnPressBackdrop={false}
         />
       </View>
     </BaseLayout>

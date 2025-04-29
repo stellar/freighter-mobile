@@ -19,11 +19,21 @@ type TransactionReviewBottomSheetProps = {
   address: string;
   account: ActiveAccount | null;
   publicKey: string | undefined;
+  onCancel?: () => void;
+  onConfirm?: () => void;
 };
 
 const TransactionReviewBottomSheet: React.FC<
   TransactionReviewBottomSheetProps
-> = ({ selectedBalance, tokenValue, address, account, publicKey }) => {
+> = ({
+  selectedBalance,
+  tokenValue,
+  address,
+  account,
+  publicKey,
+  onCancel,
+  onConfirm,
+}) => {
   const { t } = useAppTranslation();
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
@@ -70,7 +80,7 @@ const TransactionReviewBottomSheet: React.FC<
           </View>
         </View>
       </View>
-      <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border-[1px]">
+      <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={colors.dark.foreground.primary} />
@@ -133,13 +143,13 @@ const TransactionReviewBottomSheet: React.FC<
       </View>
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
-          <Button onPress={() => {}} variant="secondary" size="xl">
+          <Button onPress={onCancel} variant="secondary" size="xl">
             {t("transactionReviewScreen.cancel")}
           </Button>
         </View>
         <View className="flex-1">
           <Button
-            onPress={() => {}}
+            onPress={onConfirm}
             variant="tertiary"
             size="xl"
             icon={

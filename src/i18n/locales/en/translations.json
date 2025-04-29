@@ -4,7 +4,8 @@
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
   "common": {
-    "edit": "Edit"
+    "edit": "Edit",
+    "close": "Close"
   },
   "home": {
     "title": "Home",
@@ -248,5 +249,9 @@
     "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible",
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "transactionProcessingScreen": {
+    "sending": "Sending",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
   }
 }
