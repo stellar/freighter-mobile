@@ -185,44 +185,42 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
           </View>
         </View>
         <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="p-[8px]">
-            <View className="flex-row gap-[8px]">
-              <View>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onPress={() => handlePercentagePress(25)}
-                >
-                  {t("transactionValueScreen.percentageButtons.twentyFive")}
-                </Button>
-              </View>
-              <View>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onPress={() => handlePercentagePress(50)}
-                >
-                  {t("transactionValueScreen.percentageButtons.fifty")}
-                </Button>
-              </View>
-              <View>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onPress={() => handlePercentagePress(75)}
-                >
-                  {t("transactionValueScreen.percentageButtons.seventyFive")}
-                </Button>
-              </View>
-              <View>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onPress={() => handlePercentagePress(100)}
-                >
-                  {t("transactionValueScreen.percentageButtons.max")}
-                </Button>
-              </View>
+          <View className="flex-row gap-[8px]">
+            <View className="flex-1">
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={() => handlePercentagePress(25)}
+              >
+                {t("transactionValueScreen.percentageButtons.twentyFive")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={() => handlePercentagePress(50)}
+              >
+                {t("transactionValueScreen.percentageButtons.fifty")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={() => handlePercentagePress(75)}
+              >
+                {t("transactionValueScreen.percentageButtons.seventyFive")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={() => handlePercentagePress(100)}
+              >
+                {t("transactionValueScreen.percentageButtons.max")}
+              </Button>
             </View>
           </View>
           <View className="w-full">
