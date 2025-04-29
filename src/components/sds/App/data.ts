@@ -3,6 +3,7 @@ export interface AppData {
   src: string;
 }
 
+// Image data for common Stellar dApps imported from SDS
 export const APP_DATA: Record<string, AppData> = {
   blend: {
     name: "Blend",

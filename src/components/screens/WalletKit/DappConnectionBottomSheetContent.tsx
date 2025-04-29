@@ -37,7 +37,6 @@ const DappConnectionBottomSheetContent: React.FC<
 
   return (
     <View className="flex-1 justify-center items-center mt-2">
-      {/* TODO: port App component from SDS */}
       <App
         size="lg"
         appName={sessionProposal.proposer.metadata.name}
