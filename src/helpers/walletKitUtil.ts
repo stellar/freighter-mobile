@@ -2,6 +2,7 @@ import {WalletKit, IWalletKit} from '@reown/walletkit';
 import {Core} from '@walletconnect/core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from 'config/logger';
+import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from '@walletconnect/utils';
 
 const PROJECT_ID = "ab11883e1469411a76f578a274f3dce0";
 
@@ -27,6 +28,33 @@ export async function createWalletKit() {
   walletKit = await WalletKit.init({
     core,
     metadata,
+  });
+
+  core.pairing.events.on("pairing_expire", async (event) => {
+    // pairing expired before user approved/rejected a session proposal
+    // const { topic } = event;
+    logger.debug("createWalletKit", '> > > > > > > X X X X X X X X Pairing expired event: ', event);
+
+    try {
+      await walletKit.disconnectSession({
+        topic: event.topic,
+        reason: getSdkError("USER_DISCONNECTED"  as SdkErrorKey),
+      });
+
+      logger.debug("createWalletKit", '> > > > > > > X X X X X X X X Disconnected session: ', event.topic);
+    } catch (error) {
+      logger.error("createWalletKit", '> > > > > > > X X X X X X X X Error disconnecting session: ', error);
+    }
+  });
+
+  core.relayer.on("relayer_connect", (event: any) => {
+    // connection to the relay server is established
+    logger.debug("createWalletKit", '> > > > > > > R R R R R R R R R Relay CCConnected: ', event);
+  });
+
+  core.relayer.on("relayer_disconnect", (event: any) => {
+    // connection to the relay server is lost
+    logger.debug("createWalletKit", '> > > > > > > R R R R R R R R R Relay DDDisconnected: ', event);
   });
 
   logger.debug("createWalletKit",'WalletConnect WalletKit: ', walletKit);
@@ -101,3 +129,4 @@ export async function updateSignClientChainId(
     await walletKit.emitSessionEvent(accountsChanged);
   });
 }
+
