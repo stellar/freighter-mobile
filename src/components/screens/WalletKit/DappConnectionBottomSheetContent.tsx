@@ -1,3 +1,4 @@
+import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
@@ -37,7 +38,11 @@ const DappConnectionBottomSheetContent: React.FC<
   return (
     <View className="flex-1 justify-center items-center mt-2">
       {/* TODO: port App component from SDS */}
-      <Avatar size="lg" userName={sessionProposal.proposer.metadata.name} />
+      <App
+        size="lg"
+        appName={sessionProposal.proposer.metadata.name}
+        faviconUrl={sessionProposal.proposer.metadata.icons[0]}
+      />
       <View className="mt-4" />
       <Text lg primary medium style={{ textAlign: "center" }}>
         {sessionProposal.proposer.metadata.name}
