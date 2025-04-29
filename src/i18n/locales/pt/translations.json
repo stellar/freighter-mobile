@@ -181,5 +181,11 @@
   "clipboard": {
     "copied": "Copiado para a área de transferência!",
     "failed": "Falha ao copiar para a área de transferência"
+  },
+  "dappConnectionBottomSheetContent": {
+    "connectionRequest": "Solicitação de conexão",
+    "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
+    "cancel": "Cancelar",
+    "connect": "Conectar"
   }
 }

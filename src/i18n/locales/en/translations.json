@@ -185,5 +185,11 @@
   "clipboard": {
     "copied": "Copied to clipboard!",
     "failed": "Failed to copy to clipboard"
+  },
+  "dappConnectionBottomSheetContent": {
+    "connectionRequest": "Connection Request",
+    "disclaimer": "Allow site to view your wallet address, balance, activity and request approval for transactions",
+    "cancel": "Cancel",
+    "connect": "Connect"
   }
 }

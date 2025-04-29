@@ -10,6 +10,7 @@ import { RootNavigator } from "navigators/RootNavigator";
 import { AuthCheckProvider } from "providers/AuthCheckProvider";
 import { NetworkProvider } from "providers/NetworkProvider";
 import { ToastProvider } from "providers/ToastProvider";
+import { WalletKitProvider } from "providers/WalletKitProvider";
 import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, StatusBar } from "react-native";
@@ -37,9 +38,9 @@ export const App = (): React.JSX.Element => {
                     barStyle="light-content"
                   />
                   <ToastProvider>
-                    {/* <WalletConnectProvider> */}
-                    <RootNavigator />
-                    {/* </WalletConnectProvider> */}
+                    <WalletKitProvider>
+                      <RootNavigator />
+                    </WalletKitProvider>
                   </ToastProvider>
                 </NetworkProvider>
               </AuthCheckProvider>
