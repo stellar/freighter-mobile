@@ -1,6 +1,6 @@
 import {useCallback, useEffect} from 'react';
 import { WalletKitTypes } from "@reown/walletkit";
-import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from '@walletconnect/utils'
+import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from '@walletconnect/utils';
 import { walletKit } from 'helpers/walletKitUtil';
 import { logger } from 'config/logger';
 import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
@@ -28,12 +28,12 @@ const signTransaction = (transaction: string): string => {
 export default function useWalletKitEventsManager(initialized: boolean) {
 
   const onSessionProposal = useCallback(async (args: WalletKitTypes.SessionProposal) => {
-    // [18:30:03.094] [[WalletKit] onSessionProposal: ] {
-    //   "id": 1745011791679858,
+    // [11:08:36.298] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745935705440946,
     //   "params": {
-    //     "id": 1745011791679858,
-    //     "pairingTopic": "b4e04a244607517390ec4c72650cbceaf142a948dd6804cd2f0e876245cfe39c",
-    //     "expiryTimestamp": 1745012091,
+    //     "id": 1745935705440946,
+    //     "pairingTopic": "1db053115d2332fe66221cdd14ccfe567b52c0f1b61b4e785186fbd10c9a5eec",
+    //     "expiryTimestamp": 1745936005,
     //     "requiredNamespaces": {
     //       "stellar": {
     //         "chains": [
@@ -52,7 +52,7 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     //       }
     //     ],
     //     "proposer": {
-    //       "publicKey": "af62ea3b41c049be50218ef646f9e725c39f9350fa0d96f69aa2e9b0725ddb28",
+    //       "publicKey": "aecdb2f68156955fd3e8a480a8d43bdda1d97ac9e7896c2fdb6d25d3b84c2a01",
     //       "metadata": {
     //         "description": "Buy, sell, and trade any token on the Stellar network in seconds just by connecting your wallet.",
     //         "url": "https://www.stellarx.com",
@@ -62,6 +62,147 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     //         ],
     //         "name": "StellarX — DEX trading platform with AMM access"
     //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://www.stellarx.com"
+    //     }
+    //   }
+    // }
+
+    // [11:27:45.069] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745936853943695,
+    //   "params": {
+    //     "id": 1745936853943695,
+    //     "pairingTopic": "cbdfe7dc5e68915cc65bea16419b6b3690f2617db1efe007c332bca3bac92dcd",
+    //     "expiryTimestamp": 1745937153,
+    //     "requiredNamespaces": {
+    //       "stellar": {
+    //         "chains": [
+    //           "stellar:pubnet"
+    //         ],
+    //         "methods": [
+    //           "stellar_signAndSubmitXDR",
+    //           "stellar_signXDR"
+    //         ],
+    //         "events": []
+    //       }
+    //     },
+    //     "optionalNamespaces": {},
+    //     "relays": [
+    //       {
+    //         "protocol": "irn"
+    //       }
+    //     ],
+    //     "proposer": {
+    //       "publicKey": "c11b737a9f67e9f6dc7e8ae34a22eefc413e8baa62c770ce09570acd1a2dd265",
+    //       "metadata": {
+    //         "name": "Aquarius",
+    //         "description": "Aquarius - liquidity management layer for Stellar",
+    //         "url": "https://aqua.network",
+    //         "icons": [
+    //           "https://aqua.network/favicon.png"
+    //         ]
+    //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://aqua.network"
+    //     }
+    //   }
+    // }
+
+    // [11:30:19.291] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745937011044777,
+    //   "params": {
+    //     "id": 1745937011044777,
+    //     "pairingTopic": "54eb7368e59020328c26770ea8188aabb47661e876367972305217941cd708d6",
+    //     "expiryTimestamp": 1745937311,
+    //     "requiredNamespaces": {
+    //       "stellar": {
+    //         "methods": [
+    //           "stellar_signXDR"
+    //         ],
+    //         "chains": [
+    //           "stellar:pubnet"
+    //         ],
+    //         "events": []
+    //       }
+    //     },
+    //     "optionalNamespaces": {},
+    //     "relays": [
+    //       {
+    //         "protocol": "irn"
+    //       }
+    //     ],
+    //     "proposer": {
+    //       "publicKey": "da4cd18968e3076fe5bc76435f5875150adf266691d27c50f41ae1c6b5fa3e3a",
+    //       "metadata": {
+    //         "name": "FxDAO",
+    //         "url": "https://fxdao.io",
+    //         "description": "A decentralized borrowing protocol for the issuance of decentralized stablecoins on Stellar",
+    //         "icons": [
+    //           "https://assets.fxdao.io/brand/FxDAO-logo.svg"
+    //         ]
+    //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://fxdao.io"
+    //     }
+    //   }
+    // }
+
+    // [11:33:02.448] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745937174716810,
+    //   "params": {
+    //     "id": 1745937174716810,
+    //     "pairingTopic": "b8bd13a8c531a1016e634b5fa54269d8ba1e318ce432ea16761a1eb7cc66b888",
+    //     "expiryTimestamp": 1745937474,
+    //     "requiredNamespaces": {
+    //       "stellar": {
+    //         "methods": [
+    //           "stellar_signXDR"
+    //         ],
+    //         "chains": [
+    //           "stellar:pubnet"
+    //         ],
+    //         "events": []
+    //       }
+    //     },
+    //     "optionalNamespaces": {},
+    //     "relays": [
+    //       {
+    //         "protocol": "irn"
+    //       }
+    //     ],
+    //     "proposer": {
+    //       "publicKey": "1efa67fac268b7c47763ac9f08b1ac227f4d05dcd49c1880a8108aec29d46c4d",
+    //       "metadata": {
+    //         "name": "Blend Mainnet",
+    //         "url": "https://mainnet.blend.capital",
+    //         "description": "Blend is a liquidity protocol primitive, enabling the creation of money markets for any use case.",
+    //         "icons": [
+    //           "https://docs.blend.capital/~gitbook/image?url=https%3A%2F%2F3627113658-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FlsteMPgIzWJ2y9ruiTJy%252Fuploads%252FVsvCoCALpHWAw8LpU12e%252FBlend%2520Logo%25403x.png%3Falt%3Dmedia%26token%3De8c06118-43b7-4ddd-9580-6c0fc47ce971&width=768&dpr=2&quality=100&sign=f4bb7bc2&sv=1"
+    //         ]
+    //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "VALID",
+    //       "origin": "https://mainnet.blend.capital",
+    //       "isScam": false
     //     }
     //   }
     // }
@@ -85,6 +226,10 @@ export default function useWalletKitEventsManager(initialized: boolean) {
       });
       // ------- end namespaces builder util ------------ //
   
+      // TODO: wait 5 minutes to test pairing_expire event
+      // return;
+
+      // TODO: test approving session with unsupported namespaces
       const session = await walletKit.approveSession({
         id,
         namespaces: approvedNamespaces
@@ -133,11 +278,36 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     //   },
     //   "topic": "ce898b9d89adf9ad7ab7aaa51a6a63955a67b2674869d3365aaedb5d1b93ea33"
     // }
+
+    // [11:37:37.189] [[WalletKit] onSessionRequest: ] {
+    //   "id": 1745937456765169,
+    //   "topic": "b094a8f70798bf99c019f63a0bfb57836baf770638c8fd46aeabf611d7ffc515",
+    //   "params": {
+    //     "request": {
+    //       "method": "stellar_signXDR",
+    //       "params": {
+    //         "xdr": "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"
+    //       },
+    //       "expiryTimestamp": 1745937756
+    //     },
+    //     "chainId": "stellar:pubnet"
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://aqua.network"
+    //     }
+    //   }
+    // }
     logger.debug("WalletKit", "onSessionRequest: ", args);
   
     const { id, params, topic } = args;
     const { request } = params || {};
     const { method, params: requestParams } = request || {};
+
+    // TODO: test approving request with unsupported namespaces
+    // return;
 
     if (!stellarNamespaceMethods.includes(method)) { 
       const message = `Invalid or unsupported namespace method: ${method}`;
@@ -200,10 +370,15 @@ export default function useWalletKitEventsManager(initialized: boolean) {
   
   const onProposalExpire = useCallback((args: WalletKitTypes.ProposalExpire) => {
     logger.debug("WalletKit", "> > > > > onProposalExpire: ", args);
+
+    // TODO: dismiss modal and show toast/info-box letting the user know that the connection attempt was unsuccessful
+    // No need to disconnect session here since there is no session to disconnect
   }, []);
   
   const onSessionRequestExpire = useCallback((args: WalletKitTypes.SessionRequestExpire) => {
     logger.debug("WalletKit", "> > > > > onSessionRequestExpire: ", args);
+
+    // TODO: dismiss modal and show toast/info-box letting the user know that the request expired
   }, []);
   
   const onSessionAuthenticate = useCallback((args: WalletKitTypes.SessionAuthenticate) => {
