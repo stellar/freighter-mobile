@@ -206,6 +206,96 @@ export default function useWalletKitEventsManager(initialized: boolean) {
     //     }
     //   }
     // }
+
+    // [18:25:56.286] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745961941812070,
+    //   "params": {
+    //     "id": 1745961941812070,
+    //     "pairingTopic": "4a12d0905c5e7e66ff427dfafd5a305c20865d857afb3f6b91b0f301f05bfe2e",
+    //     "expiryTimestamp": 1745962255,
+    //     "requiredNamespaces": {
+    //       "stellar": {
+    //         "chains": [
+    //           "stellar:pubnet"
+    //         ],
+    //         "methods": [
+    //           "stellar_signAndSubmitXDR",
+    //           "stellar_signXDR"
+    //         ],
+    //         "events": []
+    //       }
+    //     },
+    //     "optionalNamespaces": {},
+    //     "relays": [
+    //       {
+    //         "protocol": "irn"
+    //       }
+    //     ],
+    //     "proposer": {
+    //       "publicKey": "0e662f9b94c0fb2ac3d2ef1df851375db2c3726ddf977eaffd74a6241cbfff6d",
+    //       "metadata": {
+    //         "name": "StellarTerm",
+    //         "description": "StellarTerm is an advanced web-based trading client for the Stellar network. Send, receive, and trade assets on the Stellar network easily with StellarTerm.",
+    //         "url": "https://stellarterm.com",
+    //         "icons": [
+    //           "https://avatars.githubusercontent.com/u/25021964?s=200&v=4.png"
+    //         ]
+    //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://stellarterm.com"
+    //     }
+    //   }
+    // }
+
+    // [18:26:46.776] [[WalletKit] onSessionProposal: ] {
+    //   "id": 1745961996355019,
+    //   "params": {
+    //     "id": 1745961996355019,
+    //     "pairingTopic": "6a077883977a81677415f41be76778fff5cc717d5b6d98325039991a21559bbd",
+    //     "expiryTimestamp": 1745962296,
+    //     "requiredNamespaces": {
+    //       "stellar": {
+    //         "methods": [
+    //           "stellar_signAndSubmitXDR"
+    //         ],
+    //         "chains": [
+    //           "stellar:pubnet"
+    //         ],
+    //         "events": []
+    //       }
+    //     },
+    //     "optionalNamespaces": {},
+    //     "relays": [
+    //       {
+    //         "protocol": "irn"
+    //       }
+    //     ],
+    //     "proposer": {
+    //       "publicKey": "1e5965c16b9fcf5120cd99f072cfeb1ca44ae8b0d16ee518e05436d07d45653a",
+    //       "metadata": {
+    //         "name": "Phoenix DeFi Hub",
+    //         "url": "https://app.phoenix-hub.io",
+    //         "description": "Serving only the tastiest DeFi",
+    //         "icons": [
+    //           "https://app.phoenix-hub.io/logoIcon.png"
+    //         ]
+    //       }
+    //     }
+    //   },
+    //   "verifyContext": {
+    //     "verified": {
+    //       "verifyUrl": "https://verify.walletconnect.org",
+    //       "validation": "UNKNOWN",
+    //       "origin": "https://app.phoenix-hub.io"
+    //     }
+    //   }
+    // }
+
     logger.debug("WalletKit", "onSessionProposal: ", args);
 
     const { id, params } = args;
