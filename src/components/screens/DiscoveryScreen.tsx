@@ -12,8 +12,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
 
-// TODO: test with StellarTerm
-
 const testConnectionEvent: WalletKitEvent = {
   type: WalletKitEventTypes.SESSION_PROPOSAL,
   id: "1745937011044777",
@@ -43,7 +41,7 @@ const testConnectionEvent: WalletKitEvent = {
         url: "https://fxdao.io",
         description:
           "A decentralized borrowing protocol for the issuance of decentralized stablecoins on Stellar",
-        icons: ["https://assets.fxdao.io/brand/FxDAO-logoa.svg"],
+        icons: ["https://assets.fxdao.io/brand/FxDAO-logo.svg"],
       },
     },
     // "proposer": {
@@ -77,6 +75,28 @@ const testConnectionEvent: WalletKitEvent = {
     //     "url": "https://aqua.network",
     //     "icons": [
     //       "https://aqua.network/favicon.png"
+    //     ]
+    //   }
+    // }
+    // "proposer": {
+    //   "publicKey": "0e662f9b94c0fb2ac3d2ef1df851375db2c3726ddf977eaffd74a6241cbfff6d",
+    //   "metadata": {
+    //     "name": "StellarTerm",
+    //     "description": "StellarTerm is an advanced web-based trading client for the Stellar network. Send, receive, and trade assets on the Stellar network easily with StellarTerm.",
+    //     "url": "https://stellarterm.com",
+    //     "icons": [
+    //       "https://avatars.githubusercontent.com/u/25021964?s=200&v=4.png"
+    //     ]
+    //   }
+    // }
+    // "proposer": {
+    //   "publicKey": "1e5965c16b9fcf5120cd99f072cfeb1ca44ae8b0d16ee518e05436d07d45653a",
+    //   "metadata": {
+    //     "name": "Phoenix DeFi Hub",
+    //     "url": "https://app.phoenix-hub.io",
+    //     "description": "Serving only the tastiest DeFi",
+    //     "icons": [
+    //       "https://app.phoenix-hub.io/logoIcon.png"
     //     ]
     //   }
     // }
