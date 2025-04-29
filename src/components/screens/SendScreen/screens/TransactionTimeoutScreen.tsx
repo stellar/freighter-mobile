@@ -58,4 +58,4 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   );
 };
 
-export default TransactionTimeoutScreen;
+export default TransactionTimeoutScreen; 

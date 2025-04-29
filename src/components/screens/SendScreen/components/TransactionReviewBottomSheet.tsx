@@ -4,12 +4,12 @@ import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { colors } from "config/colors";
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { isLiquidityPool } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
@@ -35,6 +35,7 @@ const TransactionReviewBottomSheet: React.FC<
   onConfirm,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
@@ -64,7 +65,7 @@ const TransactionReviewBottomSheet: React.FC<
           <View className="w-[40px] flex items-center">
             <Icon.ChevronDownDouble
               size={16}
-              color={colors.dark.foreground.secondary}
+              color={themeColors.foreground.secondary}
             />
           </View>
           <View className="w-full flex-row items-center gap-4">
@@ -83,7 +84,7 @@ const TransactionReviewBottomSheet: React.FC<
       <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
-            <Icon.Wallet01 size={16} color={colors.dark.foreground.primary} />
+            <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
               {t("transactionValueScreen.details.from")}
             </Text>
@@ -98,7 +99,7 @@ const TransactionReviewBottomSheet: React.FC<
         </View>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
-            <Icon.File02 size={16} color={colors.dark.foreground.primary} />
+            <Icon.File02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
               {t("transactionValueScreen.details.memo")}
             </Text>
@@ -109,7 +110,7 @@ const TransactionReviewBottomSheet: React.FC<
         </View>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
-            <Icon.Route size={16} color={colors.dark.foreground.primary} />
+            <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
               {t("transactionValueScreen.details.fee")}
             </Text>
@@ -123,13 +124,13 @@ const TransactionReviewBottomSheet: React.FC<
         </View>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
-            <Icon.FileCode02 size={16} color={colors.dark.foreground.primary} />
+            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
               {t("transactionValueScreen.details.xdr")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[8px]">
-            <Icon.Copy01 size={16} color={colors.dark.foreground.primary} />
+            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md medium>
               {t("transactionValueScreen.details.xdrPlaceholder")}
             </Text>
@@ -153,7 +154,7 @@ const TransactionReviewBottomSheet: React.FC<
             variant="tertiary"
             size="xl"
             icon={
-              <Icon.FaceId size={18} color={colors.dark.foreground.primary} />
+              <Icon.FaceId size={18} color={themeColors.foreground.primary} />
             }
             iconPosition={IconPosition.LEFT}
           >
@@ -165,4 +166,4 @@ const TransactionReviewBottomSheet: React.FC<
   );
 };
 
-export default TransactionReviewBottomSheet;
+export default TransactionReviewBottomSheet; 

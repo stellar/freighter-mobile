@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { RecentTransactionsList, SearchSuggestionsList } from "components/screens/SendPaymentScreen/components";
+import { RecentTransactionsList, SearchSuggestionsList } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -11,21 +11,21 @@ import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-type SendPaymentScreenProps = NativeStackScreenProps<
+type SendHomeProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
 >;
 
 /**
- * SendPaymentScreen Component
+ * SendHome Component
  * 
  * The initial screen in the payment flow that allows users to search for 
  * recipients by address or select from recent transactions.
  * 
- * @param {SendPaymentScreenProps} props - Component props including navigation
+ * @param {SendHomeProps} props - Component props including navigation
  * @returns {JSX.Element} The rendered component
  */
-const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
+const SendHome: React.FC<SendHomeProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
@@ -126,4 +126,4 @@ const SendPaymentScreen: React.FC<SendPaymentScreenProps> = ({
   );
 };
 
-export default SendPaymentScreen;
+export default SendHome; 

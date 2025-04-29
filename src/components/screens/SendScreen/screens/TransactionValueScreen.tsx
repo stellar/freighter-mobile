@@ -10,17 +10,17 @@ import {
   ContactRow, 
   NumericKeyboard, 
   TransactionReviewBottomSheet 
-} from "components/screens/SendPaymentScreen/components";
-import { TransactionProcessingScreen } from "components/screens/SendPaymentScreen/screens";
+} from "components/screens/SendScreen/components";
+import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -45,6 +45,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   route,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { address, tokenId } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -114,11 +115,11 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
             actions: menuActions,
           }}
         >
-          <Icon.Settings04 size={24} color={THEME.colors.base.secondary} />
+          <Icon.Settings04 size={24} color={themeColors.base[1]} />
         </ContextMenuButton>
       ),
     });
-  }, [navigation, menuActions]);
+  }, [navigation, menuActions, themeColors]);
 
   const handleTransactionConfirmation = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -168,7 +169,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
               >
                 <Icon.RefreshCcw03
                   size={16}
-                  color={THEME.colors.text.secondary}
+                  color={themeColors.text.secondary}
                 />
               </TouchableOpacity>
             </View>
@@ -250,36 +251,36 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
           <View className="w-full">
             <NumericKeyboard onPress={handleValueChange} />
           </View>
-          <View className="w-full">
+          <View className="w-full mt-auto mb-4">
             <Button
               variant="tertiary"
               size="xl"
               onPress={() => reviewBottomSheetModalRef.current?.present()}
+              disabled={Number(tokenValue) <= 0}
             >
               {t("transactionValueScreen.reviewButton")}
             </Button>
           </View>
         </View>
-        <BottomSheet
-          modalRef={reviewBottomSheetModalRef}
-          handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
-          customContent={
-            <TransactionReviewBottomSheet
-              selectedBalance={selectedBalance}
-              tokenValue={tokenValue}
-              address={address}
-              account={account}
-              publicKey={publicKey}
-              onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
-              onConfirm={handleTransactionConfirmation}
-            />
-          }
-          bottomSheetModalProps={{ enablePanDownToClose: false }}
-          shouldCloseOnPressBackdrop={false}
-        />
       </View>
+      <BottomSheet
+        modalRef={reviewBottomSheetModalRef}
+        handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
+        customContent={
+          <TransactionReviewBottomSheet
+            selectedBalance={selectedBalance}
+            tokenValue={tokenValue}
+            address={address}
+            account={account}
+            publicKey={publicKey}
+            onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
+            onConfirm={handleTransactionConfirmation}
+          />
+        }
+        bottomSheetModalProps={{ enablePanDownToClose: true }}
+      />
     </BaseLayout>
   );
 };
 
-export default TransactionValueScreen;
+export default TransactionValueScreen; 

@@ -1,6 +1,6 @@
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
@@ -9,6 +9,8 @@ interface NumericKeyboardProps {
 }
 
 const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
+  const { themeColors } = useColors();
+  
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
       <View
@@ -47,11 +49,11 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
         {renderButton(".")}
         {renderButton("0")}
         {renderButton(
-          <Icon.Delete size={32} color={THEME.colors.text.primary} />,
+          <Icon.Delete size={32} color={themeColors.text.primary} />,
         )}
       </View>
     </View>
   );
 };
 
-export default NumericKeyboard;
+export default NumericKeyboard; 

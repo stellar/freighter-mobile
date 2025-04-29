@@ -188,7 +188,8 @@
   "sendPaymentScreen": {
     "title": "Send to",
     "inputPlaceholder": "Enter address",
-    "recents": "Recents"
+    "recents": "Recents",
+    "suggestions": "Suggestions"
   },
   "transactionDetailScreen": {
     "title": "Sending"

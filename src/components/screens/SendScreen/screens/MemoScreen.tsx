@@ -41,4 +41,4 @@ const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
   );
 };
 
-export default MemoScreen;
+export default MemoScreen; 

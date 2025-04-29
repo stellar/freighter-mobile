@@ -1,4 +1,4 @@
-import { ContactRow } from "components/screens/SendPaymentScreen/components";
+import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -64,4 +64,4 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
       </View>
     </KeyboardAvoidingView>
   );
-};
+}; 

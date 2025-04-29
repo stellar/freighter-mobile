@@ -1,7 +1,7 @@
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -22,6 +22,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   rightElement,
   className,
 }) => {
+  const { themeColors } = useColors();
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
@@ -44,9 +45,9 @@ export const ContactRow: React.FC<ContactRowProps> = ({
         (showDots && (
           <Icon.DotsHorizontal
             size={24}
-            color={THEME.colors.foreground.secondary}
+            color={themeColors.foreground.secondary}
           />
         ))}
     </TouchableOpacity>
   );
-};
+}; 
