@@ -107,9 +107,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
         <BottomSheet
+          modalRef={moreInfoBottomSheetModalRef}
           title={t("manageAssetsScreen.moreInfo.title")}
           description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
-          modalRef={moreInfoBottomSheetModalRef}
           handleCloseModal={() =>
             moreInfoBottomSheetModalRef.current?.dismiss()
           }
