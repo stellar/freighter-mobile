@@ -17,6 +17,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     error,
     authStatus,
     logout,
+    clearError,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
@@ -43,6 +44,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
 
     fetchActiveAccountPublicKey();
   }, []);
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const handleUnlock = useCallback(
     (password: string) => {

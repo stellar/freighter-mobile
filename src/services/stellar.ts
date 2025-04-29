@@ -154,3 +154,17 @@ export const signTransaction = (input: SignTxParams): string => {
 
   return transaction.toXDR();
 };
+
+export const getAccount = async (
+  publicKey: string,
+  network: NETWORKS,
+): Promise<Horizon.AccountResponse | null> => {
+  const { networkUrl } = mapNetworkToNetworkDetails(network);
+  const server = stellarSdkServer(networkUrl);
+  try {
+    const account = await server.loadAccount(publicKey);
+    return account;
+  } catch (error) {
+    return null;
+  }
+};

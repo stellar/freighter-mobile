@@ -7,6 +7,7 @@ import {
   ScryptEncrypter,
 } from "@stellar/typescript-wallet-sdk-km";
 import {
+  ACCOUNTS_TO_VERIFY_EXISTING_MNEMONIC_PHRASE,
   HASH_KEY_EXPIRATION_MS,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
@@ -30,6 +31,7 @@ import {
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { t } from "i18next";
+import { getAccount } from "services/stellar";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -93,6 +95,8 @@ interface StoreAccountParams {
   imported?: boolean;
   isAppendingAccount?: boolean;
   shouldRefreshHashKey?: boolean;
+  shouldSetActiveAccount?: boolean;
+  accountNumber?: number;
 }
 
 /**
@@ -248,11 +252,11 @@ const initialState: AuthState = {
 const keyManager = createKeyManager(Networks.TESTNET);
 
 /**
- * Checks if there's an existing account (even if logged out)
+ * Checks if there's an existing account list
  *
  * @returns {Promise<boolean>} True if at least one account exists, false otherwise
  */
-const hasExistingAccount = async (): Promise<boolean> => {
+const hasAccountList = async (): Promise<boolean> => {
   try {
     // Get the account list regardless of active account
     const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
@@ -266,7 +270,7 @@ const hasExistingAccount = async (): Promise<boolean> => {
     return accountList.length > 0;
   } catch (error) {
     logger.error(
-      "hasExistingAccount",
+      "hasAccountList",
       "Failed to check for existing accounts",
       error,
     );
@@ -291,7 +295,7 @@ const isHashKeyExpired = (hashKey: HashKey): boolean =>
 const getAuthStatus = async (): Promise<AuthStatus> => {
   try {
     // Check if any accounts exist at all
-    const hasAccount = await hasExistingAccount();
+    const hasAccount = await hasAccountList();
 
     const [hashKey, temporaryStore] = await Promise.all([
       getHashKey(),
@@ -529,17 +533,26 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
  * Generates a new hash key, creates a temporary store with sensitive data,
  * encrypts it, and stores it securely.
  *
- * @param {string} password - The user's password for encryption
- * @param {string} mnemonicPhrase - The mnemonic phrase to store
- * @param {Object} activeKeyPair - The active key pair with account info
+ * @param {Object} input - The input parameters
+ * @param {string} input.password - The user's password for encryption
+ * @param {string} input.mnemonicPhrase - The mnemonic phrase to store
+ * @param {Object} input.activeKeyPair - The active key pair with account info
+ * @param {boolean} input.shouldRefreshHashKey - Whether to refresh the hash key
  * @returns {Promise<void>}
  */
-const createTemporaryStore = async (
-  password: string,
-  mnemonicPhrase: string,
-  activeKeyPair: KeyPair & { accountName: string; id: string },
-  shouldRefreshHashKey = true,
-): Promise<void> => {
+const createTemporaryStore = async (input: {
+  password: string;
+  mnemonicPhrase: string;
+  activeKeyPair: KeyPair & { accountName: string; id: string };
+  shouldRefreshHashKey?: boolean;
+}): Promise<void> => {
+  const {
+    password,
+    mnemonicPhrase,
+    activeKeyPair,
+    shouldRefreshHashKey = true,
+  } = input;
+
   try {
     // Generate a new hash key
     let hashKeyObj: HashKey;
@@ -603,7 +616,9 @@ const storeAccount = async ({
   mnemonicPhrase,
   password,
   keyPair,
+  accountNumber,
   shouldRefreshHashKey = true,
+  shouldSetActiveAccount = true,
 }: StoreAccountParams): Promise<void> => {
   const { publicKey, privateKey } = keyPair;
 
@@ -628,28 +643,30 @@ const storeAccount = async ({
     ? (JSON.parse(accountListRaw) as Account[])
     : [];
   const accountName = t("authStore.account", {
-    number: accountList.length + 1,
+    number: accountNumber ?? accountList.length + 1,
   });
 
   await Promise.all([
-    dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id),
+    shouldSetActiveAccount
+      ? dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id)
+      : Promise.resolve(),
     appendAccount({
       id: keyStore.id,
       name: accountName,
       publicKey,
       network: NETWORKS.TESTNET,
     }),
-    createTemporaryStore(
+    createTemporaryStore({
       password,
       mnemonicPhrase,
-      {
+      activeKeyPair: {
         publicKey,
         privateKey,
         accountName,
         id: keyStore.id,
       },
       shouldRefreshHashKey,
-    ),
+    }),
   ]);
 };
 
@@ -788,16 +805,105 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       await appendAccount(account);
     }
 
-    await createTemporaryStore(password, keyExtraData.mnemonicPhrase, {
-      publicKey: loadedKey.publicKey,
-      privateKey: loadedKey.privateKey,
-      accountName: account.name,
-      id: loadedKey.id,
+    await createTemporaryStore({
+      password,
+      mnemonicPhrase: keyExtraData.mnemonicPhrase,
+      activeKeyPair: {
+        publicKey: loadedKey.publicKey,
+        privateKey: loadedKey.privateKey,
+        accountName: account.name,
+        id: loadedKey.id,
+      },
     });
   } catch (error) {
     logger.error("signIn", "Failed to sign in", error);
     throw error;
   }
+};
+
+/**
+ * Gets all accounts from the account list
+ *
+ * @returns {Promise<Account[]>} The list of accounts
+ */
+const getAllAccounts = async (): Promise<Account[]> => {
+  const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
+  if (!accountListRaw) {
+    return [];
+  }
+
+  return JSON.parse(accountListRaw) as Account[];
+};
+
+/**
+ * Derive couple keypairs from the mnemonic phrase and verify if they already exists on the mainnet.
+ * If they do, create a new account with the remaining keypairs.
+ *
+ * @param {string} mnemonicPhrase - The mnemonic phrase to verify
+ * @returns {Promise<void>}
+ */
+const verifyExistingAccounts = async (
+  mnemonicPhrase: string,
+  password: string,
+): Promise<void> => {
+  const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+  const keyPairs = Array.from(
+    { length: ACCOUNTS_TO_VERIFY_EXISTING_MNEMONIC_PHRASE },
+    (_, i) => ({
+      publicKey: wallet.getPublicKey(i),
+      privateKey: wallet.getSecret(i),
+    }),
+  );
+
+  const promises = keyPairs.map((keyPair) =>
+    getAccount(keyPair.publicKey, NETWORKS.PUBLIC),
+  );
+
+  const result = await Promise.all(promises);
+
+  const existingAccountsOnNetwork = result.filter(
+    (account) => account !== null,
+  );
+
+  if (existingAccountsOnNetwork.length === keyPairs.length) {
+    return;
+  }
+
+  const existingAccountsOnNetworkPublicKeys = existingAccountsOnNetwork.map(
+    (account) => account.accountId(),
+  );
+
+  const existingAccountsOnDataStorage = await getAllAccounts();
+
+  const existingAccountsOnDataStoragePublicKeys =
+    existingAccountsOnDataStorage.map((account) => account.publicKey);
+
+  // if the account exists on data storage, we should not create a new account
+  const newKeyPairs = keyPairs.map((keyPair) => {
+    if (
+      existingAccountsOnNetworkPublicKeys.includes(keyPair.publicKey) &&
+      !existingAccountsOnDataStoragePublicKeys.includes(keyPair.publicKey)
+    ) {
+      return keyPair;
+    }
+
+    return null;
+  });
+
+  const storeAccountPromises = newKeyPairs
+    .filter((keyPair) => keyPair !== null)
+    .map((keyPair) =>
+      storeAccount({
+        mnemonicPhrase,
+        password,
+        keyPair,
+        shouldRefreshHashKey: false,
+        shouldSetActiveAccount: false,
+        accountNumber: existingAccountsOnDataStorage.length + 1,
+      }),
+    );
+
+  await Promise.all(storeAccountPromises);
 };
 
 /**
@@ -824,6 +930,8 @@ const importWallet = async ({
       password,
       keyPair,
     });
+
+    await verifyExistingAccounts(mnemonicPhrase, password);
   } catch (error) {
     logger.error("importWallet", "Failed to import wallet", error);
 
@@ -905,20 +1013,6 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
 };
 
 /**
- * Gets all accounts from the account list
- *
- * @returns {Promise<Account[]>} The list of accounts
- */
-const getAllAccounts = async (): Promise<Account[]> => {
-  const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
-  if (!accountListRaw) {
-    return [];
-  }
-
-  return JSON.parse(accountListRaw) as Account[];
-};
-
-/**
  * Renames an account
  *
  * @param {RenameAccountParams} params - The rename account parameters
@@ -943,6 +1037,19 @@ const renameAccount = async (params: RenameAccountParams): Promise<void> => {
 };
 
 /**
+ * Small helper function to check if an account already exists in the account list
+ *
+ * @param {Account[]} accountList - The list of accounts
+ * @param {KeyPair} keyPairValue - The key pair to check
+ * @returns {boolean} True if the account exists, false otherwise
+ */
+const hasAccountInAccountList = (
+  accountList: Account[],
+  keyPairValue: KeyPair,
+) =>
+  accountList.some((account) => account.publicKey === keyPairValue.publicKey);
+
+/**
  * Creates a new account by deriving a key pair from the mnemonic phrase,
  * storing the account in the key manager, and creating the temporary store.
  *
@@ -956,10 +1063,24 @@ const createAccount = async (password: string): Promise<void> => {
 
     const accountList = await getAllAccounts();
 
-    const keyPair = deriveKeyPair({
+    let index = accountList.length;
+    let keyPair = deriveKeyPair({
       mnemonicPhrase,
-      index: accountList.length,
+      index,
     });
+    let hasAccount = hasAccountInAccountList(accountList, keyPair);
+    let round = 0;
+
+    do {
+      index++;
+      keyPair = deriveKeyPair({
+        mnemonicPhrase,
+        index,
+      });
+
+      hasAccount = hasAccountInAccountList(accountList, keyPair);
+      round++;
+    } while (hasAccount && round < 50);
 
     await storeAccount({
       mnemonicPhrase,
@@ -1020,7 +1141,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       (async () => {
         try {
           // Check if there's an existing account before logout
-          const hasAccount = await hasExistingAccount();
+          const hasAccountListVerification = await hasAccountList();
 
           // Clear all sensitive data regardless
           await clearTemporaryData();
@@ -1028,7 +1149,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           // If there's an existing account, don't remove account list - just navigate to lock screen
           // If it's a forgot password logout, remove the account list and active account id.
           // This will redirect to the welcome screen where the user can create a new account or restore from seed phrase
-          if (hasAccount && !isForgotPassword) {
+          if (hasAccountListVerification && !isForgotPassword) {
             set({
               account: null,
               isLoadingAccount: false,

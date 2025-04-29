@@ -165,7 +165,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const handleAddAnotherWallet = () => {
     manageAccountBottomSheetModalRef.current?.dismiss();
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
   };
 
   const handleRenameAccount = async (newAccountName: string) => {
