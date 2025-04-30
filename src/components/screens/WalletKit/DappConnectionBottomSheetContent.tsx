@@ -61,14 +61,12 @@ const DappConnectionBottomSheetContent: React.FC<
       >
         {t("dappConnectionBottomSheetContent.connectionRequest")}
       </Badge>
-      <View className="mt-6" />
-      <View className="flex-row items-center p-6 bg-background-tertiary rounded-xl justify-center">
+      <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
         <Text md secondary style={{ textAlign: "center" }}>
           {t("dappConnectionBottomSheetContent.disclaimer")}
         </Text>
       </View>
-      <View className="mt-6" />
-      <View className="w-full flex-row items-center px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
+      <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
         <View className="flex-row items-center">
           <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
           <Text
@@ -94,8 +92,7 @@ const DappConnectionBottomSheetContent: React.FC<
           />
         </View>
       </View>
-      <View className="mt-6" />
-      <View className="flex-row justify-between w-full gap-3">
+      <View className="flex-row justify-between w-full mt-6 gap-3">
         <View className="flex-1">
           <Button
             secondary
