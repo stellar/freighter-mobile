@@ -1,10 +1,10 @@
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { userEvent } from "@testing-library/react-native";
+import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SendHome } from "components/screens/SendScreen";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
-import React, { ReactElement, ReactNode, act } from "react";
+import React, { ReactElement, ReactNode } from "react";
 import { View } from "react-native";
 
 const mockView = View;
@@ -69,83 +69,88 @@ describe("SendScreenHome", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with the search input and recent transactions", () => {
-    const { getByText, getByPlaceholderText } = renderWithProviders(
+  it("renders correctly with the search input and recent transactions", async () => {
+    renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
 
-    expect(getByPlaceholderText("Enter address")).toBeTruthy();
-    expect(getByText("Recent")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      expect(screen.getByText("Recent")).toBeTruthy();
+    });
   });
 
   it("navigates to transaction detail screen when a contact is pressed", async () => {
-    const { getAllByTestId } = renderWithProviders(
+    renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
 
-    const recentItem = getAllByTestId(/recent-transaction-/)[0];
+    const recentItems = await screen.findAllByTestId(/recent-transaction-/);
+    const recentItem = recentItems[0];
 
-    await act(async () => {
-      await userEvent.press(recentItem);
+    await userEvent.press(recentItem);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN,
+        { address: expect.any(String) },
+      );
     });
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN,
-      { address: expect.any(String) },
-    );
-  }, 10000);
+  });
 
   it("pastes clipboard content when paste button is pressed", async () => {
-    const { getByText } = renderWithProviders(
+    renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
 
-    const pasteButton = getByText("Paste");
+    const pasteButton = await screen.findByText("Paste");
+    await userEvent.press(pasteButton);
 
-    await act(async () => {
-      await userEvent.press(pasteButton);
+    await waitFor(() => {
+      expect(mockGetClipboardText).toHaveBeenCalled();
     });
-
-    expect(mockGetClipboardText).toHaveBeenCalled();
   });
 
   it("shows search suggestions when text is entered", async () => {
-    const { getByPlaceholderText, getByText } = renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    const input = getByPlaceholderText("Enter address");
-
-    await act(async () => {
-      await userEvent.type(input, "test");
-    });
-
-    expect(getByText("Suggestions")).toBeTruthy();
-  });
-
-  it("sets up the header with back button on mount", () => {
     renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
 
-    expect(mockSetOptions).toHaveBeenCalledWith({
-      headerLeft: expect.any(Function),
+    const input = await screen.findByPlaceholderText("Enter address");
+    await userEvent.type(input, "test");
+
+    await waitFor(() => {
+      expect(screen.getByText("Suggestions")).toBeTruthy();
     });
   });
 
-  it("goes back when header back button is pressed", () => {
+  it("sets up the header with back button on mount", async () => {
     renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
 
-    const headerLeftFn = mockSetOptions.mock.calls[0][0].headerLeft;
-    const BackButton = headerLeftFn() as ReactElement;
+    await waitFor(() => {
+      expect(mockSetOptions).toHaveBeenCalledWith({
+        headerLeft: expect.any(Function),
+      });
+    });
+  });
 
-    const onPressHandler = BackButton.props as { onPress?: () => void };
-    if (typeof onPressHandler.onPress === "function") {
-      onPressHandler.onPress();
-    }
+  it("goes back when header back button is pressed", async () => {
+    renderWithProviders(
+      <SendHome navigation={mockNavigation} route={mockRoute} />,
+    );
 
-    expect(mockGoBack).toHaveBeenCalled();
+    await waitFor(() => {
+      const headerLeftFn = mockSetOptions.mock.calls[0][0].headerLeft;
+      const BackButton = headerLeftFn() as ReactElement;
+
+      const onPressHandler = BackButton.props as { onPress?: () => void };
+      if (typeof onPressHandler.onPress === "function") {
+        onPressHandler.onPress();
+      }
+
+      expect(mockGoBack).toHaveBeenCalled();
+    });
   });
 });
