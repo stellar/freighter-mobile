@@ -16,7 +16,7 @@ export const formatNumericInput = (prevValue: string, key: string): string => {
     const newStr = withoutDecimal.slice(0, -1);
     if (newStr === "" || newStr === "0") return "0.00";
     const paddedStr = newStr.padStart(3, "0");
-    return `${paddedStr.slice(0, -2)}.${paddedStr.slice(-2)}`;
+    return `${paddedStr.slice(0, -2).replace(/^0+(?=\d)/, "")}.${paddedStr.slice(-2)}`;
   }
 
   // Handle number input
@@ -25,5 +25,5 @@ export const formatNumericInput = (prevValue: string, key: string): string => {
     return `0.0${key}`;
   }
   const newStr = withoutDecimal + key;
-  return `${newStr.slice(0, -2)}.${newStr.slice(-2)}`;
+  return `${newStr.slice(0, -2).replace(/^0+(?=\d)/, "")}.${newStr.slice(-2)}`;
 };

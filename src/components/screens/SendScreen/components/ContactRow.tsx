@@ -12,8 +12,15 @@ interface ContactRowProps {
   showDots?: boolean;
   rightElement?: React.ReactNode;
   className?: string;
+  testID?: string;
 }
 
+/**
+ * Component to display a contact/address row with avatar and address
+ *
+ * @param {ContactRowProps} props - Component props
+ * @returns {JSX.Element} The rendered component
+ */
 export const ContactRow: React.FC<ContactRowProps> = ({
   address,
   name,
@@ -21,6 +28,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   showDots = true,
   rightElement,
   className,
+  testID,
 }) => {
   const { themeColors } = useColors();
   const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -29,6 +37,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
     <TouchableOpacity
       className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
       onPress={onPress}
+      testID={testID}
     >
       <View className="flex-row items-center flex-1 mr-4">
         <Avatar size="lg" publicAddress={address} />
@@ -50,4 +59,4 @@ export const ContactRow: React.FC<ContactRowProps> = ({
         ))}
     </TouchableOpacity>
   );
-}; 
+};

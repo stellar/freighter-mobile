@@ -1,7 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { RecentTransactionsList, SearchSuggestionsList } from "components/screens/SendScreen/components";
+import {
+  RecentTransactionsList,
+  SearchSuggestionsList,
+} from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -18,22 +21,21 @@ type SendHomeProps = NativeStackScreenProps<
 
 /**
  * SendHome Component
- * 
- * The initial screen in the payment flow that allows users to search for 
+ *
+ * The initial screen in the payment flow that allows users to search for
  * recipients by address or select from recent transactions.
- * 
+ *
  * @param {SendHomeProps} props - Component props including navigation
  * @returns {JSX.Element} The rendered component
  */
-const SendHome: React.FC<SendHomeProps> = ({
-  navigation,
-}) => {
+const SendHome: React.FC<SendHomeProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
+
+  // TODO: Replace with actual data from API/storage
   const [recentTransactions] = useState([
-    // This is just mock data for now, will be replaced with actual data later
     {
       id: "1",
       address: "GA7M...63FC",
@@ -49,11 +51,15 @@ const SendHome: React.FC<SendHomeProps> = ({
     Array<{ id: string; address: string }>
   >([]);
 
-  // Mock search function - will be replaced with actual API call later
+  /**
+   * Handles search input changes and updates suggestions
+   *
+   * @param {string} text - The search text entered by user
+   */
   const handleSearch = (text: string) => {
     setAddress(text);
     if (text.length > 0) {
-      // Mock search results
+      // TODO: Replace with actual API call to search for addresses/contacts
       setSearchSuggestions([
         {
           id: "4",
@@ -65,16 +71,25 @@ const SendHome: React.FC<SendHomeProps> = ({
     }
   };
 
+  /**
+   * Handles when a contact or address is selected
+   *
+   * @param {string} contactAddress - The selected contact address
+   */
   const handleContactPress = (contactAddress: string) => {
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN, {
       address: contactAddress,
     });
   };
 
+  /**
+   * Gets text from clipboard and passes it to search handler
+   */
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
 
+  // Set up header with back button
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
@@ -126,4 +141,4 @@ const SendHome: React.FC<SendHomeProps> = ({
   );
 };
 
-export default SendHome; 
+export default SendHome;

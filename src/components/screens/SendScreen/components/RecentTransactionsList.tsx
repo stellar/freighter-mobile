@@ -15,8 +15,14 @@ interface RecentTransaction {
 interface RecentTransactionsListProps {
   transactions: RecentTransaction[];
   onContactPress: (address: string) => void;
+  testID?: string;
 }
 
+/**
+ * Header component for the recent transactions list
+ *
+ * @returns {JSX.Element} The rendered header component
+ */
 const ListHeader = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -33,9 +39,16 @@ const ListHeader = () => {
   );
 };
 
+/**
+ * Displays a list of recent transactions/contacts
+ *
+ * @param {RecentTransactionsListProps} props - Component props
+ * @returns {JSX.Element | null} The rendered component or null if no transactions
+ */
 export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
   transactions,
   onContactPress,
+  testID,
 }) => {
   if (!transactions.length) {
     return null;
@@ -45,6 +58,7 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
+      testID={testID}
     >
       <View className="flex-1">
         <FlatList
@@ -57,6 +71,7 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
               onPress={() => onContactPress(item.address)}
               showDots={false}
               className="mb-[24px]"
+              testID={`recent-transaction-${item.id}`}
             />
           )}
           keyExtractor={(item) => item.id}
@@ -64,4 +79,4 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
       </View>
     </KeyboardAvoidingView>
   );
-}; 
+};

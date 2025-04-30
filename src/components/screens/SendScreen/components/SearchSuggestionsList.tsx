@@ -15,21 +15,29 @@ interface SearchSuggestion {
 interface SearchSuggestionsListProps {
   suggestions: SearchSuggestion[];
   onContactPress: (address: string) => void;
+  testID?: string;
 }
 
+/**
+ * Displays a list of search suggestions for addresses/contacts
+ *
+ * @param {SearchSuggestionsListProps} props - Component props
+ * @returns {JSX.Element | null} The rendered component or null if no suggestions
+ */
 export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
   suggestions,
   onContactPress,
+  testID,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  
+
   if (!suggestions.length) {
     return null;
   }
 
   return (
-    <View className="flex-1">
+    <View className="flex-1" testID={testID}>
       <View className="mb-[24px]">
         <View className="flex-row items-center gap-2">
           <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
@@ -51,4 +59,4 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
       />
     </View>
   );
-}; 
+};
