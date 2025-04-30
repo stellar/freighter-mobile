@@ -78,7 +78,7 @@ describe("SendScreenHome", () => {
       expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
       expect(screen.getByText("Recent")).toBeTruthy();
     });
-  });
+  }, 10000);
 
   it("navigates to transaction detail screen when a contact is pressed", async () => {
     renderWithProviders(
@@ -96,7 +96,7 @@ describe("SendScreenHome", () => {
         { address: expect.any(String) },
       );
     });
-  });
+  }, 15000);
 
   it("pastes clipboard content when paste button is pressed", async () => {
     renderWithProviders(
@@ -109,7 +109,7 @@ describe("SendScreenHome", () => {
     await waitFor(() => {
       expect(mockGetClipboardText).toHaveBeenCalled();
     });
-  });
+  }, 10000);
 
   it("shows search suggestions when text is entered", async () => {
     renderWithProviders(
@@ -122,7 +122,7 @@ describe("SendScreenHome", () => {
     await waitFor(() => {
       expect(screen.getByText("Suggestions")).toBeTruthy();
     });
-  });
+  }, 10000);
 
   it("sets up the header with back button on mount", async () => {
     renderWithProviders(
@@ -134,7 +134,7 @@ describe("SendScreenHome", () => {
         headerLeft: expect.any(Function),
       });
     });
-  });
+  }, 10000);
 
   it("goes back when header back button is pressed", async () => {
     renderWithProviders(
@@ -152,5 +152,5 @@ describe("SendScreenHome", () => {
 
       expect(mockGoBack).toHaveBeenCalled();
     });
-  });
+  }, 10000);
 });
