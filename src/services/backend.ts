@@ -18,7 +18,6 @@ import { createApiService } from "services/apiFactory";
 // Create a dedicated API service for backend operations
 const freighterBackend = createApiService({
   baseURL: FREIGHTER_BACKEND_URL,
-  logRequests: true,
 });
 
 export type FetchBalancesResponse = {

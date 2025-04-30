@@ -101,6 +101,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
+      backgroundStyle={{
+        backgroundColor: themeColors.background.primary,
+      }}
       {...bottomSheetModalProps}
     >
       <BottomSheetView
