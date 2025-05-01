@@ -10,7 +10,7 @@ interface NumericKeyboardProps {
 
 const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const { themeColors } = useColors();
-  
+
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
       <View
@@ -56,4 +56,4 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   );
 };
 
-export default NumericKeyboard; 
+export default NumericKeyboard;
