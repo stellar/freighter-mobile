@@ -201,7 +201,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
             <ContactRow
               address={address}
-              showDots={false}
               rightElement={
                 <Button
                   variant="secondary"

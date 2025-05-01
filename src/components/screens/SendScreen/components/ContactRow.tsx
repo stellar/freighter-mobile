@@ -10,7 +10,7 @@ interface ContactRowProps {
   address: string;
   name?: string;
   onPress?: () => void;
-  showDots?: boolean;
+  onDotsPress?: () => void;
   rightElement?: React.ReactNode;
   className?: string;
   testID?: string;
@@ -26,7 +26,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   address,
   name,
   onPress,
-  showDots = true,
+  onDotsPress,
   rightElement,
   className,
   testID,
@@ -52,10 +52,11 @@ export const ContactRow: React.FC<ContactRowProps> = ({
         </View>
       </View>
       {rightElement ||
-        (showDots && (
+        (onDotsPress && (
           <Icon.DotsHorizontal
             size={24}
             color={themeColors.foreground.secondary}
+            onPress={onDotsPress}
           />
         ))}
     </TouchableOpacity>

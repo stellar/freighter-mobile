@@ -69,7 +69,6 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
               address={item.address}
               name={item.name}
               onPress={() => onContactPress(item.address)}
-              showDots={false}
               className="mb-[24px]"
               testID={`recent-transaction-${item.id}`}
             />

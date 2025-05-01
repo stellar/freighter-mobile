@@ -24,7 +24,16 @@ export const truncateAddress = (
   suffixLength = 4,
 ): string => {
   if (!address) return "";
-  if (address.length <= prefixLength + suffixLength + 3) return address;
 
-  return `${address.slice(0, prefixLength)}...${address.slice(-suffixLength)}`;
+  // Ensure prefixLength and suffixLength are non-negative
+  const safePrefix = Math.max(0, prefixLength);
+  const safeSuffix = Math.max(0, suffixLength);
+
+  // If the address is too short to be truncated, return it as is
+  if (address.length <= safePrefix + safeSuffix + 3) return address;
+
+  const prefix = safePrefix > 0 ? address.slice(0, safePrefix) : "";
+  const suffix = safeSuffix > 0 ? address.slice(-safeSuffix) : "";
+
+  return `${prefix}...${suffix}`;
 };

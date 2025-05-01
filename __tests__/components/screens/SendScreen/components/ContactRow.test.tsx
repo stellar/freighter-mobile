@@ -59,16 +59,17 @@ describe("ContactRow", () => {
     expect(mockOnPress).toHaveBeenCalledTimes(1);
   }, 10000);
 
-  it("does not show dots when showDots is false", () => {
-    const { queryByTestId } = renderWithProviders(
+  it("renders correctly with onDotsPress prop", () => {
+    const mockOnDotsPress = jest.fn();
+    const { getByTestId } = renderWithProviders(
       <ContactRow
         address={mockAddress}
-        showDots={false}
-        testID="no-dots-row"
+        onDotsPress={mockOnDotsPress}
+        testID="with-dots-press"
       />,
     );
 
-    expect(queryByTestId("dots-horizontal-icon")).toBeNull();
+    expect(getByTestId("with-dots-press")).toBeTruthy();
   });
 
   it("renders custom right element when provided", () => {
