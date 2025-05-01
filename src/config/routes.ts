@@ -112,8 +112,8 @@ export type SendPaymentStackParamList = {
     tokenId: string;
   };
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: {
-    address: string;
-    tokenId: string;
-    tokenCode: string;
+    address?: string;
+    tokenId?: string;
+    tokenCode?: string;
   };
 };

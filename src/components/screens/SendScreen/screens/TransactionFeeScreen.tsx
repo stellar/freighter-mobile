@@ -16,14 +16,17 @@ type TransactionFeeScreenProps = NativeStackScreenProps<
 
 type CongestionLevel = "low" | "medium" | "high";
 
+// Native token code for XLM - used for transaction fees
+const NATIVE_TOKEN_CODE = "XLM";
+
 const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   navigation,
   route,
 }) => {
   const { t } = useAppTranslation();
   const [fee, setFee] = useState("0.0250005");
-  const { tokenCode } = route.params;
-  const [congestionLevel, setCongestionLevel] = useState<CongestionLevel>("low");
+  const { tokenCode = NATIVE_TOKEN_CODE } = route.params || {};
+  const [congestionLevel] = useState<CongestionLevel>("low");
 
   const handleSave = () => {
     // TODO: Implement save functionality
@@ -60,11 +63,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
           </View>
         </View>
         <View className="gap-4 mb-4">
-          <Button
-            variant="secondary"
-            size="lg"
-            onPress={handleSetRecommended}
-          >
+          <Button variant="secondary" size="lg" onPress={handleSetRecommended}>
             {t("transactionFeeScreen.setRecommended")}
           </Button>
           <Button tertiary lg onPress={handleSave}>
@@ -76,4 +75,4 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   );
 };
 
-export default TransactionFeeScreen; 
+export default TransactionFeeScreen;

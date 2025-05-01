@@ -83,11 +83,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         title: t("transactionAmountScreen.menu.fee", { fee: "0.025" }),
         systemIcon: "arrow.trianglehead.swap",
         onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN, {
-            address,
-            tokenId,
-            tokenCode: selectedBalance?.tokenCode ?? "XLM",
-          });
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN, {});
         },
       },
       {
@@ -111,7 +107,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         },
       },
     ],
-    [t, navigation, address, tokenId, selectedBalance?.tokenCode],
+    [t, navigation, address, tokenId],
   );
 
   useEffect(() => {
