@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
-import { SendHome } from "components/screens/SendScreen";
+import { SendSearchContacts } from "components/screens/SendScreen";
 import {
   TransactionMemoScreen,
   TransactionTokenScreen,
@@ -27,7 +27,7 @@ export const SendPaymentStackNavigator = () => {
     >
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN}
-        component={SendHome}
+        component={SendSearchContacts}
         options={{
           headerTitle: t("sendPaymentScreen.title"),
         }}

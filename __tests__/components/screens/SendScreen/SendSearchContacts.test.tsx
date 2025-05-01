@@ -1,7 +1,7 @@
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { screen, userEvent, waitFor } from "@testing-library/react-native";
-import { SendHome } from "components/screens/SendScreen";
+import { SendSearchContacts } from "components/screens/SendScreen";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactElement, ReactNode } from "react";
@@ -28,12 +28,12 @@ jest.mock("hooks/useClipboard", () => ({
   }),
 }));
 
-type SendHomeNavigationProp = NativeStackNavigationProp<
+type SendSearchContactsNavigationProp = NativeStackNavigationProp<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
 >;
 
-type SendHomeRouteProp = RouteProp<
+type SendSearchContactsRouteProp = RouteProp<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
 >;
@@ -45,13 +45,13 @@ const mockNavigation = {
   navigate: mockNavigate,
   goBack: mockGoBack,
   setOptions: mockSetOptions,
-} as unknown as SendHomeNavigationProp;
+} as unknown as SendSearchContactsNavigationProp;
 
 const mockRoute = {
   name: SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN,
   key: "test-key",
   params: {},
-} as unknown as SendHomeRouteProp;
+} as unknown as SendSearchContactsRouteProp;
 
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
@@ -64,14 +64,14 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-describe("SendScreenHome", () => {
+describe("SendSearchContacts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("renders correctly with the search input and recent transactions", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     await waitFor(() => {
@@ -82,7 +82,7 @@ describe("SendScreenHome", () => {
 
   it("navigates to transaction details screen when a contact is pressed", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     const recentItems = await screen.findAllByTestId(/recent-transaction-/);
@@ -100,7 +100,7 @@ describe("SendScreenHome", () => {
 
   it("pastes clipboard content when paste button is pressed", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     const pasteButton = await screen.findByText("Paste");
@@ -113,7 +113,7 @@ describe("SendScreenHome", () => {
 
   it("shows search suggestions when text is entered", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     const input = await screen.findByPlaceholderText("Enter address");
@@ -126,7 +126,7 @@ describe("SendScreenHome", () => {
 
   it("sets up the header with back button on mount", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     await waitFor(() => {
@@ -138,7 +138,7 @@ describe("SendScreenHome", () => {
 
   it("goes back when header back button is pressed", async () => {
     renderWithProviders(
-      <SendHome navigation={mockNavigation} route={mockRoute} />,
+      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
     await waitFor(() => {

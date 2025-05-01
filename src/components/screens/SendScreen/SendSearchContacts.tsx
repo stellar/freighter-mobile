@@ -14,21 +14,23 @@ import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-type SendHomeProps = NativeStackScreenProps<
+type SendSearchContactsProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
 >;
 
 /**
- * SendHome Component
+ * SendSearchContacts Component
  *
  * The initial screen in the payment flow that allows users to search for
  * recipients by address or select from recent transactions.
  *
- * @param {SendHomeProps} props - Component props including navigation
+ * @param {SendSearchContactsProps} props - Component props including navigation
  * @returns {JSX.Element} The rendered component
  */
-const SendHome: React.FC<SendHomeProps> = ({ navigation }) => {
+const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
+  navigation,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
@@ -141,4 +143,4 @@ const SendHome: React.FC<SendHomeProps> = ({ navigation }) => {
   );
 };
 
-export default SendHome;
+export default SendSearchContacts;

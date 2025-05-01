@@ -1,3 +1,3 @@
-export { default as SendHome } from "./SendScreenHome";
+export { default as SendSearchContacts } from "./SendSearchContacts";
 export * from "./components";
 export * from "./screens";
