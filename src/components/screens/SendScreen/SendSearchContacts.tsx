@@ -114,10 +114,11 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                 color={themeColors.foreground.primary}
               />
             }
+            testID="search-input"
             placeholder={t("sendPaymentScreen.inputPlaceholder")}
             onChangeText={handleSearch}
             endButton={{
-              content: "Paste",
+              content: t("common.paste"),
               onPress: handlePasteFromClipboard,
               disabled: false,
             }}

@@ -4,7 +4,9 @@
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "common": {
-    "edit": "Editar"
+    "edit": "Editar",
+    "close": "Fechar",
+    "paste": "Colar"
   },
   "home": {
     "title": "Início",

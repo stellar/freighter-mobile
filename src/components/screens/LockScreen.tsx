@@ -110,7 +110,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
           <FreighterLogo width={px(48)} height={px(48)} />
         </StyledIconContainer>
         <StyledFormContainer>
-          <Avatar size="lg" publicAddress={publicKey ?? ""} />
+          <Avatar size="xl" publicAddress={publicKey ?? ""} />
           <Display xs semiBold>
             {t("lockScreen.title")}
           </Display>

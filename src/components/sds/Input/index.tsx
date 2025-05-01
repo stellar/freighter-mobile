@@ -39,6 +39,18 @@ const INPUT_SIZES = {
 
 export type InputSize = keyof typeof INPUT_SIZES;
 
+/**
+ * Calculates the input height based on field size
+ *
+ * @param fieldSize - The size of the input field (sm, md, lg)
+ * @returns The pixel height of the input field
+ */
+const getInputHeight = (fieldSize: InputSize): string =>
+  px(
+    INPUT_SIZES[fieldSize].lineHeight +
+      3 * INPUT_SIZES[fieldSize].paddingVertical,
+  );
+
 // =============================================================================
 // Styled components
 // =============================================================================
@@ -86,10 +98,7 @@ const StyledTextInput = styled.TextInput<
 >`
   flex: 1;
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    px(
-      INPUT_SIZES[$fieldSize].lineHeight +
-        3 * INPUT_SIZES[$fieldSize].paddingVertical,
-    )};
+    getInputHeight($fieldSize)};
   font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
   color: ${THEME.colors.text.primary};
@@ -125,10 +134,7 @@ const ButtonContainer = styled.View<
   border-left-width: 1px;
   border-left-color: ${THEME.colors.border.default};
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    px(
-      INPUT_SIZES[$fieldSize].lineHeight +
-        3 * INPUT_SIZES[$fieldSize].paddingVertical,
-    )};
+    getInputHeight($fieldSize)};
   align-items: center;
   justify-content: center;
 `;

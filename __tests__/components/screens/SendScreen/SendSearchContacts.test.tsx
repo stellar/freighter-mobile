@@ -59,6 +59,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "sendPaymentScreen.inputPlaceholder": "Enter address",
       "sendPaymentScreen.recents": "Recent",
       "sendPaymentScreen.suggestions": "Suggestions",
+      "common.paste": "Paste",
     };
     return translations[key] || key;
   },
@@ -103,7 +104,7 @@ describe("SendSearchContacts", () => {
       <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
-    const pasteButton = await screen.findByText("Paste");
+    const pasteButton = await screen.findByTestId("search-input-end-button");
     await userEvent.press(pasteButton);
 
     await waitFor(() => {

@@ -5,7 +5,8 @@
   "accountAddressCopied": "Account address copied!",
   "common": {
     "edit": "Edit",
-    "close": "Close"
+    "close": "Close",
+    "paste": "Paste"
   },
   "home": {
     "title": "Home",
