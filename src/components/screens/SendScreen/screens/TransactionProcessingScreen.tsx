@@ -1,5 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CommonActions, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { AssetIcon } from "components/AssetIcon";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
@@ -9,7 +9,6 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { MAIN_TAB_ROUTES, ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { PricedBalance } from "config/types";
 import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount } from "helpers/formatAmount";
@@ -35,7 +34,6 @@ const TransactionProcessingScreen: React.FC<
   const [isCompleted, setIsCompleted] = useState(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  // Hide the header when this component mounts
   useEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -53,35 +51,16 @@ const TransactionProcessingScreen: React.FC<
   }, []);
 
   const handleClose = () => {
-    // First call the original onClose function
     onClose();
-
-    // Reset the navigation to the main tab and set the initial route to History
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-            state: {
-              index: 0,
-              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-            },
-          },
-        ],
-      }),
-    );
   };
 
   const handleViewTransaction = () => {
-    // Show transaction details in bottom sheet
     bottomSheetModalRef.current?.present();
   };
 
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between">
-        {/* Middle content */}
         <View className="flex-1 items-center justify-center">
           <View className="items-center gap-[8px]">
             {isCompleted ? (
@@ -125,7 +104,6 @@ const TransactionProcessingScreen: React.FC<
           </View>
         </View>
 
-        {/* Bottom content */}
         {isCompleted ? (
           <View className="gap-[16px]">
             <Button
@@ -154,7 +132,6 @@ const TransactionProcessingScreen: React.FC<
         )}
       </View>
 
-      {/* Transaction Details Bottom Sheet */}
       <BottomSheet
         modalRef={bottomSheetModalRef}
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}

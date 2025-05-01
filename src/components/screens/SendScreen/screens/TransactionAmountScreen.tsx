@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
@@ -8,13 +9,18 @@ import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
-  TransactionReviewBottomSheet,
+  SendReviewBottomSheet,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  MAIN_TAB_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -132,7 +138,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         address={address}
         onClose={() => {
           setIsProcessing(false);
-          navigation.navigate(SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN);
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                {
+                  name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+                  state: {
+                    index: 0,
+                    routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+                  },
+                },
+              ],
+            }),
+          );
         }}
       />
     );
@@ -245,7 +264,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         customContent={
-          <TransactionReviewBottomSheet
+          <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenValue={tokenAmount}
             address={address}

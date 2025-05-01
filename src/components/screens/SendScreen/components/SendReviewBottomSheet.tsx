@@ -1,7 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
 import Avatar from "components/sds/Avatar";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
@@ -14,7 +14,7 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
-type TransactionReviewBottomSheetProps = {
+type SendReviewBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
   tokenValue: string;
   address: string;
@@ -24,9 +24,7 @@ type TransactionReviewBottomSheetProps = {
   onConfirm?: () => void;
 };
 
-const TransactionReviewBottomSheet: React.FC<
-  TransactionReviewBottomSheetProps
-> = ({
+const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
   tokenValue,
   address,
@@ -149,15 +147,7 @@ const TransactionReviewBottomSheet: React.FC<
           </Button>
         </View>
         <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            variant="tertiary"
-            size="xl"
-            icon={
-              <Icon.FaceId size={18} color={themeColors.foreground.primary} />
-            }
-            iconPosition={IconPosition.LEFT}
-          >
+          <Button onPress={onConfirm} tertiary xl>
             {t("transactionReviewScreen.confirm")}
           </Button>
         </View>
@@ -166,4 +156,4 @@ const TransactionReviewBottomSheet: React.FC<
   );
 };
 
-export default TransactionReviewBottomSheet;
+export default SendReviewBottomSheet;
