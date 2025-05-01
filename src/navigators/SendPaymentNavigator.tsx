@@ -3,8 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { SendHome } from "components/screens/SendScreen";
 import {
-  MemoScreen,
-  TransactionDetailsScreen,
+  TransactionMemoScreen,
+  TransactionTokenScreen,
   TransactionFeeScreen,
   TransactionTimeoutScreen,
   TransactionAmountScreen,
@@ -33,10 +33,10 @@ export const SendPaymentStackNavigator = () => {
         }}
       />
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN}
-        component={TransactionDetailsScreen}
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN}
+        component={TransactionTokenScreen}
         options={{
-          headerTitle: t("transactionDetailScreen.title"),
+          headerTitle: t("transactionTokenScreen.title"),
         }}
       />
       <SendPaymentStack.Screen
@@ -48,7 +48,7 @@ export const SendPaymentStackNavigator = () => {
       />
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN}
-        component={MemoScreen}
+        component={TransactionMemoScreen}
         options={{
           headerTitle: t("transactionMemoScreen.title"),
         }}

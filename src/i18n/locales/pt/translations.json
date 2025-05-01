@@ -185,7 +185,7 @@
     "inputPlaceholder": "Digite o endereço",
     "recents": "Recentes"
   },
-  "transactionDetailScreen": {
+  "transactionTokenScreen": {
     "title": "Enviando"
   },
   "transactionAmountScreen": {

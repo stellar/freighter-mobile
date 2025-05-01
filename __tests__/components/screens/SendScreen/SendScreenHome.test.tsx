@@ -92,7 +92,7 @@ describe("SendScreenHome", () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN,
+        SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN,
         { address: expect.any(String) },
       );
     });

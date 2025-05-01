@@ -191,7 +191,7 @@
     "recents": "Recents",
     "suggestions": "Suggestions"
   },
-  "transactionDetailScreen": {
+  "transactionTokenScreen": {
     "title": "Sending"
   },
   "transactionAmountScreen": {

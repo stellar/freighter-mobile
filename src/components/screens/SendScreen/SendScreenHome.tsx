@@ -77,7 +77,7 @@ const SendHome: React.FC<SendHomeProps> = ({ navigation }) => {
    * @param {string} contactAddress - The selected contact address
    */
   const handleContactPress = (contactAddress: string) => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN, {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
       address: contactAddress,
     });
   };

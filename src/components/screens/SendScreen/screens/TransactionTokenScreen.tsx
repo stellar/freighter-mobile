@@ -10,12 +10,12 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
 import { View } from "react-native";
 
-type TransactionDetailsScreenProps = NativeStackScreenProps<
+type TransactionTokenScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
-  typeof SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN
+  typeof SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN
 >;
 
-const TransactionDetailsScreen: React.FC<TransactionDetailsScreenProps> = ({
+const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
   route,
 }) => {
@@ -63,4 +63,4 @@ const TransactionDetailsScreen: React.FC<TransactionDetailsScreenProps> = ({
   );
 };
 
-export default TransactionDetailsScreen;
+export default TransactionTokenScreen;

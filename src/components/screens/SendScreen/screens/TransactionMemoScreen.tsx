@@ -7,12 +7,14 @@ import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
 import { View } from "react-native";
 
-type MemoScreenProps = NativeStackScreenProps<
+type TransactionMemoScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN
 >;
 
-const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
+const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useAppTranslation();
   const [memo, setMemo] = useState("");
 
@@ -41,4 +43,4 @@ const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
   );
 };
 
-export default MemoScreen;
+export default TransactionMemoScreen;
