@@ -52,6 +52,7 @@ export type SessionRequest = {
   request: {
     method: StellarRpcMethods;
     params: { xdr: string };
+    expiryTimestamp: number;
   };
   chainId: StellarRpcChains;
 };

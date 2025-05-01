@@ -187,5 +187,10 @@
     "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
     "cancel": "Cancelar",
     "connect": "Conectar"
+  },
+  "dappRequestBottomSheetContent": {
+    "transactionRequest": "Solicitação de transação",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
   }
 }
