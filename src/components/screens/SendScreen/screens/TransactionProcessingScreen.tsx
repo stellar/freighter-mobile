@@ -11,6 +11,7 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { MAIN_TAB_ROUTES, ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { PricedBalance } from "config/types";
+import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -30,7 +31,7 @@ const TransactionProcessingScreen: React.FC<
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const slicedAddress = truncateAddress(address, 4, 4);
   const [isCompleted, setIsCompleted] = useState(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -162,7 +163,6 @@ const TransactionProcessingScreen: React.FC<
             selectedBalance={selectedBalance}
             tokenValue={tokenValue}
             address={address}
-            slicedAddress={slicedAddress}
           />
         }
       />

@@ -1,6 +1,7 @@
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { truncateAddress } from "helpers/formatAddress";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -31,7 +32,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
-  const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const slicedAddress = truncateAddress(address, 4, 4);
 
   return (
     <TouchableOpacity

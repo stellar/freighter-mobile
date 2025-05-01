@@ -5,6 +5,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
+import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -14,13 +15,13 @@ type TransactionDetailsBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
   tokenValue: string;
   address: string;
-  slicedAddress: string;
 };
 
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
-> = ({ selectedBalance, tokenValue, address, slicedAddress }) => {
+> = ({ selectedBalance, tokenValue, address }) => {
   const { themeColors } = useColors();
+  const slicedAddress = truncateAddress(address, 4, 4);
 
   // TODO: Get current date and time for the transaction
   const now = new Date();

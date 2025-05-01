@@ -7,6 +7,7 @@ import { Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { isLiquidityPool } from "helpers/balances";
+import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -36,7 +37,7 @@ const TransactionReviewBottomSheet: React.FC<
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const slicedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const slicedAddress = truncateAddress(address, 4, 4);
 
   return (
     <View className="flex-1">
@@ -91,8 +92,7 @@ const TransactionReviewBottomSheet: React.FC<
           </View>
           <View className="flex-row items-center gap-[8px]">
             <Text md medium>
-              {account?.accountName ||
-                `${publicKey?.slice(0, 6)}...${publicKey?.slice(-4)}`}
+              {account?.accountName || truncateAddress(publicKey ?? "", 4, 4)}
             </Text>
             <Avatar size="sm" publicAddress={publicKey ?? ""} />
           </View>

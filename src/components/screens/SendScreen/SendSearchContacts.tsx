@@ -120,7 +120,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             endButton={{
               content: t("common.paste"),
               onPress: handlePasteFromClipboard,
-              disabled: false,
             }}
             value={address}
           />
