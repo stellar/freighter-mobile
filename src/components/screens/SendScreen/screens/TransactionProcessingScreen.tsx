@@ -138,7 +138,7 @@ const TransactionProcessingScreen: React.FC<
                 "View transaction",
               )}
             </Button>
-            <Button variant="tertiary" size="xl" onPress={handleClose}>
+            <Button tertiary xl onPress={handleClose}>
               {t("common.done", "Done")}
             </Button>
           </View>
@@ -147,7 +147,7 @@ const TransactionProcessingScreen: React.FC<
             <Text sm medium secondary textAlign="center">
               {t("transactionProcessingScreen.closeMessage")}
             </Text>
-            <Button variant="secondary" size="xl" onPress={handleClose}>
+            <Button secondary xl onPress={handleClose}>
               {t("common.close")}
             </Button>
           </View>

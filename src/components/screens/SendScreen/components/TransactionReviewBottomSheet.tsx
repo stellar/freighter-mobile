@@ -144,7 +144,7 @@ const TransactionReviewBottomSheet: React.FC<
       </View>
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
-          <Button onPress={onCancel} variant="secondary" size="xl">
+          <Button onPress={onCancel} secondary xl>
             {t("transactionReviewScreen.cancel")}
           </Button>
         </View>
