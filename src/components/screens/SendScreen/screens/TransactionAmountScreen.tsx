@@ -70,11 +70,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const selectedBalance = balanceItems.find((item) => item.id === tokenId);
 
   const {
-    tokenValue,
-    fiatValue,
-    showDollarValue,
-    setShowDollarValue,
-    handleValueChange,
+    tokenAmount,
+    fiatAmount,
+    showFiatAmount,
+    setShowFiatAmount,
+    handleAmountChange,
     handlePercentagePress,
   } = useTokenFiatConverter({ selectedBalance });
 
@@ -139,7 +139,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return (
       <TransactionProcessingScreen
         selectedBalance={selectedBalance}
-        tokenValue={tokenValue}
+        tokenValue={tokenAmount}
         address={address}
         onClose={() => {
           setIsProcessing(false);
@@ -157,23 +157,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <Display
               lg
               medium
-              {...(Number(showDollarValue ? fiatValue : tokenValue) > 0
+              {...(Number(showFiatAmount ? fiatAmount : tokenAmount) > 0
                 ? { primary: true }
                 : { secondary: true })}
             >
-              {showDollarValue
-                ? formatFiatAmount(new BigNumber(fiatValue))
-                : formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
+              {showFiatAmount
+                ? formatFiatAmount(new BigNumber(fiatAmount))
+                : formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
             </Display>
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
-                {showDollarValue
-                  ? formatAssetAmount(tokenValue, selectedBalance?.tokenCode)
-                  : formatFiatAmount(new BigNumber(fiatValue))}
+                {showFiatAmount
+                  ? formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)
+                  : formatFiatAmount(new BigNumber(fiatAmount))}
               </Text>
               <TouchableOpacity
                 className="ml-2"
-                onPress={() => setShowDollarValue(!showDollarValue)}
+                onPress={() => setShowFiatAmount(!showFiatAmount)}
               >
                 <Icon.RefreshCcw03
                   size={16}
@@ -255,14 +255,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             </View>
           </View>
           <View className="w-full">
-            <NumericKeyboard onPress={handleValueChange} />
+            <NumericKeyboard onPress={handleAmountChange} />
           </View>
           <View className="w-full mt-auto mb-4">
             <Button
               variant="tertiary"
               size="xl"
               onPress={() => reviewBottomSheetModalRef.current?.present()}
-              disabled={Number(tokenValue) <= 0}
+              disabled={Number(tokenAmount) <= 0}
             >
               {t("transactionAmountScreen.reviewButton")}
             </Button>
@@ -275,7 +275,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <TransactionReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenValue={tokenValue}
+            tokenValue={tokenAmount}
             address={address}
             account={account}
             publicKey={publicKey}

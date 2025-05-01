@@ -8,13 +8,13 @@ interface UseTokenFiatConverterProps {
 }
 
 interface UseTokenFiatConverterResult {
-  tokenValue: string;
-  fiatValue: string;
-  showDollarValue: boolean;
-  setShowDollarValue: (show: boolean) => void;
-  handleValueChange: (key: string) => void;
-  setTokenValue: (value: string) => void;
-  setFiatValue: (value: string) => void;
+  tokenAmount: string;
+  fiatAmount: string;
+  showFiatAmount: boolean;
+  setShowFiatAmount: (show: boolean) => void;
+  handleAmountChange: (key: string) => void;
+  setTokenAmount: (amount: string) => void;
+  setFiatAmount: (amount: string) => void;
   handlePercentagePress: (percentage: number) => void;
 }
 
@@ -30,9 +30,9 @@ interface UseTokenFiatConverterResult {
 export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
-  const [tokenValue, setTokenValue] = useState("0.00");
-  const [fiatValue, setFiatValue] = useState("0.00");
-  const [showDollarValue, setShowDollarValue] = useState(false);
+  const [tokenAmount, setTokenAmount] = useState("0.00");
+  const [fiatAmount, setFiatAmount] = useState("0.00");
+  const [showFiatAmount, setShowFiatAmount] = useState(false);
 
   // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
@@ -40,34 +40,34 @@ export const useTokenFiatConverter = ({
     [selectedBalance?.currentPrice],
   );
 
-  // Update fiat value when token value changes
+  // Update fiat amount when token amount changes
   useEffect(() => {
-    if (!showDollarValue) {
-      const newFiatValue = tokenPrice.multipliedBy(new BigNumber(tokenValue));
-      setFiatValue(newFiatValue.toFixed(2));
+    if (!showFiatAmount) {
+      const newFiatAmount = tokenPrice.multipliedBy(new BigNumber(tokenAmount));
+      setFiatAmount(newFiatAmount.toFixed(2));
     }
-  }, [tokenValue, tokenPrice, showDollarValue]);
+  }, [tokenAmount, tokenPrice, showFiatAmount]);
 
-  // Update token value when fiat value changes
+  // Update token amount when fiat amount changes
   useEffect(() => {
-    if (showDollarValue) {
-      const newTokenValue = tokenPrice.isZero()
+    if (showFiatAmount) {
+      const newTokenAmount = tokenPrice.isZero()
         ? new BigNumber(0)
-        : new BigNumber(fiatValue).dividedBy(tokenPrice);
-      setTokenValue(newTokenValue.toFixed(2));
+        : new BigNumber(fiatAmount).dividedBy(tokenPrice);
+      setTokenAmount(newTokenAmount.toFixed(2));
     }
-  }, [fiatValue, tokenPrice, showDollarValue]);
+  }, [fiatAmount, tokenPrice, showFiatAmount]);
 
   /**
    * Handles numeric input and deletion
    *
    * @param {string} key - The key pressed (number or empty string for delete)
    */
-  const handleValueChange = (key: string) => {
-    if (showDollarValue) {
-      setFiatValue((prev) => formatNumericInput(prev, key));
+  const handleAmountChange = (key: string) => {
+    if (showFiatAmount) {
+      setFiatAmount((prev) => formatNumericInput(prev, key));
     } else {
-      setTokenValue((prev) => formatNumericInput(prev, key));
+      setTokenAmount((prev) => formatNumericInput(prev, key));
     }
   };
 
@@ -86,23 +86,23 @@ export const useTokenFiatConverter = ({
     const formattedValue = percentageValue.toFixed(2);
 
     // Update the value based on the current display mode
-    if (showDollarValue) {
-      const calculatedFiatValue = percentageValue.multipliedBy(tokenPrice);
-      const formattedFiatValue = calculatedFiatValue.toFixed(2);
-      setFiatValue(formattedFiatValue);
+    if (showFiatAmount) {
+      const calculatedFiatAmount = percentageValue.multipliedBy(tokenPrice);
+      const formattedFiatAmount = calculatedFiatAmount.toFixed(2);
+      setFiatAmount(formattedFiatAmount);
     } else {
-      setTokenValue(formattedValue);
+      setTokenAmount(formattedValue);
     }
   };
 
   return {
-    tokenValue,
-    fiatValue,
-    showDollarValue,
-    setShowDollarValue,
-    handleValueChange,
-    setTokenValue,
-    setFiatValue,
+    tokenAmount,
+    fiatAmount,
+    showFiatAmount,
+    setShowFiatAmount,
+    handleAmountChange,
+    setTokenAmount,
+    setFiatAmount,
     handlePercentagePress,
   };
 };
