@@ -3,13 +3,14 @@ import {
   NavigationContainer,
   createNavigationContainerRef,
 } from "@react-navigation/native";
-import { AuthCheckProvider } from "components/AuthCheckProvider";
-import { OfflineDetection } from "components/OfflineDetection";
 import { RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
+import { AuthCheckProvider } from "providers/AuthCheckProvider";
+import { NetworkProvider } from "providers/NetworkProvider";
 import { ToastProvider } from "providers/ToastProvider";
+import { WalletKitProvider } from "providers/WalletKitProvider";
 import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, StatusBar } from "react-native";
@@ -30,17 +31,19 @@ export const App = (): React.JSX.Element => {
         <I18nextProvider i18n={i18n}>
           <NavigationContainer ref={navigationRef}>
             <AuthCheckProvider>
-              <OfflineDetection>
+              <NetworkProvider>
                 <StatusBar
                   backgroundColor={THEME.colors.background.default}
                   barStyle="light-content"
                 />
                 <ToastProvider>
                   <BottomSheetModalProvider>
-                    <RootNavigator />
+                    <WalletKitProvider>
+                      <RootNavigator />
+                    </WalletKitProvider>
                   </BottomSheetModalProvider>
                 </ToastProvider>
-              </OfflineDetection>
+              </NetworkProvider>
             </AuthCheckProvider>
           </NavigationContainer>
         </I18nextProvider>
