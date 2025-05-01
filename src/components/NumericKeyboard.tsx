@@ -46,7 +46,7 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
         {renderButton("9")}
       </View>
       <View className="flex-row gap-[12px]">
-        {renderButton(".")}
+        <View className="flex-1" />
         {renderButton("0")}
         {renderButton(
           <Icon.Delete size={32} color={themeColors.text.primary} />,

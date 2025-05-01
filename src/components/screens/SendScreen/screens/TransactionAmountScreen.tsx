@@ -5,10 +5,10 @@ import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
+import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
-  NumericKeyboard,
   TransactionReviewBottomSheet,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
@@ -124,7 +124,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleTransactionConfirmation = () => {
     reviewBottomSheetModalRef.current?.dismiss();
     setIsProcessing(true);
-    // Implement the actual transaction submission logic here
+    // TODO: Implement the actual transaction submission logic here
   };
 
   if (isProcessing) {
