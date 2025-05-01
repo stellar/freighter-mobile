@@ -2,12 +2,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { SendHome } from "components/screens/SendScreen";
-import { 
+import {
   MemoScreen,
   TransactionDetailScreen,
   TransactionFeeScreen,
   TransactionTimeoutScreen,
-  TransactionValueScreen 
+  TransactionValueScreen,
 } from "components/screens/SendScreen/screens";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -47,10 +47,10 @@ export const SendPaymentStackNavigator = () => {
         }}
       />
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.MEMO_SCREEN}
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN}
         component={MemoScreen}
         options={{
-          headerTitle: t("memoScreen.title"),
+          headerTitle: t("transactionMemoScreen.title"),
         }}
       />
       <SendPaymentStack.Screen

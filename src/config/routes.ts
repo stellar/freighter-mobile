@@ -40,7 +40,7 @@ export const SEND_PAYMENT_ROUTES = {
   SEND_PAYMENT_SCREEN: "SendPaymentScreen",
   TRANSACTION_DETAIL_SCREEN: "TransactionDetailScreen",
   TRANSACTION_VALUE_SCREEN: "TransactionValueScreen",
-  MEMO_SCREEN: "MemoScreen",
+  TRANSACTION_MEMO_SCREEN: "TransactionMemoScreen",
   TRANSACTION_TIMEOUT_SCREEN: "TransactionTimeoutScreen",
   TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
 } as const;
@@ -103,7 +103,7 @@ export type SendPaymentStackParamList = {
     address: string;
     tokenId: string;
   };
-  [SEND_PAYMENT_ROUTES.MEMO_SCREEN]: {
+  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: {
     address: string;
     tokenId: string;
   };

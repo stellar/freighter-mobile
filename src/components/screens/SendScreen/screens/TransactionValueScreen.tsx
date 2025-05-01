@@ -6,10 +6,10 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { 
-  ContactRow, 
-  NumericKeyboard, 
-  TransactionReviewBottomSheet 
+import {
+  ContactRow,
+  NumericKeyboard,
+  TransactionReviewBottomSheet,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { Button } from "components/sds/Button";
@@ -97,7 +97,7 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
         title: t("transactionValueScreen.menu.addMemo"),
         systemIcon: "text.page",
         onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.MEMO_SCREEN, {
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN, {
             address,
             tokenId,
           });
@@ -283,4 +283,4 @@ const TransactionValueScreen: React.FC<TransactionValueScreenProps> = ({
   );
 };
 
-export default TransactionValueScreen; 
+export default TransactionValueScreen;

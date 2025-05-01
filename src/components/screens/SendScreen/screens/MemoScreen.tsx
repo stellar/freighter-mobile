@@ -9,7 +9,7 @@ import { View } from "react-native";
 
 type MemoScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
-  typeof SEND_PAYMENT_ROUTES.MEMO_SCREEN
+  typeof SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN
 >;
 
 const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
@@ -26,14 +26,14 @@ const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
       <View className="flex-1 justify-between">
         <Textarea
           fieldSize="lg"
-          placeholder={t("memoScreen.placeholder")}
+          placeholder={t("transactionMemoScreen.placeholder")}
           value={memo}
           onChangeText={setMemo}
-          note={t("memoScreen.optional")}
+          note={t("transactionMemoScreen.optional")}
         />
         <View className="mt-4 mb-4">
           <Button variant="tertiary" size="lg" onPress={handleSave}>
-            {t("memoScreen.save")}
+            {t("transactionMemoScreen.save")}
           </Button>
         </View>
       </View>
@@ -41,4 +41,4 @@ const MemoScreen: React.FC<MemoScreenProps> = ({ navigation }) => {
   );
 };
 
-export default MemoScreen; 
+export default MemoScreen;
