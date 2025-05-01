@@ -80,7 +80,7 @@ describe("SendScreenHome", () => {
     });
   }, 10000);
 
-  it("navigates to transaction detail screen when a contact is pressed", async () => {
+  it("navigates to transaction details screen when a contact is pressed", async () => {
     renderWithProviders(
       <SendHome navigation={mockNavigation} route={mockRoute} />,
     );
@@ -92,7 +92,7 @@ describe("SendScreenHome", () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN,
+        SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN,
         { address: expect.any(String) },
       );
     });

@@ -4,7 +4,7 @@ import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { SendHome } from "components/screens/SendScreen";
 import {
   MemoScreen,
-  TransactionDetailScreen,
+  TransactionDetailsScreen,
   TransactionFeeScreen,
   TransactionTimeoutScreen,
   TransactionAmountScreen,
@@ -33,8 +33,8 @@ export const SendPaymentStackNavigator = () => {
         }}
       />
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_DETAIL_SCREEN}
-        component={TransactionDetailScreen}
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_DETAILS_SCREEN}
+        component={TransactionDetailsScreen}
         options={{
           headerTitle: t("transactionDetailScreen.title"),
         }}
