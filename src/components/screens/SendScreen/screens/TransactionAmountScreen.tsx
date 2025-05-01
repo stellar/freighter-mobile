@@ -1,7 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
@@ -162,14 +161,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 : { secondary: true })}
             >
               {showFiatAmount
-                ? formatFiatAmount(new BigNumber(fiatAmount))
+                ? formatFiatAmount(fiatAmount)
                 : formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
             </Display>
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
                   ? formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)
-                  : formatFiatAmount(new BigNumber(fiatAmount))}
+                  : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity
                 className="ml-2"
@@ -283,7 +282,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onConfirm={handleTransactionConfirmation}
           />
         }
-        bottomSheetModalProps={{ enablePanDownToClose: true }}
+        bottomSheetModalProps={{ enablePanDownToClose: false }}
+        shouldCloseOnPressBackdrop={false}
       />
     </BaseLayout>
   );
