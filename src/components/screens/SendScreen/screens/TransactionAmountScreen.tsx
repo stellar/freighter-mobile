@@ -83,31 +83,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         title: t("transactionAmountScreen.menu.fee", { fee: "0.025" }),
         systemIcon: "arrow.trianglehead.swap",
         onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN, {});
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN);
         },
       },
       {
         title: t("transactionAmountScreen.menu.timeout", { timeout: "180" }),
         systemIcon: "clock",
         onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN, {
-            address,
-            tokenId,
-          });
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN);
         },
       },
       {
         title: t("transactionAmountScreen.menu.addMemo"),
         systemIcon: "text.page",
         onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN, {
-            address,
-            tokenId,
-          });
+          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
         },
       },
     ],
-    [t, navigation, address, tokenId],
+    [t, navigation],
   );
 
   useEffect(() => {

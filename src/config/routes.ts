@@ -103,17 +103,7 @@ export type SendPaymentStackParamList = {
     address: string;
     tokenId: string;
   };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: {
-    address: string;
-    tokenId: string;
-  };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: {
-    address: string;
-    tokenId: string;
-  };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: {
-    address?: string;
-    tokenId?: string;
-    tokenCode?: string;
-  };
+  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };
