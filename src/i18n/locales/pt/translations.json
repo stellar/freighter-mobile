@@ -188,7 +188,7 @@
   "transactionDetailScreen": {
     "title": "Enviando"
   },
-  "transactionValueScreen": {
+  "transactionAmountScreen": {
     "title": "Enviar",
     "percentageButtons": {
       "twentyFive": "25%",

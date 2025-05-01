@@ -86,7 +86,7 @@ const TransactionReviewBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionValueScreen.details.from")}
+              {t("transactionAmountScreen.details.from")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[8px]">
@@ -101,18 +101,18 @@ const TransactionReviewBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.File02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionValueScreen.details.memo")}
+              {t("transactionAmountScreen.details.memo")}
             </Text>
           </View>
           <Text md medium secondary>
-            {t("transactionValueScreen.details.none")}
+            {t("transactionAmountScreen.details.none")}
           </Text>
         </View>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionValueScreen.details.fee")}
+              {t("transactionAmountScreen.details.fee")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[4px]">
@@ -126,13 +126,13 @@ const TransactionReviewBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionValueScreen.details.xdr")}
+              {t("transactionAmountScreen.details.xdr")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[8px]">
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md medium>
-              {t("transactionValueScreen.details.xdrPlaceholder")}
+              {t("transactionAmountScreen.details.xdrPlaceholder")}
             </Text>
           </View>
         </View>
@@ -166,4 +166,4 @@ const TransactionReviewBottomSheet: React.FC<
   );
 };
 
-export default TransactionReviewBottomSheet; 
+export default TransactionReviewBottomSheet;

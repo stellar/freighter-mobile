@@ -26,7 +26,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
   const publicKey = account?.publicKey;
 
   const handleTokenPress = (tokenId: string) => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_VALUE_SCREEN, {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
       address,
       tokenId,
     });
@@ -63,4 +63,4 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
   );
 };
 
-export default TransactionDetailScreen; 
+export default TransactionDetailScreen;

@@ -7,7 +7,7 @@ import {
   TransactionDetailScreen,
   TransactionFeeScreen,
   TransactionTimeoutScreen,
-  TransactionValueScreen,
+  TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -40,10 +40,10 @@ export const SendPaymentStackNavigator = () => {
         }}
       />
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_VALUE_SCREEN}
-        component={TransactionValueScreen}
+        name={SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN}
+        component={TransactionAmountScreen}
         options={{
-          headerTitle: t("transactionValueScreen.title"),
+          headerTitle: t("transactionAmountScreen.title"),
         }}
       />
       <SendPaymentStack.Screen
