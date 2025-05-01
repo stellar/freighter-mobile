@@ -10,7 +10,7 @@ interface Props {
 
 const NETWORK_CHECK_INITIAL_DELAY = 1000;
 
-export const OfflineDetection = ({ children }: Props) => {
+export const NetworkProvider = ({ children }: Props) => {
   const { isConnected, isInternetReachable, isOffline, setNetworkInfo } =
     useNetworkStore();
 
