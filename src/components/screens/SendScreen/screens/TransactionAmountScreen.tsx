@@ -53,6 +53,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const navigateToSendScreen = () => {
+    try {
+      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN);
+    } catch (error) {
+      navigation.popToTop();
+    }
+  };
+
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
@@ -199,9 +207,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 <Button
                   variant="secondary"
                   size="lg"
-                  onPress={() =>
-                    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN)
-                  }
+                  onPress={navigateToSendScreen}
                 >
                   {t("common.edit")}
                 </Button>
