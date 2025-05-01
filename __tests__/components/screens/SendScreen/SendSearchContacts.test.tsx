@@ -86,7 +86,7 @@ describe("SendSearchContacts", () => {
       <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
     );
 
-    const recentItems = await screen.findAllByTestId(/recent-transaction-/);
+    const recentItems = await screen.findAllByTestId(/recent-contact-/);
     const recentItem = recentItems[0];
 
     await userEvent.press(recentItem);

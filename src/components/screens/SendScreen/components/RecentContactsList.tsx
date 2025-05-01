@@ -6,20 +6,20 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { FlatList, View, KeyboardAvoidingView, Platform } from "react-native";
 
-interface RecentTransaction {
+interface RecentContact {
   id: string;
   address: string;
   name?: string;
 }
 
-interface RecentTransactionsListProps {
-  transactions: RecentTransaction[];
+interface RecentContactsListProps {
+  transactions: RecentContact[];
   onContactPress: (address: string) => void;
   testID?: string;
 }
 
 /**
- * Header component for the recent transactions list
+ * Header component for the recent contacts list
  *
  * @returns {JSX.Element} The rendered header component
  */
@@ -40,12 +40,12 @@ const ListHeader = () => {
 };
 
 /**
- * Displays a list of recent transactions/contacts
+ * Displays a list of recent contacts/addresses
  *
- * @param {RecentTransactionsListProps} props - Component props
- * @returns {JSX.Element | null} The rendered component or null if no transactions
+ * @param {RecentContactsListProps} props - Component props
+ * @returns {JSX.Element | null} The rendered component or null if no contacts
  */
-export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
+export const RecentContactsList: React.FC<RecentContactsListProps> = ({
   transactions,
   onContactPress,
   testID,
@@ -70,7 +70,7 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
               name={item.name}
               onPress={() => onContactPress(item.address)}
               className="mb-[24px]"
-              testID={`recent-transaction-${item.id}`}
+              testID={`recent-contact-${item.id}`}
             />
           )}
           keyExtractor={(item) => item.id}

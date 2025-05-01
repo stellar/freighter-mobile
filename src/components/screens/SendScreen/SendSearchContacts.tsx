@@ -2,7 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
-  RecentTransactionsList,
+  RecentContactsList,
   SearchSuggestionsList,
 } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
@@ -132,7 +132,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           />
         ) : (
           recentTransactions.length > 0 && (
-            <RecentTransactionsList
+            <RecentContactsList
               transactions={recentTransactions}
               onContactPress={handleContactPress}
             />

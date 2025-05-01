@@ -1,4 +1,4 @@
-import { RecentTransactionsList } from "components/screens/SendScreen/components";
+import { RecentContactsList } from "components/screens/SendScreen/components";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -29,7 +29,7 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
-describe("RecentTransactionsList", () => {
+describe("RecentContactsList", () => {
   const mockTransactions = [
     { id: "1", address: "GA7M...63FC" },
     { id: "2", address: "CB2G...KFQR", name: "Test Contact" },
@@ -40,22 +40,22 @@ describe("RecentTransactionsList", () => {
     jest.clearAllMocks();
   });
 
-  it("renders recent transactions list", () => {
+  it("renders recent contacts list", () => {
     const { getByText, getByTestId } = renderWithProviders(
-      <RecentTransactionsList
+      <RecentContactsList
         transactions={mockTransactions}
         onContactPress={mockOnContactPress}
-        testID="recent-transactions"
+        testID="recent-contacts"
       />,
     );
 
-    expect(getByTestId("recent-transactions")).toBeTruthy();
+    expect(getByTestId("recent-contacts")).toBeTruthy();
     expect(getByText("Recent")).toBeTruthy();
   });
 
-  it("returns null when no transactions are provided", () => {
+  it("returns null when no contacts are provided", () => {
     const result = renderWithProviders(
-      <RecentTransactionsList
+      <RecentContactsList
         transactions={[]}
         onContactPress={mockOnContactPress}
       />,
