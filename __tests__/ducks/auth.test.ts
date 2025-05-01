@@ -151,7 +151,6 @@ describe("auth duck", () => {
     useAuthenticationStore.getState().refreshActiveAccount = jest.fn();
     useAuthenticationStore.getState().setNavigationRef = jest.fn();
     useAuthenticationStore.getState().navigateToLockScreen = jest.fn();
-    useAuthenticationStore.getState().wipeAllDataForDebug = jest.fn();
     useAuthenticationStore.getState().createAccount = jest.fn();
     useAuthenticationStore.getState().renameAccount = jest.fn();
     useAuthenticationStore.getState().getAllAccounts = jest.fn();

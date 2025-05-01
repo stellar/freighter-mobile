@@ -213,7 +213,7 @@
     "verifyPasswordTemplateTitle": "Enter your password",
     "verifyPasswordTemplateDescription": "Enter your account password to verify your account.",
     "actions": {
-      "createNewAddress": "Create New Address"
+      "createNewWallet": "Create New Wallet"
     }
   },
   "logout": "Log out",

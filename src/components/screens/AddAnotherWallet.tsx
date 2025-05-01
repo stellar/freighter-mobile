@@ -42,7 +42,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t, themeColors]);
+  }, [navigation, themeColors]);
 
   const handleCreateAccount = () => {
     navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);

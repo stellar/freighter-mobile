@@ -1,5 +1,10 @@
 import React from "react";
-import { View, Modal as RNModal, TouchableWithoutFeedback } from "react-native";
+import {
+  View,
+  Modal as RNModal,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+} from "react-native";
 
 interface ModalProps {
   visible: boolean;
@@ -24,7 +29,7 @@ const Modal: React.FC<ModalProps> = ({
       onClose();
     }}
   >
-    <>
+    <KeyboardAvoidingView behavior="padding" className="flex-1">
       <TouchableWithoutFeedback
         onPress={() => {
           if (closeOnOverlayPress) {
@@ -40,7 +45,7 @@ const Modal: React.FC<ModalProps> = ({
           {children}
         </View>
       </View>
-    </>
+    </KeyboardAvoidingView>
   </RNModal>
 );
 

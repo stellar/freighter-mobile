@@ -209,7 +209,7 @@
     "verifyPasswordTemplateTitle": "Digite sua senha",
     "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
     "actions": {
-      "createNewAddress": "Criar novo endereço"
+      "createNewWallet": "Criar nova carteira"
     }
   },
   "logout": "Sair",

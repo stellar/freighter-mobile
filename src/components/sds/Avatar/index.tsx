@@ -1,6 +1,7 @@
 /* eslint-disable react/no-array-index-key */
 import { Canvas, Rect } from "@shopify/react-native-skia";
 import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
 import {
   HSVtoRGB,
   publicKeyToBytes,
@@ -9,7 +10,7 @@ import {
 } from "helpers/stellarIdenticon";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View, Text } from "react-native";
+import { View } from "react-native";
 
 // Constants for sizes
 export const AvatarSizes = {

@@ -56,11 +56,11 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       error={error}
       isLoading={isCreatingAccount}
       handleContinue={handleUnlock}
-      continueButtonText={t("verifyPasswordScreen.actions.createNewAddress")}
+      continueButtonText={t("verifyPasswordScreen.actions.createNewWallet")}
       title={t("verifyPasswordScreen.verifyPasswordTemplateTitle")}
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}
-      insets={{ top: false }}
+      insets={{ top: false, bottom: false }}
     />
   );
 };

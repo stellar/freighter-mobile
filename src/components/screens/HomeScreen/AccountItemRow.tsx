@@ -30,7 +30,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
 
   const truncatedPublicKey = truncatePublicKey({
     publicKey: account.publicKey,
-    length: 5,
   });
 
   const icons = Platform.select({

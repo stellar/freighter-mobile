@@ -49,7 +49,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
     <Modal
       visible={modalVisible}
       onClose={() => setModalVisible(false)}
-      closeOnOverlayPress={!isRenamingAccount}
+      closeOnOverlayPress={false}
     >
       <View className="justify-center items-center">
         <Avatar size="md" publicAddress={account?.publicKey ?? ""} />

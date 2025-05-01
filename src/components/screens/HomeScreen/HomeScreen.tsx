@@ -103,7 +103,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   } = useAuthenticationStore();
   const { themeColors } = useColors();
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [renameAccountModalVisible, setRenameAccountModalVisible] =
+    useState(false);
   const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
@@ -169,13 +170,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleRenameAccount = async (newAccountName: string) => {
-    if (!accountToRename) return;
+    if (!accountToRename || !account) return;
 
     await renameAccount({
       accountName: newAccountName,
-      publicKey: accountToRename?.publicKey ?? "",
+      publicKey: accountToRename.publicKey,
     });
-    setModalVisible(false);
+    setRenameAccountModalVisible(false);
   };
 
   const handleSelectAccount = async (publicKey: string) => {
@@ -190,14 +191,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleOpenRenameAccountModal = (selectedAccount: Account) => {
     setAccountToRename(selectedAccount);
 
-    setModalVisible(true);
+    setRenameAccountModalVisible(true);
   };
 
   return (
     <BaseLayout insets={{ bottom: false }}>
       <RenameAccountModal
-        modalVisible={modalVisible}
-        setModalVisible={setModalVisible}
+        modalVisible={renameAccountModalVisible}
+        setModalVisible={setRenameAccountModalVisible}
         handleRenameAccount={handleRenameAccount}
         account={accountToRename!}
         isRenamingAccount={isRenamingAccount}
