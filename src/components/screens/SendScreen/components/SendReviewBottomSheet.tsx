@@ -112,7 +112,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </Text>
           </View>
           <Text md medium secondary>
-            {t("transactionAmountScreen.details.none")}
+            {t("common.none")}
           </Text>
         </View>
         <View className="flex-row items-center justify-between">

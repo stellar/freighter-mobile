@@ -1,3 +1,4 @@
+import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
 import Avatar from "components/sds/Avatar";
@@ -44,7 +45,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
   const handleViewOnExplorer = () => {
     // TODO: In the future, this could open a web link to stellar.expert with the transaction details
-    console.log("View on stellar.expert");
+    console.log(t("transactionDetailsBottomSheet.viewOnExpert"));
   };
 
   return (
@@ -121,14 +122,44 @@ const TransactionDetailsBottomSheet: React.FC<
 
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
-            <Icon.Route size={16} color={themeColors.foreground.primary} />
+            <Icon.File02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionDetailsBottomSheet.fee")}
+              {t("transactionAmountScreen.details.memo")}
             </Text>
           </View>
-          <Text md medium>
-            0.00001 XLM
+          <Text md medium secondary>
+            {t("common.none")}
           </Text>
+        </View>
+
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-[8px]">
+            <Icon.Route size={16} color={themeColors.foreground.primary} />
+            <Text md medium secondary>
+              {t("transactionAmountScreen.details.fee")}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-[4px]">
+            <StellarLogo width={16} height={16} />
+            <Text md medium>
+              {formatAssetAmount("0.00001", "XLM")}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-[8px]">
+            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
+            <Text md medium secondary>
+              {t("transactionAmountScreen.details.xdr")}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-[8px]">
+            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            <Text md medium>
+              {t("transactionAmountScreen.details.xdrPlaceholder")}
+            </Text>
+          </View>
         </View>
       </View>
 
