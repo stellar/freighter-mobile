@@ -37,7 +37,6 @@ export const SETTINGS_ROUTES = {
 } as const;
 
 export const SEND_PAYMENT_ROUTES = {
-  SEND_PAYMENT_SCREEN: "SendPaymentScreen",
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
   TRANSACTION_AMOUNT_SCREEN: "TransactionAmountScreen",
@@ -96,7 +95,6 @@ export type SettingsStackParamList = {
 };
 
 export type SendPaymentStackParamList = {
-  [SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: {
     address: string;

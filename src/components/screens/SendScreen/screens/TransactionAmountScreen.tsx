@@ -60,7 +60,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const navigateToSendScreen = () => {
     try {
-      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN);
+      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
     } catch (error) {
       navigation.popToTop();
     }
