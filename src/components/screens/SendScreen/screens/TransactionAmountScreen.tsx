@@ -195,11 +195,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               <BalanceRow
                 balance={selectedBalance}
                 rightContent={
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onPress={() => navigation.goBack()}
-                  >
+                  <Button secondary lg onPress={() => navigation.goBack()}>
                     {t("common.edit")}
                   </Button>
                 }
@@ -211,11 +207,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <ContactRow
               address={address}
               rightElement={
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onPress={navigateToSendScreen}
-                >
+                <Button secondary lg onPress={navigateToSendScreen}>
                   {t("common.edit")}
                 </Button>
               }

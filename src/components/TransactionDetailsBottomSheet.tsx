@@ -5,6 +5,7 @@ import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { TRANSACTION_RECOMMENDED_FEE } from "config/constants";
 import { PricedBalance } from "config/types";
 import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -144,7 +145,8 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount("0.00001", FEE_CURRENCY)}
+              {/* TODO: get the fee amount from the transaction */}
+              {formatAssetAmount(TRANSACTION_RECOMMENDED_FEE, FEE_CURRENCY)}
             </Text>
           </View>
         </View>

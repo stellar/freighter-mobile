@@ -4,6 +4,10 @@ import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndicator";
 import { Text } from "components/sds/Typography";
+import {
+  NATIVE_TOKEN_CODE,
+  TRANSACTION_RECOMMENDED_FEE,
+} from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
@@ -16,15 +20,12 @@ type TransactionFeeScreenProps = NativeStackScreenProps<
 
 type CongestionLevel = "low" | "medium" | "high";
 
-const NATIVE_TOKEN_CODE = "XLM";
-const RECOMMENDED_FEE = "0.0250005";
-
 const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   navigation,
   route,
 }) => {
   const { t } = useAppTranslation();
-  const [fee, setFee] = useState(RECOMMENDED_FEE);
+  const [fee, setFee] = useState(TRANSACTION_RECOMMENDED_FEE);
   const { tokenCode = NATIVE_TOKEN_CODE } = route.params || {};
   const [congestionLevel] = useState<CongestionLevel>("low");
 
@@ -34,7 +35,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   };
 
   const handleSetRecommended = () => {
-    setFee(RECOMMENDED_FEE);
+    setFee(TRANSACTION_RECOMMENDED_FEE);
   };
 
   return (
@@ -47,7 +48,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
               value={fee}
               onChangeText={setFee}
               keyboardType="numeric"
-              placeholder={RECOMMENDED_FEE}
+              placeholder={TRANSACTION_RECOMMENDED_FEE}
               rightElement={
                 <Text md secondary>
                   {tokenCode}

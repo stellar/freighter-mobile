@@ -5,6 +5,10 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import {
+  NATIVE_TOKEN_CODE,
+  TRANSACTION_RECOMMENDED_FEE,
+} from "config/constants";
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { isLiquidityPool } from "helpers/balances";
@@ -16,8 +20,6 @@ import React from "react";
 import { View } from "react-native";
 
 // Fees are always paid in XLM
-const FEE_CURRENCY = "XLM";
-const DEFAULT_FEE_AMOUNT = "0.025";
 
 type SendReviewBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
@@ -36,7 +38,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   address,
   account,
   publicKey,
-  feeAmount = DEFAULT_FEE_AMOUNT,
+  feeAmount = TRANSACTION_RECOMMENDED_FEE,
   onCancel,
   onConfirm,
 }) => {
@@ -125,7 +127,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(feeAmount, FEE_CURRENCY)}
+              {formatAssetAmount(feeAmount, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>

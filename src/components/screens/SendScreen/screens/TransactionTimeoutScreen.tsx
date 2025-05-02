@@ -3,6 +3,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_TRANSACTION_TIMEOUT } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useState } from "react";
@@ -13,14 +14,13 @@ type TransactionTimeoutScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN
 >;
 
-// Recommended transaction timeout in seconds
-const RECOMMENDED_TIMEOUT = "180";
-
 const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const [timeout, setTimeout] = useState(RECOMMENDED_TIMEOUT);
+  const [timeout, setTimeout] = useState(
+    DEFAULT_TRANSACTION_TIMEOUT.toString(),
+  );
 
   const handleSave = () => {
     // TODO: Implement save functionality
@@ -28,7 +28,7 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   };
 
   const handleSetRecommended = () => {
-    setTimeout(RECOMMENDED_TIMEOUT);
+    setTimeout(DEFAULT_TRANSACTION_TIMEOUT.toString());
   };
 
   return (
@@ -40,7 +40,7 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
             value={timeout}
             onChangeText={setTimeout}
             keyboardType="numeric"
-            placeholder={RECOMMENDED_TIMEOUT}
+            placeholder={DEFAULT_TRANSACTION_TIMEOUT.toString()}
             rightElement={
               <Text md secondary>
                 {t("transactionTimeoutScreen.seconds")}
