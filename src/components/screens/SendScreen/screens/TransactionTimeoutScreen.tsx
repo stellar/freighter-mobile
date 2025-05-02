@@ -13,11 +13,14 @@ type TransactionTimeoutScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN
 >;
 
+// Recommended transaction timeout in seconds
+const RECOMMENDED_TIMEOUT = "180";
+
 const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const [timeout, setTimeout] = useState("180");
+  const [timeout, setTimeout] = useState(RECOMMENDED_TIMEOUT);
 
   const handleSave = () => {
     // TODO: Implement save functionality
@@ -25,7 +28,7 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   };
 
   const handleSetRecommended = () => {
-    setTimeout("180");
+    setTimeout(RECOMMENDED_TIMEOUT);
   };
 
   return (
@@ -37,7 +40,7 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
             value={timeout}
             onChangeText={setTimeout}
             keyboardType="numeric"
-            placeholder="180"
+            placeholder={RECOMMENDED_TIMEOUT}
             rightElement={
               <Text md secondary>
                 {t("transactionTimeoutScreen.seconds")}
@@ -58,4 +61,4 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   );
 };
 
-export default TransactionTimeoutScreen; 
+export default TransactionTimeoutScreen;
