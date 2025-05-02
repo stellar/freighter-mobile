@@ -7,20 +7,22 @@ import { Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
 import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
 type TransactionDetailsBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
-  tokenValue: string;
+  tokenAmount: string;
   address: string;
 };
 
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
-> = ({ selectedBalance, tokenValue, address }) => {
+> = ({ selectedBalance, tokenAmount, address }) => {
   const { themeColors } = useColors();
+  const { t } = useAppTranslation();
   const slicedAddress = truncateAddress(address, 4, 4);
 
   // TODO: Get current date and time for the transaction
@@ -51,7 +53,8 @@ const TransactionDetailsBottomSheet: React.FC<
         {selectedBalance && <AssetIcon token={selectedBalance} size="lg" />}
         <View>
           <Text md medium primary>
-            {`Sent ${selectedBalance?.tokenCode}`}
+            {t("transactionDetailsBottomSheet.sent")}{" "}
+            {selectedBalance?.tokenCode}
           </Text>
           <View className="flex-row items-center gap-[4px]">
             <Icon.ArrowCircleUp size={16} color={themeColors.text.secondary} />
@@ -66,12 +69,12 @@ const TransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
+              {formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
             </Text>
             <Text md medium secondary>
               {selectedBalance?.currentPrice
                 ? formatFiatAmount(
-                    new BigNumber(tokenValue).times(
+                    new BigNumber(tokenAmount).times(
                       selectedBalance.currentPrice,
                     ),
                   )
@@ -96,7 +99,7 @@ const TransactionDetailsBottomSheet: React.FC<
               {slicedAddress}
             </Text>
             <Text md medium secondary>
-              First time send
+              {t("transactionDetailsBottomSheet.firstTimeSend")}
             </Text>
           </View>
           <Avatar size="lg" publicAddress={address} />
@@ -108,11 +111,11 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              Status
+              {t("transactionDetailsBottomSheet.status")}
             </Text>
           </View>
           <Text md medium style={{ color: themeColors.status.success }}>
-            Success
+            {t("transactionDetailsBottomSheet.statusSuccess")}
           </Text>
         </View>
 
@@ -120,11 +123,15 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              Rate
+              {t("transactionDetailsBottomSheet.rate")}
             </Text>
           </View>
           <Text md medium>
-            {`1 ${selectedBalance?.tokenCode} ≈ ${selectedBalance?.currentPrice ? (1 / Number(selectedBalance.currentPrice)).toFixed(3) : "--"} USDC`}
+            1 {selectedBalance?.tokenCode} ≈{" "}
+            {selectedBalance?.currentPrice
+              ? (1 / Number(selectedBalance.currentPrice)).toFixed(3)
+              : "--"}{" "}
+            USDC
           </Text>
         </View>
 
@@ -132,7 +139,7 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              Fee
+              {t("transactionDetailsBottomSheet.fee")}
             </Text>
           </View>
           <Text md medium>
@@ -142,8 +149,8 @@ const TransactionDetailsBottomSheet: React.FC<
       </View>
 
       <Button
-        variant="tertiary"
-        size="lg"
+        tertiary
+        lg
         onPress={handleViewOnExplorer}
         icon={
           <Icon.LinkExternal01
@@ -153,7 +160,7 @@ const TransactionDetailsBottomSheet: React.FC<
         }
         iconPosition={IconPosition.RIGHT}
       >
-        View on stellar.expert
+        {t("transactionDetailsBottomSheet.viewOnExpert")}
       </Button>
     </View>
   );

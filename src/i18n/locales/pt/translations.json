@@ -261,5 +261,14 @@
     "viewTransaction": "Ver transação",
     "wasSentTo": " foi enviado para ",
     "to": " para "
+  },
+  "transactionDetailsBottomSheet": {
+    "sent": "Enviado",
+    "firstTimeSend": "Primeiro envio",
+    "status": "Status",
+    "statusSuccess": "Sucesso",
+    "rate": "Taxa",
+    "fee": "Comissão",
+    "viewOnExpert": "Ver no stellar.expert"
   }
 }

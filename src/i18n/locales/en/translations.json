@@ -266,5 +266,14 @@
     "viewTransaction": "View transaction",
     "wasSentTo": " was sent to ",
     "to": " to "
+  },
+  "transactionDetailsBottomSheet": {
+    "sent": "Sent",
+    "firstTimeSend": "First time sent",
+    "status": "Status",
+    "statusSuccess": "Success",
+    "rate": "Rate",
+    "fee": "Fee",
+    "viewOnExpert": "View on stellar.expert"
   }
 }

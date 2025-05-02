@@ -41,7 +41,7 @@ const TransactionProcessingScreen: React.FC<
   }, [navigation]);
 
   // Simulate transaction completion
-  // This will be replaced with actual transaction logic in the future
+  // TODO: This will be replaced with actual transaction logic in the future
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsCompleted(true);
@@ -137,7 +137,7 @@ const TransactionProcessingScreen: React.FC<
         customContent={
           <TransactionDetailsBottomSheet
             selectedBalance={selectedBalance}
-            tokenValue={tokenValue}
+            tokenAmount={tokenValue}
             address={address}
           />
         }
