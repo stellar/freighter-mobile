@@ -114,24 +114,8 @@ const TransactionDetailsBottomSheet: React.FC<
               {t("transactionDetailsBottomSheet.status")}
             </Text>
           </View>
-          <Text md medium style={{ color: themeColors.status.success }}>
+          <Text md medium color={themeColors.status.success}>
             {t("transactionDetailsBottomSheet.statusSuccess")}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionDetailsBottomSheet.rate")}
-            </Text>
-          </View>
-          <Text md medium>
-            1 {selectedBalance?.tokenCode} ≈{" "}
-            {selectedBalance?.currentPrice
-              ? (1 / Number(selectedBalance.currentPrice)).toFixed(3)
-              : "--"}{" "}
-            USDC
           </Text>
         </View>
 
