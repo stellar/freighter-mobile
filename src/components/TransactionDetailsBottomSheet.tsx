@@ -69,11 +69,13 @@ const TransactionDetailsBottomSheet: React.FC<
               {formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
             </Text>
             <Text md medium secondary>
-              {formatFiatAmount(
-                new BigNumber(tokenValue).times(
-                  selectedBalance?.currentPrice || 0,
-                ),
-              )}
+              {selectedBalance?.currentPrice
+                ? formatFiatAmount(
+                    new BigNumber(tokenValue).times(
+                      selectedBalance.currentPrice,
+                    ),
+                  )
+                : "--"}
             </Text>
           </View>
           {selectedBalance && <AssetIcon token={selectedBalance} size="lg" />}
@@ -122,7 +124,7 @@ const TransactionDetailsBottomSheet: React.FC<
             </Text>
           </View>
           <Text md medium>
-            {`1 ${selectedBalance?.tokenCode} ≈ ${selectedBalance?.currentPrice ? (1 / Number(selectedBalance.currentPrice)).toFixed(3) : "0.000"} USDC`}
+            {`1 ${selectedBalance?.tokenCode} ≈ ${selectedBalance?.currentPrice ? (1 / Number(selectedBalance.currentPrice)).toFixed(3) : "--"} USDC`}
           </Text>
         </View>
 

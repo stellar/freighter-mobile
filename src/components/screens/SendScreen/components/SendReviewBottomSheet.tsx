@@ -52,11 +52,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
                   {formatAssetAmount(tokenValue, selectedBalance.tokenCode)}
                 </Text>
                 <Text md medium secondary>
-                  {formatFiatAmount(
-                    new BigNumber(tokenValue).times(
-                      selectedBalance.currentPrice || 0,
-                    ),
-                  )}
+                  {selectedBalance.currentPrice
+                    ? formatFiatAmount(
+                        new BigNumber(tokenValue).times(
+                          selectedBalance.currentPrice,
+                        ),
+                      )
+                    : "--"}
                 </Text>
               </View>
             </View>
