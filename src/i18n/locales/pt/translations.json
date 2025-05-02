@@ -6,7 +6,8 @@
   "common": {
     "edit": "Editar",
     "close": "Fechar",
-    "paste": "Colar"
+    "paste": "Colar",
+    "done": "Concluído"
   },
   "home": {
     "title": "Início",
@@ -252,5 +253,13 @@
     "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível",
     "cancel": "Cancelar",
     "confirm": "Confirmar"
+  },
+  "transactionProcessingScreen": {
+    "sending": "Enviando",
+    "sent": "Enviado!",
+    "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto",
+    "viewTransaction": "Ver transação",
+    "wasSentTo": " foi enviado para ",
+    "to": " para "
   }
 }

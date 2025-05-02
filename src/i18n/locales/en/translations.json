@@ -6,7 +6,8 @@
   "common": {
     "edit": "Edit",
     "close": "Close",
-    "paste": "Paste"
+    "paste": "Paste",
+    "done": "Done"
   },
   "home": {
     "title": "Home",
@@ -260,6 +261,10 @@
   },
   "transactionProcessingScreen": {
     "sending": "Sending",
-    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
+    "sent": "Sent!",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute",
+    "viewTransaction": "View transaction",
+    "wasSentTo": " was sent to ",
+    "to": " to "
   }
 }

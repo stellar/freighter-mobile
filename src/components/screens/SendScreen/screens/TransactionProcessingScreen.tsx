@@ -71,7 +71,7 @@ const TransactionProcessingScreen: React.FC<
 
             <Display xs medium>
               {isCompleted
-                ? t("transactionProcessingScreen.sent", "Sent!")
+                ? t("transactionProcessingScreen.sent")
                 : t("transactionProcessingScreen.sending")}
             </Display>
 
@@ -93,7 +93,9 @@ const TransactionProcessingScreen: React.FC<
                     {formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
                   </Text>
                   <Text lg medium secondary>
-                    {isCompleted ? " was sent to " : " to "}
+                    {isCompleted
+                      ? t("transactionProcessingScreen.wasSentTo")
+                      : t("transactionProcessingScreen.to")}
                   </Text>
                   <Text xl medium primary>
                     {slicedAddress}
@@ -111,13 +113,10 @@ const TransactionProcessingScreen: React.FC<
               size="xl"
               onPress={handleViewTransaction}
             >
-              {t(
-                "transactionProcessingScreen.viewTransaction",
-                "View transaction",
-              )}
+              {t("transactionProcessingScreen.viewTransaction")}
             </Button>
             <Button tertiary xl onPress={handleClose}>
-              {t("common.done", "Done")}
+              {t("common.done")}
             </Button>
           </View>
         ) : (
