@@ -1,3 +1,4 @@
+import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
 import Avatar from "components/sds/Avatar";
@@ -14,12 +15,17 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
+// Fees are always paid in XLM
+const FEE_CURRENCY = "XLM";
+const DEFAULT_FEE_AMOUNT = "0.025";
+
 type SendReviewBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
   tokenValue: string;
   address: string;
   account: ActiveAccount | null;
   publicKey: string | undefined;
+  feeAmount?: string;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
@@ -30,6 +36,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   address,
   account,
   publicKey,
+  feeAmount = DEFAULT_FEE_AMOUNT,
   onCancel,
   onConfirm,
 }) => {
@@ -116,9 +123,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </Text>
           </View>
           <View className="flex-row items-center gap-[4px]">
-            {selectedBalance && <AssetIcon token={selectedBalance} size="sm" />}
+            <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount("0.025", selectedBalance?.tokenCode)}
+              {formatAssetAmount(feeAmount, FEE_CURRENCY)}
             </Text>
           </View>
         </View>
