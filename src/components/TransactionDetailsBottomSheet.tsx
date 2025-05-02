@@ -19,6 +19,7 @@ type TransactionDetailsBottomSheetProps = {
   address: string;
 };
 
+const FEE_CURRENCY = "XLM";
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
 > = ({ selectedBalance, tokenAmount, address }) => {
@@ -54,8 +55,9 @@ const TransactionDetailsBottomSheet: React.FC<
         {selectedBalance && <AssetIcon token={selectedBalance} size="lg" />}
         <View>
           <Text md medium primary>
-            {t("transactionDetailsBottomSheet.sent")}{" "}
-            {selectedBalance?.tokenCode}
+            {t("transactionDetailsBottomSheet.sent", {
+              tokenCode: selectedBalance?.tokenCode,
+            })}
           </Text>
           <View className="flex-row items-center gap-[4px]">
             <Icon.ArrowCircleUp size={16} color={themeColors.text.secondary} />
@@ -142,7 +144,7 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount("0.00001", "XLM")}
+              {formatAssetAmount("0.00001", FEE_CURRENCY)}
             </Text>
           </View>
         </View>

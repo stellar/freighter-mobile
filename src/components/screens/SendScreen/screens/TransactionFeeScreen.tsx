@@ -67,7 +67,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
             {t("transactionFeeScreen.setRecommended")}
           </Button>
           <Button tertiary lg onPress={handleSave}>
-            {t("transactionFeeScreen.save")}
+            {t("common.save")}
           </Button>
         </View>
       </View>

@@ -53,7 +53,7 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
             {t("transactionTimeoutScreen.setRecommended")}
           </Button>
           <Button tertiary lg onPress={handleSave}>
-            {t("transactionTimeoutScreen.save")}
+            {t("common.save")}
           </Button>
         </View>
       </View>

@@ -8,7 +8,14 @@
     "close": "Close",
     "paste": "Paste",
     "done": "Done",
-    "none": "None"
+    "none": "None",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "save": "Save",
+    "add": "Add",
+    "remove": "Remove",
+    "copied": "Copied to clipboard!"
   },
   "home": {
     "title": "Home",
@@ -165,11 +172,9 @@
     "tokenAddressCopied": "Token address copied!",
     "popular": "Popular",
     "native": "Native",
-    "add": "Add",
     "onYourList": "On your list",
     "addAsset": "Add Asset",
     "disclaimer": "Allow asset to be viewable from your wallet. Only add assets you recognize and trust.",
-    "cancel": "Cancel",
     "toastSuccess": "{{assetCode}} successfully added as an asset",
     "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
@@ -179,13 +184,10 @@
     "copyAddress": "Copy address",
     "hideAsset": "Hide asset",
     "unhideAsset": "Unhide asset",
-    "removeAsset": "Remove asset",
     "tokenAddressCopied": "Token address copied!",
     "removeAssetModal": {
       "title": "Remove {{assetCode}}?",
-      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later.",
-      "cancel": "Cancel",
-      "remove": "Remove"
+      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later."
     }
   },
   "sendPaymentScreen": {
@@ -222,31 +224,26 @@
   },
   "logout": "Log out",
   "clipboard": {
-    "copied": "Copied to clipboard!",
     "failed": "Failed to copy to clipboard"
   },
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Connection Request",
     "disclaimer": "Allow site to view your wallet address, balance, activity and request approval for transactions",
-    "cancel": "Cancel",
     "connect": "Connect"
   },
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Type your memo",
-    "optional": "(optional)",
-    "save": "Save"
+    "optional": "(optional)"
   },
   "transactionTimeoutScreen": {
     "title": "Transaction Timeout",
     "seconds": "seconds",
-    "setRecommended": "Set recommended",
-    "save": "Save"
+    "setRecommended": "Set recommended"
   },
   "transactionFeeScreen": {
     "title": "Transaction Fee",
     "setRecommended": "Set recommended",
-    "save": "Save",
     "congestion": {
       "low": "Low congestion",
       "medium": "Medium congestion",
@@ -256,9 +253,7 @@
   "transactionReviewScreen": {
     "title": "You are sending",
     "previousSend": "1 previous send",
-    "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible",
-    "cancel": "Cancel",
-    "confirm": "Confirm"
+    "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible"
   },
   "transactionProcessingScreen": {
     "sending": "Sending",
@@ -269,7 +264,7 @@
     "to": " to "
   },
   "transactionDetailsBottomSheet": {
-    "sent": "Sent",
+    "sent": "Sent {{tokenCode}}",
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",

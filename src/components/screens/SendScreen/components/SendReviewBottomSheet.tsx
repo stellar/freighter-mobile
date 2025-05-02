@@ -152,12 +152,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
           <Button onPress={onCancel} secondary xl>
-            {t("transactionReviewScreen.cancel")}
+            {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">
           <Button onPress={onConfirm} tertiary xl>
-            {t("transactionReviewScreen.confirm")}
+            {t("common.confirm")}
           </Button>
         </View>
       </View>

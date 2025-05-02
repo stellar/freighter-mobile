@@ -26,7 +26,7 @@ export const SendPaymentStackNavigator = () => {
       }}
     >
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN}
+        name={SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN}
         component={SendSearchContacts}
         options={{
           headerTitle: t("sendPaymentScreen.title"),

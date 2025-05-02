@@ -8,7 +8,14 @@
     "close": "Fechar",
     "paste": "Colar",
     "done": "Concluído",
-    "none": "Nenhum"
+    "none": "Nenhum",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "continue": "Continuar",
+    "save": "Salvar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "copied": "Copiado para a área de transferência!"
   },
   "home": {
     "title": "Início",
@@ -82,7 +89,6 @@
     "forgotPasswordButtonText": "Esqueci minha senha"
   },
   "onboarding": {
-    "continue": "Continuar",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
     "skip": "Pular",
@@ -161,11 +167,9 @@
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
     "native": "Nativo",
-    "add": "Adicionar",
     "onYourList": "Na sua lista",
     "addAsset": "Adicionar Ativo",
     "disclaimer": "Permitir que o ativo seja visível na sua carteira. Adicione apenas ativos que você reconheça e confie.",
-    "cancel": "Cancelar",
     "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
     "toastError": "Erro ao adicionar ativo {{assetCode}}",
     "emptyState": "Nenhum ativo encontrado",
@@ -175,13 +179,10 @@
     "copyAddress": "Copiar endereço",
     "hideAsset": "Ocultar ativo",
     "unhideAsset": "Mostrar ativo",
-    "removeAsset": "Remover ativo",
     "tokenAddressCopied": "Endereço do token copiado!",
     "removeAssetModal": {
       "title": "Remover {{assetCode}}?",
-      "message": "Tem certeza que deseja remover este ativo?\nDepois de remover um ativo, você terá que adicioná-lo novamente mais tarde.",
-      "cancel": "Cancelar",
-      "remove": "Remover"
+      "message": "Tem certeza que deseja remover este ativo?\nDepois de remover um ativo, você terá que adicioná-lo novamente mais tarde."
     }
   },
   "sendPaymentScreen": {
@@ -217,31 +218,26 @@
   },
   "logout": "Sair",
   "clipboard": {
-    "copied": "Copiado para a área de transferência!",
     "failed": "Falha ao copiar para a área de transferência"
   },
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Solicitação de conexão",
     "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
-    "cancel": "Cancelar",
     "connect": "Conectar"
   },
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Digite seu memo",
-    "optional": "(opcional)",
-    "save": "Salvar"
+    "optional": "(opcional)"
   },
   "transactionTimeoutScreen": {
     "title": "Tempo Limite da Transação",
     "seconds": "segundos",
-    "setRecommended": "Definir recomendado",
-    "save": "Salvar"
+    "setRecommended": "Definir recomendado"
   },
   "transactionFeeScreen": {
     "title": "Taxa da Transação",
     "setRecommended": "Definir recomendado",
-    "save": "Salvar",
     "congestion": {
       "low": "Congestionamento baixo",
       "medium": "Congestionamento médio",
@@ -251,9 +247,7 @@
   "transactionReviewScreen": {
     "title": "Você está enviando",
     "previousSend": "1 envio anterior",
-    "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível",
-    "cancel": "Cancelar",
-    "confirm": "Confirmar"
+    "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível"
   },
   "transactionProcessingScreen": {
     "sending": "Enviando",
@@ -264,7 +258,7 @@
     "to": " para "
   },
   "transactionDetailsBottomSheet": {
-    "sent": "Enviado",
+    "sent": "Enviado {{tokenCode}}",
     "firstTimeSend": "Primeiro envio",
     "status": "Status",
     "statusSuccess": "Sucesso",

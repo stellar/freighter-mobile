@@ -35,7 +35,7 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
         />
         <View className="mt-4 mb-4">
           <Button tertiary lg onPress={handleSave}>
-            {t("transactionMemoScreen.save")}
+            {t("common.save")}
           </Button>
         </View>
       </View>

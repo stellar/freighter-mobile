@@ -16,7 +16,7 @@ import { TouchableOpacity, View } from "react-native";
 
 type SendSearchContactsProps = NativeStackScreenProps<
   SendPaymentStackParamList,
-  typeof SEND_PAYMENT_ROUTES.SEND_PAYMENT_SCREEN
+  typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
 
 /**
