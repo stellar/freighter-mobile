@@ -39,11 +39,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
           <ContactRow
             address={address}
             rightElement={
-              <Button
-                variant="secondary"
-                size="lg"
-                onPress={() => navigation.goBack()}
-              >
+              <Button secondary lg onPress={() => navigation.goBack()}>
                 {t("common.edit")}
               </Button>
             }

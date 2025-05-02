@@ -108,11 +108,7 @@ const TransactionProcessingScreen: React.FC<
 
         {isCompleted ? (
           <View className="gap-[16px]">
-            <Button
-              variant="secondary"
-              size="xl"
-              onPress={handleViewTransaction}
-            >
+            <Button secondary xl onPress={handleViewTransaction}>
               {t("transactionProcessingScreen.viewTransaction")}
             </Button>
             <Button tertiary xl onPress={handleClose}>
