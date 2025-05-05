@@ -251,11 +251,12 @@ const initializeStore = async (
   setState: (state: Partial<AuthState>) => void,
 ) => {
   try {
-    const activeNetwork = (await dataStorage.getItem(
+    const activeNetwork = await dataStorage.getItem(
       STORAGE_KEYS.ACTIVE_NETWORK,
-    )) as NETWORKS | null;
+    );
+
     if (activeNetwork) {
-      setState({ network: activeNetwork });
+      setState({ network: activeNetwork as NETWORKS });
     }
   } catch (error) {
     logger.error("initializeStore", "Failed to load active network", error);
