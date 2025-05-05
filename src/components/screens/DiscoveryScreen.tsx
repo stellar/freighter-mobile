@@ -1,5 +1,7 @@
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
+import Icon from "components/sds/Icon";
+import { Input } from "components/sds/Input";
 import { Display } from "components/sds/Typography";
 import {
   useWalletKitStore,
@@ -9,8 +11,10 @@ import {
   WalletKitEvent,
 } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
-import React from "react";
-import { View } from "react-native";
+import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
+import React, { useState } from "react";
+import { TouchableOpacity, View } from "react-native";
 
 const testConnectionEvent: WalletKitEvent = {
   type: WalletKitEventTypes.SESSION_PROPOSAL,
@@ -148,6 +152,25 @@ const testRequestEvent: WalletKitEvent = {
 
 export const DiscoveryScreen = () => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const { getClipboardText } = useClipboard();
+
+  const [uri, setUri] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleClearUri = () => {
+    setUri("");
+    setError("");
+  };
+
+  const handlePasteFromClipboard = () => {
+    getClipboardText().then(setUri);
+  };
+
+  const handleConnect = () => {
+    setError("Error connecting to wallet");
+  };
 
   return (
     <BaseLayout insets={{ bottom: false }}>
@@ -155,7 +178,58 @@ export const DiscoveryScreen = () => {
         {t("discovery.title")}
       </Display>
 
-      <View className="flex-1" />
+      <View className="flex-1 mt-4 gap-4">
+        <Input
+          placeholder="Enter WalletConnect URI"
+          fieldSize="lg"
+          value={uri}
+          onChangeText={setUri}
+          error={error}
+          leftElement={
+            <Icon.Link04
+              size={16}
+              color={themeColors.foreground.primary}
+            />
+          }
+          rightElement={
+          <TouchableOpacity 
+            className="p-3 ml-1 mr-1"  
+            onPress={handleClearUri}   
+          >
+            <Icon.XClose
+              size={16}
+              color={themeColors.foreground.primary}
+            />
+          </TouchableOpacity>
+        
+        }
+          endButton={{
+            content: t("common.paste"),
+            onPress: handlePasteFromClipboard,
+          }}
+        />
+        
+        <Button
+          lg
+          onPress={() => setShowScanner(true)}
+          secondary
+          icon={<Icon.Scan />}
+          iconPosition={IconPosition.LEFT}
+        >
+          Scan QR Code
+        </Button>
+
+        <Button
+          lg
+          onPress={handleConnect}
+          primary
+          icon={<Icon.Link04 color={uri.length === 0 ? themeColors.text.secondary : themeColors.text.primary} />}
+          iconPosition={IconPosition.LEFT}
+          disabled={uri.length === 0}
+        >
+          Connect
+        </Button>
+      </View>
 
       <Button
         primary
