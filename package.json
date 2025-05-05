@@ -87,6 +87,7 @@
     "react-native-screens": "^4.7.0",
     "react-native-scrypt": "^1.2.1",
     "react-native-svg": "^15.11.2",
+    "react-native-vision-camera": "^4.6.4",
     "readable-stream": "1.0.33",
     "stellar-hd-wallet": "^0.0.10",
     "stream-browserify": "^1.0.0",

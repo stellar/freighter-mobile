@@ -187,3 +187,13 @@ jest.mock("@gorhom/bottom-sheet", () => {
     useBottomSheet: () => mockBottomSheet,
   };
 });
+
+jest.mock("react-native-vision-camera", () => ({
+  Camera: "Camera",
+  useCameraDevice: () => null,
+  useCodeScanner: () => ({}),
+  useCameraPermission: () => ({
+    hasPermission: false,
+    requestPermission: jest.fn(),
+  }),
+}));

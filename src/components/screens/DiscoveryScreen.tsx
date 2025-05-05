@@ -1,8 +1,11 @@
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { QRScanner } from "components/QRScanner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Display } from "components/sds/Typography";
+import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import {
   useWalletKitStore,
   WalletKitEventTypes,
@@ -150,7 +153,12 @@ const testRequestEvent: WalletKitEvent = {
   },
 };
 
-export const DiscoveryScreen = () => {
+type DiscoveryScreenProps = BottomTabScreenProps<
+  MainTabStackParamList,
+  typeof MAIN_TAB_ROUTES.TAB_DISCOVERY
+>;
+
+export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
@@ -168,9 +176,28 @@ export const DiscoveryScreen = () => {
     getClipboardText().then(setUri);
   };
 
+  const handleOnRead = (data: string) => {
+    setUri(data);
+    setShowScanner(false);
+  };
+
   const handleConnect = () => {
     setError("Error connecting to wallet");
   };
+
+  if (showScanner) {
+    return (
+      <BaseLayout insets={{ bottom: false }}>
+        <TouchableOpacity
+          onPress={() => setShowScanner(false)}
+          className="w-10 h-10 mb-2 flex items-center justify-center"
+        >
+          <Icon.X size={24} color={themeColors.text.primary} />
+        </TouchableOpacity>
+        <QRScanner onRead={handleOnRead} />
+      </BaseLayout>
+    );
+  }
 
   return (
     <BaseLayout insets={{ bottom: false }}>
@@ -186,29 +213,22 @@ export const DiscoveryScreen = () => {
           onChangeText={setUri}
           error={error}
           leftElement={
-            <Icon.Link04
-              size={16}
-              color={themeColors.foreground.primary}
-            />
+            <Icon.Link04 size={16} color={themeColors.foreground.primary} />
           }
           rightElement={
-          <TouchableOpacity 
-            className="p-3 ml-1 mr-1"  
-            onPress={handleClearUri}   
-          >
-            <Icon.XClose
-              size={16}
-              color={themeColors.foreground.primary}
-            />
-          </TouchableOpacity>
-        
-        }
+            <TouchableOpacity
+              className="p-3 ml-1 mr-1"
+              onPress={handleClearUri}
+            >
+              <Icon.XClose size={16} color={themeColors.foreground.primary} />
+            </TouchableOpacity>
+          }
           endButton={{
             content: t("common.paste"),
             onPress: handlePasteFromClipboard,
           }}
         />
-        
+
         <Button
           lg
           onPress={() => setShowScanner(true)}
@@ -223,7 +243,15 @@ export const DiscoveryScreen = () => {
           lg
           onPress={handleConnect}
           primary
-          icon={<Icon.Link04 color={uri.length === 0 ? themeColors.text.secondary : themeColors.text.primary} />}
+          icon={
+            <Icon.Link04
+              color={
+                uri.length === 0
+                  ? themeColors.text.secondary
+                  : themeColors.text.primary
+              }
+            />
+          }
           iconPosition={IconPosition.LEFT}
           disabled={uri.length === 0}
         >
