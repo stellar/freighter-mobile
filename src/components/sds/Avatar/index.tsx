@@ -17,6 +17,7 @@ export const AvatarSizes = {
   SMALL: "sm",
   MEDIUM: "md",
   LARGE: "lg",
+  EXTRA_LARGE: "xl",
 } as const;
 
 export type AvatarSize = (typeof AvatarSizes)[keyof typeof AvatarSizes];
@@ -39,6 +40,14 @@ const AVATAR_DIMENSIONS = {
     indicatorSize: 10,
   },
   [AvatarSizes.LARGE]: {
+    dimension: 40,
+    fontSize: 16,
+    width: 40,
+    height: 40,
+    iconSize: 16,
+    indicatorSize: 10,
+  },
+  [AvatarSizes.EXTRA_LARGE]: {
     dimension: 48,
     fontSize: 18,
     width: 50,
@@ -113,7 +122,8 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
     const classes: Record<AvatarSize, string> = {
       sm: "w-[26px] h-[26px]",
       md: "w-[38px] h-[38px]",
-      lg: "w-[50px] h-[50px]",
+      lg: "w-[40px] h-[40px]",
+      xl: "w-[50px] h-[50px]",
     };
 
     return classes[size];
@@ -132,6 +142,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
       sm: "w-3 h-3",
       md: "w-4 h-4",
       lg: "w-5 h-5",
+      xl: "w-6 h-6",
     };
 
     return `absolute z-20 -bottom-1 ${indicatorSizeClasses[size]} rounded-full bg-primary justify-center items-center`;
@@ -192,6 +203,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       sm: "text-xs",
       md: "text-base",
       lg: "text-lg",
+      xl: "text-xl",
     };
 
     return classes[size];
@@ -234,6 +246,9 @@ export const Avatar: React.FC<AvatarProps> = ({
             style={{
               width: availableSpace,
               height: availableSpace,
+              transform: [
+                { scale: AVATAR_DIMENSIONS[size].iconSize / availableSpace },
+              ],
             }}
           >
             {matrix.map((row, rowIndex) =>

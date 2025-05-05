@@ -66,11 +66,17 @@ const TEST_USER_NAME = "John Doe";
 
 describe("Avatar", () => {
   describe("Size handling", () => {
-    const sizes = [AvatarSizes.SMALL, AvatarSizes.MEDIUM, AvatarSizes.LARGE];
+    const sizes = [
+      AvatarSizes.SMALL,
+      AvatarSizes.MEDIUM,
+      AvatarSizes.LARGE,
+      AvatarSizes.EXTRA_LARGE,
+    ];
     const sizeClasses = {
       [AvatarSizes.SMALL]: "w-[26px] h-[26px]",
       [AvatarSizes.MEDIUM]: "w-[38px] h-[38px]",
-      [AvatarSizes.LARGE]: "w-[50px] h-[50px]",
+      [AvatarSizes.LARGE]: "w-[40px] h-[40px]",
+      [AvatarSizes.EXTRA_LARGE]: "w-[50px] h-[50px]",
     };
 
     it.each(sizes)("renders with correct size class: %s", (size) => {

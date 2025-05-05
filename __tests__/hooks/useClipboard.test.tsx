@@ -17,7 +17,7 @@ jest.mock("providers/ToastProvider", () => ({
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
-      "clipboard.copied": "Copied to clipboard!",
+      "common.copied": "Copied to clipboard!",
       "clipboard.failed": "Failed to copy to clipboard",
     };
     return translations[key] || key;

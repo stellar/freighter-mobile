@@ -3,6 +3,20 @@
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
+  "common": {
+    "edit": "Edit",
+    "close": "Close",
+    "paste": "Paste",
+    "done": "Done",
+    "none": "None",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "save": "Save",
+    "add": "Add",
+    "remove": "Remove",
+    "copied": "Copied to clipboard!"
+  },
   "home": {
     "title": "Home",
     "buy": "Buy",
@@ -171,11 +185,9 @@
     "tokenAddressCopied": "Token address copied!",
     "popular": "Popular",
     "native": "Native",
-    "add": "Add",
     "onYourList": "On your list",
     "addAsset": "Add Asset",
     "disclaimer": "Allow asset to be viewable from your wallet. Only add assets you recognize and trust.",
-    "cancel": "Cancel",
     "toastSuccess": "{{assetCode}} successfully added as an asset",
     "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
@@ -185,13 +197,42 @@
     "copyAddress": "Copy address",
     "hideAsset": "Hide asset",
     "unhideAsset": "Unhide asset",
-    "removeAsset": "Remove asset",
     "tokenAddressCopied": "Token address copied!",
     "removeAssetModal": {
       "title": "Remove {{assetCode}}?",
-      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later.",
-      "cancel": "Cancel",
-      "remove": "Remove"
+      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later."
+    }
+  },
+  "sendPaymentScreen": {
+    "title": "Send to",
+    "inputPlaceholder": "Enter address",
+    "recents": "Recents",
+    "suggestions": "Suggestions"
+  },
+  "transactionTokenScreen": {
+    "title": "Sending"
+  },
+  "transactionAmountScreen": {
+    "title": "Send",
+    "percentageButtons": {
+      "twentyFive": "25%",
+      "fifty": "50%",
+      "seventyFive": "75%",
+      "max": "Max"
+    },
+    "reviewButton": "Review",
+    "menu": {
+      "fee": "Fee: {{fee}} XLM",
+      "timeout": "Timeout: {{timeout}}(s)",
+      "addMemo": "Add memo"
+    },
+    "details": {
+      "from": "From",
+      "memo": "Memo",
+      "none": "None",
+      "fee": "Fee",
+      "xdr": "XDR",
+      "xdrPlaceholder": "Not available yet"
     }
   },
   "addAnotherWalletScreen": {
@@ -218,13 +259,52 @@
   },
   "logout": "Log out",
   "clipboard": {
-    "copied": "Copied to clipboard!",
     "failed": "Failed to copy to clipboard"
   },
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Connection Request",
     "disclaimer": "Allow site to view your wallet address, balance, activity and request approval for transactions",
-    "cancel": "Cancel",
     "connect": "Connect"
+  },
+  "transactionMemoScreen": {
+    "title": "Memo",
+    "placeholder": "Type your memo",
+    "optional": "(optional)"
+  },
+  "transactionTimeoutScreen": {
+    "title": "Transaction Timeout",
+    "seconds": "seconds",
+    "setRecommended": "Set recommended"
+  },
+  "transactionFeeScreen": {
+    "title": "Transaction Fee",
+    "setRecommended": "Set recommended",
+    "congestion": {
+      "low": "Low congestion",
+      "medium": "Medium congestion",
+      "high": "High congestion"
+    }
+  },
+  "transactionReviewScreen": {
+    "title": "You are sending",
+    "previousSend": "1 previous send",
+    "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible"
+  },
+  "transactionProcessingScreen": {
+    "sending": "Sending",
+    "sent": "Sent!",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute",
+    "viewTransaction": "View transaction",
+    "wasSentTo": " was sent to ",
+    "to": " to "
+  },
+  "transactionDetailsBottomSheet": {
+    "sent": "Sent {{tokenCode}}",
+    "firstTimeSend": "First time sent",
+    "status": "Status",
+    "statusSuccess": "Success",
+    "rate": "Rate",
+    "fee": "Fee",
+    "viewOnExpert": "View on stellar.expert"
   }
 }

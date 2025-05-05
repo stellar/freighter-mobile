@@ -26,7 +26,7 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       iconPosition={IconPosition.RIGHT}
       onPress={handleAddAsset}
     >
-      {t("addAssetScreen.add")}
+      {t("common.add")}
     </Button>
   );
 };

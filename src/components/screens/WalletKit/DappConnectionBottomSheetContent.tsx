@@ -101,7 +101,7 @@ const DappConnectionBottomSheetContent: React.FC<
             onPress={onCancel}
             disabled={isConnecting}
           >
-            {t("dappConnectionBottomSheetContent.cancel")}
+            {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">

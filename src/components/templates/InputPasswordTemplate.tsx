@@ -56,7 +56,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
           {showLogo && <FreighterLogo width={px(48)} height={px(48)} />}
         </View>
         <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2">
-          <Avatar size="lg" publicAddress={publicKey ?? ""} />
+          <Avatar size="xl" publicAddress={publicKey ?? ""} />
           <Display xs semiBold>
             {title ?? t("lockScreen.title")}
           </Display>

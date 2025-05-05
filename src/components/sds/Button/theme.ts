@@ -18,6 +18,7 @@ export const BUTTON_THEME = {
     sm: 26,
     md: 32,
     lg: 40,
+    xl: 50,
   },
   padding: {
     sm: {
@@ -32,16 +33,22 @@ export const BUTTON_THEME = {
       vertical: 8,
       horizontal: 12,
     },
+    xl: {
+      vertical: 12,
+      horizontal: 16,
+    },
   },
   borderRadius: {
     sm: 4,
     md: 6,
     lg: 8,
+    xl: 8,
   },
   fontSize: {
     sm: "xs",
     md: "sm",
     lg: "md",
+    xl: "lg",
   },
   colors: {
     primary: {

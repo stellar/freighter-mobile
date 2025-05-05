@@ -110,10 +110,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
-  const { formattedBalance } = useTotalBalance();
+  const { formattedBalance, rawBalance } = useTotalBalance();
   const balances = useBalancesStore((state) => state.balances);
 
   const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
+  const hasZeroBalance = useMemo(
+    () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
+    [rawBalance],
+  );
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -257,7 +261,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <ButtonsRow>
           <IconButton Icon={Icon.Plus} title={t("home.buy")} />
-          <IconButton Icon={Icon.ArrowUp} title={t("home.send")} />
+          <IconButton
+            Icon={Icon.ArrowUp}
+            title={t("home.send")}
+            disabled={hasZeroBalance}
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK)
+            }
+          />
           <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
           <IconButton
             Icon={Icon.Copy01}

@@ -1,8 +1,22 @@
 {
   "wallet": "Carteira",
-  "freighterWallet": "Freighter Wallet",
+  "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
+  "common": {
+    "edit": "Editar",
+    "close": "Fechar",
+    "paste": "Colar",
+    "done": "Concluído",
+    "none": "Nenhum",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "continue": "Continuar",
+    "save": "Salvar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "copied": "Copiado para a área de transferência!"
+  },
   "home": {
     "title": "Início",
     "buy": "Comprar",
@@ -18,7 +32,8 @@
       "title": "Carteiras",
       "addWallet": "Adicionar uma carteira",
       "renameWallet": "Renomear carteira",
-      "copyAddress": "Copiar endereço"
+      "copyAddress": "Copiar endereço",
+      "myQRCode": "Meu QR code"
     }
   },
   "renameAccountModal": {
@@ -36,41 +51,47 @@
     "createNewWallet": "Criar uma nova carteira",
     "iAlreadyHaveWallet": "Já tenho uma carteira",
     "terms": {
-      "byProceeding": "Ao continuar, você concorda com os ",
+      "byProceeding": "Ao prosseguir, você concorda com os ",
       "termsOfService": "termos de uso do Freighter"
     }
   },
   "choosePasswordScreen": {
-    "title": "Escolha uma senha",
+    "title": "Escolha uma Senha",
     "passwordInputPlaceholder": "Digite sua senha",
     "passwordNote": "Mínimo de 8 caracteres",
     "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
+    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
   },
   "confirmPasswordScreen": {
-    "title": "Confirme a Senha",
+    "title": "Confirmar Senha",
     "passwordInputPlaceholder": "Confirme sua senha",
     "passwordNote": "Mínimo de 8 caracteres",
     "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha para você.\nCertifique-se de mantê-la em um local seguro."
+    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
   },
   "recoveryPhraseAlertScreen": {
-    "title": "Frase de recuperação",
-    "warningBlockOne": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la em um novo app.",
-    "warningBlockTwo": "Mantenha-a em um lugar seguro.",
-    "defaultActionButtonText": "Eu entendo, revele minha frase"
+    "title": "Frase de Recuperação",
+    "warningBlockOne": "Sua frase de recuperação dá acesso à sua conta e é a única maneira de acessá-la em um novo aplicativo.",
+    "warningBlockTwo": "Mantenha-a em um local seguro.",
+    "defaultActionButtonText": "Entendi, revelar minha frase"
   },
   "recoveryPhraseScreen": {
     "title": "Sua Frase de Recuperação",
-    "warning": "Isso é apenas para você. Nunca compartilhe isto.",
+    "warning": "Isso é só para seus olhos. Nunca compartilhe isso.",
     "copyButtonText": "Copiar para a área de transferência",
     "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Certifique-se de guardá-la em um lugar seguro\nantes de continuar"
+    "footerNoteText": "Certifique-se de manter isso em um\nlocal seguro antes de continuar"
+  },
+  "validateRecoveryPhraseScreen": {
+    "title": "Digite a Palavra #{{number}}",
+    "inputPlaceholder": "Digite a palavra correta",
+    "errorText": "Palavra incorreta, tente novamente",
+    "defaultActionButtonText": "Continuar"
   },
   "importWalletScreen": {
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
-    "textAreaNote": "As frases de recuperação geralmente têm 12 ou 24 palavras",
+    "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
     "defaultActionButtonText": "Importar carteira"
   },
   "lockScreen": {
@@ -78,27 +99,26 @@
     "description": "Digite a senha para desbloquear o Freighter",
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
-    "forgotPasswordButtonText": "Esqueceu sua senha"
+    "forgotPasswordButtonText": "Esqueci minha senha"
   },
   "onboarding": {
-    "continue": "Continuar",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
     "skip": "Pular",
     "pasteFromClipboard": "Colar da área de transferência"
   },
   "discovery": {
-    "title": "Explorar"
+    "title": "Descobrir"
   },
   "history": {
     "title": "Histórico"
   },
   "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Sua frase de recuperação concede acesso total às suas carteiras e fundos.",
+    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
     "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
     "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
-    "neverAskForYourPhrase": "A Stellar Development Foundation nunca irá solicitar sua frase",
-    "ifYouLose": "Se você perdê-la, não poderemos recuperá-la"
+    "neverAskForYourPhrase": "A Stellar Development Foundation nunca pedirá sua frase",
+    "ifYouLose": "Se você a perder, não poderemos recuperá-la"
   },
   "authStore": {
     "error": {
@@ -120,12 +140,6 @@
     },
     "account": "Conta {{number}}"
   },
-  "validateRecoveryPhraseScreen": {
-    "title": "Digite a Palavra #{{number}}",
-    "inputPlaceholder": "Digite a palavra",
-    "errorText": "Palavra incorreta, tente novamente",
-    "defaultActionButtonText": "Continuar"
-  },
   "balancesList": {
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
@@ -141,13 +155,13 @@
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Ativos",
-      "block1": "Ao gerenciar ativos na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
-      "block2": "Isso envolve a configuração de trustlines, que permitem que os usuários possuam e negociem seus ativos, além da definição de flags para controlar acesso e uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus ativos com segurança, mantendo conformidade e flexibilidade."
+      "block1": "Quando você gerencia ativos na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
+      "block2": "Isso envolve configurar trustlines, que permitem que os usuários mantenham e negociem seus ativos, e configurar flags para controlar o acesso e o uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus ativos com segurança, mantendo a conformidade e a flexibilidade."
     },
     "actions": {
       "copyAddress": "Copiar endereço",
       "hideAsset": "Ocultar ativo",
-      "unhideAsset": "Reexibir ativo",
+      "unhideAsset": "Mostrar ativo",
       "removeAsset": "Remover ativo"
     },
     "removeAssetAlert": {
@@ -162,32 +176,58 @@
   "addAssetScreen": {
     "title": "Adicionar um ativo",
     "addAssetButton": "Adicionar ativo",
-    "searchPlaceholder": "Buscar nome ou endereço do token",
+    "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
     "native": "Nativo",
-    "add": "Adicionar",
-    "onYourList": "Em sua lista",
-    "addAsset": "Adicionar ativo",
-    "disclaimer": "Permita que o ativo seja visualizado a partir da sua carteira. Adicione apenas ativos que você reconhece e confia.",
-    "cancel": "Cancelar",
+    "onYourList": "Na sua lista",
+    "addAsset": "Adicionar Ativo",
+    "disclaimer": "Permitir que o ativo seja visível na sua carteira. Adicione apenas ativos que você reconheça e confie.",
     "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
     "toastError": "Erro ao adicionar ativo {{assetCode}}",
     "emptyState": "Nenhum ativo encontrado",
-    "somethingWentWrong": "Algo deu errado, por favor, tente novamente mais tarde"
+    "somethingWentWrong": "Algo deu errado, por favor tente novamente mais tarde"
   },
   "manageAssetRightContent": {
     "copyAddress": "Copiar endereço",
     "hideAsset": "Ocultar ativo",
-    "unhideAsset": "Reexibir ativo",
-    "removeAsset": "Remover ativo",
+    "unhideAsset": "Mostrar ativo",
     "tokenAddressCopied": "Endereço do token copiado!",
     "removeAssetModal": {
       "title": "Remover {{assetCode}}?",
-      "message": "Tem certeza que deseja remover este ativo?\nUma vez que você remova um ativo, você precisará adicioná-lo novamente mais tarde.",
-      "cancel": "Cancelar",
-      "remove": "Remover"
+      "message": "Tem certeza que deseja remover este ativo?\nDepois de remover um ativo, você terá que adicioná-lo novamente mais tarde."
+    }
+  },
+  "sendPaymentScreen": {
+    "title": "Enviar para",
+    "inputPlaceholder": "Digite o endereço",
+    "recents": "Recentes"
+  },
+  "transactionTokenScreen": {
+    "title": "Enviando"
+  },
+  "transactionAmountScreen": {
+    "title": "Enviar",
+    "percentageButtons": {
+      "twentyFive": "25%",
+      "fifty": "50%",
+      "seventyFive": "75%",
+      "max": "Máx"
+    },
+    "reviewButton": "Revisar",
+    "menu": {
+      "fee": "Taxa: {{fee}} XLM",
+      "timeout": "Tempo limite: {{timeout}}(s)",
+      "addMemo": "Adicionar memo"
+    },
+    "details": {
+      "from": "De",
+      "memo": "Memo",
+      "none": "Nenhum",
+      "fee": "Taxa",
+      "xdr": "XDR",
+      "xdrPlaceholder": "Ainda não disponível"
     }
   },
   "addAnotherWalletScreen": {
@@ -214,13 +254,52 @@
   },
   "logout": "Sair",
   "clipboard": {
-    "copied": "Copiado para a área de transferência!",
     "failed": "Falha ao copiar para a área de transferência"
   },
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Solicitação de conexão",
     "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
-    "cancel": "Cancelar",
     "connect": "Conectar"
+  },
+  "transactionMemoScreen": {
+    "title": "Memo",
+    "placeholder": "Digite seu memo",
+    "optional": "(opcional)"
+  },
+  "transactionTimeoutScreen": {
+    "title": "Tempo Limite da Transação",
+    "seconds": "segundos",
+    "setRecommended": "Definir recomendado"
+  },
+  "transactionFeeScreen": {
+    "title": "Taxa da Transação",
+    "setRecommended": "Definir recomendado",
+    "congestion": {
+      "low": "Congestionamento baixo",
+      "medium": "Congestionamento médio",
+      "high": "Congestionamento alto"
+    }
+  },
+  "transactionReviewScreen": {
+    "title": "Você está enviando",
+    "previousSend": "1 envio anterior",
+    "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível"
+  },
+  "transactionProcessingScreen": {
+    "sending": "Enviando",
+    "sent": "Enviado!",
+    "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto",
+    "viewTransaction": "Ver transação",
+    "wasSentTo": " foi enviado para ",
+    "to": " para "
+  },
+  "transactionDetailsBottomSheet": {
+    "sent": "Enviado {{tokenCode}}",
+    "firstTimeSend": "Primeiro envio",
+    "status": "Status",
+    "statusSuccess": "Sucesso",
+    "rate": "Taxa",
+    "fee": "Comissão",
+    "viewOnExpert": "Ver no stellar.expert"
   }
 }

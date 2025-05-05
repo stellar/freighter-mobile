@@ -2,7 +2,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
   SETTINGS_STACK: "SettingsStack",
-
+  SEND_PAYMENT_STACK: "SendPaymentStack",
   MANAGE_ASSETS_STACK: "ManageAssetsStack",
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
@@ -41,6 +41,14 @@ export const MANAGE_WALLETS_ROUTES = {
   ADD_ANOTHER_WALLET_SCREEN: "AddAnotherWalletScreen",
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
 } as const;
+export const SEND_PAYMENT_ROUTES = {
+  SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
+  TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
+  TRANSACTION_AMOUNT_SCREEN: "TransactionAmountScreen",
+  TRANSACTION_MEMO_SCREEN: "TransactionMemoScreen",
+  TRANSACTION_TIMEOUT_SCREEN: "TransactionTimeoutScreen",
+  TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
+} as const;
 
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
@@ -49,6 +57,7 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
 };
 
 export type AuthStackParamList = {
@@ -94,4 +103,18 @@ export type SettingsStackParamList = {
 export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN]: undefined;
   [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: undefined;
+};
+
+export type SendPaymentStackParamList = {
+  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: {
+    address: string;
+  };
+  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
+    address: string;
+    tokenId: string;
+  };
+  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };

@@ -107,7 +107,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
             onPress={onCancel}
             disabled={isAddingAsset}
           >
-            {t("addAssetScreen.cancel")}
+            {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">

@@ -255,17 +255,24 @@ export interface TextProps extends TypographyBaseProps {
   numberOfLines?: number;
   onPress?: () => void;
   className?: string;
+  textAlign?: "left" | "center" | "right";
 }
 
 const StyledText = styled(BaseText)<{
   $size: TextSize;
   $isVerticallyCentered?: boolean;
+  $textAlign?: "left" | "center" | "right";
 }>`
   font-size: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].fontSize)};
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
   text-decoration: none;
+  text-align: ${({
+    $textAlign,
+  }: {
+    $textAlign?: "left" | "center" | "right";
+  }) => $textAlign || "left"};
   // This will make sure button titles are vertically centered,
   // but we should avoid using this for long copies since the fixed
   // height prevents line breaks
@@ -325,6 +332,7 @@ export const Text: React.FC<TextProps> = ({
   url,
   onPress,
   className,
+  textAlign,
   ...props
 }) => {
   const handleOnPressUrl = () => {
@@ -343,6 +351,7 @@ export const Text: React.FC<TextProps> = ({
       $weight={getWeight({ weight, ...props }, "regular")}
       $color={getColor({ color, ...props }, THEME.colors.text.primary)}
       $isVerticallyCentered={isVerticallyCentered}
+      $textAlign={textAlign}
       {...(url && { onPress: () => handleOnPressUrl() })}
       {...(!url && onPress && { onPress: () => onPress() })}
       {...props}
