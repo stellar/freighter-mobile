@@ -2,6 +2,7 @@
 /* eslint-disable import/extensions */
 import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
 import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
+import mockGestureHandler from "react-native-gesture-handler/jestSetup";
 
 // Create a direct mock for the specific functions from react-native-responsive-screen
 // This ensures these functions are defined before any module imports them
@@ -166,3 +167,23 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 }));
 
 jest.mock("react-native-device-info", () => mockRNDeviceInfo);
+
+jest.mock("react-native-gesture-handler", () => mockGestureHandler);
+
+jest.mock("@gorhom/bottom-sheet", () => {
+  const mockBottomSheet = {
+    present: jest.fn(),
+    dismiss: jest.fn(),
+    snapToIndex: jest.fn(),
+    expand: jest.fn(),
+    collapse: jest.fn(),
+    close: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    ...jest.requireActual("@gorhom/bottom-sheet"),
+    useBottomSheetModal: () => mockBottomSheet,
+    useBottomSheet: () => mockBottomSheet,
+  };
+});

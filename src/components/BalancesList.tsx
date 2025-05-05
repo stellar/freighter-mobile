@@ -1,5 +1,6 @@
 import { BalanceRow } from "components/BalanceRow";
 import { FriendbotButton } from "components/FriendbotButton";
+import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { CREATE_ACCOUNT_URL, NETWORKS } from "config/constants";
@@ -17,6 +18,9 @@ const ListWrapper = styled.View`
 
 const ListTitle = styled.View`
   margin-bottom: ${px(24)};
+  flex-direction: row;
+  align-items: center;
+  gap: ${px(6)};
 `;
 
 const Spinner = styled.ActivityIndicator`
@@ -37,6 +41,8 @@ const NotificationContent = styled.View`
 interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
+  showTitleIcon?: boolean;
+  onTokenPress?: (tokenId: string) => void;
 }
 
 /**
@@ -56,6 +62,8 @@ interface BalancesListProps {
 export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
+  showTitleIcon = false,
+  onTokenPress,
 }) => {
   const { t } = useAppTranslation();
   const {
@@ -77,6 +85,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
+          {showTitleIcon && (
+            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
+          )}
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
@@ -89,6 +100,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
+          {showTitleIcon && (
+            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
+          )}
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
 
@@ -106,6 +120,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
+          {showTitleIcon && (
+            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
+          )}
           <Text medium>{t("balancesList.title")}</Text>
         </ListTitle>
 
@@ -138,13 +155,21 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   return (
     <ListWrapper>
       <ListTitle>
+        {showTitleIcon && (
+          <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
+        )}
         <Text medium>{t("balancesList.title")}</Text>
       </ListTitle>
       <FlatList
         testID="balances-list"
         showsVerticalScrollIndicator={false}
         data={balanceItems}
-        renderItem={({ item }) => <BalanceRow balance={item} />}
+        renderItem={({ item }) => (
+          <BalanceRow
+            balance={item}
+            onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+          />
+        )}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl

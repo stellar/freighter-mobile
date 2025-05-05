@@ -6,7 +6,7 @@ import { Textarea } from "components/sds/Textarea";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -17,9 +17,14 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   route,
 }) => {
   const { password } = route.params;
-  const { importWallet, error, isLoading } = useAuthenticationStore();
+  const { importWallet, error, isLoading, clearError } =
+    useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
   const { t } = useAppTranslation();
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const handleContinue = () => {
     importWallet({

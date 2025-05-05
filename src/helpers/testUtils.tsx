@@ -1,4 +1,6 @@
+/* eslint-disable import/no-extraneous-dependencies */
 // eslint-disable-next-line import/no-extraneous-dependencies
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { RenderAPI, render } from "@testing-library/react-native";
 import i18n from "i18n";
 import { ToastProvider } from "providers/ToastProvider";
@@ -35,7 +37,9 @@ export const renderWithProviders: RenderWithProviderType = (component) => {
   try {
     return render(
       <I18nextProvider i18n={i18n}>
-        <ToastProvider>{React.Children.only(component)}</ToastProvider>
+        <BottomSheetModalProvider>
+          <ToastProvider>{React.Children.only(component)}</ToastProvider>
+        </BottomSheetModalProvider>
       </I18nextProvider>,
     );
   } catch (error) {

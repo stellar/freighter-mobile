@@ -5,21 +5,29 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import {
   ManageAssetsStackParamList,
+  ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SettingsStackParamList,
+  SendPaymentStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
+import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
+import { SendPaymentStackNavigator } from "navigators/SendPaymentNavigator";
 import { SettingsStackNavigator } from "navigators/SettingsNavigator";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
-  RootStackParamList & ManageAssetsStackParamList & SettingsStackParamList
+  RootStackParamList &
+    ManageAssetsStackParamList &
+    SettingsStackParamList &
+    ManageWalletsStackParamList &
+    SendPaymentStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -28,7 +36,6 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Check auth status when app starts
       await getAuthStatus();
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
@@ -72,8 +79,16 @@ export const RootNavigator = () => {
             component={ManageAssetsStackNavigator}
           />
           <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
+            component={ManageWalletsStackNavigator}
+          />
+          <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
             component={SettingsStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
+            component={SendPaymentStackNavigator}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

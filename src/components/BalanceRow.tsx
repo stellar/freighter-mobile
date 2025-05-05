@@ -10,15 +10,17 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import React, { ReactNode } from "react";
+import { TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 
-const BalanceRowContainer = styled.View`
+const BalanceRowContainer = styled.View<{ isSingleRow?: boolean }>`
   flex-direction: row;
   width: 100%;
   height: ${px(44)};
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${px(24)};
+  margin-bottom: ${({ isSingleRow }: { isSingleRow?: boolean }) =>
+    isSingleRow ? 0 : px(24)};
 `;
 
 const LeftSection = styled.View`
@@ -48,6 +50,8 @@ interface BalanceRowProps {
   balance: PricedBalance;
   rightContent?: ReactNode;
   rightSectionWidth?: number;
+  onPress?: () => void;
+  isSingleRow?: boolean;
 }
 
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
@@ -84,29 +88,41 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   );
 };
 
+const renderContent = (children: ReactNode, onPress?: () => void) => {
+  if (onPress) {
+    return <TouchableOpacity onPress={onPress}>{children}</TouchableOpacity>;
+  }
+
+  return children;
+};
+
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
   rightContent,
   rightSectionWidth,
-}) => (
-  <BalanceRowContainer>
-    <LeftSection>
-      <AssetIcon token={balance} />
-      <AssetTextContainer>
-        <Text medium numberOfLines={1}>
-          {balance.displayName}
-        </Text>
-        <Text sm medium secondary numberOfLines={1}>
-          {formatAssetAmount(balance.total, balance.tokenCode)}
-        </Text>
-      </AssetTextContainer>
-    </LeftSection>
-    {rightContent ? (
-      <RightSection width={rightSectionWidth || 115}>
-        {rightContent}
-      </RightSection>
-    ) : (
-      <DefaultRightContent balance={balance} />
-    )}
-  </BalanceRowContainer>
-);
+  onPress,
+  isSingleRow = false,
+}) =>
+  renderContent(
+    <BalanceRowContainer isSingleRow={isSingleRow}>
+      <LeftSection>
+        <AssetIcon token={balance} />
+        <AssetTextContainer>
+          <Text medium numberOfLines={1}>
+            {balance.displayName}
+          </Text>
+          <Text sm medium secondary numberOfLines={1}>
+            {formatAssetAmount(balance.total, balance.tokenCode)}
+          </Text>
+        </AssetTextContainer>
+      </LeftSection>
+      {rightContent ? (
+        <RightSection width={rightSectionWidth || 115}>
+          {rightContent}
+        </RightSection>
+      ) : (
+        <DefaultRightContent balance={balance} />
+      )}
+    </BalanceRowContainer>,
+    onPress,
+  );

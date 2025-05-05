@@ -18,6 +18,7 @@ export const ButtonSizes = {
   SMALL: "sm",
   MEDIUM: "md",
   LARGE: "lg",
+  EXTRA_LARGE: "xl",
 } as const;
 
 // Create types from the const objects
@@ -38,6 +39,7 @@ type SizeProps = {
   sm?: boolean;
   md?: boolean;
   lg?: boolean;
+  xl?: boolean;
 };
 
 export enum IconPosition {
@@ -142,6 +144,7 @@ const getSize = (
   if (props.size) return props.size;
   if (props.sm) return ButtonSizes.SMALL;
   if (props.lg) return ButtonSizes.LARGE;
+  if (props.xl) return ButtonSizes.EXTRA_LARGE;
   if (props.md) return ButtonSizes.MEDIUM;
   return defaultSize;
 };
@@ -181,6 +184,9 @@ const getSize = (
  *
  * // Large
  * <Button lg>Large Button</Button>
+ *
+ * // Extra Large
+ * <Button xl>Extra Large Button</Button>
  * ```
  *
  * @example
@@ -218,6 +224,7 @@ const getSize = (
  * - sm - Small buttons (32px height)
  * - md - Medium buttons (40px height, default)
  * - lg - Large buttons (48px height)
+ * - xl - Extra Large buttons (50px height)
  */
 interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;

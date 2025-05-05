@@ -49,7 +49,7 @@ export const useClipboard = (): UseClipboardResult => {
         if (options.hideNotification) return;
 
         showToast({
-          title: options.notificationMessage || t("clipboard.copied"),
+          title: options.notificationMessage || t("common.copied"),
           variant: options.toastVariant || "success",
         });
       } catch (error) {

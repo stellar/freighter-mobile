@@ -6,8 +6,15 @@ export const DEFAULT_PADDING = pxValue(24);
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 
+// Transaction fee constants
+export const NATIVE_TOKEN_CODE = "XLM";
+export const TRANSACTION_RECOMMENDED_FEE = "0.0250005";
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
+export const ACCOUNT_NAME_MIN_LENGTH = 1;
+export const ACCOUNT_NAME_MAX_LENGTH = 24;
+export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 

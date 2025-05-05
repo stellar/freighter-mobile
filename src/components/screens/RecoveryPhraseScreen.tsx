@@ -9,7 +9,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { generateMnemonic } from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
@@ -76,9 +76,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       entropyBits: 128,
     }),
   );
-  const { error, isLoading, signUp } = useAuthenticationStore();
+  const { error, isLoading, signUp, clearError } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+
+  useEffect(() => {
+    clearError?.();
+  }, [clearError]);
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;

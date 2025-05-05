@@ -81,7 +81,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
       ],
     },
     {
-      title: t("manageAssetRightContent.removeAsset"),
+      title: t("common.remove"),
       systemIcon: icons!.removeAsset,
       onPress: () => showRemoveAssetAlert(),
       destructive: true,
@@ -116,7 +116,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               onPress={() => setModalVisible(false)}
               disabled={isRemovingAsset}
             >
-              {t("manageAssetRightContent.removeAssetModal.cancel")}
+              {t("common.cancel")}
             </Button>
           </View>
           <View className="flex-1">
@@ -127,7 +127,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               onPress={handleRemoveAssetClick}
               isLoading={isRemovingAsset}
             >
-              {t("manageAssetRightContent.removeAssetModal.remove")}
+              {t("common.remove")}
             </Button>
           </View>
         </View>

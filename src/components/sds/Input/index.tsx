@@ -39,6 +39,18 @@ const INPUT_SIZES = {
 
 export type InputSize = keyof typeof INPUT_SIZES;
 
+/**
+ * Calculates the input height based on field size
+ *
+ * @param fieldSize - The size of the input field (sm, md, lg)
+ * @returns The pixel height of the input field
+ */
+const getInputHeight = (fieldSize: InputSize): string =>
+  px(
+    INPUT_SIZES[fieldSize].lineHeight +
+      3 * INPUT_SIZES[fieldSize].paddingVertical,
+  );
+
 // =============================================================================
 // Styled components
 // =============================================================================
@@ -86,10 +98,7 @@ const StyledTextInput = styled.TextInput<
 >`
   flex: 1;
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    px(
-      INPUT_SIZES[$fieldSize].lineHeight +
-        3 * INPUT_SIZES[$fieldSize].paddingVertical,
-    )};
+    getInputHeight($fieldSize)};
   font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
   color: ${THEME.colors.text.primary};
@@ -110,6 +119,24 @@ const SideElement = styled.View<{ marginSide: "left" | "right" }>`
 
 const FieldNoteWrapper = styled.View`
   margin-top: ${px(4)};
+`;
+
+const ButtonContainer = styled.View<
+  Pick<StyledProps, "$fieldSize" | "$isError"> & { backgroundColor?: string }
+>`
+  background-color: ${({
+    backgroundColor,
+    $isError,
+  }: Pick<StyledProps, "$isError"> & { backgroundColor?: string }) =>
+    backgroundColor ||
+    ($isError ? THEME.colors.status.error : THEME.colors.background.default)};
+  padding: ${px(8)} 0 ${px(8)} ${px(12)};
+  border-left-width: 1px;
+  border-left-color: ${THEME.colors.border.default};
+  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    getInputHeight($fieldSize)};
+  align-items: center;
+  justify-content: center;
 `;
 
 // =============================================================================
@@ -185,6 +212,7 @@ const FieldNoteWrapper = styled.View`
  * @param {string | ReactNode} [props.error] - Error message to display below the input
  * @param {string | ReactNode} [props.success] - Success message to display below the input
  * @param {Object} [props.copyButton] - Configuration for the copy button
+ * @param {Object} [props.endButton] - Configuration for the end button
  * @param {string} props.value - The input value
  * @param {Function} [props.onChangeText] - Callback when text changes
  * @param {string} [props.placeholder] - Placeholder text
@@ -210,6 +238,13 @@ interface InputProps {
   copyButton?: {
     position: "left" | "right";
     showLabel?: boolean;
+  };
+  endButton?: {
+    content: string | React.ReactNode;
+    onPress: () => void;
+    disabled?: boolean;
+    color?: string;
+    backgroundColor?: string;
   };
   value?: string;
   onChangeText?: (text: string) => void;
@@ -240,6 +275,7 @@ export const Input: React.FC<InputProps> = ({
   error,
   success,
   copyButton,
+  endButton,
   value = "",
   onChangeText,
   placeholder,
@@ -299,7 +335,9 @@ export const Input: React.FC<InputProps> = ({
           testID={testID}
           $fieldSize={fieldSize}
           $hasLeftElement={!!leftElement || copyButton?.position === "left"}
-          $hasRightElement={!!rightElement || copyButton?.position === "right"}
+          $hasRightElement={
+            !!rightElement || copyButton?.position === "right" || !!endButton
+          }
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -315,6 +353,27 @@ export const Input: React.FC<InputProps> = ({
           <SideElement marginSide="left">{rightElement}</SideElement>
         )}
         {copyButton?.position === "right" && renderCopyButton("right")}
+        {endButton && (
+          <TouchableOpacity
+            onPress={endButton.onPress}
+            disabled={endButton.disabled}
+            testID={testID ? `${testID}-end-button` : undefined}
+          >
+            <ButtonContainer
+              backgroundColor={endButton.backgroundColor}
+              $fieldSize={fieldSize}
+              $isError={isError || !!error}
+            >
+              {typeof endButton.content === "string" ? (
+                <Text md semiBold color={endButton.color}>
+                  {endButton.content}
+                </Text>
+              ) : (
+                endButton.content
+              )}
+            </ButtonContainer>
+          </TouchableOpacity>
+        )}
       </InputContainer>
 
       {note && (

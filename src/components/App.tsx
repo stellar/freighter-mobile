@@ -38,7 +38,6 @@ export const App = (): React.JSX.Element => {
                       backgroundColor={THEME.colors.background.default}
                       barStyle="light-content"
                     />
-
                     <WalletKitProvider>
                       <RootNavigator />
                     </WalletKitProvider>
