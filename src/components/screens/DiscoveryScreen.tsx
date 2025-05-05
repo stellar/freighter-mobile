@@ -191,7 +191,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       <BaseLayout insets={{ bottom: false }}>
         <TouchableOpacity
           onPress={() => setShowScanner(false)}
-          className="w-10 h-10 mb-2 flex items-center justify-center"
+          className="w-10 h-10 mb-2 flex items-center justify-center z-[999]"
         >
           <Icon.X size={24} color={themeColors.text.primary} />
         </TouchableOpacity>
@@ -217,10 +217,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             <Icon.Link04 size={16} color={themeColors.foreground.primary} />
           }
           rightElement={
-            <TouchableOpacity
-              className="p-3 ml-1 mr-1"
-              onPress={handleClearUri}
-            >
+            <TouchableOpacity className="p-3 mr-1" onPress={handleClearUri}>
               <Icon.XClose size={16} color={themeColors.foreground.primary} />
             </TouchableOpacity>
           }

@@ -49,8 +49,11 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
 
   return (
     <View
-      className="flex-1"
-      style={{ width: windowWidth, marginLeft: -pxValue(DEFAULT_PADDING) }}
+      className="h-full"
+      style={{
+        width: windowWidth,
+        marginLeft: -pxValue(DEFAULT_PADDING),
+      }}
     >
       <Camera
         codeScanner={codeScanner}
