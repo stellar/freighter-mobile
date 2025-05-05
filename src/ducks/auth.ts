@@ -204,6 +204,7 @@ interface AuthActions {
   getAllAccounts: () => Promise<void>;
   createAccount: (password: string) => Promise<void>;
   selectAccount: (publicKey: string) => Promise<void>;
+  selectNetwork: (network: NETWORKS) => Promise<void>;
 
   // Active account actions
   fetchActiveAccount: () => Promise<ActiveAccount | null>;
@@ -241,6 +242,24 @@ const initialState: AuthState = {
   isLoadingAccount: false,
   accountError: null,
   navigationRef: null,
+};
+
+/**
+ * Initialize the store by loading the active network from storage
+ */
+const initializeStore = async (
+  setState: (state: Partial<AuthState>) => void,
+) => {
+  try {
+    const activeNetwork = (await dataStorage.getItem(
+      STORAGE_KEYS.ACTIVE_NETWORK,
+    )) as NETWORKS | null;
+    if (activeNetwork) {
+      setState({ network: activeNetwork });
+    }
+  } catch (error) {
+    logger.error("initializeStore", "Failed to load active network", error);
+  }
 };
 
 /**
@@ -451,11 +470,7 @@ const appendAccount = async (account: Account) => {
     ? (JSON.parse(accountListRaw) as Account[])
     : [];
 
-  if (
-    accountList.find(
-      (a) => a.id === account.id && a.network === account.network,
-    )
-  ) {
+  if (accountList.find((a) => a.id === account.id)) {
     return;
   }
 
@@ -638,7 +653,6 @@ const storeAccount = async ({
       id: keyStore.id,
       name: accountName,
       publicKey,
-      network: NETWORKS.TESTNET,
     }),
     createTemporaryStore({
       password,
@@ -804,7 +818,6 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
         id: keyStore.id,
         name: accountName,
         publicKey: keyPair.publicKey,
-        network: NETWORKS.TESTNET,
       };
 
       return {
@@ -909,8 +922,6 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
         id: loadedKey.id,
         name: t("authStore.account", { number: accountList.length + 1 }),
         publicKey: loadedKey.publicKey,
-        imported: false,
-        network: NETWORKS.TESTNET,
       };
 
       await appendAccount(account);
@@ -1273,398 +1284,411 @@ const selectAccount = async (publicKey: string): Promise<void> => {
  * It maintains the authentication status and securely handles sensitive data
  * like private keys and mnemonic phrases through a temporary encrypted store.
  */
-export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
-  ...initialState,
+export const useAuthenticationStore = create<AuthStore>()((set, get) => {
+  // Initialize the store when created
+  setTimeout(() => {
+    initializeStore(set);
+  }, 0);
 
-  /**
-   * Logs out the user by clearing sensitive data
-   *
-   * For accounts with existing accounts, it preserves account data but clears sensitive info,
-   * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
-   * For new users with no accounts, it performs a full logout.
-   */
-  logout: (shouldWipeAllData = false) => {
-    set((state) => ({ ...state, isLoading: true, error: null }));
+  return {
+    ...initialState,
 
-    // We'll use setTimeout to handle the async operations
-    // This avoids the issue with void return expectations from zustand
-    setTimeout(() => {
-      (async () => {
-        try {
-          const accountList = await getAllAccounts();
-          const hasAccountList = accountList.length > 0;
+    /**
+     * Logs out the user by clearing sensitive data
+     *
+     * For accounts with existing accounts, it preserves account data but clears sensitive info,
+     * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
+     * For new users with no accounts, it performs a full logout.
+     */
+    logout: (shouldWipeAllData = false) => {
+      set((state) => ({ ...state, isLoading: true, error: null }));
 
-          // Clear all sensitive data regardless
-          await clearTemporaryData();
+      // We'll use setTimeout to handle the async operations
+      // This avoids the issue with void return expectations from zustand
+      setTimeout(() => {
+        (async () => {
+          try {
+            const accountList = await getAllAccounts();
+            const hasAccountList = accountList.length > 0;
 
-          // If there's an existing account list, navigate to lock screen.
-          if (hasAccountList && !shouldWipeAllData) {
-            set({
-              account: null,
-              isLoadingAccount: false,
-              accountError: null,
-              authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
-              isLoading: false,
-            });
+            // Clear all sensitive data regardless
+            await clearTemporaryData();
 
-            // Navigate to lock screen
-            const { navigationRef } = get();
-            if (navigationRef && navigationRef.isReady()) {
-              navigationRef.resetRoot({
-                index: 0,
-                routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+            // If there's an existing account list, navigate to lock screen.
+            if (hasAccountList && !shouldWipeAllData) {
+              set({
+                account: null,
+                isLoadingAccount: false,
+                accountError: null,
+                authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+                isLoading: false,
+              });
+
+              // Navigate to lock screen
+              const { navigationRef } = get();
+              if (navigationRef && navigationRef.isReady()) {
+                navigationRef.resetRoot({
+                  index: 0,
+                  routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+                });
+              }
+              // If it's a wipe all data logout, remove the account list and active account id.
+              // This will redirect to the welcome screen where the user can create a new account or restore from seed phrase
+            } else {
+              await clearNonSensitiveData();
+
+              set({
+                ...initialState,
+                authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+                isLoading: false,
               });
             }
-            // If it's a wipe all data logout, remove the account list and active account id.
-            // This will redirect to the welcome screen where the user can create a new account or restore from seed phrase
-          } else {
-            await clearNonSensitiveData();
-
+          } catch (error) {
+            logger.error("logout", "Failed to logout", error);
             set({
-              ...initialState,
-              authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : t("authStore.error.failedToLogout"),
               isLoading: false,
             });
           }
-        } catch (error) {
-          logger.error("logout", "Failed to logout", error);
-          set({
-            error:
-              error instanceof Error
-                ? error.message
-                : t("authStore.error.failedToLogout"),
-            isLoading: false,
+        })();
+      }, 0);
+    },
+
+    /**
+     * Signs up a new user with the provided credentials
+     *
+     * @param {SignUpParams} params - The signup parameters
+     */
+    signUp: (params) => {
+      set((state) => ({ ...state, isLoading: true, error: null }));
+
+      // Use a setTimeout to allow UI updates to propagate
+      setTimeout(() => {
+        signUp(params)
+          .then(() => {
+            set({
+              ...initialState,
+              authStatus: AUTH_STATUS.AUTHENTICATED,
+              isLoading: false,
+            });
+
+            // Fetch active account after successful signup
+            get().fetchActiveAccount();
+          })
+          .catch((error) => {
+            logger.error(
+              "useAuthenticationStore.signUp",
+              "Sign up failed",
+              error,
+            );
+            set({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : t("authStore.error.failedToSignUp"),
+              isLoading: false,
+            });
           });
-        }
-      })();
-    }, 0);
-  },
+      }, 0);
+    },
 
-  /**
-   * Signs up a new user with the provided credentials
-   *
-   * @param {SignUpParams} params - The signup parameters
-   */
-  signUp: (params) => {
-    set((state) => ({ ...state, isLoading: true, error: null }));
+    /**
+     * Signs in a user with the provided password
+     *
+     * @param {SignInParams} params - The signin parameters
+     * @returns {Promise<void>}
+     */
+    signIn: async (params) => {
+      set({ isLoading: true, error: null });
 
-    // Use a setTimeout to allow UI updates to propagate
-    setTimeout(() => {
-      signUp(params)
-        .then(() => {
-          set({
-            ...initialState,
-            authStatus: AUTH_STATUS.AUTHENTICATED,
-            isLoading: false,
-          });
-
-          // Fetch active account after successful signup
-          get().fetchActiveAccount();
-        })
-        .catch((error) => {
-          logger.error(
-            "useAuthenticationStore.signUp",
-            "Sign up failed",
-            error,
-          );
-          set({
-            error:
-              error instanceof Error
-                ? error.message
-                : t("authStore.error.failedToSignUp"),
-            isLoading: false,
-          });
-        });
-    }, 0);
-  },
-
-  /**
-   * Signs in a user with the provided password
-   *
-   * @param {SignInParams} params - The signin parameters
-   * @returns {Promise<void>}
-   */
-  signIn: async (params) => {
-    set({ isLoading: true, error: null });
-
-    try {
-      // First perform the sign in operation without changing auth state
-      await signIn(params);
-
-      // Now verify we can access the active account before changing auth state
       try {
-        // This will throw if the temporary store is missing or invalid
-        const activeAccount = await getActiveAccount();
+        // First perform the sign in operation without changing auth state
+        await signIn(params);
 
-        if (!activeAccount) {
-          throw new Error(t("authStore.error.failedToLoadAccount"));
-        }
+        // Now verify we can access the active account before changing auth state
+        try {
+          // This will throw if the temporary store is missing or invalid
+          const activeAccount = await getActiveAccount();
 
-        // Only if we can successfully load the account, set the authenticated state
-        set({
-          ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-          isLoading: false,
-          account: activeAccount,
-          isLoadingAccount: false,
-        });
-      } catch (accountError) {
-        // If we can't access the account after sign-in, handle it as an expired key
-        logger.error(
-          "useAuthenticationStore.signIn",
-          "Failed to access account",
-          accountError,
-        );
+          if (!activeAccount) {
+            throw new Error(t("authStore.error.failedToLoadAccount"));
+          }
 
-        // Set auth status to expired and show error
-        set({
-          authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
-          error:
-            accountError instanceof Error
-              ? accountError.message
-              : String(accountError),
-          isLoading: false,
-        });
-
-        // Navigate to lock screen
-        get().navigateToLockScreen();
-      }
-    } catch (error) {
-      logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
-      set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToSignIn"),
-        isLoading: false,
-      });
-      throw error; // Rethrow to handle in the UI
-    }
-  },
-
-  /**
-   * Imports a wallet with the provided credentials
-   *
-   * @param {ImportWalletParams} params - The wallet import parameters
-   */
-  importWallet: (params) => {
-    set((state) => ({ ...state, isLoading: true, error: null }));
-
-    setTimeout(() => {
-      importWallet(params)
-        .then(() => {
+          // Only if we can successfully load the account, set the authenticated state
           set({
             ...initialState,
             authStatus: AUTH_STATUS.AUTHENTICATED,
             isLoading: false,
+            account: activeAccount,
+            isLoadingAccount: false,
           });
-
-          // Fetch active account after successful wallet import
-          get().fetchActiveAccount();
-        })
-        .catch((error) => {
+        } catch (accountError) {
+          // If we can't access the account after sign-in, handle it as an expired key
           logger.error(
-            "useAuthenticationStore.importWallet",
-            "Import wallet failed",
-            error,
+            "useAuthenticationStore.signIn",
+            "Failed to access account",
+            accountError,
           );
+
+          // Set auth status to expired and show error
           set({
+            authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
             error:
-              error instanceof Error
-                ? error.message
-                : t("authStore.error.failedToImportWallet"),
+              accountError instanceof Error
+                ? accountError.message
+                : String(accountError),
             isLoading: false,
           });
+
+          // Navigate to lock screen
+          get().navigateToLockScreen();
+        }
+      } catch (error) {
+        logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToSignIn"),
+          isLoading: false,
         });
-    }, 0);
-  },
+        throw error; // Rethrow to handle in the UI
+      }
+    },
 
-  /**
-   * Gets the current authentication status
-   *
-   * @returns {Promise<AuthStatus>} The current authentication status
-   */
-  getAuthStatus: async () => {
-    const authStatus = await getAuthStatus();
-    set({ authStatus });
+    /**
+     * Imports a wallet with the provided credentials
+     *
+     * @param {ImportWalletParams} params - The wallet import parameters
+     */
+    importWallet: (params) => {
+      set((state) => ({ ...state, isLoading: true, error: null }));
 
-    // If the hash key is expired, navigate to lock screen
-    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
-      get().navigateToLockScreen();
-    }
+      setTimeout(() => {
+        importWallet(params)
+          .then(() => {
+            set({
+              ...initialState,
+              authStatus: AUTH_STATUS.AUTHENTICATED,
+              isLoading: false,
+            });
 
-    return authStatus;
-  },
+            // Fetch active account after successful wallet import
+            get().fetchActiveAccount();
+          })
+          .catch((error) => {
+            logger.error(
+              "useAuthenticationStore.importWallet",
+              "Import wallet failed",
+              error,
+            );
+            set({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : t("authStore.error.failedToImportWallet"),
+              isLoading: false,
+            });
+          });
+      }, 0);
+    },
 
-  /**
-   * Navigates to the lock screen
-   *
-   * Used when authentication expires or user needs to re-authenticate
-   */
-  navigateToLockScreen: () => {
-    const { navigationRef } = get();
-    if (navigationRef && navigationRef.isReady()) {
-      // Check if we're already on the lock screen to prevent navigation loops
-      const currentRoute = navigationRef.getCurrentRoute();
-      if (currentRoute?.name === ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN) {
-        // Already on lock screen, don't navigate again
-        return;
+    /**
+     * Gets the current authentication status
+     *
+     * @returns {Promise<AuthStatus>} The current authentication status
+     */
+    getAuthStatus: async () => {
+      const authStatus = await getAuthStatus();
+      set({ authStatus });
+
+      // If the hash key is expired, navigate to lock screen
+      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        get().navigateToLockScreen();
       }
 
-      // Use resetRoot instead of navigate to avoid warnings with conditional navigators
-      navigationRef.resetRoot({
-        index: 0,
-        routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
-      });
-    }
-  },
+      return authStatus;
+    },
 
-  /**
-   * Fetches the active account data
-   *
-   * Checks auth status first and redirects to lock screen if hash key is expired
-   *
-   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
-   */
-  fetchActiveAccount: async () => {
-    set({ isLoadingAccount: true, accountError: null });
+    /**
+     * Navigates to the lock screen
+     *
+     * Used when authentication expires or user needs to re-authenticate
+     */
+    navigateToLockScreen: () => {
+      const { navigationRef } = get();
+      if (navigationRef && navigationRef.isReady()) {
+        // Check if we're already on the lock screen to prevent navigation loops
+        const currentRoute = navigationRef.getCurrentRoute();
+        if (currentRoute?.name === ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN) {
+          // Already on lock screen, don't navigate again
+          return;
+        }
 
-    try {
-      // Check auth status first
-      const authStatus = await getAuthStatus();
+        // Use resetRoot instead of navigate to avoid warnings with conditional navigators
+        navigationRef.resetRoot({
+          index: 0,
+          routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+        });
+      }
+    },
 
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
-        set({ authStatus: AUTH_STATUS.HASH_KEY_EXPIRED });
+    /**
+     * Fetches the active account data
+     *
+     * Checks auth status first and redirects to lock screen if hash key is expired
+     *
+     * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+     */
+    fetchActiveAccount: async () => {
+      set({ isLoadingAccount: true, accountError: null });
 
-        // Navigate to lock screen
-        get().navigateToLockScreen();
+      try {
+        // Check auth status first
+        const authStatus = await getAuthStatus();
 
-        set({ isLoadingAccount: false });
+        if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+          set({ authStatus: AUTH_STATUS.HASH_KEY_EXPIRED });
+
+          // Navigate to lock screen
+          get().navigateToLockScreen();
+
+          set({ isLoadingAccount: false });
+          return null;
+        }
+
+        const activeAccount = await getActiveAccount();
+        set({ account: activeAccount, isLoadingAccount: false });
+        return activeAccount;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        set({ accountError: errorMessage, isLoadingAccount: false });
         return null;
       }
+    },
 
-      const activeAccount = await getActiveAccount();
-      set({ account: activeAccount, isLoadingAccount: false });
-      return activeAccount;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      set({ accountError: errorMessage, isLoadingAccount: false });
-      return null;
-    }
-  },
+    /**
+     * Refreshes the active account data
+     *
+     * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+     */
+    refreshActiveAccount: () => get().fetchActiveAccount(),
 
-  /**
-   * Refreshes the active account data
-   *
-   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
-   */
-  refreshActiveAccount: () => get().fetchActiveAccount(),
+    /**
+     * Sets the navigation reference for navigation actions
+     *
+     * @param {NavigationContainerRef<RootStackParamList>} ref - The navigation reference
+     */
+    setNavigationRef: (ref) => {
+      set({ navigationRef: ref });
+    },
 
-  /**
-   * Sets the navigation reference for navigation actions
-   *
-   * @param {NavigationContainerRef<RootStackParamList>} ref - The navigation reference
-   */
-  setNavigationRef: (ref) => {
-    set({ navigationRef: ref });
-  },
+    /**
+     * Renames an account
+     *
+     * @param {RenameAccountParams} params - The rename account parameters
+     */
+    renameAccount: async (params) => {
+      set({ isRenamingAccount: true });
 
-  /**
-   * Renames an account
-   *
-   * @param {RenameAccountParams} params - The rename account parameters
-   */
-  renameAccount: async (params) => {
-    set({ isRenamingAccount: true });
+      try {
+        await renameAccount(params);
+        await Promise.all([
+          renameAccount(params),
+          get().fetchActiveAccount(),
+          get().getAllAccounts(),
+        ]);
+        set({ isRenamingAccount: false });
+      } catch (error) {
+        logger.error("renameAccount", "Failed to rename account", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToRenameAccount"),
+          isRenamingAccount: false,
+        });
+      }
+    },
 
-    try {
-      await renameAccount(params);
-      await Promise.all([
-        renameAccount(params),
-        get().fetchActiveAccount(),
-        get().getAllAccounts(),
-      ]);
-      set({ isRenamingAccount: false });
-    } catch (error) {
-      logger.error("renameAccount", "Failed to rename account", error);
-      set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToRenameAccount"),
-        isRenamingAccount: false,
-      });
-    }
-  },
+    /**
+     * Gets all accounts and updates the store
+     *
+     * @returns {Promise<void>}
+     */
+    getAllAccounts: async () => {
+      set({ isLoadingAllAccounts: true });
 
-  /**
-   * Gets all accounts and updates the store
-   *
-   * @returns {Promise<void>}
-   */
-  getAllAccounts: async () => {
-    set({ isLoadingAllAccounts: true });
+      try {
+        const allAccounts = await getAllAccounts();
+        set({ allAccounts });
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToGetAllAccounts"),
+          isLoadingAllAccounts: false,
+        });
+      } finally {
+        set({ isLoadingAllAccounts: false });
+      }
+    },
 
-    try {
-      const allAccounts = await getAllAccounts();
-      set({ allAccounts });
-    } catch (error) {
-      set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToGetAllAccounts"),
-        isLoadingAllAccounts: false,
-      });
-    } finally {
-      set({ isLoadingAllAccounts: false });
-    }
-  },
+    createAccount: async (password: string) => {
+      set({ isCreatingAccount: true, error: null });
 
-  createAccount: async (password: string) => {
-    set({ isCreatingAccount: true, error: null });
+      try {
+        await createAccount(password);
 
-    try {
-      await createAccount(password);
+        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 
-      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+        set({ isCreatingAccount: false, error: null });
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToCreateAccount"),
+          isCreatingAccount: false,
+        });
+        throw error;
+      }
+    },
 
-      set({ isCreatingAccount: false, error: null });
-    } catch (error) {
-      set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToCreateAccount"),
-        isCreatingAccount: false,
-      });
-      throw error;
-    }
-  },
+    selectAccount: async (publicKey: string) => {
+      try {
+        await selectAccount(publicKey);
+        const activeAccount = await getActiveAccount();
+        set({ account: activeAccount });
+      } catch (error) {
+        logger.error(
+          "useAuthenticationStore.selectAccount",
+          "Failed to select account",
+          error,
+        );
 
-  selectAccount: async (publicKey: string) => {
-    try {
-      await selectAccount(publicKey);
-      const activeAccount = await getActiveAccount();
-      set({ account: activeAccount });
-    } catch (error) {
-      logger.error(
-        "useAuthenticationStore.selectAccount",
-        "Failed to select account",
-        error,
-      );
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+        set({ error: errorMessage });
+      }
+    },
 
-      set({ error: errorMessage });
-    }
-  },
+    getTemporaryStore: async () => getTemporaryStore(),
 
-  getTemporaryStore: async () => getTemporaryStore(),
+    clearError: () => {
+      set({ error: null });
+    },
 
-  clearError: () => {
-    set({ error: null });
-  },
-}));
+    selectNetwork: async (network: NETWORKS) => {
+      await dataStorage.setItem(STORAGE_KEYS.ACTIVE_NETWORK, network);
+
+      set({ network });
+    },
+  };
+});

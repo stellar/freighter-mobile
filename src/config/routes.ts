@@ -35,6 +35,7 @@ export const MANAGE_ASSETS_ROUTES = {
 
 export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
+  CHANGE_NETWORK_SCREEN: "ChangeNetworkScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -98,6 +99,7 @@ export type ManageAssetsStackParamList = {
 
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
+  [SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {

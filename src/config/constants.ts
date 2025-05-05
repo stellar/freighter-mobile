@@ -123,11 +123,13 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * CUSTOM_TOKEN_LIST The custom token list is used to keep track of all the custom soroban tokens stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
  * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
+ * ACTIVE_NETWORK The active network is the network that is currently being used.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
+  ACTIVE_NETWORK = "activeNetwork",
 }
 
 /**
