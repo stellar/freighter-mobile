@@ -45,7 +45,12 @@
   "settings": {
     "title": "Configurações",
     "logout": "Sair",
+    "network": "Rede",
     "version": "Versão {{version}}"
+  },
+  "changeNetworkScreen": {
+    "title": "Mudar Rede",
+    "currentNetwork": "Rede atual"
   },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",

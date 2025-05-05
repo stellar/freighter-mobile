@@ -4,15 +4,16 @@ import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
-import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
+import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
-import React from "react";
+import React, { useMemo } from "react";
 import styled from "styled-components/native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
@@ -60,7 +61,11 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
 export const TabNavigator = () => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
-  const networkDetails = TESTNET_NETWORK_DETAILS;
+  const { network: activeNetwork } = useAuthenticationStore();
+  const networkDetails = useMemo(
+    () => mapNetworkToNetworkDetails(activeNetwork),
+    [activeNetwork],
+  );
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({

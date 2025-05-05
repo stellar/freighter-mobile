@@ -44,7 +44,12 @@
   "settings": {
     "title": "Settings",
     "logout": "Log Out",
+    "network": "Network",
     "version": "Version {{version}}"
+  },
+  "changeNetworkScreen": {
+    "title": "Switch Network",
+    "currentNetwork": "Current network"
   },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",

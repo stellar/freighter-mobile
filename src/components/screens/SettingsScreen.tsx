@@ -4,10 +4,10 @@ import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -22,16 +22,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const appVersion = getAppVersion();
+  const { themeColors } = useColors();
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={THEME.colors.base.secondary} />
+          <Icon.X size={24} color={themeColors.base[1]} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, t]);
+  }, [navigation, t, themeColors]);
 
   const handleLogout = () => {
     logout();
@@ -39,9 +40,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const topListItems = [
     {
-      icon: <Icon.LogOut01 size={24} color={THEME.colors.list.destructive} />,
+      icon: <Icon.Server05 size={24} color={themeColors.foreground.primary} />,
+      title: t("settings.network"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
+      testID: "change-network-button",
+    },
+    {
+      icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,
       title: t("settings.logout"),
-      titleColor: THEME.colors.list.destructive,
+      titleColor: themeColors.status.error,
       onPress: handleLogout,
       testID: "logout-button",
     },
@@ -49,7 +57,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const bottomListItems = [
     {
-      icon: <Icon.GitCommit size={24} color={THEME.colors.list.disabled} />,
+      icon: <Icon.GitCommit size={24} color={themeColors.foreground.primary} />,
       title: t("settings.version", { version: appVersion }),
       testID: "update-button",
     },
