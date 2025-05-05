@@ -196,6 +196,7 @@
     "transactionRequest": "Transaction Request",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "xdr": "XDR"
+    "xdrItem": "XDR",
+    "itemCopied": "{{itemName}} copied to clipboard!"
   }
 }

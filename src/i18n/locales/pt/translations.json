@@ -192,6 +192,7 @@
     "transactionRequest": "Solicitação de transação",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
-    "xdr": "XDR"
+    "xdrItem": "XDR",
+    "itemCopied": "{{itemName}} copiado para a área de transferência!"
   }
 }

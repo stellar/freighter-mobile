@@ -8,9 +8,10 @@ import { ActiveAccount } from "ducks/auth";
 import { SessionRequest } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 type DappRequestBottomSheetContentProps = {
   sessionRequest: SessionRequest | null;
@@ -25,6 +26,7 @@ const DappRequestBottomSheetContent: React.FC<
 > = ({ sessionRequest, account, onCancel, onConfirm, isSigning }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
 
   if (!sessionRequest || !account) {
     return null;
@@ -38,6 +40,14 @@ const DappRequestBottomSheetContent: React.FC<
   const dAppDomain = "aqua.network";
   const dAppName = "Aquarius";
   const dAppFavicon = "https://aqua.network/favicon.png";
+
+  const handleCopy = (item: string, itemName: string) => {
+    copyToClipboard(item, {
+      notificationMessage: t("dappRequestBottomSheetContent.itemCopied", {
+        itemName,
+      }),
+    });
+  };
 
   return (
     <View className="flex-1 justify-center items-center mt-2">
@@ -66,10 +76,15 @@ const DappRequestBottomSheetContent: React.FC<
           <View className="flex-row items-center flex-1">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary style={{ marginLeft: pxValue(8) }}>
-              {t("dappRequestBottomSheetContent.xdr")}
+              {t("dappRequestBottomSheetContent.xdrItem")}
             </Text>
           </View>
-          <View className="flex-row items-center flex-1 ml-2">
+          <TouchableOpacity
+            className="flex-row items-center flex-1 ml-2"
+            onPress={() =>
+              handleCopy(xdr, t("dappRequestBottomSheetContent.xdrItem"))
+            }
+          >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text
               md
@@ -80,7 +95,7 @@ const DappRequestBottomSheetContent: React.FC<
             >
               {xdr}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
       <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
