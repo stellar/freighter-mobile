@@ -34,13 +34,14 @@ const DappRequestBottomSheetContent: React.FC<
   const { params } = request;
   const { xdr } = params;
 
-  // TODO: parse from XDR or else from VerifyContext
-  const dAppDomain = "app.soroswap.finance";
-  const dAppName = "Soroswap";
+  // TODO: map with existing connection using "origin" from VerifyContext
+  const dAppDomain = "aqua.network";
+  const dAppName = "Aquarius";
+  const dAppFavicon = "https://aqua.network/favicon.png";
 
   return (
     <View className="flex-1 justify-center items-center mt-2">
-      <App size="lg" appName={dAppName} />
+      <App size="lg" appName={dAppName} favicon={dAppFavicon} />
       <View className="mt-4" />
       <Text lg primary medium style={{ textAlign: "center" }}>
         {dAppName}
@@ -61,9 +62,26 @@ const DappRequestBottomSheetContent: React.FC<
         {t("dappRequestBottomSheetContent.transactionRequest")}
       </Badge>
       <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
-        <Text md secondary style={{ textAlign: "center" }}>
-          {xdr}
-        </Text>
+        <View className="flex-row items-center justify-between w-full">
+          <View className="flex-row items-center flex-1">
+            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
+            <Text md medium secondary style={{ marginLeft: pxValue(8) }}>
+              {t("dappRequestBottomSheetContent.xdr")}
+            </Text>
+          </View>
+          <View className="flex-row items-center flex-1 ml-2">
+            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            <Text
+              md
+              medium
+              primary
+              style={{ marginLeft: pxValue(8), flex: 1 }}
+              numberOfLines={1}
+            >
+              {xdr}
+            </Text>
+          </View>
+        </View>
       </View>
       <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
         <View className="flex-row items-center">

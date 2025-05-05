@@ -191,6 +191,7 @@
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Solicitação de transação",
     "cancel": "Cancelar",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "xdr": "XDR"
   }
 }
