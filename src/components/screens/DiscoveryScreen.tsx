@@ -158,6 +158,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
   typeof MAIN_TAB_ROUTES.TAB_DISCOVERY
 >;
 
+// TODO: translations
 export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
