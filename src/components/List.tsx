@@ -24,6 +24,7 @@ export const List: React.FC<ListProps> = ({ items, variant = "filled" }) => (
     {items.map((item, index) => (
       <React.Fragment key={item.title}>
         <TouchableOpacity
+          disabled={!item.onPress}
           onPress={item.onPress}
           testID={item.testID}
           className="flex-row items-center p-4 gap-3"

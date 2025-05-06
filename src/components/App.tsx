@@ -5,6 +5,8 @@ import {
 } from "@react-navigation/native";
 import { RootStackParamList } from "config/routes";
 import { THEME } from "config/theme";
+import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
+import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
 import { AuthCheckProvider } from "providers/AuthCheckProvider";
@@ -25,6 +27,12 @@ export const App = (): React.JSX.Element => {
     Appearance.setColorScheme("dark");
   }, []);
 
+  // Step 1 - Initialize wallets and wallet connect client
+  const initialized = useWalletKitInitialize();
+
+  // Step 2 - Once initialized, set up wallet connect event manager
+  useWalletKitEventsManager(initialized);
+    
   return (
     <GestureHandlerRootView>
       <SafeAreaProvider>

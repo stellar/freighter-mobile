@@ -5,7 +5,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { ActiveAccount } from "ducks/auth";
-import { SessionRequest } from "ducks/walletKit";
+import { WalletKitSessionRequest } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -14,7 +14,7 @@ import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type DappRequestBottomSheetContentProps = {
-  sessionRequest: SessionRequest | null;
+  requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
   onCancel: () => void;
   onConfirm: () => void;
@@ -23,10 +23,12 @@ type DappRequestBottomSheetContentProps = {
 
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ sessionRequest, account, onCancel, onConfirm, isSigning }) => {
+> = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+
+  const sessionRequest = requestEvent?.params;
 
   if (!sessionRequest || !account) {
     return null;
@@ -34,7 +36,8 @@ const DappRequestBottomSheetContent: React.FC<
 
   const { request } = sessionRequest;
   const { params } = request;
-  const { xdr } = params;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const xdr = params?.xdr as string;
 
   // TODO: map with existing connection using "origin" from VerifyContext
   const dAppDomain = "aqua.network";

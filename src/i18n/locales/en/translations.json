@@ -113,7 +113,15 @@
     "pasteFromClipboard": "Paste from clipboard"
   },
   "discovery": {
-    "title": "Discovery"
+    "title": "Wallet Connect",
+    "inputPlaceholder": "Enter WalletConnect URI",
+    "scanQRCode": "Scan QR Code",
+    "connect": "Connect",
+    "pairingError": "Failed to pair",
+    "invalidUriError": "Please enter a valid URI",
+    "disconnectAllSessions": "Clear all connected apps",
+    "connectedDapps": "Connected Apps",
+    "noConnectedDapps": "You’re not connected to any apps"
   },
   "history": {
     "title": "History"

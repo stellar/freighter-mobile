@@ -113,7 +113,15 @@
     "pasteFromClipboard": "Colar da área de transferência"
   },
   "discovery": {
-    "title": "Descobrir"
+    "title": "Wallet Connect",
+    "inputPlaceholder": "Insira um URI do WalletConnect",
+    "scanQRCode": "Scanear QR Code",
+    "connect": "Conectar",
+    "pairingError": "Falha ao conectar",
+    "invalidUriError": "Por favor, insira um URI válido",
+    "disconnectAllSessions": "Desconectar de todos os aplicativos",
+    "connectedDapps": "Aplicativos Conectados",
+    "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
   },
   "history": {
     "title": "Histórico"

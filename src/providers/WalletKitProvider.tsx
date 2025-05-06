@@ -2,14 +2,18 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import {
   useWalletKitStore,
-  SessionProposal,
+  WalletKitSessionProposal,
   WalletKitEventTypes,
-  SessionRequest,
+  WalletKitSessionRequest,
+  StellarRpcChains,
 } from "ducks/walletKit";
+import { approveSessionProposal, approveSessionRequest, rejectSessionRequest } from "helpers/walletKitUtil";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 
 interface WalletKitProviderProps {
@@ -22,73 +26,96 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
-  const { account } = useGetActiveAccount();
-  const { event, clearEvent } = useWalletKitStore();
+  const { network } = useAuthenticationStore();
+  const { account, signTransaction } = useGetActiveAccount();
+  const { event, clearEvent, fetchActiveSessions } = useWalletKitStore();
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
 
-  const [sessionProposal, setSessionProposal] =
-    useState<SessionProposal | null>(null);
-  const [sessionRequest, setSessionRequest] = useState<SessionRequest | null>(
+  const [proposalEvent, setProposalEvent] =
+    useState<WalletKitSessionProposal | null>(null);
+  const [requestEvent, setRequestEvent] = useState<WalletKitSessionRequest | null>(
     null,
   );
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const handleResetDappConnection = () => {
-    // TODO: Handle cancel connection
+  const networkDetails = useMemo(
+    () => mapNetworkToNetworkDetails(network),
+    [network],
+  );
+
+  const publicKey = account?.publicKey;
+  
+  const activeChain = useMemo(() => network === NETWORKS.PUBLIC ? StellarRpcChains.PUBLIC : StellarRpcChains.TESTNET, [network]);
+
+  const activeAccounts = useMemo(() => [`${StellarRpcChains.PUBLIC}:${publicKey}`, `${StellarRpcChains.TESTNET}:${publicKey}`], [publicKey]);
+
+  const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
+
     setTimeout(() => {
       setIsConnecting(false);
-      setSessionProposal(null);
+      setProposalEvent(null);
       clearEvent();
     }, 200);
   };
 
-  const handleResetDappRequest = () => {
-    // TODO: Handle cancel request
+  const handleClearDappRequest = () => {
     dappRequestBottomSheetModalRef.current?.dismiss();
+
+    // We need to explicitly reject the request here otherwise
+    // the app will show the request again on next app launch
+    if (requestEvent) {
+      rejectSessionRequest({ sessionRequest: requestEvent, message: "User rejected the request" });
+    }
+
     setTimeout(() => {
       setIsSigning(false);
-      setSessionRequest(null);
+      setRequestEvent(null);
       clearEvent();
     }, 200);
   };
 
   const handleDappConnection = () => {
-    // TODO: Handle dapp connection
+    if (!proposalEvent) {
+      return;
+    }
+
     setIsConnecting(true);
-    new Promise((resolve) => {
-      setTimeout(resolve, 1000);
-    }).finally(() => {
-      handleResetDappConnection();
+
+    approveSessionProposal({ sessionProposal: proposalEvent, activeAccounts }).finally(() => {
+      handleClearDappConnection();
+      fetchActiveSessions();
     });
   };
 
   const handleDappRequest = () => {
-    // TODO: Handle dapp request
+    if (!requestEvent) {
+      return;
+    }
+
     setIsSigning(true);
-    new Promise((resolve) => {
-      setTimeout(resolve, 1000);
-    }).finally(() => {
-      handleResetDappRequest();
+
+    approveSessionRequest({ sessionRequest: requestEvent, signTransaction, networkPassphrase: networkDetails.networkPassphrase, activeChain }).finally(() => {
+      handleClearDappRequest();
     });
   };
 
   useEffect(() => {
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
-      handleResetDappRequest();
+      handleClearDappRequest();
 
-      setSessionProposal(event.params);
+      setProposalEvent(event as WalletKitSessionProposal);
       dappConnectionBottomSheetModalRef.current?.present();
     }
 
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
-      handleResetDappConnection();
+      handleClearDappConnection();
 
-      setSessionRequest(event.params);
+      setRequestEvent(event as WalletKitSessionRequest);
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,31 +125,33 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     <View className="flex-1">
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
-        handleCloseModal={() =>
-          dappConnectionBottomSheetModalRef.current?.dismiss()
-        }
+        handleCloseModal={handleClearDappConnection }
+        bottomSheetModalProps={{
+          onDismiss: handleClearDappConnection,
+        }}
         customContent={
           <DappConnectionBottomSheetContent
             account={account}
-            sessionProposal={sessionProposal}
-            onCancel={handleResetDappConnection}
-            onConnection={handleDappConnection}
+            proposalEvent={proposalEvent}
             isConnecting={isConnecting}
+            onConnection={handleDappConnection}
+            onCancel={handleClearDappConnection}
           />
         }
       />
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
-        handleCloseModal={() =>
-          dappRequestBottomSheetModalRef.current?.dismiss()
-        }
+        handleCloseModal={handleClearDappRequest}
+        bottomSheetModalProps={{
+          onDismiss: handleClearDappRequest,
+        }}
         customContent={
           <DappRequestBottomSheetContent
             account={account}
-            sessionRequest={sessionRequest}
-            onCancel={handleResetDappRequest}
-            onConfirm={handleDappRequest}
+            requestEvent={requestEvent}
             isSigning={isSigning}
+            onConfirm={handleDappRequest}
+            onCancel={handleClearDappRequest}
           />
         }
       />

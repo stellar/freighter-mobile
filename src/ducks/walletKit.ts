@@ -1,3 +1,5 @@
+import { WalletKitTypes } from "@reown/walletkit";
+import { disconnectAllSessions, getActiveSessions } from "helpers/walletKitUtil";
 import { create } from "zustand";
 
 export enum WalletKitEventTypes {
@@ -20,81 +22,45 @@ export enum StellarRpcChains {
   TESTNET = "stellar:testnet",
 }
 
-// TODO: import from walletkit
-export type SessionProposal = {
-  id: string;
-  pairingTopic: string;
-  expiryTimestamp: number;
-  requiredNamespaces: {
-    stellar: {
-      chains: StellarRpcChains[];
-      methods: StellarRpcMethods[];
-      events: StellarRpcEvents[];
-    };
-  };
-  optionalNamespaces: Record<string, string[]>;
-  relays: {
-    protocol: string;
-  }[];
-  proposer: {
-    publicKey: string;
-    metadata: {
-      description: string;
-      url: string;
-      icons: string[];
-      name: string;
-    };
-  };
+export type WalletKitSessionProposal = WalletKitTypes.SessionProposal & {
+  type: WalletKitEventTypes.SESSION_PROPOSAL;
 };
 
-// TODO: import from walletkit
-export type SessionRequest = {
-  request: {
-    method: StellarRpcMethods;
-    params: { xdr: string };
-    expiryTimestamp: number;
-  };
-  chainId: StellarRpcChains;
+export type WalletKitSessionRequest = WalletKitTypes.SessionRequest & {
+  type: WalletKitEventTypes.SESSION_REQUEST;
+};
+
+const noneEvent = {
+  type: WalletKitEventTypes.NONE,
 };
 
 export type WalletKitEvent =
-  | {
-      id: string;
-      type: WalletKitEventTypes.SESSION_PROPOSAL;
-      params: SessionProposal;
-      verifyContext: VerifyContext;
-    }
-  | {
-      id: string;
-      type: WalletKitEventTypes.SESSION_REQUEST;
-      topic: string;
-      params: SessionRequest;
-      verifyContext: VerifyContext;
-    }
-  | {
-      type: WalletKitEventTypes.NONE;
-    };
-
-type VerifyContext = {
-  verified: {
-    verifyUrl: string;
-    validation: string;
-    origin: string;
-  };
-};
-
-const noneEvent: WalletKitEvent = {
-  type: WalletKitEventTypes.NONE,
-};
+  | WalletKitSessionProposal
+  | WalletKitSessionRequest
+  | typeof noneEvent;
 
 interface WalletKitState {
   event: WalletKitEvent;
   setEvent: (event: WalletKitEvent) => void;
   clearEvent: () => void;
+  // TODO: create a proper type for the activeSessions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  activeSessions: Record<string, any>;
+  fetchActiveSessions: () => Promise<void>;
+  disconnectAllSessions: () => Promise<void>;
 }
 
 export const useWalletKitStore = create<WalletKitState>((set) => ({
   event: noneEvent,
+  activeSessions: [],
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
+  fetchActiveSessions: async () => {
+    const activeSessions = await getActiveSessions();
+    set({ activeSessions });
+  },
+  disconnectAllSessions: async () => {
+    await disconnectAllSessions();
+    set({ activeSessions: [] });
+  },
 }));

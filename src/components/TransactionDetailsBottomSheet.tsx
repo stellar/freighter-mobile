@@ -6,6 +6,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { TRANSACTION_RECOMMENDED_FEE } from "config/constants";
+import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -47,7 +48,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
   const handleViewOnExplorer = () => {
     // TODO: In the future, this could open a web link to stellar.expert with the transaction details
-    console.log(t("transactionDetailsBottomSheet.viewOnExpert"));
+    logger.info("TransactionDetailsBottomSheet", t("transactionDetailsBottomSheet.viewOnExpert"));
   };
 
   return (

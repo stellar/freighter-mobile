@@ -5,7 +5,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { ActiveAccount } from "ducks/auth";
-import { SessionProposal } from "ducks/walletKit";
+import { WalletKitSessionProposal } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -13,7 +13,7 @@ import React from "react";
 import { View } from "react-native";
 
 type DappConnectionBottomSheetContentProps = {
-  sessionProposal: SessionProposal | null;
+  proposalEvent: WalletKitSessionProposal | null;
   account: ActiveAccount | null;
   onCancel: () => void;
   onConnection: () => void;
@@ -22,15 +22,16 @@ type DappConnectionBottomSheetContentProps = {
 
 const DappConnectionBottomSheetContent: React.FC<
   DappConnectionBottomSheetContentProps
-> = ({ sessionProposal, account, onCancel, onConnection, isConnecting }) => {
+> = ({ proposalEvent, account, onCancel, onConnection, isConnecting }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+
+  const sessionProposal = proposalEvent?.params;
 
   if (!sessionProposal || !account) {
     return null;
   }
 
-  // TODO: use URL class instead
   const dAppDomain = sessionProposal.proposer.metadata.url
     .split("://")[1]
     .split("/")[0];
