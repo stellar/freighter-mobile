@@ -197,3 +197,30 @@ jest.mock("react-native-vision-camera", () => ({
     requestPermission: jest.fn(),
   }),
 }));
+
+jest.mock("ducks/walletKit", () => ({
+  WalletKitEventTypes: {
+    SESSION_PROPOSAL: "SESSION_PROPOSAL",
+    SESSION_REQUEST: "SESSION_REQUEST",
+    NONE: "NONE",
+  },
+  StellarRpcMethods: {
+    SIGN_XDR: "SIGN_XDR",
+    SIGN_AND_SUBMIT_XDR: "SIGN_AND_SUBMIT_XDR",
+  },
+  StellarRpcChains: {
+    PUBLIC: "PUBLIC",
+    TESTNET: "TESTNET",
+  },
+  StellarRpcEvents: {
+    ACCOUNT_CHANGED: "ACCOUNT_CHANGED",
+  },
+  useWalletKitStore: () => ({
+    event: {},
+    activeSessions: [],
+    setEvent: jest.fn(),
+    clearEvent: jest.fn(),
+    fetchActiveSessions: jest.fn(),
+    disconnectAllSessions: jest.fn(),
+  }),
+}));
