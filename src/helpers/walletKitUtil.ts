@@ -16,20 +16,12 @@ import {
   StellarRpcChains,
   StellarRpcEvents,
   StellarRpcMethods,
+  WALLET_KIT_METADATA,
+  WALLET_KIT_PROJECT_ID,
   WalletKitSessionProposal,
   WalletKitSessionRequest,
 } from "ducks/walletKit";
 import { Linking } from "react-native";
-
-// TODO: get project id from env
-const PROJECT_ID = "ab11883e1469411a76f578a274f3dce0";
-
-const metadata = {
-  name: "Freighter",
-  description: "Freighter, a stellar wallet for everyone",
-  url: "https://freighter.app",
-  icons: ["https://tinyurl.com/freighter-mobile-icon"],
-};
 
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
@@ -46,12 +38,12 @@ export let walletKit: IWalletKit;
 
 export const createWalletKit = async () => {
   const core = new Core({
-    projectId: PROJECT_ID,
+    projectId: WALLET_KIT_PROJECT_ID,
   });
 
   walletKit = await WalletKit.init({
     core,
-    metadata,
+    metadata: WALLET_KIT_METADATA,
   });
 };
 
@@ -98,7 +90,7 @@ export const approveSessionProposal = async ({
     const dappScheme = session.peer.metadata.redirect?.native;
 
     if (dappScheme) {
-      // TODO: we should only open URL here if the session was initiated by a deep-link, in
+      // We should probably only open URL here if the session was initiated by a deep-link, in
       // which case it would make sense to redirect users back to the external dapp website.
       // In case the session was initiated by a QR code, we should show a toast/info-box letting
       // the user know that they can manually return to the DApp since they are probably handling
@@ -153,13 +145,11 @@ export const approveSessionRequest = async ({
   const { method, params: requestParams } = request || {};
   const { xdr } = requestParams || {};
 
-  // TODO: check if the method is supported by the namespace
   if (!stellarNamespaceMethods.includes(method as StellarRpcMethods)) {
     const message = `Invalid or unsupported namespace method: ${method}`;
     logger.error("WalletKit", message, { method });
 
     // TODO: show toast/info-box letting the user know that the request is invalid
-
     rejectSessionRequest({ sessionRequest, message });
     return;
   }
@@ -169,7 +159,6 @@ export const approveSessionRequest = async ({
     logger.error("WalletKit", message, { chainId, activeChain });
 
     // TODO: show toast/info-box letting the user know that the request is invalid
-
     rejectSessionRequest({ sessionRequest, message });
     return;
   }

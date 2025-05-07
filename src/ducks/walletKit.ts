@@ -6,6 +6,16 @@ import {
 } from "helpers/walletKitUtil";
 import { create } from "zustand";
 
+// TODO: get project id from env variable
+export const WALLET_KIT_PROJECT_ID = "ab11883e1469411a76f578a274f3dce0";
+
+export const WALLET_KIT_METADATA = {
+  name: "Freighter",
+  description: "Freighter, a stellar wallet for everyone",
+  url: "https://freighter.app",
+  icons: ["https://tinyurl.com/freighter-mobile-icon"],
+};
+
 export enum WalletKitEventTypes {
   SESSION_PROPOSAL = "session_proposal",
   SESSION_REQUEST = "session_request",

@@ -1,7 +1,6 @@
 import { logger } from "config/logger";
-import {createWalletKit} from "helpers/walletKitUtil";
-import {useCallback, useEffect, useState} from "react";
-
+import { createWalletKit } from "helpers/walletKitUtil";
+import { useCallback, useEffect, useState } from "react";
 
 export const useWalletKitInitialize = () => {
   const [initialized, setInitialized] = useState(false);
@@ -11,7 +10,11 @@ export const useWalletKitInitialize = () => {
       await createWalletKit();
       setInitialized(true);
     } catch (error) {
-      logger.error("useWalletKitInitialize", "Error initializing walletKit: ", error);
+      logger.error(
+        "useWalletKitInitialize",
+        "Error initializing walletKit: ",
+        error,
+      );
       // TODO: show toast/info-box letting the user know that the walletKit initialization failed
     }
   }, []);
@@ -23,4 +26,4 @@ export const useWalletKitInitialize = () => {
   }, [initialized, onInitialize]);
 
   return initialized;
-}
+};
