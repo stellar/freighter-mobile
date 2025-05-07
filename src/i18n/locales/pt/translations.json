@@ -270,12 +270,22 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Digite seu memo",
-    "optional": "(opcional)"
+    "optional": "(opcional)",
+    "errors": {
+      "invalid": "Formato de memo inválido",
+      "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Tempo Limite da Transação",
     "seconds": "segundos",
     "setRecommended": "Definir recomendado",
+    "inputPlaceholder": "Digite o tempo limite",
+    "errors": {
+      "required": "Tempo limite da transação é obrigatório",
+      "invalid": "Tempo limite da transação inválido",
+      "greaterThanZero": "O tempo limite deve ser maior que 0"
+    },
     "description": "Número de segundos que podem passar antes que esta transação não possa mais ser aceita pela rede",
     "timeoutInSeconds": "Tempo limite em segundos"
   },

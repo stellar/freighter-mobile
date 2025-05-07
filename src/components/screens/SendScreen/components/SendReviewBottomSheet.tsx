@@ -5,12 +5,10 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  NATIVE_TOKEN_CODE,
-  TRANSACTION_RECOMMENDED_FEE,
-} from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
@@ -19,15 +17,12 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
-// Fees are always paid in XLM
-
 type SendReviewBottomSheetProps = {
   selectedBalance: PricedBalance | undefined;
   tokenValue: string;
   address: string;
   account: ActiveAccount | null;
   publicKey: string | undefined;
-  feeAmount?: string;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
@@ -38,12 +33,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   address,
   account,
   publicKey,
-  feeAmount = TRANSACTION_RECOMMENDED_FEE,
   onCancel,
   onConfirm,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { memo, transactionFee } = useTransactionSettingsStore();
   const slicedAddress = truncateAddress(address, 4, 4);
 
   return (
@@ -113,8 +108,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               {t("transactionAmountScreen.details.memo")}
             </Text>
           </View>
-          <Text md medium secondary>
-            {t("common.none")}
+          <Text md medium secondary={!memo}>
+            {memo || t("common.none")}
           </Text>
         </View>
         <View className="flex-row items-center justify-between">
@@ -127,7 +122,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(feeAmount, NATIVE_TOKEN_CODE)}
+              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>

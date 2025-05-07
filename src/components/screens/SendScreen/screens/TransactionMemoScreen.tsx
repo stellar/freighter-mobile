@@ -5,7 +5,8 @@ import { Textarea } from "components/sds/Textarea";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
-import React from "react";
+import { useValidateMemo } from "hooks/useValidateMemo";
+import React, { useState, useEffect } from "react";
 import { View } from "react-native";
 
 type TransactionMemoScreenProps = NativeStackScreenProps<
@@ -18,24 +19,35 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { memo, saveMemo } = useTransactionSettingsStore();
+  const [localMemo, setLocalMemo] = useState(memo);
+  const { error } = useValidateMemo(localMemo);
+
+  useEffect(() => {
+    setLocalMemo(memo);
+  }, [memo]);
 
   const handleSave = () => {
-    saveMemo(memo);
+    if (error) return;
+
+    saveMemo(localMemo);
     navigation.goBack();
   };
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
-        <Textarea
-          fieldSize="lg"
-          placeholder={t("transactionMemoScreen.placeholder")}
-          value={memo}
-          onChangeText={saveMemo}
-          note={t("transactionMemoScreen.optional")}
-        />
-        <View className="mt-4 mb-4">
-          <Button tertiary lg onPress={handleSave}>
+        <View className="flex-col gap-2">
+          <Textarea
+            fieldSize="lg"
+            placeholder={t("transactionMemoScreen.placeholder")}
+            value={localMemo}
+            onChangeText={setLocalMemo}
+            note={t("transactionMemoScreen.optional")}
+            error={error}
+          />
+        </View>
+        <View className="mt-4 mb-4 gap-4">
+          <Button tertiary lg onPress={handleSave} disabled={!!error}>
             {t("common.save")}
           </Button>
         </View>

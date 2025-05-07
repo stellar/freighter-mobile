@@ -11,6 +11,8 @@ export const NATIVE_TOKEN_CODE = "XLM";
 export const TRANSACTION_RECOMMENDED_FEE = "0.0250005";
 export const MIN_TRANSACTION_FEE = "0.00001";
 
+export const MAX_MEMO_BYTES = 28;
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;

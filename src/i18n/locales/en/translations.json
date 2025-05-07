@@ -275,7 +275,11 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Type your memo",
-    "optional": "(optional)"
+    "optional": "(optional)",
+    "errors": {
+      "invalid": "Invalid memo format",
+      "tooLong": "Memo is too long (maximum {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Transaction Timeout",
