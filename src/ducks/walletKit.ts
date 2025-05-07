@@ -1,5 +1,8 @@
 import { WalletKitTypes } from "@reown/walletkit";
-import { disconnectAllSessions, getActiveSessions } from "helpers/walletKitUtil";
+import {
+  disconnectAllSessions,
+  getActiveSessions,
+} from "helpers/walletKitUtil";
 import { create } from "zustand";
 
 export enum WalletKitEventTypes {
@@ -52,7 +55,7 @@ interface WalletKitState {
 
 export const useWalletKitStore = create<WalletKitState>((set) => ({
   event: noneEvent,
-  activeSessions: [],
+  activeSessions: {},
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
   fetchActiveSessions: async () => {

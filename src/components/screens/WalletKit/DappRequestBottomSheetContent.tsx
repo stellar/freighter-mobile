@@ -10,6 +10,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -28,9 +29,11 @@ const DappRequestBottomSheetContent: React.FC<
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
+  const dappMetadata = useDappMetadata(requestEvent);
+
   const sessionRequest = requestEvent?.params;
 
-  if (!sessionRequest || !account) {
+  if (!dappMetadata || !account || !sessionRequest) {
     return null;
   }
 
@@ -39,10 +42,9 @@ const DappRequestBottomSheetContent: React.FC<
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const xdr = params?.xdr as string;
 
-  // TODO: map with existing connection using "origin" from VerifyContext
-  const dAppDomain = "aqua.network";
-  const dAppName = "Aquarius";
-  const dAppFavicon = "https://aqua.network/favicon.png";
+  const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
+  const dAppName = dappMetadata.name;
+  const dAppFavicon = dappMetadata.icons[0];
 
   const handleCopy = (item: string, itemName: string) => {
     copyToClipboard(item, {
