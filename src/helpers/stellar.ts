@@ -1,5 +1,6 @@
 import { StrKey } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
+import { isContractId } from "helpers/soroban";
 
 /**
  * Checks if an address is a federation address (username*domain.com format)
@@ -13,7 +14,7 @@ export const isFederationAddress = (address: string): boolean => {
 };
 
 /**
- * Checks if a public key is valid (ED25519, MED25519, or federation address)
+ * Checks if a public key is valid (ED25519, MED25519, contract ID, or federation address)
  *
  * @param publicKey The public key to check
  * @returns True if the public key is valid
@@ -25,6 +26,10 @@ export const isValidStellarAddress = (publicKey: string): boolean => {
     }
 
     if (StrKey.isValidMed25519PublicKey(publicKey)) {
+      return true;
+    }
+
+    if (isContractId(publicKey)) {
       return true;
     }
 

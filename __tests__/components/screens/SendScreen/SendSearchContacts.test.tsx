@@ -1,4 +1,4 @@
-import { RouteProp } from "@react-navigation/native";
+import { NavigationContainer, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
@@ -131,7 +131,9 @@ describe("SendSearchContacts", () => {
 
   it("renders correctly with the search input", async () => {
     renderWithProviders(
-      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
     );
 
     await waitFor(() => {
@@ -159,7 +161,9 @@ describe("SendSearchContacts", () => {
 
   it("pastes clipboard content when paste button is pressed", async () => {
     renderWithProviders(
-      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
     );
 
     const pasteButton = await screen.findByTestId("search-input-end-button");
@@ -181,7 +185,9 @@ describe("SendSearchContacts", () => {
     );
 
     renderWithProviders(
-      <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
     );
 
     const input = await screen.findByPlaceholderText("Enter address");
