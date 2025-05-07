@@ -59,6 +59,7 @@
     "@tradle/react-native-http": "^2.0.0",
     "@walletconnect/core": "^2.20.2",
     "@walletconnect/react-native-compat": "^2.20.2",
+    "@walletconnect/types": "^2.20.2",
     "@walletconnect/utils": "^2.20.2",
     "asyncstorage-down": "^4.2.0",
     "axios": "^1.8.3",

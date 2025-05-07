@@ -1,4 +1,5 @@
 import { WalletKitTypes } from "@reown/walletkit";
+import { SessionTypes } from "@walletconnect/types";
 import {
   disconnectAllSessions,
   getActiveSessions,
@@ -42,50 +43,7 @@ export type WalletKitEvent =
   | WalletKitSessionRequest
   | typeof noneEvent;
 
-export type DappMetadata = {
-  name: string;
-  description: string;
-  url: string;
-  icons: string[];
-};
-
-export type ActiveSession = {
-  relay: {
-    protocol: string;
-  };
-  namespaces: {
-    stellar: {
-      chains: StellarRpcChains[];
-      methods: StellarRpcMethods[];
-      events: StellarRpcEvents[];
-      accounts: string[];
-    };
-  };
-  controller: string;
-  expiry: number;
-  topic: string;
-  requiredNamespaces: {
-    stellar: {
-      chains: StellarRpcChains[];
-      methods: StellarRpcMethods[];
-      events: StellarRpcEvents[];
-    };
-  };
-  optionalNamespaces: Record<string, unknown>;
-  pairingTopic: string;
-  acknowledged: boolean;
-  self: {
-    publicKey: string;
-    metadata: DappMetadata;
-  };
-  peer: {
-    publicKey: string;
-    metadata: DappMetadata;
-  };
-  transportType: string;
-};
-
-export type ActiveSessions = { [topic_key: string]: ActiveSession };
+export type ActiveSessions = { [topic_key: string]: SessionTypes.Struct };
 
 interface WalletKitState {
   event: WalletKitEvent;

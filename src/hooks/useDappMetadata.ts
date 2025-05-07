@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { CoreTypes } from "@walletconnect/types";
 import {
-  DappMetadata,
   useWalletKitStore,
   WalletKitEvent,
   WalletKitEventTypes,
 } from "ducks/walletKit";
 import { useMemo } from "react";
 
-const emptyMetadata: DappMetadata = {
+const emptyMetadata: CoreTypes.Metadata = {
   name: "",
   description: "",
   url: "",
@@ -16,7 +16,7 @@ const emptyMetadata: DappMetadata = {
 
 export const useDappMetadata = (
   event: WalletKitEvent | null,
-): DappMetadata | null => {
+): CoreTypes.Metadata | null => {
   const activeSessions = useWalletKitStore((state) => state.activeSessions);
 
   // Let's use a key string to avoid re-rendering the list when
