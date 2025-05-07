@@ -42,13 +42,56 @@ export type WalletKitEvent =
   | WalletKitSessionRequest
   | typeof noneEvent;
 
+export type DappMetadata = {
+  name: string;
+  description: string;
+  url: string;
+  icons: string[];
+};
+
+export type ActiveSession = {
+  relay: {
+    protocol: string;
+  };
+  namespaces: {
+    stellar: {
+      chains: StellarRpcChains[];
+      methods: StellarRpcMethods[];
+      events: StellarRpcEvents[];
+      accounts: string[];
+    };
+  };
+  controller: string;
+  expiry: number;
+  topic: string;
+  requiredNamespaces: {
+    stellar: {
+      chains: StellarRpcChains[];
+      methods: StellarRpcMethods[];
+      events: StellarRpcEvents[];
+    };
+  };
+  optionalNamespaces: Record<string, unknown>;
+  pairingTopic: string;
+  acknowledged: boolean;
+  self: {
+    publicKey: string;
+    metadata: DappMetadata;
+  };
+  peer: {
+    publicKey: string;
+    metadata: DappMetadata;
+  };
+  transportType: string;
+};
+
+export type ActiveSessions = { [topic_key: string]: ActiveSession };
+
 interface WalletKitState {
   event: WalletKitEvent;
   setEvent: (event: WalletKitEvent) => void;
   clearEvent: () => void;
-  // TODO: create a proper type for the activeSessions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  activeSessions: Record<string, any>;
+  activeSessions: ActiveSessions;
   fetchActiveSessions: () => Promise<void>;
   disconnectAllSessions: () => Promise<void>;
 }
@@ -64,6 +107,6 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
   },
   disconnectAllSessions: async () => {
     await disconnectAllSessions();
-    set({ activeSessions: [] });
+    set({ activeSessions: {} });
   },
 }));

@@ -1,17 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
+  DappMetadata,
   useWalletKitStore,
   WalletKitEvent,
   WalletKitEventTypes,
 } from "ducks/walletKit";
 import { useMemo } from "react";
-
-export type DappMetadata = {
-  name: string;
-  description: string;
-  url: string;
-  icons: string[];
-};
 
 const emptyMetadata: DappMetadata = {
   name: "",
@@ -53,9 +47,7 @@ export const useDappMetadata = (
       const matchedSessionByKey =
         "topic" in event ? activeSessions[event.topic] : null;
       if (matchedSessionByKey) {
-        return (
-          (matchedSessionByKey.peer?.metadata as DappMetadata) || emptyMetadata
-        );
+        return matchedSessionByKey.peer?.metadata || emptyMetadata;
       }
 
       // If we don't have a match by session key, let's try to find a match by session topic
@@ -63,9 +55,7 @@ export const useDappMetadata = (
         (session) => "topic" in event && event.topic === session.topic,
       );
 
-      return (
-        (matchedSessionByTopic?.peer?.metadata as DappMetadata) || emptyMetadata
-      );
+      return matchedSessionByTopic?.peer?.metadata || emptyMetadata;
     }
 
     return emptyMetadata;

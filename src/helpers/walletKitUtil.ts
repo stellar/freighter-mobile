@@ -1,9 +1,24 @@
-import {WalletKit, IWalletKit} from "@reown/walletkit";
-import { FeeBumpTransaction, Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
-import {Core} from "@walletconnect/core";
-import { buildApprovedNamespaces, getSdkError, SdkErrorKey } from "@walletconnect/utils";
+import { WalletKit, IWalletKit } from "@reown/walletkit";
+import {
+  FeeBumpTransaction,
+  Transaction,
+  TransactionBuilder,
+} from "@stellar/stellar-sdk";
+import { Core } from "@walletconnect/core";
+import {
+  buildApprovedNamespaces,
+  getSdkError,
+  SdkErrorKey,
+} from "@walletconnect/utils";
 import { logger } from "config/logger";
-import { StellarRpcChains, StellarRpcEvents, StellarRpcMethods, WalletKitSessionProposal, WalletKitSessionRequest } from "ducks/walletKit";
+import {
+  ActiveSessions,
+  StellarRpcChains,
+  StellarRpcEvents,
+  StellarRpcMethods,
+  WalletKitSessionProposal,
+  WalletKitSessionRequest,
+} from "ducks/walletKit";
 import { Linking } from "react-native";
 
 // TODO: get project id from env
@@ -16,8 +31,14 @@ const metadata = {
   icons: ["https://tinyurl.com/freighter-mobile-icon"],
 };
 
-const stellarNamespaceMethods = [StellarRpcMethods.SIGN_XDR, StellarRpcMethods.SIGN_AND_SUBMIT_XDR];
-const stellarNamespaceChains = [StellarRpcChains.PUBLIC, StellarRpcChains.TESTNET];
+const stellarNamespaceMethods = [
+  StellarRpcMethods.SIGN_XDR,
+  StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
+];
+const stellarNamespaceChains = [
+  StellarRpcChains.PUBLIC,
+  StellarRpcChains.TESTNET,
+];
 const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNT_CHANGED];
 
 // eslint-disable-next-line import/no-mutable-exports
@@ -32,21 +53,31 @@ export const createWalletKit = async () => {
     core,
     metadata,
   });
-}
+};
 
-export const rejectSessionProposal = async ({ sessionProposal }: { sessionProposal: WalletKitSessionProposal }) => {
+export const rejectSessionProposal = async ({
+  sessionProposal,
+}: {
+  sessionProposal: WalletKitSessionProposal;
+}) => {
   const { id } = sessionProposal;
 
   await walletKit.rejectSession({
     id,
-    reason: getSdkError("USER_REJECTED" as SdkErrorKey)
-  })
-}
+    reason: getSdkError("USER_REJECTED" as SdkErrorKey),
+  });
+};
 
-export const approveSessionProposal = async ({ sessionProposal, activeAccounts }: { sessionProposal: WalletKitSessionProposal, activeAccounts: string[] }) => {
+export const approveSessionProposal = async ({
+  sessionProposal,
+  activeAccounts,
+}: {
+  sessionProposal: WalletKitSessionProposal;
+  activeAccounts: string[];
+}) => {
   const { id, params } = sessionProposal;
 
-  try{
+  try {
     const approvedNamespaces = buildApprovedNamespaces({
       proposal: params,
       supportedNamespaces: {
@@ -55,13 +86,13 @@ export const approveSessionProposal = async ({ sessionProposal, activeAccounts }
           chains: stellarNamespaceChains,
           events: stellarNamespaceEvents,
           accounts: activeAccounts,
-        }
-      }
+        },
+      },
     });
 
     const session = await walletKit.approveSession({
       id,
-      namespaces: approvedNamespaces
+      namespaces: approvedNamespaces,
     });
 
     const dappScheme = session.peer.metadata.redirect?.native;
@@ -76,14 +107,20 @@ export const approveSessionProposal = async ({ sessionProposal, activeAccounts }
     } else {
       // TODO: inform the user to manually return to the DApp
     }
-  }catch(error){
+  } catch (error) {
     // TODO: use the error.message to show toast/info-box letting the user know that the connection attempt failed
-   logger.error("WalletKit", "onSessionProposal Error: ", error);
-   rejectSessionProposal({ sessionProposal });
+    logger.error("WalletKit", "onSessionProposal Error: ", error);
+    rejectSessionProposal({ sessionProposal });
   }
-}
+};
 
-export const rejectSessionRequest = async ({ sessionRequest, message }: { sessionRequest: WalletKitSessionRequest, message: string }) => {
+export const rejectSessionRequest = async ({
+  sessionRequest,
+  message,
+}: {
+  sessionRequest: WalletKitSessionRequest;
+  message: string;
+}) => {
   const { id, topic } = sessionRequest;
 
   const response = {
@@ -96,16 +133,28 @@ export const rejectSessionRequest = async ({ sessionRequest, message }: { sessio
   };
 
   await walletKit.respondSessionRequest({ topic, response });
-}
+};
 
-export const approveSessionRequest = async ({ sessionRequest, signTransaction, networkPassphrase, activeChain }: { sessionRequest: WalletKitSessionRequest, signTransaction: (transaction: Transaction | FeeBumpTransaction) => (string | null), networkPassphrase: string, activeChain: string }) => {
+export const approveSessionRequest = async ({
+  sessionRequest,
+  signTransaction,
+  networkPassphrase,
+  activeChain,
+}: {
+  sessionRequest: WalletKitSessionRequest;
+  signTransaction: (
+    transaction: Transaction | FeeBumpTransaction,
+  ) => string | null;
+  networkPassphrase: string;
+  activeChain: string;
+}) => {
   const { id, params, topic } = sessionRequest;
   const { request, chainId } = params || {};
   const { method, params: requestParams } = request || {};
   const { xdr } = requestParams || {};
 
   // TODO: check if the method is supported by the namespace
-  if (!stellarNamespaceMethods.includes(method as StellarRpcMethods)) { 
+  if (!stellarNamespaceMethods.includes(method as StellarRpcMethods)) {
     const message = `Invalid or unsupported namespace method: ${method}`;
     logger.error("WalletKit", message, { method });
 
@@ -127,7 +176,10 @@ export const approveSessionRequest = async ({ sessionRequest, signTransaction, n
 
   let signedTransaction;
   try {
-    const transaction = TransactionBuilder.fromXDR(xdr as string, networkPassphrase);
+    const transaction = TransactionBuilder.fromXDR(
+      xdr as string,
+      networkPassphrase,
+    );
     signedTransaction = signTransaction(transaction);
   } catch (error) {
     const message = `Failed to sign transaction: ${error?.toString()}`;
@@ -138,7 +190,11 @@ export const approveSessionRequest = async ({ sessionRequest, signTransaction, n
     return;
   }
 
-  const response = { id, result: { signedXDR: signedTransaction }, jsonrpc: "2.0" };
+  const response = {
+    id,
+    result: { signedXDR: signedTransaction },
+    jsonrpc: "2.0",
+  };
 
   try {
     await walletKit.respondSessionRequest({ topic, response });
@@ -146,14 +202,15 @@ export const approveSessionRequest = async ({ sessionRequest, signTransaction, n
     logger.error("WalletKit", "walletKit.respondSessionRequest Error: ", error);
     // TODO: show toast/info-box letting the user know that the request failed
   }
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/require-await
-export const getActiveSessions = async () => walletKit.getActiveSessions()
+export const getActiveSessions = async () =>
+  walletKit.getActiveSessions() as ActiveSessions;
 
 export const disconnectAllSessions = async () => {
   const activeSessions = await getActiveSessions();
-  
+
   await Promise.all(
     Object.values(activeSessions).map(async (activeSession) => {
       try {
@@ -164,6 +221,6 @@ export const disconnectAllSessions = async () => {
       } catch (_) {
         // noop
       }
-    })
+    }),
   );
-}
+};
