@@ -280,7 +280,13 @@
   "transactionTimeoutScreen": {
     "title": "Transaction Timeout",
     "seconds": "seconds",
-    "setRecommended": "Set recommended"
+    "setRecommended": "Set recommended",
+    "inputPlaceholder": "Enter timeout",
+    "errors": {
+      "required": "Transaction timeout is required",
+      "invalid": "Invalid transaction timeout",
+      "greaterThanZero": "Timeout must be greater than 0"
+    }
   },
   "transactionFeeScreen": {
     "title": "Transaction Fee",

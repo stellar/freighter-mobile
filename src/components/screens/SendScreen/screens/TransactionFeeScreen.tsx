@@ -24,13 +24,11 @@ type TransactionFeeScreenProps = NativeStackScreenProps<
 
 const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
   const { transactionFee, saveTransactionFee } = useTransactionSettingsStore();
   const { recommendedFee, networkCongestion } = useNetworkFees();
   const [localFee, setLocalFee] = useState(transactionFee);
-  const { tokenCode = NATIVE_TOKEN_CODE } = route.params || {};
 
   const { error } = useValidateTransactionFee(localFee);
 
@@ -78,7 +76,8 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
               error={error}
               rightElement={
                 <Text md secondary>
-                  {tokenCode}
+                  {/* The Fee is always paid in native token */}
+                  {NATIVE_TOKEN_CODE}
                 </Text>
               }
             />

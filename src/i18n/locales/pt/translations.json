@@ -275,7 +275,9 @@
   "transactionTimeoutScreen": {
     "title": "Tempo Limite da Transação",
     "seconds": "segundos",
-    "setRecommended": "Definir recomendado"
+    "setRecommended": "Definir recomendado",
+    "description": "Número de segundos que podem passar antes que esta transação não possa mais ser aceita pela rede",
+    "timeoutInSeconds": "Tempo limite em segundos"
   },
   "transactionFeeScreen": {
     "title": "Taxa da Transação",

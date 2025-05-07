@@ -94,6 +94,7 @@ export const FUTURENET_NETWORK_DETAILS: NetworkDetails = {
 };
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
+export const MIN_TRANSACTION_TIMEOUT = 1;
 
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,

@@ -7,6 +7,7 @@ import { DEFAULT_TRANSACTION_TIMEOUT } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 
@@ -24,14 +25,16 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   const [localTimeout, setLocalTimeout] = useState(
     transactionTimeout.toString(),
   );
+  const { error } = useValidateTransactionTimeout(localTimeout);
 
-  // Update local timeout when transactionTimeout changes
   useEffect(() => {
     setLocalTimeout(transactionTimeout.toString());
   }, [transactionTimeout]);
 
   const handleSave = () => {
-    const timeoutValue = Number(localTimeout) || DEFAULT_TRANSACTION_TIMEOUT;
+    if (error) return;
+
+    const timeoutValue = Number(localTimeout);
     saveTransactionTimeout(timeoutValue);
     navigation.goBack();
   };
@@ -43,25 +46,31 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
-        <View className="flex-row items-center gap-2">
+        <View className="flex-col gap-2">
           <Input
             fieldSize="md"
             value={localTimeout}
             onChangeText={setLocalTimeout}
             keyboardType="numeric"
-            placeholder={DEFAULT_TRANSACTION_TIMEOUT.toString()}
+            placeholder={t("transactionTimeoutScreen.inputPlaceholder")}
             rightElement={
               <Text md secondary>
                 {t("transactionTimeoutScreen.seconds")}
               </Text>
             }
+            error={error}
           />
         </View>
         <View className="gap-4 mb-4">
           <Button secondary lg onPress={handleSetRecommended}>
             {t("transactionTimeoutScreen.setRecommended")}
           </Button>
-          <Button tertiary lg onPress={handleSave}>
+          <Button
+            tertiary
+            lg
+            onPress={handleSave}
+            disabled={!!error || !localTimeout}
+          >
             {t("common.save")}
           </Button>
         </View>
