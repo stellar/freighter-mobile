@@ -12,8 +12,8 @@ import {
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { isLiquidityPool } from "helpers/balances";
-import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";

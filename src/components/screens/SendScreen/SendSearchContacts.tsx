@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -7,7 +8,10 @@ import {
 } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { useSendStore } from "ducks/send";
+import { isValidStellarAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -36,22 +40,32 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
 
-  // TODO: Replace with actual data from API/storage
-  const [recentTransactions] = useState([
-    {
-      id: "1",
-      address: "GA7M...63FC",
-    },
-    {
-      id: "2",
-      address: "CB2GPQAQJAJIGBXVQBMZ4GXMV7QSTA4LQASUAJXCD4ZYUKH2C25HKFQR",
-    },
-  ]);
+  const {
+    recentAddresses,
+    searchResults,
+    searchError,
+    loadRecentAddresses,
+    searchAddress,
+    addRecentAddress,
+    setDestinationAddress,
+    reset,
+  } = useSendStore();
 
-  // Mock search suggestions data
-  const [searchSuggestions, setSearchSuggestions] = useState<
-    Array<{ id: string; address: string }>
-  >([]);
+  // Load recent addresses when component mounts
+  useEffect(() => {
+    loadRecentAddresses();
+
+    // Clear any previous search state on component mount
+    reset();
+  }, [loadRecentAddresses, reset]);
+
+  // Reset search input and store state when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setAddress("");
+      reset();
+    }, [reset]),
+  );
 
   /**
    * Handles search input changes and updates suggestions
@@ -60,17 +74,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    */
   const handleSearch = (text: string) => {
     setAddress(text);
-    if (text.length > 0) {
-      // TODO: Replace with actual API call to search for addresses/contacts
-      setSearchSuggestions([
-        {
-          id: "4",
-          address: "CB2GPQAQJAJIGBXVQBMZ4GXMV7QSTA4LQASUAJXCD4ZYUKH2C25HKFQR",
-        },
-      ]);
-    } else {
-      setSearchSuggestions([]);
-    }
+    searchAddress(text);
   };
 
   /**
@@ -79,19 +83,24 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    * @param {string} contactAddress - The selected contact address
    */
   const handleContactPress = (contactAddress: string) => {
+    if (!isValidStellarAddress(contactAddress)) {
+      return;
+    }
+
+    setDestinationAddress(contactAddress);
+
+    // TODO: check if we have to add it here or just after the transaction is sent
+    addRecentAddress(contactAddress);
+
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
       address: contactAddress,
     });
   };
 
-  /**
-   * Gets text from clipboard and passes it to search handler
-   */
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
 
-  // Set up header with back button
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
@@ -123,17 +132,23 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             }}
             value={address}
           />
+
+          {searchError && (
+            <Text sm secondary className="mt-2 text-red-500">
+              {searchError}
+            </Text>
+          )}
         </View>
 
-        {searchSuggestions.length > 0 ? (
+        {searchResults.length > 0 ? (
           <SearchSuggestionsList
-            suggestions={searchSuggestions}
+            suggestions={searchResults}
             onContactPress={handleContactPress}
           />
         ) : (
-          recentTransactions.length > 0 && (
+          recentAddresses.length > 0 && (
             <RecentContactsList
-              transactions={recentTransactions}
+              transactions={recentAddresses}
               onContactPress={handleContactPress}
             />
           )

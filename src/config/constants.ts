@@ -124,12 +124,14 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
  * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
  * ACTIVE_NETWORK The active network is the network that is currently being used.
+ * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
   ACTIVE_NETWORK = "activeNetwork",
+  RECENT_ADDRESSES = "recentAddresses",
 }
 
 /**
