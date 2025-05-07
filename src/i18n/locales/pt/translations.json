@@ -321,5 +321,8 @@
     "confirm": "Confirmar",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copiado para a área de transferência!"
+  },
+  "qrScanner": {
+    "cameraNotAvailable": "Câmera não disponível ou não permitida"
   }
 }

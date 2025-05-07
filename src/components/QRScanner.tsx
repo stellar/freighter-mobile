@@ -1,6 +1,7 @@
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect } from "react";
 import { View, Dimensions, StyleSheet } from "react-native";
 import {
@@ -16,10 +17,10 @@ type QRScannerProps = {
 
 const windowWidth = Dimensions.get("window").width;
 
-// TODO: translations
 export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
+  const { t } = useAppTranslation();
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr"],
@@ -41,7 +42,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
         style={{ width: windowWidth, marginLeft: -pxValue(DEFAULT_PADDING) }}
       >
         <Text className="text-white text-center mt-5">
-          Camera not available or not permitted
+          {t("qrScanner.cameraNotAvailable")}
         </Text>
       </View>
     );
