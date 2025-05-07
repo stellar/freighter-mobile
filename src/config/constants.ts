@@ -9,6 +9,7 @@ export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const TRANSACTION_RECOMMENDED_FEE = "0.0250005";
+export const MIN_TRANSACTION_FEE = "0.00001";
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;

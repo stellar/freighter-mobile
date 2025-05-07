@@ -285,12 +285,16 @@
   "transactionFeeScreen": {
     "title": "Transaction Fee",
     "setRecommended": "Set recommended",
-    "congestion": {
-      "low": "Low congestion",
-      "medium": "Medium congestion",
-      "high": "High congestion"
+    "congestion": "{{networkCongestion}} congestion",
+    "errors": {
+      "required": "Transaction fee is required",
+      "invalid": "Invalid transaction fee",
+      "tooLow": "Fee must be greater than {{min}}"
     }
   },
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
   "transactionReviewScreen": {
     "title": "You are sending",
     "previousSend": "1 previous send",

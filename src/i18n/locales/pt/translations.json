@@ -280,12 +280,16 @@
   "transactionFeeScreen": {
     "title": "Taxa da Transação",
     "setRecommended": "Definir recomendado",
-    "congestion": {
-      "low": "Congestionamento baixo",
-      "medium": "Congestionamento médio",
-      "high": "Congestionamento alto"
+    "congestion": "Congestionamento {{networkCongestion}}",
+    "errors": {
+      "required": "Taxa de transação é obrigatória",
+      "invalid": "Taxa de transação inválida",
+      "tooLow": "A taxa deve ser maior que {{min}}"
     }
   },
+  "low": "baixo",
+  "medium": "médio",
+  "high": "alto",
   "transactionReviewScreen": {
     "title": "Você está enviando",
     "previousSend": "1 envio anterior",
