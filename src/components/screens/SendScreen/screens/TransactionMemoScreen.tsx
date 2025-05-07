@@ -3,8 +3,9 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Textarea } from "components/sds/Textarea";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import React from "react";
 import { View } from "react-native";
 
 type TransactionMemoScreenProps = NativeStackScreenProps<
@@ -16,10 +17,10 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const [memo, setMemo] = useState("");
+  const { memo, saveMemo } = useTransactionSettingsStore();
 
   const handleSave = () => {
-    // TODO: Implement save functionality
+    saveMemo(memo);
     navigation.goBack();
   };
 
@@ -30,7 +31,7 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
           fieldSize="lg"
           placeholder={t("transactionMemoScreen.placeholder")}
           value={memo}
-          onChangeText={setMemo}
+          onChangeText={saveMemo}
           note={t("transactionMemoScreen.optional")}
         />
         <View className="mt-4 mb-4">

@@ -22,6 +22,7 @@ import {
   SendPaymentStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -54,9 +55,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { address, tokenId } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { memo, transactionFee, transactionTimeout, resetSettings } =
+    useTransactionSettingsStore();
+
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Reset transaction settings when entering the screen
+  useEffect(() => {
+    resetSettings();
+  }, [resetSettings]);
 
   const navigateToSendScreen = () => {
     try {
@@ -86,28 +95,32 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const menuActions = useMemo(
     () => [
       {
-        title: t("transactionAmountScreen.menu.fee", { fee: "0.025" }),
+        title: t("transactionAmountScreen.menu.fee", { fee: transactionFee }),
         systemIcon: "arrow.trianglehead.swap",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN);
         },
       },
       {
-        title: t("transactionAmountScreen.menu.timeout", { timeout: "180" }),
+        title: t("transactionAmountScreen.menu.timeout", {
+          timeout: transactionTimeout,
+        }),
         systemIcon: "clock",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN);
         },
       },
       {
-        title: t("transactionAmountScreen.menu.addMemo"),
+        title: memo
+          ? t("transactionAmountScreen.menu.editMemo")
+          : t("transactionAmountScreen.menu.addMemo"),
         systemIcon: "text.page",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
         },
       },
     ],
-    [t, navigation],
+    [t, navigation, transactionFee, transactionTimeout, memo],
   );
 
   useEffect(() => {
@@ -252,6 +265,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           </View>
         </View>
       </View>
+
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
@@ -266,8 +280,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onConfirm={handleTransactionConfirmation}
           />
         }
-        bottomSheetModalProps={{ enablePanDownToClose: false }}
-        shouldCloseOnPressBackdrop={false}
+        bottomSheetModalProps={{ enablePanDownToClose: true }}
+        snapPoints={["80%"]}
       />
     </BaseLayout>
   );

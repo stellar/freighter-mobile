@@ -229,7 +229,8 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo"
+      "addMemo": "Add memo",
+      "editMemo": "Edit memo"
     },
     "details": {
       "from": "From",

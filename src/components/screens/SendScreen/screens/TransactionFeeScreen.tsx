@@ -9,33 +9,40 @@ import {
   TRANSACTION_RECOMMENDED_FEE,
 } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+
+type CongestionLevel = "low" | "medium" | "high";
 
 type TransactionFeeScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN
 >;
 
-type CongestionLevel = "low" | "medium" | "high";
-
 const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   navigation,
   route,
 }) => {
   const { t } = useAppTranslation();
-  const [fee, setFee] = useState(TRANSACTION_RECOMMENDED_FEE);
+  const { transactionFee, saveTransactionFee } = useTransactionSettingsStore();
+  const [localFee, setLocalFee] = useState(transactionFee);
   const { tokenCode = NATIVE_TOKEN_CODE } = route.params || {};
   const [congestionLevel] = useState<CongestionLevel>("low");
 
+  // Update local fee when transactionFee changes
+  useEffect(() => {
+    setLocalFee(transactionFee);
+  }, [transactionFee]);
+
   const handleSave = () => {
-    // TODO: Implement save functionality
+    saveTransactionFee(localFee);
     navigation.goBack();
   };
 
   const handleSetRecommended = () => {
-    setFee(TRANSACTION_RECOMMENDED_FEE);
+    setLocalFee(TRANSACTION_RECOMMENDED_FEE);
   };
 
   return (
@@ -45,8 +52,8 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
           <View className="flex-row items-center gap-2">
             <Input
               fieldSize="md"
-              value={fee}
-              onChangeText={setFee}
+              value={localFee}
+              onChangeText={setLocalFee}
               keyboardType="numeric"
               placeholder={TRANSACTION_RECOMMENDED_FEE}
               rightElement={

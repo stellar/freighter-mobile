@@ -224,7 +224,8 @@
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",
-      "addMemo": "Adicionar memo"
+      "addMemo": "Adicionar memo",
+      "editMemo": "Editar memo"
     },
     "details": {
       "from": "De",

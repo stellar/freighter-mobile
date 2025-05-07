@@ -5,8 +5,9 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_TRANSACTION_TIMEOUT } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 
 type TransactionTimeoutScreenProps = NativeStackScreenProps<
@@ -18,17 +19,25 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const [timeout, setTimeout] = useState(
-    DEFAULT_TRANSACTION_TIMEOUT.toString(),
+  const { transactionTimeout, saveTransactionTimeout } =
+    useTransactionSettingsStore();
+  const [localTimeout, setLocalTimeout] = useState(
+    transactionTimeout.toString(),
   );
 
+  // Update local timeout when transactionTimeout changes
+  useEffect(() => {
+    setLocalTimeout(transactionTimeout.toString());
+  }, [transactionTimeout]);
+
   const handleSave = () => {
-    // TODO: Implement save functionality
+    const timeoutValue = Number(localTimeout) || DEFAULT_TRANSACTION_TIMEOUT;
+    saveTransactionTimeout(timeoutValue);
     navigation.goBack();
   };
 
   const handleSetRecommended = () => {
-    setTimeout(DEFAULT_TRANSACTION_TIMEOUT.toString());
+    setLocalTimeout(DEFAULT_TRANSACTION_TIMEOUT.toString());
   };
 
   return (
@@ -37,8 +46,8 @@ const TransactionTimeoutScreen: React.FC<TransactionTimeoutScreenProps> = ({
         <View className="flex-row items-center gap-2">
           <Input
             fieldSize="md"
-            value={timeout}
-            onChangeText={setTimeout}
+            value={localTimeout}
+            onChangeText={setLocalTimeout}
             keyboardType="numeric"
             placeholder={DEFAULT_TRANSACTION_TIMEOUT.toString()}
             rightElement={
