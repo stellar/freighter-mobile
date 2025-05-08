@@ -15,7 +15,8 @@
     "save": "Save",
     "add": "Add",
     "remove": "Remove",
-    "copied": "Copied to clipboard!"
+    "copied": "Copied to clipboard!",
+    "loading": "Loading..."
   },
   "home": {
     "title": "Home",
@@ -237,8 +238,7 @@
       "memo": "Memo",
       "none": "None",
       "fee": "Fee",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Not available yet"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {

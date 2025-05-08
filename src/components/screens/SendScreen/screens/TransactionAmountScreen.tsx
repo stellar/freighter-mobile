@@ -55,7 +55,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { address, tokenId } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { memo, transactionFee, transactionTimeout, resetSettings } =
+  const { transactionMemo, transactionFee, transactionTimeout, resetSettings } =
     useTransactionSettingsStore();
 
   const publicKey = account?.publicKey;
@@ -111,7 +111,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         },
       },
       {
-        title: memo
+        title: transactionMemo
           ? t("transactionAmountScreen.menu.editMemo")
           : t("transactionAmountScreen.menu.addMemo"),
         systemIcon: "text.page",
@@ -120,7 +120,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         },
       },
     ],
-    [t, navigation, transactionFee, transactionTimeout, memo],
+    [t, navigation, transactionFee, transactionTimeout, transactionMemo],
   );
 
   useEffect(() => {

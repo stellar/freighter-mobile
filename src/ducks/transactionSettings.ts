@@ -11,7 +11,7 @@ import { create } from "zustand";
  * This store manages transaction configuration settings including memo, fee, and timeout.
  *
  * @interface TransactionSettingsState
- * @property {string} memo - Memo text to include with the transaction
+ * @property {string} transactionMemo - Memo text to include with the transaction
  * @property {string} transactionFee - Fee amount for the transaction (in XLM)
  * @property {number} transactionTimeout - Timeout in seconds for the transaction
  * @property {Function} saveMemo - Function to save the memo value
@@ -20,7 +20,7 @@ import { create } from "zustand";
  * @property {Function} resetSettings - Function to reset all settings to default values
  */
 interface TransactionSettingsState {
-  memo: string;
+  transactionMemo: string;
   transactionFee: string;
   transactionTimeout: number;
 
@@ -37,15 +37,15 @@ interface TransactionSettingsState {
  */
 export const useTransactionSettingsStore = create<TransactionSettingsState>(
   (set) => ({
-    memo: "",
+    transactionMemo: "",
     transactionFee: TRANSACTION_RECOMMENDED_FEE,
     transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
 
     /**
      * Saves the memo text for a transaction
-     * @param {string} memo - The memo text to save
+     * @param {string} transactionMemo - The memo text to save
      */
-    saveMemo: (memo) => set({ memo }),
+    saveMemo: (transactionMemo) => set({ transactionMemo }),
 
     /**
      * Saves the transaction fee amount
@@ -65,7 +65,7 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      */
     resetSettings: () =>
       set({
-        memo: "",
+        transactionMemo: "",
         transactionFee: TRANSACTION_RECOMMENDED_FEE,
         transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
       }),

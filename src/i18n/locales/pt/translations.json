@@ -15,7 +15,8 @@
     "save": "Salvar",
     "add": "Adicionar",
     "remove": "Remover",
-    "copied": "Copiado para a área de transferência!"
+    "copied": "Copiado para a área de transferência!",
+    "loading": "Carregando..."
   },
   "home": {
     "title": "Início",
@@ -232,8 +233,7 @@
       "memo": "Memo",
       "none": "Nenhum",
       "fee": "Taxa",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Ainda não disponível"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {

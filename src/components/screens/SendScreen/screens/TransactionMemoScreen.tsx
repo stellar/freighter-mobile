@@ -18,13 +18,13 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { memo, saveMemo } = useTransactionSettingsStore();
-  const [localMemo, setLocalMemo] = useState(memo);
+  const { transactionMemo, saveMemo } = useTransactionSettingsStore();
+  const [localMemo, setLocalMemo] = useState(transactionMemo);
   const { error } = useValidateMemo(localMemo);
 
   useEffect(() => {
-    setLocalMemo(memo);
-  }, [memo]);
+    setLocalMemo(transactionMemo);
+  }, [transactionMemo]);
 
   const handleSave = () => {
     if (error) return;
