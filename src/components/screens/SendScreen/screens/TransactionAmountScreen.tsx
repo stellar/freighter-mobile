@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
@@ -15,15 +14,13 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import {
-  MAIN_TAB_ROUTES,
-  ROOT_NAVIGATOR_ROUTES,
-  SEND_PAYMENT_ROUTES,
-  SendPaymentStackParamList,
-} from "config/routes";
+import { logger } from "config/logger";
+import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -48,24 +45,33 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
  */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { address, tokenId } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { transactionMemo, transactionFee, transactionTimeout, resetSettings } =
-    useTransactionSettingsStore();
+  const {
+    transactionMemo,
+    transactionFee,
+    transactionTimeout,
+    recipientAddress,
+    selectedTokenId,
+  } = useTransactionSettingsStore();
+
+  const {
+    buildTransaction,
+    signTransaction,
+    submitTransaction,
+    resetTransaction,
+    isBuilding,
+    isSubmitting,
+    error: transactionError,
+    transactionHash,
+  } = useTransactionBuilderStore();
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Reset transaction settings when entering the screen
-  useEffect(() => {
-    resetSettings();
-  }, [resetSettings]);
 
   const navigateToSendScreen = () => {
     try {
@@ -81,7 +87,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     shouldPoll: false,
   });
 
-  const selectedBalance = balanceItems.find((item) => item.id === tokenId);
+  const selectedBalance = balanceItems.find(
+    (item) => item.id === selectedTokenId,
+  );
 
   const {
     tokenAmount,
@@ -137,10 +145,85 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
+  // New function to handle opening the review sheet and building the transaction
+  const handleOpenReview = async () => {
+    if (Number(tokenAmount) <= 0) return;
+
+    try {
+      // Build the transaction when opening the review sheet
+      await buildTransaction({
+        tokenValue: tokenAmount,
+        selectedBalance,
+        recipientAddress,
+        transactionMemo,
+        transactionFee,
+        transactionTimeout,
+        network,
+        publicKey,
+      });
+
+      // Open the review sheet
+      reviewBottomSheetModalRef.current?.present();
+    } catch (error) {
+      logger.error(
+        "TransactionAmountScreen",
+        "Failed to build transaction:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
+
   const handleTransactionConfirmation = () => {
+    // Close the review sheet first
     reviewBottomSheetModalRef.current?.dismiss();
+
+    // Set the processing state to show the loading screen
     setIsProcessing(true);
-    // TODO: Implement the actual transaction submission logic here
+
+    const processTransaction = async () => {
+      try {
+        logger.info("TransactionAmountScreen", "Processing transaction", {
+          isContractAddress: isContractId(recipientAddress),
+          recipientAddress,
+          tokenAmount,
+        });
+
+        if (!account) {
+          throw new Error("Unable to retrieve account");
+        }
+
+        const { privateKey } = account;
+
+        if (!privateKey) {
+          throw new Error("Unable to retrieve account secret key");
+        }
+
+        // Sign the transaction using the store
+        signTransaction({
+          secretKey: privateKey,
+          network,
+        });
+
+        // Submit the transaction using the store
+        await submitTransaction({
+          network,
+        });
+      } catch (error) {
+        logger.error(
+          "TransactionAmountScreen",
+          "Transaction submission failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    };
+
+    processTransaction();
+  };
+
+  const handleProcessingScreenClose = () => {
+    setIsProcessing(false);
+    resetTransaction();
+    navigateToSendScreen();
   };
 
   if (isProcessing) {
@@ -148,24 +231,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <TransactionProcessingScreen
         selectedBalance={selectedBalance}
         tokenValue={tokenAmount}
-        address={address}
-        onClose={() => {
-          setIsProcessing(false);
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [
-                {
-                  name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-                  state: {
-                    index: 0,
-                    routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-                  },
-                },
-              ],
-            }),
-          );
-        }}
+        onClose={handleProcessingScreenClose}
+        isSubmitting={isSubmitting}
+        transactionHash={transactionHash}
+        error={transactionError}
       />
     );
   }
@@ -218,7 +287,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           </View>
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
             <ContactRow
-              address={address}
+              address={recipientAddress}
               rightElement={
                 <Button secondary lg onPress={navigateToSendScreen}>
                   {t("common.edit")}
@@ -257,8 +326,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <Button
               tertiary
               xl
-              onPress={() => reviewBottomSheetModalRef.current?.present()}
-              disabled={Number(tokenAmount) <= 0}
+              onPress={handleOpenReview}
+              disabled={Number(tokenAmount) <= 0 || isBuilding}
             >
               {t("transactionAmountScreen.reviewButton")}
             </Button>
@@ -273,9 +342,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenValue={tokenAmount}
-            address={address}
-            account={account}
-            publicKey={publicKey}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleTransactionConfirmation}
           />

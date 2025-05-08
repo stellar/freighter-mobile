@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
-import { isValidStellarAddress } from "helpers/stellar";
+import { getActiveAccountPublicKey } from "ducks/auth";
+import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
@@ -21,7 +22,7 @@ interface SendStore {
 
   loadRecentAddresses: () => Promise<void>;
   addRecentAddress: (address: string, name?: string) => Promise<void>;
-  searchAddress: (searchTerm: string) => void;
+  searchAddress: (searchTerm: string) => Promise<void>;
   setDestinationAddress: (address: string, fedAddress?: string) => void;
   reset: () => void;
 }
@@ -44,13 +45,19 @@ export const useSendStore = create<SendStore>((set, get) => ({
         ? JSON.parse(storedAddresses)
         : [];
 
-      // Transform to the Contact format
-      const contactList: Contact[] = parsedAddresses.map(
-        (address: string, index: number) => ({
+      // Get current active account public key
+      const activePublicKey = await getActiveAccountPublicKey();
+
+      // Transform to the Contact format, filtering out the current account
+      const contactList: Contact[] = parsedAddresses
+        .filter(
+          (address) =>
+            !activePublicKey || !isSameAccount(address, activePublicKey),
+        )
+        .map((address: string, index: number) => ({
           id: `recent-${index}`,
           address,
-        }),
-      );
+        }));
 
       set({ recentAddresses: contactList });
     } catch (error) {
@@ -88,7 +95,7 @@ export const useSendStore = create<SendStore>((set, get) => ({
     }
   },
 
-  searchAddress: (searchTerm: string) => {
+  searchAddress: async (searchTerm: string) => {
     set({ isSearching: true, searchError: null });
 
     try {
@@ -97,6 +104,24 @@ export const useSendStore = create<SendStore>((set, get) => ({
           searchResults: [],
           isSearching: false,
           isValidDestination: false,
+        });
+        return;
+      }
+
+      // Get current active account public key
+      const activePublicKey = await getActiveAccountPublicKey();
+
+      // If search term is the same as current account, show an error
+      if (
+        activePublicKey &&
+        isValidStellarAddress(searchTerm) &&
+        isSameAccount(searchTerm, activePublicKey)
+      ) {
+        set({
+          searchResults: [],
+          isValidDestination: false,
+          isSearching: false,
+          searchError: "Cannot send to yourself",
         });
         return;
       }

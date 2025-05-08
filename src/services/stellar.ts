@@ -7,12 +7,15 @@ import {
   Transaction,
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
+import { Server } from "@stellar/stellar-sdk/rpc";
 import {
   DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
   NETWORKS,
+  SOROBAN_RPC_URLS,
 } from "config/constants";
+import { logger } from "config/logger";
 import { NetworkCongestion } from "config/types";
 import { formatAssetIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
@@ -57,6 +60,51 @@ export const stellarSdkServer = (networkUrl: string): Horizon.Server =>
   new Horizon.Server(networkUrl, {
     allowHttp: getIsAllowHttp(networkUrl),
   });
+
+/**
+ * Creates a Soroban RPC server instance for the given network
+ *
+ * @param network The network to get the Soroban RPC server for
+ * @returns A Soroban RPC server instance or null if there's an error
+ */
+export const getSorobanRpcServer = (network: NETWORKS) => {
+  try {
+    // Get the soroban RPC URL from the constants
+    const sorobanRpcUrl = SOROBAN_RPC_URLS[network];
+
+    if (!sorobanRpcUrl) {
+      logger.error(
+        "StellarService",
+        "No Soroban RPC URL available for network",
+        { network },
+      );
+      return null;
+    }
+
+    // Use a try-catch specifically for the Server instantiation
+    try {
+      return new Server(sorobanRpcUrl, {
+        allowHttp: getIsAllowHttp(sorobanRpcUrl),
+      });
+    } catch (serverError) {
+      logger.warn(
+        "StellarService",
+        "Failed to instantiate Soroban RPC Server",
+        {
+          error: String(serverError),
+        },
+      );
+      return null;
+    }
+  } catch (error) {
+    logger.error(
+      "StellarService",
+      "Failed to create Soroban RPC server",
+      String(error),
+    );
+    return null;
+  }
+};
 
 export const submitTx = async (
   input: SubmitTxParams,

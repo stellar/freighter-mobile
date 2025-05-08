@@ -6,9 +6,8 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -16,16 +15,13 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import { useTransactionBuilder } from "hooks/useTransactionBuilder";
-import React, { useLayoutEffect, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
-  selectedBalance: PricedBalance | undefined;
+  selectedBalance?: PricedBalance;
   tokenValue: string;
-  address: string;
-  account: ActiveAccount | null;
-  publicKey: string | undefined;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
@@ -33,113 +29,46 @@ type SendReviewBottomSheetProps = {
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
   tokenValue,
-  address,
-  account,
-  publicKey,
   onCancel,
   onConfirm,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { transactionMemo, transactionFee, transactionTimeout } =
+  const { recipientAddress, transactionMemo, transactionFee } =
     useTransactionSettingsStore();
-  const { network } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
+  const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
-  const { buildPaymentTransaction } = useTransactionBuilder();
-  const slicedAddress = truncateAddress(address, 4, 4);
+  const slicedAddress = truncateAddress(recipientAddress, 4, 4);
 
-  // Use stable state for transaction XDR to prevent unnecessary re-renders
-  const [transactionXdr, setTransactionXdr] = useState<string>("");
-  const [isLoadingXdr, setIsLoadingXdr] = useState<boolean>(true);
-  const [transactionError, setTransactionError] = useState<string>("");
-
-  const xdrGenerationAttempted = useRef(false);
-
-  useLayoutEffect(() => {
-    if (xdrGenerationAttempted.current) {
-      return undefined;
-    }
-
-    let isMounted = true;
-    const generateXdr = async () => {
-      if (!publicKey || !selectedBalance) {
-        setIsLoadingXdr(false);
-        return;
-      }
-
-      try {
-        setIsLoadingXdr(true);
-        setTransactionError("");
-
-        const xdr = await buildPaymentTransaction({
-          publicKey,
-          selectedBalance,
-          tokenValue,
-          address,
-          transactionMemo,
-          transactionFee,
-          transactionTimeout,
-          network,
-        });
-
-        if (isMounted && xdr) {
-          setTransactionXdr(xdr);
-          xdrGenerationAttempted.current = true;
-        }
-      } catch (error) {
-        if (isMounted) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          logger.error("Failed to build transaction:", errorMessage);
-
-          setTransactionError(errorMessage);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingXdr(false);
-        }
-      }
-    };
-
-    generateXdr();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    publicKey,
-    selectedBalance,
-    tokenValue,
-    address,
-    transactionMemo,
-    transactionFee,
-    transactionTimeout,
-    network,
-    buildPaymentTransaction,
-    setTransactionXdr,
-    setIsLoadingXdr,
-    setTransactionError,
-  ]);
+  // Use the new transaction builder store
+  const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
 
   const handleCopyXdr = () => {
-    if (transactionXdr) {
-      copyToClipboard(transactionXdr, {
+    if (transactionXDR) {
+      copyToClipboard(transactionXDR, {
         notificationMessage: t("common.copied"),
       });
     }
   };
 
   const renderXdrContent = () => {
-    if (isLoadingXdr) {
-      return t("common.loading");
+    if (isBuilding) {
+      return (
+        <ActivityIndicator size="small" color={themeColors.text.secondary} />
+      );
     }
 
-    if (transactionError) {
-      return "Error";
+    if (error) {
+      return (
+        <Text md medium className="text-red-600">
+          {t("common.error", "Error")}
+        </Text>
+      );
     }
 
-    if (transactionXdr) {
-      return truncateAddress(transactionXdr, 10, 4);
+    if (transactionXDR) {
+      return truncateAddress(transactionXDR, 10, 4);
     }
 
     return "--";
@@ -178,7 +107,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           </View>
           <View className="w-full flex-row items-center gap-4">
-            <Avatar size="lg" publicAddress={address} />
+            <Avatar size="lg" publicAddress={recipientAddress} />
             <View className="flex-1">
               <Text xl medium>
                 {slicedAddress}
@@ -236,18 +165,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
           <TouchableOpacity
             onPress={handleCopyXdr}
-            disabled={
-              isLoadingXdr || !transactionXdr || Boolean(transactionError)
-            }
+            disabled={isBuilding || !transactionXDR}
             className="flex-row items-center gap-[8px]"
           >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text
-              md
-              medium
-              secondary={isLoadingXdr || Boolean(transactionError)}
-              className={transactionError ? "text-red-500" : ""}
-            >
+            <Text md medium secondary={isBuilding}>
               {renderXdrContent()}
             </Text>
           </TouchableOpacity>
@@ -269,7 +191,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             onPress={onConfirm}
             tertiary
             xl
-            disabled={isLoadingXdr || Boolean(transactionError)}
+            disabled={isBuilding || !transactionXDR || !!error}
           >
             {t("common.confirm")}
           </Button>

@@ -16,7 +16,8 @@
     "add": "Add",
     "remove": "Remove",
     "copied": "Copied to clipboard!",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "error": "Error"
   },
   "home": {
     "title": "Home",
@@ -213,7 +214,9 @@
     "title": "Send to",
     "inputPlaceholder": "Enter address",
     "recents": "Recents",
-    "suggestions": "Suggestions"
+    "suggestions": "Suggestions",
+    "cannotSendToSelf": "Cannot send to yourself",
+    "invalidAddress": "Invalid Stellar address"
   },
   "transactionTokenScreen": {
     "title": "Sending"

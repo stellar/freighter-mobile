@@ -16,7 +16,8 @@
     "add": "Adicionar",
     "remove": "Remover",
     "copied": "Copiado para a área de transferência!",
-    "loading": "Carregando..."
+    "loading": "Carregando...",
+    "error": "Erro"
   },
   "home": {
     "title": "Início",
@@ -208,7 +209,10 @@
   "sendPaymentScreen": {
     "title": "Enviar para",
     "inputPlaceholder": "Digite o endereço",
-    "recents": "Recentes"
+    "recents": "Recentes",
+    "suggestions": "Sugestões",
+    "cannotSendToSelf": "Não é possível enviar para você mesmo",
+    "invalidAddress": "Endereço Stellar inválido"
   },
   "transactionTokenScreen": {
     "title": "Enviando"

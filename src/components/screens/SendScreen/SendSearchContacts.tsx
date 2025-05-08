@@ -11,7 +11,7 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useSendStore } from "ducks/send";
-import { isValidStellarAddress } from "helpers/stellar";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -39,6 +39,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
+  const { saveRecipientAddress, resetSettings } = useTransactionSettingsStore();
 
   const {
     recentAddresses,
@@ -57,14 +58,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
     // Clear any previous search state on component mount
     reset();
-  }, [loadRecentAddresses, reset]);
+    // Reset transaction settings
+    resetSettings();
+  }, [loadRecentAddresses, reset, resetSettings]);
 
   // Reset search input and store state when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       setAddress("");
       reset();
-    }, [reset]),
+      resetSettings();
+    }, [reset, resetSettings]),
   );
 
   /**
@@ -74,6 +78,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    */
   const handleSearch = (text: string) => {
     setAddress(text);
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     searchAddress(text);
   };
 
@@ -83,18 +88,16 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    * @param {string} contactAddress - The selected contact address
    */
   const handleContactPress = (contactAddress: string) => {
-    if (!isValidStellarAddress(contactAddress)) {
-      return;
-    }
-
+    // Save to both stores for different purposes
+    // Send store is for contact management
     setDestinationAddress(contactAddress);
+    // Transaction settings store is for the transaction flow
+    saveRecipientAddress(contactAddress);
 
     // TODO: check if we have to add it here or just after the transaction is sent
     addRecentAddress(contactAddress);
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
-      address: contactAddress,
-    });
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
   };
 
   const handlePasteFromClipboard = () => {

@@ -109,13 +109,8 @@ export type ManageWalletsStackParamList = {
 
 export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: {
-    address: string;
-  };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
-    address: string;
-    tokenId: string;
-  };
+  [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;

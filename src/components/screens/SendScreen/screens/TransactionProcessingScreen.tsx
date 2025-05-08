@@ -10,29 +10,44 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
+type TransactionStatus = "sending" | "sent" | "failed" | "unsupported";
+
 type TransactionProcessingScreenProps = {
   selectedBalance: PricedBalance | undefined;
   tokenValue: string;
-  address: string;
   onClose: () => void;
+  isSubmitting?: boolean;
+  transactionHash?: string | null;
+  error?: string | null;
 };
 
 const TransactionProcessingScreen: React.FC<
   TransactionProcessingScreenProps
-> = ({ selectedBalance, tokenValue, address, onClose }) => {
+> = ({
+  selectedBalance,
+  tokenValue,
+  onClose,
+  isSubmitting = false,
+  transactionHash = null,
+  error = null,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const slicedAddress = truncateAddress(address, 4, 4);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const { recipientAddress } = useTransactionSettingsStore();
+  const slicedAddress = truncateAddress(recipientAddress, 4, 4);
+  const [status, setStatus] = useState<TransactionStatus>("sending");
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const isContractAddress = isContractId(recipientAddress);
 
   useEffect(() => {
     navigation.setOptions({
@@ -40,15 +55,24 @@ const TransactionProcessingScreen: React.FC<
     });
   }, [navigation]);
 
-  // Simulate transaction completion
-  // TODO: This will be replaced with actual transaction logic in the future
+  // Determine transaction status based on props
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsCompleted(true);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
+    if (error) {
+      setStatus("failed");
+    } else if (transactionHash) {
+      setStatus("sent");
+    } else if (isContractAddress && !isSubmitting) {
+      setStatus("unsupported");
+    } else if (!isSubmitting) {
+      // Demo mode - auto complete after 2 seconds
+      const timer = setTimeout(() => {
+        setStatus("sent");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+    // If still submitting, keep status as "sending"
+    return undefined;
+  }, [isSubmitting, transactionHash, error, isContractAddress]);
 
   const handleClose = () => {
     onClose();
@@ -58,21 +82,79 @@ const TransactionProcessingScreen: React.FC<
     bottomSheetModalRef.current?.present();
   };
 
+  const getStatusText = () => {
+    switch (status) {
+      case "sent":
+        return t("transactionProcessingScreen.sent");
+      case "failed":
+        return "Failed";
+      case "unsupported":
+        return "Not Supported";
+      default:
+        return t("transactionProcessingScreen.sending");
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch (status) {
+      case "sent":
+        return (
+          <Icon.CheckCircle size={48} color={themeColors.status.success} />
+        );
+      case "failed":
+        return <Icon.XCircle size={48} color={themeColors.status.error} />;
+      case "unsupported":
+        return (
+          <Icon.AlertTriangle size={48} color={themeColors.status.warning} />
+        );
+      default:
+        return <Spinner size="large" color={themeColors.base[1]} />;
+    }
+  };
+
+  const getMessageText = () => {
+    if (status === "sent") {
+      return t("transactionProcessingScreen.wasSentTo");
+    }
+    if (status === "failed" || status === "unsupported") {
+      return "could not be sent to";
+    }
+    return t("transactionProcessingScreen.to");
+  };
+
+  const renderErrorMessage = () => {
+    if (status === "failed" && error) {
+      return (
+        <View className="mt-6 rounded-[8px] bg-red-100 p-3">
+          <Text sm medium className="text-red-800">
+            {error}
+          </Text>
+        </View>
+      );
+    }
+
+    if (status === "unsupported") {
+      return (
+        <View className="mt-6 rounded-[8px] bg-yellow-100 p-3">
+          <Text sm medium className="text-yellow-800">
+            Sending to contract addresses is not yet supported
+          </Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between">
         <View className="flex-1 items-center justify-center">
           <View className="items-center gap-[8px]">
-            {isCompleted ? (
-              <Icon.CheckCircle size={48} color={themeColors.status.success} />
-            ) : (
-              <Spinner size="large" color={themeColors.base[1]} />
-            )}
+            {getStatusIcon()}
 
             <Display xs medium>
-              {isCompleted
-                ? t("transactionProcessingScreen.sent")
-                : t("transactionProcessingScreen.sending")}
+              {getStatusText()}
             </Display>
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary">
@@ -84,7 +166,7 @@ const TransactionProcessingScreen: React.FC<
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <Avatar size="lg" publicAddress={address} />
+                <Avatar size="lg" publicAddress={recipientAddress} />
               </View>
 
               <View className="items-center">
@@ -93,9 +175,7 @@ const TransactionProcessingScreen: React.FC<
                     {formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
                   </Text>
                   <Text lg medium secondary>
-                    {isCompleted
-                      ? t("transactionProcessingScreen.wasSentTo")
-                      : t("transactionProcessingScreen.to")}
+                    {getMessageText()}
                   </Text>
                   <Text xl medium primary>
                     {slicedAddress}
@@ -103,10 +183,12 @@ const TransactionProcessingScreen: React.FC<
                 </View>
               </View>
             </View>
+
+            {renderErrorMessage()}
           </View>
         </View>
 
-        {isCompleted ? (
+        {status === "sent" ? (
           <View className="gap-[16px]">
             <Button secondary xl onPress={handleViewTransaction}>
               {t("transactionProcessingScreen.viewTransaction")}
@@ -134,7 +216,7 @@ const TransactionProcessingScreen: React.FC<
           <TransactionDetailsBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenValue}
-            address={address}
+            address={recipientAddress}
           />
         }
       />
