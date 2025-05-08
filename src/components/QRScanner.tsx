@@ -12,12 +12,41 @@ import {
   useCameraPermission,
 } from "react-native-vision-camera";
 
+/**
+ * Props for the QRScanner component
+ * @interface QRScannerProps
+ * @property {(data: string) => void} onRead - Callback function called when a QR code is successfully scanned
+ */
 type QRScannerProps = {
   onRead: (data: string) => void;
 };
 
+/** Window width for camera view sizing */
 const windowWidth = Dimensions.get("window").width;
 
+/**
+ * QR Scanner component that uses the device's camera to scan QR codes.
+ * Handles camera permissions, device availability, and QR code detection.
+ *
+ * Features:
+ * - Camera permission management
+ * - Loading state handling
+ * - Error state display
+ * - QR code detection and callback
+ *
+ * @component
+ * @param {QRScannerProps} props - The component props
+ * @returns {JSX.Element} The QR scanner component
+ *
+ * @example
+ * ```tsx
+ * <QRScanner
+ *   onRead={(data) => {
+ *     console.log('Scanned QR code:', data);
+ *   }}
+ * />
+ * ```
+ */
 export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");

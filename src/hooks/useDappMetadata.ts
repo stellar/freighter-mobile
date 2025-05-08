@@ -7,6 +7,9 @@ import {
 } from "ducks/walletKit";
 import { useMemo } from "react";
 
+/**
+ * Default empty metadata object used when no metadata is available
+ */
 const emptyMetadata: CoreTypes.Metadata = {
   name: "",
   description: "",
@@ -14,6 +17,27 @@ const emptyMetadata: CoreTypes.Metadata = {
   icons: [],
 };
 
+/**
+ * Hook for retrieving dApp metadata from WalletKit events.
+ * Extracts metadata from session proposals and requests, falling back to empty metadata if none is found.
+ *
+ * The hook handles different types of events:
+ * - Session proposals: Gets metadata from the proposer
+ * - Session requests: Gets metadata from the active session
+ * - None/other events: Returns empty metadata
+ *
+ * @param {WalletKitEvent | null} event - The WalletKit event to extract metadata from
+ * @returns {CoreTypes.Metadata | null} The dApp metadata or null if no event is provided
+ *
+ * @example
+ * ```tsx
+ * const metadata = useDappMetadata(event);
+ * if (metadata) {
+ *   console.log(metadata.name); // dApp name
+ *   console.log(metadata.url);  // dApp URL
+ * }
+ * ```
+ */
 export const useDappMetadata = (
   event: WalletKitEvent | null,
 ): CoreTypes.Metadata | null => {
