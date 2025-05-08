@@ -13,6 +13,15 @@ import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { View } from "react-native";
 
+/**
+ * Props for the DappConnectionBottomSheetContent component
+ * @interface DappConnectionBottomSheetContentProps
+ * @property {WalletKitSessionProposal | null} proposalEvent - The session proposal event
+ * @property {ActiveAccount | null} account - The active account
+ * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onConnection - Function to handle connection
+ * @property {boolean} isConnecting - Whether a connection is currently being established
+ */
 type DappConnectionBottomSheetContentProps = {
   proposalEvent: WalletKitSessionProposal | null;
   account: ActiveAccount | null;
@@ -21,6 +30,14 @@ type DappConnectionBottomSheetContentProps = {
   isConnecting: boolean;
 };
 
+/**
+ * Bottom sheet content component for displaying and handling dApp connection requests.
+ * Shows dApp details and provides options to connect or cancel the request.
+ *
+ * @component
+ * @param {DappConnectionBottomSheetContentProps} props - The component props
+ * @returns {JSX.Element | null} The bottom sheet content component or null if required data is missing
+ */
 const DappConnectionBottomSheetContent: React.FC<
   DappConnectionBottomSheetContentProps
 > = ({ proposalEvent, account, onCancel, onConnection, isConnecting }) => {

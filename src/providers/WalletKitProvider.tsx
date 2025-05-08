@@ -24,12 +24,28 @@ import { useToast } from "providers/ToastProvider";
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 
+/**
+ * Props for the WalletKitProvider component
+ * @interface WalletKitProviderProps
+ * @property {ReactNode} children - Child components to be wrapped by the provider
+ */
 interface WalletKitProviderProps {
   children: ReactNode;
 }
 
 /**
- * Provider component that monitors WalletConnect connection and requests proposals
+ * Provider component that manages WalletConnect connections and request proposals.
+ * Handles session proposals, requests, and maintains the connection state.
+ *
+ * Features:
+ * - Manages dApp connection requests
+ * - Handles transaction signing requests
+ * - Maintains active sessions
+ * - Provides bottom sheet modals for user interactions
+ *
+ * @component
+ * @param {WalletKitProviderProps} props - The component props
+ * @returns {JSX.Element} The provider component
  */
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,

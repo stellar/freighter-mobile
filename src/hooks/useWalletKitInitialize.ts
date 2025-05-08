@@ -3,6 +3,20 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
 
+/**
+ * Hook for initializing the WalletKit instance.
+ * Handles the initialization process and error handling.
+ *
+ * @returns {boolean} A boolean indicating whether WalletKit has been initialized
+ *
+ * @example
+ * ```tsx
+ * const initialized = useWalletKitInitialize();
+ * if (initialized) {
+ *   // WalletKit is ready to use
+ * }
+ * ```
+ */
 export const useWalletKitInitialize = () => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();

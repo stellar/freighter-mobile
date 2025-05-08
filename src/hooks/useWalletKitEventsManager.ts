@@ -5,6 +5,18 @@ import { useWalletKitStore, WalletKitEventTypes } from "ducks/walletKit";
 import { walletKit } from "helpers/walletKitUtil";
 import { useCallback, useEffect } from "react";
 
+/**
+ * Hook for managing WalletKit events.
+ * Sets up event listeners for session proposals, requests, and deletions.
+ *
+ * @param {boolean} initialized - Whether WalletKit has been initialized
+ *
+ * @example
+ * ```tsx
+ * const initialized = useWalletKitInitialize();
+ * useWalletKitEventsManager(initialized);
+ * ```
+ */
 export const useWalletKitEventsManager = (initialized: boolean) => {
   const { setEvent, fetchActiveSessions } = useWalletKitStore();
 

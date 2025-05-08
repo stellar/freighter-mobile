@@ -14,6 +14,15 @@ import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
+/**
+ * Props for the DappRequestBottomSheetContent component
+ * @interface DappRequestBottomSheetContentProps
+ * @property {WalletKitSessionRequest | null} requestEvent - The session request event
+ * @property {ActiveAccount | null} account - The active account
+ * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onConfirm - Function to handle confirmation
+ * @property {boolean} isSigning - Whether a transaction is currently being signed
+ */
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
@@ -22,6 +31,14 @@ type DappRequestBottomSheetContentProps = {
   isSigning: boolean;
 };
 
+/**
+ * Bottom sheet content component for displaying and handling dApp transaction requests.
+ * Shows transaction details and provides options to confirm or cancel the request.
+ *
+ * @component
+ * @param {DappRequestBottomSheetContentProps} props - The component props
+ * @returns {JSX.Element | null} The bottom sheet content component or null if required data is missing
+ */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
 > = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {

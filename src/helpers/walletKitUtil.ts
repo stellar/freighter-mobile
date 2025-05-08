@@ -25,21 +25,32 @@ import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
 
+/** Duration for error toast messages in milliseconds */
 export const ERROR_TOAST_DURATION = 5000;
 
+/** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
 ];
+
+/** Supported Stellar chains for WalletKit */
 const stellarNamespaceChains = [
   StellarRpcChains.PUBLIC,
   StellarRpcChains.TESTNET,
 ];
+
+/** Supported Stellar events for WalletKit */
 const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNT_CHANGED];
 
+/** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
 export let walletKit: IWalletKit;
 
+/**
+ * Initializes the WalletKit instance with core configuration
+ * @returns {Promise<void>} A promise that resolves when initialization is complete
+ */
 export const createWalletKit = async () => {
   const core = new Core({
     projectId: WALLET_KIT_PROJECT_ID,
@@ -51,6 +62,12 @@ export const createWalletKit = async () => {
   });
 };
 
+/**
+ * Rejects a session proposal from a dApp
+ * @param {Object} params - The parameters object
+ * @param {WalletKitSessionProposal} params.sessionProposal - The session proposal to reject
+ * @returns {Promise<void>} A promise that resolves when the rejection is complete
+ */
 export const rejectSessionProposal = async ({
   sessionProposal,
 }: {
@@ -64,6 +81,15 @@ export const rejectSessionProposal = async ({
   });
 };
 
+/**
+ * Approves a session proposal from a dApp
+ * @param {Object} params - The parameters object
+ * @param {WalletKitSessionProposal} params.sessionProposal - The session proposal to approve
+ * @param {string[]} params.activeAccounts - List of active account addresses
+ * @param {Function} params.showToast - Function to display toast messages
+ * @param {TFunction} params.t - Translation function
+ * @returns {Promise<void>} A promise that resolves when the approval is complete
+ */
 export const approveSessionProposal = async ({
   sessionProposal,
   activeAccounts,
@@ -129,6 +155,13 @@ export const approveSessionProposal = async ({
   }
 };
 
+/**
+ * Rejects a session request from a dApp
+ * @param {Object} params - The parameters object
+ * @param {WalletKitSessionRequest} params.sessionRequest - The session request to reject
+ * @param {string} params.message - The rejection message
+ * @returns {Promise<void>} A promise that resolves when the rejection is complete
+ */
 export const rejectSessionRequest = async ({
   sessionRequest,
   message,
@@ -150,6 +183,17 @@ export const rejectSessionRequest = async ({
   await walletKit.respondSessionRequest({ topic, response });
 };
 
+/**
+ * Approves and processes a session request from a dApp
+ * @param {Object} params - The parameters object
+ * @param {WalletKitSessionRequest} params.sessionRequest - The session request to approve
+ * @param {Function} params.signTransaction - Function to sign the transaction
+ * @param {string} params.networkPassphrase - The network passphrase
+ * @param {string} params.activeChain - The active chain identifier
+ * @param {Function} params.showToast - Function to display toast messages
+ * @param {TFunction} params.t - Translation function
+ * @returns {Promise<void>} A promise that resolves when the approval is complete
+ */
 export const approveSessionRequest = async ({
   sessionRequest,
   signTransaction,
@@ -247,10 +291,18 @@ export const approveSessionRequest = async ({
   }
 };
 
+/**
+ * Retrieves all active WalletKit sessions
+ * @returns {Promise<ActiveSessions>} A promise that resolves with the active sessions
+ */
 // eslint-disable-next-line @typescript-eslint/require-await
 export const getActiveSessions = async () =>
   walletKit.getActiveSessions() as ActiveSessions;
 
+/**
+ * Disconnects all active WalletKit sessions
+ * @returns {Promise<void>} A promise that resolves when all sessions are disconnected
+ */
 export const disconnectAllSessions = async () => {
   const activeSessions = await getActiveSessions();
 
