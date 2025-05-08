@@ -15,7 +15,9 @@
     "save": "Save",
     "add": "Add",
     "remove": "Remove",
-    "copied": "Copied to clipboard!"
+    "copied": "Copied to clipboard!",
+    "unknownError": "Unknown error",
+    "error": "Error: {{errorMessage}}"
   },
   "home": {
     "title": "Home",
@@ -329,5 +331,17 @@
   },
   "qrScanner": {
     "cameraNotAvailable": "Camera not available or not permitted"
+  },
+  "walletKit": {
+    "connectionSuccessfull": "{{dappName}} connection successfull!",
+    "returnToBrowser": "You can now return to your browser",
+    "signingSuccessfull": "Transaction successfully signed!",
+    "userRejected": "User rejected the request",
+    "errorInitializing": "Error initializing WalletConnect",
+    "errorConnecting": "{{dappName}} connection failed",
+    "errorSigning": "Failed to sign transaction",
+    "errorRespondingRequest": "Failed to respond transaction request",
+    "errorWrongNetwork": "Wrong Network",
+    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again"
   }
 }

@@ -1,8 +1,12 @@
-import { logger } from "config/logger";
-import { createWalletKit } from "helpers/walletKitUtil";
+import { createWalletKit, ERROR_TOAST_DURATION } from "helpers/walletKitUtil";
+import useAppTranslation from "hooks/useAppTranslation";
+import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
 
 export const useWalletKitInitialize = () => {
+  const { showToast } = useToast();
+  const { t } = useAppTranslation();
+
   const [initialized, setInitialized] = useState(false);
 
   const onInitialize = useCallback(async () => {
@@ -10,14 +14,17 @@ export const useWalletKitInitialize = () => {
       await createWalletKit();
       setInitialized(true);
     } catch (error) {
-      logger.error(
-        "useWalletKitInitialize",
-        "Error initializing walletKit: ",
-        error,
-      );
-      // TODO: show toast/info-box letting the user know that the walletKit initialization failed
+      showToast({
+        title: t("walletKit.errorInitializing"),
+        message: t("common.error", {
+          errorMessage:
+            error instanceof Error ? error.message : t("common.unknownError"),
+        }),
+        variant: "error",
+        duration: ERROR_TOAST_DURATION,
+      });
     }
-  }, []);
+  }, [t, showToast]);
 
   useEffect(() => {
     if (!initialized) {

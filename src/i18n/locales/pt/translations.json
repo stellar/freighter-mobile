@@ -15,7 +15,9 @@
     "save": "Salvar",
     "add": "Adicionar",
     "remove": "Remover",
-    "copied": "Copiado para a área de transferência!"
+    "copied": "Copiado para a área de transferência!",
+    "unknownError": "Erro desconhecido",
+    "error": "Erro: {{errorMessage}}"
   },
   "home": {
     "title": "Início",
@@ -324,5 +326,17 @@
   },
   "qrScanner": {
     "cameraNotAvailable": "Câmera não disponível ou não permitida"
+  },
+  "walletKit": {
+    "connectionSuccessfull": "Conexão com {{dappName}} realizada com sucesso!",
+    "returnToBrowser": "Você pode agora retornar ao seu navegador",
+    "signingSuccessfull": "Transação assinada com sucesso!",
+    "userRejected": "O usuário rejeitou a solicitação",
+    "errorInitializing": "Erro ao inicializar o WalletConnect",
+    "errorConnecting": "Erro ao conectar com {{dappName}}",
+    "errorSigning": "Erro ao assinar a transação",
+    "errorRespondingRequest": "Erro ao responder à solicitação de transação",
+    "errorWrongNetwork": "Rede incorreta",
+    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente"
   }
 }

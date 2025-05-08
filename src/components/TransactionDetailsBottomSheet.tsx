@@ -48,7 +48,10 @@ const TransactionDetailsBottomSheet: React.FC<
 
   const handleViewOnExplorer = () => {
     // TODO: In the future, this could open a web link to stellar.expert with the transaction details
-    logger.info("TransactionDetailsBottomSheet", t("transactionDetailsBottomSheet.viewOnExpert"));
+    logger.info(
+      "TransactionDetailsBottomSheet",
+      t("transactionDetailsBottomSheet.viewOnExpert"),
+    );
   };
 
   return (

@@ -10,7 +10,7 @@ import {
   getSdkError,
   SdkErrorKey,
 } from "@walletconnect/utils";
-import { logger } from "config/logger";
+import { NETWORK_NAMES } from "config/constants";
 import {
   ActiveSessions,
   StellarRpcChains,
@@ -21,7 +21,11 @@ import {
   WalletKitSessionProposal,
   WalletKitSessionRequest,
 } from "ducks/walletKit";
+import { TFunction } from "i18next";
+import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
+
+export const ERROR_TOAST_DURATION = 5000;
 
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
@@ -63,9 +67,13 @@ export const rejectSessionProposal = async ({
 export const approveSessionProposal = async ({
   sessionProposal,
   activeAccounts,
+  showToast,
+  t,
 }: {
   sessionProposal: WalletKitSessionProposal;
   activeAccounts: string[];
+  showToast: (options: ToastOptions) => void;
+  t: TFunction<"translations", undefined>;
 }) => {
   const { id, params } = sessionProposal;
 
@@ -97,11 +105,26 @@ export const approveSessionProposal = async ({
       // the dApp session in a desktop browser or another device.
       Linking.openURL(dappScheme);
     } else {
-      // TODO: inform the user to manually return to the DApp
+      showToast({
+        title: t("walletKit.connectionSuccessfull", {
+          dappName: session.peer.metadata.name,
+        }),
+        message: t("walletKit.returnToBrowser"),
+        variant: "success",
+      });
     }
   } catch (error) {
-    // TODO: use the error.message to show toast/info-box letting the user know that the connection attempt failed
-    logger.error("WalletKit", "onSessionProposal Error: ", error);
+    showToast({
+      title: t("walletKit.errorConnecting", {
+        dappName: params.proposer.metadata.name,
+      }),
+      message: t("common.error", {
+        errorMessage:
+          error instanceof Error ? error.message : t("common.unknownError"),
+      }),
+      variant: "error",
+      duration: ERROR_TOAST_DURATION,
+    });
     rejectSessionProposal({ sessionProposal });
   }
 };
@@ -132,6 +155,8 @@ export const approveSessionRequest = async ({
   signTransaction,
   networkPassphrase,
   activeChain,
+  showToast,
+  t,
 }: {
   sessionRequest: WalletKitSessionRequest;
   signTransaction: (
@@ -139,26 +164,30 @@ export const approveSessionRequest = async ({
   ) => string | null;
   networkPassphrase: string;
   activeChain: string;
+  showToast: (options: ToastOptions) => void;
+  t: TFunction<"translations", undefined>;
 }) => {
   const { id, params, topic } = sessionRequest;
   const { request, chainId } = params || {};
-  const { method, params: requestParams } = request || {};
+  const { params: requestParams } = request || {};
   const { xdr } = requestParams || {};
 
-  if (!stellarNamespaceMethods.includes(method as StellarRpcMethods)) {
-    const message = `Invalid or unsupported namespace method: ${method}`;
-    logger.error("WalletKit", message, { method });
-
-    // TODO: show toast/info-box letting the user know that the request is invalid
-    rejectSessionRequest({ sessionRequest, message });
-    return;
-  }
-
   if (chainId !== activeChain) {
-    const message = `Invalid or unsupported namespace chain: ${chainId}, current active chain: ${activeChain}`;
-    logger.error("WalletKit", message, { chainId, activeChain });
+    const targetNetworkName =
+      chainId === (StellarRpcChains.PUBLIC as string)
+        ? NETWORK_NAMES.PUBLIC
+        : NETWORK_NAMES.TESTNET;
+    const message = t("walletKit.errorWrongNetworkMessage", {
+      targetNetworkName,
+    });
 
-    // TODO: show toast/info-box letting the user know that the request is invalid
+    showToast({
+      title: t("walletKit.errorWrongNetwork"),
+      message,
+      variant: "error",
+      duration: ERROR_TOAST_DURATION,
+    });
+
     rejectSessionRequest({ sessionRequest, message });
     return;
   }
@@ -171,10 +200,18 @@ export const approveSessionRequest = async ({
     );
     signedTransaction = signTransaction(transaction);
   } catch (error) {
-    const message = `Failed to sign transaction: ${error?.toString()}`;
-    logger.error("WalletKit", "signTransaction Error: ", error);
+    const message = t("common.error", {
+      errorMessage:
+        error instanceof Error ? error.message : t("common.unknownError"),
+    });
 
-    // TODO: show toast/info-box letting the user know that the request failed
+    showToast({
+      title: t("walletKit.errorSigning"),
+      message,
+      variant: "error",
+      duration: ERROR_TOAST_DURATION,
+    });
+
     rejectSessionRequest({ sessionRequest, message });
     return;
   }
@@ -187,9 +224,26 @@ export const approveSessionRequest = async ({
 
   try {
     await walletKit.respondSessionRequest({ topic, response });
+
+    showToast({
+      title: t("walletKit.signingSuccessfull"),
+      message: t("walletKit.returnToBrowser"),
+      variant: "success",
+    });
   } catch (error) {
-    logger.error("WalletKit", "walletKit.respondSessionRequest Error: ", error);
-    // TODO: show toast/info-box letting the user know that the request failed
+    const message = t("common.error", {
+      errorMessage:
+        error instanceof Error ? error.message : t("common.unknownError"),
+    });
+
+    showToast({
+      title: t("walletKit.errorRespondingRequest"),
+      message,
+      variant: "error",
+      duration: ERROR_TOAST_DURATION,
+    });
+
+    rejectSessionRequest({ sessionRequest, message });
   }
 };
 

@@ -11,8 +11,16 @@ import {
   WalletKitSessionRequest,
   StellarRpcChains,
 } from "ducks/walletKit";
-import { approveSessionProposal, approveSessionRequest, rejectSessionRequest } from "helpers/walletKitUtil";
+import {
+  approveSessionProposal,
+  approveSessionRequest,
+  rejectSessionRequest,
+} from "helpers/walletKitUtil";
+import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
+import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
+import { useToast } from "providers/ToastProvider";
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 
@@ -28,16 +36,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
+
+  const initialized = useWalletKitInitialize();
+  useWalletKitEventsManager(initialized);
+
   const { event, clearEvent, fetchActiveSessions } = useWalletKitStore();
+  const { showToast } = useToast();
+  const { t } = useAppTranslation();
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
 
   const [proposalEvent, setProposalEvent] =
     useState<WalletKitSessionProposal | null>(null);
-  const [requestEvent, setRequestEvent] = useState<WalletKitSessionRequest | null>(
-    null,
-  );
+  const [requestEvent, setRequestEvent] =
+    useState<WalletKitSessionRequest | null>(null);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -48,10 +61,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   );
 
   const publicKey = account?.publicKey;
-  
-  const activeChain = useMemo(() => network === NETWORKS.PUBLIC ? StellarRpcChains.PUBLIC : StellarRpcChains.TESTNET, [network]);
 
-  const activeAccounts = useMemo(() => [`${StellarRpcChains.PUBLIC}:${publicKey}`, `${StellarRpcChains.TESTNET}:${publicKey}`], [publicKey]);
+  const activeChain = useMemo(
+    () =>
+      network === NETWORKS.PUBLIC
+        ? StellarRpcChains.PUBLIC
+        : StellarRpcChains.TESTNET,
+    [network],
+  );
+
+  const activeAccounts = useMemo(
+    () => [
+      `${StellarRpcChains.PUBLIC}:${publicKey}`,
+      `${StellarRpcChains.TESTNET}:${publicKey}`,
+    ],
+    [publicKey],
+  );
 
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
@@ -69,7 +94,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch
     if (requestEvent) {
-      rejectSessionRequest({ sessionRequest: requestEvent, message: "User rejected the request" });
+      rejectSessionRequest({
+        sessionRequest: requestEvent,
+        message: t("walletKit.userRejected"),
+      });
     }
 
     setTimeout(() => {
@@ -86,7 +114,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     setIsConnecting(true);
 
-    approveSessionProposal({ sessionProposal: proposalEvent, activeAccounts }).finally(() => {
+    approveSessionProposal({
+      sessionProposal: proposalEvent,
+      activeAccounts,
+      showToast,
+      t,
+    }).finally(() => {
       handleClearDappConnection();
       fetchActiveSessions();
     });
@@ -99,7 +132,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     setIsSigning(true);
 
-    approveSessionRequest({ sessionRequest: requestEvent, signTransaction, networkPassphrase: networkDetails.networkPassphrase, activeChain }).finally(() => {
+    approveSessionRequest({
+      sessionRequest: requestEvent,
+      signTransaction,
+      networkPassphrase: networkDetails.networkPassphrase,
+      activeChain,
+      showToast,
+      t,
+    }).finally(() => {
       handleClearDappRequest();
     });
   };
@@ -125,7 +165,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     <View className="flex-1">
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
-        handleCloseModal={handleClearDappConnection }
+        handleCloseModal={handleClearDappConnection}
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
         }}

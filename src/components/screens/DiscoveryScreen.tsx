@@ -36,15 +36,26 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Let's use a key string to avoid re-rendering the list when
   // any random property of the activeSessions objects is updated
-  const activeSessionsKey = useMemo(() => Object.keys(activeSessions).join(","), [activeSessions]);
+  const activeSessionsKey = useMemo(
+    () => Object.keys(activeSessions).join(","),
+    [activeSessions],
+  );
 
   /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-  const connectedDapps = useMemo(() => Object.values(activeSessions).map((session) => ({
-    icon: <App appName={session.peer.metadata.name} favicon={session.peer.metadata.icons[0]} />,
-    title: session.peer.metadata.name,
-  })), 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [activeSessionsKey]);
+  const connectedDapps = useMemo(
+    () =>
+      Object.values(activeSessions).map((session) => ({
+        icon: (
+          <App
+            appName={session.peer.metadata.name}
+            favicon={session.peer.metadata.icons[0]}
+          />
+        ),
+        title: session.peer.metadata.name,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSessionsKey],
+  );
   /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
   const handleClearUri = () => {
@@ -68,7 +79,9 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     try {
       await walletKit.pair({ uri });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("discovery.pairingError"));
+      setError(
+        err instanceof Error ? err.message : t("discovery.pairingError"),
+      );
     } finally {
       // Add a delay for a smooth UX while we wait for the bottom sheet to animate
       setTimeout(() => {
@@ -163,9 +176,9 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         >
           {t("discovery.connect")}
         </Button>
-        </View>
-        
-      <ScrollView 
+      </View>
+
+      <ScrollView
         className="flex-1"
         contentContainerClassName="mt-10 gap-4 pb-16"
         showsVerticalScrollIndicator={false}
