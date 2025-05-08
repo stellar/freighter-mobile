@@ -56,5 +56,7 @@
 		<string>Inter-SemiBold.ttf</string>
 		<string>Inter-VariableFont_opsz,wght.ttf</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Freighter needs access to your Camera to scan QR codes.</string>
 </dict>
 </plist>

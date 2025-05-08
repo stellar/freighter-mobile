@@ -5,41 +5,63 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { ActiveAccount } from "ducks/auth";
-import { SessionRequest } from "ducks/walletKit";
+import { WalletKitSessionRequest } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
+/**
+ * Props for the DappRequestBottomSheetContent component
+ * @interface DappRequestBottomSheetContentProps
+ * @property {WalletKitSessionRequest | null} requestEvent - The session request event
+ * @property {ActiveAccount | null} account - The active account
+ * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onConfirm - Function to handle confirmation
+ * @property {boolean} isSigning - Whether a transaction is currently being signed
+ */
 type DappRequestBottomSheetContentProps = {
-  sessionRequest: SessionRequest | null;
+  requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
   onCancel: () => void;
   onConfirm: () => void;
   isSigning: boolean;
 };
 
+/**
+ * Bottom sheet content component for displaying and handling dApp transaction requests.
+ * Shows transaction details and provides options to confirm or cancel the request.
+ *
+ * @component
+ * @param {DappRequestBottomSheetContentProps} props - The component props
+ * @returns {JSX.Element | null} The bottom sheet content component or null if required data is missing
+ */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ sessionRequest, account, onCancel, onConfirm, isSigning }) => {
+> = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
-  if (!sessionRequest || !account) {
+  const dappMetadata = useDappMetadata(requestEvent);
+
+  const sessionRequest = requestEvent?.params;
+
+  if (!dappMetadata || !account || !sessionRequest) {
     return null;
   }
 
   const { request } = sessionRequest;
   const { params } = request;
-  const { xdr } = params;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const xdr = params?.xdr as string;
 
-  // TODO: map with existing connection using "origin" from VerifyContext
-  const dAppDomain = "aqua.network";
-  const dAppName = "Aquarius";
-  const dAppFavicon = "https://aqua.network/favicon.png";
+  const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
+  const dAppName = dappMetadata.name;
+  const dAppFavicon = dappMetadata.icons[0];
 
   const handleCopy = (item: string, itemName: string) => {
     copyToClipboard(item, {

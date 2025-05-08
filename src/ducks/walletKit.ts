@@ -1,100 +1,118 @@
+import { WalletKitTypes } from "@reown/walletkit";
+import { SessionTypes } from "@walletconnect/types";
+import {
+  disconnectAllSessions,
+  getActiveSessions,
+} from "helpers/walletKitUtil";
 import { create } from "zustand";
 
+/** Project ID for WalletKit initialization */
+export const WALLET_KIT_PROJECT_ID = "ab11883e1469411a76f578a274f3dce0";
+
+/** Metadata for the WalletKit instance */
+export const WALLET_KIT_METADATA = {
+  name: "Freighter",
+  description: "Freighter, a stellar wallet for everyone",
+  url: "https://freighter.app",
+  icons: ["https://tinyurl.com/freighter-mobile-icon"],
+};
+
+/**
+ * Enum representing different types of WalletKit events
+ */
 export enum WalletKitEventTypes {
   SESSION_PROPOSAL = "session_proposal",
   SESSION_REQUEST = "session_request",
   NONE = "none",
 }
 
+/**
+ * Enum representing supported Stellar RPC methods
+ */
 export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
 }
 
+/**
+ * Enum representing supported Stellar events
+ */
 export enum StellarRpcEvents {
   ACCOUNT_CHANGED = "accountChanged",
 }
 
+/**
+ * Enum representing supported Stellar chains
+ */
 export enum StellarRpcChains {
   PUBLIC = "stellar:pubnet",
   TESTNET = "stellar:testnet",
 }
 
-// TODO: import from walletkit
-export type SessionProposal = {
-  id: string;
-  pairingTopic: string;
-  expiryTimestamp: number;
-  requiredNamespaces: {
-    stellar: {
-      chains: StellarRpcChains[];
-      methods: StellarRpcMethods[];
-      events: StellarRpcEvents[];
-    };
-  };
-  optionalNamespaces: Record<string, string[]>;
-  relays: {
-    protocol: string;
-  }[];
-  proposer: {
-    publicKey: string;
-    metadata: {
-      description: string;
-      url: string;
-      icons: string[];
-      name: string;
-    };
-  };
+/**
+ * Type representing a WalletKit session proposal event
+ */
+export type WalletKitSessionProposal = WalletKitTypes.SessionProposal & {
+  type: WalletKitEventTypes.SESSION_PROPOSAL;
 };
 
-// TODO: import from walletkit
-export type SessionRequest = {
-  request: {
-    method: StellarRpcMethods;
-    params: { xdr: string };
-    expiryTimestamp: number;
-  };
-  chainId: StellarRpcChains;
+/**
+ * Type representing a WalletKit session request event
+ */
+export type WalletKitSessionRequest = WalletKitTypes.SessionRequest & {
+  type: WalletKitEventTypes.SESSION_REQUEST;
 };
 
-export type WalletKitEvent =
-  | {
-      id: string;
-      type: WalletKitEventTypes.SESSION_PROPOSAL;
-      params: SessionProposal;
-      verifyContext: VerifyContext;
-    }
-  | {
-      id: string;
-      type: WalletKitEventTypes.SESSION_REQUEST;
-      topic: string;
-      params: SessionRequest;
-      verifyContext: VerifyContext;
-    }
-  | {
-      type: WalletKitEventTypes.NONE;
-    };
-
-type VerifyContext = {
-  verified: {
-    verifyUrl: string;
-    validation: string;
-    origin: string;
-  };
-};
-
-const noneEvent: WalletKitEvent = {
+/** Default event state when no event is active */
+const noneEvent = {
   type: WalletKitEventTypes.NONE,
 };
 
+/**
+ * Union type representing all possible WalletKit events
+ */
+export type WalletKitEvent =
+  | WalletKitSessionProposal
+  | WalletKitSessionRequest
+  | typeof noneEvent;
+
+/**
+ * Type representing active WalletKit sessions
+ */
+export type ActiveSessions = { [topic_key: string]: SessionTypes.Struct };
+
+/**
+ * Interface defining the WalletKit store state and actions
+ */
 interface WalletKitState {
+  /** Current WalletKit event */
   event: WalletKitEvent;
+  /** Function to set a new event */
   setEvent: (event: WalletKitEvent) => void;
+  /** Function to clear the current event */
   clearEvent: () => void;
+  /** Map of active sessions */
+  activeSessions: ActiveSessions;
+  /** Function to fetch active sessions */
+  fetchActiveSessions: () => Promise<void>;
+  /** Function to disconnect all sessions */
+  disconnectAllSessions: () => Promise<void>;
 }
 
+/**
+ * Zustand store for managing WalletKit state
+ */
 export const useWalletKitStore = create<WalletKitState>((set) => ({
   event: noneEvent,
+  activeSessions: {},
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
+  fetchActiveSessions: async () => {
+    const activeSessions = await getActiveSessions();
+    set({ activeSessions });
+  },
+  disconnectAllSessions: async () => {
+    await disconnectAllSessions();
+    set({ activeSessions: {} });
+  },
 }));

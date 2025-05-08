@@ -1,4 +1,4 @@
-import { Keypair, Transaction } from "@stellar/stellar-sdk";
+import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCallback, useEffect } from "react";
@@ -36,7 +36,7 @@ const useGetActiveAccount = () => {
   );
 
   const signTransaction = useCallback(
-    (transaction: Transaction): string | null => {
+    (transaction: Transaction | FeeBumpTransaction): string | null => {
       if (!account) return null;
 
       const keyPair = Keypair.fromSecret(account.privateKey);

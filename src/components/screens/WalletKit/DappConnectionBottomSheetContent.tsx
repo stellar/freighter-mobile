@@ -5,51 +5,68 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { ActiveAccount } from "ducks/auth";
-import { SessionProposal } from "ducks/walletKit";
+import { WalletKitSessionProposal } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { View } from "react-native";
 
+/**
+ * Props for the DappConnectionBottomSheetContent component
+ * @interface DappConnectionBottomSheetContentProps
+ * @property {WalletKitSessionProposal | null} proposalEvent - The session proposal event
+ * @property {ActiveAccount | null} account - The active account
+ * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onConnection - Function to handle connection
+ * @property {boolean} isConnecting - Whether a connection is currently being established
+ */
 type DappConnectionBottomSheetContentProps = {
-  sessionProposal: SessionProposal | null;
+  proposalEvent: WalletKitSessionProposal | null;
   account: ActiveAccount | null;
   onCancel: () => void;
   onConnection: () => void;
   isConnecting: boolean;
 };
 
+/**
+ * Bottom sheet content component for displaying and handling dApp connection requests.
+ * Shows dApp details and provides options to connect or cancel the request.
+ *
+ * @component
+ * @param {DappConnectionBottomSheetContentProps} props - The component props
+ * @returns {JSX.Element | null} The bottom sheet content component or null if required data is missing
+ */
 const DappConnectionBottomSheetContent: React.FC<
   DappConnectionBottomSheetContentProps
-> = ({ sessionProposal, account, onCancel, onConnection, isConnecting }) => {
+> = ({ proposalEvent, account, onCancel, onConnection, isConnecting }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
-  if (!sessionProposal || !account) {
+  const dappMetadata = useDappMetadata(proposalEvent);
+
+  if (!dappMetadata || !account) {
     return null;
   }
 
-  // TODO: use URL class instead
-  const dAppDomain = sessionProposal.proposer.metadata.url
-    .split("://")[1]
-    .split("/")[0];
+  const dappDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
 
   return (
     <View className="flex-1 justify-center items-center mt-2">
       <App
         size="lg"
-        appName={sessionProposal.proposer.metadata.name}
-        favicon={sessionProposal.proposer.metadata.icons[0]}
+        appName={dappMetadata.name}
+        favicon={dappMetadata.icons[0]}
       />
       <View className="mt-4" />
       <Text lg primary medium style={{ textAlign: "center" }}>
-        {sessionProposal.proposer.metadata.name}
+        {dappMetadata.name}
       </Text>
       <View className="mt-1" />
-      {dAppDomain && (
+      {dappDomain && (
         <Text sm secondary>
-          {dAppDomain}
+          {dappDomain}
         </Text>
       )}
       <View className="mt-2" />
