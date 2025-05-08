@@ -1,8 +1,9 @@
+import Spinner from "components/Spinner";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Dimensions, StyleSheet } from "react-native";
 import {
   Camera,
@@ -22,6 +23,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
   const device = useCameraDevice("back");
   const { t } = useAppTranslation();
 
+  const [isMounting, setIsMounting] = useState(true);
+
   const codeScanner = useCodeScanner({
     codeTypes: ["qr"],
     onCodeScanned: (codes) => {
@@ -35,12 +38,23 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
     requestPermission();
   }, [requestPermission]);
 
+  useEffect(() => {
+    setTimeout(() => {
+      setIsMounting(false);
+    }, 500);
+  }, []);
+
+  if (isMounting) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Spinner />
+      </View>
+    );
+  }
+
   if (device == null || !hasPermission) {
     return (
-      <View
-        className="flex-1 bg-black justify-center items-center"
-        style={{ width: windowWidth, marginLeft: -pxValue(DEFAULT_PADDING) }}
-      >
+      <View className="flex-1 justify-center items-center">
         <Text className="text-white text-center mt-5">
           {t("qrScanner.cameraNotAvailable")}
         </Text>
@@ -50,10 +64,11 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
 
   return (
     <View
-      className="h-full"
       style={{
+        height: "100%",
         width: windowWidth,
         marginLeft: -pxValue(DEFAULT_PADDING),
+        overflow: "hidden",
       }}
     >
       <Camera
