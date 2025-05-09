@@ -15,7 +15,9 @@
     "save": "Save",
     "add": "Add",
     "remove": "Remove",
-    "copied": "Copied to clipboard!"
+    "copied": "Copied to clipboard!",
+    "loading": "Loading...",
+    "error": "Error"
   },
   "home": {
     "title": "Home",
@@ -212,7 +214,9 @@
     "title": "Send to",
     "inputPlaceholder": "Enter address",
     "recents": "Recents",
-    "suggestions": "Suggestions"
+    "suggestions": "Suggestions",
+    "cannotSendToSelf": "Cannot send to yourself",
+    "invalidAddress": "Invalid Stellar address"
   },
   "transactionTokenScreen": {
     "title": "Sending"
@@ -229,15 +233,15 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo"
+      "addMemo": "Add memo",
+      "editMemo": "Edit memo"
     },
     "details": {
       "from": "From",
       "memo": "Memo",
       "none": "None",
       "fee": "Fee",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Not available yet"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {
@@ -274,22 +278,36 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Type your memo",
-    "optional": "(optional)"
+    "optional": "(optional)",
+    "errors": {
+      "invalid": "Invalid memo format",
+      "tooLong": "Memo is too long (maximum {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Transaction Timeout",
     "seconds": "seconds",
-    "setRecommended": "Set recommended"
+    "setRecommended": "Set recommended",
+    "inputPlaceholder": "Enter timeout",
+    "errors": {
+      "required": "Transaction timeout is required",
+      "invalid": "Invalid transaction timeout",
+      "greaterThanZero": "Timeout must be greater than 0"
+    }
   },
   "transactionFeeScreen": {
     "title": "Transaction Fee",
     "setRecommended": "Set recommended",
-    "congestion": {
-      "low": "Low congestion",
-      "medium": "Medium congestion",
-      "high": "High congestion"
+    "congestion": "{{networkCongestion}} congestion",
+    "errors": {
+      "required": "Transaction fee is required",
+      "invalid": "Invalid transaction fee",
+      "tooLow": "Fee must be greater than {{min}}"
     }
   },
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
   "transactionReviewScreen": {
     "title": "You are sending",
     "previousSend": "1 previous send",

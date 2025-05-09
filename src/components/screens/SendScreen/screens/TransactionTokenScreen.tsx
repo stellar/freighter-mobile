@@ -5,6 +5,7 @@ import { ContactRow } from "components/screens/SendScreen/components";
 import { Button } from "components/sds/Button";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
@@ -17,19 +18,18 @@ type TransactionTokenScreenProps = NativeStackScreenProps<
 
 const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
-  const { address } = route.params;
+  const { recipientAddress, saveSelectedTokenId } =
+    useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
 
   const handleTokenPress = (tokenId: string) => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
-      address,
-      tokenId,
-    });
+    saveSelectedTokenId(tokenId);
+
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {});
   };
 
   return (
@@ -37,7 +37,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
       <View className="flex-1">
         <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
           <ContactRow
-            address={address}
+            address={recipientAddress}
             rightElement={
               <Button secondary lg onPress={() => navigation.goBack()}>
                 {t("common.edit")}

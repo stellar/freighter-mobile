@@ -15,7 +15,9 @@
     "save": "Salvar",
     "add": "Adicionar",
     "remove": "Remover",
-    "copied": "Copiado para a área de transferência!"
+    "copied": "Copiado para a área de transferência!",
+    "loading": "Carregando...",
+    "error": "Erro"
   },
   "home": {
     "title": "Início",
@@ -207,7 +209,10 @@
   "sendPaymentScreen": {
     "title": "Enviar para",
     "inputPlaceholder": "Digite o endereço",
-    "recents": "Recentes"
+    "recents": "Recentes",
+    "suggestions": "Sugestões",
+    "cannotSendToSelf": "Não é possível enviar para você mesmo",
+    "invalidAddress": "Endereço Stellar inválido"
   },
   "transactionTokenScreen": {
     "title": "Enviando"
@@ -224,15 +229,15 @@
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",
-      "addMemo": "Adicionar memo"
+      "addMemo": "Adicionar memo",
+      "editMemo": "Editar memo"
     },
     "details": {
       "from": "De",
       "memo": "Memo",
       "none": "Nenhum",
       "fee": "Taxa",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Ainda não disponível"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {
@@ -269,22 +274,38 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Digite seu memo",
-    "optional": "(opcional)"
+    "optional": "(opcional)",
+    "errors": {
+      "invalid": "Formato de memo inválido",
+      "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Tempo Limite da Transação",
     "seconds": "segundos",
-    "setRecommended": "Definir recomendado"
+    "setRecommended": "Definir recomendado",
+    "inputPlaceholder": "Digite o tempo limite",
+    "errors": {
+      "required": "Tempo limite da transação é obrigatório",
+      "invalid": "Tempo limite da transação inválido",
+      "greaterThanZero": "O tempo limite deve ser maior que 0"
+    },
+    "description": "Número de segundos que podem passar antes que esta transação não possa mais ser aceita pela rede",
+    "timeoutInSeconds": "Tempo limite em segundos"
   },
   "transactionFeeScreen": {
     "title": "Taxa da Transação",
     "setRecommended": "Definir recomendado",
-    "congestion": {
-      "low": "Congestionamento baixo",
-      "medium": "Congestionamento médio",
-      "high": "Congestionamento alto"
+    "congestion": "Congestionamento {{networkCongestion}}",
+    "errors": {
+      "required": "Taxa de transação é obrigatória",
+      "invalid": "Taxa de transação inválida",
+      "tooLow": "A taxa deve ser maior que {{min}}"
     }
   },
+  "low": "baixo",
+  "medium": "médio",
+  "high": "alto",
   "transactionReviewScreen": {
     "title": "Você está enviando",
     "previousSend": "1 envio anterior",
