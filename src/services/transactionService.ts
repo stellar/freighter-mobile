@@ -238,10 +238,6 @@ export const prepareSorobanTransaction = async (
     const txXdr = tx.toXDR();
 
     try {
-      // The Soroban RPC API's prepareTransaction method requires a transaction XDR string
-      // and returns a new transaction XDR that includes the proper Soroban resources
-      logger.debug("TransactionBuilder", "Preparing Soroban transaction");
-
       // Create a strongly typed wrapper for the response to avoid 'any' usage
       interface PrepareTransactionResponse {
         status: string;
@@ -341,23 +337,6 @@ export const buildPaymentTransaction = async (
     publicKey,
   } = params;
 
-  // Log detailed parameters for debugging
-  logger.debug(
-    "TransactionService.buildPaymentTransaction",
-    "Building transaction with parameters",
-    {
-      amount,
-      destination,
-      isContractDestination: destination ? isContractId(destination) : false,
-      publicKey,
-      memo: memo || "(none)",
-      fee,
-      timeout,
-      network: currentNetwork,
-      balanceCode: balance?.tokenCode,
-    },
-  );
-
   // Validate required parameters
   if (!publicKey) {
     throw new Error("Public key is required");
@@ -384,15 +363,6 @@ export const buildPaymentTransaction = async (
   }
 
   try {
-    // Log the destination address type for debugging
-    logger.debug(
-      "TransactionService",
-      `Building transaction for destination: ${destination}`,
-      {
-        isContractAddress: isContractId(destination),
-      },
-    );
-
     // Validate parameters
     const validationError = validateTransactionParams(
       publicKey,
@@ -478,10 +448,6 @@ export const buildPaymentTransaction = async (
             startingBalance: amount,
           }),
         );
-        logger.debug(
-          "TransactionService",
-          "Added createAccount operation for new account",
-        );
       } else {
         // Regular payment operation
         txBuilder.addOperation(
@@ -490,10 +456,6 @@ export const buildPaymentTransaction = async (
             asset,
             amount,
           }),
-        );
-        logger.debug(
-          "TransactionService",
-          "Added payment operation for existing account",
         );
       }
 

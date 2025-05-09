@@ -133,16 +133,6 @@ const TransactionProcessingScreen: React.FC<
       );
     }
 
-    if (status === "unsupported") {
-      return (
-        <View className="mt-6 rounded-[8px] bg-yellow-100 p-3">
-          <Text sm medium className="text-yellow-800">
-            Sending to contract addresses is not yet supported
-          </Text>
-        </View>
-      );
-    }
-
     return null;
   };
 

@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
@@ -15,7 +16,12 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { logger } from "config/logger";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  MAIN_TAB_ROUTES,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -145,12 +151,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
-  // New function to handle opening the review sheet and building the transaction
   const handleOpenReview = async () => {
     if (Number(tokenAmount) <= 0) return;
 
     try {
-      // Build the transaction when opening the review sheet
       await buildTransaction({
         tokenValue: tokenAmount,
         selectedBalance,
@@ -162,7 +166,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         publicKey,
       });
 
-      // Open the review sheet
       reviewBottomSheetModalRef.current?.present();
     } catch (error) {
       logger.error(
@@ -174,10 +177,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleTransactionConfirmation = () => {
-    // Close the review sheet first
     reviewBottomSheetModalRef.current?.dismiss();
 
-    // Set the processing state to show the loading screen
     setIsProcessing(true);
 
     const processTransaction = async () => {
@@ -198,13 +199,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           throw new Error("Unable to retrieve account secret key");
         }
 
-        // Sign the transaction using the store
         signTransaction({
           secretKey: privateKey,
           network,
         });
 
-        // Submit the transaction using the store
         await submitTransaction({
           network,
         });
@@ -223,7 +222,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
-    navigateToSendScreen();
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+            state: {
+              index: 0,
+              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            },
+          },
+        ],
+      }),
+    );
   };
 
   if (isProcessing) {
@@ -346,8 +359,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onConfirm={handleTransactionConfirmation}
           />
         }
-        bottomSheetModalProps={{ enablePanDownToClose: true }}
-        snapPoints={["80%"]}
       />
     </BaseLayout>
   );
