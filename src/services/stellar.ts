@@ -26,6 +26,15 @@ interface HorizonError {
   };
 }
 
+export interface TransactionDetail {
+  id: string;
+  hash: string;
+  createdAt: string;
+  successful: boolean;
+  memo?: string;
+  fee: string;
+}
+
 export type BuildChangeTrustTxParams = {
   network: NETWORKS;
   publicKey: string;
@@ -213,6 +222,55 @@ export const getAccount = async (
     const account = await server.loadAccount(publicKey);
     return account;
   } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Retrieves transaction details from the Horizon API including the creation timestamp
+ * @param transactionHash The hash of the transaction to look up
+ * @param network The Stellar network to query
+ * @returns Promise resolving to transaction details or null if not found
+ */
+export const getTransactionDetails = async (
+  transactionHash: string,
+  network: NETWORKS,
+): Promise<TransactionDetail | null> => {
+  if (!transactionHash) {
+    return null;
+  }
+
+  const { networkUrl } = mapNetworkToNetworkDetails(network);
+  const server = stellarSdkServer(networkUrl);
+
+  try {
+    const transaction = await server
+      .transactions()
+      .transaction(transactionHash)
+      .call();
+
+    if (!transaction) {
+      return null;
+    }
+
+    return {
+      id: transaction.id,
+      hash: transaction.hash,
+      createdAt: transaction.created_at,
+      successful: transaction.successful,
+      memo: transaction.memo,
+      fee: String(transaction.fee_charged),
+    };
+  } catch (error) {
+    logger.error(
+      "stellarService.getTransactionDetails",
+      "Failed to get transaction details",
+      {
+        error: error instanceof Error ? error.message : String(error),
+        transactionHash,
+        network,
+      },
+    );
     return null;
   }
 };

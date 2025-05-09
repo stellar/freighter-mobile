@@ -70,9 +70,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     submitTransaction,
     resetTransaction,
     isBuilding,
-    isSubmitting,
-    error: transactionError,
-    transactionHash,
   } = useTransactionBuilderStore();
 
   const publicKey = account?.publicKey;
@@ -179,7 +176,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleTransactionConfirmation = () => {
     reviewBottomSheetModalRef.current?.dismiss();
 
-    setIsProcessing(true);
+    // Wait for the bottom sheet to dismiss before showing the processing screen
+    setTimeout(() => {
+      setIsProcessing(true);
+    }, 100);
 
     const processTransaction = async () => {
       try {
@@ -242,12 +242,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
-        selectedBalance={selectedBalance}
-        tokenValue={tokenAmount}
         onClose={handleProcessingScreenClose}
-        isSubmitting={isSubmitting}
-        transactionHash={transactionHash}
-        error={transactionError}
+        transactionAmount={tokenAmount}
       />
     );
   }

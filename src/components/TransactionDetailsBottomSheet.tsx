@@ -5,49 +5,162 @@ import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { TRANSACTION_RECOMMENDED_FEE } from "config/constants";
-import { PricedBalance } from "config/types";
+import { NATIVE_TOKEN_CODE } from "config/constants";
+import { logger } from "config/logger";
+import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React from "react";
-import { View } from "react-native";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React, { useEffect, useState } from "react";
+import { View, Linking } from "react-native";
+import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
+/**
+ * TransactionDetailsBottomSheet props
+ *
+ * @prop {string} [transactionAmount] - Transaction amount
+ */
 type TransactionDetailsBottomSheetProps = {
-  selectedBalance: PricedBalance | undefined;
-  tokenAmount: string;
-  address: string;
+  transactionAmount: string;
 };
 
-const FEE_CURRENCY = "XLM";
+/**
+ * TransactionDetailsBottomSheet Component
+ *
+ * A bottom sheet displaying transaction details, including amount, recipient,
+ * status, fee, and other transaction metadata.
+ *
+ * Uses data from Zustand stores to show real transaction information.
+ */
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
-> = ({ selectedBalance, tokenAmount, address }) => {
+> = ({ transactionAmount }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const slicedAddress = truncateAddress(address, 4, 4);
+  const { copyToClipboard } = useClipboard();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
 
-  // TODO: Get current date and time for the transaction
-  const now = new Date();
-  const formattedDate = now.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  const { recipientAddress, selectedTokenId, transactionMemo, transactionFee } =
+    useTransactionSettingsStore();
+
+  const {
+    transactionXDR,
+    transactionHash,
+    error: transactionError,
+    isSubmitting,
+  } = useTransactionBuilderStore();
+
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
   });
-  const formattedTime = now
-    .toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    .toLowerCase();
 
-  const dateTimeDisplay = `${formattedDate} · ${formattedTime}`;
+  const selectedBalance = balanceItems.find(
+    (item) => item.id === selectedTokenId,
+  );
+
+  const slicedAddress = truncateAddress(recipientAddress, 4, 4);
+  const [transactionDetails, setTransactionDetails] =
+    useState<TransactionDetail | null>(null);
+
+  useEffect(() => {
+    if (transactionHash) {
+      getTransactionDetails(transactionHash, network)
+        .then((details) => {
+          if (details) {
+            setTransactionDetails(details);
+          }
+        })
+        .catch((error) => {
+          logger.error(
+            "TransactionDetailsBottomSheet",
+            "Failed to get transaction details",
+            error,
+          );
+        });
+    }
+  }, [transactionHash, network]);
+
+  const getTransactionStatus = () => {
+    if (transactionHash) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusSuccess"),
+        color: themeColors.status.success,
+      };
+    }
+    if (transactionError) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusFailed", "Failed"),
+        color: themeColors.status.error,
+      };
+    }
+    if (isSubmitting) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusPending", "Pending"),
+        color: themeColors.status.warning,
+      };
+    }
+    return {
+      text: t("transactionDetailsBottomSheet.statusSuccess"),
+      color: themeColors.status.success,
+    };
+  };
+
+  const transactionStatus = getTransactionStatus();
+
+  const formatTransactionDate = () => {
+    let dateObj: Date;
+
+    if (transactionDetails?.createdAt) {
+      dateObj = new Date(transactionDetails.createdAt);
+    } else {
+      dateObj = new Date();
+    }
+
+    const formattedDate = dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const formattedTime = dateObj
+      .toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+      .toLowerCase();
+
+    return `${formattedDate} · ${formattedTime}`;
+  };
+
+  const dateTimeDisplay = formatTransactionDate();
+
+  const handleCopyXdr = () => {
+    if (transactionXDR) {
+      copyToClipboard(transactionXDR, {
+        notificationMessage: t("common.copied"),
+      });
+    }
+  };
 
   const handleViewOnExplorer = () => {
-    // TODO: In the future, this could open a web link to stellar.expert with the transaction details
-    console.log(t("transactionDetailsBottomSheet.viewOnExpert"));
+    if (!transactionHash) return;
+
+    const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
+
+    Linking.openURL(explorerUrl).catch((err) =>
+      logger.error("Error opening transaction explorer:", String(err)),
+    );
   };
 
   return (
@@ -73,12 +186,12 @@ const TransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
+              {formatAssetAmount(transactionAmount, selectedBalance?.tokenCode)}
             </Text>
             <Text md medium secondary>
               {selectedBalance?.currentPrice
                 ? formatFiatAmount(
-                    new BigNumber(tokenAmount).times(
+                    new BigNumber(transactionAmount).times(
                       selectedBalance.currentPrice,
                     ),
                   )
@@ -102,11 +215,8 @@ const TransactionDetailsBottomSheet: React.FC<
             <Text xl medium primary>
               {slicedAddress}
             </Text>
-            <Text md medium secondary>
-              {t("transactionDetailsBottomSheet.firstTimeSend")}
-            </Text>
           </View>
-          <Avatar size="lg" publicAddress={address} />
+          <Avatar size="lg" publicAddress={recipientAddress} />
         </View>
       </View>
 
@@ -118,8 +228,8 @@ const TransactionDetailsBottomSheet: React.FC<
               {t("transactionDetailsBottomSheet.status")}
             </Text>
           </View>
-          <Text md medium color={themeColors.status.success}>
-            {t("transactionDetailsBottomSheet.statusSuccess")}
+          <Text md medium color={transactionStatus.color}>
+            {transactionStatus.text}
           </Text>
         </View>
 
@@ -130,8 +240,8 @@ const TransactionDetailsBottomSheet: React.FC<
               {t("transactionAmountScreen.details.memo")}
             </Text>
           </View>
-          <Text md medium secondary>
-            {t("common.none")}
+          <Text md medium secondary={!transactionMemo}>
+            {transactionMemo || t("common.none")}
           </Text>
         </View>
 
@@ -145,8 +255,7 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {/* TODO: get the fee amount from the transaction */}
-              {formatAssetAmount(TRANSACTION_RECOMMENDED_FEE, FEE_CURRENCY)}
+              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>
@@ -158,32 +267,38 @@ const TransactionDetailsBottomSheet: React.FC<
               {t("transactionAmountScreen.details.xdr")}
             </Text>
           </View>
-          <View className="flex-row items-center gap-[8px]">
+          <View
+            className="flex-row items-center gap-[8px]"
+            onTouchEnd={handleCopyXdr}
+          >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md medium>
-              {t("transactionAmountScreen.details.xdrPlaceholder")}
+              {transactionXDR
+                ? truncateAddress(transactionXDR, 6, 4)
+                : t("common.none")}
             </Text>
           </View>
         </View>
       </View>
 
-      <Button
-        tertiary
-        lg
-        onPress={handleViewOnExplorer}
-        icon={
-          <Icon.LinkExternal01
-            size={16}
-            color={themeColors.foreground.primary}
-          />
-        }
-        iconPosition={IconPosition.RIGHT}
-      >
-        {t("transactionDetailsBottomSheet.viewOnExpert")}
-      </Button>
+      {transactionHash && (
+        <Button
+          tertiary
+          lg
+          onPress={handleViewOnExplorer}
+          icon={
+            <Icon.LinkExternal01
+              size={16}
+              color={themeColors.foreground.primary}
+            />
+          }
+          iconPosition={IconPosition.RIGHT}
+        >
+          {t("transactionDetailsBottomSheet.viewOnExpert")}
+        </Button>
+      )}
     </View>
   );
 };
 
-export { TransactionDetailsBottomSheet };
 export default TransactionDetailsBottomSheet;

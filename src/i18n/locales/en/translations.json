@@ -326,8 +326,12 @@
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",
+    "statusFailed": "Failed",
+    "statusPending": "Pending",
     "rate": "Rate",
     "fee": "Fee",
+    "transactionHash": "Transaction Hash",
+    "couldNotBeSentTo": "could not be sent to",
     "viewOnExpert": "View on stellar.expert"
   },
   "dappRequestBottomSheetContent": {

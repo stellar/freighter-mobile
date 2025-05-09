@@ -9,41 +9,60 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { PricedBalance } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
 type TransactionStatus = "sending" | "sent" | "failed" | "unsupported";
 
-type TransactionProcessingScreenProps = {
-  selectedBalance: PricedBalance | undefined;
-  tokenValue: string;
-  onClose: () => void;
-  isSubmitting?: boolean;
-  transactionHash?: string | null;
-  error?: string | null;
-};
+interface TransactionProcessingScreenProps {
+  onClose?: () => void;
+  transactionAmount: string;
+}
 
+/**
+ * TransactionProcessingScreen Component
+ *
+ * A screen for displaying transaction processing status and results.
+ * Uses transaction stores to track status and data.
+ */
 const TransactionProcessingScreen: React.FC<
   TransactionProcessingScreenProps
-> = ({
-  selectedBalance,
-  tokenValue,
-  onClose,
-  isSubmitting = false,
-  transactionHash = null,
-  error = null,
-}) => {
+> = ({ onClose, transactionAmount }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const { recipientAddress } = useTransactionSettingsStore();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+
+  const { recipientAddress, selectedTokenId } = useTransactionSettingsStore();
+
+  const {
+    isSubmitting,
+    transactionHash,
+    error: transactionError,
+    resetTransaction,
+  } = useTransactionBuilderStore();
+
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
+
+  const selectedBalance = balanceItems.find(
+    (item) => item.id === selectedTokenId,
+  );
+
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [status, setStatus] = useState<TransactionStatus>("sending");
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -55,27 +74,31 @@ const TransactionProcessingScreen: React.FC<
     });
   }, [navigation]);
 
-  // Determine transaction status based on props
   useEffect(() => {
-    if (error) {
+    if (transactionError) {
       setStatus("failed");
     } else if (transactionHash) {
       setStatus("sent");
     } else if (isContractAddress && !isSubmitting) {
       setStatus("unsupported");
-    } else if (!isSubmitting) {
-      // Demo mode - auto complete after 2 seconds
-      const timer = setTimeout(() => {
-        setStatus("sent");
-      }, 2000);
-      return () => clearTimeout(timer);
     }
-    // If still submitting, keep status as "sending"
+
     return undefined;
-  }, [isSubmitting, transactionHash, error, isContractAddress]);
+  }, [
+    isSubmitting,
+    transactionHash,
+    transactionError,
+    isContractAddress,
+    network,
+  ]);
 
   const handleClose = () => {
-    onClose();
+    if (onClose) {
+      onClose();
+      return;
+    }
+
+    resetTransaction();
   };
 
   const handleViewTransaction = () => {
@@ -87,9 +110,9 @@ const TransactionProcessingScreen: React.FC<
       case "sent":
         return t("transactionProcessingScreen.sent");
       case "failed":
-        return "Failed";
+        return t("transactionProcessingScreen.failed", "Failed");
       case "unsupported":
-        return "Not Supported";
+        return t("transactionProcessingScreen.unsupported", "Not Supported");
       default:
         return t("transactionProcessingScreen.sending");
     }
@@ -116,24 +139,15 @@ const TransactionProcessingScreen: React.FC<
     if (status === "sent") {
       return t("transactionProcessingScreen.wasSentTo");
     }
-    if (status === "failed" || status === "unsupported") {
-      return "could not be sent to";
-    }
-    return t("transactionProcessingScreen.to");
-  };
 
-  const renderErrorMessage = () => {
-    if (status === "failed" && error) {
-      return (
-        <View className="mt-6 rounded-[8px] bg-red-100 p-3">
-          <Text sm medium className="text-red-800">
-            {error}
-          </Text>
-        </View>
+    if (status === "failed" || status === "unsupported") {
+      return t(
+        "transactionProcessingScreen.couldNotBeSentTo",
+        "could not be sent to",
       );
     }
 
-    return null;
+    return t("transactionProcessingScreen.to");
   };
 
   return (
@@ -162,10 +176,13 @@ const TransactionProcessingScreen: React.FC<
               <View className="items-center">
                 <View className="flex-row flex-wrap items-center justify-center">
                   <Text xl medium primary>
-                    {formatAssetAmount(tokenValue, selectedBalance?.tokenCode)}
+                    {formatAssetAmount(
+                      transactionAmount,
+                      selectedBalance?.tokenCode,
+                    )}
                   </Text>
                   <Text lg medium secondary>
-                    {getMessageText()}
+                    {` ${getMessageText()} `}
                   </Text>
                   <Text xl medium primary>
                     {slicedAddress}
@@ -173,8 +190,6 @@ const TransactionProcessingScreen: React.FC<
                 </View>
               </View>
             </View>
-
-            {renderErrorMessage()}
           </View>
         </View>
 
@@ -204,9 +219,7 @@ const TransactionProcessingScreen: React.FC<
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         customContent={
           <TransactionDetailsBottomSheet
-            selectedBalance={selectedBalance}
-            tokenAmount={tokenValue}
-            address={recipientAddress}
+            transactionAmount={transactionAmount}
           />
         }
       />
