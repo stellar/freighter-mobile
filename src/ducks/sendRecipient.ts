@@ -34,7 +34,7 @@ interface SendStore {
   reset: () => void;
 }
 
-export const useSendStore = create<SendStore>((set, get) => ({
+export const useSendRecipientStore = create<SendStore>((set, get) => ({
   recentAddresses: [],
   searchResults: [],
   destinationAddress: "",

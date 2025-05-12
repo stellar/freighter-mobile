@@ -11,6 +11,7 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount } from "helpers/formatAmount";
@@ -54,6 +55,8 @@ const TransactionProcessingScreen: React.FC<
     resetTransaction,
   } = useTransactionBuilderStore();
 
+  const { addRecentAddress } = useSendRecipientStore();
+
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [status, setStatus] = useState<TransactionStatus>("sending");
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -70,6 +73,7 @@ const TransactionProcessingScreen: React.FC<
       setStatus("failed");
     } else if (transactionHash) {
       setStatus("sent");
+      addRecentAddress(recipientAddress);
     } else if (isContractAddress && !isSubmitting) {
       setStatus("unsupported");
     }
@@ -81,6 +85,8 @@ const TransactionProcessingScreen: React.FC<
     transactionError,
     isContractAddress,
     network,
+    recipientAddress,
+    addRecentAddress,
   ]);
 
   const handleClose = () => {

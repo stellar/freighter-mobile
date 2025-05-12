@@ -10,7 +10,7 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
-import { useSendStore } from "ducks/send";
+import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -48,10 +48,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     destinationAddress,
     loadRecentAddresses,
     searchAddress,
-    addRecentAddress,
     setDestinationAddress,
     reset,
-  } = useSendStore();
+  } = useSendRecipientStore();
 
   // Load recent addresses when component mounts
   useEffect(() => {
@@ -94,9 +93,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     setDestinationAddress(contactAddress);
     // Transaction settings store is for the transaction flow
     saveRecipientAddress(destinationAddress || contactAddress);
-
-    // TODO: check if we have to add it here or just after the transaction is sent
-    addRecentAddress(contactAddress);
 
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
   };
