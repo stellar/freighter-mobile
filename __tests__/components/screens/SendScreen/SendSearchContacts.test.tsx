@@ -3,7 +3,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
-import * as sendDuck from "ducks/send";
+import * as sendDuck from "ducks/sendRecipient";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
@@ -76,8 +76,8 @@ const getSendStoreMock = (overrides = {}) =>
     ...overrides,
   });
 
-jest.mock("ducks/send", () => ({
-  useSendStore: getSendStoreMock(),
+jest.mock("ducks/sendRecipient", () => ({
+  useSendRecipientStore: getSendStoreMock(),
 }));
 
 type SendSearchContactsNavigationProp = NativeStackNavigationProp<
@@ -121,7 +121,7 @@ describe("SendSearchContacts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the default mock implementation for useSendStore
-    jest.spyOn(sendDuck, "useSendStore").mockImplementation(
+    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
       getSendStoreMock({
         recentAddresses: mockRecentAddresses,
         loadRecentAddresses: mockLoadRecentAddresses,
@@ -176,7 +176,7 @@ describe("SendSearchContacts", () => {
 
   it("shows search suggestions when text is entered", async () => {
     // Setup the mock to return search results for this specific test
-    jest.spyOn(sendDuck, "useSendStore").mockImplementation(
+    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
       getSendStoreMock({
         searchResults: mockSearchResults,
         recentAddresses: mockRecentAddresses,
