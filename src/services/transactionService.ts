@@ -247,10 +247,6 @@ export const prepareSorobanTransaction = async (
         typeof (sorobanRpc as SorobanRpcServerWithPrepare)
           .prepareTransaction !== "function"
       ) {
-        logger.warn(
-          "TransactionBuilder",
-          "prepareTransaction method not available on server",
-        );
         return tx.toXDR();
       }
 
@@ -260,22 +256,9 @@ export const prepareSorobanTransaction = async (
       ).prepareTransaction(tx);
 
       if (preparedTx instanceof Transaction) {
-        logger.info(
-          "TransactionBuilder",
-          "Soroban transaction prepared successfully",
-        );
-
         // Return the XDR of the PREPARED transaction
         return preparedTx.toXDR();
       }
-
-      logger.warn(
-        "TransactionBuilder",
-        "Unexpected response type from prepareTransaction",
-        typeof preparedTx === "object" && preparedTx
-          ? preparedTx
-          : "Invalid response type",
-      );
 
       // Return the original XDR only if preparation failed unexpectedly
       return tx.toXDR();
@@ -361,16 +344,6 @@ export const buildPaymentTransaction = async (
     );
 
     if (validationError) {
-      logger.warn(
-        "TransactionService.buildPaymentTransaction",
-        "Transaction validation failed",
-        {
-          validationError,
-          destination,
-          isContractDestination: isContractId(destination),
-        },
-      );
-
       throw new Error(validationError);
     }
 

@@ -2,6 +2,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
@@ -22,11 +23,15 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
+import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import {
+  formatAssetAmount,
+  formatFiatAmount,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -34,6 +39,16 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { getAccount } from "services/stellar";
+
+const BASE_RESERVE = new BigNumber(0.5);
+
+// Define amount error types
+enum AmountError {
+  TOO_HIGH = "amount too high",
+  // DEC_MAX handled by formatNumericInput
+  // SEND_MAX is less critical for mobile? (Extension has it)
+}
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -75,6 +90,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [amountError, setAmountError] = useState<AmountError | null>(null);
+  const [subentryCount, setSubentryCount] = useState(0);
 
   const navigateToSendScreen = () => {
     try {
@@ -94,6 +111,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
+  useEffect(() => {
+    const fetchSenderAccount = async () => {
+      if (publicKey && network) {
+        try {
+          const senderAccount = await getAccount(publicKey, network);
+          setSubentryCount(senderAccount?.subentry_count || 0);
+        } catch (error) {
+          logger.error(
+            "Failed to fetch sender account details:",
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+    };
+
+    fetchSenderAccount();
+  }, [publicKey, network]);
+
   const {
     tokenAmount,
     fiatAmount,
@@ -102,6 +137,51 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     handleAmountChange,
     handlePercentagePress,
   } = useTokenFiatConverter({ selectedBalance });
+
+  const spendableBalance = useMemo(() => {
+    if (!selectedBalance) return new BigNumber(0);
+
+    if (
+      selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
+      selectedBalance.assetType !== AssetTypeWithCustomToken.CREDIT_ALPHANUM4 &&
+      selectedBalance.assetType !==
+        AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
+      selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
+    ) {
+      return new BigNumber(selectedBalance.total);
+    }
+
+    if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
+      return new BigNumber(selectedBalance.total);
+    }
+
+    const currentBalance = new BigNumber(selectedBalance.total);
+    const feeStroops = new BigNumber(transactionFee).multipliedBy(1e7);
+    const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
+      BASE_RESERVE,
+    );
+    const calculatedSpendable = currentBalance
+      .minus(minBalance)
+      .minus(stroopToXlm(feeStroops));
+
+    return calculatedSpendable.isGreaterThan(0)
+      ? calculatedSpendable
+      : new BigNumber(0);
+  }, [selectedBalance, subentryCount, transactionFee]);
+
+  useEffect(() => {
+    const currentTokenAmount = new BigNumber(tokenAmount);
+
+    // Check if amount exceeds available balance
+    if (
+      spendableBalance &&
+      currentTokenAmount.isGreaterThan(spendableBalance)
+    ) {
+      setAmountError(AmountError.TOO_HIGH);
+    } else {
+      setAmountError(null);
+    }
+  }, [tokenAmount, spendableBalance]);
 
   const menuActions = useMemo(
     () => [
@@ -149,8 +229,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [navigation, menuActions, themeColors]);
 
   const handleOpenReview = async () => {
-    if (Number(tokenAmount) <= 0) return;
-
     try {
       await buildTransaction({
         tokenValue: tokenAmount,
@@ -183,12 +261,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     const processTransaction = async () => {
       try {
-        logger.info("TransactionAmountScreen", "Processing transaction", {
-          isContractAddress: isContractId(recipientAddress),
-          recipientAddress,
-          tokenAmount,
-        });
-
         if (!account) {
           throw new Error("Unable to retrieve account");
         }
@@ -242,8 +314,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
+        key={selectedTokenId}
         onClose={handleProcessingScreenClose}
         transactionAmount={tokenAmount}
+        selectedBalance={selectedBalance}
       />
     );
   }
@@ -252,18 +326,33 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px]">
-          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px]">
-            <Display
-              lg
-              medium
-              {...(Number(showFiatAmount ? fiatAmount : tokenAmount) > 0
-                ? { primary: true }
-                : { secondary: true })}
-            >
-              {showFiatAmount
-                ? formatFiatAmount(fiatAmount)
-                : formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
-            </Display>
+          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
+            {showFiatAmount ? (
+              <Display
+                md
+                medium
+                {...(Number(fiatAmount) > 0
+                  ? { primary: true }
+                  : { secondary: true })}
+              >
+                {fiatAmount}
+              </Display>
+            ) : (
+              <View className="flex-row items-center gap-[4px]">
+                <Display
+                  md
+                  medium
+                  {...(Number(tokenAmount) > 0
+                    ? { primary: true }
+                    : { secondary: true })}
+                >
+                  {tokenAmount}
+                </Display>
+                <Text md medium secondary>
+                  {selectedBalance?.tokenCode}
+                </Text>
+              </View>
+            )}
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
@@ -336,7 +425,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               tertiary
               xl
               onPress={handleOpenReview}
-              disabled={Number(tokenAmount) <= 0 || isBuilding}
+              disabled={
+                !!amountError ||
+                BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
+                isBuilding
+              }
             >
               {t("transactionAmountScreen.reviewButton")}
             </Button>

@@ -1,4 +1,5 @@
 import { BigNumber } from "bignumber.js";
+import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
@@ -30,8 +31,8 @@ interface UseTokenFiatConverterResult {
 export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
-  const [tokenAmount, setTokenAmount] = useState("0.00");
-  const [fiatAmount, setFiatAmount] = useState("0.00");
+  const [tokenAmount, setTokenAmount] = useState("0");
+  const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
   // Memoize token price to prevent unnecessary recalculations
@@ -43,18 +44,28 @@ export const useTokenFiatConverter = ({
   // Update fiat amount when token amount changes
   useEffect(() => {
     if (!showFiatAmount) {
-      const newFiatAmount = tokenPrice.multipliedBy(new BigNumber(tokenAmount));
-      setFiatAmount(newFiatAmount.toFixed(2));
+      const parsedTokenAmount = new BigNumber(tokenAmount);
+      if (parsedTokenAmount.isFinite()) {
+        const newFiatAmount = tokenPrice.multipliedBy(parsedTokenAmount);
+        setFiatAmount(newFiatAmount.toFixed(FIAT_DECIMALS));
+      } else {
+        setFiatAmount("0");
+      }
     }
   }, [tokenAmount, tokenPrice, showFiatAmount]);
 
   // Update token amount when fiat amount changes
   useEffect(() => {
     if (showFiatAmount) {
-      const newTokenAmount = tokenPrice.isZero()
-        ? new BigNumber(0)
-        : new BigNumber(fiatAmount).dividedBy(tokenPrice);
-      setTokenAmount(newTokenAmount.toFixed(2));
+      const parsedFiatAmount = new BigNumber(fiatAmount);
+      if (parsedFiatAmount.isFinite()) {
+        const newTokenAmount = tokenPrice.isZero()
+          ? new BigNumber(0)
+          : parsedFiatAmount.dividedBy(tokenPrice);
+        setTokenAmount(newTokenAmount.toFixed(DEFAULT_DECIMALS));
+      } else {
+        setTokenAmount("0");
+      }
     }
   }, [fiatAmount, tokenPrice, showFiatAmount]);
 
@@ -65,9 +76,9 @@ export const useTokenFiatConverter = ({
    */
   const handleAmountChange = (key: string) => {
     if (showFiatAmount) {
-      setFiatAmount((prev) => formatNumericInput(prev, key));
+      setFiatAmount((prev) => formatNumericInput(prev, key, FIAT_DECIMALS));
     } else {
-      setTokenAmount((prev) => formatNumericInput(prev, key));
+      setTokenAmount((prev) => formatNumericInput(prev, key, DEFAULT_DECIMALS));
     }
   };
 
@@ -82,16 +93,14 @@ export const useTokenFiatConverter = ({
     const totalBalance = new BigNumber(selectedBalance.total);
     const percentageValue = totalBalance.multipliedBy(percentage / 100);
 
-    // Format the value to 2 decimal places
-    const formattedValue = percentageValue.toFixed(2);
-
     // Update the value based on the current display mode
     if (showFiatAmount) {
       const calculatedFiatAmount = percentageValue.multipliedBy(tokenPrice);
-      const formattedFiatAmount = calculatedFiatAmount.toFixed(2);
+      const formattedFiatAmount = calculatedFiatAmount.toFixed(FIAT_DECIMALS);
       setFiatAmount(formattedFiatAmount);
     } else {
-      setTokenAmount(formattedValue);
+      const formattedTokenValue = percentageValue.toFixed(DEFAULT_DECIMALS);
+      setTokenAmount(formattedTokenValue);
     }
   };
 

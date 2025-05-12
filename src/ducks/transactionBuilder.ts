@@ -16,7 +16,6 @@ import { create } from "zustand";
  * This store manages transaction building, signing, and submission.
  */
 interface TransactionBuilderState {
-  // Transaction state
   transactionXDR: string | null;
   signedTransactionXDR: string | null;
   isBuilding: boolean;
@@ -24,7 +23,6 @@ interface TransactionBuilderState {
   transactionHash: string | null;
   error: string | null;
 
-  // Actions
   buildTransaction: (params: {
     tokenValue: string;
     selectedBalance?: PricedBalance;
@@ -53,7 +51,6 @@ interface TransactionBuilderState {
  */
 export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
-    // Initial state
     transactionXDR: null,
     signedTransactionXDR: null,
     isBuilding: false,
@@ -68,7 +65,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({ isBuilding: true, error: null });
 
       try {
-        // Directly call the transaction service function
         const builtTxResult = await buildPaymentTransaction({
           tokenValue: params.tokenValue,
           selectedBalance: params.selectedBalance,
@@ -90,22 +86,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         // If sending to a contract, prepare (simulate) the transaction
         if (isRecipientContract && params.network) {
-          logger.info(
-            "TransactionBuilderStore",
-            "Recipient is a contract, preparing transaction...",
-          );
-
           const networkDetails = mapNetworkToNetworkDetails(params.network);
           finalXdr = await prepareSorobanTransaction(
             builtTxResult.tx,
             networkDetails,
           );
-          logger.info(
-            "TransactionBuilderStore",
-            "Soroban transaction prepared successfully.",
-          );
         } else {
-          logger.info(
+          logger.warn(
             "TransactionBuilderStore",
             "Recipient is not a contract, using standard transaction XDR.",
           );

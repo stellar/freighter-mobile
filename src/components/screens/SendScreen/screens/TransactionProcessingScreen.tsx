@@ -9,6 +9,7 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -16,17 +17,18 @@ import { formatAssetAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
 type TransactionStatus = "sending" | "sent" | "failed" | "unsupported";
 
-interface TransactionProcessingScreenProps {
+export interface TransactionProcessingScreenProps {
   onClose?: () => void;
   transactionAmount: string;
+  selectedBalance:
+    | (PricedBalance & { id: string; assetType: AssetTypeWithCustomToken })
+    | undefined;
 }
 
 /**
@@ -37,14 +39,13 @@ interface TransactionProcessingScreenProps {
  */
 const TransactionProcessingScreen: React.FC<
   TransactionProcessingScreenProps
-> = ({ onClose, transactionAmount }) => {
+> = ({ onClose, transactionAmount, selectedBalance }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
 
-  const { recipientAddress, selectedTokenId } = useTransactionSettingsStore();
+  const { recipientAddress } = useTransactionSettingsStore();
 
   const {
     isSubmitting,
@@ -52,16 +53,6 @@ const TransactionProcessingScreen: React.FC<
     error: transactionError,
     resetTransaction,
   } = useTransactionBuilderStore();
-
-  const { balanceItems } = useBalancesList({
-    publicKey: account?.publicKey ?? "",
-    network,
-    shouldPoll: false,
-  });
-
-  const selectedBalance = balanceItems.find(
-    (item) => item.id === selectedTokenId,
-  );
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [status, setStatus] = useState<TransactionStatus>("sending");

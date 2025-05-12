@@ -1,7 +1,13 @@
+import { Federation } from "@stellar/stellar-sdk";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
-import { getActiveAccountPublicKey } from "ducks/auth";
-import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
+import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import {
+  isFederationAddress,
+  isSameAccount,
+  isValidStellarAddress,
+} from "helpers/stellar";
+import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
@@ -19,6 +25,7 @@ interface SendStore {
   isSearching: boolean;
   searchError: string | null;
   isValidDestination: boolean;
+  isDestinationFunded: boolean | null;
 
   loadRecentAddresses: () => Promise<void>;
   addRecentAddress: (address: string, name?: string) => Promise<void>;
@@ -35,6 +42,7 @@ export const useSendStore = create<SendStore>((set, get) => ({
   isSearching: false,
   searchError: null,
   isValidDestination: false,
+  isDestinationFunded: null,
 
   loadRecentAddresses: async () => {
     try {
@@ -96,64 +104,128 @@ export const useSendStore = create<SendStore>((set, get) => ({
   },
 
   searchAddress: async (searchTerm: string) => {
-    set({ isSearching: true, searchError: null });
+    set({
+      isSearching: true,
+      searchError: null,
+      isValidDestination: false,
+      isDestinationFunded: null,
+      searchResults: [],
+    });
 
     try {
+      const { network } = useAuthenticationStore.getState();
+
       if (!searchTerm) {
-        set({
-          searchResults: [],
-          isSearching: false,
-          isValidDestination: false,
-        });
+        set({ isSearching: false });
         return;
       }
 
       // Get current active account public key
       const activePublicKey = await getActiveAccountPublicKey();
 
-      // If search term is the same as current account, show an error
-      if (
-        activePublicKey &&
-        isValidStellarAddress(searchTerm) &&
-        isSameAccount(searchTerm, activePublicKey)
-      ) {
+      const isSyntacticallyValid = isValidStellarAddress(searchTerm);
+
+      if (!isSyntacticallyValid) {
         set({
-          searchResults: [],
-          isValidDestination: false,
           isSearching: false,
+          searchError: "Invalid Stellar address format",
+        });
+        return;
+      }
+
+      if (activePublicKey && isSameAccount(searchTerm, activePublicKey)) {
+        set({
+          isSearching: false,
+          isValidDestination: false,
           searchError: "Cannot send to yourself",
         });
         return;
       }
 
-      const isValid = isValidStellarAddress(searchTerm);
+      let resolvedAddress = searchTerm;
+      let fedAddress = "";
+      let isFunded: boolean | null = null;
 
-      if (isValid) {
-        const result: Contact = {
-          id: `search-${Date.now()}`,
-          address: searchTerm,
-        };
+      if (isFederationAddress(searchTerm)) {
+        try {
+          const fedRecord = await Federation.Server.resolve(searchTerm);
+          resolvedAddress = fedRecord.account_id;
+          fedAddress = searchTerm;
 
-        set({
-          searchResults: [result],
-          isValidDestination: true,
-          isSearching: false,
-        });
-      } else {
-        set({
-          searchResults: [],
-          isValidDestination: false,
-          isSearching: false,
-          searchError: "Invalid Stellar address",
-        });
+          // Re-check if resolved address is the user's own account
+          if (
+            activePublicKey &&
+            isSameAccount(resolvedAddress, activePublicKey)
+          ) {
+            set({
+              isSearching: false,
+              isValidDestination: false,
+              searchError:
+                "Cannot send to yourself (resolved federation address)",
+            });
+            return;
+          }
+        } catch (error) {
+          logger.error("Federation resolution failed:", String(error));
+          set({
+            isSearching: false,
+            searchError: "Federation address not found or resolution failed",
+          });
+          return;
+        }
       }
-    } catch (error) {
-      logger.error("Error searching for address:", String(error));
+
+      try {
+        const account = await getAccount(resolvedAddress, network);
+        isFunded = !!account;
+      } catch (error: unknown) {
+        let isNotFoundError = false;
+
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "response" in error &&
+          typeof error.response === "object" &&
+          error.response !== null &&
+          "status" in error.response &&
+          (error.response as { status: number }).status === 404
+        ) {
+          isNotFoundError = true;
+        }
+
+        if (isNotFoundError) {
+          isFunded = false;
+        } else {
+          logger.error("Account lookup failed:", String(error));
+          set({
+            isSearching: false,
+            searchError: "Failed to check destination account status",
+          });
+          return;
+        }
+      }
+
+      const result: Contact = {
+        id: `search-${Date.now()}`,
+        address: searchTerm,
+      };
 
       set({
+        searchResults: [result],
+        isValidDestination: true,
+        isDestinationFunded: isFunded,
+        destinationAddress: resolvedAddress,
+        federationAddress: fedAddress,
         isSearching: false,
-        searchError: "Error searching for address",
+        searchError: null,
+      });
+    } catch (error) {
+      logger.error("Error searching for address:", String(error));
+      set({
+        isSearching: false,
+        searchError: "An unexpected error occurred during search",
         isValidDestination: false,
+        isDestinationFunded: null,
       });
     }
   },
@@ -162,6 +234,8 @@ export const useSendStore = create<SendStore>((set, get) => ({
     set({
       destinationAddress: address,
       federationAddress: fedAddress || "",
+      isValidDestination: true,
+      isDestinationFunded: null,
     });
   },
 
@@ -173,6 +247,7 @@ export const useSendStore = create<SendStore>((set, get) => ({
       isSearching: false,
       searchError: null,
       isValidDestination: false,
+      isDestinationFunded: null,
     });
   },
 }));
