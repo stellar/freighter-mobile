@@ -6,8 +6,8 @@ import {
   Operation,
   Transaction,
   TransactionBuilder,
+  rpc,
 } from "@stellar/stellar-sdk";
-import { Server } from "@stellar/stellar-sdk/rpc";
 import {
   DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
@@ -92,7 +92,7 @@ export const getSorobanRpcServer = (network: NETWORKS) => {
 
     // Use a try-catch specifically for the Server instantiation
     try {
-      return new Server(sorobanRpcUrl, {
+      return new rpc.Server(sorobanRpcUrl, {
         allowHttp: getIsAllowHttp(sorobanRpcUrl),
       });
     } catch (serverError) {

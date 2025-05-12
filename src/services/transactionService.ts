@@ -217,6 +217,10 @@ export const buildSorobanTransferOperation = (
   }
 };
 
+interface SorobanRpcServerWithPrepare {
+  prepareTransaction: (tx: Transaction) => Promise<unknown>;
+}
+
 /**
  * Helper function to prepare a Soroban transaction with RPC simulation
  */
@@ -231,25 +235,17 @@ export const prepareSorobanTransaction = async (
         "TransactionBuilder",
         "Soroban RPC server not available, using standard transaction",
       );
+
+      // Return the standard transaction XDR string if RPC is not available
       return tx.toXDR();
     }
 
-    // Convert transaction to XDR before passing to prepareTransaction
-    const txXdr = tx.toXDR();
-
     try {
-      // Create a strongly typed wrapper for the response to avoid 'any' usage
-      interface PrepareTransactionResponse {
-        status: string;
-        preparedTransactionXdr?: string;
-        errorResultXdr?: string;
-      }
-
-      // Check if prepareTransaction method exists on the sorobanRpc object
       if (
         typeof sorobanRpc !== "object" ||
         sorobanRpc === null ||
-        !("prepareTransaction" in sorobanRpc)
+        typeof (sorobanRpc as SorobanRpcServerWithPrepare)
+          .prepareTransaction !== "function"
       ) {
         logger.warn(
           "TransactionBuilder",
@@ -258,74 +254,67 @@ export const prepareSorobanTransaction = async (
         return tx.toXDR();
       }
 
-      // Call the prepareTransaction method
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      const prepareResponse: unknown = await (
-        sorobanRpc as any
-      ).prepareTransaction(txXdr);
+      // The SDK's prepareTransaction is expected to return the prepared Transaction object
+      const preparedTx: unknown = await (
+        sorobanRpc as SorobanRpcServerWithPrepare
+      ).prepareTransaction(tx);
 
-      // Cast the response to our interface to work with it safely
-      const prepareResult = prepareResponse as PrepareTransactionResponse;
-
-      if (
-        prepareResult &&
-        prepareResult.status === "SUCCESS" &&
-        prepareResult.preparedTransactionXdr
-      ) {
+      if (preparedTx instanceof Transaction) {
         logger.info(
           "TransactionBuilder",
           "Soroban transaction prepared successfully",
         );
-        return prepareResult.preparedTransactionXdr;
+
+        // Return the XDR of the PREPARED transaction
+        return preparedTx.toXDR();
       }
 
-      // If there's an error result, log it
-      if (prepareResult && prepareResult.errorResultXdr) {
-        logger.warn(
-          "TransactionBuilder",
-          `Preparation error: ${prepareResult.errorResultXdr}`,
-        );
-      } else {
-        logger.warn(
-          "TransactionBuilder",
-          "Unexpected response from prepareTransaction",
-          // We need to safely log the response since it might not match our expected structure
-          typeof prepareResponse === "object" && prepareResponse
-            ? prepareResponse
-            : "Invalid response",
-        );
-      }
+      logger.warn(
+        "TransactionBuilder",
+        "Unexpected response type from prepareTransaction",
+        typeof preparedTx === "object" && preparedTx
+          ? preparedTx
+          : "Invalid response type",
+      );
 
-      // Return the original XDR if preparation failed
+      // Return the original XDR only if preparation failed unexpectedly
       return tx.toXDR();
     } catch (prepError) {
+      const errorMessage =
+        prepError instanceof Error ? prepError.message : String(prepError);
       logger.error("TransactionBuilder", "Error during prepareTransaction", {
-        error:
-          prepError instanceof Error ? prepError.message : String(prepError),
+        error: errorMessage,
       });
-      return tx.toXDR();
+
+      throw new Error(`Error during prepareTransaction: ${errorMessage}`);
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
       "TransactionBuilder",
       "Error during Soroban transaction preparation",
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
+      { error: errorMessage },
     );
-    return tx.toXDR();
+
+    throw new Error(
+      `Error during Soroban transaction preparation: ${errorMessage}`,
+    );
   }
 };
 
+interface BuildPaymentTransactionResult {
+  tx: Transaction;
+  xdr: string;
+}
+
 /**
- * Builds a payment transaction XDR string
+ * Builds a payment transaction
  * @param params Object containing tokenValue (required) and optional overrides
  * @returns The transaction XDR string or throws an error with details
  */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
-): Promise<string> => {
-  // Destructure parameters
+): Promise<BuildPaymentTransactionResult> => {
   const {
     tokenValue: amount,
     selectedBalance: balance,
@@ -337,7 +326,6 @@ export const buildPaymentTransaction = async (
     publicKey,
   } = params;
 
-  // Validate required parameters
   if (!publicKey) {
     throw new Error("Public key is required");
   }
@@ -363,7 +351,6 @@ export const buildPaymentTransaction = async (
   }
 
   try {
-    // Validate parameters
     const validationError = validateTransactionParams(
       publicKey,
       balance,
@@ -417,8 +404,6 @@ export const buildPaymentTransaction = async (
         currentNetwork,
       );
     } else {
-      // Regular stellar account payments
-
       // Determine if destination account exists (for XLM sends)
       const isNativeAsset =
         balance.tokenCode === NATIVE_TOKEN_CODE || isNativeBalance(balance);
@@ -471,18 +456,24 @@ export const buildPaymentTransaction = async (
     // Build the transaction
     const transaction = txBuilder.build();
 
-    // For contract addresses, run prepare transaction to simulate and prepare
     if (isToContractAddress) {
-      return await prepareSorobanTransaction(transaction, networkDetails);
+      const preparedXdr = await prepareSorobanTransaction(
+        transaction,
+        networkDetails,
+      );
+
+      // Return the original transaction object and the prepared XDR
+      return { tx: transaction, xdr: preparedXdr };
     }
 
-    // For regular transactions, just return the XDR
-    return transaction.toXDR();
+    // For regular transactions, just return the transaction object and its XDR
+    return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("TransactionService", "Transaction builder error", {
+    logger.error("TransactionService", "Failed to build transaction", {
       error: errorMessage,
     });
-    throw error;
+
+    throw new Error(`Failed to build transaction: ${errorMessage}`);
   }
 };

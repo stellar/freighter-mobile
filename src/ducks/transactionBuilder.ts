@@ -1,8 +1,12 @@
-import { NETWORKS } from "config/constants";
+import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { isContractId } from "helpers/soroban";
 import { signTransaction, submitTx } from "services/stellar";
-import { buildPaymentTransaction } from "services/transactionService";
+import {
+  buildPaymentTransaction,
+  prepareSorobanTransaction,
+} from "services/transactionService";
 import { create } from "zustand";
 
 /**
@@ -65,7 +69,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
       try {
         // Directly call the transaction service function
-        const xdr = await buildPaymentTransaction({
+        const builtTxResult = await buildPaymentTransaction({
           tokenValue: params.tokenValue,
           selectedBalance: params.selectedBalance,
           recipientAddress: params.recipientAddress,
@@ -76,19 +80,45 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           publicKey: params.publicKey,
         });
 
-        if (!xdr) {
+        if (!builtTxResult) {
           throw new Error("Failed to build transaction");
         }
 
+        let finalXdr = builtTxResult.xdr;
+        const isRecipientContract =
+          params.recipientAddress && isContractId(params.recipientAddress);
+
+        // If sending to a contract, prepare (simulate) the transaction
+        if (isRecipientContract && params.network) {
+          logger.info(
+            "TransactionBuilderStore",
+            "Recipient is a contract, preparing transaction...",
+          );
+
+          const networkDetails = mapNetworkToNetworkDetails(params.network);
+          finalXdr = await prepareSorobanTransaction(
+            builtTxResult.tx,
+            networkDetails,
+          );
+          logger.info(
+            "TransactionBuilderStore",
+            "Soroban transaction prepared successfully.",
+          );
+        } else {
+          logger.info(
+            "TransactionBuilderStore",
+            "Recipient is not a contract, using standard transaction XDR.",
+          );
+        }
+
         set({
-          transactionXDR: xdr,
+          transactionXDR: finalXdr,
           isBuilding: false,
-          // Reset other states when building a new transaction
           signedTransactionXDR: null,
           transactionHash: null,
         });
 
-        return xdr;
+        return finalXdr;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
