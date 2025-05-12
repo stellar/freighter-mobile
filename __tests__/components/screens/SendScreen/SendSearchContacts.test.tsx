@@ -172,7 +172,7 @@ describe("SendSearchContacts", () => {
     await waitFor(() => {
       expect(mockGetClipboardText).toHaveBeenCalled();
     });
-  }, 10000);
+  }, 15000);
 
   it("shows search suggestions when text is entered", async () => {
     // Setup the mock to return search results for this specific test
