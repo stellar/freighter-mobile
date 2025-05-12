@@ -20,7 +20,7 @@ export const isFederationAddress = (address: string): boolean => {
  * @returns True if the address is a muxed account
  */
 export const isMuxedAccount = (address: string): boolean =>
-  address.startsWith("M");
+  StrKey.isValidMed25519PublicKey(address);
 
 /**
  * Extracts the base ED25519 account (G...) from a muxed account (M...)
@@ -122,7 +122,7 @@ export const truncateAddress = (
   }
 
   const prefix = address.slice(0, prefixChars);
-  const suffix = address.slice(-suffixChars);
+  const suffix = address.slice(address.length - suffixChars);
 
   return `${prefix}...${suffix}`;
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Federation } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import { STORAGE_KEYS } from "config/constants";
@@ -110,7 +111,6 @@ describe("sendRecipient Duck", () => {
   it("should load recent addresses from storage", async () => {
     await store.getState().loadRecentAddresses();
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(dataStorage.getItem).toHaveBeenCalledWith(
       STORAGE_KEYS.RECENT_ADDRESSES,
     );
@@ -133,7 +133,6 @@ describe("sendRecipient Duck", () => {
 
     await store.getState().addRecentAddress(newAddress);
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(dataStorage.setItem).toHaveBeenCalled();
   });
 
@@ -146,7 +145,6 @@ describe("sendRecipient Duck", () => {
 
     await store.getState().addRecentAddress("existingAddress");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(dataStorage.setItem).not.toHaveBeenCalled();
   });
 
