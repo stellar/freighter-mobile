@@ -22,7 +22,15 @@ import useColors from "hooks/useColors";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
-type TransactionStatus = "sending" | "sent" | "failed" | "unsupported";
+const TransactionStatus = {
+  SENDING: "sending",
+  SENT: "sent",
+  FAILED: "failed",
+  UNSUPPORTED: "unsupported",
+} as const;
+
+type TransactionStatusType =
+  (typeof TransactionStatus)[keyof typeof TransactionStatus];
 
 export interface TransactionProcessingScreenProps {
   onClose?: () => void;
@@ -58,7 +66,9 @@ const TransactionProcessingScreen: React.FC<
   const { addRecentAddress } = useSendRecipientStore();
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-  const [status, setStatus] = useState<TransactionStatus>("sending");
+  const [status, setStatus] = useState<TransactionStatusType>(
+    TransactionStatus.SENDING,
+  );
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const isContractAddress = isContractId(recipientAddress);
 
@@ -70,12 +80,12 @@ const TransactionProcessingScreen: React.FC<
 
   useEffect(() => {
     if (transactionError) {
-      setStatus("failed");
+      setStatus(TransactionStatus.FAILED);
     } else if (transactionHash) {
-      setStatus("sent");
+      setStatus(TransactionStatus.SENT);
       addRecentAddress(recipientAddress);
     } else if (isContractAddress && !isSubmitting) {
-      setStatus("unsupported");
+      setStatus(TransactionStatus.UNSUPPORTED);
     }
 
     return undefined;
@@ -104,11 +114,11 @@ const TransactionProcessingScreen: React.FC<
 
   const getStatusText = () => {
     switch (status) {
-      case "sent":
+      case TransactionStatus.SENT:
         return t("transactionProcessingScreen.sent");
-      case "failed":
+      case TransactionStatus.FAILED:
         return t("transactionProcessingScreen.failed");
-      case "unsupported":
+      case TransactionStatus.UNSUPPORTED:
         return t("transactionProcessingScreen.unsupported");
       default:
         return t("transactionProcessingScreen.sending");
@@ -117,13 +127,13 @@ const TransactionProcessingScreen: React.FC<
 
   const getStatusIcon = () => {
     switch (status) {
-      case "sent":
+      case TransactionStatus.SENT:
         return (
           <Icon.CheckCircle size={48} color={themeColors.status.success} />
         );
-      case "failed":
+      case TransactionStatus.FAILED:
         return <Icon.XCircle size={48} color={themeColors.status.error} />;
-      case "unsupported":
+      case TransactionStatus.UNSUPPORTED:
         return (
           <Icon.AlertTriangle size={48} color={themeColors.status.warning} />
         );
@@ -133,11 +143,14 @@ const TransactionProcessingScreen: React.FC<
   };
 
   const getMessageText = () => {
-    if (status === "sent") {
+    if (status === TransactionStatus.SENT) {
       return t("transactionProcessingScreen.wasSentTo");
     }
 
-    if (status === "failed" || status === "unsupported") {
+    if (
+      status === TransactionStatus.FAILED ||
+      status === TransactionStatus.UNSUPPORTED
+    ) {
       return t("transactionProcessingScreen.couldNotBeSentTo");
     }
 
@@ -187,7 +200,7 @@ const TransactionProcessingScreen: React.FC<
           </View>
         </View>
 
-        {status === "sent" ? (
+        {status === TransactionStatus.SENT ? (
           <View className="gap-[16px]">
             <Button secondary xl onPress={handleViewTransaction}>
               {t("transactionProcessingScreen.viewTransaction")}
