@@ -138,10 +138,7 @@ const TransactionProcessingScreen: React.FC<
     }
 
     if (status === "failed" || status === "unsupported") {
-      return t(
-        "transactionProcessingScreen.couldNotBeSentTo",
-        "could not be sent to",
-      );
+      return t("transactionProcessingScreen.couldNotBeSentTo");
     }
 
     return t("transactionProcessingScreen.to");
@@ -179,7 +176,7 @@ const TransactionProcessingScreen: React.FC<
                     )}
                   </Text>
                   <Text lg medium secondary>
-                    {` ${getMessageText()} `}
+                    {getMessageText()}
                   </Text>
                   <Text xl medium primary>
                     {slicedAddress}

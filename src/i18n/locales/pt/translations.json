@@ -326,7 +326,8 @@
     "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto",
     "viewTransaction": "Ver transação",
     "wasSentTo": " foi enviado para ",
-    "to": " para "
+    "to": " para ",
+    "couldNotBeSentTo": " não pôde ser enviado para "
   },
   "transactionDetailsBottomSheet": {
     "sent": "Enviado {{tokenCode}}",
