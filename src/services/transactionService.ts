@@ -52,18 +52,23 @@ export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
   "type" in balance.token &&
   balance.token.type === "native";
 
+interface IValidateTransactionParams {
+  senderAddress: string;
+  balance: PricedBalance;
+  amount: string;
+  destination: string;
+  fee: string;
+  timeout: number;
+}
+
 /**
  * Validates all transaction parameters
  * Returns an error message if any validation fails
  */
 export const validateTransactionParams = (
-  senderAddress: string,
-  balance: PricedBalance,
-  amount: string,
-  destination: string,
-  fee: string,
-  timeout: number,
+  params: IValidateTransactionParams,
 ): string | null => {
+  const { senderAddress, balance, amount, destination, fee, timeout } = params;
   // Validate amount is positive
   if (Number(amount) <= 0) {
     return "Amount must be greater than 0";
@@ -140,17 +145,29 @@ export const getContractIdForNativeToken = (network: NETWORKS): string => {
   return nativeContractDetails.contract;
 };
 
+interface IBuildSorobanTransferOperation {
+  sourceAccount: string;
+  destinationAddress: string;
+  amount: string;
+  asset: Asset;
+  txBuilder: TransactionBuilder;
+  network: NETWORKS;
+}
+
 /**
  * Builds a Soroban token transfer operation for sending to contract addresses
  */
 export const buildSorobanTransferOperation = (
-  sourceAccount: string,
-  destinationAddress: string,
-  amount: string,
-  asset: Asset,
-  txBuilder: TransactionBuilder,
-  network: NETWORKS,
+  params: IBuildSorobanTransferOperation,
 ): TransactionBuilder => {
+  const {
+    sourceAccount,
+    destinationAddress,
+    amount,
+    asset,
+    txBuilder,
+    network,
+  } = params;
   try {
     // For native XLM tokens, use the native token contract
     // For other tokens, use the destination as the contract (this might need adjustment based on your use case)
@@ -221,13 +238,18 @@ interface SorobanRpcServerWithPrepare {
   prepareTransaction: (tx: Transaction) => Promise<unknown>;
 }
 
+interface IPrepareSorobanTransaction {
+  tx: Transaction;
+  networkDetails: NetworkDetails;
+}
+
 /**
  * Helper function to prepare a Soroban transaction with RPC simulation
  */
 export const prepareSorobanTransaction = async (
-  tx: Transaction,
-  networkDetails: NetworkDetails,
+  params: IPrepareSorobanTransaction,
 ): Promise<string> => {
+  const { tx, networkDetails } = params;
   try {
     const sorobanRpc = getSorobanRpcServer(networkDetails.network);
     if (!sorobanRpc) {
@@ -334,14 +356,14 @@ export const buildPaymentTransaction = async (
   }
 
   try {
-    const validationError = validateTransactionParams(
+    const validationError = validateTransactionParams({
       senderAddress,
       balance,
       amount,
       destination,
       fee,
       timeout,
-    );
+    });
 
     if (validationError) {
       throw new Error(validationError);
@@ -368,14 +390,14 @@ export const buildPaymentTransaction = async (
     // Add the appropriate operation based on the destination type
     if (isToContractAddress) {
       // For contract addresses, use Soroban operations
-      buildSorobanTransferOperation(
-        senderAddress,
-        destination,
+      buildSorobanTransferOperation({
+        sourceAccount: senderAddress,
+        destinationAddress: destination,
         amount,
         asset,
         txBuilder,
-        currentNetwork,
-      );
+        network: currentNetwork,
+      });
     } else {
       // Determine if destination account exists (for XLM sends)
       const isNativeAsset =
@@ -430,10 +452,10 @@ export const buildPaymentTransaction = async (
     const transaction = txBuilder.build();
 
     if (isToContractAddress) {
-      const preparedXdr = await prepareSorobanTransaction(
-        transaction,
+      const preparedXdr = await prepareSorobanTransaction({
+        tx: transaction,
         networkDetails,
-      );
+      });
 
       // Return the original transaction object and the prepared XDR
       return { tx: transaction, xdr: preparedXdr };

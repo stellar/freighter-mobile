@@ -66,14 +66,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
       try {
         const builtTxResult = await buildPaymentTransaction({
-          tokenValue: params.tokenValue,
+          tokenAmount: params.tokenValue,
           selectedBalance: params.selectedBalance,
           recipientAddress: params.recipientAddress,
           transactionMemo: params.transactionMemo,
           transactionFee: params.transactionFee,
           transactionTimeout: params.transactionTimeout,
           network: params.network,
-          publicKey: params.publicKey,
+          senderAddress: params.publicKey,
         });
 
         if (!builtTxResult) {
@@ -87,10 +87,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // If sending to a contract, prepare (simulate) the transaction
         if (isRecipientContract && params.network) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
-          finalXdr = await prepareSorobanTransaction(
-            builtTxResult.tx,
+          finalXdr = await prepareSorobanTransaction({
+            tx: builtTxResult.tx,
             networkDetails,
-          );
+          });
         } else {
           logger.warn(
             "TransactionBuilderStore",

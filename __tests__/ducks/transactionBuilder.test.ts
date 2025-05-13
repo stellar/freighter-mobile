@@ -101,7 +101,7 @@ describe("transactionBuilder Duck", () => {
     expect(state.error).toBeNull();
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
-        tokenValue: mockTokenValue,
+        tokenAmount: mockTokenValue,
         recipientAddress: mockRecipientAddress,
       }),
     );
