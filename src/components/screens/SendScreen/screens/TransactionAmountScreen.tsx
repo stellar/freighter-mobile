@@ -134,7 +134,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance) return new BigNumber(0);
+    if (!selectedBalance) return BigNumber(0);
 
     if (
       selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
@@ -143,28 +143,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
       selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
     ) {
-      return new BigNumber(selectedBalance.total);
+      return BigNumber(selectedBalance.total);
     }
 
     if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
-      return new BigNumber(selectedBalance.total);
+      return BigNumber(selectedBalance.total);
     }
 
-    const currentBalance = new BigNumber(selectedBalance.total);
-    const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
-      BASE_RESERVE,
-    );
+    const currentBalance = BigNumber(selectedBalance.total);
+    const minBalance = BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
     const calculatedSpendable = currentBalance
       .minus(minBalance)
-      .minus(new BigNumber(transactionFee));
+      .minus(BigNumber(transactionFee));
 
     return calculatedSpendable.isGreaterThan(0)
       ? calculatedSpendable
-      : new BigNumber(0);
+      : BigNumber(0);
   }, [selectedBalance, subentryCount, transactionFee]);
 
   useEffect(() => {
-    const currentTokenAmount = new BigNumber(tokenAmount);
+    const currentTokenAmount = BigNumber(tokenAmount);
 
     // Check if amount exceeds available balance
     if (
