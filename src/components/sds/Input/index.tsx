@@ -126,10 +126,8 @@ const ButtonContainer = styled.View<
 >`
   background-color: ${({
     backgroundColor,
-    $isError,
   }: Pick<StyledProps, "$isError"> & { backgroundColor?: string }) =>
-    backgroundColor ||
-    ($isError ? THEME.colors.status.error : THEME.colors.background.default)};
+    backgroundColor || THEME.colors.background.default};
   padding: ${px(8)} 0 ${px(8)} ${px(12)};
   border-left-width: 1px;
   border-left-color: ${THEME.colors.border.default};
@@ -362,7 +360,6 @@ export const Input: React.FC<InputProps> = ({
             <ButtonContainer
               backgroundColor={endButton.backgroundColor}
               $fieldSize={fieldSize}
-              $isError={isError || !!error}
             >
               {typeof endButton.content === "string" ? (
                 <Text md semiBold color={endButton.color}>

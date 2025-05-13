@@ -17,7 +17,8 @@
     "remove": "Remove",
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
-    "error": "Error"
+    "error": "Error",
+    "unknownError": "Unknown error"
   },
   "home": {
     "title": "Home",
@@ -115,7 +116,15 @@
     "pasteFromClipboard": "Paste from clipboard"
   },
   "discovery": {
-    "title": "Discovery"
+    "title": "Wallet Connect",
+    "inputPlaceholder": "Enter WalletConnect URI",
+    "scanQRCode": "Scan QR Code",
+    "connect": "Connect",
+    "pairingError": "Failed to pair",
+    "invalidUriError": "Please enter a valid URI",
+    "disconnectAllSessions": "Clear all connected apps",
+    "connectedDapps": "Connected Apps",
+    "noConnectedDapps": "You’re not connected to any apps"
   },
   "history": {
     "title": "History"
@@ -340,5 +349,20 @@
     "confirm": "Confirm",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copied to clipboard!"
+  },
+  "qrScanner": {
+    "cameraNotAvailable": "Camera not available or not permitted"
+  },
+  "walletKit": {
+    "connectionSuccessfull": "{{dappName}} connection successfull!",
+    "returnToBrowser": "You can now return to your browser",
+    "signingSuccessfull": "Transaction successfully signed!",
+    "userRejected": "User rejected the request",
+    "errorInitializing": "Error initializing WalletConnect",
+    "errorConnecting": "{{dappName}} connection failed",
+    "errorSigning": "Failed to sign transaction",
+    "errorRespondingRequest": "Failed to respond transaction request",
+    "errorWrongNetwork": "Wrong Network",
+    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again"
   }
 }
