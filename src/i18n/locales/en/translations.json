@@ -116,7 +116,44 @@
     "title": "Discovery"
   },
   "history": {
-    "title": "History"
+    "title": "History",
+    "emptyState": {
+      "title": "No transactions to show"
+    },
+    "error": "Error loading history",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "transactionHistory": {
+      "transaction": "Transaction",
+      "createAccount": "Create account",
+      "addedTrustline": "Added trustline",
+      "removedTrustline": "Removed trustline",
+      "received": "Received",
+      "sent": "Sent",
+      "swapTwoAssets": "{{srcAssetCode}} for {{destAssetCode}}",
+      "swappedTwoAssets": "Swapped {{srcAssetCode}} for {{destAssetCode}}",
+      "swapped": "Swapped",
+      "transactionFailed": "Transaction failed",
+      "failed": "Failed",
+      "contract": "Contract",
+      "interacted": "Interacted",
+      "minted": "Minted",
+      "mintedToSelf": "Minted {{tokenSymbol}} to self",
+      "unknown": "Unknown"
+    },
+    "transactionDetails": {
+      "viewOnStellarExpert": "View on stellar.expert",
+      "fee": "Fee",
+      "status": "Status",
+      "statusSuccess": "Success",
+      "statusFailed": "Failed",
+      "rate": "Rate",
+      "firstTimeSend": "First time send",
+      "addressCopied": "Address copied to clipboard",
+      "startingBalance": "Starting balance:",
+      "minter": "Minter",
+      "mintedTo": "Minted to"
+    }
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",

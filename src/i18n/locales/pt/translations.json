@@ -116,7 +116,11 @@
     "title": "Descobrir"
   },
   "history": {
-    "title": "Histórico"
+    "title": "Histórico",
+    "emptyState": {
+      "title": "Nenhuma transação para mostrar"
+    },
+    "error": "Erro ao carregar histórico"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",

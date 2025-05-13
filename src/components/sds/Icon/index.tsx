@@ -2386,6 +2386,7 @@ export interface IconProps {
     | "lilac"
     | "green";
   withBackground?: boolean;
+  circleBackground?: string;
 }
 
 /**
@@ -2428,6 +2429,7 @@ const IconComponent: React.FC<IconProps> = ({
   onPress,
   themeColor,
   withBackground,
+  circleBackground,
 }) => {
   const IconSvg = name ? Icons[name] : null;
   const { themeColors } = useColors();
@@ -2453,6 +2455,9 @@ const IconComponent: React.FC<IconProps> = ({
         style={{
           width: pxValue(size * 1.5),
           height: pxValue(size * 1.5),
+          ...(circleBackground && {
+            backgroundColor: circleBackground,
+          }),
         }}
       >
         {iconElement}
