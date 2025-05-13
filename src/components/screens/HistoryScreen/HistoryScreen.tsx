@@ -163,7 +163,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   if (status === HookStatus.LOADING || status === HookStatus.IDLE) {
     return (
       <HistoryWrapper>
-        <Spinner />
+        <Spinner testID="spinner" />
       </HistoryWrapper>
     );
   }
