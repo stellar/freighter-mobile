@@ -16,6 +16,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { BASE_RESERVE } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -27,11 +28,7 @@ import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import {
-  formatAssetAmount,
-  formatFiatAmount,
-  stroopToXlm,
-} from "helpers/formatAmount";
+import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -40,8 +37,6 @@ import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { getAccount } from "services/stellar";
-
-const BASE_RESERVE = new BigNumber(0.5);
 
 // Define amount error types
 enum AmountError {
@@ -156,13 +151,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
 
     const currentBalance = new BigNumber(selectedBalance.total);
-    const feeStroops = new BigNumber(transactionFee).multipliedBy(1e7);
     const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
       BASE_RESERVE,
     );
     const calculatedSpendable = currentBalance
       .minus(minBalance)
-      .minus(stroopToXlm(feeStroops));
+      .minus(new BigNumber(transactionFee));
 
     return calculatedSpendable.isGreaterThan(0)
       ? calculatedSpendable
@@ -454,7 +448,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenValue={tokenAmount}
+            tokenAmount={tokenAmount}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleTransactionConfirmation}
           />

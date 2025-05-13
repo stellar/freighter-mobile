@@ -45,7 +45,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     recentAddresses,
     searchResults,
     searchError,
-    destinationAddress,
     loadRecentAddresses,
     searchAddress,
     setDestinationAddress,
@@ -92,7 +91,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     // Send store is for contact management
     setDestinationAddress(contactAddress);
     // Transaction settings store is for the transaction flow
-    saveRecipientAddress(destinationAddress || contactAddress);
+    saveRecipientAddress(contactAddress);
 
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
   };

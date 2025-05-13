@@ -29,7 +29,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   const handleTokenPress = (tokenId: string) => {
     saveSelectedTokenId(tokenId);
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {});
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN);
   };
 
   return (

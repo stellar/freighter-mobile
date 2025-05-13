@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
 import { pxValue } from "helpers/dimensions";
 
 export const DEFAULT_PADDING = pxValue(24);
@@ -9,7 +10,7 @@ export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
-
+export const BASE_RESERVE = BigNumber(0.5);
 export const MAX_MEMO_BYTES = 28;
 
 export const PASSWORD_MIN_LENGTH = 8;
