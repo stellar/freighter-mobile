@@ -30,14 +30,14 @@ import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
 import { getSorobanRpcServer, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
-  tokenValue: string;
+  tokenAmount: string;
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
-  publicKey?: string;
+  senderAddress?: string;
 }
 
 // Type guards for Balance types
@@ -57,7 +57,7 @@ export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
  * Returns an error message if any validation fails
  */
 export const validateTransactionParams = (
-  publicKey: string,
+  senderAddress: string,
   balance: PricedBalance,
   amount: string,
   destination: string,
@@ -85,7 +85,7 @@ export const validateTransactionParams = (
   }
 
   // Prevent sending to self
-  if (isSameAccount(publicKey, destination)) {
+  if (isSameAccount(senderAddress, destination)) {
     return "Cannot send to yourself";
   }
 
@@ -292,24 +292,24 @@ interface BuildPaymentTransactionResult {
 
 /**
  * Builds a payment transaction
- * @param params Object containing tokenValue (required) and optional overrides
+ * @param params Object containing tokenAmount (required) and optional overrides
  * @returns The transaction XDR string or throws an error with details
  */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
   const {
-    tokenValue: amount,
+    tokenAmount: amount,
     selectedBalance: balance,
     recipientAddress: destination,
     transactionMemo: memo,
     transactionFee: fee,
     transactionTimeout: timeout,
     network: currentNetwork,
-    publicKey,
+    senderAddress,
   } = params;
 
-  if (!publicKey) {
+  if (!senderAddress) {
     throw new Error("Public key is required");
   }
 
@@ -335,7 +335,7 @@ export const buildPaymentTransaction = async (
 
   try {
     const validationError = validateTransactionParams(
-      publicKey,
+      senderAddress,
       balance,
       amount,
       destination,
@@ -351,7 +351,7 @@ export const buildPaymentTransaction = async (
     const server = stellarSdkServer(networkDetails.networkUrl);
 
     // Load the source account
-    const sourceAccount = await server.loadAccount(publicKey);
+    const sourceAccount = await server.loadAccount(senderAddress);
 
     // Create transaction builder with validated parameters
     const txBuilder = new TransactionBuilder(sourceAccount, {
@@ -369,7 +369,7 @@ export const buildPaymentTransaction = async (
     if (isToContractAddress) {
       // For contract addresses, use Soroban operations
       buildSorobanTransferOperation(
-        publicKey,
+        senderAddress,
         destination,
         amount,
         asset,
