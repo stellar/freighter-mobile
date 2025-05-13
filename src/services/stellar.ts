@@ -77,40 +77,23 @@ export const stellarSdkServer = (networkUrl: string): Horizon.Server =>
  * @returns A Soroban RPC server instance or null if there's an error
  */
 export const getSorobanRpcServer = (network: NETWORKS) => {
+  const sorobanRpcUrl = SOROBAN_RPC_URLS[network];
+
+  if (!sorobanRpcUrl) {
+    logger.error("StellarService", "No Soroban RPC URL available for network", {
+      network,
+    });
+    return null;
+  }
+
   try {
-    // Get the soroban RPC URL from the constants
-    const sorobanRpcUrl = SOROBAN_RPC_URLS[network];
-
-    if (!sorobanRpcUrl) {
-      logger.error(
-        "StellarService",
-        "No Soroban RPC URL available for network",
-        { network },
-      );
-      return null;
-    }
-
-    // Use a try-catch specifically for the Server instantiation
-    try {
-      return new rpc.Server(sorobanRpcUrl, {
-        allowHttp: getIsAllowHttp(sorobanRpcUrl),
-      });
-    } catch (serverError) {
-      logger.warn(
-        "StellarService",
-        "Failed to instantiate Soroban RPC Server",
-        {
-          error: String(serverError),
-        },
-      );
-      return null;
-    }
-  } catch (error) {
-    logger.error(
-      "StellarService",
-      "Failed to create Soroban RPC server",
-      String(error),
-    );
+    return new rpc.Server(sorobanRpcUrl, {
+      allowHttp: getIsAllowHttp(sorobanRpcUrl),
+    });
+  } catch (serverError) {
+    logger.warn("StellarService", "Failed to instantiate Soroban RPC Server", {
+      error: String(serverError),
+    });
     return null;
   }
 };
