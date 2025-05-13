@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen";
-import HistoryScreen from "components/screens/HistoryScreen";
+import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
