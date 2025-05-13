@@ -44,6 +44,21 @@ interface TransactionBuilderState {
   resetTransaction: () => void;
 }
 
+const initialState: Omit<
+  TransactionBuilderState,
+  | "buildTransaction"
+  | "signTransaction"
+  | "submitTransaction"
+  | "resetTransaction"
+> = {
+  transactionXDR: null,
+  signedTransactionXDR: null,
+  isBuilding: false,
+  isSubmitting: false,
+  transactionHash: null,
+  error: null,
+};
+
 /**
  * Transaction Builder Store
  *
@@ -51,12 +66,7 @@ interface TransactionBuilderState {
  */
 export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
-    transactionXDR: null,
-    signedTransactionXDR: null,
-    isBuilding: false,
-    isSubmitting: false,
-    transactionHash: null,
-    error: null,
+    ...initialState,
 
     /**
      * Builds a transaction and stores the XDR
@@ -202,12 +212,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      */
     resetTransaction: () => {
       set({
-        transactionXDR: null,
-        signedTransactionXDR: null,
-        isBuilding: false,
-        isSubmitting: false,
-        transactionHash: null,
-        error: null,
+        ...initialState,
       });
     },
   }),

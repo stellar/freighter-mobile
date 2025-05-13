@@ -217,7 +217,7 @@ describe("sendRecipient Duck", () => {
       });
     });
 
-    store.getState().reset();
+    store.getState().resetSendRecipient();
 
     expect(store.getState().searchResults).toEqual([]);
     expect(store.getState().destinationAddress).toBe("");

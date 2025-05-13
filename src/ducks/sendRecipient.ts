@@ -31,10 +31,17 @@ interface SendStore {
   addRecentAddress: (address: string, name?: string) => Promise<void>;
   searchAddress: (searchTerm: string) => Promise<void>;
   setDestinationAddress: (address: string, fedAddress?: string) => void;
-  reset: () => void;
+  resetSendRecipient: () => void;
 }
 
-export const useSendRecipientStore = create<SendStore>((set, get) => ({
+const initialState: Omit<
+  SendStore,
+  | "loadRecentAddresses"
+  | "addRecentAddress"
+  | "searchAddress"
+  | "setDestinationAddress"
+  | "resetSendRecipient"
+> = {
   recentAddresses: [],
   searchResults: [],
   destinationAddress: "",
@@ -43,6 +50,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
   searchError: null,
   isValidDestination: false,
   isDestinationFunded: null,
+};
+
+export const useSendRecipientStore = create<SendStore>((set, get) => ({
+  ...initialState,
 
   loadRecentAddresses: async () => {
     try {
@@ -239,15 +250,9 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     });
   },
 
-  reset: () => {
+  resetSendRecipient: () => {
     set({
-      searchResults: [],
-      destinationAddress: "",
-      federationAddress: "",
-      isSearching: false,
-      searchError: null,
-      isValidDestination: false,
-      isDestinationFunded: null,
+      ...initialState,
     });
   },
 }));
