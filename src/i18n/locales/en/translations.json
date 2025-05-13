@@ -329,7 +329,9 @@
     "viewTransaction": "View transaction",
     "wasSentTo": " was sent to ",
     "to": " to ",
-    "couldNotBeSentTo": " could not be sent to "
+    "couldNotBeSentTo": " could not be sent to ",
+    "failed": "Failed",
+    "unsupported": "Not Supported"
   },
   "transactionDetailsBottomSheet": {
     "sent": "Sent {{tokenCode}}",

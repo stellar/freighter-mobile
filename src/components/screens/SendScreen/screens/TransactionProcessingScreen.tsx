@@ -107,9 +107,9 @@ const TransactionProcessingScreen: React.FC<
       case "sent":
         return t("transactionProcessingScreen.sent");
       case "failed":
-        return t("transactionProcessingScreen.failed", "Failed");
+        return t("transactionProcessingScreen.failed");
       case "unsupported":
-        return t("transactionProcessingScreen.unsupported", "Not Supported");
+        return t("transactionProcessingScreen.unsupported");
       default:
         return t("transactionProcessingScreen.sending");
     }
