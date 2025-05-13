@@ -72,7 +72,7 @@ const getSendStoreMock = (overrides = {}) =>
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
-    reset: mockReset,
+    resetSendRecipient: mockReset,
     ...overrides,
   });
 

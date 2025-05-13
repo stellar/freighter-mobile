@@ -231,14 +231,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleOpenReview = async () => {
     try {
       await buildTransaction({
-        tokenValue: tokenAmount,
+        tokenAmount,
         selectedBalance,
         recipientAddress,
         transactionMemo,
         transactionFee,
         transactionTimeout,
         network,
-        publicKey,
+        senderAddress: publicKey,
       });
 
       reviewBottomSheetModalRef.current?.present();
@@ -328,15 +328,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         <View className="items-center gap-[12px]">
           <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
             {showFiatAmount ? (
-              <Display
-                md
-                medium
-                {...(Number(fiatAmount) > 0
-                  ? { primary: true }
-                  : { secondary: true })}
-              >
-                {fiatAmount}
-              </Display>
+              <View className="flex-row items-center gap-[4px]">
+                <Display
+                  md
+                  medium
+                  {...(Number(fiatAmount) > 0
+                    ? { primary: true }
+                    : { secondary: true })}
+                >
+                  $
+                </Display>
+                <Display
+                  md
+                  medium
+                  {...(Number(fiatAmount) > 0
+                    ? { primary: true }
+                    : { secondary: true })}
+                >
+                  {fiatAmount}
+                </Display>
+              </View>
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display

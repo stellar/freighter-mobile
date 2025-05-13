@@ -49,7 +49,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     loadRecentAddresses,
     searchAddress,
     setDestinationAddress,
-    reset,
+    resetSendRecipient,
   } = useSendRecipientStore();
 
   // Load recent addresses when component mounts
@@ -57,18 +57,18 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     loadRecentAddresses();
 
     // Clear any previous search state on component mount
-    reset();
+    resetSendRecipient();
     // Reset transaction settings
     resetSettings();
-  }, [loadRecentAddresses, reset, resetSettings]);
+  }, [loadRecentAddresses, resetSendRecipient, resetSettings]);
 
   // Reset search input and store state when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       setAddress("");
-      reset();
+      resetSendRecipient();
       resetSettings();
-    }, [reset, resetSettings]),
+    }, [resetSendRecipient, resetSettings]),
   );
 
   /**
