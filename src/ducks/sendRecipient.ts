@@ -98,11 +98,9 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         const newContact = { id: `recent-${Date.now()}`, address, name };
         const updatedAddresses = [newContact, ...recentAddresses];
 
-        const limitedAddresses = updatedAddresses.slice(0, 10);
+        set({ recentAddresses: updatedAddresses });
 
-        set({ recentAddresses: limitedAddresses });
-
-        const addressesOnly = limitedAddresses.map(
+        const addressesOnly = updatedAddresses.map(
           (contact) => contact.address,
         );
         await dataStorage.setItem(
