@@ -4,6 +4,14 @@ import {
 } from "config/constants";
 import { create } from "zustand";
 
+const INITIAL_TRANSACTION_SETTINGS_STATE = {
+  transactionMemo: "",
+  transactionFee: MIN_TRANSACTION_FEE,
+  transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
+  recipientAddress: "",
+  selectedTokenId: "",
+};
+
 /**
  * TransactionSettings State Interface
  *
@@ -45,11 +53,7 @@ interface TransactionSettingsState {
  */
 export const useTransactionSettingsStore = create<TransactionSettingsState>(
   (set) => ({
-    transactionMemo: "",
-    transactionFee: MIN_TRANSACTION_FEE,
-    transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
-    recipientAddress: "",
-    selectedTokenId: "",
+    ...INITIAL_TRANSACTION_SETTINGS_STATE,
 
     /**
      * Saves the memo text for a transaction
@@ -85,13 +89,6 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
     /**
      * Resets all transaction settings to their default values
      */
-    resetSettings: () =>
-      set({
-        transactionMemo: "",
-        transactionFee: MIN_TRANSACTION_FEE,
-        transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
-        recipientAddress: "",
-        selectedTokenId: "",
-      }),
+    resetSettings: () => set(INITIAL_TRANSACTION_SETTINGS_STATE),
   }),
 );
