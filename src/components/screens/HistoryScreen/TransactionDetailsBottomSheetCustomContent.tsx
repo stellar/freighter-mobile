@@ -1,4 +1,6 @@
+import BigNumber from "bignumber.js";
 import {
+  calculateSwapRate,
   renderActionIcon,
   renderIconComponent,
 } from "components/screens/HistoryScreen/helpers";
@@ -44,6 +46,15 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
     includeTime: true,
   });
   const isSuccess = transactionDetails.status === TransactionStatus.SUCCESS;
+  const swapRate =
+    transactionDetails.transactionType === TransactionType.SWAP
+      ? calculateSwapRate(
+          Number(transactionDetails.swapDetails?.sourceAmount ?? 0),
+          Number(transactionDetails.swapDetails?.destinationAmount ?? 0),
+        )
+      : 0;
+  const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
+  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceAssetCode} ≈ ${formattedSwapRate} ${transactionDetails.swapDetails?.destinationAssetCode}`;
 
   return (
     <View className="flex-1 justify-center gap-6">
@@ -117,17 +128,19 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
           </Text>
         </View>
 
-        <View className="flex-row justify-between">
-          <View className="flex-row items-center justify-center gap-2">
-            <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
-            <Text md secondary medium numberOfLines={1}>
-              {t("history.transactionDetails.rate")}
+        {transactionDetails.transactionType === TransactionType.SWAP && (
+          <View className="flex-row justify-between">
+            <View className="flex-row items-center justify-center gap-2">
+              <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
+              <Text md secondary medium numberOfLines={1}>
+                {t("history.transactionDetails.rate")}
+              </Text>
+            </View>
+            <Text md primary numberOfLines={1}>
+              {swapRateText}
             </Text>
           </View>
-          <Text md primary numberOfLines={1}>
-            {/* TODO: format rate */}-
-          </Text>
-        </View>
+        )}
 
         <View className="flex-row justify-between">
           <View className="flex-row items-center justify-center gap-2">
