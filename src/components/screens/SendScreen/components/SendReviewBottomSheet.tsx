@@ -62,7 +62,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     if (error) {
       return (
         <Text md medium className="text-red-600">
-          {t("common.error", "Error")}
+          {t("common.error")}
         </Text>
       );
     }
@@ -71,7 +71,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       return truncateAddress(transactionXDR, 10, 4);
     }
 
-    return "--";
+    return t("common.none");
   };
 
   return (

@@ -274,7 +274,7 @@ const TransactionDetailsBottomSheet: React.FC<
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md medium>
               {transactionXDR
-                ? truncateAddress(transactionXDR, 6, 4)
+                ? truncateAddress(transactionXDR, 10, 4)
                 : t("common.none")}
             </Text>
           </View>
