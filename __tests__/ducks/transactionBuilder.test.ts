@@ -86,9 +86,9 @@ describe("transactionBuilder Duck", () => {
   it("should build a standard transaction successfully", async () => {
     await act(async () => {
       await store.getState().buildTransaction({
-        tokenValue: mockTokenValue,
+        tokenAmount: mockTokenValue,
         recipientAddress: mockRecipientAddress,
-        publicKey: mockPublicKey,
+        senderAddress: mockPublicKey,
         network: mockNetwork,
       });
     });
@@ -111,9 +111,9 @@ describe("transactionBuilder Duck", () => {
   it("should build and prepare a Soroban transaction successfully", async () => {
     await act(async () => {
       await store.getState().buildTransaction({
-        tokenValue: mockTokenValue,
+        tokenAmount: mockTokenValue,
         recipientAddress: mockContractAddress,
-        publicKey: mockPublicKey,
+        senderAddress: mockPublicKey,
         network: mockNetwork,
       });
     });
@@ -136,9 +136,9 @@ describe("transactionBuilder Duck", () => {
 
     await act(async () => {
       await store.getState().buildTransaction({
-        tokenValue: mockTokenValue,
+        tokenAmount: mockTokenValue,
         recipientAddress: mockRecipientAddress,
-        publicKey: mockPublicKey,
+        senderAddress: mockPublicKey,
         network: mockNetwork,
       });
     });
@@ -157,9 +157,9 @@ describe("transactionBuilder Duck", () => {
 
     await act(async () => {
       await store.getState().buildTransaction({
-        tokenValue: mockTokenValue,
+        tokenAmount: mockTokenValue,
         recipientAddress: mockContractAddress,
-        publicKey: mockPublicKey,
+        senderAddress: mockPublicKey,
         network: mockNetwork,
       });
     });

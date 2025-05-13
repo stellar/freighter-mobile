@@ -24,14 +24,14 @@ interface TransactionBuilderState {
   error: string | null;
 
   buildTransaction: (params: {
-    tokenValue: string;
+    tokenAmount: string;
     selectedBalance?: PricedBalance;
     recipientAddress?: string;
     transactionMemo?: string;
     transactionFee?: string;
     transactionTimeout?: number;
     network?: NETWORKS;
-    publicKey?: string;
+    senderAddress?: string;
   }) => Promise<string | null>;
 
   signTransaction: (params: {
@@ -66,14 +66,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
       try {
         const builtTxResult = await buildPaymentTransaction({
-          tokenAmount: params.tokenValue,
+          tokenAmount: params.tokenAmount,
           selectedBalance: params.selectedBalance,
           recipientAddress: params.recipientAddress,
           transactionMemo: params.transactionMemo,
           transactionFee: params.transactionFee,
           transactionTimeout: params.transactionTimeout,
           network: params.network,
-          senderAddress: params.publicKey,
+          senderAddress: params.senderAddress,
         });
 
         if (!builtTxResult) {
