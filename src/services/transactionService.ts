@@ -265,7 +265,6 @@ export const prepareSorobanTransaction = async (
     try {
       if (
         typeof sorobanRpc !== "object" ||
-        sorobanRpc === null ||
         typeof (sorobanRpc as SorobanRpcServerWithPrepare)
           .prepareTransaction !== "function"
       ) {
