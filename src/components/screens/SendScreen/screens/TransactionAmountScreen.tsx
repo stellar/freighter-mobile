@@ -320,26 +320,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         <View className="items-center gap-[12px]">
           <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
             {showFiatAmount ? (
-              <View className="flex-row items-center gap-[4px]">
-                <Display
-                  md
-                  medium
-                  {...(Number(fiatAmount) > 0
-                    ? { primary: true }
-                    : { secondary: true })}
-                >
-                  $
-                </Display>
-                <Display
-                  md
-                  medium
-                  {...(Number(fiatAmount) > 0
-                    ? { primary: true }
-                    : { secondary: true })}
-                >
-                  {fiatAmount}
-                </Display>
-              </View>
+              <Display
+                md
+                medium
+                {...(Number(fiatAmount) > 0
+                  ? { primary: true }
+                  : { secondary: true })}
+              >
+                {formatFiatAmount(fiatAmount)}
+              </Display>
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display
