@@ -120,7 +120,40 @@
     "emptyState": {
       "title": "Nenhuma transação para mostrar"
     },
-    "error": "Erro ao carregar histórico"
+    "error": "Erro ao carregar o histórico",
+    "refresh": "Atualizar",
+    "refreshing": "Atualizando...",
+    "transactionHistory": {
+      "transaction": "Transação",
+      "createAccount": "Criar conta",
+      "addedTrustline": "Trustline adicionada",
+      "removedTrustline": "Trustline removida",
+      "received": "Recebido",
+      "sent": "Enviado",
+      "swapTwoAssets": "{{srcAssetCode}} por {{destAssetCode}}",
+      "swappedTwoAssets": "Trocado {{srcAssetCode}} por {{destAssetCode}}",
+      "swapped": "Trocado",
+      "transactionFailed": "Transação falhou",
+      "failed": "Falhou",
+      "contract": "Contrato",
+      "interacted": "Interagiu",
+      "minted": "Emitido",
+      "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
+      "unknown": "Desconhecido"
+    },
+    "transactionDetails": {
+      "viewOnStellarExpert": "Ver no stellar.expert",
+      "fee": "Taxa",
+      "status": "Status",
+      "statusSuccess": "Sucesso",
+      "statusFailed": "Falhou",
+      "rate": "Cotação",
+      "firstTimeSend": "Envio pela primeira vez",
+      "addressCopied": "Endereço copiado para a área de transferência",
+      "startingBalance": "Saldo inicial:",
+      "minter": "Emissor",
+      "mintedTo": "Emitido para"
+    }
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
