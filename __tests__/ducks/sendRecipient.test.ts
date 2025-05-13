@@ -8,6 +8,10 @@ import * as stellarHelpers from "helpers/stellar";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 
+jest.mock("i18next", () => ({
+  t: jest.fn((key) => key),
+}));
+
 jest.mock("services/storage/storageFactory", () => ({
   dataStorage: {
     getItem: jest.fn(),
@@ -174,7 +178,9 @@ describe("sendRecipient Duck", () => {
 
     await store.getState().searchAddress("invalid-address");
 
-    expect(store.getState().searchError).toBe("Invalid Stellar address format");
+    expect(store.getState().searchError).toBe(
+      "sendRecipient.error.invalidAddressFormat",
+    );
     expect(store.getState().isValidDestination).toBe(false);
   });
 

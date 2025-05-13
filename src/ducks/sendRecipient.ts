@@ -7,6 +7,7 @@ import {
   isSameAccount,
   isValidStellarAddress,
 } from "helpers/stellar";
+import { t } from "i18next";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
@@ -139,7 +140,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       if (!isSyntacticallyValid) {
         set({
           isSearching: false,
-          searchError: "Invalid Stellar address format",
+          searchError: t("sendRecipient.error.invalidAddressFormat"),
         });
         return;
       }
@@ -148,7 +149,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         set({
           isSearching: false,
           isValidDestination: false,
-          searchError: "Cannot send to yourself",
+          searchError: t("sendRecipient.error.sendToSelf"),
         });
         return;
       }
@@ -171,8 +172,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
             set({
               isSearching: false,
               isValidDestination: false,
-              searchError:
-                "Cannot send to yourself (resolved federation address)",
+              searchError: t("sendRecipient.error.sendToSelfFederation"),
             });
             return;
           }
@@ -180,7 +180,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           logger.error("Federation resolution failed:", String(error));
           set({
             isSearching: false,
-            searchError: "Federation address not found or resolution failed",
+            searchError: t("sendRecipient.error.federationNotFound"),
           });
           return;
         }
@@ -210,7 +210,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           logger.error("Account lookup failed:", String(error));
           set({
             isSearching: false,
-            searchError: "Failed to check destination account status",
+            searchError: t("sendRecipient.error.destinationAccountStatus"),
           });
           return;
         }
@@ -234,7 +234,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       logger.error("Error searching for address:", String(error));
       set({
         isSearching: false,
-        searchError: "An unexpected error occurred during search",
+        searchError: t("sendRecipient.error.unexpectedSearchError"),
         isValidDestination: false,
         isDestinationFunded: null,
       });

@@ -358,5 +358,15 @@
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente"
+  },
+  "sendRecipient": {
+    "error": {
+      "invalidAddressFormat": "Formato de endereço Stellar inválido",
+      "sendToSelf": "Não é possível enviar para você mesmo",
+      "sendToSelfFederation": "Não é possível enviar para você mesmo (endereço de federação resolvido)",
+      "federationNotFound": "Endereço de federação não encontrado ou falha na resolução",
+      "destinationAccountStatus": "Falha ao verificar o status da conta de destino",
+      "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
+    }
   }
 }
