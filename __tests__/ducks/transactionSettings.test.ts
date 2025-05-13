@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react-hooks";
 import {
   DEFAULT_TRANSACTION_TIMEOUT,
-  TRANSACTION_RECOMMENDED_FEE,
+  MIN_TRANSACTION_FEE,
 } from "config/constants";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 
@@ -17,7 +17,7 @@ describe("transactionSettings Duck", () => {
   it("should have correct initial state", () => {
     const initialState = store.getState();
     expect(initialState.transactionMemo).toBe("");
-    expect(initialState.transactionFee).toBe(TRANSACTION_RECOMMENDED_FEE);
+    expect(initialState.transactionFee).toBe(MIN_TRANSACTION_FEE);
     expect(initialState.transactionTimeout).toBe(DEFAULT_TRANSACTION_TIMEOUT);
     expect(initialState.recipientAddress).toBe("");
     expect(initialState.selectedTokenId).toBe("");
@@ -92,7 +92,7 @@ describe("transactionSettings Duck", () => {
     });
 
     expect(store.getState().transactionMemo).toBe("");
-    expect(store.getState().transactionFee).toBe(TRANSACTION_RECOMMENDED_FEE);
+    expect(store.getState().transactionFee).toBe(MIN_TRANSACTION_FEE);
     expect(store.getState().transactionTimeout).toBe(
       DEFAULT_TRANSACTION_TIMEOUT,
     );

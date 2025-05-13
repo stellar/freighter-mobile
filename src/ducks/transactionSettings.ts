@@ -1,6 +1,6 @@
 import {
   DEFAULT_TRANSACTION_TIMEOUT,
-  TRANSACTION_RECOMMENDED_FEE,
+  MIN_TRANSACTION_FEE,
 } from "config/constants";
 import { create } from "zustand";
 
@@ -46,7 +46,7 @@ interface TransactionSettingsState {
 export const useTransactionSettingsStore = create<TransactionSettingsState>(
   (set) => ({
     transactionMemo: "",
-    transactionFee: TRANSACTION_RECOMMENDED_FEE,
+    transactionFee: MIN_TRANSACTION_FEE,
     transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
     recipientAddress: "",
     selectedTokenId: "",
@@ -88,7 +88,7 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
     resetSettings: () =>
       set({
         transactionMemo: "",
-        transactionFee: TRANSACTION_RECOMMENDED_FEE,
+        transactionFee: MIN_TRANSACTION_FEE,
         transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
         recipientAddress: "",
         selectedTokenId: "",

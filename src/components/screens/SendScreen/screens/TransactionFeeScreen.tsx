@@ -6,7 +6,7 @@ import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndi
 import { Text } from "components/sds/Typography";
 import {
   NATIVE_TOKEN_CODE,
-  TRANSACTION_RECOMMENDED_FEE,
+  MIN_TRANSACTION_FEE,
 } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { NetworkCongestion } from "config/types";
@@ -59,7 +59,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   };
 
   const handleSetRecommended = () => {
-    setLocalFee(recommendedFee || TRANSACTION_RECOMMENDED_FEE);
+    setLocalFee(recommendedFee || MIN_TRANSACTION_FEE);
   };
 
   return (
@@ -72,7 +72,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
               value={localFee}
               onChangeText={setLocalFee}
               keyboardType="numeric"
-              placeholder={TRANSACTION_RECOMMENDED_FEE}
+              placeholder={MIN_TRANSACTION_FEE}
               error={error}
               rightElement={
                 <Text md secondary>

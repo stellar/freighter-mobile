@@ -151,14 +151,14 @@ const TransactionProcessingScreen: React.FC<
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between">
         <View className="flex-1 items-center justify-center">
-          <View className="items-center gap-[8px]">
+          <View className="items-center gap-[8px] w-full">
             {getStatusIcon()}
 
             <Display xs medium>
               {getStatusText()}
             </Display>
 
-            <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary">
+            <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
                 {selectedBalance && (
                   <AssetIcon token={selectedBalance} size="lg" />
@@ -171,7 +171,7 @@ const TransactionProcessingScreen: React.FC<
               </View>
 
               <View className="items-center">
-                <View className="flex-row flex-wrap items-center justify-center">
+                <View className="flex-row flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
                     {formatAssetAmount(
                       transactionAmount,
