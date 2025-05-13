@@ -99,13 +99,13 @@ const TransactionDetailsBottomSheet: React.FC<
     }
     if (transactionError) {
       return {
-        text: t("transactionDetailsBottomSheet.statusFailed", "Failed"),
+        text: t("transactionDetailsBottomSheet.statusFailed"),
         color: themeColors.status.error,
       };
     }
     if (isSubmitting) {
       return {
-        text: t("transactionDetailsBottomSheet.statusPending", "Pending"),
+        text: t("transactionDetailsBottomSheet.statusPending"),
         color: themeColors.status.warning,
       };
     }
