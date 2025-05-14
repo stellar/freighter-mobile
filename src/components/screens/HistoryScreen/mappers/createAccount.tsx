@@ -13,7 +13,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { formatAssetAmount } from "helpers/formatAmount";
-import { truncatePublicKey } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -94,11 +94,9 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
     <View className="flex-row justify-between items-center">
       <View>
         <Text xl primary medium numberOfLines={1}>
-          {truncatePublicKey({
-            publicKey:
-              transactionDetails.createAccountDetails?.accountPublicKey ?? "",
-            length: 4,
-          })}
+          {truncateAddress(
+            transactionDetails.createAccountDetails?.accountPublicKey ?? "",
+          )}
         </Text>
         <Text sm secondary numberOfLines={1}>
           {t("history.transactionDetails.startingBalance")}{" "}

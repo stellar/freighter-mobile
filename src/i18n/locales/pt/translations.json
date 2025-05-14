@@ -16,8 +16,9 @@
     "add": "Adicionar",
     "remove": "Remover",
     "copied": "Copiado para a área de transferência!",
-    "unknownError": "Erro desconhecido",
-    "error": "Erro: {{errorMessage}}"
+    "loading": "Carregando...",
+    "error": "Erro",
+    "unknownError": "Erro desconhecido"
   },
   "home": {
     "title": "Início",
@@ -255,7 +256,10 @@
   "sendPaymentScreen": {
     "title": "Enviar para",
     "inputPlaceholder": "Digite o endereço",
-    "recents": "Recentes"
+    "recents": "Recentes",
+    "suggestions": "Sugestões",
+    "cannotSendToSelf": "Não é possível enviar para você mesmo",
+    "invalidAddress": "Endereço Stellar inválido"
   },
   "transactionTokenScreen": {
     "title": "Enviando"
@@ -272,15 +276,15 @@
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",
-      "addMemo": "Adicionar memo"
+      "addMemo": "Adicionar memo",
+      "editMemo": "Editar memo"
     },
     "details": {
       "from": "De",
       "memo": "Memo",
       "none": "Nenhum",
       "fee": "Taxa",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Ainda não disponível"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {
@@ -317,22 +321,38 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Digite seu memo",
-    "optional": "(opcional)"
+    "optional": "(opcional)",
+    "errors": {
+      "invalid": "Formato de memo inválido",
+      "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Tempo Limite da Transação",
     "seconds": "segundos",
-    "setRecommended": "Definir recomendado"
+    "setRecommended": "Definir recomendado",
+    "inputPlaceholder": "Digite o tempo limite",
+    "errors": {
+      "required": "Tempo limite da transação é obrigatório",
+      "invalid": "Tempo limite da transação inválido",
+      "greaterThanZero": "O tempo limite deve ser maior que 0"
+    },
+    "description": "Número de segundos que podem passar antes que esta transação não possa mais ser aceita pela rede",
+    "timeoutInSeconds": "Tempo limite em segundos"
   },
   "transactionFeeScreen": {
     "title": "Taxa da Transação",
     "setRecommended": "Definir recomendado",
-    "congestion": {
-      "low": "Congestionamento baixo",
-      "medium": "Congestionamento médio",
-      "high": "Congestionamento alto"
+    "congestion": "Congestionamento {{networkCongestion}}",
+    "errors": {
+      "required": "Taxa de transação é obrigatória",
+      "invalid": "Taxa de transação inválida",
+      "tooLow": "A taxa deve ser maior que {{min}}"
     }
   },
+  "low": "baixo",
+  "medium": "médio",
+  "high": "alto",
   "transactionReviewScreen": {
     "title": "Você está enviando",
     "previousSend": "1 envio anterior",
@@ -344,7 +364,10 @@
     "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto",
     "viewTransaction": "Ver transação",
     "wasSentTo": " foi enviado para ",
-    "to": " para "
+    "to": " para ",
+    "couldNotBeSentTo": " não pôde ser enviado para ",
+    "failed": "Falhou",
+    "unsupported": "Não Suportado"
   },
   "transactionDetailsBottomSheet": {
     "sent": "Enviado {{tokenCode}}",
@@ -376,5 +399,15 @@
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente"
+  },
+  "sendRecipient": {
+    "error": {
+      "invalidAddressFormat": "Formato de endereço Stellar inválido",
+      "sendToSelf": "Não é possível enviar para você mesmo",
+      "sendToSelfFederation": "Não é possível enviar para você mesmo (endereço de federação resolvido)",
+      "federationNotFound": "Endereço de federação não encontrado ou falha na resolução",
+      "destinationAccountStatus": "Falha ao verificar o status da conta de destino",
+      "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
+    }
   }
 }

@@ -4,13 +4,14 @@ import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndicator";
 import { Text } from "components/sds/Typography";
-import {
-  NATIVE_TOKEN_CODE,
-  TRANSACTION_RECOMMENDED_FEE,
-} from "config/constants";
+import { NATIVE_TOKEN_CODE, MIN_TRANSACTION_FEE } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { NetworkCongestion } from "config/types";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import { useNetworkFees } from "hooks/useNetworkFees";
+import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 
 type TransactionFeeScreenProps = NativeStackScreenProps<
@@ -18,24 +19,44 @@ type TransactionFeeScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN
 >;
 
-type CongestionLevel = "low" | "medium" | "high";
-
 const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
-  const [fee, setFee] = useState(TRANSACTION_RECOMMENDED_FEE);
-  const { tokenCode = NATIVE_TOKEN_CODE } = route.params || {};
-  const [congestionLevel] = useState<CongestionLevel>("low");
+  const { transactionFee, saveTransactionFee } = useTransactionSettingsStore();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
+  const [localFee, setLocalFee] = useState(transactionFee);
+
+  const { error } = useValidateTransactionFee(localFee);
+
+  const getLocalizedCongestionLevel = (
+    congestion: NetworkCongestion,
+  ): string => {
+    switch (congestion) {
+      case NetworkCongestion.LOW:
+        return t("low");
+      case NetworkCongestion.MEDIUM:
+        return t("medium");
+      case NetworkCongestion.HIGH:
+        return t("high");
+      default:
+        return t("low");
+    }
+  };
+
+  useEffect(() => {
+    setLocalFee(transactionFee);
+  }, [transactionFee]);
 
   const handleSave = () => {
-    // TODO: Implement save functionality
+    if (error) return;
+
+    saveTransactionFee(localFee);
     navigation.goBack();
   };
 
   const handleSetRecommended = () => {
-    setFee(TRANSACTION_RECOMMENDED_FEE);
+    setLocalFee(recommendedFee || MIN_TRANSACTION_FEE);
   };
 
   return (
@@ -45,21 +66,26 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
           <View className="flex-row items-center gap-2">
             <Input
               fieldSize="md"
-              value={fee}
-              onChangeText={setFee}
+              value={localFee}
+              onChangeText={setLocalFee}
               keyboardType="numeric"
-              placeholder={TRANSACTION_RECOMMENDED_FEE}
+              placeholder={MIN_TRANSACTION_FEE}
+              error={error}
               rightElement={
                 <Text md secondary>
-                  {tokenCode}
+                  {/* The Fee is always paid in native token */}
+                  {NATIVE_TOKEN_CODE}
                 </Text>
               }
             />
           </View>
           <View className="flex-row items-center gap-2 mt-2">
-            <NetworkCongestionIndicator level={congestionLevel} size={16} />
+            <NetworkCongestionIndicator level={networkCongestion} size={16} />
             <Text sm secondary>
-              {t(`transactionFeeScreen.congestion.${congestionLevel}`)}
+              {t("transactionFeeScreen.congestion", {
+                networkCongestion:
+                  getLocalizedCongestionLevel(networkCongestion),
+              })}
             </Text>
           </View>
         </View>
@@ -67,7 +93,12 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
           <Button secondary lg onPress={handleSetRecommended}>
             {t("transactionFeeScreen.setRecommended")}
           </Button>
-          <Button tertiary lg onPress={handleSave}>
+          <Button
+            tertiary
+            lg
+            onPress={handleSave}
+            disabled={!!error || !localFee}
+          >
             {t("common.save")}
           </Button>
         </View>

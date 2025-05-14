@@ -5,46 +5,74 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  NATIVE_TOKEN_CODE,
-  TRANSACTION_RECOMMENDED_FEE,
-} from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
-import { ActiveAccount } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
-import { truncateAddress } from "helpers/formatAddress";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
-import { View } from "react-native";
-
-// Fees are always paid in XLM
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
-  selectedBalance: PricedBalance | undefined;
-  tokenValue: string;
-  address: string;
-  account: ActiveAccount | null;
-  publicKey: string | undefined;
-  feeAmount?: string;
+  selectedBalance?: PricedBalance;
+  tokenAmount: string;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
 
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
-  tokenValue,
-  address,
-  account,
-  publicKey,
-  feeAmount = TRANSACTION_RECOMMENDED_FEE,
+  tokenAmount,
   onCancel,
   onConfirm,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const slicedAddress = truncateAddress(address, 4, 4);
+  const { recipientAddress, transactionMemo, transactionFee } =
+    useTransactionSettingsStore();
+  const { account } = useGetActiveAccount();
+  const publicKey = account?.publicKey;
+  const { copyToClipboard } = useClipboard();
+  const slicedAddress = truncateAddress(recipientAddress, 4, 4);
+
+  // Use the new transaction builder store
+  const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+
+  const handleCopyXdr = () => {
+    if (transactionXDR) {
+      copyToClipboard(transactionXDR, {
+        notificationMessage: t("common.copied"),
+      });
+    }
+  };
+
+  const renderXdrContent = () => {
+    if (isBuilding) {
+      return (
+        <ActivityIndicator size="small" color={themeColors.text.secondary} />
+      );
+    }
+
+    if (error) {
+      return (
+        <Text md medium className="text-red-600">
+          {t("common.error")}
+        </Text>
+      );
+    }
+
+    if (transactionXDR) {
+      return truncateAddress(transactionXDR, 10, 4);
+    }
+
+    return t("common.none");
+  };
 
   return (
     <View className="flex-1">
@@ -58,12 +86,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               <AssetIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
-                  {formatAssetAmount(tokenValue, selectedBalance.tokenCode)}
+                  {formatAssetAmount(tokenAmount, selectedBalance.tokenCode)}
                 </Text>
                 <Text md medium secondary>
                   {selectedBalance.currentPrice
                     ? formatFiatAmount(
-                        new BigNumber(tokenValue).times(
+                        new BigNumber(tokenAmount).times(
                           selectedBalance.currentPrice,
                         ),
                       )
@@ -79,13 +107,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           </View>
           <View className="w-full flex-row items-center gap-4">
-            <Avatar size="lg" publicAddress={address} />
+            <Avatar size="lg" publicAddress={recipientAddress} />
             <View className="flex-1">
               <Text xl medium>
                 {slicedAddress}
-              </Text>
-              <Text md medium secondary>
-                {t("transactionReviewScreen.previousSend")}
               </Text>
             </View>
           </View>
@@ -113,8 +138,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               {t("transactionAmountScreen.details.memo")}
             </Text>
           </View>
-          <Text md medium secondary>
-            {t("common.none")}
+          <Text md medium secondary={!transactionMemo}>
+            {transactionMemo || t("common.none")}
           </Text>
         </View>
         <View className="flex-row items-center justify-between">
@@ -127,7 +152,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(feeAmount, NATIVE_TOKEN_CODE)}
+              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>
@@ -138,12 +163,16 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               {t("transactionAmountScreen.details.xdr")}
             </Text>
           </View>
-          <View className="flex-row items-center gap-[8px]">
+          <TouchableOpacity
+            onPress={handleCopyXdr}
+            disabled={isBuilding || !transactionXDR}
+            className="flex-row items-center gap-[8px]"
+          >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium>
-              {t("transactionAmountScreen.details.xdrPlaceholder")}
+            <Text md medium secondary={isBuilding}>
+              {renderXdrContent()}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
       <View className="mt-[24px]">
@@ -158,7 +187,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </Button>
         </View>
         <View className="flex-1">
-          <Button onPress={onConfirm} tertiary xl>
+          <Button
+            onPress={onConfirm}
+            tertiary
+            xl
+            disabled={isBuilding || !transactionXDR || !!error}
+          >
             {t("common.confirm")}
           </Button>
         </View>

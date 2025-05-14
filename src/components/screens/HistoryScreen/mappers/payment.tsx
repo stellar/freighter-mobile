@@ -16,7 +16,7 @@ import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { AssetTypeWithCustomToken } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
-import { truncatePublicKey } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -157,10 +157,7 @@ export const PaymentTransactionDetailsContent: React.FC<{
 
       <View className="flex-row justify-between items-center">
         <Text xl primary medium numberOfLines={1}>
-          {truncatePublicKey({
-            publicKey: transactionDetails.paymentDetails?.to ?? "",
-            length: 4,
-          })}
+          {truncateAddress(transactionDetails.paymentDetails?.to ?? "")}
         </Text>
         <Avatar
           publicAddress={transactionDetails.paymentDetails?.to ?? ""}

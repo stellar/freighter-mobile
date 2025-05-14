@@ -27,7 +27,7 @@ import {
   formatTokenAmount,
   getBalanceByKey,
 } from "helpers/soroban";
-import { truncatePublicKey } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import { capitalize } from "lodash";
@@ -578,11 +578,9 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
 
       <View className="flex-row justify-between items-center">
         <Text xl primary medium numberOfLines={1}>
-          {truncatePublicKey({
-            publicKey:
-              transactionDetails.contractDetails?.transferDetails?.to ?? "",
-            length: 4,
-          })}
+          {truncateAddress(
+            transactionDetails.contractDetails?.transferDetails?.to as string,
+          )}
         </Text>
         <Avatar
           publicAddress={

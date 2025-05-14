@@ -1,59 +1,74 @@
 import { formatNumericInput } from "helpers/numericInput";
 
 describe("formatNumericInput", () => {
-  it("should format numeric input correctly", () => {
-    expect(formatNumericInput("0.00", "1")).toBe("0.01");
-    expect(formatNumericInput("0.01", "2")).toBe("0.12");
-    expect(formatNumericInput("0.12", "3")).toBe("1.23");
-    expect(formatNumericInput("1.23", "4")).toBe("12.34");
-    expect(formatNumericInput("12.34", "5")).toBe("123.45");
+  it("should handle initial input", () => {
+    expect(formatNumericInput("0", "1")).toBe("1");
+    expect(formatNumericInput("0", "0")).toBe("0");
   });
 
-  it("should handle leading zeros correctly", () => {
-    expect(formatNumericInput("0.00", "0")).toBe("0.00");
-    expect(formatNumericInput("0.00", "1")).toBe("0.01");
-    expect(formatNumericInput("0.01", "0")).toBe("0.10");
+  it("should append digits correctly", () => {
+    expect(formatNumericInput("1", "2")).toBe("12");
+    expect(formatNumericInput("123", "4")).toBe("1234");
   });
 
-  it("should handle deletion correctly", () => {
-    expect(formatNumericInput("0.00", "")).toBe("0.00");
-    expect(formatNumericInput("0.01", "")).toBe("0.00");
-    // Deleting from other states
-    expect(formatNumericInput("0.01", "")).toBe("0.00");
-    expect(formatNumericInput("0.10", "")).toBe("0.01");
-    expect(formatNumericInput("1.00", "")).toBe("0.10");
-    expect(formatNumericInput("10.00", "")).toBe("1.00");
-    expect(formatNumericInput("123.45", "")).toBe("12.34");
+  it("should handle decimal point input", () => {
+    expect(formatNumericInput("0", ".")).toBe("0.");
+    expect(formatNumericInput("123", ".")).toBe("123.");
+    expect(formatNumericInput("123.", "4")).toBe("123.4");
+    expect(formatNumericInput("123.4", ".")).toBe("123.4");
   });
 
-  it("should maintain proper decimal point placement", () => {
-    expect(formatNumericInput("0.00", "1")).toBe("0.01");
-    expect(formatNumericInput("0.01", "2")).toBe("0.12");
-    expect(formatNumericInput("0.12", "3")).toBe("1.23");
-
-    // After deletion
-    expect(formatNumericInput("1.23", "")).toBe("0.12");
-    expect(formatNumericInput("0.12", "")).toBe("0.01");
+  it("should handle delete key", () => {
+    expect(formatNumericInput("123.45", "")).toBe("123.4");
+    expect(formatNumericInput("123.4", "")).toBe("123.");
+    expect(formatNumericInput("123.", "")).toBe("123");
+    expect(formatNumericInput("123", "")).toBe("12");
+    expect(formatNumericInput("1", "")).toBe("0");
+    expect(formatNumericInput("0.", "")).toBe("0");
+    expect(formatNumericInput("0", "")).toBe("0");
   });
 
-  it("should handle special cases correctly", () => {
-    expect(formatNumericInput("0.00", "0")).toBe("0.00");
-
-    expect(formatNumericInput("000", "1")).toBe("0.01");
-
-    expect(formatNumericInput("0.00", "5")).toBe("0.05");
-
-    expect(formatNumericInput("7.89", "0")).toBe("78.90");
+  it("should respect maxDecimals (default 7)", () => {
+    expect(formatNumericInput("1.123456", "7")).toBe("1.1234567");
+    expect(formatNumericInput("1.1234567", "8")).toBe("1.1234567");
+    expect(formatNumericInput("123", ".")).toBe("123.");
+    expect(formatNumericInput("123.", "1")).toBe("123.1");
+    expect(formatNumericInput("123.1234567", "8")).toBe("123.1234567");
   });
 
-  it("should handle large numbers correctly", () => {
-    expect(formatNumericInput("9999.99", "9")).toBe("99999.99");
-    expect(formatNumericInput("12345.67", "8")).toBe("123456.78");
+  it("should respect custom maxDecimals", () => {
+    const maxDecimals = 2;
+    expect(formatNumericInput("1.1", "2", maxDecimals)).toBe("1.12");
+    expect(formatNumericInput("1.12", "3", maxDecimals)).toBe("1.12");
+    expect(formatNumericInput("123", ".", maxDecimals)).toBe("123.");
+    expect(formatNumericInput("123.", "1", maxDecimals)).toBe("123.1");
+    expect(formatNumericInput("123.12", "3", maxDecimals)).toBe("123.12");
   });
 
-  it("should always maintain two decimal places", () => {
-    expect(formatNumericInput("0.00", "1")).toBe("0.01");
-    expect(formatNumericInput("123.45", "6")).toBe("1234.56");
-    expect(formatNumericInput("1234.56", "")).toBe("123.45");
+  it("should handle max length (20)", () => {
+    const longInt = "1234567890123456789";
+    expect(formatNumericInput(longInt, "0")).toBe("12345678901234567890");
+    expect(formatNumericInput("12345678901234567890", "1")).toBe(
+      "12345678901234567890",
+    ); // Max length reached
+
+    const longDecimal = "1.1234567";
+    expect(formatNumericInput(longDecimal, "8", 18)).toBe("1.12345678");
+    expect(formatNumericInput("1.12345678901234567", "8", 18)).toBe(
+      "1.123456789012345678",
+    );
+    expect(formatNumericInput("1.123456789012345678", "9", 18)).toBe(
+      "1.123456789012345678",
+    ); // Max length reached
+
+    expect(formatNumericInput("1234567890123456789.0", "1")).toBe(
+      "1234567890123456789.0",
+    ); // Max length reached
+  });
+
+  it("should return previous value for invalid keys", () => {
+    expect(formatNumericInput("123", "a")).toBe("123");
+    expect(formatNumericInput("123.45", " ")).toBe("123.45");
+    expect(formatNumericInput("0", "!")).toBe("0");
   });
 });

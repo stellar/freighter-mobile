@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
 import { pxValue } from "helpers/dimensions";
 
 export const DEFAULT_PADDING = pxValue(24);
@@ -8,7 +9,9 @@ export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
-export const TRANSACTION_RECOMMENDED_FEE = "0.0250005";
+export const MIN_TRANSACTION_FEE = "0.00001";
+export const BASE_RESERVE = BigNumber(0.5);
+export const MAX_MEMO_BYTES = 28;
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
@@ -19,6 +22,7 @@ export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
 export const DEFAULT_DECIMALS = 7;
+export const FIAT_DECIMALS = 2;
 
 export const FREIGHTER_BACKEND_URL =
   "https://freighter-backend-prd.stellar.org/api/v1";
@@ -130,6 +134,7 @@ export enum OPERATION_TYPES {
 }
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
+export const MIN_TRANSACTION_TIMEOUT = 1;
 
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
@@ -161,12 +166,14 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
  * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
  * ACTIVE_NETWORK The active network is the network that is currently being used.
+ * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
   ACTIVE_NETWORK = "activeNetwork",
+  RECENT_ADDRESSES = "recentAddresses",
 }
 
 /**
