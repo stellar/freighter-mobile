@@ -5,7 +5,10 @@ import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { TRANSACTION_RECOMMENDED_FEE } from "config/constants";
+import {
+  NATIVE_TOKEN_CODE,
+  TRANSACTION_RECOMMENDED_FEE,
+} from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { truncateAddress } from "helpers/formatAddress";
@@ -21,7 +24,6 @@ type TransactionDetailsBottomSheetProps = {
   address: string;
 };
 
-const FEE_CURRENCY = "XLM";
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
 > = ({ selectedBalance, tokenAmount, address }) => {
@@ -150,7 +152,10 @@ const TransactionDetailsBottomSheet: React.FC<
             <StellarLogo width={16} height={16} />
             <Text md medium>
               {/* TODO: get the fee amount from the transaction */}
-              {formatAssetAmount(TRANSACTION_RECOMMENDED_FEE, FEE_CURRENCY)}
+              {formatAssetAmount(
+                TRANSACTION_RECOMMENDED_FEE,
+                NATIVE_TOKEN_CODE,
+              )}
             </Text>
           </View>
         </View>

@@ -33,14 +33,14 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   useEffect(() => {
     const buildHistoryItem = async () => {
       try {
-        const historyItemData = await mapHistoryItemData(
+        const historyItemData = await mapHistoryItemData({
           operation,
           accountBalances,
           publicKey,
           networkDetails,
           network,
           themeColors,
-        );
+        });
 
         setHistoryItem(historyItemData);
         setIsLoading(false);

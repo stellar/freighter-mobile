@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   formatTransactionDate,
-  isFailedTransaction,
   isCreateAccountOperation,
   isChangeTrustOperation,
   isSorobanInvokeHostFunction,
@@ -22,17 +21,26 @@ import { getAttrsFromSorobanHorizonOp } from "helpers/soroban";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import { ThemeColors } from "hooks/useColors";
 
+interface MapHistoryItemDataProps {
+  operation: any;
+  accountBalances: BalanceMap;
+  publicKey: string;
+  networkDetails: NetworkDetails;
+  network: NETWORKS;
+  themeColors: ThemeColors;
+}
+
 /**
  * Main mapper function to convert operation data into history item data
  */
-export const mapHistoryItemData = async (
-  operation: any,
-  accountBalances: BalanceMap,
-  publicKey: string,
-  networkDetails: NetworkDetails,
-  network: NETWORKS,
-  themeColors: ThemeColors,
-): Promise<HistoryItemData> => {
+export const mapHistoryItemData = async ({
+  operation,
+  accountBalances,
+  publicKey,
+  networkDetails,
+  network,
+  themeColors,
+}: MapHistoryItemDataProps): Promise<HistoryItemData> => {
   const {
     created_at: createdAt,
     transaction_attr: { fee_charged: fee },
@@ -51,14 +59,14 @@ export const mapHistoryItemData = async (
   const stellarExpertUrl = getStellarExpertUrl(network);
 
   // Handle failed transaction
-  if (isFailedTransaction(transactionSuccessful)) {
-    return mapFailedTransactionHistoryItem(
+  if (transactionSuccessful === false) {
+    return mapFailedTransactionHistoryItem({
       operation,
       stellarExpertUrl,
       date,
       fee,
       themeColors,
-    );
+    });
   }
 
   // Handle create account
@@ -75,13 +83,13 @@ export const mapHistoryItemData = async (
 
   // Handle change trust
   if (isChangeTrustOperation(type)) {
-    return mapChangeTrustHistoryItem(
+    return mapChangeTrustHistoryItem({
       operation,
       stellarExpertUrl,
       date,
       fee,
       themeColors,
-    );
+    });
   }
 
   // Handle swap
@@ -98,14 +106,14 @@ export const mapHistoryItemData = async (
 
   // Handle payment
   if (isPayment) {
-    return mapPaymentHistoryItem(
+    return mapPaymentHistoryItem({
       operation,
       publicKey,
       stellarExpertUrl,
       date,
       fee,
       themeColors,
-    );
+    });
   }
 
   // Handle Soroban invoke host function

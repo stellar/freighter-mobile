@@ -76,7 +76,7 @@ const createHistorySections = (
 
 function useGetHistoryData(publicKey: string, networkDetails: NetworkDetails) {
   // TODO: Add dust filter
-  const { fetchAccountBalances, balances } = useBalancesStore();
+  const { fetchAccountBalances, getBalances } = useBalancesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [historyData, setHistoryData] = useState<HistoryData | null>(null);
 
@@ -91,6 +91,8 @@ function useGetHistoryData(publicKey: string, networkDetails: NetworkDetails) {
         publicKey,
         networkDetails,
       });
+
+      const balances = getBalances();
 
       const payload = {
         balances,

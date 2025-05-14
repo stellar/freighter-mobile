@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { logos } from "assets/logos";
 import { AssetIcon } from "components/AssetIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
@@ -13,7 +13,7 @@ import {
 import { Asset } from "components/sds/Asset";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NETWORK_URLS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORK_URLS } from "config/constants";
 import { AssetTypeWithCustomToken } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
@@ -51,13 +51,13 @@ export const mapSwapHistoryItem = async ({
     source_asset_issuer: sourceAssetIssuer,
   } = operation;
 
-  const srcAssetCode = sourceAssetCode || "XLM";
-  const destAssetCodeFinal = destAssetCode || "XLM";
+  const srcAssetCode = sourceAssetCode || NATIVE_TOKEN_CODE;
+  const destAssetCodeFinal = destAssetCode || NATIVE_TOKEN_CODE;
   const formattedAmount = `+${formatAssetAmount(amount, destAssetCodeFinal)}`;
 
   // Get token icons
   const destIcon =
-    destAssetCodeFinal === "XLM"
+    destAssetCodeFinal === NATIVE_TOKEN_CODE
       ? logos.stellar
       : await getIconUrlFromIssuer({
           issuerKey: assetIssuer || "",
@@ -66,7 +66,7 @@ export const mapSwapHistoryItem = async ({
         });
 
   const sourceIcon =
-    srcAssetCode === "XLM"
+    srcAssetCode === NATIVE_TOKEN_CODE
       ? logos.stellar
       : await getIconUrlFromIssuer({
           issuerKey: sourceAssetIssuer || "",
@@ -160,11 +160,13 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {transactionDetails.swapDetails?.sourceAmount}{" "}
-            {transactionDetails.swapDetails?.sourceAssetCode}
+            {formatAssetAmount(
+              transactionDetails.swapDetails?.sourceAmount ?? "",
+              transactionDetails.swapDetails?.sourceAssetCode ?? "",
+            )}
           </Text>
           <Text md secondary numberOfLines={1}>
-            {/* TODO: add rate */}-
+            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon
@@ -189,11 +191,13 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {transactionDetails.swapDetails?.destinationAmount}{" "}
-            {transactionDetails.swapDetails?.destinationAssetCode}
+            {formatAssetAmount(
+              transactionDetails.swapDetails?.destinationAmount ?? "",
+              transactionDetails.swapDetails?.destinationAssetCode ?? "",
+            )}
           </Text>
           <Text md secondary numberOfLines={1}>
-            {/* TODO: add rate */}-
+            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon

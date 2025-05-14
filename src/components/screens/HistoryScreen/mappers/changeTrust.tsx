@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import BigNumber from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
@@ -14,16 +14,24 @@ import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
 
+interface ChangeTrustHistoryItemData {
+  operation: any;
+  stellarExpertUrl: string;
+  date: string;
+  fee: string;
+  themeColors: ThemeColors;
+}
+
 /**
  * Maps change trust operation data to history item data
  */
-export const mapChangeTrustHistoryItem = (
-  operation: any,
-  stellarExpertUrl: string,
-  date: string,
-  fee: string,
-  themeColors: ThemeColors,
-): HistoryItemData => {
+export const mapChangeTrustHistoryItem = ({
+  operation,
+  stellarExpertUrl,
+  date,
+  fee,
+  themeColors,
+}: ChangeTrustHistoryItemData): HistoryItemData => {
   const {
     asset_code: destAssetCode,
     asset_type: assetType,

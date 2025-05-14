@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   TransactionDetails,
@@ -12,16 +10,24 @@ import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
 
+interface FailedTransactionHistoryItemData {
+  operation: any;
+  stellarExpertUrl: string;
+  date: string;
+  fee: string;
+  themeColors: ThemeColors;
+}
+
 /**
  * Maps failed transaction data to history item data
  */
-export const mapFailedTransactionHistoryItem = (
-  operation: any,
-  stellarExpertUrl: string,
-  date: string,
-  fee: string,
-  themeColors: ThemeColors,
-): HistoryItemData => {
+export const mapFailedTransactionHistoryItem = ({
+  operation,
+  stellarExpertUrl,
+  date,
+  fee,
+  themeColors,
+}: FailedTransactionHistoryItemData): HistoryItemData => {
   const { id } = operation;
 
   const IconComponent = (

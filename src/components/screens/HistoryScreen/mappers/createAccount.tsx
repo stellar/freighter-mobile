@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import {
   TransactionDetails,
@@ -11,6 +11,7 @@ import {
 import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncatePublicKey } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
@@ -43,7 +44,7 @@ export const mapCreateAccountHistoryItem = ({
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatAssetAmount(
     startingBalance,
-    "XLM",
+    NATIVE_TOKEN_CODE,
   )}`;
 
   const ActionIconComponent = isRecipient ? (
@@ -103,7 +104,7 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
           {t("history.transactionDetails.startingBalance")}{" "}
           {formatAssetAmount(
             transactionDetails.createAccountDetails?.startingBalance ?? "",
-            "XLM",
+            NATIVE_TOKEN_CODE,
           )}
         </Text>
       </View>

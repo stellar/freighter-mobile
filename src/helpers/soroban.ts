@@ -15,7 +15,7 @@ import {
   Asset,
 } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { Balance } from "config/types";
 
@@ -62,7 +62,7 @@ export const isContractId = (contractId: string) => {
 
 export const getNativeContractDetails = (network: NETWORKS) => {
   const NATIVE_CONTRACT_DEFAULTS = {
-    code: "XLM",
+    code: NATIVE_TOKEN_CODE,
     decimals: 7,
     domain: "https://stellar.org",
     icon: "",
@@ -183,12 +183,12 @@ export const getAttrsFromSorobanHorizonOp = (
     };
   }
 
-  const txEnvelope = TransactionBuilder.fromXDR(
+  const transaction = TransactionBuilder.fromXDR(
     op.transaction_attr.envelope_xdr as string,
     networkDetails.networkPassphrase,
   ) as Transaction<Memo<MemoType>, Operation.InvokeHostFunction[]>;
 
-  const invokeHostFn = txEnvelope.operations[0]; // only one op per tx in Soroban right now
+  const invokeHostFn = transaction.operations[0]; // only one op per tx in Soroban right now
 
   return getTokenInvocationArgs(invokeHostFn);
 };
@@ -209,14 +209,14 @@ export const getBalanceByKey = (
   balances: Balance[],
   networkDetails: NetworkDetails,
 ) => {
-  const key = balances.find((balance) => {
+  const foundBalance = balances.find((balance) => {
     const matchesIssuer =
       "contractId" in balance && contractId === balance.contractId;
     let canonicalName = "";
 
     try {
       // if xlm, check for a SAC match
-      if ("token" in balance && balance.token.code === "XLM") {
+      if ("token" in balance && balance.token.code === NATIVE_TOKEN_CODE) {
         canonicalName = "native";
         const matchesSac =
           Asset.native().contractId(networkDetails.networkPassphrase) ===
@@ -246,7 +246,8 @@ export const getBalanceByKey = (
     }
     return matchesIssuer;
   });
-  return key;
+
+  return foundBalance;
 };
 
 // Adopted from https://github.com/ethers-io/ethers.js/blob/master/packages/bignumber/src.ts/fixednumber.ts#L27

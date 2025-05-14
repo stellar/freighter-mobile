@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
 import Icon from "components/sds/Icon";
@@ -63,19 +64,15 @@ export const createOperationString = (
 ): string => {
   const operationType = camelCase(type) as keyof typeof OPERATION_TYPES;
   const opTypeStr =
-    OPERATION_TYPES[operationType] || t("transactionHistory.transaction");
+    OPERATION_TYPES[operationType] ||
+    t("history.transactionHistory.transaction");
 
   return `${opTypeStr}${
-    operationCount > 1 ? ` + ${operationCount - 1} ops` : ""
+    operationCount > 1
+      ? ` + ${operationCount - 1} ${t("history.transactionHistory.ops")}`
+      : ""
   }`;
 };
-
-/**
- * Determines if the operation is a failed transaction
- */
-export const isFailedTransaction = (
-  transactionSuccessful: boolean | undefined,
-): boolean => transactionSuccessful === false;
 
 /**
  * Determines if the operation is a create account operation

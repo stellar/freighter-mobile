@@ -1,7 +1,6 @@
 /* eslint-disable react/no-unused-prop-types */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react/prop-types */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import BottomSheet from "components/BottomSheet";
@@ -39,7 +38,6 @@ type HistoryScreenProps = BottomTabScreenProps<
  */
 interface Operation {
   id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 

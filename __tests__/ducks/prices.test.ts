@@ -1,8 +1,12 @@
-import { AssetType } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import { Balance, NativeBalance, ClassicBalance } from "config/types";
+import {
+  Balance,
+  NativeBalance,
+  ClassicBalance,
+  AssetTypeWithCustomToken,
+} from "config/types";
 import { usePricesStore } from "ducks/prices";
 import * as balancesHelpers from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
@@ -45,7 +49,7 @@ describe("prices duck", () => {
         issuer: {
           key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         },
-        type: "credit_alphanum4" as AssetType,
+        type: AssetTypeWithCustomToken.CREDIT_ALPHANUM12,
       },
       total: new BigNumber("200"),
       available: new BigNumber("200"),

@@ -15,12 +15,13 @@ import {
 import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import {
   AssetTypeWithCustomToken,
   BalanceMap,
   CustomToken,
 } from "config/types";
+import { formatAssetAmount } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
   formatTokenAmount,
@@ -89,6 +90,7 @@ const processSorobanMint = async ({
 }: ProcessSorobanMintData): Promise<HistoryItemData> => {
   const { id } = operation;
   const isReceiving = sorobanAttributes.to === publicKey;
+
   const assetBalance = getBalanceByKey(
     sorobanAttributes.contractId,
     Object.values(accountBalances),
@@ -157,7 +159,10 @@ const processSorobanMint = async ({
           token.decimals,
         );
 
-        const formattedAmount = `${isReceiving ? "+" : ""}${formattedTokenAmount} ${token.symbol}`;
+        const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
+          formattedTokenAmount,
+          token.symbol,
+        )}`;
 
         historyItemData.amountText = formattedAmount;
         historyItemData.IconComponent = (
@@ -220,7 +225,10 @@ const processSorobanMint = async ({
       Number(decimals),
     );
 
-    const formattedAmount = `${isReceiving ? "+" : ""}${formattedTokenAmount} ${symbol}`;
+    const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
+      formattedTokenAmount,
+      symbol,
+    )}`;
 
     historyItemData.amountText = formattedAmount;
     historyItemData.rowText = capitalize(sorobanAttributes.fnName);
@@ -302,7 +310,7 @@ const processSorobanTransfer = async ({
 
     const { symbol, decimals, name } = tokenDetailsResponse;
     const isNative = symbol === "native";
-    const code = isNative ? "XLM" : symbol;
+    const code = isNative ? NATIVE_TOKEN_CODE : symbol;
     const formattedTokenAmount = formatTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       decimals,
@@ -313,13 +321,16 @@ const processSorobanTransfer = async ({
       sorobanAttributes.from !== publicKey;
 
     const paymentDifference = isRecipient ? "+" : "-";
-    const formattedAmount = `${paymentDifference}${formattedTokenAmount} ${code}`;
+    const formattedAmount = `${paymentDifference}${formatAssetAmount(
+      formattedTokenAmount,
+      code,
+    )}`;
 
     historyItemData.amountText = formattedAmount;
     historyItemData.IconComponent = isNative ? (
       <AssetIcon
         token={{
-          code: "XLM",
+          code: NATIVE_TOKEN_CODE,
           issuer: {
             key: "",
           },
@@ -346,14 +357,14 @@ const processSorobanTransfer = async ({
     );
 
     historyItemData.isAddingFunds = isRecipient;
-    historyItemData.rowText = isNative ? "XLM" : (name ?? symbol);
+    historyItemData.rowText = isNative ? NATIVE_TOKEN_CODE : (name ?? symbol);
     historyItemData.actionText = isRecipient
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent");
 
     const transactionDetails: TransactionDetails = {
       operation,
-      transactionTitle: `${isRecipient ? t("Received") : t("Sent")} ${code}`,
+      transactionTitle: `${isRecipient ? t("history.transactionHistory.received") : t("history.transactionHistory.sent")} ${code}`,
       transactionType: TransactionType.CONTRACT_TRANSFER,
       status: TransactionStatus.SUCCESS,
       fee,
@@ -378,7 +389,7 @@ const processSorobanTransfer = async ({
     historyItemData.rowText = operationString;
     const transactionDetails: TransactionDetails = {
       operation,
-      transactionTitle: t("Transaction"),
+      transactionTitle: t("history.transactionHistory.contract"),
       transactionType: TransactionType.CONTRACT_TRANSFER,
       status: TransactionStatus.SUCCESS,
       fee,
@@ -502,7 +513,7 @@ export const mapSorobanHistoryItem = async ({
   // Default case for other Soroban operations
   const transactionDetails: TransactionDetails = {
     operation,
-    transactionTitle: t("Transaction"),
+    transactionTitle: t("history.transactionHistory.contract"),
     transactionType: TransactionType.CONTRACT,
     status: TransactionStatus.SUCCESS,
     fee,
@@ -537,10 +548,13 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {tokenAmount} {transactionDetails.contractDetails?.contractSymbol}
+            {formatAssetAmount(
+              tokenAmount,
+              transactionDetails.contractDetails?.contractSymbol ?? "",
+            )}
           </Text>
           <Text md secondary numberOfLines={1}>
-            {/* TODO: add rate */}-
+            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon
@@ -562,19 +576,14 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
         circleBackground={themeColors.background.tertiary}
       />
 
-      <View className="flex-row justify-between">
-        <View>
-          <Text xl primary medium numberOfLines={1}>
-            {truncatePublicKey({
-              publicKey:
-                transactionDetails.contractDetails?.transferDetails?.to ?? "",
-              length: 4,
-            })}
-          </Text>
-          <Text md secondary numberOfLines={1}>
-            {t("history.transactionDetails.firstTimeSend")}
-          </Text>
-        </View>
+      <View className="flex-row justify-between items-center">
+        <Text xl primary medium numberOfLines={1}>
+          {truncatePublicKey({
+            publicKey:
+              transactionDetails.contractDetails?.transferDetails?.to ?? "",
+            length: 4,
+          })}
+        </Text>
         <Avatar
           publicAddress={
             transactionDetails.contractDetails?.transferDetails?.to ?? ""

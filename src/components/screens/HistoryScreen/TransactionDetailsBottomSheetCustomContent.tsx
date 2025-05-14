@@ -16,8 +16,9 @@ import {
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { formatDate } from "helpers/date";
-import { stroopToXlm } from "helpers/formatAmount";
+import { formatAssetAmount, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -54,7 +55,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         )
       : 0;
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
-  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceAssetCode} ≈ ${formattedSwapRate} ${transactionDetails.swapDetails?.destinationAssetCode}`;
+  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceAssetCode} ≈ ${formatAssetAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationAssetCode ?? "")}`;
 
   return (
     <View className="flex-1 justify-center gap-6">
@@ -150,7 +151,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           </View>
           <Text md primary numberOfLines={1}>
-            {fee} XLM
+            {formatAssetAmount(fee, NATIVE_TOKEN_CODE)}
           </Text>
         </View>
       </View>

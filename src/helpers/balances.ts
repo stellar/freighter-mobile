@@ -1,5 +1,6 @@
 import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   Balance,
   LiquidityPoolBalance,
@@ -109,7 +110,7 @@ export const getTokenIdentifier = (
 
   // Native token
   if ("type" in token && token.type === "native") {
-    return "XLM";
+    return NATIVE_TOKEN_CODE;
   }
 
   // Asset token with issuer
@@ -272,7 +273,7 @@ export const formatAssetIdentifier = (assetIdentifier: string) => {
 export const getAssetType = (
   assetIdentifier: string,
 ): AssetTypeWithCustomToken => {
-  if (assetIdentifier === "XLM") {
+  if (assetIdentifier === NATIVE_TOKEN_CODE) {
     return AssetTypeWithCustomToken.NATIVE;
   }
 

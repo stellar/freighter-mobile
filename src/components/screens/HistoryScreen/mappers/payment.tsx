@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import BigNumber from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
@@ -14,6 +13,7 @@ import {
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { AssetTypeWithCustomToken } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncatePublicKey } from "helpers/stellar";
@@ -22,21 +22,30 @@ import { t } from "i18next";
 import React from "react";
 import { View } from "react-native";
 
+interface PaymentHistoryItemData {
+  operation: any;
+  publicKey: string;
+  stellarExpertUrl: string;
+  date: string;
+  fee: string;
+  themeColors: ThemeColors;
+}
+
 /**
  * Maps payment operation data to history item data
  */
-export const mapPaymentHistoryItem = (
-  operation: any,
-  publicKey: string,
-  stellarExpertUrl: string,
-  date: string,
-  fee: string,
-  themeColors: ThemeColors,
-): HistoryItemData => {
+export const mapPaymentHistoryItem = ({
+  operation,
+  publicKey,
+  stellarExpertUrl,
+  date,
+  fee,
+  themeColors,
+}: PaymentHistoryItemData): HistoryItemData => {
   const {
     id,
     amount,
-    asset_code: destAssetCode = "XLM",
+    asset_code: destAssetCode = NATIVE_TOKEN_CODE,
     asset_type: assetType = "native",
     asset_issuer: assetIssuer = "",
     to,
@@ -118,11 +127,13 @@ export const PaymentTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {transactionDetails.paymentDetails?.amount}{" "}
-            {transactionDetails.paymentDetails?.assetCode}
+            {formatAssetAmount(
+              transactionDetails.paymentDetails?.amount ?? "",
+              transactionDetails.paymentDetails?.assetCode ?? "",
+            )}
           </Text>
           <Text md secondary numberOfLines={1}>
-            {/* TODO: add rate */}-
+            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon
@@ -144,18 +155,13 @@ export const PaymentTransactionDetailsContent: React.FC<{
         circleBackground={themeColors.background.tertiary}
       />
 
-      <View className="flex-row justify-between">
-        <View>
-          <Text xl primary medium numberOfLines={1}>
-            {truncatePublicKey({
-              publicKey: transactionDetails.paymentDetails?.to ?? "",
-              length: 4,
-            })}
-          </Text>
-          <Text md secondary numberOfLines={1}>
-            {t("history.transactionDetails.firstTimeSend")}
-          </Text>
-        </View>
+      <View className="flex-row justify-between items-center">
+        <Text xl primary medium numberOfLines={1}>
+          {truncatePublicKey({
+            publicKey: transactionDetails.paymentDetails?.to ?? "",
+            length: 4,
+          })}
+        </Text>
         <Avatar
           publicAddress={transactionDetails.paymentDetails?.to ?? ""}
           hasBorder

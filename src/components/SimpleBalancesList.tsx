@@ -1,6 +1,6 @@
 import { BalanceRow } from "components/BalanceRow";
 import ManageAssetRightContent from "components/ManageAssetRightContent";
-import { NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesList } from "hooks/useBalancesList";
 import { RemoveAssetParams } from "hooks/useManageAssets";
 import React from "react";
@@ -60,7 +60,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
             <ManageAssetRightContent
               asset={{
                 id: item.id,
-                isNative: item.id === "XLM",
+                isNative: item.id === NATIVE_TOKEN_CODE,
               }}
               handleRemoveAsset={(onComplete) =>
                 handleRemoveAsset({

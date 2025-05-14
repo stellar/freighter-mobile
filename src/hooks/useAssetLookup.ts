@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import { NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import {
   PricedBalance,
   SearchAssetResponse,
@@ -83,7 +83,7 @@ export const useAssetLookup = ({
           domain: record.domain ?? "",
           hasTrustline: checkHasTrustline(currentBalances, assetCode, issuer),
           issuer,
-          isNative: record.asset === "XLM",
+          isNative: record.asset === NATIVE_TOKEN_CODE,
           assetType: getAssetType(`${assetCode}:${issuer}`),
         };
       })

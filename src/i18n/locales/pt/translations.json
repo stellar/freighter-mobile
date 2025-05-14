@@ -149,7 +149,8 @@
       "interacted": "Interagiu",
       "minted": "Emitido",
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "ops": "ops"
     },
     "transactionDetails": {
       "viewOnStellarExpert": "Ver no stellar.expert",
