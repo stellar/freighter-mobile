@@ -5,6 +5,7 @@ import { AssetIcon } from "components/AssetIcon";
 import { AssetProps } from "components/sds/Asset";
 import {
   AssetToken,
+  AssetTypeWithCustomToken,
   Balance,
   LiquidityPoolBalance,
   NativeToken,
@@ -62,7 +63,6 @@ describe("AssetIcon", () => {
         token={{
           type: "native",
           code: "XLM",
-          issuer: { key: "native" },
         }}
       />,
     );
@@ -79,7 +79,7 @@ describe("AssetIcon", () => {
           issuer: {
             key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
           },
-          type: "credit_alphanum4",
+          type: AssetTypeWithCustomToken.CREDIT_ALPHANUM12,
         }}
       />,
     );

@@ -52,6 +52,7 @@ interface BalancesState {
   }) => Promise<void>;
   startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
   stopPolling: () => void;
+  getBalances: () => BalanceMap;
 }
 
 /**
@@ -315,4 +316,6 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       pollingIntervalId = null;
     }
   },
+
+  getBalances: () => get().balances,
 }));

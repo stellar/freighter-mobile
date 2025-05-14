@@ -2,6 +2,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
@@ -15,13 +16,18 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { BASE_RESERVE } from "config/constants";
+import { logger } from "config/logger";
 import {
-  MAIN_TAB_ROUTES,
-  ROOT_NAVIGATOR_ROUTES,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  MAIN_TAB_ROUTES,
 } from "config/routes";
+import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -30,6 +36,14 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { getAccount } from "services/stellar";
+
+// Define amount error types
+enum AmountError {
+  TOO_HIGH = "amount too high",
+  // DEC_MAX handled by formatNumericInput
+  // SEND_MAX is less critical for mobile? (Extension has it)
+}
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -47,16 +61,32 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
  */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { address, tokenId } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const {
+    transactionMemo,
+    transactionFee,
+    transactionTimeout,
+    recipientAddress,
+    selectedTokenId,
+  } = useTransactionSettingsStore();
+
+  const {
+    buildTransaction,
+    signTransaction,
+    submitTransaction,
+    resetTransaction,
+    isBuilding,
+  } = useTransactionBuilderStore();
+
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [amountError, setAmountError] = useState<AmountError | null>(null);
+  const [subentryCount, setSubentryCount] = useState(0);
 
   const navigateToSendScreen = () => {
     try {
@@ -72,7 +102,27 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     shouldPoll: false,
   });
 
-  const selectedBalance = balanceItems.find((item) => item.id === tokenId);
+  const selectedBalance = balanceItems.find(
+    (item) => item.id === selectedTokenId,
+  );
+
+  useEffect(() => {
+    const fetchSenderAccount = async () => {
+      if (publicKey && network) {
+        try {
+          const senderAccount = await getAccount(publicKey, network);
+          setSubentryCount(senderAccount?.subentry_count || 0);
+        } catch (error) {
+          logger.error(
+            "Failed to fetch sender account details:",
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+    };
+
+    fetchSenderAccount();
+  }, [publicKey, network]);
 
   const {
     tokenAmount,
@@ -83,31 +133,77 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     handlePercentagePress,
   } = useTokenFiatConverter({ selectedBalance });
 
+  const spendableBalance = useMemo(() => {
+    if (!selectedBalance) return BigNumber(0);
+
+    if (
+      selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
+      selectedBalance.assetType !== AssetTypeWithCustomToken.CREDIT_ALPHANUM4 &&
+      selectedBalance.assetType !==
+        AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
+      selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
+    ) {
+      return BigNumber(selectedBalance.total);
+    }
+
+    if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
+      return BigNumber(selectedBalance.total);
+    }
+
+    const currentBalance = BigNumber(selectedBalance.total);
+    const minBalance = BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
+    const calculatedSpendable = currentBalance
+      .minus(minBalance)
+      .minus(BigNumber(transactionFee));
+
+    return calculatedSpendable.isGreaterThan(0)
+      ? calculatedSpendable
+      : BigNumber(0);
+  }, [selectedBalance, subentryCount, transactionFee]);
+
+  useEffect(() => {
+    const currentTokenAmount = BigNumber(tokenAmount);
+
+    // Check if amount exceeds available balance
+    if (
+      spendableBalance &&
+      currentTokenAmount.isGreaterThan(spendableBalance)
+    ) {
+      setAmountError(AmountError.TOO_HIGH);
+    } else {
+      setAmountError(null);
+    }
+  }, [tokenAmount, spendableBalance]);
+
   const menuActions = useMemo(
     () => [
       {
-        title: t("transactionAmountScreen.menu.fee", { fee: "0.025" }),
+        title: t("transactionAmountScreen.menu.fee", { fee: transactionFee }),
         systemIcon: "arrow.trianglehead.swap",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN);
         },
       },
       {
-        title: t("transactionAmountScreen.menu.timeout", { timeout: "180" }),
+        title: t("transactionAmountScreen.menu.timeout", {
+          timeout: transactionTimeout,
+        }),
         systemIcon: "clock",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN);
         },
       },
       {
-        title: t("transactionAmountScreen.menu.addMemo"),
+        title: transactionMemo
+          ? t("transactionAmountScreen.menu.editMemo")
+          : t("transactionAmountScreen.menu.addMemo"),
         systemIcon: "text.page",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
         },
       },
     ],
-    [t, navigation],
+    [t, navigation, transactionFee, transactionTimeout, transactionMemo],
   );
 
   useEffect(() => {
@@ -124,35 +220,96 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
+  const handleOpenReview = async () => {
+    try {
+      await buildTransaction({
+        tokenAmount,
+        selectedBalance,
+        recipientAddress,
+        transactionMemo,
+        transactionFee,
+        transactionTimeout,
+        network,
+        senderAddress: publicKey,
+      });
+
+      reviewBottomSheetModalRef.current?.present();
+    } catch (error) {
+      logger.error(
+        "TransactionAmountScreen",
+        "Failed to build transaction:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
+
   const handleTransactionConfirmation = () => {
     reviewBottomSheetModalRef.current?.dismiss();
-    setIsProcessing(true);
-    // TODO: Implement the actual transaction submission logic here
+
+    // Wait for the bottom sheet to dismiss before showing the processing screen
+    setTimeout(() => {
+      setIsProcessing(true);
+    }, 100);
+
+    const processTransaction = async () => {
+      try {
+        if (!account) {
+          throw new Error("Unable to retrieve account");
+        }
+
+        const { privateKey } = account;
+
+        if (!privateKey) {
+          throw new Error("Unable to retrieve account secret key");
+        }
+
+        signTransaction({
+          secretKey: privateKey,
+          network,
+        });
+
+        await submitTransaction({
+          network,
+        });
+      } catch (error) {
+        logger.error(
+          "TransactionAmountScreen",
+          "Transaction submission failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    };
+
+    processTransaction();
+  };
+
+  const handleProcessingScreenClose = () => {
+    setIsProcessing(false);
+    resetTransaction();
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+            state: {
+              index: 0,
+              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            },
+          },
+        ],
+      }),
+    );
   };
 
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
+        key={selectedTokenId}
+        onClose={handleProcessingScreenClose}
+        transactionAmount={tokenAmount}
         selectedBalance={selectedBalance}
-        tokenValue={tokenAmount}
-        address={address}
-        onClose={() => {
-          setIsProcessing(false);
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [
-                {
-                  name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-                  state: {
-                    index: 0,
-                    routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-                  },
-                },
-              ],
-            }),
-          );
-        }}
       />
     );
   }
@@ -161,18 +318,33 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px]">
-          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px]">
-            <Display
-              lg
-              medium
-              {...(Number(showFiatAmount ? fiatAmount : tokenAmount) > 0
-                ? { primary: true }
-                : { secondary: true })}
-            >
-              {showFiatAmount
-                ? formatFiatAmount(fiatAmount)
-                : formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)}
-            </Display>
+          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
+            {showFiatAmount ? (
+              <Display
+                md
+                medium
+                {...(Number(fiatAmount) > 0
+                  ? { primary: true }
+                  : { secondary: true })}
+              >
+                {formatFiatAmount(fiatAmount)}
+              </Display>
+            ) : (
+              <View className="flex-row items-center gap-[4px]">
+                <Display
+                  md
+                  medium
+                  {...(Number(tokenAmount) > 0
+                    ? { primary: true }
+                    : { secondary: true })}
+                >
+                  {tokenAmount}
+                </Display>
+                <Text md medium secondary>
+                  {selectedBalance?.tokenCode}
+                </Text>
+              </View>
+            )}
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
@@ -205,7 +377,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           </View>
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
             <ContactRow
-              address={address}
+              address={recipientAddress}
               rightElement={
                 <Button secondary lg onPress={navigateToSendScreen}>
                   {t("common.edit")}
@@ -244,30 +416,30 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <Button
               tertiary
               xl
-              onPress={() => reviewBottomSheetModalRef.current?.present()}
-              disabled={Number(tokenAmount) <= 0}
+              onPress={handleOpenReview}
+              disabled={
+                !!amountError ||
+                BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
+                isBuilding
+              }
             >
               {t("transactionAmountScreen.reviewButton")}
             </Button>
           </View>
         </View>
       </View>
+
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenValue={tokenAmount}
-            address={address}
-            account={account}
-            publicKey={publicKey}
+            tokenAmount={tokenAmount}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleTransactionConfirmation}
           />
         }
-        bottomSheetModalProps={{ enablePanDownToClose: false }}
-        shouldCloseOnPressBackdrop={false}
       />
     </BaseLayout>
   );

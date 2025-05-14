@@ -9,7 +9,7 @@ import {
   ACCOUNT_NAME_MIN_LENGTH,
 } from "config/constants";
 import { Account } from "config/types";
-import { truncatePublicKey } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useMemo, useState } from "react";
@@ -55,7 +55,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
         <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
         <View className="h-4" />
         <Text primary md medium>
-          {truncatePublicKey({ publicKey: account?.publicKey ?? "" })}
+          {truncateAddress(account?.publicKey ?? "")}
         </Text>
         <Text secondary sm regular>
           {t("renameAccountModal.currentName")}

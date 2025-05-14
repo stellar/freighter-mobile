@@ -6,13 +6,16 @@ import {
   Operation,
   Transaction,
   TransactionBuilder,
+  rpc,
 } from "@stellar/stellar-sdk";
 import {
   DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
   NETWORKS,
+  SOROBAN_RPC_URLS,
 } from "config/constants";
+import { logger } from "config/logger";
 import { NetworkCongestion } from "config/types";
 import { formatAssetIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
@@ -21,6 +24,15 @@ interface HorizonError {
   response: {
     status: number;
   };
+}
+
+export interface TransactionDetail {
+  id: string;
+  hash: string;
+  createdAt: string;
+  successful: boolean;
+  memo?: string;
+  fee: string;
 }
 
 export type BuildChangeTrustTxParams = {
@@ -57,6 +69,34 @@ export const stellarSdkServer = (networkUrl: string): Horizon.Server =>
   new Horizon.Server(networkUrl, {
     allowHttp: getIsAllowHttp(networkUrl),
   });
+
+/**
+ * Creates a Soroban RPC server instance for the given network
+ *
+ * @param network The network to get the Soroban RPC server for
+ * @returns A Soroban RPC server instance or null if there's an error
+ */
+export const getSorobanRpcServer = (network: NETWORKS) => {
+  const sorobanRpcUrl = SOROBAN_RPC_URLS[network];
+
+  if (!sorobanRpcUrl) {
+    logger.error("StellarService", "No Soroban RPC URL available for network", {
+      network,
+    });
+    return null;
+  }
+
+  try {
+    return new rpc.Server(sorobanRpcUrl, {
+      allowHttp: getIsAllowHttp(sorobanRpcUrl),
+    });
+  } catch (serverError) {
+    logger.warn("StellarService", "Failed to instantiate Soroban RPC Server", {
+      error: String(serverError),
+    });
+    return null;
+  }
+};
 
 export const submitTx = async (
   input: SubmitTxParams,
@@ -165,6 +205,55 @@ export const getAccount = async (
     const account = await server.loadAccount(publicKey);
     return account;
   } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Retrieves transaction details from the Horizon API including the creation timestamp
+ * @param transactionHash The hash of the transaction to look up
+ * @param network The Stellar network to query
+ * @returns Promise resolving to transaction details or null if not found
+ */
+export const getTransactionDetails = async (
+  transactionHash: string,
+  network: NETWORKS,
+): Promise<TransactionDetail | null> => {
+  if (!transactionHash) {
+    return null;
+  }
+
+  const { networkUrl } = mapNetworkToNetworkDetails(network);
+  const server = stellarSdkServer(networkUrl);
+
+  try {
+    const transaction = await server
+      .transactions()
+      .transaction(transactionHash)
+      .call();
+
+    if (!transaction) {
+      return null;
+    }
+
+    return {
+      id: transaction.id,
+      hash: transaction.hash,
+      createdAt: transaction.created_at,
+      successful: transaction.successful,
+      memo: transaction.memo,
+      fee: String(transaction.fee_charged),
+    };
+  } catch (error) {
+    logger.error(
+      "stellarService.getTransactionDetails",
+      "Failed to get transaction details",
+      {
+        error: error instanceof Error ? error.message : String(error),
+        transactionHash,
+        network,
+      },
+    );
     return null;
   }
 };

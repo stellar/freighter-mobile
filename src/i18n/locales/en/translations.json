@@ -16,8 +16,9 @@
     "add": "Add",
     "remove": "Remove",
     "copied": "Copied to clipboard!",
-    "unknownError": "Unknown error",
-    "error": "Error: {{errorMessage}}"
+    "loading": "Loading...",
+    "error": "Error",
+    "unknownError": "Unknown error"
   },
   "home": {
     "title": "Home",
@@ -123,10 +124,48 @@
     "invalidUriError": "Please enter a valid URI",
     "disconnectAllSessions": "Clear all connected apps",
     "connectedDapps": "Connected Apps",
-    "noConnectedDapps": "You’re not connected to any apps"
+    "noConnectedDapps": "You're not connected to any apps"
   },
   "history": {
-    "title": "History"
+    "title": "History",
+    "emptyState": {
+      "title": "No transactions to show"
+    },
+    "error": "Error loading history",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "transactionHistory": {
+      "transaction": "Transaction",
+      "createAccount": "Create account",
+      "addedTrustline": "Added trustline",
+      "removedTrustline": "Removed trustline",
+      "received": "Received",
+      "sent": "Sent",
+      "swapTwoAssets": "{{srcAssetCode}} for {{destAssetCode}}",
+      "swappedTwoAssets": "Swapped {{srcAssetCode}} for {{destAssetCode}}",
+      "swapped": "Swapped",
+      "transactionFailed": "Transaction failed",
+      "failed": "Failed",
+      "contract": "Contract",
+      "interacted": "Interacted",
+      "minted": "Minted",
+      "mintedToSelf": "Minted {{tokenSymbol}} to self",
+      "unknown": "Unknown",
+      "ops": "ops"
+    },
+    "transactionDetails": {
+      "viewOnStellarExpert": "View on stellar.expert",
+      "fee": "Fee",
+      "status": "Status",
+      "statusSuccess": "Success",
+      "statusFailed": "Failed",
+      "rate": "Rate",
+      "firstTimeSend": "First time send",
+      "addressCopied": "Address copied to clipboard",
+      "startingBalance": "Starting balance:",
+      "minter": "Minter",
+      "mintedTo": "Minted to"
+    }
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
@@ -222,7 +261,9 @@
     "title": "Send to",
     "inputPlaceholder": "Enter address",
     "recents": "Recents",
-    "suggestions": "Suggestions"
+    "suggestions": "Suggestions",
+    "cannotSendToSelf": "Cannot send to yourself",
+    "invalidAddress": "Invalid Stellar address"
   },
   "transactionTokenScreen": {
     "title": "Sending"
@@ -239,15 +280,15 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo"
+      "addMemo": "Add memo",
+      "editMemo": "Edit memo"
     },
     "details": {
       "from": "From",
       "memo": "Memo",
       "none": "None",
       "fee": "Fee",
-      "xdr": "XDR",
-      "xdrPlaceholder": "Not available yet"
+      "xdr": "XDR"
     }
   },
   "addAnotherWalletScreen": {
@@ -284,22 +325,36 @@
   "transactionMemoScreen": {
     "title": "Memo",
     "placeholder": "Type your memo",
-    "optional": "(optional)"
+    "optional": "(optional)",
+    "errors": {
+      "invalid": "Invalid memo format",
+      "tooLong": "Memo is too long (maximum {{max}} bytes)"
+    }
   },
   "transactionTimeoutScreen": {
     "title": "Transaction Timeout",
     "seconds": "seconds",
-    "setRecommended": "Set recommended"
+    "setRecommended": "Set recommended",
+    "inputPlaceholder": "Enter timeout",
+    "errors": {
+      "required": "Transaction timeout is required",
+      "invalid": "Invalid transaction timeout",
+      "greaterThanZero": "Timeout must be greater than 0"
+    }
   },
   "transactionFeeScreen": {
     "title": "Transaction Fee",
     "setRecommended": "Set recommended",
-    "congestion": {
-      "low": "Low congestion",
-      "medium": "Medium congestion",
-      "high": "High congestion"
+    "congestion": "{{networkCongestion}} congestion",
+    "errors": {
+      "required": "Transaction fee is required",
+      "invalid": "Invalid transaction fee",
+      "tooLow": "Fee must be greater than {{min}}"
     }
   },
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
   "transactionReviewScreen": {
     "title": "You are sending",
     "previousSend": "1 previous send",
@@ -311,15 +366,22 @@
     "closeMessage": "You can close this screen, your transaction should be complete in less than a minute",
     "viewTransaction": "View transaction",
     "wasSentTo": " was sent to ",
-    "to": " to "
+    "to": " to ",
+    "couldNotBeSentTo": " could not be sent to ",
+    "failed": "Failed",
+    "unsupported": "Not Supported"
   },
   "transactionDetailsBottomSheet": {
     "sent": "Sent {{tokenCode}}",
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",
+    "statusFailed": "Failed",
+    "statusPending": "Pending",
     "rate": "Rate",
     "fee": "Fee",
+    "transactionHash": "Transaction Hash",
+    "couldNotBeSentTo": "could not be sent to",
     "viewOnExpert": "View on stellar.expert"
   },
   "dappRequestBottomSheetContent": {
@@ -343,5 +405,15 @@
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
     "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again"
+  },
+  "sendRecipient": {
+    "error": {
+      "invalidAddressFormat": "Invalid Stellar address format",
+      "sendToSelf": "Cannot send to yourself",
+      "sendToSelfFederation": "Cannot send to yourself (resolved federation address)",
+      "federationNotFound": "Federation address not found or resolution failed",
+      "destinationAccountStatus": "Failed to check destination account status",
+      "unexpectedSearchError": "An unexpected error occurred during search"
+    }
   }
 }

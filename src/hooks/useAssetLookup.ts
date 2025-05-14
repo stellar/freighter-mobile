@@ -1,9 +1,10 @@
 /* eslint-disable no-underscore-dangle */
-import { NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import {
   PricedBalance,
   SearchAssetResponse,
   FormattedSearchAssetRecord,
+  HookStatus,
 } from "config/types";
 import { formatAssetIdentifier, getAssetType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
@@ -11,13 +12,6 @@ import useDebounce from "hooks/useDebounce";
 import { useState } from "react";
 import { handleContractLookup } from "services/backend";
 import { searchAsset } from "services/stellarExpert";
-
-export enum AssetLookupStatus {
-  IDLE = "idle",
-  LOADING = "loading",
-  SUCCESS = "success",
-  ERROR = "error",
-}
 
 interface UseAssetLookupProps {
   network: NETWORKS;
@@ -36,9 +30,7 @@ export const useAssetLookup = ({
   const [searchResults, setSearchResults] = useState<
     FormattedSearchAssetRecord[]
   >([]);
-  const [status, setStatus] = useState<AssetLookupStatus>(
-    AssetLookupStatus.IDLE,
-  );
+  const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
 
   const checkHasTrustline = (
     currentBalances: (PricedBalance & {
@@ -91,7 +83,7 @@ export const useAssetLookup = ({
           domain: record.domain ?? "",
           hasTrustline: checkHasTrustline(currentBalances, assetCode, issuer),
           issuer,
-          isNative: record.asset === "XLM",
+          isNative: record.asset === NATIVE_TOKEN_CODE,
           assetType: getAssetType(`${assetCode}:${issuer}`),
         };
       })
@@ -106,12 +98,12 @@ export const useAssetLookup = ({
   const debouncedSearch = useDebounce(() => {
     const performSearch = async () => {
       if (!searchTerm) {
-        setStatus(AssetLookupStatus.IDLE);
+        setStatus(HookStatus.IDLE);
         setSearchResults([]);
         return;
       }
 
-      setStatus(AssetLookupStatus.LOADING);
+      setStatus(HookStatus.LOADING);
 
       let resJson;
 
@@ -121,7 +113,7 @@ export const useAssetLookup = ({
           network,
           publicKey,
         ).catch(() => {
-          setStatus(AssetLookupStatus.ERROR);
+          setStatus(HookStatus.ERROR);
           return null;
         });
 
@@ -133,14 +125,14 @@ export const useAssetLookup = ({
       }
 
       if (!resJson) {
-        setStatus(AssetLookupStatus.ERROR);
+        setStatus(HookStatus.ERROR);
         return;
       }
 
       const formattedRecords = formatSearchAssetRecords(resJson, balanceItems);
 
       setSearchResults(formattedRecords);
-      setStatus(AssetLookupStatus.SUCCESS);
+      setStatus(HookStatus.SUCCESS);
     };
 
     performSearch();
@@ -156,7 +148,7 @@ export const useAssetLookup = ({
   };
 
   const resetSearch = () => {
-    setStatus(AssetLookupStatus.IDLE);
+    setStatus(HookStatus.IDLE);
     setSearchResults([]);
     setSearchTerm("");
   };

@@ -3,6 +3,7 @@ import { BigNumber } from "bignumber.js";
 import { NETWORK_URLS } from "config/constants";
 import {
   AssetToken,
+  AssetTypeWithCustomToken,
   BalanceMap,
   ClassicBalance,
   NativeBalance,
@@ -35,7 +36,7 @@ describe("assetIcons store", () => {
       issuer: {
         key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       },
-      type: "credit_alphanum4" as AssetType,
+      type: AssetTypeWithCustomToken.CREDIT_ALPHANUM12,
     };
 
     it("should return cached icon if available", async () => {

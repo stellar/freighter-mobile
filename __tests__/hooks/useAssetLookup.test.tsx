@@ -2,8 +2,12 @@
 import { renderHook, act } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import { PricedBalance } from "config/types";
-import { AssetLookupStatus, useAssetLookup } from "hooks/useAssetLookup";
+import {
+  AssetTypeWithCustomToken,
+  HookStatus,
+  PricedBalance,
+} from "config/types";
+import { useAssetLookup } from "hooks/useAssetLookup";
 
 // Mock helpers
 jest.mock("helpers/balances", () => ({
@@ -129,7 +133,7 @@ describe("useAssetLookup", () => {
       sellingLiabilities: "0",
       token: {
         code: "USDC",
-        type: "credit_alphanum4" as const,
+        type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
         issuer: {
           key: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
         },
@@ -154,7 +158,7 @@ describe("useAssetLookup", () => {
 
     expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
-    expect(result.current.status).toBe(AssetLookupStatus.IDLE);
+    expect(result.current.status).toBe(HookStatus.IDLE);
   });
 
   it("should reset search state when resetSearch is called", async () => {
@@ -180,7 +184,7 @@ describe("useAssetLookup", () => {
 
     expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
-    expect(result.current.status).toBe(AssetLookupStatus.IDLE);
+    expect(result.current.status).toBe(HookStatus.IDLE);
   });
 
   it("should search for assets and update results", async () => {
@@ -286,6 +290,6 @@ describe("useAssetLookup", () => {
 
     expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
-    expect(result.current.status).toBe(AssetLookupStatus.IDLE);
+    expect(result.current.status).toBe(HookStatus.IDLE);
   });
 });

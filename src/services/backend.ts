@@ -1,5 +1,11 @@
+/* eslint-disable arrow-body-style */
+import { Horizon } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { FREIGHTER_BACKEND_URL, NETWORKS } from "config/constants";
+import {
+  FREIGHTER_BACKEND_URL,
+  NetworkDetails,
+  NETWORKS,
+} from "config/constants";
 import { logger } from "config/logger";
 import {
   AssetTypeWithCustomToken,
@@ -210,7 +216,7 @@ export const getTokenDetails = async ({
 
     if (!response.data) {
       logger.error(
-        "indexerApi.getTokenDetails",
+        "backendApi.getTokenDetails",
         "Invalid response from indexer",
         response.data,
       );
@@ -225,7 +231,7 @@ export const getTokenDetails = async ({
     }
 
     logger.error(
-      "indexerApi.getTokenDetails",
+      "backendApi.getTokenDetails",
       "Error fetching token details",
       error,
     );
@@ -251,7 +257,7 @@ export const isSacContractExecutable = async (
 
     if (!response.data) {
       logger.error(
-        "indexerApi.isSacContractExecutable",
+        "backendApi.isSacContractExecutable",
         "Invalid response from indexer",
         response.data,
       );
@@ -261,13 +267,58 @@ export const isSacContractExecutable = async (
     return response.data.isSacContract;
   } catch (error) {
     logger.error(
-      "indexerApi.isSacContractExecutable",
+      "backendApi.isSacContractExecutable",
       "Error fetching sac contract executable",
       error,
     );
     return false;
   }
 };
+
+export const getIndexerAccountHistory = async ({
+  publicKey,
+  networkDetails,
+}: {
+  publicKey: string;
+  networkDetails: NetworkDetails;
+}): Promise<Horizon.ServerApi.OperationRecord[]> => {
+  try {
+    const response = await freighterBackend.get<
+      Horizon.ServerApi.OperationRecord[]
+    >(`/account-history/${publicKey}`, {
+      params: {
+        network: networkDetails.network,
+        is_failed_included: true,
+      },
+    });
+
+    if (!response.data) {
+      throw new Error("Invalid response from backend");
+    }
+
+    return response.data;
+  } catch (error) {
+    logger.error(
+      "backendApi.getAccountHistory",
+      "Error fetching account history",
+      error,
+    );
+    return [];
+  }
+};
+
+export const getAccountHistory = async ({
+  publicKey,
+  networkDetails,
+}: {
+  publicKey: string;
+  networkDetails: NetworkDetails;
+}): Promise<Horizon.ServerApi.OperationRecord[]> =>
+  // TODO: Add verification for custom network.
+  getIndexerAccountHistory({
+    publicKey,
+    networkDetails,
+  });
 
 export const handleContractLookup = async (
   contractId: string,

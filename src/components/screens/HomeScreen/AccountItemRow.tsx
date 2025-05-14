@@ -4,7 +4,7 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { Account } from "config/types";
-import { truncatePublicKey } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -28,9 +28,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
-  const truncatedPublicKey = truncatePublicKey({
-    publicKey: account.publicKey,
-  });
+  const truncatedPublicKey = truncateAddress(account.publicKey);
 
   const icons = Platform.select({
     ios: {

@@ -27,6 +27,14 @@ export enum NetworkCongestion {
   HIGH = "High",
 }
 
+export enum HookStatus {
+  IDLE = "idle",
+  LOADING = "loading",
+  SUCCESS = "success",
+  ERROR = "error",
+  REFRESHING = "refreshing",
+}
+
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;

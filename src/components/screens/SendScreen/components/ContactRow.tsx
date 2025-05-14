@@ -1,7 +1,7 @@
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { truncateAddress } from "helpers/formatAddress";
+import { truncateAddress } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";

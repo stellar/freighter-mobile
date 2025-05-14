@@ -16,10 +16,10 @@ import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
-import { FormattedSearchAssetRecord } from "config/types";
+import { FormattedSearchAssetRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { AssetLookupStatus, useAssetLookup } from "hooks/useAssetLookup";
+import { useAssetLookup } from "hooks/useAssetLookup";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -145,8 +145,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
           }
         />
         <View className="h-4" />
-        {status === AssetLookupStatus.LOADING && <Spinner />}
-        {status === AssetLookupStatus.SUCCESS && (
+        {status === HookStatus.LOADING && <Spinner />}
+        {status === HookStatus.SUCCESS && (
           <ScrollView
             className="flex-1"
             showsVerticalScrollIndicator={false}
@@ -172,7 +172,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
             )}
           </ScrollView>
         )}
-        {status === AssetLookupStatus.ERROR && <ErrorState />}
+        {status === HookStatus.ERROR && <ErrorState />}
         <View className="h-4" />
         <Button
           secondary

@@ -26,6 +26,8 @@ describe("balances helpers", () => {
     total: new BigNumber("100.5"),
     available: new BigNumber("100.5"),
     minimumBalance: new BigNumber("1"),
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
   };
 
   const assetBalance: ClassicBalance = {
@@ -39,6 +41,8 @@ describe("balances helpers", () => {
     total: new BigNumber("200"),
     available: new BigNumber("200"),
     limit: new BigNumber("1000"),
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
   };
 
   const liquidityPoolBalance: LiquidityPoolBalance = {
