@@ -52,7 +52,16 @@
   },
   "changeNetworkScreen": {
     "title": "Switch Network",
-    "currentNetwork": "Current network"
+    "currentNetwork": "Current network",
+    "networkSettings": "Network Settings"
+  },
+  "networkSettingsScreen": {
+    "title": "Network Settings",
+    "networkName": "Network Name",
+    "horizonUrl": "Horizon RPC URL",
+    "passphrase": "Passphrase",
+    "friendbotUrl": "Friendbot URL",
+    "friendbotPlaceholder": "Enter Friendbot URL"
   },
   "welcomeScreen": {
     "createNewWallet": "Create a new wallet",

@@ -15,11 +15,16 @@ interface ListItemProps {
 interface ListProps {
   items: ListItemProps[];
   variant?: "filled" | "transparent";
+  className?: string;
 }
 
-export const List: React.FC<ListProps> = ({ items, variant = "filled" }) => (
+export const List: React.FC<ListProps> = ({
+  items,
+  variant = "filled",
+  className,
+}) => (
   <View
-    className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""}`}
+    className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""} ${className}`}
   >
     {items.map((item, index) => (
       <React.Fragment key={item.title}>

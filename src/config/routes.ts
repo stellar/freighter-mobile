@@ -1,3 +1,5 @@
+import { NETWORKS } from "config/constants";
+
 export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
@@ -36,6 +38,7 @@ export const MANAGE_ASSETS_ROUTES = {
 export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
   CHANGE_NETWORK_SCREEN: "ChangeNetworkScreen",
+  NETWORK_SETTINGS_SCREEN: "NetworkSettingsScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -100,6 +103,9 @@ export type ManageAssetsStackParamList = {
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN]: undefined;
+  [SETTINGS_ROUTES.NETWORK_SETTINGS_SCREEN]: {
+    selectedNetwork: NETWORKS;
+  };
 };
 
 export type ManageWalletsStackParamList = {

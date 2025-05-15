@@ -55,6 +55,14 @@
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual"
   },
+  "networkSettingsScreen": {
+    "title": "Configurações de Rede",
+    "networkName": "Nome da Rede",
+    "horizonUrl": "URL RPC do Horizon",
+    "passphrase": "Frase Secreta",
+    "friendbotUrl": "URL do Friendbot",
+    "friendbotPlaceholder": "Insira a URL do Friendbot"
+  },
   "welcomeScreen": {
     "createNewWallet": "Criar uma nova carteira",
     "iAlreadyHaveWallet": "Já tenho uma carteira",
@@ -197,7 +205,11 @@
   "balancesList": {
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
-    "empty": "Nenhum saldo encontrado"
+    "empty": "Nenhum saldo encontrado",
+    "unfundedAccount": {
+      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
+      "learnMore": "Saiba mais"
+    }
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
@@ -374,8 +386,12 @@
     "firstTimeSend": "Primeiro envio",
     "status": "Status",
     "statusSuccess": "Sucesso",
+    "statusFailed": "Falhou",
+    "statusPending": "Pendente",
     "rate": "Taxa",
     "fee": "Comissão",
+    "transactionHash": "Hash da Transação",
+    "couldNotBeSentTo": "não pôde ser enviado para",
     "viewOnExpert": "Ver no stellar.expert"
   },
   "dappRequestBottomSheetContent": {
