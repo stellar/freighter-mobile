@@ -58,18 +58,18 @@ describe("NetworkSettingsScreen", () => {
 
     expect(screen.getByText(NETWORK_NAMES[NETWORKS.TESTNET])).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(NETWORK_NAMES[NETWORKS.TESTNET]),
+      screen.getByDisplayValue(NETWORK_NAMES[NETWORKS.TESTNET]),
     ).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(NETWORK_URLS[NETWORKS.TESTNET]),
+      screen.getByDisplayValue(NETWORK_URLS[NETWORKS.TESTNET]),
     ).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(
+      screen.getByDisplayValue(
         mapNetworkToNetworkDetails(NETWORKS.TESTNET).networkPassphrase,
       ),
     ).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(FRIENDBOT_URLS[NETWORKS.TESTNET]),
+      screen.getByDisplayValue(FRIENDBOT_URLS[NETWORKS.TESTNET]),
     ).toBeTruthy();
   });
 
@@ -85,13 +85,13 @@ describe("NetworkSettingsScreen", () => {
 
     expect(screen.getByText(NETWORK_NAMES[NETWORKS.PUBLIC])).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(NETWORK_NAMES[NETWORKS.PUBLIC]),
+      screen.getByDisplayValue(NETWORK_NAMES[NETWORKS.PUBLIC]),
     ).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(NETWORK_URLS[NETWORKS.PUBLIC]),
+      screen.getByDisplayValue(NETWORK_URLS[NETWORKS.PUBLIC]),
     ).toBeTruthy();
     expect(
-      screen.getByPlaceholderText(
+      screen.getByDisplayValue(
         mapNetworkToNetworkDetails(NETWORKS.PUBLIC).networkPassphrase,
       ),
     ).toBeTruthy();

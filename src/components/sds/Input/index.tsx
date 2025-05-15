@@ -94,14 +94,18 @@ const InputContainer = styled.View<
 `;
 
 const StyledTextInput = styled.TextInput<
-  Pick<StyledProps, "$fieldSize" | "$hasLeftElement" | "$hasRightElement">
+  Pick<
+    StyledProps,
+    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
+  >
 >`
   flex: 1;
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     getInputHeight($fieldSize)};
   font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     fs(INPUT_SIZES[$fieldSize].fontSize)};
-  color: ${THEME.colors.text.primary};
+  color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
+    $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
   font-family: ${Platform.select({
     ios: "Inter-Variable",
     android: "Inter-Regular",
@@ -336,6 +340,7 @@ export const Input: React.FC<InputProps> = ({
           $hasRightElement={
             !!rightElement || copyButton?.position === "right" || !!endButton
           }
+          $isDisabled={!editable}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -344,6 +349,7 @@ export const Input: React.FC<InputProps> = ({
           placeholderTextColor={THEME.colors.text.secondary}
           secureTextEntry={isPassword}
           editable={editable}
+          selection={!editable && value ? { start: 0, end: 0 } : undefined}
           {...props}
         />
 

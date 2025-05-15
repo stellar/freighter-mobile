@@ -49,30 +49,29 @@ const NetworkSettingsScreen: React.FC<NetworkSettingsScreenProps> = ({
         {/* TODO: Make fields editable when we add custom network support */}
         <Input
           fieldSize="lg"
-          placeholder={NETWORK_NAMES[selectedNetwork]}
+          value={NETWORK_NAMES[selectedNetwork]}
           label={t("networkSettingsScreen.networkName")}
           editable={false}
         />
         <Input
           fieldSize="lg"
-          placeholder={NETWORK_URLS[selectedNetwork]}
+          value={NETWORK_URLS[selectedNetwork]}
           label={t("networkSettingsScreen.horizonUrl")}
           editable={false}
         />
         <Input
           fieldSize="lg"
-          placeholder={
-            mapNetworkToNetworkDetails(selectedNetwork).networkPassphrase
-          }
+          value={mapNetworkToNetworkDetails(selectedNetwork).networkPassphrase}
           label={t("networkSettingsScreen.passphrase")}
           editable={false}
         />
         <Input
           fieldSize="lg"
-          placeholder={
+          placeholder={t("networkSettingsScreen.friendbotPlaceholder")}
+          value={
             isTestnetOrFuturenet
               ? FRIENDBOT_URLS[selectedNetwork as keyof typeof FRIENDBOT_URLS]
-              : t("networkSettingsScreen.friendbotPlaceholder")
+              : ""
           }
           label={t("networkSettingsScreen.friendbotUrl")}
           editable={false}
