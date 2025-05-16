@@ -26,7 +26,7 @@ export const FIAT_DECIMALS = 2;
 
 // settings screen URLs
 export const FREIGHTER_FAQ_URL = "https://www.freighter.app/faq";
-export const FREIGHTER_DISCORD_URL = "https://discord.gg/AkakAShY"; // TODO: switch to the permalink
+export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 

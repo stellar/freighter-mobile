@@ -17,9 +17,7 @@ type SettingsScreenProps = NativeStackScreenProps<
   typeof SETTINGS_ROUTES.SETTINGS_SCREEN
 >;
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({
-  navigation,
-}) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const appVersion = getAppVersion();
@@ -45,6 +43,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       title: t("settings.network"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
       testID: "change-network-button",
     },
     {
@@ -54,7 +55,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       title: t("settings.help"),
       titleColor: themeColors.text.primary,
       onPress: () => Linking.openURL(FREIGHTER_FAQ_URL),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
       testID: "help-button",
+    },
+    {
+      icon: (
+        <Icon.MessageAlertCircle
+          size={24}
+          color={themeColors.foreground.primary}
+        />
+      ),
+      title: t("settings.feedback"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "share-feedback-button",
     },
     {
       icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,
@@ -75,10 +94,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex flex-col gap-6">
+      <View className="flex flex-col gap-6 mt-4">
         <List items={midListItems} />
         <List items={bottomListItems} />
       </View>
     </BaseLayout>
   );
 };
+
+export default SettingsScreen;

@@ -3,7 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
-import { SettingsScreen } from "components/screens/SettingsScreen";
+import SettingsScreen from "components/screens/SettingsScreen";
+import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -38,6 +39,13 @@ export const SettingsStackNavigator = () => {
         component={NetworkSettingsScreen}
         options={{
           headerTitle: t("networkSettingsScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN}
+        component={ShareFeedbackScreen}
+        options={{
+          headerTitle: t("shareFeedbackScreen.title"),
         }}
       />
     </SettingsStack.Navigator>

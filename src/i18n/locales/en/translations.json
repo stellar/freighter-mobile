@@ -53,6 +53,11 @@
     "feedback": "Share Feedback",
     "about": "About"
   },
+  "shareFeedbackScreen": {
+    "title": "Share Feedback",
+    "discord": "Join community Discord",
+    "github": "Report issue on Github"
+  },
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",
