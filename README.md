@@ -12,7 +12,7 @@ Mobile.
     - Yarn is the recommended package manager. Install it via npm (which comes
       with Node.js):
       ```bash
-      npm install --global yarn
+        npm install --global yarn
       ```
 
 2.  **Watchman (macOS only):**
@@ -53,9 +53,15 @@ tools.
     cd freighter-mobile
     ```
 
-2.  **Install Dependencies:** `bash     yarn install     ` **Important** See
-    [package.json](./package.json) for other useful scripts like more specific
-    clean/install commands.
+2.  **Install Dependencies:**
+    ```bash
+    yarn install
+    ```
+
+**Important**
+
+See [package.json](./package.json) for other useful scripts like more specific
+clean/install commands.
 
 ### Running the App
 
