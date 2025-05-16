@@ -40,6 +40,7 @@ export const SETTINGS_ROUTES = {
   CHANGE_NETWORK_SCREEN: "ChangeNetworkScreen",
   NETWORK_SETTINGS_SCREEN: "NetworkSettingsScreen",
   SHARE_FEEDBACK_SCREEN: "ShareFeedbackScreen",
+  ABOUT_SCREEN: "AboutScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -108,6 +109,7 @@ export type SettingsStackParamList = {
     selectedNetwork: NETWORKS;
   };
   [SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN]: undefined;
+  [SETTINGS_ROUTES.ABOUT_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {

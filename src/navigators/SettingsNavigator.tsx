@@ -4,6 +4,7 @@ import CustomNavigationHeader from "components/CustomNavigationHeader";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";
+import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -46,6 +47,13 @@ export const SettingsStackNavigator = () => {
         component={ShareFeedbackScreen}
         options={{
           headerTitle: t("shareFeedbackScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.ABOUT_SCREEN}
+        component={AboutScreen}
+        options={{
+          headerTitle: t("aboutScreen.title"),
         }}
       />
     </SettingsStack.Navigator>

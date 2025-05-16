@@ -54,6 +54,23 @@
     "feedback": "Compartilhar Feedback",
     "about": "Sobre"
   },
+  "shareFeedbackScreen": {
+    "title": "Compartilhar Feedback",
+    "discord": "Entre na comunidade do Discord",
+    "github": "Reportar problema no Github"
+  },
+  "aboutScreen": {
+    "title": "Sobre",
+    "freighterDescription": "Freighter é uma carteira sem custódia para a blockchain Stellar",
+    "listTitle": "Links",
+    "stellarFoundation": "© {{year}} Stellar Development Foundation",
+    "links": {
+      "freighter": "freighter.app",
+      "stellar": "stellar.org",
+      "privacyPolicy": "Política de Privacidade",
+      "termsOfService": "Termos de Serviço"
+    }
+  },
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
@@ -122,6 +139,7 @@
     "forgotPasswordButtonText": "Esqueci minha senha"
   },
   "onboarding": {
+    "continue": "Continuar",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
     "skip": "Pular",

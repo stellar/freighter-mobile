@@ -16,12 +16,16 @@ interface ListProps {
   items: ListItemProps[];
   variant?: "filled" | "transparent";
   className?: string;
+  hideDivider?: boolean;
+  compact?: boolean;
 }
 
 export const List: React.FC<ListProps> = ({
   items,
   variant = "filled",
   className,
+  hideDivider = false,
+  compact = false,
 }) => (
   <View
     className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""} ${className}`}
@@ -32,7 +36,7 @@ export const List: React.FC<ListProps> = ({
           disabled={!item.onPress}
           onPress={item.onPress}
           testID={item.testID}
-          className="flex-row items-center p-4 gap-3"
+          className={`flex-row items-center gap-3 ${compact ? "py-2" : "p-4"}`}
         >
           {item.icon}
           <View className="flex-1">
@@ -46,7 +50,7 @@ export const List: React.FC<ListProps> = ({
           </View>
           {item.trailingContent}
         </TouchableOpacity>
-        {index < items.length - 1 && (
+        {!hideDivider && index < items.length - 1 && (
           <View
             testID={`divider-${index}`}
             className="h-[1px] mx-4 bg-border-primary"

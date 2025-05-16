@@ -3,7 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
-import { FREIGHTER_FAQ_URL } from "config/constants";
+import { FREIGHTER_BASE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
@@ -54,7 +54,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       ),
       title: t("settings.help"),
       titleColor: themeColors.text.primary,
-      onPress: () => Linking.openURL(FREIGHTER_FAQ_URL),
+      onPress: () => Linking.openURL(`${FREIGHTER_BASE_URL}/faq`),
       trailingContent: (
         <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
       ),
@@ -74,6 +74,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
       ),
       testID: "share-feedback-button",
+    },
+    {
+      icon: (
+        <Icon.InfoCircle size={24} color={themeColors.foreground.primary} />
+      ),
+      title: t("settings.about"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.ABOUT_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "about-button",
     },
     {
       icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,

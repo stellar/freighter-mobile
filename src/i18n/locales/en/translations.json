@@ -58,6 +58,18 @@
     "discord": "Join community Discord",
     "github": "Report issue on Github"
   },
+  "aboutScreen": {
+    "title": "About",
+    "freighterDescription": "Freighter is a non-custodial wallet for the Stellar blockchain",
+    "listTitle": "Links",
+    "stellarFoundation": "© {{year}} Stellar Development Foundation",
+    "links": {
+      "freighter": "freighter.app",
+      "stellar": "stellar.org",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    }
+  },
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",
