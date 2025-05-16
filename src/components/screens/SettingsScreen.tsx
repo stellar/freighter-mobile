@@ -3,13 +3,14 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
+import { FREIGHTER_FAQ_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Linking, TouchableOpacity, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -38,13 +39,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     logout();
   };
 
-  const topListItems = [
+  const midListItems = [
     {
       icon: <Icon.Server05 size={24} color={themeColors.foreground.primary} />,
       title: t("settings.network"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
       testID: "change-network-button",
+    },
+    {
+      icon: (
+        <Icon.LifeBuoy01 size={24} color={themeColors.foreground.primary} />
+      ),
+      title: t("settings.help"),
+      titleColor: themeColors.text.primary,
+      onPress: () => Linking.openURL(FREIGHTER_FAQ_URL),
+      testID: "help-button",
     },
     {
       icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,
@@ -66,7 +76,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex flex-col gap-6">
-        <List items={topListItems} />
+        <List items={midListItems} />
         <List items={bottomListItems} />
       </View>
     </BaseLayout>

@@ -48,7 +48,10 @@
     "title": "Settings",
     "logout": "Log Out",
     "network": "Network",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "help": "Help",
+    "feedback": "Share Feedback",
+    "about": "About"
   },
   "changeNetworkScreen": {
     "title": "Switch Network",

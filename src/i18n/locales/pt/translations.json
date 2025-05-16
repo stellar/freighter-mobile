@@ -49,11 +49,15 @@
     "title": "Configurações",
     "logout": "Sair",
     "network": "Rede",
-    "version": "Versão {{version}}"
+    "version": "Versão {{version}}",
+    "help": "Ajuda",
+    "feedback": "Compartilhar Feedback",
+    "about": "Sobre"
   },
   "changeNetworkScreen": {
     "title": "Mudar Rede",
-    "currentNetwork": "Rede atual"
+    "currentNetwork": "Rede atual",
+    "networkSettings": "Configurações de Rede"
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",

@@ -24,6 +24,7 @@ export const VISUAL_DELAY_MS = 500;
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
+export const FREIGHTER_FAQ_URL = "https://www.freighter.app/faq";
 export const FREIGHTER_BACKEND_URL =
   "https://freighter-backend-prd.stellar.org/api/v1";
 export const CREATE_ACCOUNT_URL =
