@@ -3,22 +3,21 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
+import { FREIGHTER_BASE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Linking, TouchableOpacity, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
   typeof SETTINGS_ROUTES.SETTINGS_SCREEN
 >;
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({
-  navigation,
-}) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const appVersion = getAppVersion();
@@ -38,13 +37,55 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     logout();
   };
 
-  const topListItems = [
+  const midListItems = [
     {
       icon: <Icon.Server05 size={24} color={themeColors.foreground.primary} />,
       title: t("settings.network"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
       testID: "change-network-button",
+    },
+    {
+      icon: (
+        <Icon.LifeBuoy01 size={24} color={themeColors.foreground.primary} />
+      ),
+      title: t("settings.help"),
+      titleColor: themeColors.text.primary,
+      onPress: () => Linking.openURL(`${FREIGHTER_BASE_URL}/faq`),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "help-button",
+    },
+    {
+      icon: (
+        <Icon.MessageAlertCircle
+          size={24}
+          color={themeColors.foreground.primary}
+        />
+      ),
+      title: t("settings.feedback"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "share-feedback-button",
+    },
+    {
+      icon: (
+        <Icon.InfoCircle size={24} color={themeColors.foreground.primary} />
+      ),
+      title: t("settings.about"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.ABOUT_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "about-button",
     },
     {
       icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,
@@ -65,10 +106,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex flex-col gap-6">
-        <List items={topListItems} />
+      <View className="flex flex-col gap-6 mt-4">
+        <List items={midListItems} />
         <List items={bottomListItems} />
       </View>
     </BaseLayout>
   );
 };
+
+export default SettingsScreen;

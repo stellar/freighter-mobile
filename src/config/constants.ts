@@ -24,6 +24,13 @@ export const VISUAL_DELAY_MS = 500;
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
+// settings screen URLs
+export const FREIGHTER_BASE_URL = "https://www.freighter.app";
+export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
+export const FREIGHTER_GITHUB_ISSUE_URL =
+  "https://github.com/stellar/freighter-mobile/issues";
+export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
+
 export const FREIGHTER_BACKEND_URL =
   "https://freighter-backend-prd.stellar.org/api/v1";
 export const CREATE_ACCOUNT_URL =
