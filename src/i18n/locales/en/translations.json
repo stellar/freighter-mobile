@@ -70,6 +70,15 @@
       "termsOfService": "Terms of Service"
     }
   },
+  "accountQRCodeScreen": {
+    "title": "Receive XLM",
+    "copyButton": "Copy address",
+    "helperText": "Scan the QR code or \ncopy your address",
+    "bottomSheet": {
+      "title": "Receive XLM",
+      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
+    }
+  },
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",

@@ -9,6 +9,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
+  ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -47,6 +48,7 @@ export const MANAGE_WALLETS_ROUTES = {
   ADD_ANOTHER_WALLET_SCREEN: "AddAnotherWalletScreen",
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
 } as const;
+
 export const SEND_PAYMENT_ROUTES = {
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
@@ -64,6 +66,9 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
+    showNavigationAsCloseButton?: boolean;
+  };
 };
 
 export type AuthStackParamList = {

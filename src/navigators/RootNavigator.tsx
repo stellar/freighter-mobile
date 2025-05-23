@@ -1,6 +1,8 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import CustomNavigationHeader from "components/CustomNavigationHeader";
+import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import {
@@ -13,6 +15,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import useAppTranslation from "hooks/useAppTranslation";
 import { AuthNavigator } from "navigators/AuthNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
 import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
@@ -33,6 +36,7 @@ const RootStack = createNativeStackNavigator<
 export const RootNavigator = () => {
   const { authStatus, getAuthStatus } = useAuthenticationStore();
   const [initializing, setInitializing] = useState(true);
+  const { t } = useAppTranslation();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -89,6 +93,15 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
             component={SendPaymentStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
+            component={AccountQRCodeScreen}
+            options={{
+              headerTitle: t("accountQRCodeScreen.title"),
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+            }}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

@@ -155,8 +155,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         ios: "qrcode",
         android: "outline_circle",
       }),
-      onPress: () => {}, // TODO: Implement QR code functionality
-      disabled: true,
+      onPress: () =>
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
+          showNavigationAsCloseButton: true,
+        }),
     },
   ];
 
