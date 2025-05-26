@@ -74,7 +74,12 @@
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
-    "networkSettings": "Configurações de Rede"
+    "networkSettings": "Configurações de Rede",
+    "unfundedAccount": {
+      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
+      "learnMore": "Saiba mais",
+      "fundAccountButton": "Adicionar XLM"
+    }
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",
@@ -446,6 +451,25 @@
       "federationNotFound": "Endereço de federação não encontrado ou falha na resolução",
       "destinationAccountStatus": "Falha ao verificar o status da conta de destino",
       "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
+    }
+  },
+  "accountQRCodeScreen": {
+    "title": "Receber XLM",
+    "copyButton": "Copiar endereço",
+    "helperText": "Digitalize o código QR ou \n copie seu endereço",
+    "bottomSheet": {
+      "title": "Receber XLM",
+      "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
+    }
+  },
+  "buyXLMScreen": {
+    "title": "Comprar XLM",
+    "bottomSheet": {
+      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira. \n\nCompre facilmente com Coinbase ou MoonPay, ou envie XLM de outra carteira."
+    },
+    "actions": {
+      "title": "Transferir de outra conta",
+      "description": "Receber fundos de outra carteira"
     }
   }
 }

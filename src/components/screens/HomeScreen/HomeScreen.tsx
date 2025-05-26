@@ -16,6 +16,7 @@ import {
   MAIN_TAB_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
+  BUY_XLM_ROUTES,
 } from "config/routes";
 import { THEME } from "config/theme";
 import { Account } from "config/types";
@@ -262,7 +263,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </AccountTotal>
 
         <ButtonsRow>
-          <IconButton Icon={Icon.Plus} title={t("home.buy")} />
+          <IconButton
+            Icon={Icon.Plus}
+            title={t("home.buy")}
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+                screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+                params: { isUnfunded: hasZeroBalance },
+              })
+            }
+          />
           <IconButton
             Icon={Icon.ArrowUp}
             title={t("home.send")}

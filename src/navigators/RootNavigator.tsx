@@ -12,11 +12,13 @@ import {
   RootStackParamList,
   SettingsStackParamList,
   SendPaymentStackParamList,
+  BuyXLMStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { AuthNavigator } from "navigators/AuthNavigator";
+import { BuyXLMStackNavigator } from "navigators/BuyXLMNavigator";
 import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
 import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
 import { SendPaymentStackNavigator } from "navigators/SendPaymentNavigator";
@@ -30,7 +32,8 @@ const RootStack = createNativeStackNavigator<
     ManageAssetsStackParamList &
     SettingsStackParamList &
     ManageWalletsStackParamList &
-    SendPaymentStackParamList
+    SendPaymentStackParamList &
+    BuyXLMStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -102,6 +105,10 @@ export const RootNavigator = () => {
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
             }}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
+            component={BuyXLMStackNavigator}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

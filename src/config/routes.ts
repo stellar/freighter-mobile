@@ -1,3 +1,4 @@
+import { NavigatorScreenParams } from "@react-navigation/native";
 import { NETWORKS } from "config/constants";
 
 export const ROOT_NAVIGATOR_ROUTES = {
@@ -10,6 +11,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
+  BUY_XLM_STACK: "BuyXLMStack",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -58,6 +60,10 @@ export const SEND_PAYMENT_ROUTES = {
   TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
 } as const;
 
+export const BUY_XLM_ROUTES = {
+  BUY_XLM_SCREEN: "BuyXLMScreen",
+} as const;
+
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
@@ -69,6 +75,7 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
     showNavigationAsCloseButton?: boolean;
   };
+  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
 };
 
 export type AuthStackParamList = {
@@ -129,4 +136,13 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
+};
+
+export type BuyXLMStackParamList = {
+  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
+    isUnfunded: boolean;
+  };
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
+    showNavigationAsCloseButton?: boolean;
+  };
 };
