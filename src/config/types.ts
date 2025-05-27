@@ -38,6 +38,7 @@ export enum HookStatus {
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
   mnemonicPhrase: string;
+  password: string;
 }
 
 export type HashKey = {

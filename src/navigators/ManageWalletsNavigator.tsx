@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import AddAnotherWalletScreen from "components/screens/AddAnotherWallet";
+import ImportSecretKeyScreen from "components/screens/ImportSecretKeyScreen";
 import VerifyPasswordScreen from "components/screens/VerifyPasswordScreen";
 import {
   MANAGE_WALLETS_ROUTES,
@@ -34,6 +35,13 @@ export const ManageWalletsStackNavigator = () => {
         component={VerifyPasswordScreen}
         options={{
           headerTitle: t("verifyPasswordScreen.title"),
+        }}
+      />
+      <ManageWalletsStack.Screen
+        name={MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN}
+        component={ImportSecretKeyScreen}
+        options={{
+          headerTitle: t("importSecretKeyScreen.title"),
         }}
       />
     </ManageWalletsStack.Navigator>

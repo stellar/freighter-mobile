@@ -48,6 +48,11 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
     navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);
   };
 
+  const handleImportSecretKey = () => {
+    // TODO: Implement navigation to import secret key screen
+    navigation.navigate(MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN);
+  };
+
   return (
     <BaseLayout insets={{ top: false }}>
       <BottomSheet
@@ -56,19 +61,35 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
         modalRef={bottomSheetModalRef}
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
-      <TouchableOpacity
-        className="bg-background-tertiary rounded-2xl p-5"
-        onPress={handleCreateAccount}
-      >
-        <Icon.PlusCircle themeColor="lime" size={20} withBackground />
-        <View className="h-2" />
-        <Text md primary medium>
-          {t("addAnotherWalletScreen.actions.createNewWallet")}
-        </Text>
-        <Text sm secondary medium>
-          {t("addAnotherWalletScreen.actions.createNewWalletDescription")}
-        </Text>
-      </TouchableOpacity>
+      <View className="px-4 pt-5">
+        <TouchableOpacity
+          className="bg-background-tertiary rounded-2xl p-5"
+          onPress={handleCreateAccount}
+        >
+          <Icon.PlusCircle themeColor="lime" size={20} withBackground />
+          <View className="h-2" />
+          <Text md primary medium>
+            {t("addAnotherWalletScreen.actions.createNewWallet")}
+          </Text>
+          <Text sm secondary medium>
+            {t("addAnotherWalletScreen.actions.createNewWalletDescription")}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="bg-background-tertiary rounded-2xl p-5 mt-7"
+          onPress={handleImportSecretKey}
+        >
+          <Icon.Download01 themeColor="pink" size={20} withBackground />
+          <View className="h-2" />
+          <Text md primary medium>
+            {t("addAnotherWalletScreen.actions.importSecretKey")}
+          </Text>
+          <Text sm secondary medium>
+            {t("addAnotherWalletScreen.actions.importSecretKeyDescription")}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </BaseLayout>
   );
 };

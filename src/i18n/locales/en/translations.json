@@ -325,12 +325,12 @@
     "actions": {
       "createNewWallet": "Create a new wallet",
       "createNewWalletDescription": "Create a wallet on your seed phrase",
-      "importStellarSecretKey": "Import a Stellar secret key",
-      "importStellarSecretKeyDescription": "Add a wallet using a recovery phrase"
+      "importSecretKey": "Import a Stellar secret key",
+      "importSecretKeyDescription": "Add a wallet using a secret key"
     },
     "helperBottomSheet": {
-      "title": "Add another wallet",
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
+      "title": "Add Another Wallet",
+      "description": "You can add multiple wallets to your Freighter account. Each wallet will have its own address and can hold different assets."
     }
   },
   "verifyPasswordScreen": {
@@ -444,5 +444,14 @@
       "destinationAccountStatus": "Failed to check destination account status",
       "unexpectedSearchError": "An unexpected error occurred during search"
     }
+  },
+  "importSecretKeyScreen": {
+    "title": "Import wallet",
+    "secretKeyPlaceholder": "Your secret key",
+    "passwordPlaceholder": "Password",
+    "passwordNote": "Enter your password",
+    "responsibilityNote": "I'm aware Freighter can't recover the imported secret key and storing it is my responsibility.",
+    "importButton": "Import Wallet",
+    "invalidSecretKey": "Invalid secret key"
   }
 }
