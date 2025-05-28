@@ -329,7 +329,7 @@
       "importSecretKeyDescription": "Add a wallet using a secret key"
     },
     "helperBottomSheet": {
-      "title": "Add snother wallet",
+      "title": "Add another wallet",
       "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
     }
   },
