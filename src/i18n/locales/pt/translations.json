@@ -129,7 +129,9 @@
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
     "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
-    "defaultActionButtonText": "Importar carteira"
+    "defaultActionButtonText": "Importar carteira",
+    "importSecretKey": "Importar uma chave secreta Stellar",
+    "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
   },
   "lockScreen": {
     "title": "Bem-vindo de volta",
