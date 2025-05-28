@@ -74,7 +74,12 @@
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
-    "networkSettings": "Configurações de Rede"
+    "networkSettings": "Configurações de Rede",
+    "unfundedAccount": {
+      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
+      "learnMore": "Saiba mais",
+      "fundAccountButton": "Adicionar XLM"
+    }
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",

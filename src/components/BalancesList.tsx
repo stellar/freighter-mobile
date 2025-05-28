@@ -1,9 +1,16 @@
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalanceRow } from "components/BalanceRow";
 import { FriendbotButton } from "components/FriendbotButton";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { CREATE_ACCOUNT_URL, NETWORKS } from "config/constants";
+import {
+  BUY_XLM_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -66,6 +73,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   onTokenPress,
 }) => {
   const { t } = useAppTranslation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {
     balanceItems,
     isLoading,
@@ -144,6 +152,22 @@ export const BalancesList: React.FC<BalancesListProps> = ({
             }
           />
         </NotificationWrapper>
+
+        {!isTestNetwork && (
+          <Button
+            isFullWidth
+            tertiary
+            lg
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+                screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+                params: { isUnfunded: true },
+              })
+            }
+          >
+            {t("balancesList.unfundedAccount.fundAccountButton")}
+          </Button>
+        )}
 
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />

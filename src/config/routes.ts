@@ -1,3 +1,4 @@
+import { NavigatorScreenParams } from "@react-navigation/native";
 import { NETWORKS } from "config/constants";
 
 export const ROOT_NAVIGATOR_ROUTES = {
@@ -9,6 +10,8 @@ export const ROOT_NAVIGATOR_ROUTES = {
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
+  ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
+  BUY_XLM_STACK: "BuyXLMStack",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -48,6 +51,7 @@ export const MANAGE_WALLETS_ROUTES = {
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
 } as const;
+
 export const SEND_PAYMENT_ROUTES = {
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
@@ -55,6 +59,10 @@ export const SEND_PAYMENT_ROUTES = {
   TRANSACTION_MEMO_SCREEN: "TransactionMemoScreen",
   TRANSACTION_TIMEOUT_SCREEN: "TransactionTimeoutScreen",
   TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
+} as const;
+
+export const BUY_XLM_ROUTES = {
+  BUY_XLM_SCREEN: "BuyXLMScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -65,6 +73,10 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
+    showNavigationAsCloseButton?: boolean;
+  };
+  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
 };
 
 export type AuthStackParamList = {
@@ -126,4 +138,13 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
+};
+
+export type BuyXLMStackParamList = {
+  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
+    isUnfunded: boolean;
+  };
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
+    showNavigationAsCloseButton?: boolean;
+  };
 };

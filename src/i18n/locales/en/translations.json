@@ -70,6 +70,25 @@
       "termsOfService": "Terms of Service"
     }
   },
+  "accountQRCodeScreen": {
+    "title": "Receive XLM",
+    "copyButton": "Copy address",
+    "helperText": "Scan the QR code or \ncopy your address",
+    "bottomSheet": {
+      "title": "Receive XLM",
+      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
+    }
+  },
+  "buyXLMScreen": {
+    "title": "Buy XLM",
+    "bottomSheet": {
+      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet. \n\nBuy easily with Coinbase or MoonPay, or send XLM from another wallet."
+    },
+    "actions": {
+      "title": "Transfer from another account",
+      "description": "Receive funds from another wallet"
+    }
+  },
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",
@@ -229,7 +248,8 @@
     "empty": "No balances found",
     "unfundedAccount": {
       "message": "To start using this account, fund it with at least 1 XLM.",
-      "learnMore": "Learn more"
+      "learnMore": "Learn more",
+      "fundAccountButton": "Add XLM"
     }
   },
   "friendbotButton": {

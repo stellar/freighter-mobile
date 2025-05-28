@@ -24,6 +24,7 @@ module.exports = {
       "react-native-css-interop",
       "react-native-reanimated",
       "@gorhom/bottom-sheet",
+      "react-native-qrcode-svg",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],

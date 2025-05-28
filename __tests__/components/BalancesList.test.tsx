@@ -28,6 +28,7 @@ jest.mock("@react-navigation/native", () => ({
     callback();
     return () => {};
   }),
+  useNavigation: jest.fn(),
 }));
 
 // Mock balances helpers
