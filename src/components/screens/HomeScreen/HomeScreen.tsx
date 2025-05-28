@@ -10,7 +10,7 @@ import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -23,6 +23,7 @@ import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { px } from "helpers/dimensions";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -201,6 +202,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setRenameAccountModalVisible(true);
   };
 
+  const handleTokenPress = (tokenId: string) => {
+    let tokenSymbol: string;
+
+    if (tokenId === "native") {
+      tokenSymbol = NATIVE_TOKEN_CODE;
+    } else if (isContractId(tokenId)) {
+      // For Soroban contracts, pass the contract ID as symbol initially
+      // The TokenDetailsScreen will handle fetching the actual symbol
+      tokenSymbol = tokenId;
+    } else {
+      // Classic asset format: CODE:ISSUER
+      [tokenSymbol] = tokenId.split(":");
+    }
+
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+      tokenId,
+      tokenSymbol,
+    });
+  };
+
   return (
     <BaseLayout insets={{ bottom: false }}>
       <RenameAccountModal
@@ -292,7 +313,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       <BorderLine />
 
-      <BalancesList publicKey={account?.publicKey ?? ""} network={network} />
+      <BalancesList
+        publicKey={account?.publicKey ?? ""}
+        network={network}
+        onTokenPress={handleTokenPress}
+      />
     </BaseLayout>
   );
 };

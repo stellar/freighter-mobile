@@ -5,6 +5,7 @@ import CustomNavigationHeader from "components/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
+import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import {
   ManageAssetsStackParamList,
   ManageWalletsStackParamList,
@@ -109,6 +110,14 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
             component={BuyXLMStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
+            component={TokenDetailsScreen}
+            options={{
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+            }}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

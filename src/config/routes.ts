@@ -12,6 +12,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   BUY_XLM_STACK: "BuyXLMStack",
+  TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -77,6 +78,10 @@ export type RootStackParamList = {
     showNavigationAsCloseButton?: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
+    tokenId: string;
+    tokenSymbol: string;
+  };
 };
 
 export type AuthStackParamList = {
