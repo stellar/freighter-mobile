@@ -13,7 +13,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 
 type ImportSecretKeyScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
@@ -142,23 +142,20 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
           </View>
 
           <View className="mt-2 flex-row items-center">
-            <View
-              className={`h-5 w-5 items-center justify-center rounded-sm ${isAwareChecked ? "bg-primary" : "bg-transparent"}`}
-            >
-              {isAwareChecked ? (
-                <Icon.Check
-                  size={20}
-                  color={themeColors.white}
-                  onPress={() => setIsAwareChecked(false)}
-                />
-              ) : (
-                <Icon.Square
-                  size={20}
-                  color={themeColors.foreground.secondary}
-                  onPress={() => setIsAwareChecked(true)}
-                />
-              )}
-            </View>
+            <Pressable onPress={() => setIsAwareChecked(!isAwareChecked)}>
+              <View
+                className={`h-5 w-5 items-center justify-center rounded-sm ${isAwareChecked ? "bg-primary" : "bg-transparent"}`}
+              >
+                {isAwareChecked ? (
+                  <Icon.Check size={15} color={themeColors.white} />
+                ) : (
+                  <Icon.Square
+                    size={21}
+                    color={themeColors.foreground.secondary}
+                  />
+                )}
+              </View>
+            </Pressable>
             <View className="flex-1 ml-2 pt-5">
               <Text sm className="leading-5 text-white">
                 {t("importSecretKeyScreen.responsibilityNote")}
