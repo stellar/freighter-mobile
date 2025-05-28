@@ -447,5 +447,14 @@
       "destinationAccountStatus": "Falha ao verificar o status da conta de destino",
       "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
     }
+  },
+  "importSecretKeyScreen": {
+    "title": "Importar Chave Secreta",
+    "secretKeyPlaceholder": "Digite sua chave secreta",
+    "passwordPlaceholder": "Digite sua senha",
+    "passwordNote": "Digite sua senha para confirmar",
+    "responsibilityNote": "Eu entendo que sou responsável por manter minha chave secreta segura e que a Stellar Development Foundation não pode recuperá-la para mim.",
+    "importButton": "Importar",
+    "invalidSecretKey": "Chave secreta inválida"
   }
 }

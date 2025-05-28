@@ -9,9 +9,9 @@ import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
 } from "config/routes";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
 import { View, TouchableOpacity } from "react-native";
 
@@ -24,6 +24,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const [secretKey, setSecretKey] = useState("");
   const [password, setPassword] = useState("");
   const [isAwareChecked, setIsAwareChecked] = useState(false);
@@ -31,12 +32,6 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { importSecretKey, isLoading, clearError } = useAuthenticationStore();
-
-  React.useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: "",
-    });
-  }, [navigation]);
 
   // Clear errors when unmounting
   useEffect(
@@ -74,19 +69,11 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
       <View className="flex-1 pt-5">
         <View>
           <Icon.Download01 themeColor="pink" size={24} withBackground />
-          <Display
-            sm
-            primary
-            medium
-            style={{
-              letterSpacing: -0.04 * 32,
-              textAlignVertical: "center",
-              marginTop: 24,
-              marginBottom: 24,
-            }}
-          >
-            {t("importSecretKeyScreen.title")}
-          </Display>
+          <View className="mt-6 mb-6">
+            <Display sm primary medium>
+              {t("importSecretKeyScreen.title")}
+            </Display>
+          </View>
         </View>
 
         <View className="space-y-4">
@@ -97,6 +84,8 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               secureTextEntry={!showSecretKey}
               isPassword
               fieldSize="lg"
+              autoCapitalize="none"
+              autoCorrect={false}
               placeholder={t("importSecretKeyScreen.secretKeyPlaceholder")}
               rightElement={
                 <TouchableOpacity
@@ -106,19 +95,19 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
                   {showSecretKey ? (
                     <Icon.Eye
                       size={20}
-                      color={THEME.colors.foreground.primary}
+                      color={themeColors.foreground.primary}
                     />
                   ) : (
                     <Icon.EyeOff
                       size={20}
-                      color={THEME.colors.foreground.primary}
+                      color={themeColors.foreground.primary}
                     />
                   )}
                 </TouchableOpacity>
               }
             />
             {validationError && (
-              <Text sm color={THEME.colors.status.error} className="mt-1">
+              <Text sm color={themeColors.status.error} className="mt-1">
                 {t("importSecretKeyScreen.invalidSecretKey")}
               </Text>
             )}
@@ -131,6 +120,8 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               secureTextEntry={!showPassword}
               isPassword
               fieldSize="lg"
+              autoCapitalize="none"
+              autoCorrect={false}
               placeholder={t("importSecretKeyScreen.passwordPlaceholder")}
               rightElement={
                 <TouchableOpacity
@@ -140,12 +131,12 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
                   {showPassword ? (
                     <Icon.Eye
                       size={20}
-                      color={THEME.colors.foreground.primary}
+                      color={themeColors.foreground.primary}
                     />
                   ) : (
                     <Icon.EyeOff
                       size={20}
-                      color={THEME.colors.foreground.primary}
+                      color={themeColors.foreground.primary}
                     />
                   )}
                 </TouchableOpacity>
@@ -171,7 +162,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
                 }`}
               >
                 {isAwareChecked && (
-                  <Icon.Check size={14} color={THEME.colors.base.secondary} />
+                  <Icon.Check size={14} color={themeColors.base.secondary} />
                 )}
               </View>
             </TouchableOpacity>

@@ -49,7 +49,6 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
   };
 
   const handleImportSecretKey = () => {
-    // TODO: Implement navigation to import secret key screen
     navigation.navigate(MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN);
   };
 
@@ -61,7 +60,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
         modalRef={bottomSheetModalRef}
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
-      <View className="px-4 pt-5">
+      <View>
         <TouchableOpacity
           className="bg-background-tertiary rounded-2xl p-5"
           onPress={handleCreateAccount}

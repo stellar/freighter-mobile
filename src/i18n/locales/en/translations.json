@@ -329,8 +329,8 @@
       "importSecretKeyDescription": "Add a wallet using a secret key"
     },
     "helperBottomSheet": {
-      "title": "Add Another Wallet",
-      "description": "You can add multiple wallets to your Freighter account. Each wallet will have its own address and can hold different assets."
+      "title": "Add snother wallet",
+      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
     }
   },
   "verifyPasswordScreen": {

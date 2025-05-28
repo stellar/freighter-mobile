@@ -41,7 +41,7 @@ export const ManageWalletsStackNavigator = () => {
         name={MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN}
         component={ImportSecretKeyScreen}
         options={{
-          headerTitle: t("importSecretKeyScreen.title"),
+          headerTitle: "",
         }}
       />
     </ManageWalletsStack.Navigator>
