@@ -13,7 +13,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View } from "react-native";
 
 type ImportSecretKeyScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
@@ -88,22 +88,19 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               autoCorrect={false}
               placeholder={t("importSecretKeyScreen.secretKeyPlaceholder")}
               rightElement={
-                <TouchableOpacity
-                  onPress={() => setShowSecretKey(!showSecretKey)}
-                  activeOpacity={0.7}
-                >
-                  {showSecretKey ? (
-                    <Icon.Eye
-                      size={20}
-                      color={themeColors.foreground.primary}
-                    />
-                  ) : (
-                    <Icon.EyeOff
-                      size={20}
-                      color={themeColors.foreground.primary}
-                    />
-                  )}
-                </TouchableOpacity>
+                showSecretKey ? (
+                  <Icon.Eye
+                    size={20}
+                    color={themeColors.foreground.primary}
+                    onPress={() => setShowSecretKey(false)}
+                  />
+                ) : (
+                  <Icon.EyeOff
+                    size={20}
+                    color={themeColors.foreground.primary}
+                    onPress={() => setShowSecretKey(true)}
+                  />
+                )
               }
             />
             {validationError && (
@@ -124,48 +121,44 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               autoCorrect={false}
               placeholder={t("importSecretKeyScreen.passwordPlaceholder")}
               rightElement={
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
-                >
-                  {showPassword ? (
-                    <Icon.Eye
-                      size={20}
-                      color={themeColors.foreground.primary}
-                    />
-                  ) : (
-                    <Icon.EyeOff
-                      size={20}
-                      color={themeColors.foreground.primary}
-                    />
-                  )}
-                </TouchableOpacity>
+                showPassword ? (
+                  <Icon.Eye
+                    size={20}
+                    color={themeColors.foreground.primary}
+                    onPress={() => setShowPassword(false)}
+                  />
+                ) : (
+                  <Icon.EyeOff
+                    size={20}
+                    color={themeColors.foreground.primary}
+                    onPress={() => setShowPassword(true)}
+                  />
+                )
               }
             />
             <View className="mt-2">
-              <Text md secondary>
-                {t("importSecretKeyScreen.passwordNote")}
-              </Text>
+              <Text md>{t("importSecretKeyScreen.passwordNote")}</Text>
             </View>
           </View>
 
           <View className="mt-2 flex-row items-center">
-            <TouchableOpacity
-              onPress={() => setIsAwareChecked(!isAwareChecked)}
-              activeOpacity={0.7}
+            <View
+              className={`h-5 w-5 items-center justify-center rounded-sm ${isAwareChecked ? "bg-primary" : "bg-transparent"}`}
             >
-              <View
-                className={`h-5 w-5 items-center justify-center rounded-sm ${
-                  isAwareChecked
-                    ? "bg-primary border-primary"
-                    : "bg-transparent border border-gray-500"
-                }`}
-              >
-                {isAwareChecked && (
-                  <Icon.Check size={14} color={themeColors.base.secondary} />
-                )}
-              </View>
-            </TouchableOpacity>
+              {isAwareChecked ? (
+                <Icon.Check
+                  size={20}
+                  color={themeColors.white}
+                  onPress={() => setIsAwareChecked(false)}
+                />
+              ) : (
+                <Icon.Square
+                  size={20}
+                  color={themeColors.foreground.secondary}
+                  onPress={() => setIsAwareChecked(true)}
+                />
+              )}
+            </View>
             <View className="flex-1 ml-2 pt-5">
               <Text sm className="leading-5 text-white">
                 {t("importSecretKeyScreen.responsibilityNote")}
