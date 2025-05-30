@@ -44,6 +44,9 @@ export const SETTINGS_ROUTES = {
   NETWORK_SETTINGS_SCREEN: "NetworkSettingsScreen",
   SHARE_FEEDBACK_SCREEN: "ShareFeedbackScreen",
   ABOUT_SCREEN: "AboutScreen",
+  SECURITY_SCREEN: "SecurityScreen",
+  SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
+  YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -123,6 +126,11 @@ export type SettingsStackParamList = {
   };
   [SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN]: undefined;
   [SETTINGS_ROUTES.ABOUT_SCREEN]: undefined;
+  [SETTINGS_ROUTES.SECURITY_SCREEN]: undefined;
+  [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]: undefined;
+  [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
+    recoveryPhrase: string;
+  };
 };
 
 export type ManageWalletsStackParamList = {

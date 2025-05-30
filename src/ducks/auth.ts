@@ -193,6 +193,7 @@ interface DeriveKeypairParams {
  * @property {Function} setNavigationRef - Sets the navigation reference for navigation actions
  * @property {Function} navigateToLockScreen - Navigates to the lock screen
  * @property {Function} createAccount - Creates a new account
+ * @property {Function} getKeyFromKeyManager - Gets the key from the key manager
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
@@ -213,6 +214,10 @@ interface AuthActions {
   navigateToLockScreen: () => void;
 
   getTemporaryStore: () => Promise<TemporaryStore | null>;
+  getKeyFromKeyManager: (
+    password: string,
+    activeAccountId?: string | null,
+  ) => Promise<Key>;
 
   clearError: () => void;
 }
@@ -1691,5 +1696,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
       set({ network });
     },
+
+    getKeyFromKeyManager: async (
+      password: string,
+      activeAccountId?: string | null,
+    ) => getKeyFromKeyManager(password, activeAccountId),
   };
 });
