@@ -51,7 +51,8 @@
     "version": "Version {{version}}",
     "help": "Help",
     "feedback": "Share Feedback",
-    "about": "About"
+    "about": "About",
+    "security": "Security"
   },
   "shareFeedbackScreen": {
     "title": "Share Feedback",
@@ -473,5 +474,25 @@
     "responsibilityNote": "I'm aware Freighter can't recover the imported secret key and storing it is my responsibility.",
     "importButton": "Import Wallet",
     "invalidSecretKey": "Invalid secret key"
+  },
+  "securityScreen": {
+    "title": "Security",
+    "showRecoveryPhrase": "Show recovery phrase"
+  },
+  "showRecoveryPhraseScreen": {
+    "title": "Show Recovery Phrase",
+    "keepSafe": "Keep your recovery phrase in a safe and secure place.",
+    "accessWarning": "Anyone who has access to this phrase has access to your account and to the funds in it, so save it in a safe and secure place.",
+    "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds",
+    "dontShareWithAnyone": "Don't share this phrase with anyone",
+    "neverAskForYourPhrase": "Stellar Development Foundation will never ever ask for your phrase",
+    "password": "Password",
+    "passwordInputPlaceholder": "Enter your password",
+    "showPhrase": "Show recovery phrase"
+  },
+  "yourRecoveryPhrase": {
+    "title": "Your Recovery Phrase",
+    "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
+    "copyButton": "Copy to clipboard"
   }
 }

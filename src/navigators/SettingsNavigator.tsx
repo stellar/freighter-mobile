@@ -5,6 +5,9 @@ import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
+import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
+import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
+import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -54,6 +57,27 @@ export const SettingsStackNavigator = () => {
         component={AboutScreen}
         options={{
           headerTitle: t("aboutScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.SECURITY_SCREEN}
+        component={SecurityScreen}
+        options={{
+          headerTitle: t("securityScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN}
+        component={ShowRecoveryPhraseScreen}
+        options={{
+          headerTitle: t("showRecoveryPhraseScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN}
+        component={YourRecoveryPhraseScreen}
+        options={{
+          headerTitle: t("yourRecoveryPhrase.title"),
         }}
       />
     </SettingsStack.Navigator>

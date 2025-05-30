@@ -49,6 +49,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       testID: "change-network-button",
     },
     {
+      icon: <Icon.Shield01 size={24} color={themeColors.foreground.primary} />,
+      title: t("settings.security"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.SECURITY_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+      ),
+      testID: "security-button",
+    },
+    {
       icon: (
         <Icon.LifeBuoy01 size={24} color={themeColors.foreground.primary} />
       ),
