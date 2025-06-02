@@ -51,11 +51,13 @@ export const useClipboard = (): UseClipboardResult => {
         showToast({
           title: options.notificationMessage || t("common.copied"),
           variant: options.toastVariant || "success",
+          toastId: "copy-toast",
         });
       } catch (error) {
         showToast({
           title: t("clipboard.failed"),
           variant: "error",
+          toastId: "copy-error-toast",
         });
       }
     },

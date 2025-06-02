@@ -42,6 +42,7 @@ describe("useClipboard", () => {
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
+      toastId: "copy-toast",
     });
   });
 
@@ -60,6 +61,7 @@ describe("useClipboard", () => {
     expect(mockShowToast).toHaveBeenCalledWith({
       title: customMessage,
       variant: "success",
+      toastId: "copy-toast",
     });
   });
 
@@ -77,6 +79,7 @@ describe("useClipboard", () => {
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "primary",
+      toastId: "copy-toast",
     });
   });
 
@@ -112,6 +115,7 @@ describe("useClipboard", () => {
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Failed to copy to clipboard",
       variant: "error",
+      toastId: "copy-error-toast",
     });
   });
 });
