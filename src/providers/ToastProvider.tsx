@@ -22,6 +22,8 @@ export interface ToastOptions {
   message?: string;
   /** Duration in milliseconds before auto-dismissing (default: 3000) */
   duration?: number;
+  /** Optional ID for the toast. If a toast with the same ID already exists, it will be replaced */
+  toastId?: string;
 }
 
 interface ToastContextType {
@@ -54,6 +56,7 @@ const ToastWrapper = styled.View<ToastWrapperProps>`
 
 interface ToastPropsWithId extends ToastProps {
   id: string;
+  toastId?: string;
 }
 
 /**
@@ -67,6 +70,13 @@ interface ToastPropsWithId extends ToastProps {
  *   variant: "success",
  *   title: "Success!",
  *   message: "Your action was completed successfully.",
+ * });
+ *
+ * // Show a toast with a specific ID (will replace existing toast with same ID)
+ * showToast({
+ *   variant: "success",
+ *   title: "Copied!",
+ *   toastId: "copy-toast"
  * });
  */
 export const useToast = (): ToastContextType => {
@@ -97,9 +107,19 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     const newToast: ToastPropsWithId = {
       ...options,
       id: Date.now().toString(),
+      toastId: options.toastId,
     };
 
-    setToasts((currentToasts) => [...currentToasts, newToast]);
+    setToasts((currentToasts) => {
+      // If we have a toastId, remove any existing toast with the same ID
+      if (options.toastId) {
+        const filteredToasts = currentToasts.filter(
+          (toast) => toast.toastId !== options.toastId,
+        );
+        return [...filteredToasts, newToast];
+      }
+      return [...currentToasts, newToast];
+    });
   }, []);
 
   const handleDismiss = useCallback((toast: ToastPropsWithId) => {

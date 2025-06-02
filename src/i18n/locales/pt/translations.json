@@ -52,7 +52,8 @@
     "version": "Versão {{version}}",
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
-    "about": "Sobre"
+    "about": "Sobre",
+    "security": "Segurança"
   },
   "shareFeedbackScreen": {
     "title": "Compartilhar Feedback",
@@ -204,6 +205,13 @@
       "mintedTo": "Emitido para"
     }
   },
+  "tokenDetailsScreen": {
+    "sorobanToken": "Token Soroban",
+    "priceChange": "{{percentage}}%",
+    "balance": "Saldo",
+    "value": "Valor",
+    "listHeader": "Sua atividade de {{tokenName}}"
+  },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
     "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
@@ -237,7 +245,8 @@
     "empty": "Nenhum saldo encontrado",
     "unfundedAccount": {
       "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
-      "learnMore": "Saiba mais"
+      "learnMore": "Saiba mais",
+      "fundAccountButton": "Adicionar XLM"
     }
   },
   "friendbotButton": {
@@ -333,8 +342,8 @@
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
       "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
-      "importStellarSecretKey": "Importar uma chave secreta Stellar",
-      "importStellarSecretKeyDescription": "Adicionar uma carteira usando uma frase de recuperação"
+      "importSecretKey": "Importar uma chave secreta Stellar",
+      "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
     },
     "helperBottomSheet": {
       "title": "Adicionar outra carteira",
@@ -475,12 +484,39 @@
     }
   },
   "importSecretKeyScreen": {
-    "title": "Importar Chave Secreta",
-    "secretKeyPlaceholder": "Digite sua chave secreta",
-    "passwordPlaceholder": "Digite sua senha",
-    "passwordNote": "Digite sua senha para confirmar",
-    "responsibilityNote": "Eu entendo que sou responsável por manter minha chave secreta segura e que a Stellar Development Foundation não pode recuperá-la para mim.",
-    "importButton": "Importar",
+    "title": "Importar carteira",
+    "secretKeyPlaceholder": "Sua chave secreta",
+    "passwordPlaceholder": "Senha",
+    "passwordNote": "Digite sua senha",
+    "responsibilityNote": "Estou ciente de que o Freighter não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
+    "importButton": "Importar Carteira",
     "invalidSecretKey": "Chave secreta inválida"
+  },
+  "securityScreen": {
+    "title": "Segurança",
+    "showRecoveryPhrase": "Mostrar frase de recuperação"
+  },
+  "showRecoveryPhraseScreen": {
+    "title": "Mostrar Frase de Recuperação",
+    "keepSafe": "Mantenha sua frase de recuperação em um local seguro.",
+    "accessWarning": "Qualquer pessoa que tenha acesso a esta frase tem acesso à sua conta e aos fundos nela, então salve-a em um local seguro.",
+    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos",
+    "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
+    "neverAskForYourPhrase": "A Stellar Development Foundation nunca pedirá sua frase",
+    "password": "Senha",
+    "passwordInputPlaceholder": "Digite sua senha",
+    "showPhrase": "Mostrar frase de recuperação"
+  },
+  "yourRecoveryPhrase": {
+    "title": "Sua Frase de Recuperação",
+    "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
+    "copyButton": "Copiar para a área de transferência"
+  },
+  "tokenDetailsScreen": {
+    "sorobanToken": "Token Soroban",
+    "priceChange": "{{percentage}}%",
+    "balance": "Saldo",
+    "value": "Valor",
+    "listHeader": "Sua atividade de {{tokenName}}"
   }
 }
