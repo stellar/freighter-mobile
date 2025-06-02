@@ -148,11 +148,14 @@ const processSorobanMint = async ({
           symbol: tokenDetailsResponse.symbol,
         };
 
+        const isNative = token.symbol === "native";
+        const code = isNative ? NATIVE_TOKEN_CODE : token.symbol;
+
         const transactionTitle = isReceiving
           ? t("history.transactionHistory.mintedToSelf", {
-              tokenSymbol: token.symbol,
+              tokenSymbol: code,
             })
-          : `${t("history.transactionHistory.minted")} ${token.symbol}`;
+          : `${t("history.transactionHistory.minted")} ${code}`;
 
         const formattedTokenAmount = formatTokenAmount(
           new BigNumber(sorobanAttributes.amount),
@@ -161,11 +164,19 @@ const processSorobanMint = async ({
 
         const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
           formattedTokenAmount,
-          token.symbol,
+          code,
         )}`;
 
         historyItemData.amountText = formattedAmount;
-        historyItemData.IconComponent = (
+        historyItemData.IconComponent = isNative ? (
+          <AssetIcon
+            token={{
+              type: AssetTypeWithCustomToken.NATIVE,
+              code: NATIVE_TOKEN_CODE,
+            }}
+            size="lg"
+          />
+        ) : (
           <AssetIcon
             token={{
               type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
@@ -178,7 +189,9 @@ const processSorobanMint = async ({
           />
         );
 
-        historyItemData.rowText = token.name ?? token.symbol;
+        historyItemData.rowText = isNative
+          ? NATIVE_TOKEN_CODE
+          : (token.name ?? token.symbol);
 
         const transactionDetails: TransactionDetails = {
           operation,
@@ -192,7 +205,7 @@ const processSorobanMint = async ({
           contractDetails: {
             contractAddress: sorobanAttributes.contractId,
             contractName: token.name,
-            contractSymbol: token.symbol,
+            contractSymbol: code,
             contractDecimals: token.decimals,
             sorobanTokenInterface: SorobanTokenInterface.mint,
           },
@@ -220,6 +233,9 @@ const processSorobanMint = async ({
   } else {
     // User already has this token in their balances
     const { decimals, symbol } = assetBalance as CustomToken;
+    const isNative = symbol === "native";
+    const code = isNative ? NATIVE_TOKEN_CODE : symbol;
+
     const formattedTokenAmount = formatTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       Number(decimals),
@@ -227,7 +243,7 @@ const processSorobanMint = async ({
 
     const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
       formattedTokenAmount,
-      symbol,
+      code,
     )}`;
 
     historyItemData.amountText = formattedAmount;
@@ -244,7 +260,7 @@ const processSorobanMint = async ({
       externalUrl: `${stellarExpertUrl}/op/${id}`,
       contractDetails: {
         contractAddress: sorobanAttributes.contractId,
-        contractSymbol: symbol,
+        contractSymbol: code,
         contractDecimals: decimals,
         sorobanTokenInterface: SorobanTokenInterface.mint,
       },
@@ -330,10 +346,8 @@ const processSorobanTransfer = async ({
     historyItemData.IconComponent = isNative ? (
       <AssetIcon
         token={{
+          type: AssetTypeWithCustomToken.NATIVE,
           code: NATIVE_TOKEN_CODE,
-          issuer: {
-            key: "",
-          },
         }}
         size="lg"
       />
@@ -373,7 +387,7 @@ const processSorobanTransfer = async ({
       externalUrl: `${stellarExpertUrl}/op/${id}`,
       contractDetails: {
         contractAddress: sorobanAttributes.contractId,
-        contractSymbol: symbol,
+        contractSymbol: code,
         contractDecimals: decimals,
         sorobanTokenInterface: SorobanTokenInterface.transfer,
         transferDetails: {
@@ -543,28 +557,36 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
     transactionDetails.contractDetails?.contractDecimals ?? 0,
   );
 
+  const contractSymbol =
+    transactionDetails.contractDetails?.contractSymbol ?? "";
+  const isNative = contractSymbol === NATIVE_TOKEN_CODE;
+
   return (
     <TransactionDetailsContent>
       <View className="flex-row justify-between">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatAssetAmount(
-              tokenAmount,
-              transactionDetails.contractDetails?.contractSymbol ?? "",
-            )}
+            {formatAssetAmount(tokenAmount, contractSymbol)}
           </Text>
           <Text md secondary numberOfLines={1}>
             {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon
-          token={{
-            type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
-            code: transactionDetails.contractDetails?.contractSymbol ?? "",
-            issuer: {
-              key: "",
-            },
-          }}
+          token={
+            isNative
+              ? {
+                  type: AssetTypeWithCustomToken.NATIVE,
+                  code: NATIVE_TOKEN_CODE,
+                }
+              : {
+                  type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+                  code: contractSymbol,
+                  issuer: {
+                    key: "",
+                  },
+                }
+          }
           size="lg"
         />
       </View>
