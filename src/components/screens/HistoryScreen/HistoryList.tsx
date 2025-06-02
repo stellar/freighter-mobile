@@ -40,6 +40,7 @@ interface HistoryListProps {
   ListHeaderComponent?: React.ReactElement;
   ignoreTopInset?: boolean;
   noHorizontalPadding?: boolean;
+  className?: string;
 }
 
 /**
@@ -54,6 +55,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   ListHeaderComponent,
   ignoreTopInset = false,
   noHorizontalPadding = false,
+  className,
 }) => {
   const { t } = useAppTranslation();
   const [transactionDetails, setTransactionDetails] =
@@ -174,6 +176,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
         ListHeaderComponent={ListHeaderComponent}
+        className={className}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center px-2 gap-4">
             <Text lg primary semiBold>

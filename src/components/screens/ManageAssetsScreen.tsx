@@ -64,7 +64,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1 justify-between">
+      <View className="flex-1 justify-between pt-5">
         <BottomSheet
           title={t("manageAssetsScreen.moreInfo.title")}
           description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}

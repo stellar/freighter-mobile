@@ -53,6 +53,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
       publicKey={account?.publicKey ?? ""}
       networkDetails={networkDetails}
       onRefresh={handleRefresh}
+      className="pt-5"
     />
   );
 };
