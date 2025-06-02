@@ -2,7 +2,12 @@ import { Horizon } from "@stellar/stellar-sdk";
 import { NetworkDetails } from "config/constants";
 import { BalanceMap, HookStatus } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { getIsDustPayment, getIsPayment, getIsSwap } from "helpers/history";
+import {
+  getIsDustPayment,
+  getIsPayment,
+  getIsSwap,
+  filterOperationsByAsset,
+} from "helpers/history";
 import { useState } from "react";
 import { getAccountHistory } from "services/backend";
 
@@ -74,7 +79,11 @@ const createHistorySections = (
     [] as HistorySection[],
   );
 
-function useGetHistoryData(publicKey: string, networkDetails: NetworkDetails) {
+function useGetHistoryData(
+  publicKey: string,
+  networkDetails: NetworkDetails,
+  tokenId?: string,
+) {
   // TODO: Add dust filter
   const { fetchAccountBalances, getBalances } = useBalancesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
@@ -87,10 +96,15 @@ function useGetHistoryData(publicKey: string, networkDetails: NetworkDetails) {
         publicKey,
         network: networkDetails.network,
       });
-      const history = await getAccountHistory({
+
+      let history = await getAccountHistory({
         publicKey,
         networkDetails,
       });
+
+      if (tokenId) {
+        history = filterOperationsByAsset(history, tokenId, networkDetails);
+      }
 
       const balances = getBalances();
 

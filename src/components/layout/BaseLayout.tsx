@@ -41,14 +41,18 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     if (!$insetsConfig?.top) return 0;
     return calculateEdgeSpacing($insets.top, { toNumber: true });
   }}px;
-  padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) =>
-    ($insetsConfig?.right ? $insets.right : 0) + DEFAULT_PADDING}px;
+  padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) => {
+    if (!$insetsConfig?.right) return 0;
+    return $insets.right + DEFAULT_PADDING;
+  }}px;
   padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
     return calculateEdgeSpacing($insets.bottom, { toNumber: true });
   }}px;
-  padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) =>
-    ($insetsConfig?.left ? $insets.left : 0) + DEFAULT_PADDING}px;
+  padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
+    if (!$insetsConfig?.left) return 0;
+    return $insets.left + DEFAULT_PADDING;
+  }}px;
 `;
 
 const StyledView = styled.View<StyledViewProps>`

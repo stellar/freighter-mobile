@@ -216,6 +216,13 @@
       "mintedTo": "Minted to"
     }
   },
+  "tokenDetailsScreen": {
+    "sorobanToken": "Soroban Token",
+    "priceChange": "{{percentage}}%",
+    "balance": "Balance",
+    "value": "Value",
+    "listHeader": "Your {{tokenName}} activity"
+  },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
     "ifYouForgetYourPassword": "If you forget your password, use the recovery phrase to access your wallet",
