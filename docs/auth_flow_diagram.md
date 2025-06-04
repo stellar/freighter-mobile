@@ -1,5 +1,259 @@
 # Freighter Mobile Authentication Flow
 
+## Overview
+
+The Freighter Mobile authentication system is built around a sophisticated
+multi-layered security architecture that balances user experience with robust
+security practices. The system manages Stellar blockchain wallets through
+encrypted storage, temporary session management, and automatic security
+timeouts.
+
+## Core Architecture Components
+
+### 1. **Authentication States**
+
+The system operates on three primary authentication states:
+
+- `NOT_AUTHENTICATED`: No accounts exist in the system
+- `HASH_KEY_EXPIRED`: Accounts exist but user session has expired
+- `AUTHENTICATED`: Valid session with access to decrypted account data
+
+### 2. **Storage Layers**
+
+- **Non-sensitive storage** (`dataStorage`): Account metadata, network settings,
+  active account ID
+- **Secure storage** (`secureDataStorage`): Encrypted temporary store and hash
+  keys
+- **Key Manager**: Stellar SDK key management with additional encryption layer
+
+### 3. **Temporary Store Architecture**
+
+The temporary store is the heart of the security system. It contains:
+
+```typescript
+interface TemporaryStore {
+  privateKeys: { [accountId: string]: string }; // Private keys by account ID
+  mnemonicPhrase: string; // Master seed phrase
+}
+```
+
+This store is encrypted using a hash key derived from the user's password and
+stored securely. It has a configurable expiration time
+(`HASH_KEY_EXPIRATION_MS`).
+
+## Authentication Flows
+
+### Sign Up Process
+
+1. **Input Validation**: User create a password and a new mnemonic phrase is
+   generated.
+2. **Key Derivation**: Generate first keypair from mnemonic using
+   `StellarHDWallet.fromMnemonic()`
+3. **Data Cleanup**: Clear any existing data with `clearAllData()`
+4. **Account Storage**:
+   - Store encrypted key in Key Manager using `ScryptEncrypter`
+   - Create account entry in non-sensitive storage
+   - Set as active account
+5. **Temporary Store Creation**:
+   - Generate hash key from password using `deriveKeyFromPassword()`
+   - Encrypt temporary store containing private keys and mnemonic
+   - Set expiration timestamp
+6. **State Update**: Set `AUTH_STATUS.AUTHENTICATED` and fetch active account
+
+### Sign In Process
+
+The sign-in process is more complex due to account discovery and validation:
+
+1. **Password Validation**: Attempt to decrypt stored key using Key Manager
+2. **Data Integrity Check**: Verify the key contains required mnemonic phrase
+   data
+3. **Account Reconciliation**: Ensure account exists in account list (create if
+   missing)
+4. **Temporary Store Recreation**:
+   - Generate new hash key from password
+   - Create encrypted temporary store with active account data
+5. **Network Account Discovery**:
+   - Check first 5 derived keypairs against Stellar mainnet
+   - Identify accounts that exist on-chain but not locally
+   - Automatically import discovered accounts
+6. **Private Key Consolidation**:
+   - Ensure all local accounts have private keys in temporary store
+   - Try loading from Key Manager first, fallback to mnemonic derivation
+   - Update temporary store with any missing keys
+
+### Import Wallet Process
+
+Similar to sign-up but includes automatic account discovery:
+
+1. **Standard Import**: Follow sign-up process with provided mnemonic
+2. **Network Discovery**: Call `verifyAndCreateExistingAccountsOnNetwork()`
+3. **Account Creation**: Automatically create entries for any accounts found on
+   mainnet
+4. **Bulk Update**: Update temporary store with all discovered private keys in
+   one operation
+
+## Lock Screen and Session Management
+
+### How Accounts Get Locked
+
+Accounts are locked when:
+
+- Hash key expires (time-based expiration)
+- User manually logs out (partial logout)
+- App detects corrupted temporary store
+- Authentication validation fails
+
+### Lock Screen Behavior
+
+When locked, the system:
+
+1. **Preserves Account Data**: Non-sensitive account information remains
+2. **Shows Public Key**: Displays active account's public key for user reference
+3. **Clears Sensitive Data**: Removes temporary store and hash key
+4. **Sets Expired State**: Updates auth status to `HASH_KEY_EXPIRED`
+5. **Navigation**: Automatically navigates to lock screen using
+   `navigationRef.resetRoot()`
+
+The lock screen allows password re-entry without losing account configuration.
+
+## Temporary Store Deep Dive
+
+### Creation Process
+
+```typescript
+const createTemporaryStore = async (input) => {
+  // 1. Generate or retrieve hash key
+  const hashKeyObj = shouldRefreshHashKey
+    ? await generateHashKey(password)
+    : await getHashKey();
+
+  // 2. Create/update store object
+  const temporaryStoreObj = {
+    ...existingStore,
+    privateKeys: { ...existing, [accountId]: privateKey },
+    mnemonicPhrase,
+  };
+
+  // 3. Encrypt and store
+  const encryptedData = await encryptDataWithPassword({
+    data: JSON.stringify(temporaryStoreObj),
+    password: hashKeyObj.hashKey,
+    salt: hashKeyObj.salt,
+  });
+};
+```
+
+### Security Features
+
+- **Encryption**: AES encryption using password-derived key
+- **Salt**: Unique salt per hash key generation
+- **Expiration**: Automatic expiry prevents indefinite access
+- **Integrity**: Structure validation on retrieval
+
+### Retrieval and Validation
+
+The system validates temporary store integrity on every access:
+
+- Checks hash key expiration
+- Verifies decryption success
+- Validates store structure
+- Auto-clears corrupted data
+
+## Account Management
+
+### Account Creation
+
+New accounts are created by:
+
+1. Finding unique derivation index (prevents duplicates)
+2. Deriving keypair from master mnemonic
+3. Storing in Key Manager with encryption
+4. Adding to account list
+5. Updating temporary store without refreshing hash key
+
+### Account Selection
+
+When switching accounts:
+
+1. Validate account exists in account list
+2. Update active account ID in storage
+3. Fetch account data from temporary store
+4. Update UI state
+
+### Account Discovery Algorithm
+
+For imported wallets, the system:
+
+1. Derives first 5 keypairs from mnemonic
+2. Queries Stellar network for account existence
+3. Compares with locally stored accounts
+4. Creates missing accounts found on network
+5. Updates temporary store with all private keys
+
+## Error Handling and Recovery
+
+### Corrupted Data Recovery
+
+- **Key Manager Errors**: Clear all data and restart onboarding
+- **Temporary Store Corruption**: Clear sensitive data, preserve accounts
+- **Hash Key Issues**: Force re-authentication
+
+### Password Retry Logic
+
+- Invalid passwords allow unlimited retries
+- No account lockout mechanism
+- Preserves account data during retry attempts
+
+## Security Considerations
+
+### Hash Key Management
+
+- **Derivation**: Uses `scrypt` for password-based key derivation
+- **Storage**: Encrypted hash key stored separately from temporary store
+- **Expiration**: Configurable timeout (default in `HASH_KEY_EXPIRATION_MS`)
+
+### Private Key Protection
+
+- **Never Plaintext**: Private keys never stored unencrypted
+- **Memory Management**: Sensitive data cleared from memory when possible
+- **Access Control**: Only available during authenticated sessions
+
+### Network Security
+
+- **Mainnet Discovery**: Only checks account existence, doesn't expose private
+  data
+- **Testnet Default**: Key manager uses testnet by default for additional
+  security
+
+## Development Notes
+
+### State Management
+
+Uses Zustand for predictable state management with async action support. State
+updates are batched and error boundaries prevent corruption.
+
+### Navigation Integration
+
+Tightly integrated with React Navigation:
+
+- Automatic lock screen navigation
+- Route reset for security transitions
+- Navigation reference management
+
+### Testing Considerations
+
+- Mock Key Manager for unit tests
+- Test password derivation separately
+- Validate encryption/decryption cycles
+- Test network discovery with various account configurations
+
+### Performance Optimization
+
+- Lazy loading of accounts
+- Batched temporary store updates
+- Parallel network queries for account discovery
+- Efficient key derivation caching
+
 ```mermaid
 flowchart TD
     Start([App Start]) --> InitStore[Initialize Store]
@@ -170,43 +424,3 @@ flowchart TD
     class SetAuthSuccess1,SetAuthSuccess2,SetAuthSuccess3,FetchAccountSuccess1,FetchAccountSuccess2,FetchAccountSuccess3 successState
     class HasAccounts,CheckHashKey,CheckTempStore,CheckExpiration,LoadKeyFromManager,ValidateKeyData,FindAccountInList,CheckIndexExists,ValidateSelection,CheckWipeFlag,CheckAccountsExist decisionPoint
 ```
-
-## Key Decision Points Explained:
-
-### 1. **Authentication Status Check**
-
-- **HasAccounts**: Determines if any accounts exist in storage
-- **CheckHashKey**: Verifies if hash key exists for encryption/decryption
-- **CheckTempStore**: Ensures temporary store with sensitive data exists
-- **CheckExpiration**: Validates hash key hasn't expired (default: expires after
-  time limit)
-
-### 2. **Sign In Flow Conditionals**
-
-- **LoadKeyFromManager**: Validates password against stored encrypted key
-- **ValidateKeyData**: Ensures the key contains required mnemonic phrase data
-- **FindAccountInList**: Checks if account exists in the account list
-
-### 3. **Account Creation Logic**
-
-- **CheckIndexExists**: Prevents duplicate accounts by finding unique derivation
-  index
-- **FindUniqueIndex**: Iterates through indices to find unused key pair
-
-### 4. **Logout Decision Tree**
-
-- **CheckWipeFlag**: Determines whether to clear all data or just sensitive data
-- **CheckAccountsExist**: For partial logout, only clears sensitive data if
-  accounts exist
-
-### 5. **Network Account Discovery**
-
-- **CheckNetworkAccounts**: Verifies first 5 keypairs against mainnet for
-  existing accounts
-- **CheckLocal**: Prevents creating duplicate local accounts
-
-### 6. **Error Recovery**
-
-- Hash key expiration automatically triggers navigation to lock screen
-- Invalid password allows retry without data loss
-- Corrupted key data triggers complete data wipe for security
