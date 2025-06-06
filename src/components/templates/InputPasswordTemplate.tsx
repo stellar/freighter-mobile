@@ -7,8 +7,14 @@ import { Display, Text } from "components/sds/Typography";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback, useMemo, useState } from "react";
-import { View } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Keyboard, TextInput, View } from "react-native";
 
 interface InputPasswordTemplateProps {
   publicKey: string | null;
@@ -37,6 +43,19 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const focusTimeout = setTimeout(() => {
+      inputRef.current?.focus();
+      Keyboard.dismiss();
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }, 100);
+
+    return () => clearTimeout(focusTimeout);
+  }, []);
 
   const canContinue = useMemo(
     () =>
@@ -70,6 +89,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
           </Text>
           <View className="w-full gap-4 mt-8">
             <Input
+              ref={inputRef}
               isPassword
               placeholder={t("lockScreen.passwordInputPlaceholder")}
               fieldSize="lg"
@@ -77,6 +97,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               value={passwordValue}
               onChangeText={handlePasswordChange}
               error={error}
+              autoFocus
             />
             <Button
               tertiary
