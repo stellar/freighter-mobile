@@ -8,7 +8,7 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View, Platform } from "react-native";
+import { TouchableOpacity, View, Platform, Linking } from "react-native";
 
 interface AccountItemRowProps {
   account: Account;
@@ -34,12 +34,19 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     ios: {
       renameWallet: "pencil",
       copyAddress: "doc.on.doc",
+      viewOnExplorer: "safari",
     },
     android: {
       renameWallet: "baseline_edit",
       copyAddress: "copy",
+      viewOnExplorer: "public",
     },
   });
+
+  const handleViewOnExplorer = async () => {
+    const url = `https://stellar.expert/explorer/public/account/${account.publicKey}`;
+    await Linking.openURL(url);
+  };
 
   const actions: MenuItem[] = [
     {
@@ -51,6 +58,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       title: t("home.manageAccount.copyAddress"),
       systemIcon: icons!.copyAddress,
       onPress: () => handleCopyAddress(account.publicKey),
+    },
+    {
+      title: t("home.manageAccount.viewOnExplorer"),
+      systemIcon: icons!.viewOnExplorer,
+      onPress: handleViewOnExplorer,
     },
   ];
 
