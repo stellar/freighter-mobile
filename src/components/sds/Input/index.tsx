@@ -2,8 +2,8 @@ import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
-import React from "react";
-import { Platform, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { Platform, TouchableOpacity, TextInput } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -255,6 +255,7 @@ interface InputProps {
   editable?: boolean;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   autoCorrect?: boolean;
+  autoFocus?: boolean;
   keyboardType?:
     | "default"
     | "number-pad"
@@ -264,142 +265,154 @@ interface InputProps {
     | "phone-pad";
 }
 
-export const Input: React.FC<InputProps> = ({
-  fieldSize = "md",
-  label,
-  labelSuffix,
-  isLabelUppercase,
-  isError,
-  isPassword,
-  leftElement,
-  rightElement,
-  note,
-  error,
-  success,
-  copyButton,
-  endButton,
-  value = "",
-  onChangeText,
-  placeholder,
-  editable = true,
-  testID,
-  autoCorrect = true,
-  ...props
-}) => {
-  const handleCopy = () => {
-    if (!value) {
-      return;
-    }
+export const Input = React.forwardRef<TextInput, InputProps>(
+  (
+    {
+      fieldSize = "md",
+      label,
+      labelSuffix,
+      isLabelUppercase,
+      isError,
+      isPassword,
+      leftElement,
+      rightElement,
+      note,
+      error,
+      success,
+      copyButton,
+      endButton,
+      value = "",
+      onChangeText,
+      placeholder,
+      editable = true,
+      testID,
+      autoCorrect = true,
+      ...props
+    },
+    ref,
+  ) => {
+    const [showPassword] = useState(false);
 
-    Clipboard.setString(value);
-  };
+    const handleCopy = () => {
+      if (!value) {
+        return;
+      }
 
-  const getLabelSize = () => ({
-    xs: fieldSize === "sm",
-    sm: fieldSize === "md",
-    md: fieldSize === "lg",
-  });
+      Clipboard.setString(value);
+    };
 
-  const renderCopyButton = (position: "left" | "right") => (
-    <TouchableOpacity onPress={handleCopy}>
-      <SideElement position={position}>
-        <Text sm>{copyButton?.showLabel ? "Copy" : "📋"}</Text>
-      </SideElement>
-    </TouchableOpacity>
-  );
+    const getLabelSize = () => ({
+      xs: fieldSize === "sm",
+      sm: fieldSize === "md",
+      md: fieldSize === "lg",
+    });
 
-  return (
-    <Container $fieldSize={fieldSize}>
-      {label && (
-        <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
-          {isLabelUppercase ? label.toString().toUpperCase() : label}
-          {labelSuffix && (
-            <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
-              {" "}
-              {labelSuffix}
-            </Text>
-          )}
-        </Text>
-      )}
+    const renderCopyButton = (position: "left" | "right") => (
+      <TouchableOpacity onPress={handleCopy}>
+        <SideElement position={position}>
+          <Text sm>{copyButton?.showLabel ? "Copy" : "📋"}</Text>
+        </SideElement>
+      </TouchableOpacity>
+    );
 
-      <InputContainer
-        testID={testID ? `${testID}-container` : undefined}
-        $fieldSize={fieldSize}
-        $isError={isError || !!error}
-        $isDisabled={!editable}
-      >
-        {copyButton?.position === "left" && renderCopyButton("left")}
-        {leftElement && (
-          <SideElement marginSide="right">{leftElement}</SideElement>
+    return (
+      <Container $fieldSize={fieldSize}>
+        {label && (
+          <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+            {isLabelUppercase ? label.toString().toUpperCase() : label}
+            {labelSuffix && (
+              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+                {" "}
+                {labelSuffix}
+              </Text>
+            )}
+          </Text>
         )}
 
-        <StyledTextInput
-          testID={testID}
+        <InputContainer
+          testID={testID ? `${testID}-container` : undefined}
           $fieldSize={fieldSize}
-          $hasLeftElement={!!leftElement || copyButton?.position === "left"}
-          $hasRightElement={
-            !!rightElement || copyButton?.position === "right" || !!endButton
-          }
+          $isError={Boolean(isError || error)}
           $isDisabled={!editable}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          autoCapitalize={isPassword ? "none" : undefined}
-          autoCorrect={autoCorrect}
-          placeholderTextColor={THEME.colors.text.secondary}
-          secureTextEntry={isPassword}
-          editable={editable}
-          selection={!editable && value ? { start: 0, end: 0 } : undefined}
-          {...props}
-        />
+        >
+          {copyButton?.position === "left" && renderCopyButton("left")}
+          {leftElement && (
+            <SideElement marginSide="right">{leftElement}</SideElement>
+          )}
 
-        {rightElement && (
-          <SideElement marginSide="left">{rightElement}</SideElement>
-        )}
-        {copyButton?.position === "right" && renderCopyButton("right")}
-        {endButton && (
-          <TouchableOpacity
-            onPress={endButton.onPress}
-            disabled={endButton.disabled}
-            testID={testID ? `${testID}-end-button` : undefined}
-          >
-            <ButtonContainer
-              backgroundColor={endButton.backgroundColor}
-              $fieldSize={fieldSize}
+          <StyledTextInput
+            ref={ref}
+            testID={testID}
+            placeholder={placeholder}
+            placeholderTextColor={THEME.colors.text.secondary}
+            value={value}
+            onChangeText={onChangeText}
+            editable={editable}
+            secureTextEntry={isPassword && !showPassword}
+            autoCorrect={autoCorrect}
+            autoFocus={props.autoFocus}
+            $fieldSize={fieldSize}
+            $hasLeftElement={Boolean(
+              leftElement || copyButton?.position === "left",
+            )}
+            $hasRightElement={Boolean(
+              rightElement ||
+                copyButton?.position === "right" ||
+                (isPassword && !endButton),
+            )}
+            $isDisabled={!editable}
+            selection={!editable && value ? { start: 0, end: 0 } : undefined}
+            {...props}
+          />
+
+          {rightElement && (
+            <SideElement marginSide="left">{rightElement}</SideElement>
+          )}
+          {copyButton?.position === "right" && renderCopyButton("right")}
+          {endButton && (
+            <TouchableOpacity
+              onPress={endButton.onPress}
+              disabled={endButton.disabled}
+              testID={testID ? `${testID}-end-button` : undefined}
             >
-              {typeof endButton.content === "string" ? (
-                <Text md semiBold color={endButton.color}>
-                  {endButton.content}
-                </Text>
-              ) : (
-                endButton.content
-              )}
-            </ButtonContainer>
-          </TouchableOpacity>
-        )}
-      </InputContainer>
+              <ButtonContainer
+                backgroundColor={endButton.backgroundColor}
+                $fieldSize={fieldSize}
+              >
+                {typeof endButton.content === "string" ? (
+                  <Text md semiBold color={endButton.color}>
+                    {endButton.content}
+                  </Text>
+                ) : (
+                  endButton.content
+                )}
+              </ButtonContainer>
+            </TouchableOpacity>
+          )}
+        </InputContainer>
 
-      {note && (
-        <FieldNoteWrapper>
-          <Text sm color={THEME.colors.text.secondary}>
-            {note}
-          </Text>
-        </FieldNoteWrapper>
-      )}
-      {error && (
-        <FieldNoteWrapper>
-          <Text sm color={THEME.colors.status.error}>
-            {error}
-          </Text>
-        </FieldNoteWrapper>
-      )}
-      {success && (
-        <FieldNoteWrapper>
-          <Text sm color={THEME.colors.status.success}>
-            {success}
-          </Text>
-        </FieldNoteWrapper>
-      )}
-    </Container>
-  );
-};
+        {note && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.text.secondary}>
+              {note}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+        {error && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.status.error}>
+              {error}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+        {success && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.status.success}>
+              {success}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+      </Container>
+    );
+  },
+);
