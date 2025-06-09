@@ -76,7 +76,7 @@ tools.
        WALLET_KIT_PROJECT_ID=your_project_id_here
        ```
 
-    3. Update the `.env.example` file for documentation: Add the same variables
+    3. Update the `.env.example` file for documentation, add the same variables
        without values:
        ```
        WALLET_KIT_PROJECT_ID=
