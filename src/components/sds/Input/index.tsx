@@ -352,14 +352,12 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             autoCorrect={autoCorrect}
             autoFocus={props.autoFocus}
             $fieldSize={fieldSize}
-            $hasLeftElement={Boolean(
-              leftElement || copyButton?.position === "left",
-            )}
-            $hasRightElement={Boolean(
+            $hasLeftElement={leftElement || copyButton?.position === "left"}
+            $hasRightElement={
               rightElement ||
-                copyButton?.position === "right" ||
-                (isPassword && !endButton),
-            )}
+              copyButton?.position === "right" ||
+              (isPassword && !endButton)
+            }
             $isDisabled={!editable}
             selection={!editable && value ? { start: 0, end: 0 } : undefined}
             {...props}
