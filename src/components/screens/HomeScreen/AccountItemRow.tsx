@@ -3,8 +3,10 @@ import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NETWORKS } from "config/constants";
 import { Account } from "config/types";
 import { truncateAddress } from "helpers/stellar";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -44,7 +46,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   });
 
   const handleViewOnExplorer = async () => {
-    const url = `https://stellar.expert/explorer/public/account/${account.publicKey}`;
+    const url = `${getStellarExpertUrl(NETWORKS.PUBLIC)}/account/${account.publicKey}`;
     await Linking.openURL(url);
   };
 

@@ -85,7 +85,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
             onPress={() => setModalVisible(false)}
             disabled={isRenamingAccount}
           >
-            {t("renameAccountModal.cancel")}
+            {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">
