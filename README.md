@@ -54,9 +54,40 @@ tools.
     ```
 
 2.  **Install Dependencies:**
+
     ```bash
     yarn install
     ```
+
+3.  **Environment Variables:**
+
+    The project uses `react-native-config` for environment variables. You'll
+    need to set up your environment variables before running the app:
+
+    1. Create a `.env` file in the project root:
+
+       ```bash
+       touch .env
+       ```
+
+    2. Add the required environment variables:
+
+       ```
+       WALLET_KIT_PROJECT_ID=your_project_id_here
+       ```
+
+    3. Update the `.env.example` file for documentation: Add the same variables
+       without values:
+       ```
+       WALLET_KIT_PROJECT_ID=
+       ```
+
+    **Important:**
+
+    - Never commit the `.env` file to version control
+    - Keep `.env.example` updated with any new environment variables
+    - If you don't have the required environment variables, ask a team member
+      for the values
 
 **Important**
 
