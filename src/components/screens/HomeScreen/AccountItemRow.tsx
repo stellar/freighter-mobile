@@ -3,8 +3,8 @@ import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
 import { Account } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -29,6 +29,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { network } = useAuthenticationStore();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
 
@@ -46,7 +47,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   });
 
   const handleViewOnExplorer = async () => {
-    const url = `${getStellarExpertUrl(NETWORKS.PUBLIC)}/account/${account.publicKey}`;
+    const url = `${getStellarExpertUrl(network)}/account/${account.publicKey}`;
     await Linking.openURL(url);
   };
 
