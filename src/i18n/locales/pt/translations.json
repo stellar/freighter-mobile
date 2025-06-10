@@ -37,6 +37,9 @@
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
       "myQRCode": "Meu QR code"
+    },
+    "account": {
+      "imported": "Importada"
     }
   },
   "renameAccountModal": {

@@ -36,6 +36,9 @@
       "addWallet": "Add a wallet",
       "renameWallet": "Rename wallet",
       "copyAddress": "Copy address"
+    },
+    "account": {
+      "imported": "Imported"
     }
   },
   "renameAccountModal": {

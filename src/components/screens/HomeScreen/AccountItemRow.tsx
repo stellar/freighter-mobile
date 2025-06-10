@@ -80,7 +80,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
                     {" • "}
                   </Text>
                   <Text sm secondary medium>
-                    Imported
+                    {t("home.account.imported")}
                   </Text>
                 </>
               )}
