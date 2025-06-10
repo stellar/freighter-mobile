@@ -187,6 +187,7 @@ interface DeriveKeypairParams {
  * @property {Function} signUp - Signs up a new user with the provided credentials
  * @property {Function} signIn - Signs in a user with the provided password
  * @property {Function} importWallet - Imports a wallet with the provided seed phrase and password
+ * @property {Function} importSecretKey - Imports a secret key
  * @property {Function} getAuthStatus - Gets the current authentication status
  * @property {Function} fetchActiveAccount - Fetches the currently active account
  * @property {Function} refreshActiveAccount - Refreshes the active account data
@@ -200,6 +201,7 @@ interface AuthActions {
   signUp: (params: SignUpParams) => void;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => void;
+  importSecretKey: (secretKey: string, password: string) => Promise<void>;
   getAuthStatus: () => Promise<AuthStatus>;
   renameAccount: (params: RenameAccountParams) => Promise<void>;
   getAllAccounts: () => Promise<void>;
@@ -291,7 +293,28 @@ const getAllAccounts = async (): Promise<Account[]> => {
     return [];
   }
 
-  return JSON.parse(accountListRaw) as Account[];
+  const accounts = JSON.parse(accountListRaw) as Account[];
+
+  // Migration: ensure all accounts have the imported property
+  let needsMigration = false;
+  const migratedAccounts = accounts.map((account) => {
+    if (account.imported === undefined) {
+      needsMigration = true;
+      return { ...account, imported: false }; // Default to false for existing accounts
+    }
+    return account;
+  });
+
+  // Save migrated accounts if necessary
+  if (needsMigration) {
+    await dataStorage.setItem(
+      STORAGE_KEYS.ACCOUNT_LIST,
+      JSON.stringify(migratedAccounts),
+    );
+    return migratedAccounts;
+  }
+
+  return accounts;
 };
 
 /**
@@ -624,6 +647,7 @@ const storeAccount = async ({
   accountNumber,
   shouldRefreshHashKey = true,
   shouldSetActiveAccount = true,
+  imported = false,
 }: StoreAccountParams): Promise<void> => {
   const { publicKey, privateKey } = keyPair;
 
@@ -659,6 +683,7 @@ const storeAccount = async ({
       id: keyStore.id,
       name: accountName,
       publicKey,
+      imported,
     }),
     createTemporaryStore({
       password,
@@ -824,6 +849,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
         id: keyStore.id,
         name: accountName,
         publicKey: keyPair.publicKey,
+        imported: false,
       };
 
       return {
@@ -1701,5 +1727,58 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       password: string,
       activeAccountId?: string | null,
     ) => getKeyFromKeyManager(password, activeAccountId),
+
+    importSecretKey: async (secretKey: string, password: string) => {
+      set({ isLoading: true, error: null });
+
+      try {
+        const keypair = Keypair.fromSecret(secretKey);
+        const publicKey = keypair.publicKey();
+        const privateKey = keypair.secret();
+
+        const existingAccounts = await getAllAccounts();
+        const accountExists = existingAccounts.some(
+          (account) => account.publicKey === publicKey,
+        );
+
+        if (accountExists) {
+          throw new Error(t("authStore.error.accountAlreadyExists"));
+        }
+
+        const temporaryStore = await getTemporaryStore();
+        if (!temporaryStore) {
+          throw new Error(t("authStore.error.temporaryStoreNotFound"));
+        }
+
+        const keyPair = {
+          publicKey,
+          privateKey,
+        };
+
+        await storeAccount({
+          mnemonicPhrase: temporaryStore.mnemonicPhrase,
+          password,
+          keyPair,
+          accountNumber: existingAccounts.length + 1,
+          shouldRefreshHashKey: false,
+          shouldSetActiveAccount: true,
+          imported: true,
+        });
+
+        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+        set({ isLoading: false, error: null });
+      } catch (error) {
+        logger.error("importSecretKey", "Failed to import secret key", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToImportSecretKey"),
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
   };
 });

@@ -235,7 +235,9 @@
       "failedToImportWallet": "Falha ao importar carteira",
       "failedToLoadAccount": "Falha ao carregar conta",
       "invalidPassword": "Senha inválida. Por favor, tente novamente.",
-      "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente."
+      "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
+      "accountAlreadyExists": "Conta já existe",
+      "failedToImportSecretKey": "Falha ao importar chave secreta"
     },
     "account": "Conta {{number}}"
   },

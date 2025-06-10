@@ -70,9 +70,21 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
             <Text md primary medium numberOfLines={1}>
               {account.name}
             </Text>
-            <Text sm secondary medium numberOfLines={1}>
-              {truncatedPublicKey}
-            </Text>
+            <View className="flex-row items-center">
+              <Text sm secondary medium numberOfLines={1}>
+                {truncatedPublicKey}
+              </Text>
+              {account.imported && (
+                <>
+                  <Text sm secondary medium>
+                    {" • "}
+                  </Text>
+                  <Text sm secondary medium>
+                    Imported
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
         </View>
       </TouchableOpacity>
