@@ -83,7 +83,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   }, [fetchData]);
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <View className="flex-1 gap-8 mt-5">
         <TokenBalanceHeader
           tokenId={tokenId}
