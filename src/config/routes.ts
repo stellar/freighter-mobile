@@ -72,6 +72,7 @@ export const SEND_PAYMENT_ROUTES = {
 
 export const SWAP_ROUTES = {
   SWAP_SCREEN: "SwapScreen",
+  SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -170,4 +171,8 @@ export type SendPaymentStackParamList = {
 
 export type SwapStackParamList = {
   [SWAP_ROUTES.SWAP_SCREEN]: undefined;
+  [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
+    tokenId: string;
+    tokenSymbol: string;
+  };
 };

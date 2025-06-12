@@ -4,8 +4,10 @@ import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -44,7 +46,23 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
   }, [navigation, themeColors]);
 
   const handleTokenPress = (tokenId: string) => {
-    console.log(tokenId);
+    let tokenSymbol: string;
+
+    if (tokenId === "native") {
+      tokenSymbol = NATIVE_TOKEN_CODE;
+    } else if (isContractId(tokenId)) {
+      // For Soroban contracts, pass the contract ID as symbol initially
+      // The TokenDetailsScreen will handle fetching the actual symbol
+      tokenSymbol = tokenId;
+    } else {
+      // Classic asset format: CODE:ISSUER
+      [tokenSymbol] = tokenId.split(":");
+    }
+
+    navigation.navigate(SWAP_ROUTES.SWAP_AMOUNT_SCREEN, {
+      tokenId,
+      tokenSymbol,
+    });
   };
 
   const handleSearch = (text: string) => {

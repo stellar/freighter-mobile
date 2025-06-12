@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
 import SwapScreen from "components/screens/SwapScreen";
+import { SwapAmountScreen } from "components/screens/SwapScreen/screens";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -22,6 +23,13 @@ export const SwapStackNavigator = () => {
         component={SwapScreen}
         options={{
           headerTitle: t("swapScreen.swapFrom"),
+        }}
+      />
+      <SwapStack.Screen
+        name={SWAP_ROUTES.SWAP_AMOUNT_SCREEN}
+        component={SwapAmountScreen}
+        options={{
+          headerTitle: t("swapScreen.title"),
         }}
       />
     </SwapStack.Navigator>

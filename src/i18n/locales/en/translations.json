@@ -18,7 +18,8 @@
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
     "error": "Error",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "review": "Review"
   },
   "home": {
     "title": "Home",
@@ -326,7 +327,16 @@
     "swapFrom": "Swap from",
     "swapTo": "Swap to",
     "title": "Swap",
-    "searchTokenInputPlaceholder": "Search token name or address"
+    "searchTokenInputPlaceholder": "Search token name or address",
+    "setMax": "Set max",
+    "receive": "Receive",
+    "chooseAsset": "Choose asset",
+    "selectAsset": "Select an asset",
+    "menu": {
+      "fee": "Fee: {{fee}} XLM",
+      "timeout": "Timeout: {{timeout}}(s)",
+      "slippage": "Slippage: {{slippage}}%"
+    }
   },
   "transactionTokenScreen": {
     "title": "Sending"
