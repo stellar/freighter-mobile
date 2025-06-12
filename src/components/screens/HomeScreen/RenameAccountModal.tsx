@@ -76,7 +76,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
         />
       </View>
       <View className="h-4" />
-      <View className="flex-row justify-between w-full gap-3">
+      <View className="flex-row justify-between w-full mt-6 gap-3">
         <View className="flex-1">
           <Button
             secondary
@@ -85,7 +85,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
             onPress={() => setModalVisible(false)}
             disabled={isRenamingAccount}
           >
-            {t("renameAccountModal.skip")}
+            {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">

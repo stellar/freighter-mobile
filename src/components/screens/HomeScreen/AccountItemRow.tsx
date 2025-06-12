@@ -4,11 +4,13 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { Account } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View, Platform } from "react-native";
+import { TouchableOpacity, View, Platform, Linking } from "react-native";
 
 interface AccountItemRowProps {
   account: Account;
@@ -27,6 +29,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { network } = useAuthenticationStore();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
 
@@ -34,12 +37,19 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     ios: {
       renameWallet: "pencil",
       copyAddress: "doc.on.doc",
+      viewOnExplorer: "safari",
     },
     android: {
       renameWallet: "baseline_edit",
       copyAddress: "copy",
+      viewOnExplorer: "public",
     },
   });
+
+  const handleViewOnExplorer = async () => {
+    const url = `${getStellarExpertUrl(network)}/account/${account.publicKey}`;
+    await Linking.openURL(url);
+  };
 
   const actions: MenuItem[] = [
     {
@@ -51,6 +61,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       title: t("home.manageAccount.copyAddress"),
       systemIcon: icons!.copyAddress,
       onPress: () => handleCopyAddress(account.publicKey),
+    },
+    {
+      title: t("home.manageAccount.viewOnExplorer"),
+      systemIcon: icons!.viewOnExplorer,
+      onPress: handleViewOnExplorer,
     },
   ];
 
