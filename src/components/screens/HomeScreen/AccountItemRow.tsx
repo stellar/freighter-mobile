@@ -74,7 +74,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
               <Text sm secondary medium numberOfLines={1}>
                 {truncatedPublicKey}
               </Text>
-              {account.imported && (
+              {account.importedFromSecretKey && (
                 <>
                   <Text sm secondary medium>
                     {" • "}

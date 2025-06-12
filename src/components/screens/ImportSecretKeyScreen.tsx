@@ -1,4 +1,3 @@
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StrKey } from "@stellar/stellar-sdk";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -9,7 +8,6 @@ import { Text, Display } from "components/sds/Typography";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
-  MAIN_TAB_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
@@ -57,26 +55,13 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
     }
 
     try {
-      await importSecretKey(secretKey, password);
+      await importSecretKey({ secretKey, password });
 
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-              state: {
-                index: 1,
-                routes: [
-                  { name: MAIN_TAB_ROUTES.TAB_HISTORY },
-                  { name: MAIN_TAB_ROUTES.TAB_HOME },
-                  { name: MAIN_TAB_ROUTES.TAB_DISCOVERY },
-                ],
-              },
-            },
-          ],
-        }),
-      );
+      navigation.reset({
+        index: 0,
+        // @ts-expect-error: This is a valid route.
+        routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+      });
     } catch (err) {
       // Error handling is managed by the auth store
     }
