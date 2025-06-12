@@ -12,6 +12,7 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useToast } from "providers/ToastProvider";
 import React, { useState, useEffect } from "react";
 import { Pressable, View } from "react-native";
 
@@ -20,9 +21,7 @@ type ImportSecretKeyScreenProps = NativeStackScreenProps<
   typeof MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN
 >;
 
-const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
-  navigation,
-}) => {
+const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [secretKey, setSecretKey] = useState("");
@@ -31,7 +30,9 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { importSecretKey, isLoading, clearError } = useAuthenticationStore();
+  const { isLoading, clearError } = useAuthenticationStore();
+
+  const { showToast } = useToast();
 
   // Clear errors when unmounting
   useEffect(
@@ -47,18 +48,17 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
     setValidationError(null);
   }, [secretKey]);
 
-  const handleImport = async () => {
+  const handleImport = () => {
     if (!StrKey.isValidEd25519SecretSeed(secretKey)) {
       setValidationError(t("importSecretKeyScreen.invalidSecretKey"));
       return;
     }
 
-    try {
-      await importSecretKey(secretKey);
-      navigation.goBack();
-    } catch (err) {
-      // Error from the store will be handled separately
-    }
+    showToast({
+      toastId: "import-secret-not-available",
+      title: t("common.featureNotAvailable"),
+      variant: "warning",
+    });
   };
 
   const isFormValid =

@@ -18,7 +18,8 @@
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
     "error": "Error",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "featureNotAvailable": "This feature is not available yet. Please try again on next release."
   },
   "home": {
     "title": "Home",

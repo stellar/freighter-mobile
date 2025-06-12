@@ -18,7 +18,8 @@
     "copied": "Copiado para a área de transferência!",
     "loading": "Carregando...",
     "error": "Erro",
-    "unknownError": "Erro desconhecido"
+    "unknownError": "Erro desconhecido",
+    "featureNotAvailable": "Esta funcionalidade ainda não está disponível. Por favor, tente novamente na próxima versão."
   },
   "home": {
     "title": "Início",
