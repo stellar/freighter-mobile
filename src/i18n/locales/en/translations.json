@@ -325,7 +325,8 @@
   "swapScreen": {
     "swapFrom": "Swap from",
     "swapTo": "Swap to",
-    "title": "Swap"
+    "title": "Swap",
+    "searchTokenInputPlaceholder": "Search token name or address"
   },
   "transactionTokenScreen": {
     "title": "Sending"
