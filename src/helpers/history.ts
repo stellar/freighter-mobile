@@ -9,6 +9,13 @@ import {
   getNativeContractDetails,
 } from "helpers/soroban";
 
+type OperationWithTransactionAttr = Horizon.ServerApi.OperationRecord & {
+  transaction_attr?: {
+    operation_count?: number;
+    successful?: boolean;
+  };
+};
+
 export const getIsPayment = (type: Horizon.HorizonApi.OperationResponseType) =>
   [
     Horizon.HorizonApi.OperationResponseType.payment,
@@ -30,6 +37,21 @@ export const getIsDustPayment = (
   operation.to === publicKey &&
   "amount" in operation &&
   new BigNumber(operation.amount).lte(new BigNumber(0.1));
+
+export const getIsCreateClaimableBalanceSpam = (
+  operation: Horizon.ServerApi.OperationRecord,
+): boolean => {
+  const opWithAttr = operation as OperationWithTransactionAttr;
+
+  if (opWithAttr.type === "create_claimable_balance") {
+    const operationCount = opWithAttr.transaction_attr?.operation_count;
+    if (operationCount && operationCount > 50) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 /**
  * Checks if an operation is a supported Soroban operation
