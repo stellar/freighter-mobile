@@ -35,7 +35,8 @@
       "title": "Wallets",
       "addWallet": "Add a wallet",
       "renameWallet": "Rename wallet",
-      "copyAddress": "Copy address"
+      "copyAddress": "Copy address",
+      "viewOnExplorer": "View on stellar.expert"
     },
     "account": {
       "imported": "Imported"
@@ -43,7 +44,6 @@
   },
   "renameAccountModal": {
     "currentName": "Current name",
-    "skip": "Skip",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },

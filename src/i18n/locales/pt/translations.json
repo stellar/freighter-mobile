@@ -36,6 +36,7 @@
       "addWallet": "Adicionar uma carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
+      "viewOnExplorer": "Ver no stellar.expert",
       "myQRCode": "Meu QR code"
     },
     "account": {
@@ -44,7 +45,6 @@
   },
   "renameAccountModal": {
     "currentName": "Nome atual",
-    "skip": "Pular",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },
