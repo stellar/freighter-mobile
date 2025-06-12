@@ -9,7 +9,7 @@ import {
   getNativeContractDetails,
 } from "helpers/soroban";
 
-type OperationWithTransactionAttr = Horizon.ServerApi.OperationRecord & {
+type OperationWithSpamCheckAttr = Horizon.ServerApi.OperationRecord & {
   transaction_attr?: {
     operation_count?: number;
     successful?: boolean;
@@ -41,7 +41,7 @@ export const getIsDustPayment = (
 export const getIsCreateClaimableBalanceSpam = (
   operation: Horizon.ServerApi.OperationRecord,
 ): boolean => {
-  const opWithAttr = operation as OperationWithTransactionAttr;
+  const opWithAttr = operation as OperationWithSpamCheckAttr;
 
   if (opWithAttr.type === "create_claimable_balance") {
     const operationCount = opWithAttr.transaction_attr?.operation_count;
