@@ -322,6 +322,11 @@
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address"
   },
+  "swapScreen": {
+    "swapFrom": "Swap from",
+    "swapTo": "Swap to",
+    "title": "Swap"
+  },
   "transactionTokenScreen": {
     "title": "Sending"
   },

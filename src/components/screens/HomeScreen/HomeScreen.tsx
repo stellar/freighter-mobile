@@ -302,7 +302,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK)
             }
           />
-          <IconButton Icon={Icon.RefreshCw02} title={t("home.swap")} />
+          <IconButton
+            Icon={Icon.RefreshCw02}
+            title={t("home.swap")}
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK)
+            }
+          />
           <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}

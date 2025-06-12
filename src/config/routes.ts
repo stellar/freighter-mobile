@@ -5,13 +5,14 @@ export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
   SETTINGS_STACK: "SettingsStack",
+  BUY_XLM_STACK: "BuyXLMStack",
   SEND_PAYMENT_STACK: "SendPaymentStack",
+  SWAP_STACK: "SwapStack",
   MANAGE_ASSETS_STACK: "ManageAssetsStack",
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
-  BUY_XLM_STACK: "BuyXLMStack",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
 } as const;
 
@@ -56,6 +57,10 @@ export const MANAGE_WALLETS_ROUTES = {
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
 } as const;
 
+export const BUY_XLM_ROUTES = {
+  BUY_XLM_SCREEN: "BuyXLMScreen",
+} as const;
+
 export const SEND_PAYMENT_ROUTES = {
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
@@ -65,8 +70,8 @@ export const SEND_PAYMENT_ROUTES = {
   TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
 } as const;
 
-export const BUY_XLM_ROUTES = {
-  BUY_XLM_SCREEN: "BuyXLMScreen",
+export const SWAP_ROUTES = {
+  SWAP_SCREEN: "SwapScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -76,11 +81,12 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
     showNavigationAsCloseButton?: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
@@ -144,6 +150,15 @@ export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
 };
 
+export type BuyXLMStackParamList = {
+  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
+    isUnfunded: boolean;
+  };
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
+    showNavigationAsCloseButton?: boolean;
+  };
+};
+
 export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
@@ -153,11 +168,6 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };
 
-export type BuyXLMStackParamList = {
-  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
-    isUnfunded: boolean;
-  };
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
-    showNavigationAsCloseButton?: boolean;
-  };
+export type SwapStackParamList = {
+  [SWAP_ROUTES.SWAP_SCREEN]: undefined;
 };
