@@ -48,6 +48,7 @@ const NotificationContent = styled.View`
 interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
+  searchTerm?: string;
   showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
 }
@@ -69,6 +70,7 @@ interface BalancesListProps {
 export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
+  searchTerm,
   showTitleIcon = false,
   onTokenPress,
 }) => {
@@ -82,7 +84,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     isRefreshing,
     isFunded,
     handleRefresh,
-  } = useBalancesList({ publicKey, network, shouldPoll: true });
+  } = useBalancesList({ publicKey, network, shouldPoll: true, searchTerm });
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,

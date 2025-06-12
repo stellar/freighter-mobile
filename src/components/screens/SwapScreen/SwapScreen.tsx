@@ -7,7 +7,9 @@ import { Input } from "components/sds/Input";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -19,12 +21,17 @@ type SwapScreenProps = NativeStackScreenProps<
 
 const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
-  const {
-    network,
-  } = useAuthenticationStore();
+  const { network } = useAuthenticationStore();
+  const { getClipboardText } = useClipboard();
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const [searchToken, setSearchToken] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteringTerm, setFilteringTerm] = useState("");
+
+  // Debounced function to update the term used for filtering
+  const debouncedUpdateFilteringTerm = useDebounce(() => {
+    setFilteringTerm(searchTerm);
+  }, 300);
 
   useEffect(() => {
     navigation.setOptions({
@@ -34,18 +41,20 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       ),
     });
-  }, [navigation,  themeColors]);
+  }, [navigation, themeColors]);
 
   const handleTokenPress = (tokenId: string) => {
     console.log(tokenId);
   };
 
   const handleSearch = (text: string) => {
-    console.log(text);
+    setSearchTerm(text);
+
+    debouncedUpdateFilteringTerm();
   };
 
   const handlePasteFromClipboard = () => {
-    console.log("paste from clipboard");
+    getClipboardText().then(handleSearch);
   };
 
   return (
@@ -55,10 +64,7 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
           <Input
             fieldSize="md"
             leftElement={
-              <Icon.SearchMd
-                size={16}
-                color={themeColors.foreground.primary}
-              />
+              <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
             }
             testID="search-input"
             placeholder={t("swapScreen.searchTokenInputPlaceholder")}
@@ -67,12 +73,13 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
               content: t("common.paste"),
               onPress: handlePasteFromClipboard,
             }}
-            value={searchToken}
+            value={searchTerm}
           />
         </View>
         <BalancesList
           publicKey={account?.publicKey ?? ""}
           network={network}
+          searchTerm={filteringTerm}
           onTokenPress={handleTokenPress}
           showTitleIcon
         />
