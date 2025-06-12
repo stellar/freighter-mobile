@@ -15,7 +15,7 @@ export const WALLET_KIT_METADATA = {
   name: "Freighter",
   description: "Freighter, a stellar wallet for everyone",
   url: "https://freighter.app",
-  icons: ["https://tinyurl.com/freighter-mobile-icon"],
+  icons: ["https://stellar.creit.tech/wallet-icons/freighter.png"],
 };
 
 /**
