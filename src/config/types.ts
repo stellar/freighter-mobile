@@ -6,6 +6,7 @@ export type Account = {
   id: string;
   name: string;
   publicKey: string;
+  importedFromSecretKey?: boolean;
 };
 
 export type KeyPair = {

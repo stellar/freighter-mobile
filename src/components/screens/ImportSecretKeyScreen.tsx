@@ -8,6 +8,7 @@ import { Text, Display } from "components/sds/Typography";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -54,10 +55,15 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
     }
 
     try {
-      await importSecretKey(secretKey);
-      navigation.goBack();
+      await importSecretKey({ secretKey, password });
+
+      navigation.reset({
+        index: 0,
+        // @ts-expect-error: This is a valid route.
+        routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+      });
     } catch (err) {
-      // Error from the store will be handled separately
+      // Error handling is managed by the auth store
     }
   };
 
