@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { AssetIcon } from "components/AssetIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import {
   TransactionDetails,
@@ -12,6 +13,7 @@ import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { AssetTypeWithCustomToken } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
@@ -53,13 +55,25 @@ export const mapCreateAccountHistoryItem = ({
     <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
   );
 
+  const IconComponent = isRecipient ? null : (
+    <AssetIcon
+      token={{
+        type: AssetTypeWithCustomToken.NATIVE,
+        code: NATIVE_TOKEN_CODE,
+      }}
+      size="lg"
+    />
+  );
+
   const transactionDetails: TransactionDetails = {
     operation,
-    transactionTitle: t("history.transactionHistory.createAccount"),
+    transactionTitle: isRecipient
+      ? t("history.transactionHistory.accountFunded")
+      : NATIVE_TOKEN_CODE,
     transactionType: TransactionType.CREATE_ACCOUNT,
     fee,
     status: TransactionStatus.SUCCESS,
-    IconComponent: null,
+    IconComponent,
     ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${operation.id}`,
     createAccountDetails: {
@@ -71,14 +85,16 @@ export const mapCreateAccountHistoryItem = ({
 
   return {
     transactionDetails,
-    rowText: t("history.transactionHistory.createAccount"),
+    rowText: isRecipient
+      ? t("history.transactionHistory.accountFunded")
+      : NATIVE_TOKEN_CODE,
     dateText: date,
     amountText: formattedAmount,
     actionText: isRecipient
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent"),
     ActionIconComponent,
-    IconComponent: null,
+    IconComponent,
     transactionStatus: TransactionStatus.SUCCESS,
     isAddingFunds: isRecipient,
   };

@@ -189,6 +189,7 @@
     "transactionHistory": {
       "transaction": "Transaction",
       "createAccount": "Create account",
+      "accountFunded": "Account funded",
       "addedTrustline": "Added trustline",
       "removedTrustline": "Removed trustline",
       "received": "Received",
