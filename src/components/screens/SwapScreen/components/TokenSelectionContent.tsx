@@ -88,6 +88,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         onTokenPress={handleTokenPress}
         showTitleIcon={showTitleIcon}
         customTitle={customTitle}
+        disableNavigation
       />
     </View>
   );

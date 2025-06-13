@@ -63,6 +63,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const handleTokenSelect = (tokenId: string, tokenSymbol: string) => {
     setSwapToTokenId(tokenId);
     setSwapToTokenSymbol(tokenSymbol);
+
     selectTokenBottomSheetModalRef.current?.dismiss();
   };
 
@@ -191,6 +192,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             xl
             onPress={() => {
               /* TODO: Implement open review */
+              if (!swapToTokenBalance) {
+                handleSelectSwapToToken();
+              }
             }}
           >
             {swapToTokenBalance
@@ -205,11 +209,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={() =>
           selectTokenBottomSheetModalRef.current?.dismiss()
         }
+        snapPoints={["80%"]}
         customContent={
           <SelectTokenBottomSheet
-            publicKey={publicKey ?? ""}
-            network={network}
             onTokenSelect={handleTokenSelect}
+            customTitle={t("swapScreen.bottomSheetTokenListTitle")}
+            title={t("swapScreen.swapTo")}
+            onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}
           />
         }
       />

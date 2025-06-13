@@ -52,6 +52,7 @@ interface BalancesListProps {
   customTitle?: string;
   showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
+  disableNavigation?: boolean;
 }
 
 /**
@@ -75,9 +76,19 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   customTitle,
   showTitleIcon = false,
   onTokenPress,
+  disableNavigation = false,
 }) => {
   const { t } = useAppTranslation();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  // Always call the hook, but handle navigation context errors gracefully
+  let navigation: NavigationProp<RootStackParamList> | null = null;
+  try {
+    const nav = useNavigation<NavigationProp<RootStackParamList>>();
+    navigation = disableNavigation ? null : nav;
+  } catch {
+    navigation = null;
+  }
+
   const {
     balanceItems,
     isLoading,
@@ -157,7 +168,8 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           />
         </NotificationWrapper>
 
-        {!isTestNetwork && (
+        {/* Only show fund account button if navigation is available and not test network */}
+        {!disableNavigation && !isTestNetwork && navigation && (
           <Button
             isFullWidth
             tertiary
@@ -173,6 +185,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           </Button>
         )}
 
+        {/* Show friendbot button for test networks regardless of navigation */}
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />
         )}
