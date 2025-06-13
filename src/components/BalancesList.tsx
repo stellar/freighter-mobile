@@ -49,6 +49,7 @@ interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
   searchTerm?: string;
+  customTitle?: string;
   showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
 }
@@ -71,6 +72,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
   searchTerm,
+  customTitle,
   showTitleIcon = false,
   onTokenPress,
 }) => {
@@ -98,7 +100,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
       </ListWrapper>
@@ -113,7 +115,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
         <Spinner
@@ -133,7 +135,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
         <NotificationWrapper>
@@ -184,7 +186,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         {showTitleIcon && (
           <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
         )}
-        <Text medium>{t("balancesList.title")}</Text>
+        <Text medium>{customTitle ?? t("balancesList.title")}</Text>
       </ListTitle>
       <FlatList
         testID="balances-list"

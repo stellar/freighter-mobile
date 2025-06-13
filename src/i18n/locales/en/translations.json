@@ -332,6 +332,8 @@
     "receive": "Receive",
     "chooseAsset": "Choose asset",
     "selectAsset": "Select an asset",
+    "swapScreenTokenListTitle": "Your tokens",
+    "bottomSheetTokenListTitle": "Popular tokens",
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
