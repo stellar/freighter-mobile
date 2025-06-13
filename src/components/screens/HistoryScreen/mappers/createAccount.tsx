@@ -41,43 +41,78 @@ export const mapCreateAccountHistoryItem = ({
   themeColors,
   isCreateExternalAccount,
 }: CreateAccountHistoryItemData): HistoryItemData => {
-  const { account, starting_balance: startingBalance } = operation;
+  const { account, starting_balance: startingBalance, funder } = operation;
   const isRecipient = !isCreateExternalAccount;
-  const paymentDifference = isRecipient ? "+" : "-";
+
+  // SENDER's view: Treat as a regular XLM payment
+  if (!isRecipient) {
+    const senderActionIcon = (
+      <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
+    );
+    const senderIcon = (
+      <AssetIcon
+        token={{
+          type: AssetTypeWithCustomToken.NATIVE,
+          code: NATIVE_TOKEN_CODE,
+        }}
+        size="lg"
+      />
+    );
+    const transactionDetails: TransactionDetails = {
+      operation,
+      transactionTitle: `${String(t("history.transactionHistory.sent"))} ${NATIVE_TOKEN_CODE}`,
+      transactionType: TransactionType.PAYMENT,
+      fee,
+      status: TransactionStatus.SUCCESS,
+      IconComponent: senderIcon,
+      ActionIconComponent: senderActionIcon,
+      externalUrl: `${stellarExpertUrl}/op/${operation.id}`,
+      paymentDetails: {
+        to: account,
+        from: funder,
+        amount: startingBalance,
+        assetCode: NATIVE_TOKEN_CODE,
+        assetType: "native",
+      },
+    };
+
+    return {
+      transactionDetails,
+      rowText: t("history.transactionHistory.sent"),
+      dateText: date,
+      amountText: `-${formatAssetAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
+      actionText: t("history.transactionHistory.sent"),
+      ActionIconComponent: senderActionIcon,
+      IconComponent: senderIcon,
+      transactionStatus: TransactionStatus.SUCCESS,
+      isAddingFunds: false,
+    };
+  }
+
+  // RECIPIENT's view: Show as "Account Funded"
+  const paymentDifference = "+";
   const formattedAmount = `${paymentDifference}${formatAssetAmount(
     startingBalance,
     NATIVE_TOKEN_CODE,
   )}`;
 
-  const ActionIconComponent = isRecipient ? (
+  const recipientActionIcon = (
     <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />
-  ) : (
-    <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
   );
 
-  const IconComponent = isRecipient ? null : (
-    <AssetIcon
-      token={{
-        type: AssetTypeWithCustomToken.NATIVE,
-        code: NATIVE_TOKEN_CODE,
-      }}
-      size="lg"
-    />
-  );
+  const IconComponent = null;
 
   const transactionDetails: TransactionDetails = {
     operation,
-    transactionTitle: isRecipient
-      ? t("history.transactionHistory.accountFunded")
-      : NATIVE_TOKEN_CODE,
+    transactionTitle: t("history.transactionHistory.accountFunded"),
     transactionType: TransactionType.CREATE_ACCOUNT,
     fee,
     status: TransactionStatus.SUCCESS,
-    IconComponent,
-    ActionIconComponent,
+    IconComponent: null,
+    ActionIconComponent: recipientActionIcon,
     externalUrl: `${stellarExpertUrl}/op/${operation.id}`,
     createAccountDetails: {
-      isCreatingExternalAccount: isCreateExternalAccount,
+      isCreatingExternalAccount: false,
       accountPublicKey: account,
       startingBalance,
     },
@@ -85,18 +120,14 @@ export const mapCreateAccountHistoryItem = ({
 
   return {
     transactionDetails,
-    rowText: isRecipient
-      ? t("history.transactionHistory.accountFunded")
-      : NATIVE_TOKEN_CODE,
+    rowText: t("history.transactionHistory.accountFunded"),
     dateText: date,
     amountText: formattedAmount,
-    actionText: isRecipient
-      ? t("history.transactionHistory.received")
-      : t("history.transactionHistory.sent"),
-    ActionIconComponent,
-    IconComponent,
+    actionText: t("history.transactionHistory.received"),
+    ActionIconComponent: recipientActionIcon,
+    IconComponent: null,
     transactionStatus: TransactionStatus.SUCCESS,
-    isAddingFunds: isRecipient,
+    isAddingFunds: true,
   };
 };
 

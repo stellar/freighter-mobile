@@ -178,7 +178,7 @@
     "transactionHistory": {
       "transaction": "Transação",
       "createAccount": "Criar conta",
-      "accountFunded": "Conta financiada",
+      "accountFunded": "Conta creditada",
       "addedTrustline": "Trustline adicionada",
       "removedTrustline": "Trustline removida",
       "received": "Recebido",
