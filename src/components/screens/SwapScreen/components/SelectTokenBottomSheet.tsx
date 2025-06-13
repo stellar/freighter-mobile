@@ -24,20 +24,18 @@ const SelectTokenBottomSheet: React.FC<SelectTokenBottomSheetProps> = ({
 
   return (
     <View className="flex-1">
-      <View className="flex-row items-center justify-between mb-6">
-        <Text xl medium>
-          {title || t("swapScreen.swapTo")}
-        </Text>
+      <View className="relative flex-row items-center justify-center mb-8">
         {onClose && (
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={onClose} className="absolute left-0">
             <Icon.X size={24} color={themeColors.base[1]} />
           </TouchableOpacity>
         )}
+        <Text md medium semiBold>
+          {title || t("swapScreen.swapTo")}
+        </Text>
       </View>
 
-      <View className="h-px bg-gray-8 mb-6" />
-
-      <View className="flex-1 px-4 pb-4">
+      <View className="flex-1">
         <TokenSelectionContent
           onTokenPress={onTokenSelect}
           showTitleIcon={false}
