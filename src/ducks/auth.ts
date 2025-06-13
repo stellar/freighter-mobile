@@ -85,15 +85,16 @@ interface ImportWalletParams {
  * @property {string} mnemonicPhrase - The mnemonic phrase for the wallet
  * @property {string} password - User's password for encrypting the wallet
  * @property {KeyPair} keyPair - The public and private key pair
- * @property {boolean} [imported] - Whether the wallet was imported (optional)
- * @property {boolean} [isAppendingAccount] - Whether the account is being appended to the existing temporary store (optional)
+ * @property {boolean} [importedFromSecretKey] - Whether the account was imported from an external secret key (optional)
+ * @property {boolean} [shouldRefreshHashKey] - Whether to refresh the hash key (optional)
+ * @property {boolean} [shouldSetActiveAccount] - Whether to set this account as active (optional)
+ * @property {number} [accountNumber] - The account number for derivation (optional)
  */
 interface StoreAccountParams {
   mnemonicPhrase: string;
   password: string;
   keyPair: KeyPair;
-  imported?: boolean;
-  isAppendingAccount?: boolean;
+  importedFromSecretKey?: boolean;
   shouldRefreshHashKey?: boolean;
   shouldSetActiveAccount?: boolean;
   accountNumber?: number;
@@ -176,6 +177,18 @@ interface DeriveKeypairParams {
 }
 
 /**
+ * Parameters for importSecretKey function
+ *
+ * @interface ImportSecretKeyParams
+ * @property {string} secretKey - The secret key to import
+ * @property {string} password - User's password for encrypting the imported secret key
+ */
+interface ImportSecretKeyParams {
+  secretKey: string;
+  password: string;
+}
+
+/**
  * Authentication Actions Interface
  *
  * Defines the actions available in the authentication store.
@@ -187,6 +200,7 @@ interface DeriveKeypairParams {
  * @property {Function} signUp - Signs up a new user with the provided credentials
  * @property {Function} signIn - Signs in a user with the provided password
  * @property {Function} importWallet - Imports a wallet with the provided seed phrase and password
+ * @property {Function} importSecretKey - Imports a secret key and adds it to the accounts list
  * @property {Function} getAuthStatus - Gets the current authentication status
  * @property {Function} fetchActiveAccount - Fetches the currently active account
  * @property {Function} refreshActiveAccount - Refreshes the active account data
@@ -200,6 +214,7 @@ interface AuthActions {
   signUp: (params: SignUpParams) => void;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => void;
+  importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   getAuthStatus: () => Promise<AuthStatus>;
   renameAccount: (params: RenameAccountParams) => Promise<void>;
   getAllAccounts: () => Promise<void>;
@@ -624,6 +639,7 @@ const storeAccount = async ({
   accountNumber,
   shouldRefreshHashKey = true,
   shouldSetActiveAccount = true,
+  importedFromSecretKey = false,
 }: StoreAccountParams): Promise<void> => {
   const { publicKey, privateKey } = keyPair;
 
@@ -659,6 +675,7 @@ const storeAccount = async ({
       id: keyStore.id,
       name: accountName,
       publicKey,
+      importedFromSecretKey,
     }),
     createTemporaryStore({
       password,
@@ -824,6 +841,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
         id: keyStore.id,
         name: accountName,
         publicKey: keyPair.publicKey,
+        importedFromSecretKey: false,
       };
 
       return {
@@ -1230,14 +1248,21 @@ const createAccount = async (password: string): Promise<void> => {
     const loadedKey = await getKeyFromKeyManager(password);
     const { mnemonicPhrase } = loadedKey.extra as { mnemonicPhrase: string };
 
-    const accountList = await getAllAccounts();
+    const allAccounts = await getAllAccounts();
 
-    let index = accountList.length;
+    const derivedAccountsOnly = allAccounts.filter(
+      (account) => !account.importedFromSecretKey,
+    );
+
+    // To calculate the index of the next account to derive, we need to look at
+    // length considering ONLY the DERIVED accounts otherwise it could skip an
+    // index by mistake if there are accounts imported from secret key in the way
+    let index = derivedAccountsOnly.length;
     let keyPair = deriveKeyPair({
       mnemonicPhrase,
       index,
     });
-    let hasAccount = hasAccountInAccountList(accountList, keyPair);
+    let hasAccount = hasAccountInAccountList(allAccounts, keyPair);
     let round = 0;
 
     do {
@@ -1247,7 +1272,7 @@ const createAccount = async (password: string): Promise<void> => {
         index,
       });
 
-      hasAccount = hasAccountInAccountList(accountList, keyPair);
+      hasAccount = hasAccountInAccountList(allAccounts, keyPair);
       round++;
     } while (hasAccount && round < 50);
 
@@ -1261,6 +1286,50 @@ const createAccount = async (password: string): Promise<void> => {
     logger.error("createAccount", "Failed to create account", error);
     throw error;
   }
+};
+
+/**
+ * Imports a secret key and creates a new account
+ *
+ * @param {ImportSecretKeyParams} params - The import secret key parameters
+ * @returns {Promise<void>}
+ */
+const importSecretKeyLocal = async (
+  params: ImportSecretKeyParams,
+): Promise<void> => {
+  const { secretKey, password } = params;
+
+  const keypair = Keypair.fromSecret(secretKey);
+  const publicKey = keypair.publicKey();
+  const privateKey = keypair.secret();
+
+  const existingAccounts = await getAllAccounts();
+  const accountExists = hasAccountInAccountList(existingAccounts, {
+    publicKey,
+    privateKey,
+  });
+
+  if (accountExists) {
+    throw new Error(t("authStore.error.accountAlreadyExists"));
+  }
+
+  const temporaryStore = await getTemporaryStore();
+  if (!temporaryStore) {
+    throw new Error(t("authStore.error.temporaryStoreNotFound"));
+  }
+
+  await storeAccount({
+    mnemonicPhrase: temporaryStore.mnemonicPhrase,
+    password,
+    keyPair: {
+      publicKey,
+      privateKey,
+    },
+    accountNumber: existingAccounts.length + 1,
+    shouldRefreshHashKey: false,
+    shouldSetActiveAccount: true,
+    importedFromSecretKey: true,
+  });
 };
 
 /**
@@ -1701,5 +1770,27 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       password: string,
       activeAccountId?: string | null,
     ) => getKeyFromKeyManager(password, activeAccountId),
+
+    importSecretKey: async (params: ImportSecretKeyParams) => {
+      set({ isLoading: true, error: null });
+
+      try {
+        await importSecretKeyLocal(params);
+
+        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+        set({ isLoading: false, error: null });
+      } catch (error) {
+        logger.error("importSecretKey", "Failed to import secret key", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToImportSecretKey"),
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
   };
 });

@@ -38,6 +38,9 @@
       "renameWallet": "Rename wallet",
       "copyAddress": "Copy address",
       "viewOnExplorer": "View on stellar.expert"
+    },
+    "account": {
+      "imported": "Imported"
     }
   },
   "renameAccountModal": {
@@ -247,7 +250,9 @@
       "failedToImportWallet": "Failed to import wallet",
       "failedToLoadAccount": "Failed to load account",
       "invalidPassword": "Invalid password. Please try again.",
-      "failedToCreateAccount": "Failed to create account. Please try again."
+      "failedToCreateAccount": "Failed to create account. Please try again.",
+      "accountAlreadyExists": "Account already exists",
+      "failedToImportSecretKey": "Failed to import secret key"
     },
     "account": "Account {{number}}"
   },

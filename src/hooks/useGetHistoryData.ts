@@ -7,6 +7,7 @@ import {
   getIsPayment,
   getIsSwap,
   filterOperationsByAsset,
+  getIsCreateClaimableBalanceSpam,
 } from "helpers/history";
 import { useState } from "react";
 import { getAccountHistory } from "services/backend";
@@ -52,6 +53,10 @@ const createHistorySections = (
       };
 
       if (isDustPayment) {
+        return sections;
+      }
+
+      if (getIsCreateClaimableBalanceSpam(operation)) {
         return sections;
       }
 
