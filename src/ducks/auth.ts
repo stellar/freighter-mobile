@@ -1248,14 +1248,21 @@ const createAccount = async (password: string): Promise<void> => {
     const loadedKey = await getKeyFromKeyManager(password);
     const { mnemonicPhrase } = loadedKey.extra as { mnemonicPhrase: string };
 
-    const accountList = await getAllAccounts();
+    const allAccounts = await getAllAccounts();
 
-    let index = accountList.length;
+    const derivedAccountsOnly = allAccounts.filter(
+      (account) => !account.importedFromSecretKey,
+    );
+
+    // To calculate the index of the next account to derive, we need to look at
+    // length considering ONLY the DERIVED accounts otherwise it could skip an
+    // index by mistake if there are accounts imported from secret key in the way
+    let index = derivedAccountsOnly.length;
     let keyPair = deriveKeyPair({
       mnemonicPhrase,
       index,
     });
-    let hasAccount = hasAccountInAccountList(accountList, keyPair);
+    let hasAccount = hasAccountInAccountList(allAccounts, keyPair);
     let round = 0;
 
     do {
@@ -1265,7 +1272,7 @@ const createAccount = async (password: string): Promise<void> => {
         index,
       });
 
-      hasAccount = hasAccountInAccountList(accountList, keyPair);
+      hasAccount = hasAccountInAccountList(allAccounts, keyPair);
       round++;
     } while (hasAccount && round < 50);
 
