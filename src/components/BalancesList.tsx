@@ -12,10 +12,11 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { THEME } from "config/theme";
+import { PricedBalance } from "config/types";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
-import React from "react";
+import React, { ReactNode } from "react";
 import { FlatList, Linking, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -53,6 +54,7 @@ interface BalancesListProps {
   showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
   disableNavigation?: boolean;
+  renderRightContent?: (balance: PricedBalance) => ReactNode;
 }
 
 /**
@@ -77,6 +79,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   showTitleIcon = false,
   onTokenPress,
   disableNavigation = false,
+  renderRightContent,
 }) => {
   const { t } = useAppTranslation();
 
@@ -209,6 +212,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <BalanceRow
             balance={item}
             onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+            rightContent={
+              renderRightContent ? renderRightContent(item) : undefined
+            }
           />
         )}
         keyExtractor={(item) => item.id}

@@ -2,6 +2,7 @@ import { BalancesList } from "components/BalancesList";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -9,19 +10,21 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useState } from "react";
+import React, { ReactNode, useState } from "react";
 import { View } from "react-native";
 
 interface TokenSelectionContentProps {
   onTokenPress: (tokenId: string, tokenSymbol: string) => void;
   showTitleIcon?: boolean;
   customTitle?: string;
+  renderRightContent?: (balance: PricedBalance) => ReactNode;
 }
 
 const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   onTokenPress,
   showTitleIcon = false,
   customTitle,
+  renderRightContent,
 }) => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey ?? "";
@@ -89,6 +92,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         showTitleIcon={showTitleIcon}
         customTitle={customTitle}
         disableNavigation
+        renderRightContent={renderRightContent}
       />
     </View>
   );
