@@ -16,7 +16,6 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { BASE_RESERVE } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -24,10 +23,10 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -36,7 +35,6 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
-import { getAccount } from "services/stellar";
 
 // Define amount error types
 enum AmountError {
@@ -86,7 +84,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
-  const [subentryCount, setSubentryCount] = useState(0);
 
   const navigateToSendScreen = () => {
     try {
@@ -106,24 +103,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
-  useEffect(() => {
-    const fetchSenderAccount = async () => {
-      if (publicKey && network) {
-        try {
-          const senderAccount = await getAccount(publicKey, network);
-          setSubentryCount(senderAccount?.subentry_count || 0);
-        } catch (error) {
-          logger.error(
-            "Failed to fetch sender account details:",
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      }
-    };
-
-    fetchSenderAccount();
-  }, [publicKey, network]);
-
   const {
     tokenAmount,
     fiatAmount,
@@ -134,32 +113,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance) return BigNumber(0);
+    if (!selectedBalance || !account) return BigNumber(0);
 
-    if (
-      selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CREDIT_ALPHANUM4 &&
-      selectedBalance.assetType !==
-        AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
-    ) {
-      return BigNumber(selectedBalance.total);
-    }
-
-    if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
-      return BigNumber(selectedBalance.total);
-    }
-
-    const currentBalance = BigNumber(selectedBalance.total);
-    const minBalance = BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
-    const calculatedSpendable = currentBalance
-      .minus(minBalance)
-      .minus(BigNumber(transactionFee));
-
-    return calculatedSpendable.isGreaterThan(0)
-      ? calculatedSpendable
-      : BigNumber(0);
-  }, [selectedBalance, subentryCount, transactionFee]);
+    return calculateSpendableAmount(
+      selectedBalance,
+      account.subentryCount,
+      transactionFee,
+    );
+  }, [selectedBalance, account, transactionFee]);
 
   useEffect(() => {
     const currentTokenAmount = BigNumber(tokenAmount);

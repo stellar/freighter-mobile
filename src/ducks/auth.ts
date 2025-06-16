@@ -103,19 +103,21 @@ interface StoreAccountParams {
 /**
  * Active account information
  *
- * Contains the active account's public and private keys, name, and ID
+ * Contains the active account's public and private keys, name, ID, and subentry count
  *
  * @interface ActiveAccount
  * @property {string} publicKey - The account's public key
  * @property {string} privateKey - The account's private key
  * @property {string} accountName - The account's display name
  * @property {string} id - The account's unique identifier
+ * @property {number} subentryCount - The number of subentries (trustlines, offers, data entries)
  */
 export interface ActiveAccount {
   publicKey: string;
   privateKey: string;
   accountName: string;
   id: string;
+  subentryCount: number;
 }
 
 /**
@@ -1184,11 +1186,31 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
         throw new Error(t("authStore.error.privateKeyNotFound"));
       }
 
+      // Fetch subentry count from the network
+      let subentryCount = 0;
+      try {
+        const network =
+          ((await dataStorage.getItem(
+            STORAGE_KEYS.ACTIVE_NETWORK,
+          )) as NETWORKS) || NETWORKS.TESTNET;
+        const stellarAccount = await getAccount(account.publicKey, network);
+        subentryCount = stellarAccount?.subentry_count || 0;
+      } catch (error) {
+        // If we can't fetch subentry count, default to 0
+        // This ensures the account still loads even if network is unavailable
+        logger.warn(
+          "getActiveAccount",
+          "Failed to fetch subentry count",
+          error,
+        );
+      }
+
       return {
         publicKey: account.publicKey,
         privateKey,
         accountName: account.name,
         id: activeAccountId,
+        subentryCount,
       };
     }
 

@@ -13,6 +13,8 @@ import {
   getTokenIdentifier,
   getTokenIdentifiersFromBalances,
   getTokenPriceFromBalance,
+  calculateSpendableAmount,
+  isAmountSpendable,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -286,6 +288,117 @@ describe("balances helpers", () => {
     it("should handle empty prices object", () => {
       const priceData = getTokenPriceFromBalance({}, nativeBalance as Balance);
       expect(priceData).toBeNull();
+    });
+  });
+
+  describe("calculateSpendableAmount", () => {
+    it("should calculate spendable amount for XLM correctly", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("9.5"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      // subentryCount = 3, so minimum balance = (2 + 3) * 0.5 = 2.5 XLM
+      // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
+      const spendable = calculateSpendableAmount(xlmBalance, 3, "0.00001");
+      expect(spendable.toString()).toBe("7.49999");
+    });
+
+    it("should return zero for XLM when balance is insufficient", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("1"),
+        available: new BigNumber("1"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      // subentryCount = 0, so minimum balance = (2 + 0) * 0.5 = 1 XLM
+      // spendable = 1 - 1 - 0.00001 = -0.00001, should return 0
+      const spendable = calculateSpendableAmount(xlmBalance, 0, "0.00001");
+      expect(spendable.toString()).toBe("0");
+    });
+
+    it("should calculate spendable amount for non-native assets correctly", () => {
+      const usdcBalance: ClassicBalance = {
+        token: {
+          code: "USDC",
+          issuer: {
+            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+          type: "credit_alphanum4",
+        } as AssetToken,
+        total: new BigNumber("1000"),
+        available: new BigNumber("950"),
+        limit: new BigNumber("10000"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "50",
+      };
+
+      // For non-native assets, use available balance minus fee
+      // spendable = 950 - 0.00001 = 949.99999
+      const spendable = calculateSpendableAmount(usdcBalance, 0, "0.00001");
+      expect(spendable.toString()).toBe("949.99999");
+    });
+
+    it("should handle liquidity pool balances correctly", () => {
+      const spendable = calculateSpendableAmount(
+        liquidityPoolBalance,
+        0,
+        "0.00001",
+      );
+      expect(spendable.toFixed(7)).toBe("1472.6043461");
+    });
+  });
+
+  describe("isAmountSpendable", () => {
+    it("should return true for valid amounts", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("9.5"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      const isValid = isAmountSpendable("5", xlmBalance, 3, "0.00001");
+      expect(isValid).toBe(true);
+    });
+
+    it("should return false for excessive amounts", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("9.5"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      const isValid = isAmountSpendable("8", xlmBalance, 3, "0.00001");
+      expect(isValid).toBe(false);
     });
   });
 });

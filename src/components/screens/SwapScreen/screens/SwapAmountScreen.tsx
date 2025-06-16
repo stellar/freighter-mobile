@@ -10,8 +10,11 @@ import { SelectTokenBottomSheet } from "components/screens/SwapScreen/components
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { DEFAULT_DECIMALS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
+import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -37,6 +40,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const [swapTimeout, setSwapTimeout] = useState(0);
   const [swapToTokenSymbol, setSwapToTokenSymbol] = useState("");
   const [swapToTokenId, setSwapToTokenId] = useState("");
+  const [swapAmount, setSwapAmount] = useState("0");
+
+  const [amountError, setAmountError] = useState<string | null>(null);
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
   const { network } = useAuthenticationStore();
@@ -56,6 +62,41 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     (item) => item.id === swapToTokenId,
   );
 
+  // Validate swap amount against spendable balance
+  useEffect(() => {
+    if (!swapFromTokenBalance || !swapAmount || swapAmount === "0") {
+      setAmountError(null);
+      return;
+    }
+
+    if (
+      !isAmountSpendable(
+        swapAmount,
+        swapFromTokenBalance,
+        account?.subentryCount,
+        "0.00001",
+      )
+    ) {
+      const spendableAmount = calculateSpendableAmount(
+        swapFromTokenBalance,
+        account?.subentryCount || 0,
+        "0.00001",
+      );
+      setAmountError(
+        `Insufficient balance. Maximum spendable: ${spendableAmount.toFixed()} ${swapFromTokenSymbol}`,
+      );
+      console.log("error? ", amountError);
+    } else {
+      setAmountError(null);
+    }
+  }, [
+    swapAmount,
+    swapFromTokenBalance,
+    account?.subentryCount,
+    swapFromTokenSymbol,
+    amountError,
+  ]);
+
   const handleSelectSwapToToken = () => {
     selectTokenBottomSheetModalRef.current?.present();
   };
@@ -65,6 +106,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSwapToTokenSymbol(tokenSymbol);
 
     selectTokenBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleAmountChange = (key: string) => {
+    const newAmount = formatNumericInput(swapAmount, key, DEFAULT_DECIMALS);
+    setSwapAmount(newAmount);
+  };
+
+  const handleSetMax = () => {
+    if (swapFromTokenBalance) {
+      // Calculate spendable amount considering minimum balance and transaction fees
+      const spendableAmount = calculateSpendableAmount(
+        swapFromTokenBalance,
+        account?.subentryCount || 0,
+        "0.00001", // Default transaction fee for swaps
+      );
+
+      setSwapAmount(spendableAmount.toString());
+    }
   };
 
   const menuActions = useMemo(
@@ -120,34 +179,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <View className="flex-1">
         <View className="gap- items-center py-[32px] px-6">
           <View className="flex-row items-center gap-1">
-            <Display md medium>
-              0
+            <Display lg medium>
+              {swapAmount}
             </Display>
             <Text md medium secondary>
               {swapFromTokenSymbol}
             </Text>
           </View>
-          <View className="flex-row items-center gap-1">
-            <Text sm secondary>
-              -- {swapToTokenSymbol}
-            </Text>
-            <Icon.RefreshCcw03 size={12} color={themeColors.text.secondary} />
-          </View>
         </View>
-        {/* TODO: create a notification session for errors/warnings */}
+
+        {/* TODO: create a notification/toast session for errors/warnings */}
+
         <View className="gap-3 mt-[16px]">
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {swapFromTokenBalance && (
               <BalanceRow
                 balance={swapFromTokenBalance}
                 rightContent={
-                  <Button
-                    secondary
-                    lg
-                    onPress={() => {
-                      /* TODO: Implement set max */
-                    }}
-                  >
+                  <Button secondary lg onPress={handleSetMax}>
                     {t("swapScreen.setMax")}
                   </Button>
                 }
@@ -158,7 +207,17 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <TouchableOpacity onPress={handleSelectSwapToToken}>
             <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
               {swapToTokenBalance ? (
-                <BalanceRow balance={swapToTokenBalance} isSingleRow />
+                <BalanceRow
+                  balance={swapToTokenBalance}
+                  customTextContent={`${t("swapScreen.receive")} ${swapToTokenSymbol}`}
+                  isSingleRow
+                  rightContent={
+                    // TODO: state that handles the conversion from token to swap token total
+                    <Text sm secondary>
+                      --
+                    </Text>
+                  }
+                />
               ) : (
                 <View className="flex-row items-center gap-4 h-[44px]">
                   <Icon.Plus
@@ -179,11 +238,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
 
         <View className="w-full mt-[56px] mb-[24px]">
-          <NumericKeyboard
-            onPress={() => {
-              /* TODO: Implement amount change */
-            }}
-          />
+          <NumericKeyboard onPress={handleAmountChange} />
         </View>
 
         <View className="mt-auto mb-4">
