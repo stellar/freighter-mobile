@@ -62,7 +62,7 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
         <Button
           tertiary
           lg
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.popToTop()}
           testID="done-button"
         >
           {t("common.done")}
