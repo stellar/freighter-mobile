@@ -1,15 +1,19 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import React, { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
+
 import { AssetIcon } from "components/AssetIcon";
+import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import SwapTransactionDetailsBottomSheet from "components/screens/SwapScreen/components/SwapTransactionDetailsBottomSheet";
 import { AssetToken, NativeToken } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useState } from "react";
-import { View } from "react-native";
 
 const SwapStatus = {
   SWAPPING: "swapping",
@@ -43,6 +47,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [status, setStatus] = useState<SwapStatusType>(SwapStatus.SWAPPING);
+  const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // Mock the swap process - in real implementation this would come from swap store
   useEffect(() => {
@@ -131,7 +136,11 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
         {status === SwapStatus.SWAPPED ? (
           <View className="gap-[16px]">
-            <Button secondary xl onPress={() => {}}>
+            <Button 
+              secondary 
+              xl 
+              onPress={() => transactionDetailsBottomSheetModalRef.current?.present()}
+            >
               {t("swapProcessingScreen.viewTransaction", {
                 defaultValue: "View transaction",
               })}
@@ -154,6 +163,22 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           </View>
         )}
       </View>
+
+      <BottomSheet
+        modalRef={transactionDetailsBottomSheetModalRef}
+        handleCloseModal={() =>
+          transactionDetailsBottomSheetModalRef.current?.dismiss()
+        }
+        snapPoints={["80%"]}
+        customContent={
+          <SwapTransactionDetailsBottomSheet
+            fromAmount={fromAmount}
+            fromToken={fromToken}
+            toAmount={toAmount}
+            toToken={toToken}
+          />
+        }
+      />
     </BaseLayout>
   );
 };

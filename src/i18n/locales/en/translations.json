@@ -366,6 +366,11 @@
     "viewTransaction": "View transaction",
     "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
   },
+  "swapTransactionDetails": {
+    "swapped": "Swapped",
+    "conversionRate": "Conversion rate",
+    "minimumReceived": "Minimum received"
+  },
   "transactionTokenScreen": {
     "title": "Sending"
   },
