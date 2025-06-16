@@ -49,7 +49,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   };
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
         <View className="bg-background-tertiary rounded-xl mt-4 mb-6">
           <View className="p-4">

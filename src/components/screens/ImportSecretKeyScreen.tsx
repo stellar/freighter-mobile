@@ -71,7 +71,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
     secretKey.length > 0 && password.length > 0 && isAwareChecked;
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1 pt-5">
         <View>
           <Icon.Download01 themeColor="pink" size={24} withBackground />

@@ -32,7 +32,7 @@ const NetworkSettingsScreen: React.FC<NetworkSettingsScreenProps> = ({
     isTestnet(selectedNetwork) || isFuturenet(selectedNetwork);
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex flex-col gap-9 mt-3">
         <View className="flex flex-col gap-[16px] bg-background-secondary rounded-[16px] p-[16px]">
           <View className="flex flex-row items-center gap-2">
