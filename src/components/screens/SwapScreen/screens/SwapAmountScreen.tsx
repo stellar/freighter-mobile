@@ -6,7 +6,10 @@ import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { SelectTokenBottomSheet } from "components/screens/SwapScreen/components";
+import {
+  SelectTokenBottomSheet,
+  SwapReviewBottomSheet,
+} from "components/screens/SwapScreen/components";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -46,6 +49,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const publicKey = account?.publicKey;
   const { network } = useAuthenticationStore();
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
@@ -106,6 +110,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSwapToTokenSymbol(tokenSymbol);
 
     selectTokenBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleOpenReview = () => {
+    swapReviewBottomSheetModalRef.current?.present();
+  };
+
+  const handleConfirmSwap = () => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+    // TODO: Implement actual swap logic
   };
 
   const handleAmountChange = (key: string) => {
@@ -243,9 +256,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             tertiary
             xl
             onPress={() => {
-              /* TODO: Implement open review */
               if (!swapToTokenBalance) {
                 handleSelectSwapToToken();
+              } else {
+                handleOpenReview();
               }
             }}
           >
@@ -269,6 +283,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             title={t("swapScreen.swapTo")}
             onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}
             network={network}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={swapReviewBottomSheetModalRef}
+        handleCloseModal={() =>
+          swapReviewBottomSheetModalRef.current?.dismiss()
+        }
+        snapPoints={["80%"]}
+        customContent={
+          <SwapReviewBottomSheet
+            onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
+            onConfirm={handleConfirmSwap}
           />
         }
       />
