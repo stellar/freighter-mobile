@@ -526,5 +526,16 @@
     "title": "Your Recovery Phrase",
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
+  },
+  "slippageScreen": {
+    "title": "Allowed Slippage",
+    "customPlaceholder": "Custom %",
+    "setDefault": "Set default",
+    "errors": {
+      "customRequired": "Custom slippage is required",
+      "invalidNumber": "Invalid number",
+      "minSlippage": "Slippage must be at least {{min}}%",
+      "maxSlippage": "Slippage must be below {{max}}%"
+    }
   }
 }

@@ -150,8 +150,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }),
         systemIcon: "plusminus.circle",
         onPress: () => {
-          // TODO: Implement slippage screen
-          console.log("Navigate to slippage screen");
+          navigation.navigate(SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN);
         },
       },
     ],

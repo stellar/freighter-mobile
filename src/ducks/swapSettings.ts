@@ -1,13 +1,14 @@
 import {
   DEFAULT_TRANSACTION_TIMEOUT,
   MIN_TRANSACTION_FEE,
+  DEFAULT_SLIPPAGE,
 } from "config/constants";
 import { create } from "zustand";
 
 const INITIAL_SWAP_SETTINGS_STATE = {
   swapFee: MIN_TRANSACTION_FEE,
   swapTimeout: DEFAULT_TRANSACTION_TIMEOUT,
-  swapSlippage: 1, // Default 1% slippage
+  swapSlippage: DEFAULT_SLIPPAGE,
 };
 
 /**
@@ -54,13 +55,13 @@ export const useSwapSettingsStore = create<SwapSettingsState>((set) => ({
    * Saves the swap timeout in seconds
    * @param {number} timeout - The timeout value in seconds
    */
-  saveSwapTimeout: (timeout) => set({ swapTimeout: Number(timeout) }),
+  saveSwapTimeout: (timeout) => set({ swapTimeout: timeout }),
 
   /**
    * Saves the swap slippage percentage
    * @param {number} slippage - The slippage percentage to save
    */
-  saveSwapSlippage: (slippage) => set({ swapSlippage: Number(slippage) }),
+  saveSwapSlippage: (slippage) => set({ swapSlippage: slippage }),
 
   /**
    * Resets all swap settings to their default values

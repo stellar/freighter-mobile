@@ -5,6 +5,7 @@ import SwapScreen from "components/screens/SwapScreen";
 import {
   SwapAmountScreen,
   SwapFeeScreen,
+  SwapSlippageScreen,
   SwapTimeoutScreen,
 } from "components/screens/SwapScreen/screens";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
@@ -48,6 +49,13 @@ export const SwapStackNavigator = () => {
         component={SwapTimeoutScreen}
         options={{
           headerTitle: t("transactionTimeoutScreen.title"),
+        }}
+      />
+      <SwapStack.Screen
+        name={SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN}
+        component={SwapSlippageScreen}
+        options={{
+          headerTitle: "Allowed Slippage",
         }}
       />
     </SwapStack.Navigator>

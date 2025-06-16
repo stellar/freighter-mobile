@@ -81,7 +81,6 @@ const FeeSettings: React.FC<FeeSettingsProps> = ({
               error={error}
               rightElement={
                 <Text md secondary>
-                  {/* The Fee is always paid in native token */}
                   {NATIVE_TOKEN_CODE}
                 </Text>
               }

@@ -75,6 +75,7 @@ export const SWAP_ROUTES = {
   SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
   SWAP_FEE_SCREEN: "SwapFeeScreen",
   SWAP_TIMEOUT_SCREEN: "SwapTimeoutScreen",
+  SWAP_SLIPPAGE_SCREEN: "SwapSlippageScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -179,4 +180,5 @@ export type SwapStackParamList = {
   };
   [SWAP_ROUTES.SWAP_FEE_SCREEN]: undefined;
   [SWAP_ROUTES.SWAP_TIMEOUT_SCREEN]: undefined;
+  [SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN]: undefined;
 };
