@@ -45,6 +45,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
       onPressDefaultActionButton={handleContinue}
     >
       <Input
+        autoCapitalize="none"
         isPassword
         placeholder={t("choosePasswordScreen.passwordInputPlaceholder")}
         fieldSize="lg"

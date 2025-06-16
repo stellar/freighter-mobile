@@ -82,6 +82,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       isLoading={isLoading || isSigningUp}
     >
       <Input
+        autoCapitalize="none"
         isPassword
         placeholder={t("validateRecoveryPhraseScreen.inputPlaceholder")}
         fieldSize="lg"
