@@ -13,6 +13,7 @@ import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -35,9 +36,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const [swapFee, setSwapFee] = useState(0);
-  const [swapSlippage, setSwapSlippage] = useState(0);
-  const [swapTimeout, setSwapTimeout] = useState(0);
+  const { swapFee, swapTimeout, swapSlippage } = useSwapSettingsStore();
   const [swapToTokenSymbol, setSwapToTokenSymbol] = useState("");
   const [swapToTokenId, setSwapToTokenId] = useState("");
   const [swapAmount, setSwapAmount] = useState("0");
@@ -74,13 +73,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         swapAmount,
         swapFromTokenBalance,
         account?.subentryCount,
-        "0.00001",
+        swapFee,
       )
     ) {
       const spendableAmount = calculateSpendableAmount(
         swapFromTokenBalance,
         account?.subentryCount || 0,
-        "0.00001",
+        swapFee,
       );
       setAmountError(
         `Insufficient balance. Maximum spendable: ${spendableAmount.toFixed()} ${swapFromTokenSymbol}`,
@@ -95,6 +94,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account?.subentryCount,
     swapFromTokenSymbol,
     amountError,
+    swapFee,
   ]);
 
   const handleSelectSwapToToken = () => {
@@ -119,7 +119,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       const spendableAmount = calculateSpendableAmount(
         swapFromTokenBalance,
         account?.subentryCount || 0,
-        "0.00001", // Default transaction fee for swaps
+        swapFee, // Default transaction fee for swaps
       );
 
       setSwapAmount(spendableAmount.toString());
@@ -132,8 +132,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         title: t("swapScreen.menu.fee", { fee: swapFee }),
         systemIcon: "divide.circle",
         onPress: () => {
-          // TODO: Implement fee screen
-          setSwapFee(swapFee + 1);
+          navigation.navigate(SWAP_ROUTES.SWAP_FEE_SCREEN);
         },
       },
       {
@@ -142,8 +141,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }),
         systemIcon: "clock",
         onPress: () => {
-          // TODO: Implement timeout screen
-          setSwapTimeout(swapTimeout + 1);
+          navigation.navigate(SWAP_ROUTES.SWAP_TIMEOUT_SCREEN);
         },
       },
       {
@@ -153,11 +151,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         systemIcon: "plusminus.circle",
         onPress: () => {
           // TODO: Implement slippage screen
-          setSwapSlippage(swapSlippage + 1);
+          console.log("Navigate to slippage screen");
         },
       },
     ],
-    [t, swapFee, swapSlippage, swapTimeout],
+    [t, navigation, swapFee, swapSlippage, swapTimeout],
   );
 
   useEffect(() => {

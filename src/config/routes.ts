@@ -73,6 +73,8 @@ export const SEND_PAYMENT_ROUTES = {
 export const SWAP_ROUTES = {
   SWAP_SCREEN: "SwapScreen",
   SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
+  SWAP_FEE_SCREEN: "SwapFeeScreen",
+  SWAP_TIMEOUT_SCREEN: "SwapTimeoutScreen",
 } as const;
 
 export type RootStackParamList = {
@@ -175,4 +177,6 @@ export type SwapStackParamList = {
     tokenId: string;
     tokenSymbol: string;
   };
+  [SWAP_ROUTES.SWAP_FEE_SCREEN]: undefined;
+  [SWAP_ROUTES.SWAP_TIMEOUT_SCREEN]: undefined;
 };
