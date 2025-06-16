@@ -65,7 +65,7 @@ const TransactionFeeScreen: React.FC<TransactionFeeScreenProps> = ({
         <View>
           <View className="flex-row items-center gap-2">
             <Input
-              fieldSize="md"
+              fieldSize="lg"
               value={localFee}
               onChangeText={setLocalFee}
               keyboardType="numeric"

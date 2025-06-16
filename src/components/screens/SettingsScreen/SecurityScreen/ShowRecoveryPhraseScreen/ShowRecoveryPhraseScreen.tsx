@@ -95,6 +95,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
 
         <View className="mb-6">
           <Input
+            fieldSize="lg"
             label={t("showRecoveryPhraseScreen.password")}
             placeholder={t("showRecoveryPhraseScreen.passwordInputPlaceholder")}
             value={password}
