@@ -9,7 +9,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View } from "react-native";
+import { View, ScrollView } from "react-native";
 
 type ShowRecoveryPhraseScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -49,77 +49,90 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   };
 
   return (
-    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
+    <BaseLayout
+      useKeyboardAvoidingView
+      useSafeArea
+      insets={{ top: false, bottom: false }}
+    >
       <View className="flex-1">
-        <View className="bg-background-tertiary rounded-xl mt-4 mb-6">
-          <View className="p-4">
-            <View className="mb-4">
-              <Text secondary>{t("showRecoveryPhraseScreen.keepSafe")}</Text>
-            </View>
-            <View className="mb-6">
-              <Text secondary>
-                {t("showRecoveryPhraseScreen.accessWarning")}
-              </Text>
-            </View>
-
-            <View className="flex flex-col gap-6">
-              <View className="flex-row items-center gap-3">
-                <Icon.Lock01 size={24} color={themeColors.lime[10]} />
-                <View className="flex-1">
-                  <Text sm color={themeColors.white}>
-                    {t("showRecoveryPhraseScreen.yourRecoveryPhrase")}
-                  </Text>
-                </View>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="bg-background-tertiary rounded-xl mt-4 mb-6">
+            <View className="p-4">
+              <View className="mb-4">
+                <Text secondary>{t("showRecoveryPhraseScreen.keepSafe")}</Text>
+              </View>
+              <View className="mb-6">
+                <Text secondary>
+                  {t("showRecoveryPhraseScreen.accessWarning")}
+                </Text>
               </View>
 
-              <View className="flex-row items-center gap-3">
-                <Icon.EyeOff size={24} color={themeColors.lime[10]} />
-                <View className="flex-1">
-                  <Text sm color={themeColors.white}>
-                    {t("showRecoveryPhraseScreen.dontShareWithAnyone")}
-                  </Text>
+              <View className="flex flex-col gap-6">
+                <View className="flex-row items-center gap-3">
+                  <Icon.Lock01 size={24} color={themeColors.lime[10]} />
+                  <View className="flex-1">
+                    <Text sm color={themeColors.white}>
+                      {t("showRecoveryPhraseScreen.yourRecoveryPhrase")}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              <View className="flex-row items-center gap-3">
-                <Icon.XSquare size={24} color={themeColors.lime[10]} />
-                <View className="flex-1">
-                  <Text sm color={themeColors.white}>
-                    {t("showRecoveryPhraseScreen.neverAskForYourPhrase")}
-                  </Text>
+                <View className="flex-row items-center gap-3">
+                  <Icon.EyeOff size={24} color={themeColors.lime[10]} />
+                  <View className="flex-1">
+                    <Text sm color={themeColors.white}>
+                      {t("showRecoveryPhraseScreen.dontShareWithAnyone")}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center gap-3">
+                  <Icon.XSquare size={24} color={themeColors.lime[10]} />
+                  <View className="flex-1">
+                    <Text sm color={themeColors.white}>
+                      {t("showRecoveryPhraseScreen.neverAskForYourPhrase")}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View className="mb-6">
-          <Input
-            fieldSize="lg"
-            label={t("showRecoveryPhraseScreen.password")}
-            placeholder={t("showRecoveryPhraseScreen.passwordInputPlaceholder")}
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setError(undefined);
-            }}
-            secureTextEntry
-            testID="password-input"
-            error={error}
-          />
-        </View>
+          <View className="mb-6">
+            <Input
+              autoCapitalize="none"
+              fieldSize="lg"
+              label={t("showRecoveryPhraseScreen.password")}
+              placeholder={t(
+                "showRecoveryPhraseScreen.passwordInputPlaceholder",
+              )}
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError(undefined);
+              }}
+              secureTextEntry
+              testID="password-input"
+              error={error}
+            />
+          </View>
 
-        <View className="flex-1" />
+          <Button
+            tertiary
+            lg
+            onPress={handleShowRecoveryPhrase}
+            testID="show-recovery-phrase-button"
+            isLoading={isLoading}
+          >
+            {t("showRecoveryPhraseScreen.showPhrase")}
+          </Button>
 
-        <Button
-          tertiary
-          lg
-          onPress={handleShowRecoveryPhrase}
-          testID="show-recovery-phrase-button"
-          isLoading={isLoading}
-        >
-          {t("showRecoveryPhraseScreen.showPhrase")}
-        </Button>
+          <View className="mb-10" />
+        </ScrollView>
       </View>
     </BaseLayout>
   );
