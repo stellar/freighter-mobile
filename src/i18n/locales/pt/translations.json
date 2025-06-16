@@ -516,12 +516,5 @@
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
-  },
-  "tokenDetailsScreen": {
-    "sorobanToken": "Token Soroban",
-    "priceChange": "{{percentage}}%",
-    "balance": "Saldo",
-    "value": "Valor",
-    "listHeader": "Sua atividade de {{tokenName}}"
   }
 }
