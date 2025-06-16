@@ -16,6 +16,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -109,7 +110,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     showFiatAmount,
     setShowFiatAmount,
     handleAmountChange,
-    handlePercentagePress,
+    setTokenAmount,
+    setFiatAmount,
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
@@ -121,6 +123,27 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionFee,
     );
   }, [selectedBalance, account, transactionFee]);
+
+  const handlePercentagePress = (percentage: number) => {
+    if (!selectedBalance) return;
+
+    let targetAmount: BigNumber;
+
+    if (percentage === 100) {
+      targetAmount = spendableBalance;
+    } else {
+      const totalBalance = BigNumber(selectedBalance.total);
+      targetAmount = totalBalance.multipliedBy(percentage / 100);
+    }
+
+    if (showFiatAmount) {
+      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
+      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
+      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
+    } else {
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+    }
+  };
 
   useEffect(() => {
     const currentTokenAmount = BigNumber(tokenAmount);
