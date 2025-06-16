@@ -77,12 +77,21 @@ const SlippageSettings: React.FC<SlippageSettingsProps> = ({
   };
 
   const handleCustomSlippageChange = (value: string) => {
-    setSelectedPreset(null);
     setCustomSlippage(value);
+
+    const numValue = parseFloat(value);
+    const matchingPreset = SLIPPAGE_OPTIONS.find(
+      (option) => option.value === numValue,
+    );
+
+    if (matchingPreset && !Number.isNaN(numValue)) {
+      setSelectedPreset(matchingPreset.value);
+    } else {
+      setSelectedPreset(null);
+    }
 
     if (value) {
       const error = validateCustomSlippage(value);
-
       setValidationError(error);
     } else {
       setValidationError(null);

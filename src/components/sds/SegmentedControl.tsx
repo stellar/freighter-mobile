@@ -1,4 +1,5 @@
 import { Text } from "components/sds/Typography";
+import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -28,36 +29,41 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   selectedValue,
   onValueChange,
   disabled = false,
-}) => (
-  <View className="bg-background-tertiary rounded-lg flex-row">
-    {options.map((option, index) => {
-      const isSelected = option.value === selectedValue;
-      const isFirst = index === 0;
-      const isLast = index === options.length - 1;
+}) => {
+  const { themeColors } = useColors();
 
-      return (
-        <TouchableOpacity
-          key={option.value}
-          onPress={() => !disabled && onValueChange(option.value)}
-          disabled={disabled}
-          className={`flex-1 py-2 px-3 ${isSelected ? "bg-primary" : ""} ${
-            isFirst ? "rounded-l-lg" : ""
-          } ${isLast ? "rounded-r-lg" : ""}`}
-        >
-          <Text
-            md
-            medium={isSelected}
-            semiBold={!isSelected}
-            className={`text-center ${
-              isSelected ? "text-white" : "text-foreground-secondary"
-            }`}
+  return (
+    <View className="bg-background-tertiary rounded-lg flex-row">
+      {options.map((option, index) => {
+        const isSelected = option.value === selectedValue;
+        const isFirst = index === 0;
+        const isLast = index === options.length - 1;
+
+        return (
+          <TouchableOpacity
+            key={option.value}
+            onPress={() => !disabled && onValueChange(option.value)}
+            disabled={disabled}
+            className={`flex-1 py-2 px-3 ${isSelected ? "bg-lilac-4" : ""} ${
+              isFirst ? "rounded-l-lg" : ""
+            } ${isLast ? "rounded-r-lg" : ""}`}
           >
-            {option.label}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+            <Text
+              md
+              medium={isSelected}
+              semiBold={!isSelected}
+              textAlign="center"
+              color={
+                isSelected ? themeColors.lilac[11] : themeColors.text.secondary
+              }
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 export default SegmentedControl;
