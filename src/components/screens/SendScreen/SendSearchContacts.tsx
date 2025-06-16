@@ -133,9 +133,11 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           />
 
           {searchError && (
-            <Text sm secondary className="mt-2 text-red-500">
-              {searchError}
-            </Text>
+            <View className="mt-4">
+              <Text sm secondary>
+                {searchError}
+              </Text>
+            </View>
           )}
         </View>
 

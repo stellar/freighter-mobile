@@ -471,8 +471,8 @@
   "sendRecipient": {
     "error": {
       "invalidAddressFormat": "Invalid Stellar address format",
-      "sendToSelf": "Cannot send to yourself",
-      "sendToSelfFederation": "Cannot send to yourself (resolved federation address)",
+      "sendToSelf": "You can not send to yourself",
+      "sendToSelfFederation": "You can not send to yourself (resolved federation address)",
       "federationNotFound": "Federation address not found or resolution failed",
       "destinationAccountStatus": "Failed to check destination account status",
       "unexpectedSearchError": "An unexpected error occurred during search"
