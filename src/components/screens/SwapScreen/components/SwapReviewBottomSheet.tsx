@@ -1,5 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
+import SwapProcessingScreen from "components/screens/SwapScreen/screens/SwapProcessingScreen";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -16,7 +17,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React from "react";
+import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 // Mock data types (will be replaced with real data later)
@@ -49,6 +50,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Mock data for now - will be replaced with real data from store
   const mockSwapData: MockSwapData = {
@@ -64,6 +66,21 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     conversionRate: "1 XLM ≈ 0.301 USDC",
     swapFee: "0.0051234",
     transactionXDR: "AAAAAggAAAAA1234567890ABCDEF",
+  };
+
+  const handleConfirmSwap = () => {
+    setIsProcessing(true);
+    // TODO: Implement actual swap logic
+    if (onConfirm) {
+      onConfirm();
+    }
+  };
+
+  const handleProcessingClose = () => {
+    setIsProcessing(false);
+    if (onCancel) {
+      onCancel();
+    }
   };
 
   const handleCopyXdr = () => {
@@ -102,6 +119,18 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           },
           type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
         };
+
+  if (isProcessing) {
+    return (
+      <SwapProcessingScreen
+        onClose={handleProcessingClose}
+        fromAmount={mockSwapData.fromAmount}
+        fromToken={fromTokenMock}
+        toAmount={mockSwapData.toAmount}
+        toToken={toTokenMock}
+      />
+    );
+  }
 
   return (
     <View className="flex-1">
@@ -259,7 +288,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
         <View className="flex-1">
           <Button
-            onPress={onConfirm}
+            onPress={handleConfirmSwap}
             tertiary
             xl
             disabled={!mockSwapData.transactionXDR}

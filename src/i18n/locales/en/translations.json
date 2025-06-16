@@ -356,6 +356,16 @@
       "warning": "Make sure to review the transaction above, once you confirm it's irreversible"
     }
   },
+  "swapProcessingScreen": {
+    "swapping": "Swapping",
+    "swapped": "Swapped!",
+    "failed": "Failed",
+    "to": " to ",
+    "wasSwappedFor": " was swapped for ",
+    "couldNotBeSwappedFor": " could not be swapped for ",
+    "viewTransaction": "View transaction",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
+  },
   "transactionTokenScreen": {
     "title": "Sending"
   },

@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
@@ -22,7 +21,6 @@ import {
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
-  MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -271,20 +269,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setIsProcessing(false);
     resetTransaction();
 
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-            state: {
-              index: 0,
-              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-            },
-          },
-        ],
-      }),
-    );
+    navigation.reset({
+      index: 0,
+      // @ts-expect-error: This is a valid route.
+      routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+    });
   };
 
   if (isProcessing) {

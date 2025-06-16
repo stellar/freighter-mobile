@@ -10,11 +10,17 @@ import {
   SelectTokenBottomSheet,
   SwapReviewBottomSheet,
 } from "components/screens/SwapScreen/components";
+import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_DECIMALS } from "config/constants";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  SWAP_ROUTES,
+  SwapStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+} from "config/routes";
+import { NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
@@ -43,6 +49,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const [swapToTokenSymbol, setSwapToTokenSymbol] = useState("");
   const [swapToTokenId, setSwapToTokenId] = useState("");
   const [swapAmount, setSwapAmount] = useState("0");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [amountError, setAmountError] = useState<string | null>(null);
   const { account } = useGetActiveAccount();
@@ -65,7 +72,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     (item) => item.id === swapToTokenId,
   );
 
-  // Validate swap amount against spendable balance
   useEffect(() => {
     if (!swapFromTokenBalance || !swapAmount || swapAmount === "0") {
       setAmountError(null);
@@ -118,7 +124,21 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleConfirmSwap = () => {
     swapReviewBottomSheetModalRef.current?.dismiss();
-    // TODO: Implement actual swap logic
+
+    // Wait for the bottom sheet to dismiss before showing the processing screen
+    setTimeout(() => {
+      setIsProcessing(true);
+    }, 100);
+  };
+
+  const handleProcessingScreenClose = () => {
+    setIsProcessing(false);
+
+    navigation.reset({
+      index: 0,
+      // @ts-expect-error: This is a valid route.
+      routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+    });
   };
 
   const handleAmountChange = (key: string) => {
@@ -128,11 +148,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleSetMax = () => {
     if (swapFromTokenBalance) {
-      // Calculate spendable amount considering minimum balance and transaction fees
       const spendableAmount = calculateSpendableAmount(
         swapFromTokenBalance,
         account?.subentryCount || 0,
-        swapFee, // Default transaction fee for swaps
+        swapFee,
       );
 
       setSwapAmount(spendableAmount.toString());
@@ -183,6 +202,35 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       ),
     });
   }, [navigation, menuActions, themeColors]);
+
+  if (isProcessing) {
+    // Extract token from balance or create fallback
+    let fromToken;
+    if (swapFromTokenBalance && "token" in swapFromTokenBalance) {
+      fromToken = swapFromTokenBalance.token;
+    } else {
+      const fallbackToken: NativeToken = { type: "native", code: "XLM" };
+      fromToken = fallbackToken;
+    }
+
+    let toToken;
+    if (swapToTokenBalance && "token" in swapToTokenBalance) {
+      toToken = swapToTokenBalance.token;
+    } else {
+      const fallbackToken: NativeToken = { type: "native", code: "XLM" };
+      toToken = fallbackToken;
+    }
+
+    return (
+      <SwapProcessingScreen
+        onClose={handleProcessingScreenClose}
+        fromAmount={swapAmount}
+        fromToken={fromToken}
+        toAmount="50.01" // Mock received amount - in real implementation this would come from swap calculation
+        toToken={toToken}
+      />
+    );
+  }
 
   return (
     <BaseLayout insets={{ top: false }}>
