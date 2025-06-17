@@ -1,11 +1,10 @@
-
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
-import { 
-  calculateConversionRate, 
-  calculateMinimumReceived, 
-  formatConversionRate, 
-  formatTransactionDate 
+import {
+  calculateConversionRate,
+  calculateMinimumReceived,
+  formatConversionRate,
+  formatTransactionDate,
 } from "components/screens/SwapScreen/helpers";
 import { useTransactionStatus } from "components/screens/SwapScreen/hooks";
 import { Button, IconPosition } from "components/sds/Button";
@@ -15,8 +14,8 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import { AssetToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
@@ -65,10 +64,9 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { copyToClipboard } = useClipboard();
   const { network } = useAuthenticationStore();
 
-  const { transactionMemo, transactionFee } = useTransactionSettingsStore();
+  const { swapFee } = useSwapSettingsStore();
   const { transactionXDR } = useTransactionBuilderStore();
-  
-  // Use custom hook for transaction status
+
   const { statusText, statusColor, transactionHash } = useTransactionStatus();
 
   const [transactionDetails, setTransactionDetails] =
@@ -116,13 +114,13 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const calculatedConversionRate = calculateConversionRate(
     fromAmount,
     toAmount,
-    conversionRate
+    conversionRate,
   );
 
   const calculatedMinimumReceived = calculateMinimumReceived(
     toAmount,
     allowedSlippage,
-    minimumReceived
+    minimumReceived,
   );
 
   return (
@@ -161,7 +159,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         </View>
 
         {/* Swap Direction - Using downward chevron like history screen */}
-        <View className="items-center">
+        <View>
           <Icon.ChevronDownDouble
             size={20}
             color={themeColors.foreground.primary}
@@ -204,11 +202,15 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-            {t("swapScreen.review.rate")}
+              {t("swapScreen.review.rate")}
             </Text>
           </View>
-          <Text md medium secondary>
-            {formatConversionRate(calculatedConversionRate, fromToken.code, toToken.code)}
+          <Text md medium>
+            {formatConversionRate(
+              calculatedConversionRate,
+              fromToken.code,
+              toToken.code,
+            )}
           </Text>
         </View>
 
@@ -217,10 +219,10 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Shield01 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-            {t("swapScreen.review.minimum")}
+              {t("swapScreen.review.minimum")}
             </Text>
           </View>
-          <Text md medium secondary>
+          <Text md medium>
             {formatAssetAmount(calculatedMinimumReceived, toToken.code)}
           </Text>
         </View>
@@ -230,13 +232,13 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-            {t("swapScreen.review.fee")}
+              {t("swapScreen.review.fee")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
+              {formatAssetAmount(swapFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>
@@ -284,4 +286,4 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   );
 };
 
-export default SwapTransactionDetailsBottomSheet; 
+export default SwapTransactionDetailsBottomSheet;

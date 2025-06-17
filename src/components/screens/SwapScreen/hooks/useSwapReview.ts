@@ -1,6 +1,4 @@
-
 import { formatConversionRate } from "components/screens/SwapScreen/helpers";
-import { AssetToken, AssetTypeWithCustomToken, NativeToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -9,13 +7,17 @@ import { useClipboard } from "hooks/useClipboard";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useState } from "react";
 
+/**
+ * Simplified hook for swap review functionality
+ * Following SendScreen patterns - using stores directly instead of complex props
+ */
 export const useSwapReview = () => {
   const { t } = useAppTranslation();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Get data from stores
+  // Access stores directly - cleaner pattern
   const {
     swapAmount,
     destinationAmount,
@@ -23,32 +25,9 @@ export const useSwapReview = () => {
     fromTokenSymbol,
     toTokenSymbol,
   } = useSwapStore();
-  
+
   const { swapFee } = useSwapSettingsStore();
-  const { transactionXDR } = useTransactionBuilderStore();
-
-  // Create token objects for display
-  const fromToken: AssetToken | NativeToken = fromTokenSymbol === "XLM" 
-    ? {
-        type: AssetTypeWithCustomToken.NATIVE,
-        code: "XLM",
-      }
-    : {
-        type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
-        code: fromTokenSymbol,
-        issuer: { key: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" }
-      };
-
-  const toToken: AssetToken | NativeToken = toTokenSymbol === "XLM"
-    ? {
-        type: AssetTypeWithCustomToken.NATIVE,
-        code: "XLM",
-      }
-    : {
-        type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
-        code: toTokenSymbol,
-        issuer: { key: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" }
-      };
+  const { transactionXDR, isBuilding } = useTransactionBuilderStore();
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -66,33 +45,36 @@ export const useSwapReview = () => {
     setIsProcessing(false);
   };
 
-  // Format conversion rate using updated helper with 7 decimals and formatAssetAmount
-  const formattedConversionRate = formatConversionRate(
+  // Format conversion rate using helper
+  const conversionRate = formatConversionRate(
     pathResult?.conversionRate || "",
     fromTokenSymbol,
-    toTokenSymbol
+    toTokenSymbol,
   );
 
   return {
     // State
     isProcessing,
-    
+    isBuilding,
+
     // Data
     swapAmount,
     destinationAmount: destinationAmount || "0",
-    fromToken,
-    toToken,
     fromTokenSymbol,
     toTokenSymbol,
     minimumReceived: pathResult?.destinationAmountMin || "0",
-    conversionRate: formattedConversionRate,
+    conversionRate,
     swapFee,
     transactionXDR,
     account,
-    
+
+    // Derived data for fiat amounts - simplified
+    fromTokenFiatAmount: "--", // Could be enhanced later
+    toTokenFiatAmount: "--", // Could be enhanced later
+
     // Actions
     handleCopyXdr,
     startProcessing,
     stopProcessing,
   };
-}; 
+};

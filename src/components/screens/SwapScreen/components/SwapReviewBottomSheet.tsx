@@ -1,5 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
+import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
 import { useSwapReview } from "components/screens/SwapScreen/hooks";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
@@ -7,10 +8,14 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
+import { useSwapStore } from "ducks/swap";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -25,27 +30,42 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+
+  // Use simplified hook
   const {
     isProcessing,
     isBuilding,
     swapAmount,
     destinationAmount,
-    fromToken,
-    toToken,
     fromTokenSymbol,
     toTokenSymbol,
     minimumReceived,
     conversionRate,
     swapFee,
     transactionXDR,
-    account,
     fromTokenFiatAmount,
     toTokenFiatAmount,
     handleCopyXdr,
     startProcessing,
     stopProcessing,
   } = useSwapReview();
+
+  // Get token balances for icons
+  const { fromTokenId, toTokenId } = useSwapStore();
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
+
+  const fromTokenBalance = balanceItems.find((item) => item.id === fromTokenId);
+  const toTokenBalance = balanceItems.find((item) => item.id === toTokenId);
+
+  // Get token objects for display
+  const fromToken = getTokenFromBalance(fromTokenBalance);
+  const toToken = getTokenFromBalance(toTokenBalance);
 
   const publicKey = account?.publicKey;
 
@@ -58,7 +78,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const handleProcessingClose = () => {
     stopProcessing();
-    
+
     if (onCancel) {
       onCancel();
     }
@@ -93,7 +113,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
                 {formatAssetAmount(swapAmount, fromTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {fromTokenFiatAmount || "--"}
+                {fromTokenFiatAmount}
               </Text>
             </View>
           </View>
@@ -114,7 +134,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
                 {formatAssetAmount(destinationAmount, toTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {toTokenFiatAmount || "--"}
+                {toTokenFiatAmount}
               </Text>
             </View>
           </View>

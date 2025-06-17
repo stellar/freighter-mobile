@@ -138,7 +138,7 @@ const SlippageSettings: React.FC<SlippageSettingsProps> = ({
   };
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
         <View className="gap-6">
           <SegmentedControl

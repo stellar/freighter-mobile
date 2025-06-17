@@ -1,18 +1,21 @@
+import { PricedBalance } from "config/types";
+import { SwapPathResult } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 
 interface SwapButtonStateParams {
-  swapToTokenBalance: any; // PricedBalance or undefined
+  swapToTokenBalance: PricedBalance | undefined;
   isLoadingPath: boolean;
   isBuilding: boolean;
   amountError: string | null;
   pathError: string | null;
   swapAmount: string;
-  pathResult: any; // SwapPathResult or null
+  pathResult: SwapPathResult | null;
 }
 
 interface SwapButtonState {
   buttonText: string;
   isDisabled: boolean;
+  isLoading: boolean;
   action: "selectAsset" | "review";
 }
 
@@ -35,11 +38,7 @@ export const useSwapButtonState = ({
     if (!swapToTokenBalance) {
       return t("swapScreen.selectAsset");
     }
-    
-    if (isLoadingPath) {
-      return t("common.loading");
-    }
-    
+
     // Once an asset is selected, always show "Review"
     return t("common.review");
   };
@@ -54,7 +53,6 @@ export const useSwapButtonState = ({
     // If asset is selected, disable for various validation reasons
     return (
       isBuilding ||
-      isLoadingPath ||
       !!amountError ||
       !!pathError ||
       Number(swapAmount) <= 0 ||
@@ -62,9 +60,13 @@ export const useSwapButtonState = ({
     );
   };
 
+  // Calculate loading state
+  const getIsLoading = (): boolean => isLoadingPath || isBuilding;
+
   return {
     buttonText: getButtonText(),
     isDisabled: getIsDisabled(),
+    isLoading: getIsLoading(),
     action,
   };
-}; 
+};

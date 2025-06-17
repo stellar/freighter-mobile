@@ -10,9 +10,8 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SelectTokenBottomSheet,
   SwapReviewBottomSheet,
-  } from "components/screens/SwapScreen/components";
-import { SwapButtonAction } from "components/screens/SwapScreen/helpers";
-import { useSwapAmountScreen } from "components/screens/SwapScreen/hooks";
+} from "components/screens/SwapScreen/components";
+import { useSwapAmountScreen } from "components/screens/SwapScreen/hooks/useSwapAmountScreen";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -20,15 +19,13 @@ import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
-import {
-  SWAP_ROUTES,
-  SwapStackParamList,
-} from "config/routes";
+import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useRef } from "react";
+import { useToast } from "providers/ToastProvider";
+import React, { useEffect, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -36,6 +33,17 @@ type SwapAmountScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
 >;
 
+/**
+ * SwapAmountScreen Component
+ *
+ * Displays the swap amount input interface where users can:
+ * - Input the amount to swap
+ * - Select the destination token
+ * - Review and confirm the swap
+ *
+ * This component focuses purely on UI rendering and delegates all business logic
+ * to the useSwapAmountScreen hook for better separation of concerns.
+ */
 const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
   route,
@@ -44,11 +52,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  
+  const { showToast } = useToast();
+
+  // UI state
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [swapError, setSwapError] = useState<string | null>(null);
 
-  // Use the comprehensive hook for all swap logic
+  // Use the comprehensive hook that handles all business logic
   const {
     // State
     isProcessing,
@@ -63,21 +74,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isLoadingPath,
     pathError,
     network,
-    
+
     // Actions
     setSwapAmount,
-    handleTokenSelect,
+    handleTokenSelect: onTokenSelect,
     handleSetMax,
     executeSwap,
     prepareSwapTransaction,
     handleProcessingScreenClose,
-    
+
     // UI state
     buttonText,
     isButtonDisabled,
+    isButtonLoading,
     action,
     menuActions,
-    
+
     // Processing tokens
     fromToken,
     toToken,
@@ -87,42 +99,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigation,
   });
 
-  const handleSelectSwapToToken = () => {
-    selectTokenBottomSheetModalRef.current?.present();
-  };
-
-  const handleTokenSelectWrapper = (tokenId: string, tokenSymbol: string) => {
-    handleTokenSelect(tokenId, tokenSymbol);
-    selectTokenBottomSheetModalRef.current?.dismiss();
-  };
-
-  const handleOpenReview = async () => {
-    try {
-      await prepareSwapTransaction();
-      swapReviewBottomSheetModalRef.current?.present();
-    } catch (error) {
-      logger.error(
-        "SwapAmountScreen",
-        "Failed to prepare swap transaction:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  };
-
-  const handleConfirmSwap = () => {
-    swapReviewBottomSheetModalRef.current?.dismiss();
-
-    // Wait for the bottom sheet to dismiss before showing the processing screen
-    setTimeout(() => {
-      executeSwap();
-    }, 100);
-  };
-
-  const handleAmountChange = (key: string) => {
-    const newAmount = formatNumericInput(swapAmount, key, DEFAULT_DECIMALS);
-    setSwapAmount(newAmount);
-  };
-
+  // Setup menu in header
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -136,6 +113,71 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       ),
     });
   }, [navigation, menuActions, themeColors]);
+
+  // Clear swap error when amount or path changes
+  useEffect(() => {
+    if (swapError) {
+      setSwapError(null);
+    }
+  }, [swapAmount, pathResult, swapError]);
+
+  // Enhanced handlers with error feedback
+  const handleSelectSwapToToken = () => {
+    selectTokenBottomSheetModalRef.current?.present();
+  };
+
+  const handleTokenSelect = (tokenId: string, tokenSymbol: string) => {
+    onTokenSelect(tokenId, tokenSymbol);
+    selectTokenBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleAmountChange = (key: string) => {
+    const newAmount = formatNumericInput(swapAmount, key, DEFAULT_DECIMALS);
+    setSwapAmount(newAmount);
+  };
+
+  const handleOpenReview = async () => {
+    try {
+      await prepareSwapTransaction();
+      swapReviewBottomSheetModalRef.current?.present();
+    } catch (error) {
+      setSwapError("Failed to prepare swap transaction");
+      showToast({
+        variant: "error",
+        title: t("common.error"),
+        message: "Failed to prepare swap transaction",
+      });
+      logger.error(
+        "SwapAmountScreen",
+        "Failed to prepare swap transaction",
+        error,
+      );
+    }
+  };
+
+  const handleConfirmSwap = () => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+
+    setTimeout(() => {
+      executeSwap().catch((error) => {
+        setSwapError("Swap transaction failed");
+        showToast({
+          variant: "error",
+          title: t("common.error"),
+          message: "Swap transaction failed",
+        });
+        logger.error("SwapAmountScreen", "Swap failed", error);
+      });
+    }, 100);
+  };
+
+  const handleMainButtonPress = () => {
+    if (action === "selectAsset") {
+      handleSelectSwapToToken();
+    } else {
+      handleOpenReview();
+    }
+  };
 
   const getRightContent = () => {
     if (isLoadingPath) {
@@ -155,14 +197,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   };
 
-  const handleMainButtonPress = () => {
-    if (action === SwapButtonAction.SELECT_ASSET) {
-      handleSelectSwapToToken();
-    } else {
-      handleOpenReview();
-    }
-  };
-
+  // Show processing screen when swap is executing
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -176,8 +211,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
+        {/* Amount Display Section */}
         <View className="gap- items-center py-[32px] px-6">
           <View className="flex-row items-center gap-1">
             <Display lg medium>
@@ -189,17 +225,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         </View>
 
-        {/* Error display */}
-        {(amountError || pathError) && (
+        {/* Error Display Section */}
+        {(amountError || pathError || swapError) && (
           <View className="mx-6 mb-4">
             <Notification
               variant="error"
-              message={amountError || pathError || ""}
+              message={amountError || pathError || swapError || ""}
             />
           </View>
         )}
 
+        {/* Token Selection Section */}
         <View className="gap-3 mt-[16px]">
+          {/* From Token Row */}
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {swapFromTokenBalance && (
               <BalanceRow
@@ -213,6 +251,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               />
             )}
           </View>
+
+          {/* To Token Row */}
           <TouchableOpacity onPress={handleSelectSwapToToken}>
             <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
               {swapToTokenBalance ? (
@@ -221,9 +261,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                   customTextContent={`${t("swapScreen.receive")} ${toTokenSymbol}`}
                   isSingleRow
                   rightContent={
-                    <View className="items-end">
-                      {getRightContent()}
-                    </View>
+                    <View className="items-end">{getRightContent()}</View>
                   }
                 />
               ) : (
@@ -245,22 +283,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* Numeric Keyboard */}
         <View className="w-full mt-[56px] mb-[24px]">
           <NumericKeyboard onPress={handleAmountChange} />
         </View>
 
+        {/* Action Button */}
         <View className="mt-auto mb-4">
           <Button
             tertiary
             xl
             onPress={handleMainButtonPress}
             disabled={isButtonDisabled}
+            isLoading={isButtonLoading}
           >
             {buttonText}
           </Button>
         </View>
       </View>
 
+      {/* Bottom Sheets */}
       <BottomSheet
         modalRef={selectTokenBottomSheetModalRef}
         handleCloseModal={() =>
@@ -269,7 +311,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         snapPoints={["80%"]}
         customContent={
           <SelectTokenBottomSheet
-            onTokenSelect={handleTokenSelectWrapper}
+            onTokenSelect={handleTokenSelect}
             customTitle={t("swapScreen.bottomSheetTokenListTitle")}
             title={t("swapScreen.swapTo")}
             onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}

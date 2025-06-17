@@ -7,6 +7,7 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSpendableAmount } from "helpers/balances";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -15,17 +16,20 @@ import { useEffect, useMemo } from "react";
 interface UseSwapAmountScreenParams {
   swapFromTokenId: string;
   swapFromTokenSymbol: string;
-  navigation: NativeStackNavigationProp<SwapStackParamList, typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN>;
+  navigation: NativeStackNavigationProp<
+    SwapStackParamList,
+    typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
+  >;
 }
 
 /**
  * Simplified hook for SwapAmountScreen following TransactionAmountScreen pattern
- * 
+ *
  * This hook now focuses only on:
  * - Coordinating between stores and other hooks
  * - Screen-specific navigation logic
  * - UI state management
- * 
+ *
  * Business logic is delegated to:
  * - useSwapStore for swap state
  * - useSwapSettingsStore for settings
@@ -41,6 +45,7 @@ export const useSwapAmountScreen = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapTimeout, swapSlippage } = useSwapSettingsStore();
+  const { isBuilding } = useTransactionBuilderStore();
 
   // Get balances
   const { balanceItems } = useBalancesList({
@@ -72,9 +77,7 @@ export const useSwapAmountScreen = ({
   const swapFromTokenBalance = balanceItems.find(
     (item) => item.id === fromTokenId,
   );
-  const swapToTokenBalance = balanceItems.find(
-    (item) => item.id === toTokenId,
-  );
+  const swapToTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
   // Use validation hook
   const { amountError } = useSwapAmountValidation({
@@ -107,10 +110,15 @@ export const useSwapAmountScreen = ({
   });
 
   // Use button state hook
-  const { buttonText, isDisabled: isButtonDisabled, action } = useSwapButtonState({
+  const {
+    buttonText,
+    isDisabled: isButtonDisabled,
+    isLoading: isButtonLoading,
+    action,
+  } = useSwapButtonState({
     swapToTokenBalance,
     isLoadingPath,
-    isBuilding: false, // Transaction building is now handled by useSwapTransactionFlow
+    isBuilding,
     amountError,
     pathError,
     swapAmount,
@@ -124,7 +132,8 @@ export const useSwapAmountScreen = ({
       setSwapAmount("0");
       setToToken("", ""); // Clear to token for fresh swap
     }
-  }, [swapFromTokenId, swapFromTokenSymbol, setFromToken, setSwapAmount, setToToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swapFromTokenId, swapFromTokenSymbol]);
 
   // Auto-find swap path when conditions are met
   useEffect(() => {
@@ -147,6 +156,7 @@ export const useSwapAmountScreen = ({
     } else {
       clearPath();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     swapFromTokenBalance,
     swapToTokenBalance,
@@ -155,19 +165,18 @@ export const useSwapAmountScreen = ({
     network,
     account?.publicKey,
     amountError,
-    findSwapPath,
-    clearPath,
   ]);
 
   // Create menu actions
   const menuActions = useMemo(
-    () => createSwapMenuActions(
-      navigation,
-      swapFee,
-      swapTimeout,
-      swapSlippage,
-      SWAP_ROUTES
-    ),
+    () =>
+      createSwapMenuActions(
+        navigation,
+        swapFee,
+        swapTimeout,
+        swapSlippage,
+        SWAP_ROUTES,
+      ),
     [navigation, swapFee, swapSlippage, swapTimeout],
   );
 
@@ -201,7 +210,7 @@ export const useSwapAmountScreen = ({
     isLoadingPath,
     pathError,
     network,
-    
+
     // Actions
     setSwapAmount,
     handleTokenSelect,
@@ -209,15 +218,16 @@ export const useSwapAmountScreen = ({
     executeSwap,
     prepareSwapTransaction,
     handleProcessingScreenClose,
-    
+
     // UI state
     buttonText,
     isButtonDisabled,
+    isButtonLoading,
     action,
     menuActions,
-    
+
     // Processing tokens
     fromToken,
     toToken,
   };
-}; 
+};
