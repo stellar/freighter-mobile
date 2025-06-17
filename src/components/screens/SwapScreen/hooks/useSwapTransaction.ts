@@ -1,0 +1,139 @@
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
+import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
+import { SWAP_ROUTES, SwapStackParamList, ROOT_NAVIGATOR_ROUTES, MAIN_TAB_ROUTES } from "config/routes";
+import { PricedBalance, NativeToken, AssetToken } from "config/types";
+import { ActiveAccount } from "ducks/auth";
+import { SwapPathResult } from "ducks/swap";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useState } from "react";
+
+interface SwapTransactionParams {
+  swapAmount: string;
+  swapFromTokenBalance: PricedBalance | undefined;
+  swapToTokenBalance: PricedBalance | undefined;
+  pathResult: SwapPathResult | null;
+  account: ActiveAccount | null;
+  swapFee: string;
+  swapTimeout: number;
+  network: NETWORKS;
+  navigation: NativeStackNavigationProp<SwapStackParamList, typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN>;
+  resetSwap: () => void;
+}
+
+interface UseSwapTransactionResult {
+  isProcessing: boolean;
+  executeSwap: () => Promise<void>;
+  prepareSwapTransaction: () => Promise<void>;
+  handleProcessingScreenClose: () => void;
+  fromToken: NativeToken | AssetToken;
+  toToken: NativeToken | AssetToken;
+}
+
+/**
+ * Hook for handling swap transactions
+ * 
+ * Separates transaction building, signing, and submission logic
+ * from the main screen hook, following the TransactionAmountScreen pattern.
+ */
+export const useSwapTransaction = ({
+  swapAmount,
+  swapFromTokenBalance,
+  swapToTokenBalance,
+  pathResult,
+  account,
+  swapFee,
+  swapTimeout,
+  network,
+  navigation,
+  resetSwap,
+}: SwapTransactionParams): UseSwapTransactionResult => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const {
+    buildSwapTransaction,
+    signTransaction,
+    submitTransaction,
+    resetTransaction,
+  } = useTransactionBuilderStore();
+
+  const prepareSwapTransaction = async () => {
+    if (!swapFromTokenBalance || !swapToTokenBalance || !pathResult || !account?.publicKey) {
+      return;
+    }
+
+    try {
+      // Prepare the swap transaction for review
+      await buildSwapTransaction({
+        tokenAmount: swapAmount,
+        fromBalance: swapFromTokenBalance,
+        toBalance: swapToTokenBalance,
+        path: pathResult.path,
+        destinationAmount: pathResult.destinationAmount,
+        destinationAmountMin: pathResult.destinationAmountMin,
+        transactionFee: swapFee,
+        transactionTimeout: swapTimeout,
+        network,
+        senderAddress: account.publicKey,
+      });
+    } catch (error) {
+      logger.error("SwapTransaction", "Failed to prepare swap transaction", error);
+      throw error;
+    }
+  };
+
+  const executeSwap = async () => {
+    if (!account) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Sign the transaction (should already be built)
+      signTransaction({
+        secretKey: account.privateKey,
+        network,
+      });
+
+      // Submit the transaction
+      await submitTransaction({ network });
+    } catch (error) {
+      logger.error("SwapTransaction", "Swap failed", error);
+    }
+  };
+
+  const handleProcessingScreenClose = () => {
+    setIsProcessing(false);
+    resetTransaction();
+    resetSwap();
+
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with History tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  };
+
+  // Get tokens for processing screen
+  const fromToken = getTokenFromBalance(swapFromTokenBalance);
+  const toToken = getTokenFromBalance(swapToTokenBalance);
+
+  return {
+    isProcessing,
+    executeSwap,
+    prepareSwapTransaction,
+    handleProcessingScreenClose,
+    fromToken,
+    toToken,
+  };
+}; 

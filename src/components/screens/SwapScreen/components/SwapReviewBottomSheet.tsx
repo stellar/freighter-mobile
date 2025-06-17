@@ -1,40 +1,18 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
-import SwapProcessingScreen from "components/screens/SwapScreen/screens/SwapProcessingScreen";
+import { useSwapReview } from "components/screens/SwapScreen/hooks";
+import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import {
-  AssetToken,
-  AssetTypeWithCustomToken,
-  NativeToken,
-} from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useState } from "react";
+import React from "react";
 import { TouchableOpacity, View } from "react-native";
-
-// Mock data types (will be replaced with real data later)
-type MockSwapData = {
-  fromAmount: string;
-  fromTokenCode: string;
-  fromTokenId: string;
-  fromFiatValue: string;
-  toAmount: string;
-  toTokenCode: string;
-  toTokenId: string;
-  toFiatValue: string;
-  minimumReceived: string;
-  conversionRate: string;
-  swapFee: string;
-  transactionXDR?: string;
-};
 
 type SwapReviewBottomSheetProps = {
   onCancel?: () => void;
@@ -47,87 +25,53 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { account } = useGetActiveAccount();
-  const publicKey = account?.publicKey;
-  const { copyToClipboard } = useClipboard();
-  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const {
+    isProcessing,
+    isBuilding,
+    swapAmount,
+    destinationAmount,
+    fromToken,
+    toToken,
+    fromTokenSymbol,
+    toTokenSymbol,
+    minimumReceived,
+    conversionRate,
+    swapFee,
+    transactionXDR,
+    account,
+    fromTokenFiatAmount,
+    toTokenFiatAmount,
+    handleCopyXdr,
+    startProcessing,
+    stopProcessing,
+  } = useSwapReview();
 
-  // Mock data for now - will be replaced with real data from store
-  const mockSwapData: MockSwapData = {
-    fromAmount: "166.66666667",
-    fromTokenCode: "XLM",
-    fromTokenId: "native",
-    fromFiatValue: "$50.00",
-    toAmount: "50.01",
-    toTokenCode: "USDC",
-    toTokenId: "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-    toFiatValue: "$50.01",
-    minimumReceived: "49.95",
-    conversionRate: "1 XLM ≈ 0.301 USDC",
-    swapFee: "0.0051234",
-    transactionXDR: "AAAAAggAAAAA1234567890ABCDEF",
-  };
+  const publicKey = account?.publicKey;
 
   const handleConfirmSwap = () => {
-    setIsProcessing(true);
-    // TODO: Implement actual swap logic
+    startProcessing();
     if (onConfirm) {
       onConfirm();
     }
   };
 
   const handleProcessingClose = () => {
-    setIsProcessing(false);
+    stopProcessing();
+    
     if (onCancel) {
       onCancel();
     }
   };
 
-  const handleCopyXdr = () => {
-    if (mockSwapData.transactionXDR) {
-      copyToClipboard(mockSwapData.transactionXDR, {
-        notificationMessage: t("common.copied"),
-      });
-    }
-  };
-
-  // Mock token data for AssetIcon (will be replaced with real balance data)
-  const fromTokenMock: AssetToken | NativeToken =
-    mockSwapData.fromTokenCode === "XLM"
-      ? {
-          type: AssetTypeWithCustomToken.NATIVE,
-          code: "XLM",
-        }
-      : {
-          code: mockSwapData.fromTokenCode,
-          issuer: {
-            key: "mock-issuer",
-          },
-          type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
-        };
-
-  const toTokenMock: AssetToken | NativeToken =
-    mockSwapData.toTokenCode === "XLM"
-      ? {
-          type: AssetTypeWithCustomToken.NATIVE,
-          code: "XLM",
-        }
-      : {
-          code: mockSwapData.toTokenCode,
-          issuer: {
-            key: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-          },
-          type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
-        };
-
   if (isProcessing) {
     return (
       <SwapProcessingScreen
         onClose={handleProcessingClose}
-        fromAmount={mockSwapData.fromAmount}
-        fromToken={fromTokenMock}
-        toAmount={mockSwapData.toAmount}
-        toToken={toTokenMock}
+        fromAmount={swapAmount}
+        fromToken={fromToken}
+        toAmount={destinationAmount}
+        toToken={toToken}
       />
     );
   }
@@ -137,22 +81,19 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       {/* Main swap section */}
       <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary">
         <Text lg medium>
-          {t("swapScreen.review.title", { defaultValue: "You are swapping" })}
+          {t("swapScreen.review.title")}
         </Text>
 
         <View className="gap-[16px]">
           {/* From token */}
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={fromTokenMock} />
+            <AssetIcon token={fromToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(
-                  mockSwapData.fromAmount,
-                  mockSwapData.fromTokenCode,
-                )}
+                {formatAssetAmount(swapAmount, fromTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {mockSwapData.fromFiatValue}
+                {fromTokenFiatAmount || "--"}
               </Text>
             </View>
           </View>
@@ -167,16 +108,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
           {/* To token */}
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={toTokenMock} />
+            <AssetIcon token={toToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(
-                  mockSwapData.toAmount,
-                  mockSwapData.toTokenCode,
-                )}
+                {formatAssetAmount(destinationAmount, toTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {mockSwapData.toFiatValue}
+                {toTokenFiatAmount || "--"}
               </Text>
             </View>
           </View>
@@ -190,7 +128,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapScreen.review.wallet", { defaultValue: "Wallet" })}
+              {t("swapScreen.review.wallet")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[8px]">
@@ -206,14 +144,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[8px]">
             <Icon.BarChart05 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapScreen.review.minimum", { defaultValue: "Minimum" })}
+              {t("swapScreen.review.minimum")}
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(
-              mockSwapData.minimumReceived,
-              mockSwapData.toTokenCode,
-            )}
+            {formatAssetAmount(minimumReceived, toTokenSymbol)}
           </Text>
         </View>
 
@@ -222,11 +157,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[8px]">
             <Icon.InfoCircle size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapScreen.review.rate", { defaultValue: "Rate" })}
+              {t("swapScreen.review.rate")}
             </Text>
           </View>
           <Text md medium>
-            {mockSwapData.conversionRate}
+            {conversionRate}
           </Text>
         </View>
 
@@ -235,13 +170,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapScreen.review.fee", { defaultValue: "Fee" })}
+              {t("swapScreen.review.fee")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(mockSwapData.swapFee, NATIVE_TOKEN_CODE)}
+              {formatAssetAmount(swapFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>
@@ -251,18 +186,18 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[8px]">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapScreen.review.xdr", { defaultValue: "XDR" })}
+              {t("swapScreen.review.xdr")}
             </Text>
           </View>
           <TouchableOpacity
             onPress={handleCopyXdr}
-            disabled={!mockSwapData.transactionXDR}
+            disabled={!transactionXDR}
             className="flex-row items-center gap-[8px]"
           >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md medium>
-              {mockSwapData.transactionXDR
-                ? truncateAddress(mockSwapData.transactionXDR, 10, 4)
+              {transactionXDR
+                ? truncateAddress(transactionXDR, 10, 4)
                 : t("common.none")}
             </Text>
           </TouchableOpacity>
@@ -291,7 +226,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             onPress={handleConfirmSwap}
             tertiary
             xl
-            disabled={!mockSwapData.transactionXDR}
+            disabled={!transactionXDR || isBuilding}
           >
             {t("common.confirm")}
           </Button>

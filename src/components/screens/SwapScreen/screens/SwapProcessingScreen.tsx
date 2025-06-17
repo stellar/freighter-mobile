@@ -1,27 +1,20 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import React, { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
-
 import { AssetIcon } from "components/AssetIcon";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
+import SwapTransactionDetailsBottomSheet from "components/screens/SwapScreen/components/SwapTransactionDetailsBottomSheet";
+import { SwapStatus } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import SwapTransactionDetailsBottomSheet from "components/screens/SwapScreen/components/SwapTransactionDetailsBottomSheet";
 import { AssetToken, NativeToken } from "config/types";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatAssetAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-
-const SwapStatus = {
-  SWAPPING: "swapping",
-  SWAPPED: "swapped",
-  FAILED: "failed",
-} as const;
-
-type SwapStatusType = (typeof SwapStatus)[keyof typeof SwapStatus];
+import React, { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 
 export interface SwapProcessingScreenProps {
   onClose?: () => void;
@@ -46,17 +39,26 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const [status, setStatus] = useState<SwapStatusType>(SwapStatus.SWAPPING);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  // Mock the swap process - in real implementation this would come from swap store
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setStatus(SwapStatus.SWAPPED);
-    }, 3000); // Simulate 3 second swap
+  const { 
+    transactionHash, 
+    error: transactionError, 
+    isSubmitting 
+  } = useTransactionBuilderStore();
 
-    return () => clearTimeout(timer);
-  }, []);
+  const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
+
+  useEffect(() => {
+    if (transactionError) {
+      setStatus(SwapStatus.FAILED);
+    } else if (transactionHash) {
+      setStatus(SwapStatus.SWAPPED);
+    } else if (isSubmitting) {
+      setStatus(SwapStatus.SWAPPING);
+    }
+    // Note: No default case needed - status stays as SWAPPING until conditions are met
+  }, [transactionHash, transactionError, isSubmitting]);
 
   const getStatusText = () => {
     switch (status) {
@@ -64,6 +66,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         return t("swapProcessingScreen.swapped", { defaultValue: "Swapped!" });
       case SwapStatus.FAILED:
         return t("swapProcessingScreen.failed", { defaultValue: "Failed" });
+      case SwapStatus.SWAPPING:
       default:
         return t("swapProcessingScreen.swapping", { defaultValue: "Swapping" });
     }
@@ -77,6 +80,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         );
       case SwapStatus.FAILED:
         return <Icon.XCircle size={48} color={themeColors.status.error} />;
+      case SwapStatus.SWAPPING:
       default:
         return <Spinner size="large" color={themeColors.base[1]} />;
     }

@@ -18,7 +18,8 @@
     "copied": "Copiado para a área de transferência!",
     "loading": "Carregando...",
     "error": "Erro",
-    "unknownError": "Erro desconhecido"
+    "unknownError": "Erro desconhecido",
+    "review": "Revisar"
   },
   "home": {
     "title": "Início",
@@ -316,6 +317,49 @@
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido"
   },
+  "swapScreen": {
+    "swapFrom": "Trocar de",
+    "swapTo": "Trocar para",
+    "title": "Trocar",
+    "searchTokenInputPlaceholder": "Pesquisar nome ou endereço do token",
+    "setMax": "Definir máximo",
+    "receive": "Receber",
+    "chooseAsset": "Escolher ativo",
+    "selectAsset": "Selecionar um ativo",
+    "swapScreenTokenListTitle": "Seus tokens",
+    "bottomSheetTokenListTitle": "Tokens populares",
+    "copyContractAddress": "Copiar endereço do contrato",
+    "viewOnStellarExpert": "Ver no stellar.expert",
+    "menu": {
+      "fee": "Taxa: {{fee}} XLM",
+      "timeout": "Tempo limite: {{timeout}}(s)",
+      "slippage": "Slippage: {{slippage}}%"
+    },
+    "review": {
+      "title": "Você está trocando",
+      "wallet": "Carteira",
+      "minimum": "Mínimo",
+      "rate": "Taxa",
+      "fee": "Taxa",
+      "xdr": "XDR",
+      "warning": "Certifique-se de revisar a transação acima, uma vez confirmada é irreversível"
+    }
+  },
+  "swapProcessingScreen": {
+    "swapping": "Trocando",
+    "swapped": "Trocado!",
+    "failed": "Falhou",
+    "to": " para ",
+    "wasSwappedFor": " foi trocado por ",
+    "couldNotBeSwappedFor": " não pôde ser trocado por ",
+    "viewTransaction": "Ver transação",
+    "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto"
+  },
+  "swapTransactionDetails": {
+    "swapped": "Trocado",
+    "conversionRate": "Taxa de conversão",
+    "minimumReceived": "Mínimo recebido"
+  },
   "transactionTokenScreen": {
     "title": "Enviando"
   },
@@ -391,9 +435,7 @@
       "required": "Tempo limite da transação é obrigatório",
       "invalid": "Tempo limite da transação inválido",
       "greaterThanZero": "O tempo limite deve ser maior que 0"
-    },
-    "description": "Número de segundos que podem passar antes que esta transação não possa mais ser aceita pela rede",
-    "timeoutInSeconds": "Tempo limite em segundos"
+    }
   },
   "transactionFeeScreen": {
     "title": "Taxa da Transação",
@@ -517,11 +559,15 @@
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
   },
-  "tokenDetailsScreen": {
-    "sorobanToken": "Token Soroban",
-    "priceChange": "{{percentage}}%",
-    "balance": "Saldo",
-    "value": "Valor",
-    "listHeader": "Sua atividade de {{tokenName}}"
+  "slippageScreen": {
+    "title": "Slippage Permitido",
+    "customPlaceholder": "% Personalizado",
+    "setDefault": "Definir padrão",
+    "errors": {
+      "customRequired": "Slippage personalizado é obrigatório",
+      "invalidNumber": "Número inválido",
+      "minSlippage": "Slippage deve ser pelo menos {{min}}%",
+      "maxSlippage": "Slippage deve ser menor que {{max}}%"
+    }
   }
 }

@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { View, Linking } from "react-native";
 
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
+import { 
+  calculateConversionRate, 
+  calculateMinimumReceived, 
+  formatConversionRate, 
+  formatTransactionDate 
+} from "components/screens/SwapScreen/helpers";
+import { useTransactionStatus } from "components/screens/SwapScreen/hooks";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -19,6 +23,8 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import React, { useEffect, useState } from "react";
+import { View, Linking } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 /**
@@ -60,13 +66,10 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { network } = useAuthenticationStore();
 
   const { transactionMemo, transactionFee } = useTransactionSettingsStore();
-
-  const {
-    transactionXDR,
-    transactionHash,
-    error: transactionError,
-    isSubmitting,
-  } = useTransactionBuilderStore();
+  const { transactionXDR } = useTransactionBuilderStore();
+  
+  // Use custom hook for transaction status
+  const { statusText, statusColor, transactionHash } = useTransactionStatus();
 
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
@@ -89,60 +92,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     }
   }, [transactionHash, network]);
 
-  const getTransactionStatus = () => {
-    if (transactionHash) {
-      return {
-        text: t("transactionDetailsBottomSheet.statusSuccess"),
-        color: themeColors.status.success,
-      };
-    }
-    if (transactionError) {
-      return {
-        text: t("transactionDetailsBottomSheet.statusFailed"),
-        color: themeColors.status.error,
-      };
-    }
-    if (isSubmitting) {
-      return {
-        text: t("transactionDetailsBottomSheet.statusPending"),
-        color: themeColors.status.warning,
-      };
-    }
-    return {
-      text: t("transactionDetailsBottomSheet.statusSuccess"),
-      color: themeColors.status.success,
-    };
-  };
-
-  const transactionStatus = getTransactionStatus();
-
-  const formatTransactionDate = () => {
-    let dateObj: Date;
-
-    if (transactionDetails?.createdAt) {
-      dateObj = new Date(transactionDetails.createdAt);
-    } else {
-      dateObj = new Date();
-    }
-
-    const formattedDate = dateObj.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-
-    const formattedTime = dateObj
-      .toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .toLowerCase();
-
-    return `${formattedDate} · ${formattedTime}`;
-  };
-
-  const dateTimeDisplay = formatTransactionDate();
+  const dateTimeDisplay = formatTransactionDate(transactionDetails?.createdAt);
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -162,30 +112,18 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  // Calculate conversion rate if not provided
-  const calculateConversionRate = () => {
-    if (conversionRate) return conversionRate;
-    
-    const fromAmountBN = new BigNumber(fromAmount);
-    const toAmountBN = new BigNumber(toAmount);
-    
-    if (fromAmountBN.isZero()) return "0";
-    
-    const rate = toAmountBN.dividedBy(fromAmountBN);
-    return rate.toFixed(2);
-  };
+  // Use helper functions for calculations
+  const calculatedConversionRate = calculateConversionRate(
+    fromAmount,
+    toAmount,
+    conversionRate
+  );
 
-  // Calculate minimum received if not provided
-  const calculateMinimumReceived = () => {
-    if (minimumReceived) return minimumReceived;
-    
-    const toAmountBN = new BigNumber(toAmount);
-    const slippageMultiplier = new BigNumber(1).minus(
-      new BigNumber(allowedSlippage).dividedBy(100)
-    );
-    
-    return toAmountBN.multipliedBy(slippageMultiplier).toFixed(7);
-  };
+  const calculatedMinimumReceived = calculateMinimumReceived(
+    toAmount,
+    allowedSlippage,
+    minimumReceived
+  );
 
   return (
     <View className="gap-[24px]">
@@ -256,8 +194,8 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {t("transactionDetailsBottomSheet.status")}
             </Text>
           </View>
-          <Text md medium color={transactionStatus.color}>
-            {transactionStatus.text}
+          <Text md medium color={statusColor}>
+            {statusText}
           </Text>
         </View>
 
@@ -266,13 +204,11 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapTransactionDetails.conversionRate", {
-                defaultValue: "Conversion rate",
-              })}
+            {t("swapScreen.review.rate")}
             </Text>
           </View>
           <Text md medium secondary>
-            1 {fromToken.code} ≈ {formatAssetAmount(calculateConversionRate(), toToken.code)}
+            {formatConversionRate(calculatedConversionRate, fromToken.code, toToken.code)}
           </Text>
         </View>
 
@@ -281,37 +217,20 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.Shield01 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("swapTransactionDetails.minimumReceived", {
-                defaultValue: "Minimum received",
-              })}
+            {t("swapScreen.review.minimum")}
             </Text>
           </View>
           <Text md medium secondary>
-            {formatAssetAmount(calculateMinimumReceived(), toToken.code)}
+            {formatAssetAmount(calculatedMinimumReceived, toToken.code)}
           </Text>
         </View>
-
-        {/* Memo (if exists) */}
-        {transactionMemo && (
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-[8px]">
-              <Icon.File02 size={16} color={themeColors.foreground.primary} />
-              <Text md medium secondary>
-                {t("transactionAmountScreen.details.memo")}
-              </Text>
-            </View>
-            <Text md medium secondary>
-              {transactionMemo}
-            </Text>
-          </View>
-        )}
 
         {/* Transaction Fee */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionAmountScreen.details.fee")}
+            {t("swapScreen.review.fee")}
             </Text>
           </View>
           <View className="flex-row items-center gap-[4px]">
@@ -327,7 +246,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[8px]">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
             <Text md medium secondary>
-              {t("transactionAmountScreen.details.xdr")}
+              {t("swapScreen.review.xdr")}
             </Text>
           </View>
           <View
