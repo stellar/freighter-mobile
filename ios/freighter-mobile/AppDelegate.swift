@@ -33,4 +33,8 @@ class AppDelegate: RCTAppDelegate {
     super.customize(rootView)
     RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
   }
+  
+  override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+    return RCTLinkingManager.application(app, open: url, options: options)
+  }
 }
