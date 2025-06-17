@@ -41,10 +41,10 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const { themeColors } = useColors();
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const { 
-    transactionHash, 
-    error: transactionError, 
-    isSubmitting 
+  const {
+    transactionHash,
+    error: transactionError,
+    isSubmitting,
   } = useTransactionBuilderStore();
 
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
@@ -140,10 +140,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
         {status === SwapStatus.SWAPPED ? (
           <View className="gap-[16px]">
-            <Button 
-              secondary 
-              xl 
-              onPress={() => transactionDetailsBottomSheetModalRef.current?.present()}
+            <Button
+              secondary
+              xl
+              onPress={() =>
+                transactionDetailsBottomSheetModalRef.current?.present()
+              }
             >
               {t("swapProcessingScreen.viewTransaction", {
                 defaultValue: "View transaction",
@@ -173,7 +175,6 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         handleCloseModal={() =>
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }
-        snapPoints={["80%"]}
         customContent={
           <SwapTransactionDetailsBottomSheet
             fromAmount={fromAmount}

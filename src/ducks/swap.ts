@@ -195,7 +195,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       if (!pathResult) {
         set({
           isLoadingPath: false,
-          pathError: "No swap path found between these assets",
+          pathError: "No path found between these assets",
         });
         return;
       }
