@@ -56,7 +56,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
         <View className="items-center">
           {showLogo && <FreighterLogo width={px(48)} height={px(48)} />}
         </View>
-        <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2">
+        <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2 mt-4">
           <Avatar size="xl" publicAddress={publicKey ?? ""} />
           <Display xs semiBold>
             {title ?? t("lockScreen.title")}
@@ -92,7 +92,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             </Button>
           </View>
         </View>
-        <View>
+        <View className="mt-4">
           {handleLogout && (
             <Button secondary lg onPress={handleLogout}>
               {t("lockScreen.forgotPasswordButtonText")}
