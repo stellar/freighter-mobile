@@ -173,7 +173,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         }
 
         // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
-        // TODO: Add Soroswap support later which would require preparation
         const finalXdr = builtTxResult.xdr;
 
         set({
@@ -187,9 +186,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        logger.error("TransactionBuilderStore", "Failed to build swap transaction", {
-          error: errorMessage,
-        });
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build swap transaction",
+          {
+            error: errorMessage,
+          },
+        );
 
         set({
           error: errorMessage,

@@ -1,7 +1,9 @@
+import { Horizon } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { getAssetForPayment } from "services/transactionService";
 import { create } from "zustand";
 
 /**
@@ -16,6 +18,17 @@ export interface SwapPathResult {
   path: string[];
   conversionRate: string;
   isPathPayment: boolean; // true for classic path payments, false for direct swaps
+}
+
+/**
+ * Horizon Path Asset Interface
+ *
+ * Represents an asset in a Horizon path response.
+ */
+interface HorizonPathAsset {
+  asset_type: string;
+  asset_code?: string;
+  asset_issuer?: string;
 }
 
 /**
@@ -99,11 +112,6 @@ const findClassicSwapPath = async (params: {
   const { fromBalance, toBalance, amount, network } = params;
 
   try {
-    // Import Stellar SDK dynamically to avoid circular dependencies
-    const { Asset, Horizon } = await import("@stellar/stellar-sdk");
-    const { mapNetworkToNetworkDetails } = await import("config/constants");
-    const { getAssetForPayment } = await import("services/transactionService");
-
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = new Horizon.Server(networkDetails.networkUrl);
 
@@ -121,9 +129,8 @@ const findClassicSwapPath = async (params: {
     }
 
     const bestPath = pathsResult.records[0];
-    
-    // Build path array (intermediate assets)
-    const path: string[] = bestPath.path.map((asset: any) => {
+
+    const path: string[] = bestPath.path.map((asset: HorizonPathAsset) => {
       if (asset.asset_type === "native") {
         return "native";
       }
@@ -138,7 +145,7 @@ const findClassicSwapPath = async (params: {
     return {
       sourceAmount: amount,
       destinationAmount: bestPath.destination_amount,
-      destinationAmountMin: bestPath.destination_amount, // Will be adjusted for slippage later
+      destinationAmountMin: bestPath.destination_amount,
       path,
       conversionRate,
       isPathPayment: path.length > 0 || !sourceAsset.equals(destAsset),
@@ -156,31 +163,22 @@ const findClassicSwapPath = async (params: {
  *
  * A Zustand store that manages swap state and operations.
  */
-export const useSwapStore = create<SwapState>((set, get) => ({
+export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
-  /**
-   * Sets the source token for the swap
-   */
   setFromToken: (tokenId, tokenSymbol) =>
     set({ fromTokenId: tokenId, fromTokenSymbol: tokenSymbol }),
 
-  /**
-   * Sets the destination token for the swap
-   */
   setToToken: (tokenId, tokenSymbol) =>
     set({ toTokenId: tokenId, toTokenSymbol: tokenSymbol }),
 
-  /**
-   * Sets the swap amount
-   */
   setSwapAmount: (amount) => set({ swapAmount: amount }),
 
   /**
    * Finds the best swap path between two tokens
    */
   findSwapPath: async (params) => {
-    const { fromBalance, toBalance, amount, slippage, network, publicKey } = params;
+    const { fromBalance, toBalance, amount, slippage, network } = params;
 
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
@@ -202,7 +200,6 @@ export const useSwapStore = create<SwapState>((set, get) => ({
         return;
       }
 
-      // Apply slippage to destination amount
       const destinationAmountMin = computeDestMinWithSlippage(
         pathResult.destinationAmount,
         slippage,
@@ -232,9 +229,6 @@ export const useSwapStore = create<SwapState>((set, get) => ({
     }
   },
 
-  /**
-   * Clears the current path result
-   */
   clearPath: () =>
     set({
       pathResult: null,
@@ -242,8 +236,5 @@ export const useSwapStore = create<SwapState>((set, get) => ({
       pathError: null,
     }),
 
-  /**
-   * Resets the entire swap state
-   */
   resetSwap: () => set(initialState),
-})); 
+}));
