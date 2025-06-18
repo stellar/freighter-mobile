@@ -7,7 +7,6 @@ import {
   calculateConversionRate,
   calculateMinimumReceived,
 } from "components/screens/SwapScreen/helpers";
-import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -24,7 +23,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useState } from "react";
+import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapReviewBottomSheetProps = {
@@ -41,7 +40,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const {
     swapAmount,
@@ -118,31 +116,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const publicKey = account?.publicKey;
 
   const handleConfirmSwap = () => {
-    setIsProcessing(true);
     if (onConfirm) {
       onConfirm();
     }
   };
-
-  const handleProcessingClose = () => {
-    setIsProcessing(false);
-
-    if (onCancel) {
-      onCancel();
-    }
-  };
-
-  if (isProcessing) {
-    return (
-      <SwapProcessingScreen
-        onClose={handleProcessingClose}
-        fromAmount={swapAmount}
-        fromToken={fromToken}
-        toAmount={destinationAmount}
-        toToken={toToken}
-      />
-    );
-  }
 
   return (
     <View className="flex-1">
