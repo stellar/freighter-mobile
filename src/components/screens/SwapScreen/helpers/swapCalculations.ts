@@ -1,4 +1,5 @@
 import { BigNumber } from "bignumber.js";
+import { DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 
@@ -20,7 +21,7 @@ export const calculateConversionRate = (
 
   const rate = toAmountBN.dividedBy(fromAmountBN);
 
-  return formatAssetAmount(rate.toString());
+  return formatAssetAmount(rate.toFixed(DEFAULT_DECIMALS));
 };
 
 /**
