@@ -4,6 +4,8 @@ import {
   formatConversionRate,
   getTokenFromBalance,
   calculateTokenFiatAmount,
+  calculateConversionRate,
+  calculateMinimumReceived,
 } from "components/screens/SwapScreen/helpers";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
@@ -49,15 +51,25 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     toTokenSymbol,
   } = useSwapStore();
 
-  const { swapFee } = useSwapSettingsStore();
+  const { swapFee, swapSlippage } = useSwapSettingsStore();
   const { transactionXDR, isBuilding } = useTransactionBuilderStore();
 
-  const minimumReceived = pathResult?.destinationAmountMin || "0";
+  const displayConversionRate =
+    pathResult?.conversionRate ||
+    calculateConversionRate(swapAmount, destinationAmount, undefined);
   const conversionRate = formatConversionRate(
-    pathResult?.conversionRate || "",
+    displayConversionRate,
     fromTokenSymbol,
     toTokenSymbol,
   );
+
+  const displayMinimumReceived =
+    pathResult?.destinationAmountMin ||
+    calculateMinimumReceived(
+      destinationAmount,
+      swapSlippage.toString(),
+      undefined,
+    );
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -197,7 +209,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(minimumReceived, toTokenSymbol)}
+            {formatAssetAmount(displayMinimumReceived, toTokenSymbol)}
           </Text>
         </View>
 
