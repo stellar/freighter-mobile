@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useNavigation } from "@react-navigation/native";
 import { AssetIcon } from "components/AssetIcon";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
@@ -34,7 +35,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-
+  const navigation = useNavigation();
   const {
     transactionHash,
     error: transactionError,
@@ -42,6 +43,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   } = useTransactionBuilderStore();
 
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
 
   useEffect(() => {
     if (transactionError) {
