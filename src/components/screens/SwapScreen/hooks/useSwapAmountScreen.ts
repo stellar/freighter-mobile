@@ -10,8 +10,9 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSpendableAmount } from "helpers/balances";
 import { useBalancesList } from "hooks/useBalancesList";
+import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 
 interface UseSwapAmountScreenParams {
   swapFromTokenId: string;
@@ -125,18 +126,8 @@ export const useSwapAmountScreen = ({
     pathResult,
   });
 
-  // Initialize from token on mount
-  useEffect(() => {
-    if (swapFromTokenId && swapFromTokenSymbol) {
-      setFromToken(swapFromTokenId, swapFromTokenSymbol);
-      setSwapAmount("0");
-      setToToken("", ""); // Clear to token for fresh swap
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [swapFromTokenId, swapFromTokenSymbol]);
-
-  // Auto-find swap path when conditions are met
-  useEffect(() => {
+  // Create debounced path finding function
+  const findSwapPathDebounced = useCallback(() => {
     if (
       swapFromTokenBalance &&
       swapToTokenBalance &&
@@ -156,7 +147,6 @@ export const useSwapAmountScreen = ({
     } else {
       clearPath();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     swapFromTokenBalance,
     swapToTokenBalance,
@@ -165,7 +155,31 @@ export const useSwapAmountScreen = ({
     network,
     account?.publicKey,
     amountError,
+    findSwapPath,
+    clearPath,
   ]);
+
+  const debouncedFindSwapPath = useDebounce(findSwapPathDebounced);
+
+  // Initialize from token on mount
+  useEffect(() => {
+    if (swapFromTokenId && swapFromTokenSymbol) {
+      setFromToken(swapFromTokenId, swapFromTokenSymbol);
+      setSwapAmount("0");
+      setToToken("", ""); // Clear to token for fresh swap
+    }
+  }, [
+    swapFromTokenId,
+    swapFromTokenSymbol,
+    setFromToken,
+    setSwapAmount,
+    setToToken,
+  ]);
+
+  // Trigger debounced path finding when conditions change
+  useEffect(() => {
+    debouncedFindSwapPath();
+  }, [debouncedFindSwapPath]);
 
   // Create menu actions
   const menuActions = useMemo(

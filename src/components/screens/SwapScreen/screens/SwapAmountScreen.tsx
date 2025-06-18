@@ -18,13 +18,11 @@ import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_DECIMALS } from "config/constants";
-import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -52,7 +50,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { showToast } = useToast();
 
   // UI state
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -139,19 +136,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const handleOpenReview = async () => {
     try {
       await prepareSwapTransaction();
+
       swapReviewBottomSheetModalRef.current?.present();
     } catch (error) {
       setSwapError("Failed to prepare swap transaction");
-      showToast({
-        variant: "error",
-        title: t("common.error"),
-        message: "Failed to prepare swap transaction",
-      });
-      logger.error(
-        "SwapAmountScreen",
-        "Failed to prepare swap transaction",
-        error,
-      );
     }
   };
 
@@ -159,14 +147,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapReviewBottomSheetModalRef.current?.dismiss();
 
     setTimeout(() => {
-      executeSwap().catch((error) => {
+      executeSwap().catch(() => {
         setSwapError("Swap transaction failed");
-        showToast({
-          variant: "error",
-          title: t("common.error"),
-          message: "Swap transaction failed",
-        });
-        logger.error("SwapAmountScreen", "Swap failed", error);
       });
     }, 100);
   };
