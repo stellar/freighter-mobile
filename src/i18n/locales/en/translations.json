@@ -354,6 +354,10 @@
       "fee": "Fee",
       "xdr": "XDR",
       "warning": "Make sure to review the transaction above, once you confirm it's irreversible"
+    },
+    "errors": {
+      "failedToPrepareTransaction": "Failed to prepare swap transaction",
+      "swapTransactionFailed": "Swap transaction failed"
     }
   },
   "swapProcessingScreen": {

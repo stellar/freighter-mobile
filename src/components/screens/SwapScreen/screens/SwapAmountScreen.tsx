@@ -11,19 +11,30 @@ import {
   SelectTokenBottomSheet,
   SwapReviewBottomSheet,
 } from "components/screens/SwapScreen/components";
-import { useSwapAmountScreen } from "components/screens/SwapScreen/hooks/useSwapAmountScreen";
+import { createSwapMenuActions } from "components/screens/SwapScreen/helpers";
+import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
+import { useSwapAmountValidation } from "components/screens/SwapScreen/hooks/useSwapAmountValidation";
+import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_DECIMALS } from "config/constants";
+import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { calculateSpendableAmount } from "helpers/balances";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
-import React, { useEffect, useRef, useState } from "react";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -39,8 +50,8 @@ type SwapAmountScreenProps = NativeStackScreenProps<
  * - Select the destination token
  * - Review and confirm the swap
  *
- * This component focuses purely on UI rendering and delegates all business logic
- * to the useSwapAmountScreen hook for better separation of concerns.
+ * This component follows the same clean pattern as TransactionAmountScreen,
+ * using focused hooks and keeping business logic close to where it's used.
  */
 const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
@@ -50,51 +61,128 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+  const { swapFee, swapTimeout, swapSlippage } = useSwapSettingsStore();
+  const { isBuilding } = useTransactionBuilderStore();
 
   // UI state
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
 
-  // Use the comprehensive hook that handles all business logic
+  // Get balances
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
+
+  // Swap store state and actions
   const {
-    // State
-    isProcessing,
-    amountError,
-    swapAmount,
-    destinationAmount,
+    fromTokenId,
+    toTokenId,
     fromTokenSymbol,
     toTokenSymbol,
-    swapFromTokenBalance,
-    swapToTokenBalance,
+    swapAmount,
+    destinationAmount,
     pathResult,
     isLoadingPath,
     pathError,
-    network,
-
-    // Actions
+    setFromToken,
+    setToToken,
     setSwapAmount,
-    handleTokenSelect: onTokenSelect,
-    handleSetMax,
+    resetSwap,
+  } = useSwapStore();
+
+  // Get token balances
+  const swapFromTokenBalance = balanceItems.find(
+    (item) => item.id === fromTokenId,
+  );
+  const swapToTokenBalance = balanceItems.find((item) => item.id === toTokenId);
+
+  // Use focused hooks for specific concerns
+  const { amountError } = useSwapAmountValidation({
+    swapAmount,
+    swapFromTokenBalance,
+    subentryCount: account?.subentryCount,
+    swapFee,
+    fromTokenSymbol,
+  });
+
+  useSwapPathFinding({
+    swapFromTokenBalance,
+    swapToTokenBalance,
+    swapAmount,
+    swapSlippage,
+    network,
+    publicKey: account?.publicKey,
+    amountError,
+  });
+
+  const {
+    isProcessing,
     executeSwap,
     prepareSwapTransaction,
     handleProcessingScreenClose,
-
-    // UI state
-    buttonText,
-    isButtonDisabled,
-    isButtonLoading,
-    action,
-    menuActions,
-
-    // Processing tokens
     fromToken,
     toToken,
-  } = useSwapAmountScreen({
+  } = useSwapTransaction({
+    swapAmount,
+    swapFromTokenBalance,
+    swapToTokenBalance,
+    pathResult,
+    account,
+    swapFee,
+    swapTimeout,
+    network,
+    navigation,
+    resetSwap,
+  });
+
+  // Button state logic - inline instead of separate hook
+  const isButtonDisabled = swapToTokenBalance
+    ? isBuilding ||
+      !!amountError ||
+      !!pathError ||
+      Number(swapAmount) <= 0 ||
+      !pathResult
+    : false;
+
+  // Initialize from token on mount
+  useEffect(() => {
+    if (swapFromTokenId && swapFromTokenSymbol) {
+      setFromToken(swapFromTokenId, swapFromTokenSymbol);
+      setSwapAmount("0");
+      setToToken("", ""); // Clear to token for fresh swap
+    }
+  }, [
     swapFromTokenId,
     swapFromTokenSymbol,
-    navigation,
-  });
+    setFromToken,
+    setSwapAmount,
+    setToToken,
+  ]);
+
+  // Clear swap error when amount or path changes
+  useEffect(() => {
+    if (swapError) {
+      setSwapError(null);
+    }
+  }, [swapAmount, pathResult, swapError]);
+
+  // Create menu actions
+  const menuActions = useMemo(
+    () =>
+      createSwapMenuActions(
+        navigation,
+        swapFee,
+        swapTimeout,
+        swapSlippage,
+        SWAP_ROUTES,
+      ),
+    [navigation, swapFee, swapSlippage, swapTimeout],
+  );
 
   // Setup menu in header
   useEffect(() => {
@@ -111,20 +199,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
-  // Clear swap error when amount or path changes
-  useEffect(() => {
-    if (swapError) {
-      setSwapError(null);
-    }
-  }, [swapAmount, pathResult, swapError]);
-
-  // Enhanced handlers with error feedback
+  // Screen-specific handlers
   const handleSelectSwapToToken = () => {
     selectTokenBottomSheetModalRef.current?.present();
   };
 
   const handleTokenSelect = (tokenId: string, tokenSymbol: string) => {
-    onTokenSelect(tokenId, tokenSymbol);
+    setToToken(tokenId, tokenSymbol);
     selectTokenBottomSheetModalRef.current?.dismiss();
   };
 
@@ -133,31 +214,52 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSwapAmount(newAmount);
   };
 
+  const handleSetMax = () => {
+    if (swapFromTokenBalance && account) {
+      const spendableAmount = calculateSpendableAmount(
+        swapFromTokenBalance,
+        account.subentryCount || 0,
+        swapFee,
+      );
+      setSwapAmount(spendableAmount.toString());
+    }
+  };
+
   const handleOpenReview = async () => {
     try {
       await prepareSwapTransaction();
-
       swapReviewBottomSheetModalRef.current?.present();
     } catch (error) {
-      setSwapError("Failed to prepare swap transaction");
+      logger.error(
+        "SwapAmountScreen",
+        "Failed to prepare swap transaction:",
+        error instanceof Error ? error.message : String(error),
+      );
+      setSwapError(t("swapScreen.errors.failedToPrepareTransaction"));
     }
   };
 
   const handleConfirmSwap = () => {
     swapReviewBottomSheetModalRef.current?.dismiss();
 
+    // Wait for the bottom sheet to dismiss before executing the swap
     setTimeout(() => {
-      executeSwap().catch(() => {
-        setSwapError("Swap transaction failed");
+      executeSwap().catch((error) => {
+        logger.error(
+          "SwapAmountScreen",
+          "Swap transaction failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+        setSwapError(t("swapScreen.errors.swapTransactionFailed"));
       });
     }, 100);
   };
 
   const handleMainButtonPress = () => {
-    if (action === "selectAsset") {
-      handleSelectSwapToToken();
-    } else {
+    if (swapToTokenBalance) {
       handleOpenReview();
+    } else {
+      handleSelectSwapToToken();
     }
   };
 
@@ -277,9 +379,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             xl
             onPress={handleMainButtonPress}
             disabled={isButtonDisabled}
-            isLoading={isButtonLoading}
+            isLoading={isLoadingPath || isBuilding}
           >
-            {buttonText}
+            {swapToTokenBalance
+              ? t("common.review")
+              : t("swapScreen.selectAsset")}
           </Button>
         </View>
       </View>

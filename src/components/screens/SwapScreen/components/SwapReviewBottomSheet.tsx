@@ -1,7 +1,9 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
-import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
-import { useSwapReview } from "components/screens/SwapScreen/hooks";
+import {
+  formatConversionRate,
+  getTokenFromBalance,
+} from "components/screens/SwapScreen/helpers";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
@@ -10,13 +12,16 @@ import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React from "react";
+import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapReviewBottomSheetProps = {
@@ -32,25 +37,39 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { copyToClipboard } = useClipboard();
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Use simplified hook
+  // Access stores directly instead of using over-engineered hook
   const {
-    isProcessing,
-    isBuilding,
     swapAmount,
     destinationAmount,
+    pathResult,
     fromTokenSymbol,
     toTokenSymbol,
-    minimumReceived,
-    conversionRate,
-    swapFee,
-    transactionXDR,
-    fromTokenFiatAmount,
-    toTokenFiatAmount,
-    handleCopyXdr,
-    startProcessing,
-    stopProcessing,
-  } = useSwapReview();
+  } = useSwapStore();
+
+  const { swapFee } = useSwapSettingsStore();
+  const { transactionXDR, isBuilding } = useTransactionBuilderStore();
+
+  // Simple data transformations that were in the hook
+  const minimumReceived = pathResult?.destinationAmountMin || "0";
+  const conversionRate = formatConversionRate(
+    pathResult?.conversionRate || "",
+    fromTokenSymbol,
+    toTokenSymbol,
+  );
+
+  const handleCopyXdr = () => {
+    if (transactionXDR) {
+      copyToClipboard(transactionXDR, {
+        notificationMessage: t("common.copied"),
+      });
+    }
+  };
+
+  const startProcessing = () => setIsProcessing(true);
+  const stopProcessing = () => setIsProcessing(false);
 
   // Get token balances for icons
   const { fromTokenId, toTokenId } = useSwapStore();
@@ -62,6 +81,17 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const fromTokenBalance = balanceItems.find((item) => item.id === fromTokenId);
   const toTokenBalance = balanceItems.find((item) => item.id === toTokenId);
+
+  // Calculate fiat amounts properly (after token balances are defined)
+  const fromTokenFiatAmount = fromTokenBalance?.currentPrice
+    ? formatFiatAmount(fromTokenBalance.currentPrice.multipliedBy(swapAmount))
+    : "--";
+
+  const toTokenFiatAmount = toTokenBalance?.currentPrice
+    ? formatFiatAmount(
+        toTokenBalance.currentPrice.multipliedBy(destinationAmount),
+      )
+    : "--";
 
   // Get token objects for display
   const fromToken = getTokenFromBalance(fromTokenBalance);
