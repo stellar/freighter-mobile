@@ -1,6 +1,10 @@
 import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NATIVE_TOKEN_CODE, BASE_RESERVE } from "config/constants";
+import {
+  NATIVE_TOKEN_CODE,
+  BASE_RESERVE,
+  MIN_TRANSACTION_FEE,
+} from "config/constants";
 import {
   Balance,
   LiquidityPoolBalance,
@@ -301,46 +305,47 @@ export const isPublicKeyValid = (publicKey: string) =>
 
 /**
  * Calculates the spendable amount for a given balance, considering minimum balance requirements
- * for XLM and transaction fees
+ * for XLM. Transaction fees are only subtracted from XLM balances since fees are always paid in XLM.
  *
  * @param {Balance} balance - The balance object to calculate spendable amount for
  * @param {number} subentryCount - Number of subentries (trustlines, offers, data entries) for XLM calculation
- * @param {string} transactionFee - Transaction fee to subtract from available amount
+ * @param {string} transactionFee - Transaction fee to subtract from XLM balance only
  * @returns {BigNumber} The spendable amount after considering all constraints
  *
  * @example
- * // Calculate spendable XLM amount
+ * // Calculate spendable XLM amount (subtracts fee and minimum balance)
  * const spendable = calculateSpendableAmount(xlmBalance, 5, "0.00001");
  *
- * // Calculate spendable amount for other assets
+ * // Calculate spendable amount for other assets (no fee subtraction)
  * const spendable = calculateSpendableAmount(usdcBalance, 0, "0.00001");
  */
 export const calculateSpendableAmount = (
   balance: Balance,
   subentryCount: number = 0,
-  transactionFee: string = "0.00001",
+  transactionFee: string = MIN_TRANSACTION_FEE,
 ): BigNumber => {
   if (!balance) return new BigNumber(0);
 
   const totalBalance = new BigNumber(balance.total);
-  const fee = new BigNumber(transactionFee);
 
-  // For liquidity pools, return total balance minus fee
+  // For liquidity pools, return total balance (no fee subtraction)
   if (isLiquidityPool(balance)) {
-    return BigNumber.max(totalBalance.minus(fee), new BigNumber(0));
+    return totalBalance;
   }
 
-  // For non-native assets, return available balance or total balance minus fee
+  // For non-native assets, return available balance or total balance
   if ("token" in balance && balance.token.type !== "native") {
-    // Use available balance if present (considers selling liabilities)
+    // Use available balance if present
     const availableBalance =
       "available" in balance ? new BigNumber(balance.available) : totalBalance;
 
-    return BigNumber.max(availableBalance.minus(fee), new BigNumber(0));
+    return availableBalance;
   }
 
-  // For XLM (native asset), consider minimum balance requirements
+  // For XLM (native asset), consider minimum balance requirements and transaction fee
   if ("token" in balance && balance.token.type === "native") {
+    const fee = new BigNumber(transactionFee);
+
     // Calculate minimum balance: (2 + subentryCount) * BASE_RESERVE
     const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
       BASE_RESERVE,
@@ -353,8 +358,7 @@ export const calculateSpendableAmount = (
     return BigNumber.max(spendableAmount, new BigNumber(0));
   }
 
-  // Fallback: return total balance minus fee
-  return BigNumber.max(totalBalance.minus(fee), new BigNumber(0));
+  return totalBalance;
 };
 
 /**

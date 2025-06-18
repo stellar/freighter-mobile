@@ -348,10 +348,10 @@ describe("balances helpers", () => {
         sellingLiabilities: "50",
       };
 
-      // For non-native assets, use available balance minus fee
-      // spendable = 950 - 0.00001 = 949.99999
+      // For non-native assets, use available balance (no fee subtraction since fees are paid in XLM)
+      // spendable = 950 (available balance)
       const spendable = calculateSpendableAmount(usdcBalance, 0, "0.00001");
-      expect(spendable.toString()).toBe("949.99999");
+      expect(spendable.toString()).toBe("950");
     });
 
     it("should handle liquidity pool balances correctly", () => {
@@ -360,7 +360,7 @@ describe("balances helpers", () => {
         0,
         "0.00001",
       );
-      expect(spendable.toFixed(7)).toBe("1472.6043461");
+      expect(spendable.toString()).toBe("1472.6043561");
     });
   });
 

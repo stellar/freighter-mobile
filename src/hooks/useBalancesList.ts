@@ -106,17 +106,19 @@ export const useBalancesList = ({
 
     const normalizedTerm = term.toLowerCase();
 
-    const tokenCodeMatch = item.tokenCode
-      ? item.tokenCode.toLowerCase().includes(normalizedTerm)
-      : false;
+    if (item.tokenCode?.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
 
-    const displayNameMatch = item.displayName
-      ? item.displayName.toLowerCase().includes(normalizedTerm)
-      : false;
+    if (item.displayName?.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
 
-    const idMatch = item.id.toLowerCase().includes(normalizedTerm);
+    if (item.id.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
 
-    return tokenCodeMatch || displayNameMatch || idMatch;
+    return false;
   };
 
   // Convert balances object to array and apply optional filtering
