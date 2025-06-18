@@ -23,6 +23,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
@@ -1186,24 +1187,8 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
         throw new Error(t("authStore.error.privateKeyNotFound"));
       }
 
-      // Fetch subentry count from the network
-      let subentryCount = 0;
-      try {
-        const network =
-          ((await dataStorage.getItem(
-            STORAGE_KEYS.ACTIVE_NETWORK,
-          )) as NETWORKS) || NETWORKS.TESTNET;
-        const stellarAccount = await getAccount(account.publicKey, network);
-        subentryCount = stellarAccount?.subentry_count || 0;
-      } catch (error) {
-        // If we can't fetch subentry count, default to 0
-        // This ensures the account still loads even if network is unavailable
-        logger.warn(
-          "getActiveAccount",
-          "Failed to fetch subentry count",
-          error,
-        );
-      }
+      // Get subentry count from the balances store (already fetched with balance data)
+      const { subentryCount } = useBalancesStore.getState();
 
       return {
         publicKey: account.publicKey,
