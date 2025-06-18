@@ -11,7 +11,6 @@ import {
   SelectTokenBottomSheet,
   SwapReviewBottomSheet,
 } from "components/screens/SwapScreen/components";
-import { createSwapMenuActions } from "components/screens/SwapScreen/helpers";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
@@ -182,15 +181,34 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [swapAmount, pathResult, swapError]);
 
   const menuActions = useMemo(
-    () =>
-      createSwapMenuActions(
-        navigation,
-        swapFee,
-        swapTimeout,
-        swapSlippage,
-        SWAP_ROUTES,
-      ),
-    [navigation, swapFee, swapSlippage, swapTimeout],
+    () => [
+      {
+        title: t("swapScreen.menu.fee", { fee: swapFee }),
+        systemIcon: "divide.circle",
+        onPress: () => {
+          navigation.navigate(SWAP_ROUTES.SWAP_FEE_SCREEN);
+        },
+      },
+      {
+        title: t("swapScreen.menu.timeout", {
+          timeout: swapTimeout,
+        }),
+        systemIcon: "clock",
+        onPress: () => {
+          navigation.navigate(SWAP_ROUTES.SWAP_TIMEOUT_SCREEN);
+        },
+      },
+      {
+        title: t("swapScreen.menu.slippage", {
+          slippage: swapSlippage,
+        }),
+        systemIcon: "plusminus.circle",
+        onPress: () => {
+          navigation.navigate(SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN);
+        },
+      },
+    ],
+    [navigation, swapFee, swapSlippage, swapTimeout, t],
   );
 
   useEffect(() => {
