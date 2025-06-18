@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import BottomSheet from "components/BottomSheet";
@@ -7,10 +8,12 @@ import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
+import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { logger } from "config/logger";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -29,7 +32,13 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
 import styled from "styled-components/native";
 
@@ -108,6 +117,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [renameAccountModalVisible, setRenameAccountModalVisible] =
     useState(false);
   const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [bannerPresented, setBannerPresented] = useState(false);
 
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -121,6 +132,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     [rawBalance],
   );
 
+  const mainWalletPublicKey =
+    Array.isArray(allAccounts) && allAccounts.length > 0
+      ? allAccounts[0].publicKey
+      : undefined;
+
   useEffect(() => {
     const fetchAccounts = async () => {
       await getAllAccounts();
@@ -128,6 +144,50 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
     fetchAccounts();
   }, [getAllAccounts]);
+
+  // Check if welcome modal should be shown for new accounts
+  const checkWelcomeBannerStatus = useCallback(async () => {
+    if (!mainWalletPublicKey) {
+      return;
+    }
+
+    try {
+      const hasSeenWelcome = await AsyncStorage.getItem(
+        `welcomeBanner_shown_${mainWalletPublicKey}`,
+      );
+      if (hasSeenWelcome) {
+        // If already seen, mark as presented to prevent future checks
+        setBannerPresented(true);
+        return;
+      }
+
+      if (!bannerPresented) {
+        // Set banner as presented immediately to prevent multiple presentations
+        setBannerPresented(true);
+        welcomeBannerBottomSheetModalRef.current?.present();
+      }
+    } catch (error) {
+      logger.error("Error checking welcome banner status:", String(error));
+    }
+  }, [mainWalletPublicKey, bannerPresented]);
+
+  useEffect(() => {
+    checkWelcomeBannerStatus();
+  }, [checkWelcomeBannerStatus]);
+
+  const handleWelcomeBannerDismiss = async () => {
+    try {
+      if (mainWalletPublicKey) {
+        await AsyncStorage.setItem(
+          `welcomeBanner_shown_${mainWalletPublicKey}`,
+          "true",
+        );
+      }
+    } catch (error) {
+      logger.error("Error saving welcome banner status:", String(error));
+    }
+    welcomeBannerBottomSheetModalRef.current?.dismiss();
+  };
 
   const actions = [
     {
@@ -324,6 +384,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}
+      />
+
+      <WelcomeBannerBottomSheet
+        modalRef={welcomeBannerBottomSheetModalRef}
+        onAddXLM={() => {
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+            screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+            params: { isUnfunded: hasZeroBalance },
+          });
+        }}
+        onDismiss={() => {
+          handleWelcomeBannerDismiss();
+        }}
       />
     </BaseLayout>
   );

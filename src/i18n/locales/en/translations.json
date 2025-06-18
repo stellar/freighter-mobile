@@ -570,26 +570,12 @@
       "maxSlippage": "Slippage must be below {{max}}%"
     }
   },
-  "transaction": {
-    "errors": {
-      "amountRequired": "Source amount must be greater than 0",
-      "destinationAmountRequired": "Destination amount must be greater than 0",
-      "feeRequired": "Fee must be greater than 0",
-      "timeoutRequired": "Timeout must be greater than 0",
-      "insufficientBalance": "Insufficient balance",
-      "insufficientBalanceForSwap": "Insufficient balance for swap",
-      "cannotSwapSameAsset": "Cannot swap to the same asset",
-      "invalidRecipientAddress": "Invalid recipient address",
-      "cannotSendToSelf": "Cannot send to yourself",
-      "publicKeyRequired": "Public key is required",
-      "recipientAddressRequired": "Recipient address is required",
-      "selectedBalanceNotFound": "Selected balance not found",
-      "sourceBalanceNotFound": "Source balance not found",
-      "destinationBalanceNotFound": "Destination balance not found",
-      "transactionFeeRequired": "Transaction fee is required",
-      "transactionTimeoutRequired": "Transaction timeout is required",
-      "networkRequired": "Network is required",
-      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
-    }
+  "welcomeBanner": {
+    "welcomeMessage": "Welcome to Freighter!",
+    "fundingText": "To start using this account, fund it with at least 1 XLM.",
+    "minimumBalanceText": "Stellar accounts require a minimum balance of 1 XLM to ensure network security and prevent spam.",
+    "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
+    "addXLM": "Add XLM",
+    "doThisLater": "Do this later"
   }
 }

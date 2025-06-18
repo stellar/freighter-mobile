@@ -578,26 +578,12 @@
       "maxSlippage": "Slippage deve ser menor que {{max}}%"
     }
   },
-  "transaction": {
-    "errors": {
-      "amountRequired": "O valor de origem deve ser maior que 0",
-      "destinationAmountRequired": "O valor de destino deve ser maior que 0",
-      "feeRequired": "A taxa deve ser maior que 0",
-      "timeoutRequired": "O tempo limite deve ser maior que 0",
-      "insufficientBalance": "Saldo insuficiente",
-      "insufficientBalanceForSwap": "Saldo insuficiente para troca",
-      "cannotSwapSameAsset": "Não é possível trocar pelo mesmo ativo",
-      "invalidRecipientAddress": "Endereço do destinatário inválido",
-      "cannotSendToSelf": "Não é possível enviar para você mesmo",
-      "publicKeyRequired": "Chave pública é obrigatória",
-      "recipientAddressRequired": "Endereço do destinatário é obrigatório",
-      "selectedBalanceNotFound": "Saldo selecionado não encontrado",
-      "sourceBalanceNotFound": "Saldo de origem não encontrado",
-      "destinationBalanceNotFound": "Saldo de destino não encontrado",
-      "transactionFeeRequired": "Taxa de transação é obrigatória",
-      "transactionTimeoutRequired": "Tempo limite da transação é obrigatório",
-      "networkRequired": "Rede é obrigatória",
-      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta"
-    }
+  "welcomeBanner": {
+    "welcomeMessage": "Bem-vindo ao Freighter!",
+    "fundingText": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
+    "addXLM": "Adicionar XLM",
+    "doThisLater": "Fazer isso depois"
   }
 }
