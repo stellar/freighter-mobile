@@ -2,7 +2,12 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { SWAP_ROUTES, SwapStackParamList, ROOT_NAVIGATOR_ROUTES, MAIN_TAB_ROUTES } from "config/routes";
+import {
+  SWAP_ROUTES,
+  SwapStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  MAIN_TAB_ROUTES,
+} from "config/routes";
 import { PricedBalance, NativeToken, AssetToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { SwapPathResult } from "ducks/swap";
@@ -18,7 +23,10 @@ interface SwapTransactionParams {
   swapFee: string;
   swapTimeout: number;
   network: NETWORKS;
-  navigation: NativeStackNavigationProp<SwapStackParamList, typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN>;
+  navigation: NativeStackNavigationProp<
+    SwapStackParamList,
+    typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
+  >;
   resetSwap: () => void;
 }
 
@@ -31,12 +39,6 @@ interface UseSwapTransactionResult {
   toToken: NativeToken | AssetToken;
 }
 
-/**
- * Hook for handling swap transactions
- * 
- * Separates transaction building, signing, and submission logic
- * from the main screen hook, following the TransactionAmountScreen pattern.
- */
 export const useSwapTransaction = ({
   swapAmount,
   swapFromTokenBalance,
@@ -59,12 +61,16 @@ export const useSwapTransaction = ({
   } = useTransactionBuilderStore();
 
   const prepareSwapTransaction = async () => {
-    if (!swapFromTokenBalance || !swapToTokenBalance || !pathResult || !account?.publicKey) {
+    if (
+      !swapFromTokenBalance ||
+      !swapToTokenBalance ||
+      !pathResult ||
+      !account?.publicKey
+    ) {
       return;
     }
 
     try {
-      // Prepare the swap transaction for review
       await buildSwapTransaction({
         tokenAmount: swapAmount,
         fromBalance: swapFromTokenBalance,
@@ -78,7 +84,11 @@ export const useSwapTransaction = ({
         senderAddress: account.publicKey,
       });
     } catch (error) {
-      logger.error("SwapTransaction", "Failed to prepare swap transaction", error);
+      logger.error(
+        "SwapTransaction",
+        "Failed to prepare swap transaction",
+        error,
+      );
       throw error;
     }
   };
@@ -91,13 +101,11 @@ export const useSwapTransaction = ({
     setIsProcessing(true);
 
     try {
-      // Sign the transaction (should already be built)
       signTransaction({
         secretKey: account.privateKey,
         network,
       });
 
-      // Submit the transaction
       await submitTransaction({ network });
     } catch (error) {
       logger.error("SwapTransaction", "Swap failed", error);
@@ -124,7 +132,6 @@ export const useSwapTransaction = ({
     });
   };
 
-  // Get tokens for processing screen
   const fromToken = getTokenFromBalance(swapFromTokenBalance);
   const toToken = getTokenFromBalance(swapToTokenBalance);
 
@@ -136,4 +143,4 @@ export const useSwapTransaction = ({
     fromToken,
     toToken,
   };
-}; 
+};

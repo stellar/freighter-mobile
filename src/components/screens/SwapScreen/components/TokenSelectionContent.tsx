@@ -35,7 +35,6 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filteringTerm, setFilteringTerm] = useState("");
 
-  // Debounced function to update the term used for filtering
   const debouncedUpdateFilteringTerm = useDebounce(() => {
     setFilteringTerm(searchTerm);
   }, 300);

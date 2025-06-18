@@ -3,6 +3,7 @@ import { AssetIcon } from "components/AssetIcon";
 import {
   formatConversionRate,
   getTokenFromBalance,
+  calculateTokenFiatAmount,
 } from "components/screens/SwapScreen/helpers";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import Avatar from "components/sds/Avatar";
@@ -79,15 +80,28 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const fromTokenBalance = balanceItems.find((item) => item.id === fromTokenId);
   const toTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
-  const fromTokenFiatAmount = fromTokenBalance?.currentPrice
-    ? formatFiatAmount(fromTokenBalance.currentPrice.multipliedBy(swapAmount))
-    : "--";
+  const sourceToken = getTokenFromBalance(fromTokenBalance);
+  const destinationToken = getTokenFromBalance(toTokenBalance);
 
-  const toTokenFiatAmount = toTokenBalance?.currentPrice
-    ? formatFiatAmount(
-        toTokenBalance.currentPrice.multipliedBy(destinationAmount),
-      )
-    : "--";
+  const fromTokenFiatAmountValue = calculateTokenFiatAmount(
+    sourceToken,
+    swapAmount,
+    balanceItems,
+  );
+  const fromTokenFiatAmount =
+    fromTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(fromTokenFiatAmountValue)
+      : "--";
+
+  const toTokenFiatAmountValue = calculateTokenFiatAmount(
+    destinationToken,
+    destinationAmount,
+    balanceItems,
+  );
+  const toTokenFiatAmount =
+    toTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(toTokenFiatAmountValue)
+      : "--";
 
   const fromToken = getTokenFromBalance(fromTokenBalance);
   const toToken = getTokenFromBalance(toTokenBalance);
@@ -123,14 +137,12 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   return (
     <View className="flex-1">
-      {/* Main swap section */}
       <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary">
         <Text lg medium>
           {t("swapScreen.review.title")}
         </Text>
 
         <View className="gap-[16px]">
-          {/* From token */}
           <View className="w-full flex-row items-center gap-4">
             <AssetIcon token={fromToken} />
             <View className="flex-1">
@@ -143,7 +155,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
           </View>
 
-          {/* Arrow down icon */}
           <View className="w-[40px] flex items-center">
             <Icon.ChevronDownDouble
               size={16}
@@ -151,7 +162,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             />
           </View>
 
-          {/* To token */}
           <View className="w-full flex-row items-center gap-4">
             <AssetIcon token={toToken} />
             <View className="flex-1">
@@ -166,9 +176,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      {/* Transaction details section */}
       <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
-        {/* Wallet */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
@@ -184,7 +192,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
         </View>
 
-        {/* Minimum received */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.BarChart05 size={16} color={themeColors.foreground.primary} />
@@ -197,7 +204,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </Text>
         </View>
 
-        {/* Rate */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.InfoCircle size={16} color={themeColors.foreground.primary} />
@@ -210,7 +216,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </Text>
         </View>
 
-        {/* Fee */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
@@ -226,7 +231,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
         </View>
 
-        {/* XDR */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
@@ -249,7 +253,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      {/* Warning message */}
       <View className="mt-[24px]">
         <Text sm medium secondary textAlign="center">
           {t("swapScreen.review.warning", {
@@ -259,7 +262,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </Text>
       </View>
 
-      {/* Action buttons */}
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
           <Button onPress={onCancel} secondary xl>

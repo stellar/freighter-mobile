@@ -5,6 +5,7 @@ import {
   calculateMinimumReceived,
   formatConversionRate,
   formatTransactionDate,
+  calculateTokenFiatAmount,
 } from "components/screens/SwapScreen/helpers";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -15,12 +16,14 @@ import { AssetToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useState } from "react";
 import { View, Linking } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
@@ -50,8 +53,15 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const { network } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
 
   const { swapFee } = useSwapSettingsStore();
+
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+    shouldPoll: false,
+  });
   const {
     transactionXDR,
     transactionHash,
@@ -140,6 +150,26 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     minimumReceived,
   );
 
+  const fromTokenFiatAmountValue = calculateTokenFiatAmount(
+    fromToken,
+    fromAmount,
+    balanceItems,
+  );
+  const fromTokenFiatAmount =
+    fromTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(fromTokenFiatAmountValue)
+      : "--";
+
+  const toTokenFiatAmountValue = calculateTokenFiatAmount(
+    toToken,
+    toAmount,
+    balanceItems,
+  );
+  const toTokenFiatAmount =
+    toTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(toTokenFiatAmountValue)
+      : "--";
+
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
@@ -166,7 +196,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {formatAssetAmount(fromAmount, fromToken.code)}
             </Text>
             <Text md medium secondary>
-              --
+              {fromTokenFiatAmount}
             </Text>
           </View>
           <AssetIcon token={fromToken} size="lg" />
@@ -187,7 +217,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {formatAssetAmount(toAmount, toToken.code)}
             </Text>
             <Text md medium secondary>
-              --
+              {toTokenFiatAmount}
             </Text>
           </View>
           <AssetIcon token={toToken} size="lg" />

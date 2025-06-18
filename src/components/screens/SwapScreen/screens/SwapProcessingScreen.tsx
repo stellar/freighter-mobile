@@ -51,7 +51,6 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     } else if (isSubmitting) {
       setStatus(SwapStatus.SWAPPING);
     }
-    // Note: No default case needed - status stays as SWAPPING until conditions are met
   }, [transactionHash, transactionError, isSubmitting]);
 
   const getStatusText = () => {

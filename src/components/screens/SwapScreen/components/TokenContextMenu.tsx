@@ -40,15 +40,12 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
     let url: string | undefined;
 
     if (contractAddress) {
-      // For Soroban contracts
       if ("contractId" in balance && balance.contractId) {
         url = `${getStellarExpertUrl(network)}/contract/${contractAddress}`;
       } else {
-        // For classic assets
         url = `${getStellarExpertUrl(network)}/asset/${balance.tokenCode}-${contractAddress}`;
       }
     } else if (balance.id === "native") {
-      // For native XLM
       url = `${getStellarExpertUrl(network)}/asset/${NATIVE_TOKEN_CODE}`;
     }
 

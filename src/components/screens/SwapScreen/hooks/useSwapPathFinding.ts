@@ -19,14 +19,6 @@ interface UseSwapPathFindingParams {
   amountError: string | null;
 }
 
-/**
- * Hook for handling swap path finding with debouncing
- *
- * This hook is responsible for:
- * - Debouncing path finding requests to avoid excessive API calls
- * - Managing path finding lifecycle (find/clear)
- * - Providing proper cleanup on component unmount
- */
 export const useSwapPathFinding = ({
   swapFromTokenBalance,
   swapToTokenBalance,
@@ -38,7 +30,6 @@ export const useSwapPathFinding = ({
 }: UseSwapPathFindingParams) => {
   const { findSwapPath, clearPath } = useSwapStore();
 
-  // Create debounced path finding function
   const findSwapPathDebounced = useCallback(() => {
     if (
       swapFromTokenBalance &&
@@ -73,7 +64,6 @@ export const useSwapPathFinding = ({
 
   const debouncedFindSwapPath = useDebounce(findSwapPathDebounced);
 
-  // Trigger debounced path finding when conditions change
   useEffect(() => {
     debouncedFindSwapPath();
   }, [debouncedFindSwapPath]);
