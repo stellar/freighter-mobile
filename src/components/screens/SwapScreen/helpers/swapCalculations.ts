@@ -9,17 +9,18 @@ import { formatAssetAmount } from "helpers/formatAmount";
 export const calculateConversionRate = (
   fromAmount: string,
   toAmount: string,
-  conversionRate?: string
+  conversionRate?: string,
 ): string => {
   if (conversionRate) return conversionRate;
-  
+
   const fromAmountBN = new BigNumber(fromAmount);
   const toAmountBN = new BigNumber(toAmount);
-  
+
   if (fromAmountBN.isZero()) return "0";
-  
+
   const rate = toAmountBN.dividedBy(fromAmountBN);
-  return formatAssetAmount(rate.toString()); // Use formatAssetAmount for consistent formatting
+
+  return formatAssetAmount(rate.toString());
 };
 
 /**
@@ -29,12 +30,12 @@ export const calculateConversionRate = (
 export const formatConversionRate = (
   rate: string,
   fromSymbol: string,
-  toSymbol: string
+  toSymbol: string,
 ): string => {
   if (!rate || rate === "0") return "";
-  
-  // Use formatAssetAmount for consistent formatting with 7 decimals
+
   const formattedRate = formatAssetAmount(rate);
+
   return `1 ${fromSymbol} ≈ ${formattedRate} ${toSymbol}`;
 };
 
@@ -44,15 +45,15 @@ export const formatConversionRate = (
 export const calculateMinimumReceived = (
   toAmount: string,
   allowedSlippage: string,
-  minimumReceived?: string
+  minimumReceived?: string,
 ): string => {
   if (minimumReceived) return minimumReceived;
-  
+
   const toAmountBN = new BigNumber(toAmount);
-  const slippageMultiplier = new BigNumber(1).minus(
-    new BigNumber(allowedSlippage).dividedBy(100)
+  const slippageMultiplier = BigNumber(1).minus(
+    BigNumber(allowedSlippage).dividedBy(100),
   );
-  
+
   return toAmountBN.multipliedBy(slippageMultiplier).toFixed(7);
 };
 
@@ -92,7 +93,7 @@ export const getContractAddress = (balance: PricedBalance): string | null => {
   if ("contractId" in balance && balance.contractId) {
     return balance.contractId;
   }
-  // For classic assets with issuer
+
   if ("token" in balance && balance.token && "issuer" in balance.token) {
     return balance.token.issuer.key;
   }
@@ -102,4 +103,4 @@ export const getContractAddress = (balance: PricedBalance): string | null => {
   }
 
   return null;
-}; 
+};

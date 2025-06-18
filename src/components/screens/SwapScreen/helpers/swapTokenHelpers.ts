@@ -1,4 +1,6 @@
-import { NativeToken, AssetToken , PricedBalance } from "config/types";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { NativeToken, AssetToken, PricedBalance } from "config/types";
 import { t } from "i18next";
 
 /**
@@ -13,7 +15,7 @@ export const createFallbackToken = (): NativeToken => ({
  * Extracts token from balance or creates fallback
  */
 export const getTokenFromBalance = (
-  balance: PricedBalance | undefined
+  balance: PricedBalance | undefined,
 ): NativeToken | AssetToken => {
   if (balance && "token" in balance) {
     return balance.token;
@@ -25,17 +27,20 @@ export const getTokenFromBalance = (
  * Creates menu actions for swap settings
  */
 export const createSwapMenuActions = (
-  navigation: any,
+  navigation: NativeStackNavigationProp<
+    SwapStackParamList,
+    keyof SwapStackParamList
+  >,
   swapFee: string,
   swapTimeout: number,
   swapSlippage: number,
-  SWAP_ROUTES: any
+  routes: typeof SWAP_ROUTES,
 ) => [
   {
     title: t("swapScreen.menu.fee", { fee: swapFee }),
     systemIcon: "divide.circle",
     onPress: () => {
-      navigation.navigate(SWAP_ROUTES.SWAP_FEE_SCREEN);
+      navigation.navigate(routes.SWAP_FEE_SCREEN);
     },
   },
   {
@@ -44,7 +49,7 @@ export const createSwapMenuActions = (
     }),
     systemIcon: "clock",
     onPress: () => {
-      navigation.navigate(SWAP_ROUTES.SWAP_TIMEOUT_SCREEN);
+      navigation.navigate(routes.SWAP_TIMEOUT_SCREEN);
     },
   },
   {
@@ -53,7 +58,7 @@ export const createSwapMenuActions = (
     }),
     systemIcon: "plusminus.circle",
     onPress: () => {
-      navigation.navigate(SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN);
+      navigation.navigate(routes.SWAP_SLIPPAGE_SCREEN);
     },
   },
-]; 
+];

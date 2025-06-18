@@ -1,8 +1,8 @@
-
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { getContractAddress } from "components/screens/SwapScreen/helpers";
 import Icon from "components/sds/Icon";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -79,7 +79,11 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
       systemIcon: icons!.viewOnExplorer,
       onPress: () => {
         handleViewOnStellarExpert().catch((error) => {
-          console.error("Failed to open stellar expert URL:", error);
+          logger.error(
+            "TokenContextMenu",
+            "Failed to open stellar expert URL:",
+            error,
+          );
         });
       },
     },
@@ -104,4 +108,4 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   );
 };
 
-export default TokenContextMenu; 
+export default TokenContextMenu;
