@@ -6,7 +6,6 @@ import {
   formatConversionRate,
   formatTransactionDate,
 } from "components/screens/SwapScreen/helpers";
-import { useTransactionStatus } from "components/screens/SwapScreen/hooks";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -65,9 +64,41 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { network } = useAuthenticationStore();
 
   const { swapFee } = useSwapSettingsStore();
-  const { transactionXDR } = useTransactionBuilderStore();
+  const {
+    transactionXDR,
+    transactionHash,
+    error: transactionError,
+    isSubmitting,
+  } = useTransactionBuilderStore();
 
-  const { statusText, statusColor, transactionHash } = useTransactionStatus();
+  // Status logic - inline instead of separate hook (follows TransactionDetailsBottomSheet pattern)
+  const getTransactionStatus = () => {
+    if (transactionHash) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusSuccess"),
+        color: themeColors.status.success,
+      };
+    }
+    if (transactionError) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusFailed"),
+        color: themeColors.status.error,
+      };
+    }
+    if (isSubmitting) {
+      return {
+        text: t("transactionDetailsBottomSheet.statusPending"),
+        color: themeColors.status.warning,
+      };
+    }
+    return {
+      text: t("transactionDetailsBottomSheet.statusSuccess"),
+      color: themeColors.status.success,
+    };
+  };
+
+  const transactionStatus = getTransactionStatus();
+  const { text: statusText, color: statusColor } = transactionStatus;
 
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);

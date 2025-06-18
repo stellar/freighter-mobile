@@ -13,7 +13,6 @@ import {
 } from "components/screens/SwapScreen/components";
 import { createSwapMenuActions } from "components/screens/SwapScreen/helpers";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
-import { useSwapAmountValidation } from "components/screens/SwapScreen/hooks/useSwapAmountValidation";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
@@ -27,7 +26,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSpendableAmount } from "helpers/balances";
+import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -70,6 +69,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
 
   // Get balances
   const { balanceItems } = useBalancesList({
@@ -101,14 +101,43 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
   const swapToTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
-  // Use focused hooks for specific concerns
-  const { amountError } = useSwapAmountValidation({
+  // Amount validation logic - inline instead of separate hook
+  useEffect(() => {
+    if (!swapFromTokenBalance || !swapAmount || swapAmount === "0") {
+      setAmountError(null);
+      return;
+    }
+
+    if (
+      !isAmountSpendable(
+        swapAmount,
+        swapFromTokenBalance,
+        account?.subentryCount,
+        swapFee,
+      )
+    ) {
+      const spendableAmount = calculateSpendableAmount(
+        swapFromTokenBalance,
+        account?.subentryCount || 0,
+        swapFee,
+      );
+      setAmountError(
+        t("swapScreen.errors.insufficientBalance", {
+          amount: spendableAmount.toFixed(),
+          symbol: fromTokenSymbol,
+        }),
+      );
+    } else {
+      setAmountError(null);
+    }
+  }, [
     swapAmount,
     swapFromTokenBalance,
-    subentryCount: account?.subentryCount,
-    swapFee,
+    account?.subentryCount,
     fromTokenSymbol,
-  });
+    swapFee,
+    t,
+  ]);
 
   useSwapPathFinding({
     swapFromTokenBalance,
