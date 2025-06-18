@@ -14,6 +14,7 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import { AssetToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -33,29 +34,19 @@ type SwapTransactionDetailsBottomSheetProps = {
   fromToken: AssetToken | NativeToken;
   toAmount: string;
   toToken: AssetToken | NativeToken;
-  conversionRate?: string;
-  minimumReceived?: string;
-  allowedSlippage?: string;
 };
 
 const SwapTransactionDetailsBottomSheet: React.FC<
   SwapTransactionDetailsBottomSheetProps
-> = ({
-  fromAmount,
-  fromToken,
-  toAmount,
-  toToken,
-  conversionRate,
-  minimumReceived,
-  allowedSlippage = "1",
-}) => {
+> = ({ fromAmount, fromToken, toAmount, toToken }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
 
-  const { swapFee } = useSwapSettingsStore();
+  const { pathResult } = useSwapStore();
+  const { swapFee, swapSlippage } = useSwapSettingsStore();
 
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -139,11 +130,12 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   };
 
   const displayConversionRate =
-    conversionRate || calculateConversionRate(fromAmount, toAmount, undefined);
+    pathResult?.conversionRate ||
+    calculateConversionRate(fromAmount, toAmount, undefined);
 
   const displayMinimumReceived =
-    minimumReceived ||
-    calculateMinimumReceived(toAmount, allowedSlippage, undefined);
+    pathResult?.destinationAmountMin ||
+    calculateMinimumReceived(toAmount, swapSlippage.toString(), undefined);
 
   const fromTokenFiatAmountValue = calculateTokenFiatAmount(
     fromToken,
