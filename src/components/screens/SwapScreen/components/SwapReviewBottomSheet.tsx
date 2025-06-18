@@ -67,9 +67,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     }
   };
 
-  const startProcessing = () => setIsProcessing(true);
-  const stopProcessing = () => setIsProcessing(false);
-
   const { fromTokenId, toTokenId } = useSwapStore();
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -109,14 +106,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const publicKey = account?.publicKey;
 
   const handleConfirmSwap = () => {
-    startProcessing();
+    setIsProcessing(true);
     if (onConfirm) {
       onConfirm();
     }
   };
 
   const handleProcessingClose = () => {
-    stopProcessing();
+    setIsProcessing(false);
 
     if (onCancel) {
       onCancel();

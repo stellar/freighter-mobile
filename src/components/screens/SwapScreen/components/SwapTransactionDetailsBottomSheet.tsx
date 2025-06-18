@@ -138,17 +138,12 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  const calculatedConversionRate = calculateConversionRate(
-    fromAmount,
-    toAmount,
-    conversionRate,
-  );
+  const displayConversionRate =
+    conversionRate || calculateConversionRate(fromAmount, toAmount, undefined);
 
-  const calculatedMinimumReceived = calculateMinimumReceived(
-    toAmount,
-    allowedSlippage,
-    minimumReceived,
-  );
+  const displayMinimumReceived =
+    minimumReceived ||
+    calculateMinimumReceived(toAmount, allowedSlippage, undefined);
 
   const fromTokenFiatAmountValue = calculateTokenFiatAmount(
     fromToken,
@@ -246,7 +241,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           </View>
           <Text md medium>
             {formatConversionRate(
-              calculatedConversionRate,
+              displayConversionRate,
               fromToken.code,
               toToken.code,
             )}
@@ -261,7 +256,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(calculatedMinimumReceived, toToken.code)}
+            {formatAssetAmount(displayMinimumReceived, toToken.code)}
           </Text>
         </View>
 
