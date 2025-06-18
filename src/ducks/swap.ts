@@ -6,59 +6,34 @@ import { PricedBalance } from "config/types";
 import { getAssetForPayment } from "services/transactionService";
 import { create } from "zustand";
 
-/**
- * SwapPathResult Interface
- *
- * Represents the result of a path finding operation for swaps.
- */
 export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
-  destinationAmountMin: string; // After slippage
+  destinationAmountMin: string;
   path: string[];
   conversionRate: string;
-  isPathPayment: boolean; // true for classic path payments, false for direct swaps
+  isPathPayment: boolean;
 }
 
-/**
- * Horizon Path Asset Interface
- *
- * Represents an asset in a Horizon path response.
- */
 interface HorizonPathAsset {
   asset_type: string;
   asset_code?: string;
   asset_issuer?: string;
 }
 
-/**
- * SwapState Interface
- *
- * Defines the structure of the swap state store using Zustand.
- * This store manages swap-specific state including token selection,
- * amounts, path finding, and transaction building.
- */
 interface SwapState {
-  // Token selection
   fromTokenId: string;
   toTokenId: string;
   fromTokenSymbol: string;
   toTokenSymbol: string;
-
-  // Amount state
   swapAmount: string;
   destinationAmount: string;
-
-  // Path finding state
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
   pathError: string | null;
-
-  // Transaction state
   isBuilding: boolean;
   buildError: string | null;
 
-  // Actions
   setFromToken: (tokenId: string, tokenSymbol: string) => void;
   setToToken: (tokenId: string, tokenSymbol: string) => void;
   setSwapAmount: (amount: string) => void;
@@ -88,9 +63,6 @@ const initialState = {
   buildError: null,
 };
 
-/**
- * Calculates minimum received amount after slippage
- */
 const computeDestMinWithSlippage = (
   amount: string,
   slippage: number,
@@ -118,7 +90,6 @@ const findClassicSwapPath = async (params: {
     const sourceAsset = getAssetForPayment(fromBalance);
     const destAsset = getAssetForPayment(toBalance);
 
-    // Use Horizon's strict send paths to find the best path
     const pathsResult = await server
       .strictSendPaths(sourceAsset, amount, [destAsset])
       .limit(1)
@@ -137,7 +108,6 @@ const findClassicSwapPath = async (params: {
       return `${asset.asset_code}:${asset.asset_issuer}`;
     });
 
-    // Calculate conversion rate
     const sourceAmountBN = new BigNumber(amount);
     const destAmountBN = new BigNumber(bestPath.destination_amount);
     const conversionRate = destAmountBN.dividedBy(sourceAmountBN).toFixed(7);
@@ -158,11 +128,6 @@ const findClassicSwapPath = async (params: {
   }
 };
 
-/**
- * Swap Store
- *
- * A Zustand store that manages swap state and operations.
- */
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
@@ -174,9 +139,6 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   setSwapAmount: (amount) => set({ swapAmount: amount }),
 
-  /**
-   * Finds the best swap path between two tokens
-   */
   findSwapPath: async (params) => {
     const { fromBalance, toBalance, amount, slippage, network } = params;
 

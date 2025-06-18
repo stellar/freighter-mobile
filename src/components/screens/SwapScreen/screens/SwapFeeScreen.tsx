@@ -9,15 +9,6 @@ type SwapFeeScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_FEE_SCREEN
 >;
 
-/**
- * SwapFeeScreen Component
- *
- * A wrapper screen for swap fee configuration that uses the generic
- * fee screen component with swap-specific store integration.
- *
- * @param {SwapFeeScreenProps} props - Component props
- * @returns {JSX.Element} The rendered component
- */
 const SwapFeeScreen: React.FC<SwapFeeScreenProps> = ({ navigation }) => {
   const { swapFee, saveSwapFee } = useSwapSettingsStore();
 

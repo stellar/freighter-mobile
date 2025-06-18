@@ -24,12 +24,6 @@ export interface SwapProcessingScreenProps {
   toToken: AssetToken | NativeToken;
 }
 
-/**
- * SwapProcessingScreen Component
- *
- * A screen for displaying swap processing status and results.
- * Shows the progress and outcome of token swaps.
- */
 const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   onClose,
   fromAmount,

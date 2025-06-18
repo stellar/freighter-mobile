@@ -25,9 +25,6 @@ import React, { useEffect, useState } from "react";
 import { View, Linking } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
-/**
- * SwapTransactionDetailsBottomSheet props
- */
 type SwapTransactionDetailsBottomSheetProps = {
   fromAmount: string;
   fromToken: AssetToken | NativeToken;
@@ -38,15 +35,6 @@ type SwapTransactionDetailsBottomSheetProps = {
   allowedSlippage?: string;
 };
 
-/**
- * SwapTransactionDetailsBottomSheet Component
- *
- * A bottom sheet displaying swap transaction details, including amounts,
- * conversion rate, slippage, fee, and other swap metadata.
- *
- * Uses the same visual layout as the history screen's SwapTransactionDetailsContent
- * but with comprehensive transaction details.
- */
 const SwapTransactionDetailsBottomSheet: React.FC<
   SwapTransactionDetailsBottomSheetProps
 > = ({
@@ -71,7 +59,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     isSubmitting,
   } = useTransactionBuilderStore();
 
-  // Status logic - inline instead of separate hook (follows TransactionDetailsBottomSheet pattern)
   const getTransactionStatus = () => {
     if (transactionHash) {
       return {
@@ -141,7 +128,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  // Use helper functions for calculations
   const calculatedConversionRate = calculateConversionRate(
     fromAmount,
     toAmount,
@@ -156,7 +142,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
 
   return (
     <View className="gap-[24px]">
-      {/* Header Section */}
       <View className="flex-row gap-[16px]">
         <AssetIcon token={fromToken} size="lg" />
         <View>
@@ -174,9 +159,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      {/* Swap Summary - Following History Screen Pattern */}
       <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
-        {/* From Asset */}
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
@@ -189,7 +172,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <AssetIcon token={fromToken} size="lg" />
         </View>
 
-        {/* Swap Direction - Using downward chevron like history screen */}
         <View>
           <Icon.ChevronDownDouble
             size={20}
@@ -199,7 +181,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           />
         </View>
 
-        {/* To Asset */}
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
@@ -213,9 +194,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      {/* Transaction Details */}
       <View className="rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
-        {/* Status */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
@@ -228,7 +207,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           </Text>
         </View>
 
-        {/* Conversion Rate */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
@@ -245,7 +223,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           </Text>
         </View>
 
-        {/* Minimum Received */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Shield01 size={16} color={themeColors.foreground.primary} />
@@ -258,7 +235,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           </Text>
         </View>
 
-        {/* Transaction Fee */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Route size={16} color={themeColors.foreground.primary} />
@@ -274,7 +250,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           </View>
         </View>
 
-        {/* XDR */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
@@ -296,7 +271,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      {/* View on Explorer Button */}
       {transactionHash && (
         <Button
           tertiary

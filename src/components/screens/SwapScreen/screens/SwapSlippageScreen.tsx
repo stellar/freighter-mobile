@@ -9,15 +9,6 @@ type SwapSlippageScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN
 >;
 
-/**
- * SwapSlippageScreen Component
- *
- * A wrapper screen for swap slippage configuration that uses the generic
- * slippage screen component with swap-specific store integration.
- *
- * @param {SwapSlippageScreenProps} props - Component props
- * @returns {JSX.Element} The rendered component
- */
 const SwapSlippageScreen: React.FC<SwapSlippageScreenProps> = ({
   navigation,
 }) => {

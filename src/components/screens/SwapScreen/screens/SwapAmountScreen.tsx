@@ -41,17 +41,6 @@ type SwapAmountScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
 >;
 
-/**
- * SwapAmountScreen Component
- *
- * Displays the swap amount input interface where users can:
- * - Input the amount to swap
- * - Select the destination token
- * - Review and confirm the swap
- *
- * This component follows the same clean pattern as TransactionAmountScreen,
- * using focused hooks and keeping business logic close to where it's used.
- */
 const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
   route,
@@ -65,20 +54,17 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { swapFee, swapTimeout, swapSlippage } = useSwapSettingsStore();
   const { isBuilding } = useTransactionBuilderStore();
 
-  // UI state
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
 
-  // Get balances
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
     shouldPoll: false,
   });
 
-  // Swap store state and actions
   const {
     fromTokenId,
     toTokenId,
@@ -95,13 +81,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     resetSwap,
   } = useSwapStore();
 
-  // Get token balances
   const swapFromTokenBalance = balanceItems.find(
     (item) => item.id === fromTokenId,
   );
   const swapToTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
-  // Amount validation logic - inline instead of separate hook
   useEffect(() => {
     if (!swapFromTokenBalance || !swapAmount || swapAmount === "0") {
       setAmountError(null);
@@ -169,7 +153,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     resetSwap,
   });
 
-  // Button state logic - inline instead of separate hook
   const isButtonDisabled = swapToTokenBalance
     ? isBuilding ||
       !!amountError ||
@@ -178,12 +161,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       !pathResult
     : false;
 
-  // Initialize from token on mount
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
       setFromToken(swapFromTokenId, swapFromTokenSymbol);
       setSwapAmount("0");
-      setToToken("", ""); // Clear to token for fresh swap
+      setToToken("", "");
     }
   }, [
     swapFromTokenId,
@@ -193,14 +175,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setToToken,
   ]);
 
-  // Clear swap error when amount or path changes
   useEffect(() => {
     if (swapError) {
       setSwapError(null);
     }
   }, [swapAmount, pathResult, swapError]);
 
-  // Create menu actions
   const menuActions = useMemo(
     () =>
       createSwapMenuActions(
@@ -213,7 +193,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [navigation, swapFee, swapSlippage, swapTimeout],
   );
 
-  // Setup menu in header
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -228,7 +207,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
-  // Screen-specific handlers
   const handleSelectSwapToToken = () => {
     selectTokenBottomSheetModalRef.current?.present();
   };
@@ -271,7 +249,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const handleConfirmSwap = () => {
     swapReviewBottomSheetModalRef.current?.dismiss();
 
-    // Wait for the bottom sheet to dismiss before executing the swap
     setTimeout(() => {
       executeSwap().catch((error) => {
         logger.error(
@@ -310,7 +287,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   };
 
-  // Show processing screen when swap is executing
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -326,7 +302,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        {/* Amount Display Section */}
         <View className="gap- items-center py-[32px] px-6">
           <View className="flex-row items-center gap-1">
             <Display lg medium>
@@ -338,7 +313,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         </View>
 
-        {/* Error Display Section */}
         {(amountError || pathError || swapError) && (
           <View className="mb-4">
             <Notification
@@ -348,9 +322,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         )}
 
-        {/* Token Selection Section */}
         <View className="gap-3 mt-[16px]">
-          {/* From Token Row */}
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {swapFromTokenBalance && (
               <BalanceRow
@@ -365,7 +337,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             )}
           </View>
 
-          {/* To Token Row */}
           <TouchableOpacity onPress={handleSelectSwapToToken}>
             <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
               {swapToTokenBalance ? (
@@ -396,12 +367,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Numeric Keyboard */}
         <View className="w-full mt-[56px] mb-[24px]">
           <NumericKeyboard onPress={handleAmountChange} />
         </View>
 
-        {/* Action Button */}
         <View className="mt-auto mb-4">
           <Button
             tertiary
@@ -417,7 +386,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      {/* Bottom Sheets */}
       <BottomSheet
         modalRef={selectTokenBottomSheetModalRef}
         handleCloseModal={() =>

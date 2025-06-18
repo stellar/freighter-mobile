@@ -40,7 +40,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Access stores directly instead of using over-engineered hook
   const {
     swapAmount,
     destinationAmount,
@@ -52,7 +51,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { swapFee } = useSwapSettingsStore();
   const { transactionXDR, isBuilding } = useTransactionBuilderStore();
 
-  // Simple data transformations that were in the hook
   const minimumReceived = pathResult?.destinationAmountMin || "0";
   const conversionRate = formatConversionRate(
     pathResult?.conversionRate || "",
@@ -71,7 +69,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const startProcessing = () => setIsProcessing(true);
   const stopProcessing = () => setIsProcessing(false);
 
-  // Get token balances for icons
   const { fromTokenId, toTokenId } = useSwapStore();
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -82,7 +79,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const fromTokenBalance = balanceItems.find((item) => item.id === fromTokenId);
   const toTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
-  // Calculate fiat amounts properly (after token balances are defined)
   const fromTokenFiatAmount = fromTokenBalance?.currentPrice
     ? formatFiatAmount(fromTokenBalance.currentPrice.multipliedBy(swapAmount))
     : "--";
@@ -93,7 +89,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       )
     : "--";
 
-  // Get token objects for display
   const fromToken = getTokenFromBalance(fromTokenBalance);
   const toToken = getTokenFromBalance(toTokenBalance);
 

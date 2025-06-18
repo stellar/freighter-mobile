@@ -9,15 +9,6 @@ type SwapTimeoutScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_TIMEOUT_SCREEN
 >;
 
-/**
- * SwapTimeoutScreen Component
- *
- * A wrapper screen for swap timeout configuration that uses the generic
- * timeout screen component with swap-specific store integration.
- *
- * @param {SwapTimeoutScreenProps} props - Component props
- * @returns {JSX.Element} The rendered component
- */
 const SwapTimeoutScreen: React.FC<SwapTimeoutScreenProps> = ({
   navigation,
 }) => {
