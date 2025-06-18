@@ -2,7 +2,7 @@ import { NETWORKS } from "config/constants";
 import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import useDebounce from "hooks/useDebounce";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
 type BalanceItem = PricedBalance & {
   id: string;
@@ -30,7 +30,7 @@ export const useSwapPathFinding = ({
 }: UseSwapPathFindingParams) => {
   const { findSwapPath, clearPath } = useSwapStore();
 
-  const findSwapPathDebounced = useCallback(() => {
+  const debouncedFindSwapPath = useDebounce(() => {
     if (
       swapFromTokenBalance &&
       swapToTokenBalance &&
@@ -50,6 +50,10 @@ export const useSwapPathFinding = ({
     } else {
       clearPath();
     }
+  }, 500);
+
+  useEffect(() => {
+    debouncedFindSwapPath();
   }, [
     swapFromTokenBalance,
     swapToTokenBalance,
@@ -58,13 +62,6 @@ export const useSwapPathFinding = ({
     network,
     publicKey,
     amountError,
-    findSwapPath,
-    clearPath,
+    debouncedFindSwapPath,
   ]);
-
-  const debouncedFindSwapPath = useDebounce(findSwapPathDebounced);
-
-  useEffect(() => {
-    debouncedFindSwapPath();
-  }, [debouncedFindSwapPath]);
 };
