@@ -118,13 +118,14 @@ jest.mock("hooks/useAppTranslation", () => () => ({
 }));
 
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: jest.fn(() => ({
+  useAuthenticationStore: () => ({
     network: "TESTNET",
     getAllAccounts: jest.fn().mockResolvedValue([]),
     renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
     selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
     isRenamingAccount: false,
-  })),
+    allAccounts: [{ publicKey: "GTESTPUBLICKEY", accountName: "Test Account" }],
+  }),
 }));
 
 // Mock the hooks
@@ -145,6 +146,11 @@ jest.mock("hooks/useTotalBalance", () => ({
     formattedBalance: "$350.75",
     totalBalance: "350.75",
   })),
+}));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn().mockResolvedValue("true"),
+  setItem: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("HomeScreen", () => {
