@@ -149,7 +149,7 @@ const SlippageSettings: React.FC<SlippageSettingsProps> = ({
 
           <TouchableOpacity onPress={() => setSelectedPreset(null)}>
             <Input
-              fieldSize="md"
+              fieldSize="lg"
               value={customSlippage}
               onChangeText={handleCustomSlippageChange}
               keyboardType="numeric"

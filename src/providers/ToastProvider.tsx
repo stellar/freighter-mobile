@@ -39,7 +39,6 @@ const ToastContainer = styled.View`
   right: 0;
   z-index: 1000;
   align-items: center;
-  pointer-events: none;
 `;
 
 interface ToastWrapperProps {

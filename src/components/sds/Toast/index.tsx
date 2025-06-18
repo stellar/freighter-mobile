@@ -1,10 +1,11 @@
 import { Notification, NotificationVariant } from "components/sds/Notification";
-import React, { useEffect, useCallback } from "react";
-import { Animated } from "react-native";
+import React, { useEffect, useCallback, useRef } from "react";
+import { Animated, PanResponder, View } from "react-native";
 import styled from "styled-components/native";
 
 const DEFAULT_DURATION = 3000;
 const ANIMATION_DURATION = 300;
+const SWIPE_THRESHOLD = 20; // Minimum dragged distance to trigger dismiss
 
 export type ToastVariant = NotificationVariant;
 
@@ -51,8 +52,10 @@ export const Toast: React.FC<ToastProps> = ({
   onDismiss,
   isFilled,
 }) => {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(-50)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-50)).current;
+  const pan = useRef(new Animated.ValueXY()).current;
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const animateIn = useCallback(() => {
     Animated.parallel([
@@ -88,27 +91,78 @@ export const Toast: React.FC<ToastProps> = ({
     });
   }, [fadeAnim, slideAnim, onDismiss]);
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        // Only respond to upward swipes
+        gestureState.dy < 0,
+      onPanResponderGrant: () => {
+        // Clear the auto-dismiss timer when user starts interacting
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow upward movement
+        if (gestureState.dy < 0) {
+          pan.y.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < -SWIPE_THRESHOLD) {
+          // If swiped up past threshold, dismiss the toast
+          Animated.timing(pan, {
+            toValue: { x: 0, y: -100 },
+            duration: ANIMATION_DURATION,
+            useNativeDriver: true,
+          }).start(() => {
+            if (onDismiss) {
+              onDismiss();
+            }
+          });
+        } else {
+          // If not swiped far enough, return to original position
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: true,
+          }).start(() => {
+            // Restart the auto-dismiss timer
+            timerRef.current = setTimeout(animateOut, duration);
+          });
+        }
+      },
+    }),
+  ).current;
+
   useEffect(() => {
     animateIn();
-    const timer = setTimeout(animateOut, duration);
-    return () => clearTimeout(timer);
+    timerRef.current = setTimeout(animateOut, duration);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, [animateIn, animateOut, duration]);
 
   return (
-    <AnimatedWrapper
-      style={{
-        opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }],
-      }}
-    >
-      <Notification
-        variant={variant}
-        title={title}
-        icon={icon}
-        message={message}
-        isFilled={isFilled}
-      />
-    </AnimatedWrapper>
+    <View>
+      <AnimatedWrapper
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }, { translateY: pan.y }],
+        }}
+        {...panResponder.panHandlers}
+      >
+        <Notification
+          variant={variant}
+          title={title}
+          icon={icon}
+          message={message}
+          isFilled={isFilled}
+        />
+      </AnimatedWrapper>
+    </View>
   );
 };
 

@@ -69,7 +69,6 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
           leftElement={
             <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
           }
-          autoCapitalize="none"
           value={accountName}
           onChangeText={setAccountName}
           autoCorrect={false}

@@ -69,7 +69,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
     <View className="flex-1">
       <View className="mb-8 mt-4">
         <Input
-          fieldSize="md"
+          fieldSize="lg"
           leftElement={
             <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
           }
