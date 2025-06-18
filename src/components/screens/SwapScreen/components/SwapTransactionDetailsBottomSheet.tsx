@@ -163,9 +163,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <AssetIcon token={fromToken} size="lg" />
         <View>
           <Text md medium primary>
-            {t("swapTransactionDetails.swapped", {
-              defaultValue: "Swapped",
-            })}
+            {t("swapTransactionDetails.swapped")}
           </Text>
           <View className="flex-row items-center gap-[4px]">
             <Icon.ArrowCircleUp size={16} color={themeColors.text.secondary} />

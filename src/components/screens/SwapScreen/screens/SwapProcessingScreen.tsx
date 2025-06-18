@@ -63,12 +63,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const getStatusText = () => {
     switch (status) {
       case SwapStatus.SWAPPED:
-        return t("swapProcessingScreen.swapped", { defaultValue: "Swapped!" });
+        return t("swapProcessingScreen.swapped");
       case SwapStatus.FAILED:
-        return t("swapProcessingScreen.failed", { defaultValue: "Failed" });
+        return t("swapProcessingScreen.failed");
       case SwapStatus.SWAPPING:
       default:
-        return t("swapProcessingScreen.swapping", { defaultValue: "Swapping" });
+        return t("swapProcessingScreen.swapping");
     }
   };
 
@@ -88,16 +88,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   const getMessageText = () => {
     if (status === SwapStatus.SWAPPED) {
-      return t("swapProcessingScreen.wasSwappedFor", {
-        defaultValue: " was swapped for ",
-      });
+      return t("swapProcessingScreen.wasSwappedFor");
     }
     if (status === SwapStatus.FAILED) {
-      return t("swapProcessingScreen.couldNotBeSwappedFor", {
-        defaultValue: " could not be swapped for ",
-      });
+      return t("swapProcessingScreen.couldNotBeSwappedFor");
     }
-    return t("swapProcessingScreen.to", { defaultValue: " to " });
+    return t("swapProcessingScreen.to");
   };
 
   return (
@@ -122,7 +118,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               </View>
 
               <View className="items-center">
-                <View className="flex-row flex-wrap items-center justify-center min-h-14">
+                <View className="flex-column flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
                     {formatAssetAmount(fromAmount, fromToken.code)}
                   </Text>
@@ -147,9 +143,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
                 transactionDetailsBottomSheetModalRef.current?.present()
               }
             >
-              {t("swapProcessingScreen.viewTransaction", {
-                defaultValue: "View transaction",
-              })}
+              {t("swapProcessingScreen.viewTransaction")}
             </Button>
             <Button tertiary xl onPress={onClose}>
               {t("common.done")}
@@ -158,10 +152,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         ) : (
           <View className="gap-[16px]">
             <Text sm medium secondary textAlign="center">
-              {t("swapProcessingScreen.closeMessage", {
-                defaultValue:
-                  "You can close this screen, your transaction should be complete in less than a minute",
-              })}
+              {t("swapProcessingScreen.closeMessage")}
             </Text>
             <Button secondary xl onPress={onClose}>
               {t("common.close")}

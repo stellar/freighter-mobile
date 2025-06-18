@@ -241,10 +241,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
       <View className="mt-[24px]">
         <Text sm medium secondary textAlign="center">
-          {t("swapScreen.review.warning", {
-            defaultValue:
-              "Make sure to review the transaction above, once you confirm it's irreversible",
-          })}
+          {t("swapScreen.review.warning")}
         </Text>
       </View>
 

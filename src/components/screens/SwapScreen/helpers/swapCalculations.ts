@@ -35,7 +35,8 @@ export const formatConversionRate = (
 ): string => {
   if (!rate || rate === "0") return "";
 
-  const formattedRate = formatAssetAmount(rate);
+  const roundedRate = BigNumber(rate).toFixed(DEFAULT_DECIMALS);
+  const formattedRate = formatAssetAmount(roundedRate);
 
   return `1 ${fromSymbol} ≈ ${formattedRate} ${toSymbol}`;
 };
