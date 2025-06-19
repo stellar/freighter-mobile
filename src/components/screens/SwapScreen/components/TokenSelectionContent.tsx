@@ -1,7 +1,7 @@
 import { BalancesList } from "components/BalancesList";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_DEBOUNCE_DELAY, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { isContractId } from "helpers/soroban";
@@ -37,7 +37,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
 
   const debouncedUpdateFilteringTerm = useDebounce(() => {
     setFilteringTerm(searchTerm);
-  }, 300);
+  }, DEFAULT_DEBOUNCE_DELAY);
 
   const handleTokenPress = (tokenId: string) => {
     let tokenSymbol: string;

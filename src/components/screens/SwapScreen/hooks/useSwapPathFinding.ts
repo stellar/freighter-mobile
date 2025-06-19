@@ -1,4 +1,4 @@
-import { NETWORKS } from "config/constants";
+import { DEFAULT_DEBOUNCE_DELAY, NETWORKS } from "config/constants";
 import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import useDebounce from "hooks/useDebounce";
@@ -50,7 +50,7 @@ export const useSwapPathFinding = ({
     } else {
       clearPath();
     }
-  }, 500);
+  }, DEFAULT_DEBOUNCE_DELAY);
 
   useEffect(() => {
     debouncedFindSwapPath();
