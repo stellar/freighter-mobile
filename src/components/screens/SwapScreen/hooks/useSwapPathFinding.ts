@@ -10,9 +10,9 @@ type BalanceItem = PricedBalance & {
 };
 
 interface UseSwapPathFindingParams {
-  swapFromTokenBalance: BalanceItem | undefined;
-  swapToTokenBalance: BalanceItem | undefined;
-  swapAmount: string;
+  sourceBalance: BalanceItem | undefined;
+  destinationBalance: BalanceItem | undefined;
+  sourceAmount: string;
   swapSlippage: number;
   network: NETWORKS;
   publicKey: string | undefined;
@@ -20,9 +20,9 @@ interface UseSwapPathFindingParams {
 }
 
 export const useSwapPathFinding = ({
-  swapFromTokenBalance,
-  swapToTokenBalance,
-  swapAmount,
+  sourceBalance,
+  destinationBalance,
+  sourceAmount,
   swapSlippage,
   network,
   publicKey,
@@ -32,17 +32,17 @@ export const useSwapPathFinding = ({
 
   const debouncedFindSwapPath = useDebounce(() => {
     if (
-      swapFromTokenBalance &&
-      swapToTokenBalance &&
-      swapAmount &&
-      Number(swapAmount) > 0 &&
+      sourceBalance &&
+      destinationBalance &&
+      sourceAmount &&
+      Number(sourceAmount) > 0 &&
       !amountError &&
       publicKey
     ) {
       findSwapPath({
-        fromBalance: swapFromTokenBalance,
-        toBalance: swapToTokenBalance,
-        amount: swapAmount,
+        fromBalance: sourceBalance,
+        toBalance: destinationBalance,
+        sourceAmount,
         slippage: swapSlippage,
         network,
         publicKey,
@@ -55,9 +55,9 @@ export const useSwapPathFinding = ({
   useEffect(() => {
     debouncedFindSwapPath();
   }, [
-    swapFromTokenBalance,
-    swapToTokenBalance,
-    swapAmount,
+    sourceBalance,
+    destinationBalance,
+    sourceAmount,
     swapSlippage,
     network,
     publicKey,

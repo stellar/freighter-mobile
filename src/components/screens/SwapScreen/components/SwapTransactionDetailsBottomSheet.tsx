@@ -39,6 +39,11 @@ type SwapTransactionDetailsBottomSheetProps = {
 const SwapTransactionDetailsBottomSheet: React.FC<
   SwapTransactionDetailsBottomSheetProps
 > = ({ fromAmount, fromToken, toAmount, toToken }) => {
+  // Use consistent internal naming
+  const sourceAmount = fromAmount;
+  const sourceToken = fromToken;
+  const destinationAmount = toAmount;
+  const destinationToken = toToken;
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -131,36 +136,40 @@ const SwapTransactionDetailsBottomSheet: React.FC<
 
   const displayConversionRate =
     pathResult?.conversionRate ||
-    calculateConversionRate(fromAmount, toAmount, undefined);
+    calculateConversionRate(sourceAmount, destinationAmount, undefined);
 
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
-    calculateMinimumReceived(toAmount, swapSlippage.toString(), undefined);
+    calculateMinimumReceived(
+      destinationAmount,
+      swapSlippage.toString(),
+      undefined,
+    );
 
-  const fromTokenFiatAmountValue = calculateTokenFiatAmount(
-    fromToken,
-    fromAmount,
+  const sourceTokenFiatAmountValue = calculateTokenFiatAmount(
+    sourceToken,
+    sourceAmount,
     balanceItems,
   );
-  const fromTokenFiatAmount =
-    fromTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(fromTokenFiatAmountValue)
+  const sourceTokenFiatAmount =
+    sourceTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(sourceTokenFiatAmountValue)
       : "--";
 
-  const toTokenFiatAmountValue = calculateTokenFiatAmount(
-    toToken,
-    toAmount,
+  const destinationTokenFiatAmountValue = calculateTokenFiatAmount(
+    destinationToken,
+    destinationAmount,
     balanceItems,
   );
-  const toTokenFiatAmount =
-    toTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(toTokenFiatAmountValue)
+  const destinationTokenFiatAmount =
+    destinationTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(destinationTokenFiatAmountValue)
       : "--";
 
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
-        <AssetIcon token={fromToken} size="lg" />
+        <AssetIcon token={sourceToken} size="lg" />
         <View>
           <Text md medium primary>
             {t("swapTransactionDetails.swapped")}
@@ -178,13 +187,13 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(fromAmount, fromToken.code)}
+              {formatAssetAmount(sourceAmount, sourceToken.code)}
             </Text>
             <Text md medium secondary>
-              {fromTokenFiatAmount}
+              {sourceTokenFiatAmount}
             </Text>
           </View>
-          <AssetIcon token={fromToken} size="lg" />
+          <AssetIcon token={sourceToken} size="lg" />
         </View>
 
         <View>
@@ -199,13 +208,13 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(toAmount, toToken.code)}
+              {formatAssetAmount(destinationAmount, destinationToken.code)}
             </Text>
             <Text md medium secondary>
-              {toTokenFiatAmount}
+              {destinationTokenFiatAmount}
             </Text>
           </View>
-          <AssetIcon token={toToken} size="lg" />
+          <AssetIcon token={destinationToken} size="lg" />
         </View>
       </View>
 
@@ -232,8 +241,8 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <Text md medium>
             {formatConversionRate(
               displayConversionRate,
-              fromToken.code,
-              toToken.code,
+              sourceToken.code,
+              destinationToken.code,
             )}
           </Text>
         </View>
@@ -246,7 +255,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(displayMinimumReceived, toToken.code)}
+            {formatAssetAmount(displayMinimumReceived, destinationToken.code)}
           </Text>
         </View>
 

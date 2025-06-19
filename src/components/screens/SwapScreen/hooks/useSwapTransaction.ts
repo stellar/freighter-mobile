@@ -15,9 +15,9 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useState } from "react";
 
 interface SwapTransactionParams {
-  swapAmount: string;
-  swapFromTokenBalance: PricedBalance | undefined;
-  swapToTokenBalance: PricedBalance | undefined;
+  sourceAmount: string;
+  sourceBalance: PricedBalance | undefined;
+  destinationBalance: PricedBalance | undefined;
   pathResult: SwapPathResult | null;
   account: ActiveAccount | null;
   swapFee: string;
@@ -35,14 +35,14 @@ interface UseSwapTransactionResult {
   executeSwap: () => Promise<void>;
   prepareSwapTransaction: () => Promise<void>;
   handleProcessingScreenClose: () => void;
-  fromToken: NativeToken | AssetToken;
-  toToken: NativeToken | AssetToken;
+  sourceToken: NativeToken | AssetToken;
+  destinationToken: NativeToken | AssetToken;
 }
 
 export const useSwapTransaction = ({
-  swapAmount,
-  swapFromTokenBalance,
-  swapToTokenBalance,
+  sourceAmount,
+  sourceBalance,
+  destinationBalance,
   pathResult,
   account,
   swapFee,
@@ -62,8 +62,8 @@ export const useSwapTransaction = ({
 
   const prepareSwapTransaction = async () => {
     if (
-      !swapFromTokenBalance ||
-      !swapToTokenBalance ||
+      !sourceBalance ||
+      !destinationBalance ||
       !pathResult ||
       !account?.publicKey
     ) {
@@ -72,9 +72,9 @@ export const useSwapTransaction = ({
 
     try {
       await buildSwapTransaction({
-        tokenAmount: swapAmount,
-        fromBalance: swapFromTokenBalance,
-        toBalance: swapToTokenBalance,
+        sourceAmount,
+        sourceBalance,
+        destinationBalance,
         path: pathResult.path,
         destinationAmount: pathResult.destinationAmount,
         destinationAmountMin: pathResult.destinationAmountMin,
@@ -132,15 +132,15 @@ export const useSwapTransaction = ({
     });
   };
 
-  const fromToken = getTokenFromBalance(swapFromTokenBalance);
-  const toToken = getTokenFromBalance(swapToTokenBalance);
+  const sourceToken = getTokenFromBalance(sourceBalance);
+  const destinationToken = getTokenFromBalance(destinationBalance);
 
   return {
     isProcessing,
     executeSwap,
     prepareSwapTransaction,
     handleProcessingScreenClose,
-    fromToken,
-    toToken,
+    sourceToken,
+    destinationToken,
   };
 };

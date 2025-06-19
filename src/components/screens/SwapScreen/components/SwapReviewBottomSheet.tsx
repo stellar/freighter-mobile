@@ -42,11 +42,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
 
   const {
-    swapAmount,
+    sourceAmount,
     destinationAmount,
     pathResult,
-    fromTokenSymbol,
-    toTokenSymbol,
+    sourceTokenSymbol,
+    destinationTokenSymbol,
   } = useSwapStore();
 
   const { swapFee, swapSlippage } = useSwapSettingsStore();
@@ -54,11 +54,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const displayConversionRate =
     pathResult?.conversionRate ||
-    calculateConversionRate(swapAmount, destinationAmount, undefined);
+    calculateConversionRate(sourceAmount, destinationAmount, undefined);
   const conversionRate = formatConversionRate(
     displayConversionRate,
-    fromTokenSymbol,
-    toTokenSymbol,
+    sourceTokenSymbol,
+    destinationTokenSymbol,
   );
 
   const displayMinimumReceived =
@@ -77,41 +77,40 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     }
   };
 
-  const { fromTokenId, toTokenId } = useSwapStore();
+  const { sourceTokenId, destinationTokenId } = useSwapStore();
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
     shouldPoll: false,
   });
 
-  const fromTokenBalance = balanceItems.find((item) => item.id === fromTokenId);
-  const toTokenBalance = balanceItems.find((item) => item.id === toTokenId);
+  const sourceBalance = balanceItems.find((item) => item.id === sourceTokenId);
+  const destinationBalance = balanceItems.find(
+    (item) => item.id === destinationTokenId,
+  );
 
-  const sourceToken = getTokenFromBalance(fromTokenBalance);
-  const destinationToken = getTokenFromBalance(toTokenBalance);
+  const sourceToken = getTokenFromBalance(sourceBalance);
+  const destinationToken = getTokenFromBalance(destinationBalance);
 
-  const fromTokenFiatAmountValue = calculateTokenFiatAmount(
+  const sourceTokenFiatAmountValue = calculateTokenFiatAmount(
     sourceToken,
-    swapAmount,
+    sourceAmount,
     balanceItems,
   );
-  const fromTokenFiatAmount =
-    fromTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(fromTokenFiatAmountValue)
+  const sourceTokenFiatAmount =
+    sourceTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(sourceTokenFiatAmountValue)
       : "--";
 
-  const toTokenFiatAmountValue = calculateTokenFiatAmount(
+  const destinationTokenFiatAmountValue = calculateTokenFiatAmount(
     destinationToken,
     destinationAmount,
     balanceItems,
   );
-  const toTokenFiatAmount =
-    toTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(toTokenFiatAmountValue)
+  const destinationTokenFiatAmount =
+    destinationTokenFiatAmountValue !== "--"
+      ? formatFiatAmount(destinationTokenFiatAmountValue)
       : "--";
-
-  const fromToken = getTokenFromBalance(fromTokenBalance);
-  const toToken = getTokenFromBalance(toTokenBalance);
 
   const publicKey = account?.publicKey;
 
@@ -130,13 +129,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
         <View className="gap-[16px]">
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={fromToken} />
+            <AssetIcon token={sourceToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(swapAmount, fromTokenSymbol)}
+                {formatAssetAmount(sourceAmount, sourceTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {fromTokenFiatAmount}
+                {sourceTokenFiatAmount}
               </Text>
             </View>
           </View>
@@ -149,13 +148,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
 
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={toToken} />
+            <AssetIcon token={destinationToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(destinationAmount, toTokenSymbol)}
+                {formatAssetAmount(destinationAmount, destinationTokenSymbol)}
               </Text>
               <Text md medium secondary>
-                {toTokenFiatAmount}
+                {destinationTokenFiatAmount}
               </Text>
             </View>
           </View>
@@ -186,7 +185,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(displayMinimumReceived, toTokenSymbol)}
+            {formatAssetAmount(displayMinimumReceived, destinationTokenSymbol)}
           </Text>
         </View>
 

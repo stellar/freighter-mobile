@@ -36,9 +36,9 @@ interface TransactionBuilderState {
   }) => Promise<string | null>;
 
   buildSwapTransaction: (params: {
-    tokenAmount: string;
-    fromBalance: PricedBalance;
-    toBalance: PricedBalance;
+    sourceAmount: string;
+    sourceBalance: PricedBalance;
+    destinationBalance: PricedBalance;
     path: string[];
     destinationAmount: string;
     destinationAmountMin: string;
@@ -156,9 +156,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
       try {
         const builtTxResult = await buildSwapTransaction({
-          tokenAmount: params.tokenAmount,
-          fromBalance: params.fromBalance,
-          toBalance: params.toBalance,
+          sourceAmount: params.sourceAmount,
+          sourceBalance: params.sourceBalance,
+          destinationBalance: params.destinationBalance,
           path: params.path,
           destinationAmount: params.destinationAmount,
           destinationAmountMin: params.destinationAmountMin,

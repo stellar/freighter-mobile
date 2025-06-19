@@ -30,10 +30,10 @@ interface SwapPathData {
 }
 
 interface SwapState {
-  fromTokenId: string;
-  toTokenId: string;
-  fromTokenSymbol: string;
-  toTokenSymbol: string;
+  sourceTokenId: string;
+  destinationTokenId: string;
+  sourceTokenSymbol: string;
+  destinationTokenSymbol: string;
   sourceAmount: string;
   destinationAmount: string;
   pathResult: SwapPathResult | null;
@@ -42,8 +42,8 @@ interface SwapState {
   isBuilding: boolean;
   buildError: string | null;
 
-  setFromToken: (tokenId: string, tokenSymbol: string) => void;
-  setToToken: (tokenId: string, tokenSymbol: string) => void;
+  setSourceToken: (tokenId: string, tokenSymbol: string) => void;
+  setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
   setSourceAmount: (amount: string) => void;
   findSwapPath: (params: {
     fromBalance: PricedBalance;
@@ -58,10 +58,10 @@ interface SwapState {
 }
 
 const initialState = {
-  fromTokenId: "",
-  toTokenId: "",
-  fromTokenSymbol: "",
-  toTokenSymbol: "",
+  sourceTokenId: "",
+  destinationTokenId: "",
+  sourceTokenSymbol: "",
+  destinationTokenSymbol: "",
   sourceAmount: "0",
   destinationAmount: "0",
   pathResult: null,
@@ -138,11 +138,11 @@ const findClassicSwapPath = async (params: {
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
-  setFromToken: (tokenId, tokenSymbol) =>
-    set({ fromTokenId: tokenId, fromTokenSymbol: tokenSymbol }),
+  setSourceToken: (tokenId, tokenSymbol) =>
+    set({ sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }),
 
-  setToToken: (tokenId, tokenSymbol) =>
-    set({ toTokenId: tokenId, toTokenSymbol: tokenSymbol }),
+  setDestinationToken: (tokenId, tokenSymbol) =>
+    set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
   setSourceAmount: (amount) => set({ sourceAmount: amount }),
 

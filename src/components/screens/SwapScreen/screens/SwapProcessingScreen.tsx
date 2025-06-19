@@ -42,6 +42,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     isSubmitting,
   } = useTransactionBuilderStore();
 
+  // Use consistent internal naming
+  const sourceAmount = fromAmount;
+  const sourceToken = fromToken;
+  const destinationAmount = toAmount;
+  const destinationToken = toToken;
+
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
 
   useEffect(() => {
@@ -111,24 +117,27 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
-                <AssetIcon token={fromToken} size="lg" />
+                <AssetIcon token={sourceToken} size="lg" />
                 <Icon.ChevronRightDouble
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <AssetIcon token={toToken} size="lg" />
+                <AssetIcon token={destinationToken} size="lg" />
               </View>
 
               <View className="items-center">
                 <View className="flex-column flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatAssetAmount(fromAmount, fromToken.code)}
+                    {formatAssetAmount(sourceAmount, sourceToken.code)}
                   </Text>
                   <Text lg medium secondary>
                     {getMessageText()}
                   </Text>
                   <Text xl medium primary>
-                    {formatAssetAmount(toAmount, toToken.code)}
+                    {formatAssetAmount(
+                      destinationAmount,
+                      destinationToken.code,
+                    )}
                   </Text>
                 </View>
               </View>
@@ -170,10 +179,10 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         }
         customContent={
           <SwapTransactionDetailsBottomSheet
-            fromAmount={fromAmount}
-            fromToken={fromToken}
-            toAmount={toAmount}
-            toToken={toToken}
+            fromAmount={sourceAmount}
+            fromToken={sourceToken}
+            toAmount={destinationAmount}
+            toToken={destinationToken}
           />
         }
       />
