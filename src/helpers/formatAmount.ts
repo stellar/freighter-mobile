@@ -29,37 +29,34 @@ const convertToBigNumber = (
 /**
  * Formats a numeric value as a human-readable asset amount with optional asset code
  *
- * Based on the extension's formatAmount function - simple approach that splits into
- * whole and decimal parts, formats only the whole part with commas, and preserves
- * the decimal part exactly as provided.
+ * This function formats numbers with thousand separators and appropriate decimal places
+ * for displaying asset amounts in the UI.
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format
  * @param {string} [code] - Optional asset code to append to the formatted amount
  * @returns {string} Formatted asset amount string with optional asset code
  *
  * @example
- * formatAssetAmount("1000.0001000"); // Returns "1,000.0001000"
- * formatAssetAmount("0.0000039"); // Returns "0.0000039"
+ * formatAssetAmount(1234.56); // Returns "1,234.56"
+ * formatAssetAmount("1234.56789"); // Returns "1,234.56789"
  * formatAssetAmount(1234.56, "XLM"); // Returns "1,234.56 XLM"
  */
 export const formatAssetAmount = (
   amount: string | number | { toString: () => string },
   code?: string,
 ) => {
-  const val =
-    typeof amount === "string" ? amount : convertToBigNumber(amount).toString();
+  const bnAmount = convertToBigNumber(amount);
 
-  const decimal = new Intl.NumberFormat("en-US", { style: "decimal" });
-  const [wholeVal, remainderVal] = val.split(".");
-  const formattedWholeVal = decimal.format(Number(wholeVal)).toString();
+  const formatter = new Intl.NumberFormat("en-US", {
+    useGrouping: true,
+    minimumFractionDigits: 2, // Always show at least 2 decimal places
+    maximumFractionDigits: 20, // Support high precision if needed
+  });
 
-  let formattedAmount: string;
-  if (remainderVal) {
-    formattedAmount = `${formattedWholeVal}.${remainderVal}`;
-  } else {
-    formattedAmount = formattedWholeVal;
-  }
+  // Format the number and remove unnecessary trailing zeros
+  const formattedAmount = formatter.format(bnAmount.toNumber());
 
+  // Return the formatted amount with the asset code if provided
   return code ? `${formattedAmount} ${code}` : formattedAmount;
 };
 
