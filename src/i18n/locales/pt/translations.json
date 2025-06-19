@@ -22,7 +22,7 @@
   },
   "home": {
     "title": "Início",
-    "buy": "Comprar",
+    "buy": "Adicionar",
     "send": "Enviar",
     "swap": "Trocar",
     "copy": "Copiar",
@@ -479,9 +479,9 @@
     }
   },
   "buyXLMScreen": {
-    "title": "Comprar XLM",
+    "title": "Adicionar XLM",
     "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira. \n\nCompre facilmente com Coinbase ou MoonPay, ou envie XLM de outra carteira."
+      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
     },
     "actions": {
       "title": "Transferir de outra conta",
