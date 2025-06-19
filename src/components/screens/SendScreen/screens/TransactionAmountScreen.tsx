@@ -116,11 +116,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const spendableBalance = useMemo(() => {
     if (!selectedBalance || !account) return BigNumber(0);
 
-    return calculateSpendableAmount(
-      selectedBalance,
-      account.subentryCount,
+    return calculateSpendableAmount({
+      balance: selectedBalance,
+      subentryCount: account.subentryCount,
       transactionFee,
-    );
+    });
   }, [selectedBalance, account, transactionFee]);
 
   const handlePercentagePress = (percentage: number) => {

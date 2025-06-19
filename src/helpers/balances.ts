@@ -18,6 +18,24 @@ import {
   AssetTypeWithCustomToken,
 } from "config/types";
 
+interface GetTokenPriceFromBalanceParams {
+  prices: TokenPricesMap;
+  balance: Balance;
+}
+
+interface CalculateSpendableAmountParams {
+  balance: Balance;
+  subentryCount?: number;
+  transactionFee?: string;
+}
+
+interface IsAmountSpendableParams {
+  amount: string;
+  balance: Balance;
+  subentryCount?: number;
+  transactionFee?: string;
+}
+
 /**
  * Gets the human-readable share code for a liquidity pool balance
  *
@@ -165,8 +183,7 @@ export const getTokenIdentifiersFromBalances = (
  * to a token identifier, then retrieving the corresponding price data from the
  * prices map. It handles cases where the token might not exist in the prices map.
  *
- * @param {TokenPricesMap} prices - The prices map from usePricesStore()
- * @param {Balance} balance - Balance object to find the price for
+ * @param {GetTokenPriceFromBalanceParams} params - Object containing prices map and balance
  * @returns {TokenPrice | null} The price data or null if not found
  *
  * @example
@@ -174,7 +191,7 @@ export const getTokenIdentifiersFromBalances = (
  * const { prices } = usePricesStore();
  * const { balances } = useBalancesStore();
  * const nativeBalance = balances["native"];
- * const xlmPrice = getTokenPriceFromBalance(prices, nativeBalance);
+ * const xlmPrice = getTokenPriceFromBalance({ prices, balance: nativeBalance });
  *
  * // Use the price data
  * if (xlmPrice) {
@@ -182,10 +199,10 @@ export const getTokenIdentifiersFromBalances = (
  *   console.log(`24h change: ${xlmPrice.percentagePriceChange24h.toString()}%`);
  * }
  */
-export const getTokenPriceFromBalance = (
-  prices: TokenPricesMap,
-  balance: Balance,
-): TokenPrice | null => {
+export const getTokenPriceFromBalance = ({
+  prices,
+  balance,
+}: GetTokenPriceFromBalanceParams): TokenPrice | null => {
   const tokenId = getTokenIdentifier(balance);
   if (!tokenId) {
     return null; // Liquidity pools or unknown token types
@@ -307,23 +324,21 @@ export const isPublicKeyValid = (publicKey: string) =>
  * Calculates the spendable amount for a given balance, considering minimum balance requirements
  * for XLM. Transaction fees are only subtracted from XLM balances since fees are always paid in XLM.
  *
- * @param {Balance} balance - The balance object to calculate spendable amount for
- * @param {number} subentryCount - Number of subentries (trustlines, offers, data entries) for XLM calculation
- * @param {string} transactionFee - Transaction fee to subtract from XLM balance only
+ * @param {CalculateSpendableAmountParams} params - Object containing balance, subentry count, and transaction fee
  * @returns {BigNumber} The spendable amount after considering all constraints
  *
  * @example
  * // Calculate spendable XLM amount (subtracts fee and minimum balance)
- * const spendable = calculateSpendableAmount(xlmBalance, 5, "0.00001");
+ * const spendable = calculateSpendableAmount({ balance: xlmBalance, subentryCount: 5, transactionFee: "0.00001" });
  *
  * // Calculate spendable amount for other assets (no fee subtraction)
- * const spendable = calculateSpendableAmount(usdcBalance, 0, "0.00001");
+ * const spendable = calculateSpendableAmount({ balance: usdcBalance });
  */
-export const calculateSpendableAmount = (
-  balance: Balance,
-  subentryCount: number = 0,
-  transactionFee: string = MIN_TRANSACTION_FEE,
-): BigNumber => {
+export const calculateSpendableAmount = ({
+  balance,
+  subentryCount = 0,
+  transactionFee = MIN_TRANSACTION_FEE,
+}: CalculateSpendableAmountParams): BigNumber => {
   if (!balance) return new BigNumber(0);
 
   const totalBalance = new BigNumber(balance.total);
@@ -364,24 +379,21 @@ export const calculateSpendableAmount = (
 /**
  * Validates if an amount exceeds the spendable balance
  *
- * @param {string} amount - The amount to validate
- * @param {Balance} balance - The balance to check against
- * @param {number} subentryCount - Number of subentries for XLM calculation
- * @param {string} transactionFee - Transaction fee to consider
+ * @param {IsAmountSpendableParams} params - Object containing amount, balance, subentry count, and transaction fee
  * @returns {boolean} True if amount is valid (doesn't exceed spendable), false otherwise
  */
-export const isAmountSpendable = (
-  amount: string,
-  balance: Balance,
-  subentryCount: number = 0,
-  transactionFee: string = "0.00001",
-): boolean => {
+export const isAmountSpendable = ({
+  amount,
+  balance,
+  subentryCount = 0,
+  transactionFee = "0.00001",
+}: IsAmountSpendableParams): boolean => {
   const amountBN = new BigNumber(amount);
-  const spendableAmount = calculateSpendableAmount(
+  const spendableAmount = calculateSpendableAmount({
     balance,
     subentryCount,
     transactionFee,
-  );
+  });
 
   return amountBN.isLessThanOrEqualTo(spendableAmount);
 };

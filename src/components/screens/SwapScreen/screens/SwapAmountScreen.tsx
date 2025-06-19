@@ -93,11 +93,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
-    return calculateSpendableAmount(
-      sourceBalance,
-      account.subentryCount || 0,
-      swapFee,
-    );
+    return calculateSpendableAmount({
+      balance: sourceBalance,
+      subentryCount: account.subentryCount || 0,
+      transactionFee: swapFee,
+    });
   }, [sourceBalance, account, swapFee]);
 
   useEffect(() => {
@@ -107,12 +107,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
 
     if (
-      !isAmountSpendable(
-        sourceAmount,
-        sourceBalance,
-        account?.subentryCount,
-        swapFee,
-      )
+      !isAmountSpendable({
+        amount: sourceAmount,
+        balance: sourceBalance,
+        subentryCount: account?.subentryCount,
+        transactionFee: swapFee,
+      })
     ) {
       setAmountError(
         t("swapScreen.errors.insufficientBalance", {

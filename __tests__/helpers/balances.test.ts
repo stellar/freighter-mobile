@@ -240,30 +240,30 @@ describe("balances helpers", () => {
 
   describe("getTokenPriceFromBalance", () => {
     it("should return price data for native token", () => {
-      const priceData = getTokenPriceFromBalance(
+      const priceData = getTokenPriceFromBalance({
         prices,
-        nativeBalance as Balance,
-      );
+        balance: nativeBalance as Balance,
+      });
       expect(priceData).toBeDefined();
       expect(priceData?.currentPrice?.toString()).toBe("0.5");
       expect(priceData?.percentagePriceChange24h?.toString()).toBe("0.02");
     });
 
     it("should return price data for asset token", () => {
-      const priceData = getTokenPriceFromBalance(
+      const priceData = getTokenPriceFromBalance({
         prices,
-        assetBalance as Balance,
-      );
+        balance: assetBalance as Balance,
+      });
       expect(priceData).toBeDefined();
       expect(priceData?.currentPrice?.toString()).toBe("1");
       expect(priceData?.percentagePriceChange24h?.toString()).toBe("-0.01");
     });
 
     it("should return null for liquidity pool tokens", () => {
-      const priceData = getTokenPriceFromBalance(
+      const priceData = getTokenPriceFromBalance({
         prices,
-        liquidityPoolBalance as Balance,
-      );
+        balance: liquidityPoolBalance as Balance,
+      });
       expect(priceData).toBeNull();
     });
 
@@ -278,15 +278,18 @@ describe("balances helpers", () => {
         available: new BigNumber("100"),
         limit: new BigNumber("1000"), // Required for AssetBalance
       };
-      const priceData = getTokenPriceFromBalance(
+      const priceData = getTokenPriceFromBalance({
         prices,
-        unknownAsset as Balance,
-      );
+        balance: unknownAsset as Balance,
+      });
       expect(priceData).toBeNull();
     });
 
     it("should handle empty prices object", () => {
-      const priceData = getTokenPriceFromBalance({}, nativeBalance as Balance);
+      const priceData = getTokenPriceFromBalance({
+        prices: {},
+        balance: nativeBalance as Balance,
+      });
       expect(priceData).toBeNull();
     });
   });
@@ -308,7 +311,11 @@ describe("balances helpers", () => {
 
       // subentryCount = 3, so minimum balance = (2 + 3) * 0.5 = 2.5 XLM
       // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
-      const spendable = calculateSpendableAmount(xlmBalance, 3, "0.00001");
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
       expect(spendable.toString()).toBe("7.49999");
     });
 
@@ -328,7 +335,11 @@ describe("balances helpers", () => {
 
       // subentryCount = 0, so minimum balance = (2 + 0) * 0.5 = 1 XLM
       // spendable = 1 - 1 - 0.00001 = -0.00001, should return 0
-      const spendable = calculateSpendableAmount(xlmBalance, 0, "0.00001");
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
       expect(spendable.toString()).toBe("0");
     });
 
@@ -350,16 +361,20 @@ describe("balances helpers", () => {
 
       // For non-native assets, use available balance (no fee subtraction since fees are paid in XLM)
       // spendable = 950 (available balance)
-      const spendable = calculateSpendableAmount(usdcBalance, 0, "0.00001");
+      const spendable = calculateSpendableAmount({
+        balance: usdcBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
       expect(spendable.toString()).toBe("950");
     });
 
     it("should handle liquidity pool balances correctly", () => {
-      const spendable = calculateSpendableAmount(
-        liquidityPoolBalance,
-        0,
-        "0.00001",
-      );
+      const spendable = calculateSpendableAmount({
+        balance: liquidityPoolBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
       expect(spendable.toString()).toBe("1472.6043561");
     });
   });
@@ -379,7 +394,12 @@ describe("balances helpers", () => {
         sellingLiabilities: "0",
       };
 
-      const isValid = isAmountSpendable("5", xlmBalance, 3, "0.00001");
+      const isValid = isAmountSpendable({
+        amount: "5",
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
       expect(isValid).toBe(true);
     });
 
@@ -397,7 +417,12 @@ describe("balances helpers", () => {
         sellingLiabilities: "0",
       };
 
-      const isValid = isAmountSpendable("8", xlmBalance, 3, "0.00001");
+      const isValid = isAmountSpendable({
+        amount: "8",
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
       expect(isValid).toBe(false);
     });
   });

@@ -114,7 +114,7 @@ export const calculateTokenFiatAmount = ({
 
   // Strategy 2: Get price from prices store using the helper function
   if (prices && balance) {
-    const priceData = getTokenPriceFromBalance(prices, balance);
+    const priceData = getTokenPriceFromBalance({ prices, balance });
     if (priceData?.currentPrice) {
       return amountBN.multipliedBy(priceData.currentPrice).toString();
     }
