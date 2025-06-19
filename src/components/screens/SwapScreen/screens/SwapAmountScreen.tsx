@@ -332,7 +332,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
 
         {(amountError || pathError || swapError) && (
-          <View className="mb-4">
+          <View className="mb-2">
             <Notification
               variant="error"
               message={amountError || pathError || swapError || ""}

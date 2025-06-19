@@ -103,9 +103,11 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           <View className="items-center gap-[8px] w-full">
             {getStatusIcon()}
 
-            <Display xs medium>
-              {getStatusText()}
-            </Display>
+            <View className="mb-2">
+              <Display xs medium>
+                {getStatusText()}
+              </Display>
+            </View>
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
