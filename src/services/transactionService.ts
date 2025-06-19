@@ -41,9 +41,9 @@ export interface BuildPaymentTransactionParams {
 }
 
 export interface BuildSwapTransactionParams {
-  tokenAmount: string;
-  fromBalance: PricedBalance;
-  toBalance: PricedBalance;
+  sourceAmount: string;
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
   path: string[];
   destinationAmount: string;
   destinationAmountMin: string;
@@ -123,18 +123,24 @@ export const validateTransactionParams = (
  * Returns an error message if any validation fails
  */
 export const validateSwapTransactionParams = (params: {
-  fromBalance: PricedBalance;
-  toBalance: PricedBalance;
-  amount: string;
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  sourceAmount: string;
   destinationAmount: string;
   fee: string;
   timeout: number;
 }): string | null => {
-  const { fromBalance, toBalance, amount, destinationAmount, fee, timeout } =
-    params;
+  const {
+    sourceBalance,
+    destinationBalance,
+    sourceAmount,
+    destinationAmount,
+    fee,
+    timeout,
+  } = params;
 
   // Validate amount is positive
-  if (Number(amount) <= 0) {
+  if (Number(sourceAmount) <= 0) {
     return "Amount must be greater than 0";
   }
 
@@ -154,15 +160,15 @@ export const validateSwapTransactionParams = (params: {
   }
 
   // Validate sufficient balance
-  const transactionAmount = new BigNumber(amount);
-  const balanceAmount = new BigNumber(fromBalance.total);
+  const transactionAmount = new BigNumber(sourceAmount);
+  const balanceAmount = new BigNumber(sourceBalance.total);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
     return "Insufficient balance for swap";
   }
 
   // Validate different assets
-  if (fromBalance.id === toBalance.id) {
+  if (sourceBalance.id === destinationBalance.id) {
     return "Cannot swap to the same asset";
   }
 
@@ -544,9 +550,9 @@ export const buildSwapTransaction = async (
   params: BuildSwapTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
   const {
-    tokenAmount: amount,
-    fromBalance,
-    toBalance,
+    sourceAmount,
+    sourceBalance,
+    destinationBalance,
     path,
     destinationAmount,
     destinationAmountMin,
@@ -560,11 +566,11 @@ export const buildSwapTransaction = async (
     throw new Error("Public key is required");
   }
 
-  if (!fromBalance) {
+  if (!sourceBalance) {
     throw new Error("Source balance not found");
   }
 
-  if (!toBalance) {
+  if (!destinationBalance) {
     throw new Error("Destination balance not found");
   }
 
@@ -582,9 +588,9 @@ export const buildSwapTransaction = async (
 
   try {
     const validationError = validateSwapTransactionParams({
-      fromBalance,
-      toBalance,
-      amount,
+      sourceBalance,
+      destinationBalance,
+      sourceAmount,
       destinationAmount,
       fee,
       timeout,
@@ -607,8 +613,8 @@ export const buildSwapTransaction = async (
     });
 
     // Get the asset objects
-    const sourceAsset = getAssetForPayment(fromBalance);
-    const destAsset = getAssetForPayment(toBalance);
+    const sourceAsset = getAssetForPayment(sourceBalance);
+    const destAsset = getAssetForPayment(destinationBalance);
 
     // Convert path strings to Asset objects
     const pathAssets: Asset[] = path.map((pathItem) => {
@@ -623,7 +629,7 @@ export const buildSwapTransaction = async (
     // For swaps, the destination is always the sender's own address
     const swapOperation = Operation.pathPaymentStrictSend({
       sendAsset: sourceAsset,
-      sendAmount: amount,
+      sendAmount: sourceAmount,
       destination: senderAddress, // Key difference: send to self for swaps
       destAsset,
       destMin: destinationAmountMin,
