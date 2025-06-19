@@ -93,7 +93,7 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
       }
 
       // Try pairing with the dApp using the provided URI param
-      walletKit.pair({ uri: uriParam }).catch((error) => {
+      walletKit.pair({ uri: decodeURIComponent(uriParam) }).catch((error) => {
         showToast({
           title: t("walletKit.errorPairing"),
           message: t("common.error", {
