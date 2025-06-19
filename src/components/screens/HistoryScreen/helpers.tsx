@@ -46,16 +46,6 @@ export const renderActionIcon = ({
 };
 
 /**
- * Formats date for transaction history
- */
-export const formatTransactionDate = (createdAt: string): string =>
-  new Date(Date.parse(createdAt))
-    .toDateString()
-    .split(" ")
-    .slice(1, 3)
-    .join(" ");
-
-/**
  * Creates operation description string
  */
 export const createOperationString = (

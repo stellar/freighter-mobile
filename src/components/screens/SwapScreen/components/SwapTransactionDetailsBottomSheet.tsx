@@ -4,7 +4,6 @@ import {
   calculateConversionRate,
   calculateMinimumReceived,
   formatConversionRate,
-  formatTransactionDate,
   calculateTokenFiatAmount,
 } from "components/screens/SwapScreen/helpers";
 import { Button, IconPosition } from "components/sds/Button";
@@ -17,6 +16,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { formatTransactionDate } from "helpers/date";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";

@@ -60,35 +60,6 @@ export const calculateMinimumReceived = (
 };
 
 /**
- * Formats transaction date for display
- */
-export const formatTransactionDate = (createdAt?: string): string => {
-  let dateObj: Date;
-
-  if (createdAt) {
-    dateObj = new Date(createdAt);
-  } else {
-    dateObj = new Date();
-  }
-
-  const formattedDate = dateObj.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  const formattedTime = dateObj
-    .toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    .toLowerCase();
-
-  return `${formattedDate} · ${formattedTime}`;
-};
-
-/**
  * Gets contract address from different balance types
  */
 export const getContractAddress = (balance: PricedBalance): string | null => {
