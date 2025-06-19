@@ -33,7 +33,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View, Text as RNText } from "react-native";
 
 // Define amount error types
 enum AmountError {
@@ -294,8 +294,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
             {showFiatAmount ? (
               <Display
-                md
+                xl
                 medium
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                minimumFontScale={0.6}
                 {...(Number(fiatAmount) > 0
                   ? { primary: true }
                   : { secondary: true })}
@@ -305,17 +308,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display
-                  md
+                  xl
                   medium
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  minimumFontScale={0.6}
                   {...(Number(tokenAmount) > 0
                     ? { primary: true }
                     : { secondary: true })}
                 >
-                  {tokenAmount}
+                  {tokenAmount}{" "}
+                  <RNText style={{ color: themeColors.text.secondary }}>
+                    {selectedBalance?.tokenCode}
+                  </RNText>
                 </Display>
-                <Text md medium secondary>
-                  {selectedBalance?.tokenCode}
-                </Text>
               </View>
             )}
             <View className="flex-row items-center justify-center">
