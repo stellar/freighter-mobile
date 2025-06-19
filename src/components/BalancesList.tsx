@@ -172,13 +172,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         </NotificationWrapper>
 
         {/* Only show fund account button if navigation is available and not test network */}
-        {!disableNavigation && !isTestNetwork && navigation && (
+        {!disableNavigation && !isTestNetwork && (
           <Button
             isFullWidth
             tertiary
             lg
             onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+              navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
                 screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
                 params: { isUnfunded: true },
               })
