@@ -27,6 +27,7 @@ import {
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
+import { t } from "i18next";
 import { getSorobanRpcServer, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
@@ -84,27 +85,27 @@ export const validateTransactionParams = (
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
   // Validate amount is positive
   if (Number(amount) <= 0) {
-    return "Amount must be greater than 0";
+    return t("transaction.errors.amountRequired");
   }
 
   // Validate fee is positive
   if (Number(fee) <= 0) {
-    return "Fee must be greater than 0";
+    return t("transaction.errors.feeRequired");
   }
 
   // Validate timeout
   if (timeout <= 0) {
-    return "Timeout must be greater than 0";
+    return t("transaction.errors.timeoutRequired");
   }
 
   // Check if the recipient address is valid
   if (!isValidStellarAddress(destination)) {
-    return "Invalid recipient address";
+    return t("transaction.errors.invalidRecipientAddress");
   }
 
   // Prevent sending to self
   if (isSameAccount(senderAddress, destination)) {
-    return "Cannot send to yourself";
+    return t("transaction.errors.cannotSendToSelf");
   }
 
   // Validate sufficient balance
@@ -112,7 +113,7 @@ export const validateTransactionParams = (
   const balanceAmount = new BigNumber(balance.total);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
-    return "Insufficient balance";
+    return t("transaction.errors.insufficientBalance");
   }
 
   return null;
@@ -141,22 +142,22 @@ export const validateSwapTransactionParams = (params: {
 
   // Validate amount is positive
   if (Number(sourceAmount) <= 0) {
-    return "Amount must be greater than 0";
+    return t("transaction.errors.amountRequired");
   }
 
   // Validate destination amount is positive
   if (Number(destinationAmount) <= 0) {
-    return "Destination amount must be greater than 0";
+    return t("transaction.errors.destinationAmountRequired");
   }
 
   // Validate fee is positive
   if (Number(fee) <= 0) {
-    return "Fee must be greater than 0";
+    return t("transaction.errors.feeRequired");
   }
 
   // Validate timeout
   if (timeout <= 0) {
-    return "Timeout must be greater than 0";
+    return t("transaction.errors.timeoutRequired");
   }
 
   // Validate sufficient balance
@@ -164,12 +165,12 @@ export const validateSwapTransactionParams = (params: {
   const balanceAmount = new BigNumber(sourceBalance.total);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
-    return "Insufficient balance for swap";
+    return t("transaction.errors.insufficientBalanceForSwap");
   }
 
   // Validate different assets
   if (sourceBalance.id === destinationBalance.id) {
-    return "Cannot swap to the same asset";
+    return t("transaction.errors.cannotSwapSameAsset");
   }
 
   return null;
@@ -401,27 +402,27 @@ export const buildPaymentTransaction = async (
   } = params;
 
   if (!senderAddress) {
-    throw new Error("Public key is required");
+    throw new Error(t("transaction.errors.publicKeyRequired"));
   }
 
   if (!destination) {
-    throw new Error("Recipient address is required");
+    throw new Error(t("transaction.errors.recipientAddressRequired"));
   }
 
   if (!balance) {
-    throw new Error("Selected balance not found");
+    throw new Error(t("transaction.errors.selectedBalanceNotFound"));
   }
 
   if (!fee) {
-    throw new Error("Transaction fee is required");
+    throw new Error(t("transaction.errors.transactionFeeRequired"));
   }
 
   if (!timeout) {
-    throw new Error("Transaction timeout is required");
+    throw new Error(t("transaction.errors.transactionTimeoutRequired"));
   }
 
   if (!currentNetwork) {
-    throw new Error("Network is required");
+    throw new Error(t("transaction.errors.networkRequired"));
   }
 
   try {
@@ -481,9 +482,7 @@ export const buildPaymentTransaction = async (
 
           // Validate minimum starting balance for account creation (1 XLM)
           if (new BigNumber(amount).isLessThan(1)) {
-            throw new Error(
-              "Minimum of 1 XLM required to create a new account",
-            );
+            throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
           }
         }
       }
@@ -563,27 +562,27 @@ export const buildSwapTransaction = async (
   } = params;
 
   if (!senderAddress) {
-    throw new Error("Public key is required");
+    throw new Error(t("transaction.errors.publicKeyRequired"));
   }
 
   if (!sourceBalance) {
-    throw new Error("Source balance not found");
+    throw new Error(t("transaction.errors.sourceBalanceNotFound"));
   }
 
   if (!destinationBalance) {
-    throw new Error("Destination balance not found");
+    throw new Error(t("transaction.errors.destinationBalanceNotFound"));
   }
 
   if (!fee) {
-    throw new Error("Transaction fee is required");
+    throw new Error(t("transaction.errors.transactionFeeRequired"));
   }
 
   if (!timeout) {
-    throw new Error("Transaction timeout is required");
+    throw new Error(t("transaction.errors.transactionTimeoutRequired"));
   }
 
   if (!currentNetwork) {
-    throw new Error("Network is required");
+    throw new Error(t("transaction.errors.networkRequired"));
   }
 
   try {
