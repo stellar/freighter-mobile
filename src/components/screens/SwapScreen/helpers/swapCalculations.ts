@@ -4,15 +4,38 @@ import { PricedBalance } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
+interface CalculateConversionRateParams {
+  fromAmount: string;
+  toAmount: string;
+  conversionRate?: string;
+}
+
+interface FormatConversionRateParams {
+  rate: string;
+  fromSymbol: string;
+  toSymbol: string;
+}
+
+interface CalculateMinimumReceivedParams {
+  toAmount: string;
+  allowedSlippage: string;
+  minimumReceived?: string;
+}
+
+interface GetContractAddressParams {
+  balance: PricedBalance;
+  network: NETWORKS;
+}
+
 /**
  * Calculates conversion rate between two amounts
  * Following the extension's conversion rules
  */
-export const calculateConversionRate = (
-  fromAmount: string,
-  toAmount: string,
-  conversionRate?: string,
-): string => {
+export const calculateConversionRate = ({
+  fromAmount,
+  toAmount,
+  conversionRate,
+}: CalculateConversionRateParams): string => {
   if (conversionRate) return conversionRate;
 
   const fromAmountBN = new BigNumber(fromAmount);
@@ -29,11 +52,11 @@ export const calculateConversionRate = (
  * Formats conversion rate for display with proper symbols
  * Uses formatAssetAmount for consistent 7-decimal formatting following extension rules
  */
-export const formatConversionRate = (
-  rate: string,
-  fromSymbol: string,
-  toSymbol: string,
-): string => {
+export const formatConversionRate = ({
+  rate,
+  fromSymbol,
+  toSymbol,
+}: FormatConversionRateParams): string => {
   if (!rate || rate === "0") return "";
 
   const roundedRate = BigNumber(rate).toFixed(DEFAULT_DECIMALS);
@@ -45,11 +68,11 @@ export const formatConversionRate = (
 /**
  * Calculates minimum received amount based on slippage
  */
-export const calculateMinimumReceived = (
-  toAmount: string,
-  allowedSlippage: string,
-  minimumReceived?: string,
-): string => {
+export const calculateMinimumReceived = ({
+  toAmount,
+  allowedSlippage,
+  minimumReceived,
+}: CalculateMinimumReceivedParams): string => {
   if (minimumReceived) return minimumReceived;
 
   const toAmountBN = new BigNumber(toAmount);
@@ -64,10 +87,10 @@ export const calculateMinimumReceived = (
  * Gets contract address from different balance types
  * For native XLM, returns the network-specific Stellar Asset Contract address
  */
-export const getContractAddress = (
-  balance: PricedBalance,
-  network: NETWORKS,
-): string | null => {
+export const getContractAddress = ({
+  balance,
+  network,
+}: GetContractAddressParams): string | null => {
   if ("contractId" in balance && balance.contractId) {
     return balance.contractId;
   }

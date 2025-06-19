@@ -54,20 +54,24 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const displayConversionRate =
     pathResult?.conversionRate ||
-    calculateConversionRate(sourceAmount, destinationAmount, undefined);
-  const conversionRate = formatConversionRate(
-    displayConversionRate,
-    sourceTokenSymbol,
-    destinationTokenSymbol,
-  );
+    calculateConversionRate({
+      fromAmount: sourceAmount,
+      toAmount: destinationAmount,
+      conversionRate: undefined,
+    });
+  const conversionRate = formatConversionRate({
+    rate: displayConversionRate,
+    fromSymbol: sourceTokenSymbol,
+    toSymbol: destinationTokenSymbol,
+  });
 
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
-    calculateMinimumReceived(
-      destinationAmount,
-      swapSlippage.toString(),
-      undefined,
-    );
+    calculateMinimumReceived({
+      toAmount: destinationAmount,
+      allowedSlippage: swapSlippage.toString(),
+      minimumReceived: undefined,
+    });
 
   const handleCopyXdr = () => {
     if (transactionXDR) {

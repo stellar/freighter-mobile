@@ -25,7 +25,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   const { copyToClipboard } = useClipboard();
 
   const handleCopyContractAddress = () => {
-    const contractAddress = getContractAddress(balance, network);
+    const contractAddress = getContractAddress({ balance, network });
 
     if (contractAddress) {
       copyToClipboard(contractAddress, {
@@ -35,7 +35,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   };
 
   const handleViewOnStellarExpert = async () => {
-    const contractAddress = getContractAddress(balance, network);
+    const contractAddress = getContractAddress({ balance, network });
 
     let url: string | undefined;
 
