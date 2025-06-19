@@ -12,7 +12,6 @@ export interface SwapPathResult {
   destinationAmountMin: string;
   path: string[];
   conversionRate: string;
-  isPathPayment: boolean;
 }
 
 interface HorizonPathAsset {
@@ -26,7 +25,6 @@ interface SwapPathData {
   destinationAmount: string;
   path: string[];
   conversionRate: string;
-  isPathPayment: boolean;
 }
 
 interface SwapState {
@@ -125,7 +123,6 @@ const findClassicSwapPath = async (params: {
       destinationAmount: bestPath.destination_amount,
       path,
       conversionRate,
-      isPathPayment: path.length > 0 || !sourceAsset.equals(destAsset),
     };
   } catch (error) {
     logger.error("SwapStore", "Failed to find classic swap path", {
