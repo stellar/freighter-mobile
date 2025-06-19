@@ -9,31 +9,39 @@ import { SwapStatus } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { AssetToken, NativeToken } from "config/types";
+import { logger } from "config/logger";
+import {
+  AssetToken,
+  NativeToken,
+  AssetTypeWithCustomToken,
+} from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatAssetAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { View } from "react-native";
+import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 export interface SwapProcessingScreenProps {
   onClose?: () => void;
-  fromAmount: string;
-  fromToken: AssetToken | NativeToken;
-  toAmount: string;
-  toToken: AssetToken | NativeToken;
+  sourceAmount: string;
+  sourceToken: AssetToken | NativeToken;
+  destinationAmount: string;
+  destinationToken: AssetToken | NativeToken;
 }
 
 const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   onClose,
-  fromAmount,
-  fromToken,
-  toAmount,
-  toToken,
+  sourceAmount,
+  sourceToken,
+  destinationAmount,
+  destinationToken,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { network } = useAuthenticationStore();
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const navigation = useNavigation();
   const {
@@ -42,13 +50,19 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     isSubmitting,
   } = useTransactionBuilderStore();
 
-  // Use consistent internal naming
-  const sourceAmount = fromAmount;
-  const sourceToken = fromToken;
-  const destinationAmount = toAmount;
-  const destinationToken = toToken;
+  const preservedSwapData = useMemo(
+    () => ({
+      sourceAmount,
+      sourceToken,
+      destinationAmount,
+      destinationToken,
+    }),
+    [sourceAmount, sourceToken, destinationAmount, destinationToken],
+  );
 
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
+  const [transactionDetails, setTransactionDetails] =
+    useState<TransactionDetail | null>(null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -65,6 +79,33 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
       setStatus(SwapStatus.SWAPPING);
     }
   }, [transactionHash, transactionError, isSubmitting]);
+
+  // Fetch actual transaction details when we have a hash
+  useEffect(() => {
+    if (transactionHash && status === SwapStatus.SWAPPED) {
+      getTransactionDetails(transactionHash, network)
+        .then((details) => {
+          if (details) {
+            setTransactionDetails(details);
+            logger.info(
+              "SwapProcessingScreen",
+              "Successfully fetched transaction details",
+              { transactionHash, successful: details.successful },
+            );
+          }
+        })
+        .catch((error) => {
+          logger.error(
+            "SwapProcessingScreen",
+            "Failed to fetch transaction details",
+            {
+              error: error instanceof Error ? error.message : String(error),
+              transactionHash,
+            },
+          );
+        });
+    }
+  }, [transactionHash, network, status]);
 
   const getStatusText = () => {
     switch (status) {
@@ -102,6 +143,31 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     return t("swapProcessingScreen.to");
   };
 
+  const displayData = useMemo(() => {
+    if (
+      transactionDetails &&
+      transactionDetails.swapDetails &&
+      status === SwapStatus.SWAPPED
+    ) {
+      const { swapDetails } = transactionDetails;
+      return {
+        sourceAmount: swapDetails.sourceAmount,
+        sourceToken: {
+          code: swapDetails.sourceAssetCode,
+          issuer: { key: swapDetails.sourceAssetIssuer },
+          type: swapDetails.sourceAssetType as AssetTypeWithCustomToken,
+        } as AssetToken | NativeToken,
+        destinationAmount: swapDetails.destinationAmount,
+        destinationToken: {
+          code: swapDetails.destinationAssetCode,
+          issuer: { key: swapDetails.destinationAssetIssuer },
+          type: swapDetails.destinationAssetType as AssetTypeWithCustomToken,
+        } as AssetToken | NativeToken,
+      };
+    }
+    return preservedSwapData;
+  }, [transactionDetails, status, preservedSwapData]);
+
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between">
@@ -117,26 +183,29 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
-                <AssetIcon token={sourceToken} size="lg" />
+                <AssetIcon token={displayData.sourceToken} size="lg" />
                 <Icon.ChevronRightDouble
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <AssetIcon token={destinationToken} size="lg" />
+                <AssetIcon token={displayData.destinationToken} size="lg" />
               </View>
 
               <View className="items-center">
                 <View className="flex-column flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatAssetAmount(sourceAmount, sourceToken.code)}
+                    {formatAssetAmount(
+                      displayData.sourceAmount,
+                      displayData.sourceToken.code,
+                    )}
                   </Text>
                   <Text lg medium secondary>
                     {getMessageText()}
                   </Text>
                   <Text xl medium primary>
                     {formatAssetAmount(
-                      destinationAmount,
-                      destinationToken.code,
+                      displayData.destinationAmount,
+                      displayData.destinationToken.code,
                     )}
                   </Text>
                 </View>
@@ -179,10 +248,10 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         }
         customContent={
           <SwapTransactionDetailsBottomSheet
-            fromAmount={sourceAmount}
-            fromToken={sourceToken}
-            toAmount={destinationAmount}
-            toToken={destinationToken}
+            sourceAmount={displayData.sourceAmount}
+            sourceToken={displayData.sourceToken}
+            destinationAmount={displayData.destinationAmount}
+            destinationToken={displayData.destinationToken}
           />
         }
       />

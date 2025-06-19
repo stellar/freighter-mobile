@@ -20,6 +20,7 @@ interface SwapSettingsState {
   saveSwapTimeout: (timeout: number) => void;
   saveSwapSlippage: (slippage: number) => void;
   resetSettings: () => void;
+  resetToDefaults: () => void;
 }
 
 export const useSwapSettingsStore = create<SwapSettingsState>((set) => ({
@@ -29,4 +30,5 @@ export const useSwapSettingsStore = create<SwapSettingsState>((set) => ({
   saveSwapTimeout: (timeout) => set({ swapTimeout: timeout }),
   saveSwapSlippage: (slippage) => set({ swapSlippage: slippage }),
   resetSettings: () => set(INITIAL_SWAP_SETTINGS_STATE),
+  resetToDefaults: () => set(INITIAL_SWAP_SETTINGS_STATE),
 }));

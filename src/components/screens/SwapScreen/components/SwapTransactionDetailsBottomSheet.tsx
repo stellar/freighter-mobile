@@ -30,20 +30,15 @@ import { View, Linking } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 type SwapTransactionDetailsBottomSheetProps = {
-  fromAmount: string;
-  fromToken: AssetToken | NativeToken;
-  toAmount: string;
-  toToken: AssetToken | NativeToken;
+  sourceAmount: string;
+  sourceToken: AssetToken | NativeToken;
+  destinationAmount: string;
+  destinationToken: AssetToken | NativeToken;
 };
 
 const SwapTransactionDetailsBottomSheet: React.FC<
   SwapTransactionDetailsBottomSheetProps
-> = ({ fromAmount, fromToken, toAmount, toToken }) => {
-  // Use consistent internal naming
-  const sourceAmount = fromAmount;
-  const sourceToken = fromToken;
-  const destinationAmount = toAmount;
-  const destinationToken = toToken;
+> = ({ sourceAmount, sourceToken, destinationAmount, destinationToken }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -102,6 +97,16 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         .then((details) => {
           if (details) {
             setTransactionDetails(details);
+            if (details.swapDetails) {
+              logger.info(
+                "SwapTransactionDetailsBottomSheet",
+                "Retrieved swap details from transaction",
+                {
+                  sourceAmount: details.swapDetails.sourceAmount,
+                  destinationAmount: details.swapDetails.destinationAmount,
+                },
+              );
+            }
           }
         })
         .catch((error) => {

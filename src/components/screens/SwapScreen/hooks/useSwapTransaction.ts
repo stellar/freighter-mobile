@@ -27,7 +27,6 @@ interface SwapTransactionParams {
     SwapStackParamList,
     typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
   >;
-  resetSwap: () => void;
 }
 
 interface UseSwapTransactionResult {
@@ -49,16 +48,11 @@ export const useSwapTransaction = ({
   swapTimeout,
   network,
   navigation,
-  resetSwap,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const {
-    buildSwapTransaction,
-    signTransaction,
-    submitTransaction,
-    resetTransaction,
-  } = useTransactionBuilderStore();
+  const { buildSwapTransaction, signTransaction, submitTransaction } =
+    useTransactionBuilderStore();
 
   const setupSwapTransaction = async () => {
     if (
@@ -128,8 +122,6 @@ export const useSwapTransaction = ({
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
-    resetTransaction();
-    resetSwap();
 
     navigation.reset({
       index: 0,

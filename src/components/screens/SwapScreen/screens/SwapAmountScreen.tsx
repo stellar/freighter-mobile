@@ -77,7 +77,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
     setSourceAmount,
-    resetSwap,
   } = useSwapStore();
 
   const sourceBalance = useMemo(
@@ -160,7 +159,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapTimeout,
     network,
     navigation,
-    resetSwap,
   });
 
   const isButtonDisabled = destinationBalance
@@ -331,10 +329,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return (
       <SwapProcessingScreen
         onClose={handleProcessingScreenClose}
-        fromAmount={sourceAmount}
-        fromToken={sourceToken}
-        toAmount={destinationAmount || "0"}
-        toToken={destinationToken}
+        sourceAmount={sourceAmount}
+        sourceToken={sourceToken}
+        destinationAmount={destinationAmount || "0"}
+        destinationToken={destinationToken}
       />
     );
   }
