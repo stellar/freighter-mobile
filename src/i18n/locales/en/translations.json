@@ -355,7 +355,7 @@
       "warning": "Make sure to review the transaction above, once you confirm it's irreversible"
     },
     "errors": {
-      "failedToPrepareTransaction": "Failed to prepare swap transaction",
+      "failedToSetupTransaction": "Failed to setup swap transaction",
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "noPathFound": "No path found between these assets"

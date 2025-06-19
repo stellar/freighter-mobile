@@ -33,7 +33,7 @@ interface SwapTransactionParams {
 interface UseSwapTransactionResult {
   isProcessing: boolean;
   executeSwap: () => Promise<void>;
-  prepareSwapTransaction: () => Promise<void>;
+  setupSwapTransaction: () => Promise<void>;
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | AssetToken;
   destinationToken: NativeToken | AssetToken;
@@ -60,7 +60,7 @@ export const useSwapTransaction = ({
     resetTransaction,
   } = useTransactionBuilderStore();
 
-  const prepareSwapTransaction = async () => {
+  const setupSwapTransaction = async () => {
     if (
       !sourceBalance ||
       !destinationBalance ||
@@ -86,7 +86,7 @@ export const useSwapTransaction = ({
     } catch (error) {
       logger.error(
         "SwapTransaction",
-        "Failed to prepare swap transaction",
+        "Failed to setup swap transaction",
         error,
       );
       throw error;
@@ -138,7 +138,7 @@ export const useSwapTransaction = ({
   return {
     isProcessing,
     executeSwap,
-    prepareSwapTransaction,
+    setupSwapTransaction,
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,

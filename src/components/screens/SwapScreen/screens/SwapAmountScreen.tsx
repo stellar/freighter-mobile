@@ -141,7 +141,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const {
     isProcessing,
     executeSwap,
-    prepareSwapTransaction,
+    setupSwapTransaction,
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
@@ -264,15 +264,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleOpenReview = async () => {
     try {
-      await prepareSwapTransaction();
+      await setupSwapTransaction();
+
       swapReviewBottomSheetModalRef.current?.present();
     } catch (error) {
       logger.error(
         "SwapAmountScreen",
-        "Failed to prepare swap transaction:",
+        "Failed to setup swap transaction:",
         error instanceof Error ? error.message : String(error),
       );
-      setSwapError(t("swapScreen.errors.failedToPrepareTransaction"));
+      setSwapError(t("swapScreen.errors.failedToSetupTransaction"));
     }
   };
 

@@ -344,7 +344,7 @@
       "warning": "Certifique-se de revisar a transação acima, uma vez confirmada é irreversível"
     },
     "errors": {
-      "failedToPrepareTransaction": "Falha ao preparar transação de troca",
+      "failedToSetupTransaction": "Falha ao configurar transação de troca",
       "swapTransactionFailed": "Transação de troca falhou",
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "noPathFound": "Nenhum caminho encontrado entre estes ativos"
