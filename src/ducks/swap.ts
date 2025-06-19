@@ -3,6 +3,7 @@ import { BigNumber } from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { t } from "i18next";
 import { getAssetForPayment } from "services/transactionService";
 import { create } from "zustand";
 
@@ -161,7 +162,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       if (!pathResult) {
         set({
           isLoadingPath: false,
-          pathError: "No path found between these assets",
+          pathError: t("swapScreen.errors.noPathFound"),
         });
         return;
       }

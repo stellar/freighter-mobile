@@ -21,6 +21,7 @@ import {
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
+  MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -271,8 +272,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     navigation.reset({
       index: 0,
-      // @ts-expect-error: This is a valid route.
-      routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with History tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            index: 0,
+          },
+        },
+      ],
     });
   };
 

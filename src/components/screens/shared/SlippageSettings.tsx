@@ -14,7 +14,7 @@ interface SlippageSettingsProps {
 }
 
 const SLIPPAGE_OPTIONS = [
-  { label: "1%", value: DEFAULT_SLIPPAGE },
+  { label: `${DEFAULT_SLIPPAGE}%`, value: DEFAULT_SLIPPAGE },
   { label: "2%", value: 2 },
   { label: "3%", value: 3 },
 ];

@@ -357,7 +357,8 @@
     "errors": {
       "failedToPrepareTransaction": "Failed to prepare swap transaction",
       "swapTransactionFailed": "Swap transaction failed",
-      "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}"
+      "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
+      "noPathFound": "No path found between these assets"
     }
   },
   "swapProcessingScreen": {
