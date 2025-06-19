@@ -21,12 +21,20 @@ interface HorizonPathAsset {
   asset_issuer?: string;
 }
 
+interface SwapPathData {
+  sourceAmount: string;
+  destinationAmount: string;
+  path: string[];
+  conversionRate: string;
+  isPathPayment: boolean;
+}
+
 interface SwapState {
   fromTokenId: string;
   toTokenId: string;
   fromTokenSymbol: string;
   toTokenSymbol: string;
-  swapAmount: string;
+  sourceAmount: string;
   destinationAmount: string;
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
@@ -36,11 +44,11 @@ interface SwapState {
 
   setFromToken: (tokenId: string, tokenSymbol: string) => void;
   setToToken: (tokenId: string, tokenSymbol: string) => void;
-  setSwapAmount: (amount: string) => void;
+  setSourceAmount: (amount: string) => void;
   findSwapPath: (params: {
     fromBalance: PricedBalance;
     toBalance: PricedBalance;
-    amount: string;
+    sourceAmount: string;
     slippage: number;
     network: NETWORKS;
     publicKey: string;
@@ -54,7 +62,7 @@ const initialState = {
   toTokenId: "",
   fromTokenSymbol: "",
   toTokenSymbol: "",
-  swapAmount: "0",
+  sourceAmount: "0",
   destinationAmount: "0",
   pathResult: null,
   isLoadingPath: false,
@@ -64,11 +72,11 @@ const initialState = {
 };
 
 const computeDestMinWithSlippage = (
-  amount: string,
+  destinationAmount: string,
   slippage: number,
 ): string => {
   const mult = 1 - slippage / 100;
-  return new BigNumber(amount).times(new BigNumber(mult)).toFixed(7);
+  return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
 /**
@@ -76,22 +84,22 @@ const computeDestMinWithSlippage = (
  * This is for classic asset swaps using Stellar's built-in DEX
  */
 const findClassicSwapPath = async (params: {
-  fromBalance: PricedBalance;
-  toBalance: PricedBalance;
-  amount: string;
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  sourceAmount: string;
   network: NETWORKS;
-}): Promise<SwapPathResult | null> => {
-  const { fromBalance, toBalance, amount, network } = params;
+}): Promise<SwapPathData | null> => {
+  const { sourceBalance, destinationBalance, sourceAmount, network } = params;
 
   try {
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = new Horizon.Server(networkDetails.networkUrl);
 
-    const sourceAsset = getAssetForPayment(fromBalance);
-    const destAsset = getAssetForPayment(toBalance);
+    const sourceAsset = getAssetForPayment(sourceBalance);
+    const destAsset = getAssetForPayment(destinationBalance);
 
     const pathsResult = await server
-      .strictSendPaths(sourceAsset, amount, [destAsset])
+      .strictSendPaths(sourceAsset, sourceAmount, [destAsset])
       .limit(1)
       .call();
 
@@ -108,14 +116,13 @@ const findClassicSwapPath = async (params: {
       return `${asset.asset_code}:${asset.asset_issuer}`;
     });
 
-    const sourceAmountBN = new BigNumber(amount);
+    const sourceAmountBN = new BigNumber(sourceAmount);
     const destAmountBN = new BigNumber(bestPath.destination_amount);
     const conversionRate = destAmountBN.dividedBy(sourceAmountBN).toFixed(7);
 
     return {
-      sourceAmount: amount,
+      sourceAmount,
       destinationAmount: bestPath.destination_amount,
-      destinationAmountMin: bestPath.destination_amount,
       path,
       conversionRate,
       isPathPayment: path.length > 0 || !sourceAsset.equals(destAsset),
@@ -137,10 +144,10 @@ export const useSwapStore = create<SwapState>((set) => ({
   setToToken: (tokenId, tokenSymbol) =>
     set({ toTokenId: tokenId, toTokenSymbol: tokenSymbol }),
 
-  setSwapAmount: (amount) => set({ swapAmount: amount }),
+  setSourceAmount: (amount) => set({ sourceAmount: amount }),
 
   findSwapPath: async (params) => {
-    const { fromBalance, toBalance, amount, slippage, network } = params;
+    const { fromBalance, toBalance, sourceAmount, slippage, network } = params;
 
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
@@ -148,9 +155,9 @@ export const useSwapStore = create<SwapState>((set) => ({
       // For now, we only support classic path payments
       // TODO: Add Soroswap support for Testnet in future iteration
       const pathResult = await findClassicSwapPath({
-        fromBalance,
-        toBalance,
-        amount,
+        sourceBalance: fromBalance,
+        destinationBalance: toBalance,
+        sourceAmount,
         network,
       });
 
