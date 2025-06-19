@@ -33,7 +33,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View, Text as RNText } from "react-native";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -322,12 +322,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <View className="flex-1">
         <View className="gap- items-center py-[32px] px-6">
           <View className="flex-row items-center gap-1">
-            <Display lg medium>
-              {swapAmount}
+            <Display
+              xl
+              medium
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              minimumFontScale={0.6}
+            >
+              {swapAmount}{" "}
+              <RNText style={{ color: themeColors.text.secondary }}>
+                {fromTokenSymbol}
+              </RNText>
             </Display>
-            <Text md medium secondary>
-              {fromTokenSymbol}
-            </Text>
           </View>
         </View>
 
