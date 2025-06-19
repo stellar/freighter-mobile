@@ -23,7 +23,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React from "react";
+import React, { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapReviewBottomSheetProps = {
@@ -84,9 +84,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     shouldPoll: false,
   });
 
-  const sourceBalance = balanceItems.find((item) => item.id === sourceTokenId);
-  const destinationBalance = balanceItems.find(
-    (item) => item.id === destinationTokenId,
+  const sourceBalance = useMemo(
+    () => balanceItems.find((item) => item.id === sourceTokenId),
+    [balanceItems, sourceTokenId],
+  );
+
+  const destinationBalance = useMemo(
+    () => balanceItems.find((item) => item.id === destinationTokenId),
+    [balanceItems, destinationTokenId],
   );
 
   const sourceToken = getTokenFromBalance(sourceBalance);

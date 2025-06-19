@@ -80,9 +80,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     resetSwap,
   } = useSwapStore();
 
-  const sourceBalance = balanceItems.find((item) => item.id === sourceTokenId);
-  const destinationBalance = balanceItems.find(
-    (item) => item.id === destinationTokenId,
+  const sourceBalance = useMemo(
+    () => balanceItems.find((item) => item.id === sourceTokenId),
+    [balanceItems, sourceTokenId],
+  );
+
+  const destinationBalance = useMemo(
+    () => balanceItems.find((item) => item.id === destinationTokenId),
+    [balanceItems, destinationTokenId],
   );
 
   const spendableAmount = useMemo(() => {
@@ -184,7 +189,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (swapError) {
       setSwapError(null);
     }
-  }, [sourceAmount, pathResult, swapError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceAmount, pathResult]);
 
   const menuActions = useMemo(
     () => [
