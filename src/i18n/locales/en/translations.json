@@ -17,7 +17,7 @@
     "remove": "Remove",
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
-    "error": "Error",
+    "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error"
   },
   "home": {

@@ -17,7 +17,7 @@
     "remove": "Remover",
     "copied": "Copiado para a área de transferência!",
     "loading": "Carregando...",
-    "error": "Erro",
+    "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido"
   },
   "home": {
