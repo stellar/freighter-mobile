@@ -71,7 +71,7 @@ export const useSwapTransaction = ({
     }
 
     try {
-      await buildSwapTransaction({
+      const transactionXDR = await buildSwapTransaction({
         sourceAmount,
         sourceBalance,
         destinationBalance,
@@ -83,6 +83,10 @@ export const useSwapTransaction = ({
         network,
         senderAddress: account.publicKey,
       });
+
+      if (!transactionXDR) {
+        throw new Error("Failed to build swap transaction");
+      }
     } catch (error) {
       logger.error(
         "SwapTransaction",
@@ -101,14 +105,24 @@ export const useSwapTransaction = ({
     setIsProcessing(true);
 
     try {
-      signTransaction({
+      const signedXDR = signTransaction({
         secretKey: account.privateKey,
         network,
       });
 
-      await submitTransaction({ network });
+      if (!signedXDR) {
+        throw new Error("Failed to sign transaction");
+      }
+
+      const transactionHash = await submitTransaction({ network });
+
+      if (!transactionHash) {
+        throw new Error("Failed to submit transaction");
+      }
     } catch (error) {
+      setIsProcessing(false);
       logger.error("SwapTransaction", "Swap failed", error);
+      throw error;
     }
   };
 
