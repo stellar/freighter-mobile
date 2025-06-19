@@ -237,11 +237,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [navigation, menuActions, themeColors]);
 
-  const handleSelectSwapToToken = () => {
+  const handleSelectDestinationToken = () => {
     selectTokenBottomSheetModalRef.current?.present();
   };
 
-  const handleTokenSelect = (tokenId: string, tokenSymbol: string) => {
+  const handleDestinationTokenSelect = (
+    tokenId: string,
+    tokenSymbol: string,
+  ) => {
     setDestinationToken(tokenId, tokenSymbol);
     selectTokenBottomSheetModalRef.current?.dismiss();
   };
@@ -302,7 +305,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (destinationBalance) {
       handleOpenReview();
     } else {
-      handleSelectSwapToToken();
+      handleSelectDestinationToken();
     }
   };
 
@@ -378,7 +381,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             )}
           </View>
 
-          <TouchableOpacity onPress={handleSelectSwapToToken}>
+          <TouchableOpacity onPress={handleSelectDestinationToken}>
             <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
               {destinationBalance ? (
                 <BalanceRow
@@ -458,7 +461,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         snapPoints={["80%"]}
         customContent={
           <SelectTokenBottomSheet
-            onTokenSelect={handleTokenSelect}
+            onTokenSelect={handleDestinationTokenSelect}
             customTitle={t("swapScreen.swapScreenTokenListTitle")}
             title={t("swapScreen.swapTo")}
             onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}
