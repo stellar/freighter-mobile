@@ -41,11 +41,23 @@ export const calculateConversionRate = ({
   const sourceAmountBN = new BigNumber(sourceAmount);
   const destinationAmountBN = new BigNumber(destinationAmount);
 
+  // Validate input amounts
+  if (sourceAmountBN.isNaN() || destinationAmountBN.isNaN()) {
+    return "0";
+  }
+
   if (sourceAmountBN.isZero()) return "0";
 
   const rate = destinationAmountBN.dividedBy(sourceAmountBN);
 
-  return formatAssetAmount(rate.toFixed(DEFAULT_DECIMALS));
+  // Validate the calculated rate
+  if (rate.isNaN() || !rate.isFinite()) {
+    return "0";
+  }
+
+  // Return the rate directly as a string with fixed decimals instead of using formatAssetAmount
+  // This avoids the NaN issue that can occur when formatAssetAmount calls .toNumber()
+  return rate.toFixed(DEFAULT_DECIMALS);
 };
 
 /**
@@ -57,9 +69,16 @@ export const formatConversionRate = ({
   sourceSymbol,
   destinationSymbol,
 }: FormatConversionRateParams): string => {
-  if (!rate || rate === "0") return "";
+  if (!rate || rate === "0" || rate === "NaN") return "";
 
-  const roundedRate = BigNumber(rate).toFixed(DEFAULT_DECIMALS);
+  const rateBN = new BigNumber(rate);
+
+  // Validate the rate is a valid number
+  if (rateBN.isNaN() || !rateBN.isFinite() || rateBN.isZero()) {
+    return "";
+  }
+
+  const roundedRate = rateBN.toFixed(DEFAULT_DECIMALS);
   const formattedRate = formatAssetAmount(roundedRate);
 
   return `1 ${sourceSymbol} ≈ ${formattedRate} ${destinationSymbol}`;

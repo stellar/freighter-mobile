@@ -25,7 +25,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { View, Linking } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
@@ -97,16 +97,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         .then((details) => {
           if (details) {
             setTransactionDetails(details);
-            if (details.swapDetails) {
-              logger.info(
-                "SwapTransactionDetailsBottomSheet",
-                "Retrieved swap details from transaction",
-                {
-                  sourceAmount: details.swapDetails.sourceAmount,
-                  destinationAmount: details.swapDetails.destinationAmount,
-                },
-              );
-            }
           }
         })
         .catch((error) => {
@@ -139,13 +129,38 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  const displayConversionRate =
-    pathResult?.conversionRate ||
-    calculateConversionRate({
+  const displayConversionRate = useMemo(() => {
+    // First try to use pathResult conversion rate if available
+    if (pathResult?.conversionRate) {
+      return pathResult.conversionRate;
+    }
+
+    // Validate that we have valid amounts before calculating
+    if (
+      !sourceAmount ||
+      !destinationAmount ||
+      sourceAmount === "0" ||
+      destinationAmount === "0" ||
+      sourceAmount === "" ||
+      destinationAmount === ""
+    ) {
+      return "0";
+    }
+
+    // Try to calculate conversion rate with validation
+    const calculatedRate = calculateConversionRate({
       sourceAmount,
       destinationAmount,
       conversionRate: undefined,
     });
+
+    // Additional validation for the calculated rate
+    if (calculatedRate === "NaN" || !calculatedRate || calculatedRate === "") {
+      return "0";
+    }
+
+    return calculatedRate;
+  }, [pathResult?.conversionRate, sourceAmount, destinationAmount]);
 
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
