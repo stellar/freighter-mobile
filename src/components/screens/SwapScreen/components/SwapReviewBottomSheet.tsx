@@ -55,20 +55,20 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const displayConversionRate =
     pathResult?.conversionRate ||
     calculateConversionRate({
-      fromAmount: sourceAmount,
-      toAmount: destinationAmount,
+      sourceAmount,
+      destinationAmount,
       conversionRate: undefined,
     });
   const conversionRate = formatConversionRate({
     rate: displayConversionRate,
-    fromSymbol: sourceTokenSymbol,
-    toSymbol: destinationTokenSymbol,
+    sourceSymbol: sourceTokenSymbol,
+    destinationSymbol: destinationTokenSymbol,
   });
 
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
     calculateMinimumReceived({
-      toAmount: destinationAmount,
+      destinationAmount,
       allowedSlippage: swapSlippage.toString(),
       minimumReceived: undefined,
     });
@@ -101,21 +101,21 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const sourceToken = getTokenFromBalance(sourceBalance);
   const destinationToken = getTokenFromBalance(destinationBalance);
 
-  const sourceTokenFiatAmountValue = calculateTokenFiatAmount(
-    sourceToken,
-    sourceAmount,
+  const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
+    token: sourceToken,
+    amount: sourceAmount,
     balanceItems,
-  );
+  });
   const sourceTokenFiatAmount =
     sourceTokenFiatAmountValue !== "--"
       ? formatFiatAmount(sourceTokenFiatAmountValue)
       : "--";
 
-  const destinationTokenFiatAmountValue = calculateTokenFiatAmount(
-    destinationToken,
-    destinationAmount,
+  const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
+    token: destinationToken,
+    amount: destinationAmount,
     balanceItems,
-  );
+  });
   const destinationTokenFiatAmount =
     destinationTokenFiatAmountValue !== "--"
       ? formatFiatAmount(destinationTokenFiatAmountValue)

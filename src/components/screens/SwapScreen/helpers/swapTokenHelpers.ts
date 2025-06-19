@@ -7,6 +7,18 @@ import {
 } from "config/types";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
 
+interface FindBalanceForTokenParams {
+  token: AssetToken | NativeToken;
+  balanceItems: PricedBalance[];
+}
+
+interface CalculateTokenFiatAmountParams {
+  token: AssetToken | NativeToken;
+  amount: string | BigNumber;
+  balanceItems: PricedBalance[];
+  prices?: TokenPricesMap;
+}
+
 /**
  * Extracts token from balance or creates fallback
  */
@@ -26,10 +38,10 @@ export const getTokenFromBalance = (
  * Finds a balance item that matches the given token using multiple strategies
  * This is more robust than simple ID matching as it tries multiple approaches
  */
-export const findBalanceForToken = (
-  token: AssetToken | NativeToken,
-  balanceItems: PricedBalance[],
-): PricedBalance | undefined => {
+export const findBalanceForToken = ({
+  token,
+  balanceItems,
+}: FindBalanceForTokenParams): PricedBalance | undefined => {
   // Strategy 1: Use getTokenIdentifier for exact matching
   const tokenIdentifier = getTokenIdentifier(token);
   if (tokenIdentifier) {
@@ -82,12 +94,12 @@ export const findBalanceForToken = (
  * Calculates fiat amount for a token using multiple price sources
  * This provides robust price calculation with fallbacks
  */
-export const calculateTokenFiatAmount = (
-  token: AssetToken | NativeToken,
-  amount: string | BigNumber,
-  balanceItems: PricedBalance[],
-  prices?: TokenPricesMap,
-): string => {
+export const calculateTokenFiatAmount = ({
+  token,
+  amount,
+  balanceItems,
+  prices,
+}: CalculateTokenFiatAmountParams): string => {
   const amountBN = new BigNumber(amount);
 
   if (amountBN.isZero() || amountBN.isNaN()) {
@@ -95,7 +107,7 @@ export const calculateTokenFiatAmount = (
   }
 
   // Strategy 1: Get price from balance item (most common and reliable)
-  const balance = findBalanceForToken(token, balanceItems);
+  const balance = findBalanceForToken({ token, balanceItems });
   if (balance?.currentPrice) {
     return amountBN.multipliedBy(balance.currentPrice).toString();
   }

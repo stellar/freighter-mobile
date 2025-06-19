@@ -5,19 +5,19 @@ import { formatAssetAmount } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
 interface CalculateConversionRateParams {
-  fromAmount: string;
-  toAmount: string;
+  sourceAmount: string;
+  destinationAmount: string;
   conversionRate?: string;
 }
 
 interface FormatConversionRateParams {
   rate: string;
-  fromSymbol: string;
-  toSymbol: string;
+  sourceSymbol: string;
+  destinationSymbol: string;
 }
 
 interface CalculateMinimumReceivedParams {
-  toAmount: string;
+  destinationAmount: string;
   allowedSlippage: string;
   minimumReceived?: string;
 }
@@ -32,18 +32,18 @@ interface GetContractAddressParams {
  * Following the extension's conversion rules
  */
 export const calculateConversionRate = ({
-  fromAmount,
-  toAmount,
+  sourceAmount,
+  destinationAmount,
   conversionRate,
 }: CalculateConversionRateParams): string => {
   if (conversionRate) return conversionRate;
 
-  const fromAmountBN = new BigNumber(fromAmount);
-  const toAmountBN = new BigNumber(toAmount);
+  const sourceAmountBN = new BigNumber(sourceAmount);
+  const destinationAmountBN = new BigNumber(destinationAmount);
 
-  if (fromAmountBN.isZero()) return "0";
+  if (sourceAmountBN.isZero()) return "0";
 
-  const rate = toAmountBN.dividedBy(fromAmountBN);
+  const rate = destinationAmountBN.dividedBy(sourceAmountBN);
 
   return formatAssetAmount(rate.toFixed(DEFAULT_DECIMALS));
 };
@@ -54,33 +54,33 @@ export const calculateConversionRate = ({
  */
 export const formatConversionRate = ({
   rate,
-  fromSymbol,
-  toSymbol,
+  sourceSymbol,
+  destinationSymbol,
 }: FormatConversionRateParams): string => {
   if (!rate || rate === "0") return "";
 
   const roundedRate = BigNumber(rate).toFixed(DEFAULT_DECIMALS);
   const formattedRate = formatAssetAmount(roundedRate);
 
-  return `1 ${fromSymbol} ≈ ${formattedRate} ${toSymbol}`;
+  return `1 ${sourceSymbol} ≈ ${formattedRate} ${destinationSymbol}`;
 };
 
 /**
  * Calculates minimum received amount based on slippage
  */
 export const calculateMinimumReceived = ({
-  toAmount,
+  destinationAmount,
   allowedSlippage,
   minimumReceived,
 }: CalculateMinimumReceivedParams): string => {
   if (minimumReceived) return minimumReceived;
 
-  const toAmountBN = new BigNumber(toAmount);
+  const destinationAmountBN = new BigNumber(destinationAmount);
   const slippageMultiplier = BigNumber(1).minus(
     BigNumber(allowedSlippage).dividedBy(100),
   );
 
-  return toAmountBN.multipliedBy(slippageMultiplier).toFixed(7);
+  return destinationAmountBN.multipliedBy(slippageMultiplier).toFixed(7);
 };
 
 /**

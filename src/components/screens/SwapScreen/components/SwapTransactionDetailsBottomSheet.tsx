@@ -137,34 +137,34 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const displayConversionRate =
     pathResult?.conversionRate ||
     calculateConversionRate({
-      fromAmount: sourceAmount,
-      toAmount: destinationAmount,
+      sourceAmount,
+      destinationAmount,
       conversionRate: undefined,
     });
 
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
     calculateMinimumReceived({
-      toAmount: destinationAmount,
+      destinationAmount,
       allowedSlippage: swapSlippage.toString(),
       minimumReceived: undefined,
     });
 
-  const sourceTokenFiatAmountValue = calculateTokenFiatAmount(
-    sourceToken,
-    sourceAmount,
+  const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
+    token: sourceToken,
+    amount: sourceAmount,
     balanceItems,
-  );
+  });
   const sourceTokenFiatAmount =
     sourceTokenFiatAmountValue !== "--"
       ? formatFiatAmount(sourceTokenFiatAmountValue)
       : "--";
 
-  const destinationTokenFiatAmountValue = calculateTokenFiatAmount(
-    destinationToken,
-    destinationAmount,
+  const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
+    token: destinationToken,
+    amount: destinationAmount,
     balanceItems,
-  );
+  });
   const destinationTokenFiatAmount =
     destinationTokenFiatAmountValue !== "--"
       ? formatFiatAmount(destinationTokenFiatAmountValue)
@@ -245,8 +245,8 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <Text md medium>
             {formatConversionRate({
               rate: displayConversionRate,
-              fromSymbol: sourceToken.code,
-              toSymbol: destinationToken.code,
+              sourceSymbol: sourceToken.code,
+              destinationSymbol: destinationToken.code,
             })}
           </Text>
         </View>
