@@ -120,7 +120,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     });
   }, []);
 
-  // TODO: improve this to fade out the toast
   const dismissToast = useCallback((toastId: string) => {
     setToasts((currentToasts) =>
       currentToasts.filter((t) => t.toastId !== toastId),

@@ -462,6 +462,8 @@
     "signingSuccessfull": "Transaction successfully signed!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
+    "errorPairing": "Failed to pair with dApp",
+    "errorNoUriParam": "No URI parameter found in the link",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
