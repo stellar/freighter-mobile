@@ -123,7 +123,6 @@ export const validateTransactionParams = (
  * Returns an error message if any validation fails
  */
 export const validateSwapTransactionParams = (params: {
-  senderAddress: string;
   fromBalance: PricedBalance;
   toBalance: PricedBalance;
   amount: string;
@@ -131,7 +130,8 @@ export const validateSwapTransactionParams = (params: {
   fee: string;
   timeout: number;
 }): string | null => {
-  const { fromBalance, toBalance, amount, destinationAmount, fee, timeout } = params;
+  const { fromBalance, toBalance, amount, destinationAmount, fee, timeout } =
+    params;
 
   // Validate amount is positive
   if (Number(amount) <= 0) {
@@ -582,7 +582,6 @@ export const buildSwapTransaction = async (
 
   try {
     const validationError = validateSwapTransactionParams({
-      senderAddress,
       fromBalance,
       toBalance,
       amount,
