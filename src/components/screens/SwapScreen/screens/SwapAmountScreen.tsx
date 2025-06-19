@@ -85,6 +85,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
   const swapToTokenBalance = balanceItems.find((item) => item.id === toTokenId);
 
+  const spendableAmount = useMemo(() => {
+    if (!swapFromTokenBalance || !account) return null;
+
+    return calculateSpendableAmount(
+      swapFromTokenBalance,
+      account.subentryCount || 0,
+      swapFee,
+    );
+  }, [swapFromTokenBalance, account, swapFee]);
+
   useEffect(() => {
     if (!swapFromTokenBalance || !swapAmount || swapAmount === "0") {
       setAmountError(null);
@@ -99,14 +109,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         swapFee,
       )
     ) {
-      const spendableAmount = calculateSpendableAmount(
-        swapFromTokenBalance,
-        account?.subentryCount || 0,
-        swapFee,
-      );
       setAmountError(
         t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount.toFixed(),
+          amount: spendableAmount?.toFixed() || "0",
           symbol: fromTokenSymbol,
         }),
       );
@@ -115,11 +120,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   }, [
     swapAmount,
-    swapFromTokenBalance,
-    account?.subentryCount,
+    spendableAmount,
     fromTokenSymbol,
-    swapFee,
     t,
+    account?.subentryCount,
+    swapFee,
+    swapFromTokenBalance,
   ]);
 
   useSwapPathFinding({
@@ -240,13 +246,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   const handleSetMax = () => {
-    if (swapFromTokenBalance && account) {
-      const spendableAmount = calculateSpendableAmount(
-        swapFromTokenBalance,
-        account.subentryCount || 0,
-        swapFee,
-      );
+    if (spendableAmount) {
       setSwapAmount(spendableAmount.toString());
+    }
+  };
+
+  const handlePercentagePress = (percentage: number) => {
+    if (!spendableAmount) return;
+
+    if (percentage === 100) {
+      handleSetMax();
+    } else {
+      const targetAmount = spendableAmount.multipliedBy(percentage / 100);
+      setSwapAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 
@@ -320,7 +332,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="gap- items-center py-[32px] px-6">
+        <View className="items-center py-[24px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -338,12 +350,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
 
         {(amountError || pathError || swapError) && (
-          <View className="mb-2">
-            <Notification
-              variant="error"
-              message={amountError || pathError || swapError || ""}
-            />
-          </View>
+          <Notification
+            variant="error"
+            message={amountError || pathError || swapError || ""}
+          />
         )}
 
         <View className="gap-3 mt-[16px]">
@@ -391,7 +401,30 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="w-full mt-[56px] mb-[24px]">
+        <View className="flex-row gap-[8px] mt-[24px]">
+          <View className="flex-1">
+            <Button secondary lg onPress={() => handlePercentagePress(25)}>
+              {t("transactionAmountScreen.percentageButtons.twentyFive")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button secondary lg onPress={() => handlePercentagePress(50)}>
+              {t("transactionAmountScreen.percentageButtons.fifty")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button secondary lg onPress={() => handlePercentagePress(75)}>
+              {t("transactionAmountScreen.percentageButtons.seventyFive")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button secondary lg onPress={() => handlePercentagePress(100)}>
+              {t("transactionAmountScreen.percentageButtons.max")}
+            </Button>
+          </View>
+        </View>
+
+        <View className="w-full mt-4">
           <NumericKeyboard onPress={handleAmountChange} />
         </View>
 
