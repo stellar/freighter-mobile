@@ -74,12 +74,16 @@ tools.
 
        ```
        WALLET_KIT_PROJECT_ID=your_project_id_here
+       WALLET_KIT_MT_NAME=your_wallet_name_here
+       other variables...
        ```
 
     3. Update the `.env.example` file for documentation, add the same variables
        without values:
        ```
        WALLET_KIT_PROJECT_ID=
+       WALLET_KIT_MT_NAME=
+       other variables...
        ```
 
     **Important:**
