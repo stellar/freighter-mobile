@@ -1,7 +1,8 @@
 import { BigNumber } from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
+import { getNativeContractDetails } from "helpers/soroban";
 
 /**
  * Calculates conversion rate between two amounts
@@ -61,8 +62,12 @@ export const calculateMinimumReceived = (
 
 /**
  * Gets contract address from different balance types
+ * For native XLM, returns the network-specific Stellar Asset Contract address
  */
-export const getContractAddress = (balance: PricedBalance): string | null => {
+export const getContractAddress = (
+  balance: PricedBalance,
+  network: NETWORKS,
+): string | null => {
   if ("contractId" in balance && balance.contractId) {
     return balance.contractId;
   }
@@ -72,7 +77,9 @@ export const getContractAddress = (balance: PricedBalance): string | null => {
   }
 
   if (balance.id === "native") {
-    return null;
+    const nativeContractDetails = getNativeContractDetails(network);
+
+    return nativeContractDetails.contract || null;
   }
 
   return null;
