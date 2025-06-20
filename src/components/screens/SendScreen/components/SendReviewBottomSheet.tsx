@@ -61,7 +61,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     if (error) {
       return (
         <Text md medium className="text-red-600">
-          {t("common.error")}
+          {t("common.error", { errorMessage: error })}
         </Text>
       );
     }

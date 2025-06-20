@@ -28,6 +28,7 @@ export interface ToastOptions {
 
 interface ToastContextType {
   showToast: (options: ToastOptions) => void;
+  dismissToast: (toastId: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -54,8 +55,7 @@ const ToastWrapper = styled.View<ToastWrapperProps>`
 `;
 
 interface ToastPropsWithId extends ToastProps {
-  id: string;
-  toastId?: string;
+  toastId: string;
 }
 
 /**
@@ -105,8 +105,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const showToast = useCallback((options: ToastOptions) => {
     const newToast: ToastPropsWithId = {
       ...options,
-      id: Date.now().toString(),
-      toastId: options.toastId,
+      toastId: options.toastId ?? Date.now().toString(),
     };
 
     setToasts((currentToasts) => {
@@ -121,13 +120,16 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     });
   }, []);
 
-  const handleDismiss = useCallback((toast: ToastPropsWithId) => {
+  const dismissToast = useCallback((toastId: string) => {
     setToasts((currentToasts) =>
-      currentToasts.filter((t) => t.id !== toast.id),
+      currentToasts.filter((t) => t.toastId !== toastId),
     );
   }, []);
 
-  const contextValue = useMemo(() => ({ showToast }), [showToast]);
+  const contextValue = useMemo(
+    () => ({ showToast, dismissToast }),
+    [showToast, dismissToast],
+  );
 
   return (
     <ToastContext.Provider value={contextValue}>
@@ -135,9 +137,9 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
         <ToastWrapper $insets={insets}>
           {toasts.map((toast) => (
             <Toast
-              key={toast.id}
+              key={toast.toastId}
               {...toast}
-              onDismiss={() => handleDismiss(toast)}
+              onDismiss={() => dismissToast(toast.toastId)}
             />
           ))}
         </ToastWrapper>
