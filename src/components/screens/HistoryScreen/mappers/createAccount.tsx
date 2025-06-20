@@ -60,7 +60,7 @@ export const mapCreateAccountHistoryItem = ({
     );
     const transactionDetails: TransactionDetails = {
       operation,
-      transactionTitle: `${String(t("history.transactionHistory.sent"))} ${NATIVE_TOKEN_CODE}`,
+      transactionTitle: `${t("history.transactionHistory.sent")} ${NATIVE_TOKEN_CODE}`,
       transactionType: TransactionType.PAYMENT,
       fee,
       status: TransactionStatus.SUCCESS,
