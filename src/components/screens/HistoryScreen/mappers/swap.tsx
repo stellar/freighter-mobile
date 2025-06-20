@@ -157,7 +157,7 @@ export const SwapTransactionDetailsContent: React.FC<{
 
   return (
     <TransactionDetailsContent>
-      <View className="flex-row justify-between">
+      <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
             {formatAssetAmount(
@@ -185,7 +185,7 @@ export const SwapTransactionDetailsContent: React.FC<{
         circleBackground={themeColors.background.tertiary}
       />
 
-      <View className="flex-row justify-between">
+      <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
             {formatAssetAmount(
