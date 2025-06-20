@@ -40,8 +40,8 @@ export const useSwapPathFinding = ({
       publicKey
     ) {
       findSwapPath({
-        fromBalance: sourceBalance,
-        toBalance: destinationBalance,
+        sourceBalance,
+        destinationBalance,
         sourceAmount,
         slippage: swapSlippage,
         network,

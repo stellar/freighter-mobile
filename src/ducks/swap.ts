@@ -45,8 +45,8 @@ interface SwapState {
   setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
   setSourceAmount: (amount: string) => void;
   findSwapPath: (params: {
-    fromBalance: PricedBalance;
-    toBalance: PricedBalance;
+    sourceBalance: PricedBalance;
+    destinationBalance: PricedBalance;
     sourceAmount: string;
     slippage: number;
     network: NETWORKS;
@@ -145,7 +145,13 @@ export const useSwapStore = create<SwapState>((set) => ({
   setSourceAmount: (amount) => set({ sourceAmount: amount }),
 
   findSwapPath: async (params) => {
-    const { fromBalance, toBalance, sourceAmount, slippage, network } = params;
+    const {
+      sourceBalance,
+      destinationBalance,
+      sourceAmount,
+      slippage,
+      network,
+    } = params;
 
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
@@ -153,8 +159,8 @@ export const useSwapStore = create<SwapState>((set) => ({
       // For now, we only support classic path payments
       // TODO: Add Soroswap support for Testnet in future iteration
       const pathResult = await findClassicSwapPath({
-        sourceBalance: fromBalance,
-        destinationBalance: toBalance,
+        sourceBalance,
+        destinationBalance,
         sourceAmount,
         network,
       });
