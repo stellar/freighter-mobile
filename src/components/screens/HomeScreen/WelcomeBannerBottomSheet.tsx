@@ -3,50 +3,10 @@ import BottomSheet from "components/BottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { colors } from "config/colors";
-import { THEME } from "config/theme";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors, { ThemeColors } from "hooks/useColors";
+import useColors from "hooks/useColors";
 import React from "react";
-import { View, TouchableOpacity } from "react-native";
-import styled from "styled-components/native";
-
-const WalletIconContainer = styled.View`
-  width: ${px(40)};
-  height: ${px(40)};
-  border-radius: ${px(20)};
-  background-color: ${colors.dark.gold[3]};
-  border: 1px solid ${colors.dark.gold[6]};
-  align-items: center;
-  justify-content: center;
-`;
-
-const TextBlock = styled.View`
-  margin-bottom: ${px(20)};
-`;
-
-const Separator = styled.View`
-  height: 1px;
-  background-color: ${THEME.colors.border.default};
-  margin-bottom: ${px(16)};
-`;
-
-const ContentContainer = styled.View`
-  gap: ${px(24)};
-`;
-
-const HeaderContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const TextContainer = styled.View``;
-
-const ButtonContainer = styled.View`
-  gap: ${px(12)};
-`;
+import { TouchableOpacity, View } from "react-native";
 
 interface WelcomeBannerBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
@@ -54,100 +14,88 @@ interface WelcomeBannerBottomSheetProps {
   onDismiss: () => void;
 }
 
-interface CustomContentProps {
+const CustomContent: React.FC<{
   onAddXLM: () => void;
   onDismiss: () => void;
-  t: (key: string) => string;
-  themeColors: ThemeColors;
-}
+}> = ({ onAddXLM, onDismiss }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
-const CustomContent: React.FC<CustomContentProps> = ({
-  onAddXLM,
-  onDismiss,
-  t,
-  themeColors,
-}) => (
-  <ContentContainer>
-    <HeaderContainer>
-      <WalletIconContainer>
-        <Icon.Wallet01 size={28} themeColor="gold" />
-      </WalletIconContainer>
-      <TouchableOpacity onPress={onDismiss}>
-        <Icon.X size={24} color={themeColors.base[1]} />
-      </TouchableOpacity>
-    </HeaderContainer>
-    <TextContainer>
-      <Text
-        xl
-        medium
-        color={THEME.colors.text.primary}
-        style={{ marginBottom: 16 }}
-      >
-        {t("welcomeBanner.welcomeMessage")}
-      </Text>
-      <Separator />
-      <TextBlock>
-        <Text md medium color={THEME.colors.text.secondary}>
-          {t("welcomeBanner.fundingText")}
-        </Text>
-      </TextBlock>
-      <TextBlock>
-        <Text md medium color={THEME.colors.text.secondary}>
-          {t("welcomeBanner.minimumBalanceText")}
-        </Text>
-      </TextBlock>
-      <View>
-        <Text md medium color={THEME.colors.text.secondary}>
-          {t("welcomeBanner.reserveExplanationText")}
-        </Text>
+  return (
+    <View className="gap-6">
+      <View className="flex-row justify-between items-center">
+        <View
+          className="w-10 h-10 rounded-full items-center justify-center"
+          style={{
+            backgroundColor: themeColors.gold[3],
+            borderWidth: 1,
+            borderColor: themeColors.gold[6],
+          }}
+        >
+          <Icon.Wallet01 size={24} themeColor="gold" />
+        </View>
+        <TouchableOpacity onPress={onDismiss}>
+          <Icon.X size={24} themeColor="mint" />
+        </TouchableOpacity>
       </View>
-    </TextContainer>
-    <ButtonContainer>
-      <Button
-        tertiary
-        lg
-        isFullWidth
-        onPress={() => {
-          onAddXLM();
-          onDismiss();
-        }}
-      >
-        {t("welcomeBanner.addXLM")}
-      </Button>
-      <Button secondary lg isFullWidth onPress={onDismiss}>
-        {t("welcomeBanner.doThisLater")}
-      </Button>
-    </ButtonContainer>
-  </ContentContainer>
-);
+      <View>
+        <Text xl medium className="mb-4">
+          {t("welcomeBanner.welcomeMessage")}
+        </Text>
+        <View className="h-px mb-4 bg-border-primary" />
+        <View className="mb-5">
+          <Text md medium>
+            <Text md medium secondary>
+              {t("welcomeBanner.fundingText")}
+            </Text>
+            {t("welcomeBanner.fundingText2")}
+          </Text>
+        </View>
+        <View className="mb-5">
+          <Text md medium secondary>
+            {t("welcomeBanner.minimumBalanceText")}
+          </Text>
+        </View>
+        <View>
+          <Text md medium secondary>
+            {t("welcomeBanner.reserveExplanationText")}
+          </Text>
+        </View>
+      </View>
+      <View className="gap-3">
+        <Button
+          tertiary
+          lg
+          isFullWidth
+          onPress={() => {
+            onAddXLM();
+            onDismiss();
+          }}
+        >
+          {t("welcomeBanner.addXLM")}
+        </Button>
+        <Button secondary lg isFullWidth onPress={onDismiss}>
+          {t("welcomeBanner.doThisLater")}
+        </Button>
+      </View>
+    </View>
+  );
+};
 
 const WelcomeBannerBottomSheet: React.FC<WelcomeBannerBottomSheetProps> = ({
   modalRef,
   onAddXLM,
   onDismiss,
-}) => {
-  const { t } = useAppTranslation();
-  const { themeColors } = useColors();
-
-  return (
-    <BottomSheet
-      modalRef={modalRef}
-      handleCloseModal={onDismiss}
-      customContent={
-        <CustomContent
-          onAddXLM={onAddXLM}
-          onDismiss={onDismiss}
-          t={t}
-          themeColors={themeColors}
-        />
-      }
-      snapPoints={["65%"]}
-      bottomSheetModalProps={{
-        onDismiss,
-        enableDynamicSizing: false,
-      }}
-    />
-  );
-};
+}) => (
+  <BottomSheet
+    modalRef={modalRef}
+    handleCloseModal={onDismiss}
+    bottomSheetModalProps={{
+      onDismiss,
+      enableDynamicSizing: true,
+    }}
+    customContent={<CustomContent onAddXLM={onAddXLM} onDismiss={onDismiss} />}
+  />
+);
 
 export default WelcomeBannerBottomSheet;
