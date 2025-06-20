@@ -60,7 +60,11 @@ export const calculateMinimumReceived = ({
     BigNumber(allowedSlippage).dividedBy(100),
   );
 
-  return destinationAmountBN.multipliedBy(slippageMultiplier).toFixed(7);
+  return formatAssetAmount(
+    destinationAmountBN
+      .multipliedBy(slippageMultiplier)
+      .toFixed(DEFAULT_DECIMALS),
+  );
 };
 
 /**

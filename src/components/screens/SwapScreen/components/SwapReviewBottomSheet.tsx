@@ -54,7 +54,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const displayConversionRate =
     pathResult?.conversionRate ||
-    calculateSwapRate(sourceAmount, destinationAmount);
+    calculateSwapRate(
+      Number(pathResult?.sourceAmount),
+      Number(pathResult?.destinationAmount),
+    );
   const conversionRate = formatConversionRate({
     rate: displayConversionRate,
     sourceSymbol: sourceTokenSymbol,
@@ -64,7 +67,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const displayMinimumReceived =
     pathResult?.destinationAmountMin ||
     calculateMinimumReceived({
-      destinationAmount,
+      destinationAmount: pathResult?.destinationAmount || "0",
       allowedSlippage: swapSlippage.toString(),
       minimumReceived: undefined,
     });
@@ -99,9 +102,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,
-    amount: sourceAmount,
+    amount: pathResult?.sourceAmount || sourceAmount,
     balanceItems,
   });
+
   const sourceTokenFiatAmount =
     sourceTokenFiatAmountValue !== "--"
       ? formatFiatAmount(sourceTokenFiatAmountValue)
@@ -109,7 +113,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
     token: destinationToken,
-    amount: destinationAmount,
+    amount: pathResult?.destinationAmount || destinationAmount,
     balanceItems,
   });
   const destinationTokenFiatAmount =
@@ -137,7 +141,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             <AssetIcon token={sourceToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(sourceAmount, sourceTokenSymbol)}
+                {formatAssetAmount(
+                  pathResult?.sourceAmount || sourceAmount,
+                  sourceTokenSymbol,
+                )}
               </Text>
               <Text md medium secondary>
                 {sourceTokenFiatAmount}
