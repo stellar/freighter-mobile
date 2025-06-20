@@ -59,16 +59,16 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   useEffect(() => {
     if (transactionError) {
       setStatus(SwapStatus.FAILED);
-    } else if (transactionHash) {
+    } else if (transactionHash && transactionDetails) {
       setStatus(SwapStatus.SWAPPED);
     } else if (isSubmitting) {
       setStatus(SwapStatus.SWAPPING);
     }
-  }, [transactionHash, transactionError, isSubmitting]);
+  }, [transactionHash, transactionError, isSubmitting, transactionDetails]);
 
   // Fetch actual transaction details when we have a hash
   useEffect(() => {
-    if (transactionHash && status === SwapStatus.SWAPPED) {
+    if (transactionHash && !transactionDetails) {
       getTransactionDetails(transactionHash, network)
         .then((details) => {
           if (details) {
@@ -86,7 +86,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           );
         });
     }
-  }, [transactionHash, network, status]);
+  }, [transactionHash, network, transactionDetails]);
 
   const getStatusText = () => {
     switch (status) {
