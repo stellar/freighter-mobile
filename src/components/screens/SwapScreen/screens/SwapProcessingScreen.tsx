@@ -254,6 +254,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
             sourceToken={displayData.sourceToken}
             destinationAmount={displayData.destinationAmount}
             destinationToken={displayData.destinationToken}
+            transactionDetails={transactionDetails}
           />
         }
       />

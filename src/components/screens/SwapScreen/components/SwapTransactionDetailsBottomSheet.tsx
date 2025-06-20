@@ -12,7 +12,6 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import { AssetToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
@@ -25,27 +24,33 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { View, Linking } from "react-native";
-import { getTransactionDetails, TransactionDetail } from "services/stellar";
+import { TransactionDetail } from "services/stellar";
 
 type SwapTransactionDetailsBottomSheetProps = {
   sourceAmount: string;
   sourceToken: AssetToken | NativeToken;
   destinationAmount: string;
   destinationToken: AssetToken | NativeToken;
+  transactionDetails?: TransactionDetail | null;
 };
 
 const SwapTransactionDetailsBottomSheet: React.FC<
   SwapTransactionDetailsBottomSheetProps
-> = ({ sourceAmount, sourceToken, destinationAmount, destinationToken }) => {
+> = ({
+  sourceAmount,
+  sourceToken,
+  destinationAmount,
+  destinationToken,
+  transactionDetails,
+}) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
 
-  const { pathResult } = useSwapStore();
   const { swapFee, swapSlippage } = useSwapSettingsStore();
 
   const { balanceItems } = useBalancesList({
@@ -88,27 +93,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const transactionStatus = getTransactionStatus();
   const { text: statusText, color: statusColor } = transactionStatus;
 
-  const [transactionDetails, setTransactionDetails] =
-    useState<TransactionDetail | null>(null);
-
-  useEffect(() => {
-    if (transactionHash) {
-      getTransactionDetails(transactionHash, network)
-        .then((details) => {
-          if (details) {
-            setTransactionDetails(details);
-          }
-        })
-        .catch((error) => {
-          logger.error(
-            "SwapTransactionDetailsBottomSheet",
-            "Failed to get transaction details",
-            error,
-          );
-        });
-    }
-  }, [transactionHash, network]);
-
   const dateTimeDisplay = formatTransactionDate(transactionDetails?.createdAt);
 
   const handleCopyXdr = () => {
@@ -129,45 +113,26 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  const displayConversionRate = useMemo(() => {
-    // First try to use pathResult conversion rate if available
-    if (pathResult?.conversionRate) {
-      return pathResult.conversionRate;
-    }
+  // Use actual transaction amounts when available, fallback to props
+  const actualSourceAmount =
+    transactionDetails?.swapDetails?.sourceAmount || sourceAmount;
+  const actualDestinationAmount =
+    transactionDetails?.swapDetails?.destinationAmount || destinationAmount;
 
-    // Validate that we have valid amounts before calculating
-    if (
-      !sourceAmount ||
-      !destinationAmount ||
-      sourceAmount === "0" ||
-      destinationAmount === "0" ||
-      sourceAmount === "" ||
-      destinationAmount === ""
-    ) {
-      return "0";
-    }
+  const displayConversionRate = useMemo(
+    () => calculateSwapRate(actualSourceAmount, actualDestinationAmount),
+    [actualSourceAmount, actualDestinationAmount],
+  );
 
-    const calculatedRate = calculateSwapRate(sourceAmount, destinationAmount);
-
-    // Additional validation for the calculated rate
-    if (calculatedRate === "NaN" || !calculatedRate || calculatedRate === "") {
-      return "0";
-    }
-
-    return calculatedRate;
-  }, [pathResult?.conversionRate, sourceAmount, destinationAmount]);
-
-  const displayMinimumReceived =
-    pathResult?.destinationAmountMin ||
-    calculateMinimumReceived({
-      destinationAmount,
-      allowedSlippage: swapSlippage.toString(),
-      minimumReceived: undefined,
-    });
+  const displayMinimumReceived = calculateMinimumReceived({
+    destinationAmount: actualDestinationAmount,
+    allowedSlippage: swapSlippage.toString(),
+    minimumReceived: undefined,
+  });
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,
-    amount: sourceAmount,
+    amount: actualSourceAmount,
     balanceItems,
   });
   const sourceTokenFiatAmount =
@@ -177,7 +142,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
 
   const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
     token: destinationToken,
-    amount: destinationAmount,
+    amount: actualDestinationAmount,
     balanceItems,
   });
   const destinationTokenFiatAmount =
@@ -206,7 +171,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(sourceAmount, sourceToken.code)}
+              {formatAssetAmount(actualSourceAmount, sourceToken.code)}
             </Text>
             <Text md medium secondary>
               {sourceTokenFiatAmount}
@@ -227,7 +192,10 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(destinationAmount, destinationToken.code)}
+              {formatAssetAmount(
+                actualDestinationAmount,
+                destinationToken.code,
+              )}
             </Text>
             <Text md medium secondary>
               {destinationTokenFiatAmount}
