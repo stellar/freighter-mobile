@@ -568,9 +568,6 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
           <Text xl primary medium numberOfLines={1}>
             {formatAssetAmount(tokenAmount, contractSymbol)}
           </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
-          </Text>
         </View>
         <AssetIcon
           token={

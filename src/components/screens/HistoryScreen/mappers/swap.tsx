@@ -165,9 +165,6 @@ export const SwapTransactionDetailsContent: React.FC<{
               transactionDetails.swapDetails?.sourceAssetCode ?? "",
             )}
           </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
-          </Text>
         </View>
         <AssetIcon
           token={{
@@ -195,9 +192,6 @@ export const SwapTransactionDetailsContent: React.FC<{
               transactionDetails.swapDetails?.destinationAmount ?? "",
               transactionDetails.swapDetails?.destinationAssetCode ?? "",
             )}
-          </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon

@@ -132,9 +132,6 @@ export const PaymentTransactionDetailsContent: React.FC<{
               transactionDetails.paymentDetails?.assetCode ?? "",
             )}
           </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
-          </Text>
         </View>
         <AssetIcon
           token={{
