@@ -10,11 +10,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { logger } from "config/logger";
-import {
-  AssetToken,
-  NativeToken,
-  AssetTypeWithCustomToken,
-} from "config/types";
+import { AssetToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatAssetAmount } from "helpers/formatAmount";
@@ -49,16 +45,6 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     error: transactionError,
     isSubmitting,
   } = useTransactionBuilderStore();
-
-  const preservedSwapData = useMemo(
-    () => ({
-      sourceAmount,
-      sourceToken,
-      destinationAmount,
-      destinationToken,
-    }),
-    [sourceAmount, sourceToken, destinationAmount, destinationToken],
-  );
 
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
   const [transactionDetails, setTransactionDetails] =
@@ -139,29 +125,44 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   };
 
   const displayData = useMemo(() => {
+    const defaultData = {
+      sourceAmount,
+      sourceToken,
+      destinationAmount,
+      destinationToken,
+    };
+
     if (
       transactionDetails &&
       transactionDetails.swapDetails &&
       status === SwapStatus.SWAPPED
     ) {
       const { swapDetails } = transactionDetails;
+
       return {
+        ...defaultData,
         sourceAmount: swapDetails.sourceAmount,
-        sourceToken: {
-          code: swapDetails.sourceAssetCode,
-          issuer: { key: swapDetails.sourceAssetIssuer },
-          type: swapDetails.sourceAssetType as AssetTypeWithCustomToken,
-        } as AssetToken | NativeToken,
         destinationAmount: swapDetails.destinationAmount,
-        destinationToken: {
-          code: swapDetails.destinationAssetCode,
-          issuer: { key: swapDetails.destinationAssetIssuer },
-          type: swapDetails.destinationAssetType as AssetTypeWithCustomToken,
-        } as AssetToken | NativeToken,
       };
     }
-    return preservedSwapData;
-  }, [transactionDetails, status, preservedSwapData]);
+
+    return defaultData;
+  }, [
+    transactionDetails,
+    status,
+    sourceAmount,
+    sourceToken,
+    destinationAmount,
+    destinationToken,
+  ]);
+
+  const shouldShowDestinationAmount = useMemo(
+    () =>
+      status === SwapStatus.SWAPPED &&
+      transactionDetails &&
+      transactionDetails.swapDetails,
+    [status, transactionDetails],
+  );
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -197,12 +198,18 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
                   <Text lg medium secondary>
                     {getMessageText()}
                   </Text>
-                  <Text xl medium primary>
-                    {formatAssetAmount(
-                      displayData.destinationAmount,
-                      displayData.destinationToken.code,
-                    )}
-                  </Text>
+                  {shouldShowDestinationAmount ? (
+                    <Text xl medium primary>
+                      {formatAssetAmount(
+                        displayData.destinationAmount,
+                        displayData.destinationToken.code,
+                      )}
+                    </Text>
+                  ) : (
+                    <Text xl medium primary>
+                      {displayData.destinationToken.code}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>

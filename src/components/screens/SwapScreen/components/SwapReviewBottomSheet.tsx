@@ -23,7 +23,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type SwapReviewBottomSheetProps = {
@@ -52,25 +52,50 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { swapFee, swapSlippage } = useSwapSettingsStore();
   const { transactionXDR, isBuilding } = useTransactionBuilderStore();
 
-  const displayConversionRate =
+  const [stableConversionRate, setStableConversionRate] = useState<string>("");
+  const [stableMinimumReceived, setStableMinimumReceived] =
+    useState<string>("");
+
+  const currentConversionRate =
     pathResult?.conversionRate ||
     calculateSwapRate(
       Number(pathResult?.sourceAmount),
       Number(pathResult?.destinationAmount),
     );
-  const conversionRate = formatConversionRate({
-    rate: displayConversionRate,
-    sourceSymbol: sourceTokenSymbol,
-    destinationSymbol: destinationTokenSymbol,
-  });
 
-  const displayMinimumReceived =
+  const currentMinimumReceived =
     pathResult?.destinationAmountMin ||
     calculateMinimumReceived({
       destinationAmount: pathResult?.destinationAmount || "0",
       allowedSlippage: swapSlippage.toString(),
       minimumReceived: undefined,
     });
+
+  useEffect(() => {
+    if (
+      currentConversionRate &&
+      !Number.isNaN(Number(currentConversionRate)) &&
+      Number(currentConversionRate) > 0
+    ) {
+      const formattedRate = formatConversionRate({
+        rate: currentConversionRate,
+        sourceSymbol: sourceTokenSymbol,
+        destinationSymbol: destinationTokenSymbol,
+      });
+
+      setStableConversionRate(formattedRate);
+    }
+  }, [currentConversionRate, sourceTokenSymbol, destinationTokenSymbol]);
+
+  useEffect(() => {
+    if (
+      currentMinimumReceived &&
+      !Number.isNaN(Number(currentMinimumReceived)) &&
+      Number(currentMinimumReceived) > 0
+    ) {
+      setStableMinimumReceived(currentMinimumReceived);
+    }
+  }, [currentMinimumReceived]);
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -197,7 +222,9 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(displayMinimumReceived, destinationTokenSymbol)}
+            {stableMinimumReceived
+              ? formatAssetAmount(stableMinimumReceived, destinationTokenSymbol)
+              : "--"}
           </Text>
         </View>
 
@@ -209,7 +236,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </Text>
           </View>
           <Text md medium>
-            {conversionRate}
+            {stableConversionRate || "--"}
           </Text>
         </View>
 
