@@ -303,6 +303,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             }
           />
           <IconButton
+            Icon={Icon.RefreshCw02}
+            title={t("home.swap")}
+            disabled={hasZeroBalance}
+            onPress={() =>
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK)
+            }
+          />
+          <IconButton
             Icon={Icon.Copy01}
             title={t("home.copy")}
             onPress={() => handleCopyAddress(account?.publicKey)}

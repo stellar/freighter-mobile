@@ -273,6 +273,48 @@ describe("Typography", () => {
         });
       });
     });
+
+    describe("Responsive text handling", () => {
+      it("passes through adjustsFontSizeToFit prop", () => {
+        const { getByText } = renderWithProviders(
+          <Display adjustsFontSizeToFit>Responsive Text</Display>,
+        );
+        const element = getByText("Responsive Text");
+        expect(element.props.adjustsFontSizeToFit).toBe(true);
+      });
+
+      it("passes through numberOfLines prop", () => {
+        const { getByText } = renderWithProviders(
+          <Display numberOfLines={1}>Single Line</Display>,
+        );
+        const element = getByText("Single Line");
+        expect(element.props.numberOfLines).toBe(1);
+      });
+
+      it("passes through minimumFontScale prop", () => {
+        const { getByText } = renderWithProviders(
+          <Display minimumFontScale={0.6}>Scaled Text</Display>,
+        );
+        const element = getByText("Scaled Text");
+        expect(element.props.minimumFontScale).toBe(0.6);
+      });
+
+      it("works with all responsive props together", () => {
+        const { getByText } = renderWithProviders(
+          <Display
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            minimumFontScale={0.6}
+          >
+            Combined Responsive
+          </Display>,
+        );
+        const element = getByText("Combined Responsive");
+        expect(element.props.adjustsFontSizeToFit).toBe(true);
+        expect(element.props.numberOfLines).toBe(1);
+        expect(element.props.minimumFontScale).toBe(0.6);
+      });
+    });
   });
 
   describe("Text", () => {

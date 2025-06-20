@@ -118,6 +118,7 @@ describe("auth duck", () => {
     privateKey: mockPrivateKey,
     accountName: mockAccountName,
     id: mockAccountId,
+    subentryCount: 0,
   };
 
   const mockEncryptedData = "encryptedData123";

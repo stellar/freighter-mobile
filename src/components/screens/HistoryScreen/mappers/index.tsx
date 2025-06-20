@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  formatTransactionDate,
   isCreateAccountOperation,
   isChangeTrustOperation,
   isSorobanInvokeHostFunction,
@@ -17,6 +16,7 @@ import { mapSwapHistoryItem } from "components/screens/HistoryScreen/mappers/swa
 import { HistoryItemData } from "components/screens/HistoryScreen/types";
 import { NetworkDetails, NETWORKS } from "config/constants";
 import { BalanceMap } from "config/types";
+import { formatTransactionDate } from "helpers/date";
 import { getAttrsFromSorobanHorizonOp } from "helpers/soroban";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import { ThemeColors } from "hooks/useColors";
@@ -53,7 +53,7 @@ export const mapHistoryItemData = async ({
   } = operation;
 
   // Format date for display
-  const date = formatTransactionDate(createdAt);
+  const date = formatTransactionDate(createdAt, false);
 
   // Get URL for transaction viewing
   const stellarExpertUrl = getStellarExpertUrl(network);

@@ -16,14 +16,14 @@ interface UseTokenFiatConverterResult {
   handleAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
-  handlePercentagePress: (percentage: number) => void;
 }
 
 /**
  * Custom hook for handling token/fiat conversion and input
  *
  * This hook manages the state and logic for converting between token and fiat values,
- * handling numeric input, and maintaining proper decimal formatting.
+ * handling numeric input, and maintaining proper decimal formatting. It focuses solely
+ * on conversion logic and does not include business logic like spendable amounts.
  *
  * @param {UseTokenFiatConverterProps} props - The hook props
  * @returns {UseTokenFiatConverterResult} The hook result
@@ -82,28 +82,6 @@ export const useTokenFiatConverter = ({
     }
   };
 
-  /**
-   * Handles percentage button presses
-   *
-   * @param {number} percentage - The percentage to calculate (25, 50, 75, or 100)
-   */
-  const handlePercentagePress = (percentage: number) => {
-    if (!selectedBalance) return;
-
-    const totalBalance = new BigNumber(selectedBalance.total);
-    const percentageValue = totalBalance.multipliedBy(percentage / 100);
-
-    // Update the value based on the current display mode
-    if (showFiatAmount) {
-      const calculatedFiatAmount = percentageValue.multipliedBy(tokenPrice);
-      const formattedFiatAmount = calculatedFiatAmount.toFixed(FIAT_DECIMALS);
-      setFiatAmount(formattedFiatAmount);
-    } else {
-      const formattedTokenValue = percentageValue.toFixed(DEFAULT_DECIMALS);
-      setTokenAmount(formattedTokenValue);
-    }
-  };
-
   return {
     tokenAmount,
     fiatAmount,
@@ -112,6 +90,5 @@ export const useTokenFiatConverter = ({
     handleAmountChange,
     setTokenAmount,
     setFiatAmount,
-    handlePercentagePress,
   };
 };

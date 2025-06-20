@@ -52,6 +52,7 @@ interface BalanceRowProps {
   rightSectionWidth?: number;
   onPress?: () => void;
   isSingleRow?: boolean;
+  customTextContent?: string;
 }
 
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
@@ -98,6 +99,7 @@ const renderContent = (children: ReactNode, onPress?: () => void) => {
 
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
+  customTextContent,
   rightContent,
   rightSectionWidth,
   onPress,
@@ -112,7 +114,8 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
             {balance.displayName}
           </Text>
           <Text sm medium secondary numberOfLines={1}>
-            {formatAssetAmount(balance.total, balance.tokenCode)}
+            {customTextContent ||
+              formatAssetAmount(balance.total, balance.tokenCode)}
           </Text>
         </AssetTextContainer>
       </LeftSection>

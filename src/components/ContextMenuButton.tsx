@@ -26,11 +26,20 @@ interface ContextMenuButtonProps {
     actions: MenuItem[];
     onPress?: (e: { nativeEvent: { name: string } }) => void;
   };
+  // Positioning props for MenuContent
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  sideOffset?: number;
+  alignOffset?: number;
 }
 
 const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
   children,
   contextMenuProps,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
 }) => {
   const { actions, onPress } = contextMenuProps;
 
@@ -71,7 +80,12 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
       <MenuTrigger>
         <View>{children}</View>
       </MenuTrigger>
-      <MenuContent>
+      <MenuContent
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+      >
         {actions.map((action) =>
           action.actions ? (
             <MenuGroup key={action.title ?? Math.random().toString()}>

@@ -34,6 +34,7 @@ let pollingIntervalId: NodeJS.Timeout | null = null;
  * @property {PricedBalanceMap} pricedBalances - Object mapping balance IDs to PricedBalance objects
  * @property {boolean} isLoading - Indicates if balance data is currently being fetched
  * @property {boolean} isFunded - Whether the account is funded
+ * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
  * @property {Function} startPolling - Function to start polling for balance updates
@@ -44,6 +45,7 @@ interface BalancesState {
   pricedBalances: PricedBalanceMap;
   isLoading: boolean;
   isFunded: boolean;
+  subentryCount: number;
   error: string | null;
   fetchAccountBalances: (params: {
     publicKey: string;
@@ -241,6 +243,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   pricedBalances: {} as PricedBalanceMap,
   isLoading: false,
   isFunded: false,
+  subentryCount: 0,
   error: null,
   fetchAccountBalances: async (params) => {
     try {
@@ -263,7 +266,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       ];
 
       // Fetch balances with combined contract IDs
-      const { balances, isFunded } = await fetchBalances({
+      const { balances, isFunded, subentryCount } = await fetchBalances({
         ...params,
         contractIds: allContractIds,
       });
@@ -273,7 +276,11 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       }
 
       // Set the "raw" balances right away as they don't depend on prices
-      set({ balances, isFunded: isFunded ?? false });
+      set({
+        balances,
+        isFunded: isFunded ?? false,
+        subentryCount: subentryCount ?? 0,
+      });
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;

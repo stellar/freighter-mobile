@@ -18,12 +18,15 @@ import {
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { AuthNavigator } from "navigators/AuthNavigator";
-import { BuyXLMStackNavigator } from "navigators/BuyXLMNavigator";
-import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
-import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
-import { SendPaymentStackNavigator } from "navigators/SendPaymentNavigator";
-import { SettingsStackNavigator } from "navigators/SettingsNavigator";
+import {
+  AuthNavigator,
+  BuyXLMStackNavigator,
+  ManageAssetsStackNavigator,
+  ManageWalletsStackNavigator,
+  SendPaymentStackNavigator,
+  SettingsStackNavigator,
+  SwapStackNavigator,
+} from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
@@ -97,6 +100,10 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
             component={SendPaymentStackNavigator}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
+            component={SwapStackNavigator}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}

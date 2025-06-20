@@ -1,6 +1,5 @@
 import BigNumber from "bignumber.js";
 import {
-  calculateSwapRate,
   renderActionIcon,
   renderIconComponent,
 } from "components/screens/HistoryScreen/helpers";
@@ -17,6 +16,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
 import { formatAssetAmount, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -50,10 +50,10 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const swapRate =
     transactionDetails.transactionType === TransactionType.SWAP
       ? calculateSwapRate(
-          Number(transactionDetails.swapDetails?.sourceAmount ?? 0),
-          Number(transactionDetails.swapDetails?.destinationAmount ?? 0),
+          transactionDetails.swapDetails?.sourceAmount ?? "0",
+          transactionDetails.swapDetails?.destinationAmount ?? "0",
         )
-      : 0;
+      : "0";
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
   const swapRateText = `1 ${transactionDetails.swapDetails?.sourceAssetCode} ≈ ${formatAssetAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationAssetCode ?? "")}`;
 
