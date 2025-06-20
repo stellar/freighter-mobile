@@ -87,11 +87,6 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         .then((details) => {
           if (details) {
             setTransactionDetails(details);
-            logger.info(
-              "SwapProcessingScreen",
-              "Successfully fetched transaction details",
-              { transactionHash, successful: details.successful },
-            );
           }
         })
         .catch((error) => {

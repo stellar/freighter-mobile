@@ -409,45 +409,47 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row gap-[8px] mt-[24px]">
-          <View className="flex-1">
-            <Button secondary lg onPress={() => handlePercentagePress(25)}>
-              {t("transactionAmountScreen.percentageButtons.twentyFive")}
-            </Button>
+        <View className="flex-1 justify-between mt-[24px]">
+          <View className="flex-row gap-[8px]">
+            <View className="flex-1">
+              <Button secondary lg onPress={() => handlePercentagePress(25)}>
+                {t("transactionAmountScreen.percentageButtons.twentyFive")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button secondary lg onPress={() => handlePercentagePress(50)}>
+                {t("transactionAmountScreen.percentageButtons.fifty")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button secondary lg onPress={() => handlePercentagePress(75)}>
+                {t("transactionAmountScreen.percentageButtons.seventyFive")}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button secondary lg onPress={() => handlePercentagePress(100)}>
+                {t("transactionAmountScreen.percentageButtons.max")}
+              </Button>
+            </View>
           </View>
-          <View className="flex-1">
-            <Button secondary lg onPress={() => handlePercentagePress(50)}>
-              {t("transactionAmountScreen.percentageButtons.fifty")}
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button secondary lg onPress={() => handlePercentagePress(75)}>
-              {t("transactionAmountScreen.percentageButtons.seventyFive")}
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button secondary lg onPress={() => handlePercentagePress(100)}>
-              {t("transactionAmountScreen.percentageButtons.max")}
-            </Button>
-          </View>
-        </View>
 
-        <View className="w-full mt-4">
-          <NumericKeyboard onPress={handleAmountChange} />
-        </View>
+          <View className="flex-1 justify-center">
+            <NumericKeyboard onPress={handleAmountChange} />
+          </View>
 
-        <View className="mt-auto mb-4">
-          <Button
-            tertiary
-            xl
-            onPress={handleMainButtonPress}
-            disabled={isButtonDisabled}
-            isLoading={isLoadingPath || isBuilding}
-          >
-            {destinationBalance
-              ? t("common.review")
-              : t("swapScreen.selectAsset")}
-          </Button>
+          <View className="mb-4">
+            <Button
+              tertiary
+              xl
+              onPress={handleMainButtonPress}
+              disabled={isButtonDisabled}
+              isLoading={isLoadingPath || isBuilding}
+            >
+              {destinationBalance
+                ? t("common.review")
+                : t("swapScreen.selectAsset")}
+            </Button>
+          </View>
         </View>
       </View>
 
