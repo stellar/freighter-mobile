@@ -397,3 +397,45 @@ export const isAmountSpendable = ({
 
   return amountBN.isLessThanOrEqualTo(spendableAmount);
 };
+
+/**
+ * Calculates the swap rate between two amounts with proper validation
+ *
+ * This function computes the conversion rate from source amount to destination amount
+ * using BigNumber for precision. It validates inputs and handles edge cases like
+ * zero amounts or invalid numbers.
+ *
+ * @param {string | number} sourceAmount - The source amount to convert from
+ * @param {string | number} destinationAmount - The destination amount to convert to
+ * @returns {string} The conversion rate as a string, or "0" if calculation fails
+ *
+ * @example
+ * // Calculate conversion rate
+ * const rate = calculateSwapRate("100", "150"); // Returns "1.5"
+ * const invalidRate = calculateSwapRate("0", "100"); // Returns "0"
+ */
+export const calculateSwapRate = (
+  sourceAmount: string | number,
+  destinationAmount: string | number,
+): string => {
+  const sourceAmountBN = new BigNumber(sourceAmount);
+  const destinationAmountBN = new BigNumber(destinationAmount);
+
+  // Validate input amounts
+  if (sourceAmountBN.isNaN() || destinationAmountBN.isNaN()) {
+    return "0";
+  }
+
+  if (sourceAmountBN.isZero()) {
+    return "0";
+  }
+
+  const rate = destinationAmountBN.dividedBy(sourceAmountBN);
+
+  // Validate the calculated rate
+  if (rate.isNaN() || !rate.isFinite()) {
+    return "0";
+  }
+
+  return rate.toString();
+};

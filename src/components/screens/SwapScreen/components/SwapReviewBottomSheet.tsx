@@ -4,7 +4,6 @@ import {
   formatConversionRate,
   getTokenFromBalance,
   calculateTokenFiatAmount,
-  calculateConversionRate,
   calculateMinimumReceived,
 } from "components/screens/SwapScreen/helpers";
 import Avatar from "components/sds/Avatar";
@@ -16,6 +15,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { calculateSwapRate } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -54,11 +54,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const displayConversionRate =
     pathResult?.conversionRate ||
-    calculateConversionRate({
-      sourceAmount,
-      destinationAmount,
-      conversionRate: undefined,
-    });
+    calculateSwapRate(sourceAmount, destinationAmount);
   const conversionRate = formatConversionRate({
     rate: displayConversionRate,
     sourceSymbol: sourceTokenSymbol,

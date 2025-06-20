@@ -93,14 +93,3 @@ export const isSorobanTokenMint = (fnName: string | undefined): boolean =>
  */
 export const isSorobanTokenTransfer = (fnName: string | undefined): boolean =>
   fnName === SorobanTokenInterface.transfer;
-
-export const calculateSwapRate = (
-  sourceAmount: number,
-  destinationAmount: number,
-): number => {
-  if (sourceAmount === 0 || destinationAmount === 0) {
-    return 0;
-  }
-
-  return destinationAmount / sourceAmount;
-};

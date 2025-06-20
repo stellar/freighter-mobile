@@ -1,7 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
 import {
-  calculateConversionRate,
   calculateMinimumReceived,
   formatConversionRate,
   calculateTokenFiatAmount,
@@ -16,6 +15,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { calculateSwapRate } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
@@ -147,12 +147,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
       return "0";
     }
 
-    // Try to calculate conversion rate with validation
-    const calculatedRate = calculateConversionRate({
-      sourceAmount,
-      destinationAmount,
-      conversionRate: undefined,
-    });
+    const calculatedRate = calculateSwapRate(sourceAmount, destinationAmount);
 
     // Additional validation for the calculated rate
     if (calculatedRate === "NaN" || !calculatedRate || calculatedRate === "") {

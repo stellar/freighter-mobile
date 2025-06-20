@@ -4,12 +4,6 @@ import { PricedBalance } from "config/types";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
-interface CalculateConversionRateParams {
-  sourceAmount: string;
-  destinationAmount: string;
-  conversionRate?: string;
-}
-
 interface FormatConversionRateParams {
   rate: string;
   sourceSymbol: string;
@@ -26,39 +20,6 @@ interface GetContractAddressParams {
   balance: PricedBalance;
   network: NETWORKS;
 }
-
-/**
- * Calculates conversion rate between two amounts
- * Following the extension's conversion rules
- */
-export const calculateConversionRate = ({
-  sourceAmount,
-  destinationAmount,
-  conversionRate,
-}: CalculateConversionRateParams): string => {
-  if (conversionRate) return conversionRate;
-
-  const sourceAmountBN = new BigNumber(sourceAmount);
-  const destinationAmountBN = new BigNumber(destinationAmount);
-
-  // Validate input amounts
-  if (sourceAmountBN.isNaN() || destinationAmountBN.isNaN()) {
-    return "0";
-  }
-
-  if (sourceAmountBN.isZero()) return "0";
-
-  const rate = destinationAmountBN.dividedBy(sourceAmountBN);
-
-  // Validate the calculated rate
-  if (rate.isNaN() || !rate.isFinite()) {
-    return "0";
-  }
-
-  // Return the rate directly as a string with fixed decimals instead of using formatAssetAmount
-  // This avoids the NaN issue that can occur when formatAssetAmount calls .toNumber()
-  return rate.toFixed(DEFAULT_DECIMALS);
-};
 
 /**
  * Formats conversion rate for display with proper symbols
