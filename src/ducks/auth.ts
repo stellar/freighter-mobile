@@ -23,6 +23,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useWalletKitStore } from "ducks/walletKit";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
@@ -1383,6 +1384,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       setTimeout(() => {
         (async () => {
           try {
+            // Make sure to disconnect all WalletConnect sessions first
+            await useWalletKitStore.getState().disconnectAllSessions();
+
             const accountList = await getAllAccounts();
             const hasAccountList = accountList.length > 0;
 

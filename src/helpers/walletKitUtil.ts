@@ -11,6 +11,7 @@ import {
   SdkErrorKey,
 } from "@walletconnect/utils";
 import { NETWORK_NAMES } from "config/constants";
+import { logger } from "config/logger";
 import {
   ActiveSessions,
   StellarRpcChains,
@@ -313,8 +314,12 @@ export const disconnectAllSessions = async () => {
           topic: activeSession.topic,
           reason: getSdkError("USER_DISCONNECTED"),
         });
-      } catch (_) {
-        // noop
+      } catch (error) {
+        logger.error(
+          "disconnectAllSessions",
+          "Failed to disconnect a session",
+          error,
+        );
       }
     }),
   );
