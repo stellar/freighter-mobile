@@ -3,6 +3,7 @@ import BottomSheet from "components/BottomSheet";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
+import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   useWalletKitStore,
@@ -15,6 +16,7 @@ import {
   approveSessionProposal,
   approveSessionRequest,
   rejectSessionRequest,
+  rejectSessionProposal,
 } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -50,7 +52,7 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
-  const { network } = useAuthenticationStore();
+  const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
 
   const initialized = useWalletKitInitialize();
@@ -162,20 +164,50 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   useEffect(() => {
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
-      handleClearDappRequest();
+      if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
+        showToast({
+          title: t("walletKit.notAuthenticated"),
+          message: t("walletKit.pleaseLoginToConnect"),
+          variant: "error",
+        });
 
+        rejectSessionProposal({
+          sessionProposal: event as WalletKitSessionProposal,
+          message: t("walletKit.userNotAuthenticated"),
+        });
+
+        clearEvent();
+        return;
+      }
+
+      handleClearDappRequest();
       setProposalEvent(event as WalletKitSessionProposal);
       dappConnectionBottomSheetModalRef.current?.present();
     }
 
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
-      handleClearDappConnection();
+      if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
+        showToast({
+          title: t("walletKit.notAuthenticated"),
+          message: t("walletKit.pleaseLoginToSign"),
+          variant: "error",
+        });
 
+        rejectSessionRequest({
+          sessionRequest: event as WalletKitSessionRequest,
+          message: t("walletKit.userNotAuthenticated"),
+        });
+
+        clearEvent();
+        return;
+      }
+
+      handleClearDappConnection();
       setRequestEvent(event as WalletKitSessionRequest);
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event.type]);
+  }, [event.type, authStatus]);
 
   return (
     <View className="flex-1">

@@ -459,7 +459,11 @@
     "errorSigning": "Erro ao assinar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
-    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente"
+    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
+    "notAuthenticated": "Carteira bloqueada",
+    "pleaseLoginToConnect": "Por favor, desbloqueie sua carteira para conectar a este dApp",
+    "pleaseLoginToSign": "Por favor, desbloqueie sua carteira para assinar esta transação",
+    "userNotAuthenticated": "Carteira bloqueada"
   },
   "sendRecipient": {
     "error": {

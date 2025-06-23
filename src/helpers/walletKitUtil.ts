@@ -67,19 +67,28 @@ export const createWalletKit = async () => {
  * Rejects a session proposal from a dApp
  * @param {Object} params - The parameters object
  * @param {WalletKitSessionProposal} params.sessionProposal - The session proposal to reject
+ * @param {string} params.message - The rejection message
  * @returns {Promise<void>} A promise that resolves when the rejection is complete
  */
 export const rejectSessionProposal = async ({
   sessionProposal,
+  message,
 }: {
   sessionProposal: WalletKitSessionProposal;
+  message: string;
 }) => {
-  const { id } = sessionProposal;
-
-  await walletKit.rejectSession({
-    id,
-    reason: getSdkError("USER_REJECTED" as SdkErrorKey),
-  });
+  try {
+    await walletKit.rejectSession({
+      id: sessionProposal.id,
+      reason: getSdkError("USER_REJECTED" as SdkErrorKey, message),
+    });
+  } catch (error) {
+    logger.error(
+      "rejectSessionProposal",
+      "Failed to reject session proposal",
+      error,
+    );
+  }
 };
 
 /**
@@ -141,18 +150,19 @@ export const approveSessionProposal = async ({
       });
     }
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : t("common.unknownError");
     showToast({
       title: t("walletKit.errorConnecting", {
         dappName: params.proposer.metadata.name,
       }),
       message: t("common.error", {
-        errorMessage:
-          error instanceof Error ? error.message : t("common.unknownError"),
+        errorMessage,
       }),
       variant: "error",
       duration: ERROR_TOAST_DURATION,
     });
-    rejectSessionProposal({ sessionProposal });
+    rejectSessionProposal({ sessionProposal, message: errorMessage });
   }
 };
 
