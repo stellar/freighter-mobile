@@ -1,4 +1,4 @@
-import { createWalletKit, ERROR_TOAST_DURATION } from "helpers/walletKitUtil";
+import { createWalletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
@@ -35,7 +35,6 @@ export const useWalletKitInitialize = () => {
             error instanceof Error ? error.message : t("common.unknownError"),
         }),
         variant: "error",
-        duration: ERROR_TOAST_DURATION,
       });
     }
   }, [t, showToast]);

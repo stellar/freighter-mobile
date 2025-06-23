@@ -6,7 +6,7 @@ import {
   WALLET_KIT_MT_REDIRECT_NATIVE,
   WalletKitEventTypes,
 } from "ducks/walletKit";
-import { ERROR_TOAST_DURATION, walletKit } from "helpers/walletKitUtil";
+import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect } from "react";
@@ -87,7 +87,6 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
             errorMessage: t("walletKit.errorNoUriParam"),
           }),
           variant: "error",
-          duration: ERROR_TOAST_DURATION,
         });
         return;
       }
@@ -101,7 +100,6 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
               error instanceof Error ? error.message : t("common.unknownError"),
           }),
           variant: "error",
-          duration: ERROR_TOAST_DURATION,
         });
       });
     },

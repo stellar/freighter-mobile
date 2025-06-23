@@ -26,9 +26,6 @@ import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
 
-/** Duration for error toast messages in milliseconds */
-export const ERROR_TOAST_DURATION = 5000;
-
 /** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
@@ -160,7 +157,6 @@ export const approveSessionProposal = async ({
         errorMessage,
       }),
       variant: "error",
-      duration: ERROR_TOAST_DURATION,
     });
     rejectSessionProposal({ sessionProposal, message: errorMessage });
   }
@@ -240,7 +236,6 @@ export const approveSessionRequest = async ({
       title: t("walletKit.errorWrongNetwork"),
       message,
       variant: "error",
-      duration: ERROR_TOAST_DURATION,
     });
 
     rejectSessionRequest({ sessionRequest, message });
@@ -264,7 +259,6 @@ export const approveSessionRequest = async ({
       title: t("walletKit.errorSigning"),
       message,
       variant: "error",
-      duration: ERROR_TOAST_DURATION,
     });
 
     rejectSessionRequest({ sessionRequest, message });
@@ -295,7 +289,6 @@ export const approveSessionRequest = async ({
       title: t("walletKit.errorRespondingRequest"),
       message,
       variant: "error",
-      duration: ERROR_TOAST_DURATION,
     });
 
     rejectSessionRequest({ sessionRequest, message });
