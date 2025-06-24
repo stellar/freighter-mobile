@@ -20,7 +20,6 @@ export enum TransactionStatus {
 
 // Base interfaces for transaction details
 export interface CreateAccountDetailsType {
-  isCreatingExternalAccount: boolean;
   accountPublicKey: string;
   startingBalance: string;
 }

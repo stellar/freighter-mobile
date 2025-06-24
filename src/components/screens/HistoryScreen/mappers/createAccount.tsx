@@ -60,7 +60,7 @@ export const mapCreateAccountHistoryItem = ({
     );
     const transactionDetails: TransactionDetails = {
       operation,
-      transactionTitle: `${t("history.transactionHistory.sent")} ${NATIVE_TOKEN_CODE}`,
+      transactionTitle: NATIVE_TOKEN_CODE,
       transactionType: TransactionType.PAYMENT,
       fee,
       status: TransactionStatus.SUCCESS,
@@ -78,7 +78,7 @@ export const mapCreateAccountHistoryItem = ({
 
     return {
       transactionDetails,
-      rowText: t("history.transactionHistory.sent"),
+      rowText: NATIVE_TOKEN_CODE,
       dateText: date,
       amountText: `-${formatAssetAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
       actionText: t("history.transactionHistory.sent"),
@@ -90,8 +90,7 @@ export const mapCreateAccountHistoryItem = ({
   }
 
   // RECIPIENT's view: Show as "Account Funded"
-  const paymentDifference = "+";
-  const formattedAmount = `${paymentDifference}${formatAssetAmount(
+  const formattedAmount = `+${formatAssetAmount(
     startingBalance,
     NATIVE_TOKEN_CODE,
   )}`;
@@ -99,8 +98,6 @@ export const mapCreateAccountHistoryItem = ({
   const recipientActionIcon = (
     <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />
   );
-
-  const IconComponent = null;
 
   const transactionDetails: TransactionDetails = {
     operation,
@@ -112,7 +109,6 @@ export const mapCreateAccountHistoryItem = ({
     ActionIconComponent: recipientActionIcon,
     externalUrl: `${stellarExpertUrl}/op/${operation.id}`,
     createAccountDetails: {
-      isCreatingExternalAccount: false,
       accountPublicKey: account,
       startingBalance,
     },
