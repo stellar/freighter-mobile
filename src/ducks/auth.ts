@@ -23,6 +23,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
 import { useWalletKitStore } from "ducks/walletKit";
 import {
   deriveKeyFromPassword,
@@ -104,19 +105,21 @@ interface StoreAccountParams {
 /**
  * Active account information
  *
- * Contains the active account's public and private keys, name, and ID
+ * Contains the active account's public and private keys, name, ID, and subentry count
  *
  * @interface ActiveAccount
  * @property {string} publicKey - The account's public key
  * @property {string} privateKey - The account's private key
  * @property {string} accountName - The account's display name
  * @property {string} id - The account's unique identifier
+ * @property {number} subentryCount - The number of subentries (trustlines, offers, data entries)
  */
 export interface ActiveAccount {
   publicKey: string;
   privateKey: string;
   accountName: string;
   id: string;
+  subentryCount: number;
 }
 
 /**
@@ -1185,11 +1188,15 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
         throw new Error(t("authStore.error.privateKeyNotFound"));
       }
 
+      // Get subentry count from the balances store (already fetched with balance data)
+      const { subentryCount } = useBalancesStore.getState();
+
       return {
         publicKey: account.publicKey,
         privateKey,
         accountName: account.name,
         id: activeAccountId,
+        subentryCount,
       };
     }
 

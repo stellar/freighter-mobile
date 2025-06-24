@@ -5,6 +5,7 @@ import { isContractId } from "helpers/soroban";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
+  buildSwapTransaction,
   prepareSorobanTransaction,
 } from "services/transactionService";
 import { create } from "zustand";
@@ -34,6 +35,19 @@ interface TransactionBuilderState {
     senderAddress?: string;
   }) => Promise<string | null>;
 
+  buildSwapTransaction: (params: {
+    sourceAmount: string;
+    sourceBalance: PricedBalance;
+    destinationBalance: PricedBalance;
+    path: string[];
+    destinationAmount: string;
+    destinationAmountMin: string;
+    transactionFee?: string;
+    transactionTimeout?: number;
+    network?: NETWORKS;
+    senderAddress?: string;
+  }) => Promise<string | null>;
+
   signTransaction: (params: {
     secretKey: string;
     network: NETWORKS;
@@ -47,6 +61,7 @@ interface TransactionBuilderState {
 const initialState: Omit<
   TransactionBuilderState,
   | "buildTransaction"
+  | "buildSwapTransaction"
   | "signTransaction"
   | "submitTransaction"
   | "resetTransaction"
@@ -122,6 +137,62 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         logger.error("TransactionBuilderStore", "Failed to build transaction", {
           error: errorMessage,
         });
+
+        set({
+          error: errorMessage,
+          isBuilding: false,
+          transactionXDR: null,
+        });
+
+        return null;
+      }
+    },
+
+    /**
+     * Builds a swap transaction and stores the XDR
+     */
+    buildSwapTransaction: async (params) => {
+      set({ isBuilding: true, error: null });
+
+      try {
+        const builtTxResult = await buildSwapTransaction({
+          sourceAmount: params.sourceAmount,
+          sourceBalance: params.sourceBalance,
+          destinationBalance: params.destinationBalance,
+          path: params.path,
+          destinationAmount: params.destinationAmount,
+          destinationAmountMin: params.destinationAmountMin,
+          transactionFee: params.transactionFee,
+          transactionTimeout: params.transactionTimeout,
+          network: params.network,
+          senderAddress: params.senderAddress,
+        });
+
+        if (!builtTxResult) {
+          throw new Error("Failed to build swap transaction");
+        }
+
+        // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
+        const finalXdr = builtTxResult.xdr;
+
+        set({
+          transactionXDR: finalXdr,
+          isBuilding: false,
+          signedTransactionXDR: null,
+          transactionHash: null,
+        });
+
+        return finalXdr;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build swap transaction",
+          {
+            error: errorMessage,
+          },
+        );
 
         set({
           error: errorMessage,

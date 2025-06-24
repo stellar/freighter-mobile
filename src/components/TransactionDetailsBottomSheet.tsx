@@ -10,6 +10,7 @@ import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { formatTransactionDate } from "helpers/date";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
@@ -117,33 +118,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
   const transactionStatus = getTransactionStatus();
 
-  const formatTransactionDate = () => {
-    let dateObj: Date;
-
-    if (transactionDetails?.createdAt) {
-      dateObj = new Date(transactionDetails.createdAt);
-    } else {
-      dateObj = new Date();
-    }
-
-    const formattedDate = dateObj.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-
-    const formattedTime = dateObj
-      .toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .toLowerCase();
-
-    return `${formattedDate} · ${formattedTime}`;
-  };
-
-  const dateTimeDisplay = formatTransactionDate();
+  const dateTimeDisplay = formatTransactionDate(transactionDetails?.createdAt);
 
   const handleCopyXdr = () => {
     if (transactionXDR) {

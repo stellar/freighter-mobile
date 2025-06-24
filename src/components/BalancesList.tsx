@@ -12,10 +12,11 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { THEME } from "config/theme";
+import { PricedBalance } from "config/types";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
-import React from "react";
+import React, { ReactNode } from "react";
 import { FlatList, Linking, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -48,8 +49,12 @@ const NotificationContent = styled.View`
 interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
+  searchTerm?: string;
+  customTitle?: string;
   showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
+  disableNavigation?: boolean;
+  renderRightContent?: (balance: PricedBalance) => ReactNode;
 }
 
 /**
@@ -69,11 +74,24 @@ interface BalancesListProps {
 export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
+  searchTerm,
+  customTitle,
   showTitleIcon = false,
   onTokenPress,
+  disableNavigation = false,
+  renderRightContent,
 }) => {
   const { t } = useAppTranslation();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  // Always call the hook, but handle navigation context errors gracefully
+  let navigation: NavigationProp<RootStackParamList> | null = null;
+  try {
+    const nav = useNavigation<NavigationProp<RootStackParamList>>();
+    navigation = disableNavigation ? null : nav;
+  } catch {
+    navigation = null;
+  }
+
   const {
     balanceItems,
     isLoading,
@@ -82,7 +100,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     isRefreshing,
     isFunded,
     handleRefresh,
-  } = useBalancesList({ publicKey, network, shouldPoll: true });
+  } = useBalancesList({ publicKey, network, shouldPoll: true, searchTerm });
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,
@@ -96,7 +114,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
       </ListWrapper>
@@ -111,7 +129,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
         <Spinner
@@ -131,7 +149,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {showTitleIcon && (
             <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
           )}
-          <Text medium>{t("balancesList.title")}</Text>
+          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
         <NotificationWrapper>
@@ -153,13 +171,14 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           />
         </NotificationWrapper>
 
-        {!isTestNetwork && (
+        {/* Only show fund account button if navigation is available and not test network */}
+        {!disableNavigation && !isTestNetwork && (
           <Button
             isFullWidth
             tertiary
             lg
             onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+              navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
                 screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
                 params: { isUnfunded: true },
               })
@@ -169,6 +188,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           </Button>
         )}
 
+        {/* Show friendbot button for test networks regardless of navigation */}
         {isTestNetwork && (
           <FriendbotButton publicKey={publicKey} network={network} />
         )}
@@ -182,7 +202,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         {showTitleIcon && (
           <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
         )}
-        <Text medium>{t("balancesList.title")}</Text>
+        <Text medium>{customTitle ?? t("balancesList.title")}</Text>
       </ListTitle>
       <FlatList
         testID="balances-list"
@@ -192,6 +212,9 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <BalanceRow
             balance={item}
             onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+            rightContent={
+              renderRightContent ? renderRightContent(item) : undefined
+            }
           />
         )}
         keyExtractor={(item) => item.id}

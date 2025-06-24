@@ -13,6 +13,11 @@ export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MAX_MEMO_BYTES = 28;
 
+// Slippage constants
+export const DEFAULT_SLIPPAGE = 1;
+export const MIN_SLIPPAGE = 0;
+export const MAX_SLIPPAGE = 10;
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;

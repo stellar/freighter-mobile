@@ -95,6 +95,7 @@ describe("useManageAssets", () => {
     privateKey: mockPrivateKey,
     accountName: "test",
     id: "test",
+    subentryCount: 0,
   };
   const mockNetwork = NETWORKS.TESTNET;
   const mockOnSuccess = jest.fn();

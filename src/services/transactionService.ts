@@ -27,6 +27,7 @@ import {
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
+import { t } from "i18next";
 import { getSorobanRpcServer, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
@@ -34,6 +35,19 @@ export interface BuildPaymentTransactionParams {
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
+  transactionFee?: string;
+  transactionTimeout?: number;
+  network?: NETWORKS;
+  senderAddress?: string;
+}
+
+export interface BuildSwapTransactionParams {
+  sourceAmount: string;
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  path: string[];
+  destinationAmount: string;
+  destinationAmountMin: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
@@ -71,27 +85,27 @@ export const validateTransactionParams = (
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
   // Validate amount is positive
   if (Number(amount) <= 0) {
-    return "Amount must be greater than 0";
+    return t("transaction.errors.amountRequired");
   }
 
   // Validate fee is positive
   if (Number(fee) <= 0) {
-    return "Fee must be greater than 0";
+    return t("transaction.errors.feeRequired");
   }
 
   // Validate timeout
   if (timeout <= 0) {
-    return "Timeout must be greater than 0";
+    return t("transaction.errors.timeoutRequired");
   }
 
   // Check if the recipient address is valid
   if (!isValidStellarAddress(destination)) {
-    return "Invalid recipient address";
+    return t("transaction.errors.invalidRecipientAddress");
   }
 
   // Prevent sending to self
   if (isSameAccount(senderAddress, destination)) {
-    return "Cannot send to yourself";
+    return t("transaction.errors.cannotSendToSelf");
   }
 
   // Validate sufficient balance
@@ -99,7 +113,64 @@ export const validateTransactionParams = (
   const balanceAmount = new BigNumber(balance.total);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
-    return "Insufficient balance";
+    return t("transaction.errors.insufficientBalance");
+  }
+
+  return null;
+};
+
+/**
+ * Validates swap transaction parameters
+ * Returns an error message if any validation fails
+ */
+export const validateSwapTransactionParams = (params: {
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  sourceAmount: string;
+  destinationAmount: string;
+  fee: string;
+  timeout: number;
+}): string | null => {
+  const {
+    sourceBalance,
+    destinationBalance,
+    sourceAmount,
+    destinationAmount,
+    fee,
+    timeout,
+  } = params;
+
+  // Validate amount is positive
+  if (Number(sourceAmount) <= 0) {
+    return t("transaction.errors.amountRequired");
+  }
+
+  // Validate destination amount is positive
+  if (Number(destinationAmount) <= 0) {
+    return t("transaction.errors.destinationAmountRequired");
+  }
+
+  // Validate fee is positive
+  if (Number(fee) <= 0) {
+    return t("transaction.errors.feeRequired");
+  }
+
+  // Validate timeout
+  if (timeout <= 0) {
+    return t("transaction.errors.timeoutRequired");
+  }
+
+  // Validate sufficient balance
+  const transactionAmount = new BigNumber(sourceAmount);
+  const balanceAmount = new BigNumber(sourceBalance.total);
+
+  if (transactionAmount.isGreaterThan(balanceAmount)) {
+    return t("transaction.errors.insufficientBalanceForSwap");
+  }
+
+  // Validate different assets
+  if (sourceBalance.id === destinationBalance.id) {
+    return t("transaction.errors.cannotSwapSameAsset");
   }
 
   return null;
@@ -331,27 +402,27 @@ export const buildPaymentTransaction = async (
   } = params;
 
   if (!senderAddress) {
-    throw new Error("Public key is required");
+    throw new Error(t("transaction.errors.publicKeyRequired"));
   }
 
   if (!destination) {
-    throw new Error("Recipient address is required");
+    throw new Error(t("transaction.errors.recipientAddressRequired"));
   }
 
   if (!balance) {
-    throw new Error("Selected balance not found");
+    throw new Error(t("transaction.errors.selectedBalanceNotFound"));
   }
 
   if (!fee) {
-    throw new Error("Transaction fee is required");
+    throw new Error(t("transaction.errors.transactionFeeRequired"));
   }
 
   if (!timeout) {
-    throw new Error("Transaction timeout is required");
+    throw new Error(t("transaction.errors.transactionTimeoutRequired"));
   }
 
   if (!currentNetwork) {
-    throw new Error("Network is required");
+    throw new Error(t("transaction.errors.networkRequired"));
   }
 
   try {
@@ -411,9 +482,7 @@ export const buildPaymentTransaction = async (
 
           // Validate minimum starting balance for account creation (1 XLM)
           if (new BigNumber(amount).isLessThan(1)) {
-            throw new Error(
-              "Minimum of 1 XLM required to create a new account",
-            );
+            throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
           }
         }
       }
@@ -469,5 +538,116 @@ export const buildPaymentTransaction = async (
     });
 
     throw new Error(`Failed to build transaction: ${errorMessage}`);
+  }
+};
+
+/**
+ * Builds a swap transaction using pathPaymentStrictSend operation
+ * This handles classic asset swaps via Stellar's built-in DEX
+ */
+export const buildSwapTransaction = async (
+  params: BuildSwapTransactionParams,
+): Promise<BuildPaymentTransactionResult> => {
+  const {
+    sourceAmount,
+    sourceBalance,
+    destinationBalance,
+    path,
+    destinationAmount,
+    destinationAmountMin,
+    transactionFee: fee,
+    transactionTimeout: timeout,
+    network: currentNetwork,
+    senderAddress,
+  } = params;
+
+  if (!senderAddress) {
+    throw new Error(t("transaction.errors.publicKeyRequired"));
+  }
+
+  if (!sourceBalance) {
+    throw new Error(t("transaction.errors.sourceBalanceNotFound"));
+  }
+
+  if (!destinationBalance) {
+    throw new Error(t("transaction.errors.destinationBalanceNotFound"));
+  }
+
+  if (!fee) {
+    throw new Error(t("transaction.errors.transactionFeeRequired"));
+  }
+
+  if (!timeout) {
+    throw new Error(t("transaction.errors.transactionTimeoutRequired"));
+  }
+
+  if (!currentNetwork) {
+    throw new Error(t("transaction.errors.networkRequired"));
+  }
+
+  try {
+    const validationError = validateSwapTransactionParams({
+      sourceBalance,
+      destinationBalance,
+      sourceAmount,
+      destinationAmount,
+      fee,
+      timeout,
+    });
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const networkDetails = mapNetworkToNetworkDetails(currentNetwork);
+    const server = stellarSdkServer(networkDetails.networkUrl);
+
+    // Load the source account
+    const sourceAccount = await server.loadAccount(senderAddress);
+
+    // Create transaction builder with validated parameters
+    const txBuilder = new TransactionBuilder(sourceAccount, {
+      fee: xlmToStroop(fee).toFixed(),
+      networkPassphrase: networkDetails.networkPassphrase,
+    });
+
+    // Get the asset objects
+    const sourceAsset = getAssetForPayment(sourceBalance);
+    const destAsset = getAssetForPayment(destinationBalance);
+
+    // Convert path strings to Asset objects
+    const pathAssets: Asset[] = path.map((pathItem) => {
+      if (pathItem === "native") {
+        return Asset.native();
+      }
+      const [code, issuer] = pathItem.split(":");
+      return new Asset(code, issuer);
+    });
+
+    // Build pathPaymentStrictSend operation
+    // For swaps, the destination is always the sender's own address
+    const swapOperation = Operation.pathPaymentStrictSend({
+      sendAsset: sourceAsset,
+      sendAmount: sourceAmount,
+      destination: senderAddress, // Key difference: send to self for swaps
+      destAsset,
+      destMin: destinationAmountMin,
+      path: pathAssets,
+    });
+
+    txBuilder.addOperation(swapOperation);
+    txBuilder.setTimeout(timeout);
+
+    // Build the transaction
+    const transaction = txBuilder.build();
+
+    return { tx: transaction, xdr: transaction.toXDR() };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("TransactionService", "Failed to build swap transaction", {
+      error: errorMessage,
+    });
+
+    throw new Error(`Failed to build swap transaction: ${errorMessage}`);
   }
 };

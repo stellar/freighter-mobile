@@ -18,7 +18,8 @@
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
     "error": "Error: {{errorMessage}}",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "review": "Review"
   },
   "home": {
     "title": "Home",
@@ -189,6 +190,7 @@
     "transactionHistory": {
       "transaction": "Transaction",
       "createAccount": "Create account",
+      "accountFunded": "Account funded",
       "addedTrustline": "Added trustline",
       "removedTrustline": "Removed trustline",
       "received": "Received",
@@ -326,6 +328,54 @@
     "suggestions": "Suggestions",
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address"
+  },
+  "swapScreen": {
+    "swapFrom": "Swap from",
+    "swapTo": "Swap to",
+    "title": "Swap",
+    "searchTokenInputPlaceholder": "Search token name or address",
+    "setMax": "Set max",
+    "receive": "Receive",
+    "chooseAsset": "Choose asset",
+    "selectAsset": "Select an asset",
+    "swapScreenTokenListTitle": "Your tokens",
+    "copyContractAddress": "Copy contract address",
+    "viewOnStellarExpert": "View on stellar.expert",
+    "menu": {
+      "fee": "Fee: {{fee}} XLM",
+      "timeout": "Timeout: {{timeout}}(s)",
+      "slippage": "Slippage: {{slippage}}%"
+    },
+    "review": {
+      "title": "You are swapping",
+      "wallet": "Wallet",
+      "minimum": "Minimum",
+      "rate": "Rate",
+      "fee": "Fee",
+      "xdr": "XDR",
+      "warning": "Make sure to review the transaction above, once you confirm it's irreversible"
+    },
+    "errors": {
+      "failedToSetupTransaction": "Failed to setup swap transaction",
+      "swapTransactionFailed": "Swap transaction failed",
+      "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
+      "noPathFound": "No path found between these assets"
+    }
+  },
+  "swapProcessingScreen": {
+    "swapping": "Swapping",
+    "swapped": "Swapped!",
+    "failed": "Failed",
+    "to": " to ",
+    "wasSwappedFor": " was swapped for ",
+    "couldNotBeSwappedFor": " could not be swapped for ",
+    "viewTransaction": "View transaction",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
+  },
+  "swapTransactionDetails": {
+    "swapped": "Swapped",
+    "conversionRate": "Conversion rate",
+    "minimumReceived": "Minimum received"
   },
   "transactionTokenScreen": {
     "title": "Sending"
@@ -515,5 +565,38 @@
     "title": "Your Recovery Phrase",
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
+  },
+  "slippageScreen": {
+    "title": "Allowed Slippage",
+    "customPlaceholder": "Custom %",
+    "setDefault": "Set default",
+    "errors": {
+      "customRequired": "Custom slippage is required",
+      "invalidNumber": "Invalid number",
+      "minSlippage": "Slippage must be at least {{min}}%",
+      "maxSlippage": "Slippage must be below {{max}}%"
+    }
+  },
+  "transaction": {
+    "errors": {
+      "amountRequired": "Source amount must be greater than 0",
+      "destinationAmountRequired": "Destination amount must be greater than 0",
+      "feeRequired": "Fee must be greater than 0",
+      "timeoutRequired": "Timeout must be greater than 0",
+      "insufficientBalance": "Insufficient balance",
+      "insufficientBalanceForSwap": "Insufficient balance for swap",
+      "cannotSwapSameAsset": "Cannot swap to the same asset",
+      "invalidRecipientAddress": "Invalid recipient address",
+      "cannotSendToSelf": "Cannot send to yourself",
+      "publicKeyRequired": "Public key is required",
+      "recipientAddressRequired": "Recipient address is required",
+      "selectedBalanceNotFound": "Selected balance not found",
+      "sourceBalanceNotFound": "Source balance not found",
+      "destinationBalanceNotFound": "Destination balance not found",
+      "transactionFeeRequired": "Transaction fee is required",
+      "transactionTimeoutRequired": "Transaction timeout is required",
+      "networkRequired": "Network is required",
+      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
+    }
   }
 }

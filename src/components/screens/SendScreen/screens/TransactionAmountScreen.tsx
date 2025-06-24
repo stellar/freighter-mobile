@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
@@ -16,7 +15,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { BASE_RESERVE } from "config/constants";
+import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -24,10 +23,10 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -35,8 +34,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
-import { getAccount } from "services/stellar";
+import { TouchableOpacity, View, Text as RNText } from "react-native";
 
 // Define amount error types
 enum AmountError {
@@ -86,7 +84,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
-  const [subentryCount, setSubentryCount] = useState(0);
 
   const navigateToSendScreen = () => {
     try {
@@ -106,60 +103,46 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
-  useEffect(() => {
-    const fetchSenderAccount = async () => {
-      if (publicKey && network) {
-        try {
-          const senderAccount = await getAccount(publicKey, network);
-          setSubentryCount(senderAccount?.subentry_count || 0);
-        } catch (error) {
-          logger.error(
-            "Failed to fetch sender account details:",
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      }
-    };
-
-    fetchSenderAccount();
-  }, [publicKey, network]);
-
   const {
     tokenAmount,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
     handleAmountChange,
-    handlePercentagePress,
+    setTokenAmount,
+    setFiatAmount,
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance) return BigNumber(0);
+    if (!selectedBalance || !account) return BigNumber(0);
 
-    if (
-      selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CREDIT_ALPHANUM4 &&
-      selectedBalance.assetType !==
-        AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
-    ) {
-      return BigNumber(selectedBalance.total);
+    return calculateSpendableAmount({
+      balance: selectedBalance,
+      subentryCount: account.subentryCount,
+      transactionFee,
+    });
+  }, [selectedBalance, account, transactionFee]);
+
+  const handlePercentagePress = (percentage: number) => {
+    if (!selectedBalance) return;
+
+    let targetAmount: BigNumber;
+
+    if (percentage === 100) {
+      targetAmount = spendableBalance;
+    } else {
+      const totalBalance = BigNumber(selectedBalance.total);
+      targetAmount = totalBalance.multipliedBy(percentage / 100);
     }
 
-    if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
-      return BigNumber(selectedBalance.total);
+    if (showFiatAmount) {
+      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
+      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
+      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
+    } else {
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
-
-    const currentBalance = BigNumber(selectedBalance.total);
-    const minBalance = BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
-    const calculatedSpendable = currentBalance
-      .minus(minBalance)
-      .minus(BigNumber(transactionFee));
-
-    return calculatedSpendable.isGreaterThan(0)
-      ? calculatedSpendable
-      : BigNumber(0);
-  }, [selectedBalance, subentryCount, transactionFee]);
+  };
 
   useEffect(() => {
     const currentTokenAmount = BigNumber(tokenAmount);
@@ -287,20 +270,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setIsProcessing(false);
     resetTransaction();
 
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-            state: {
-              index: 0,
-              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-            },
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with History tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            index: 0,
           },
-        ],
-      }),
-    );
+        },
+      ],
+    });
   };
 
   if (isProcessing) {
@@ -321,8 +303,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
             {showFiatAmount ? (
               <Display
-                md
+                xl
                 medium
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                minimumFontScale={0.6}
                 {...(Number(fiatAmount) > 0
                   ? { primary: true }
                   : { secondary: true })}
@@ -332,17 +317,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display
-                  md
+                  xl
                   medium
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  minimumFontScale={0.6}
                   {...(Number(tokenAmount) > 0
                     ? { primary: true }
                     : { secondary: true })}
                 >
-                  {tokenAmount}
+                  {tokenAmount}{" "}
+                  <RNText style={{ color: themeColors.text.secondary }}>
+                    {selectedBalance?.tokenCode}
+                  </RNText>
                 </Display>
-                <Text md medium secondary>
-                  {selectedBalance?.tokenCode}
-                </Text>
               </View>
             )}
             <View className="flex-row items-center justify-center">

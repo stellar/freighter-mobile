@@ -124,16 +124,13 @@ export const PaymentTransactionDetailsContent: React.FC<{
 
   return (
     <TransactionDetailsContent>
-      <View className="flex-row justify-between">
+      <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
             {formatAssetAmount(
               transactionDetails.paymentDetails?.amount ?? "",
               transactionDetails.paymentDetails?.assetCode ?? "",
             )}
-          </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
           </Text>
         </View>
         <AssetIcon
