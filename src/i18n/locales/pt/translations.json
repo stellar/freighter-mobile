@@ -460,6 +460,8 @@
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
+    "errorUnsupportedChain": "Rede não suportada",
+    "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
     "notAuthenticated": "Carteira bloqueada",
     "pleaseLoginToConnect": "Por favor, desbloqueie sua carteira para conectar a este dApp",
     "pleaseLoginToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
