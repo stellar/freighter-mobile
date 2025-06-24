@@ -8,14 +8,24 @@ import Config from "react-native-config";
 import { create } from "zustand";
 
 /** Project ID for WalletKit initialization */
-export const { WALLET_KIT_PROJECT_ID } = Config;
+export const {
+  WALLET_KIT_PROJECT_ID,
+  WALLET_KIT_MT_NAME,
+  WALLET_KIT_MT_DESCRIPTION,
+  WALLET_KIT_MT_URL,
+  WALLET_KIT_MT_ICON,
+  WALLET_KIT_MT_REDIRECT_NATIVE,
+} = Config;
 
 /** Metadata for the WalletKit instance */
 export const WALLET_KIT_METADATA = {
-  name: "Freighter",
-  description: "Freighter, a stellar wallet for everyone",
-  url: "https://freighter.app",
-  icons: ["https://stellar.creit.tech/wallet-icons/freighter.png"],
+  name: WALLET_KIT_MT_NAME,
+  description: WALLET_KIT_MT_DESCRIPTION,
+  url: WALLET_KIT_MT_URL,
+  icons: [WALLET_KIT_MT_ICON],
+  redirect: {
+    native: WALLET_KIT_MT_REDIRECT_NATIVE,
+  },
 };
 
 /**

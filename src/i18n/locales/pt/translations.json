@@ -17,12 +17,12 @@
     "remove": "Remover",
     "copied": "Copiado para a área de transferência!",
     "loading": "Carregando...",
-    "error": "Erro",
+    "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido"
   },
   "home": {
     "title": "Início",
-    "buy": "Comprar",
+    "buy": "Adicionar",
     "send": "Enviar",
     "swap": "Trocar",
     "copy": "Copiar",
@@ -161,7 +161,7 @@
     "inputPlaceholder": "Insira um URI do WalletConnect",
     "scanQRCode": "Scanear QR Code",
     "connect": "Conectar",
-    "pairingError": "Falha ao conectar",
+    "pairingError": "Falha ao parear",
     "invalidUriError": "Por favor, insira um URI válido",
     "disconnectAllSessions": "Desconectar de todos os aplicativos",
     "connectedDapps": "Aplicativos Conectados",
@@ -454,6 +454,8 @@
     "signingSuccessfull": "Transação assinada com sucesso!",
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
+    "errorPairing": "Falha ao parear com o dApp",
+    "errorNoUriParam": "Nenhum parâmetro URI encontrado no link",
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
@@ -480,9 +482,9 @@
     }
   },
   "buyXLMScreen": {
-    "title": "Comprar XLM",
+    "title": "Adicionar XLM",
     "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira. \n\nCompre facilmente com Coinbase ou MoonPay, ou envie XLM de outra carteira."
+      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
     },
     "actions": {
       "title": "Transferir de outra conta",
@@ -517,12 +519,5 @@
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
-  },
-  "tokenDetailsScreen": {
-    "sorobanToken": "Token Soroban",
-    "priceChange": "{{percentage}}%",
-    "balance": "Saldo",
-    "value": "Valor",
-    "listHeader": "Sua atividade de {{tokenName}}"
   }
 }

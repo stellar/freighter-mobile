@@ -17,12 +17,12 @@
     "remove": "Remove",
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
-    "error": "Error",
+    "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error"
   },
   "home": {
     "title": "Home",
-    "buy": "Buy",
+    "buy": "Add",
     "send": "Send",
     "swap": "Swap",
     "copy": "Copy",
@@ -84,9 +84,9 @@
     }
   },
   "buyXLMScreen": {
-    "title": "Buy XLM",
+    "title": "Add XLM",
     "bottomSheet": {
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet. \n\nBuy easily with Coinbase or MoonPay, or send XLM from another wallet."
+      "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
     },
     "actions": {
       "title": "Transfer from another account",
@@ -463,6 +463,8 @@
     "signingSuccessfull": "Transaction successfully signed!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
+    "errorPairing": "Failed to pair with dApp",
+    "errorNoUriParam": "No URI parameter found in the link",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
@@ -472,8 +474,8 @@
   "sendRecipient": {
     "error": {
       "invalidAddressFormat": "Invalid Stellar address format",
-      "sendToSelf": "Cannot send to yourself",
-      "sendToSelfFederation": "Cannot send to yourself (resolved federation address)",
+      "sendToSelf": "You can not send to yourself",
+      "sendToSelfFederation": "You can not send to yourself (resolved federation address)",
       "federationNotFound": "Federation address not found or resolution failed",
       "destinationAccountStatus": "Failed to check destination account status",
       "unexpectedSearchError": "An unexpected error occurred during search"

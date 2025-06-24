@@ -39,15 +39,15 @@ describe("Input", () => {
       });
     });
 
-    it("defaults to medium size", () => {
+    it("defaults to large size", () => {
       const { getByTestId } = renderWithProviders(
         <Input testID="test-input" value="" />,
       );
       const input = getByTestId("test-input");
 
       expect(input.props.style).toMatchObject({
-        fontSize: fsValue(14), // md size
-        height: pxValue(38), // lineHeight(20) + 3 * paddingVertical(6)
+        fontSize: fsValue(16), // lg size
+        height: pxValue(48), // lineHeight(24) + 3 * paddingVertical(8)
       });
     });
   });

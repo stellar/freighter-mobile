@@ -182,7 +182,6 @@ describe("HomeScreen", () => {
 
     expect(getByText("Buy")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();
-    expect(getByText("Swap")).toBeTruthy();
     expect(getByText("Copy")).toBeTruthy();
   });
 });

@@ -268,7 +268,7 @@ interface InputProps {
 export const Input = React.forwardRef<TextInput, InputProps>(
   (
     {
-      fieldSize = "md",
+      fieldSize = "lg",
       label,
       labelSuffix,
       isLabelUppercase,
