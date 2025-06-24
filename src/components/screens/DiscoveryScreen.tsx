@@ -51,6 +51,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const connectedDapps = useMemo(
     () =>
       Object.values(activeSessions).map((session) => ({
+        key: session.topic,
         icon: (
           <App
             appName={session.peer.metadata.name}
