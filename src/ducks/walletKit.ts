@@ -47,13 +47,6 @@ export enum StellarRpcMethods {
 }
 
 /**
- * Enum representing supported Stellar events
- */
-export enum StellarRpcEvents {
-  ACCOUNT_CHANGED = "accountChanged",
-}
-
-/**
  * Enum representing supported Stellar chains
  */
 export enum StellarRpcChains {

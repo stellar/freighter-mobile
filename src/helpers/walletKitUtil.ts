@@ -15,7 +15,6 @@ import { logger } from "config/logger";
 import {
   ActiveSessions,
   StellarRpcChains,
-  StellarRpcEvents,
   StellarRpcMethods,
   WALLET_KIT_METADATA,
   WALLET_KIT_PROJECT_ID,
@@ -31,15 +30,6 @@ const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
 ];
-
-/** Supported Stellar chains for WalletKit */
-const stellarNamespaceChains = [
-  StellarRpcChains.PUBLIC,
-  StellarRpcChains.TESTNET,
-];
-
-/** Supported Stellar events for WalletKit */
-const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNT_CHANGED];
 
 /** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
@@ -99,11 +89,13 @@ export const rejectSessionProposal = async ({
  */
 export const approveSessionProposal = async ({
   sessionProposal,
+  activeChains,
   activeAccounts,
   showToast,
   t,
 }: {
   sessionProposal: WalletKitSessionProposal;
+  activeChains: string[];
   activeAccounts: string[];
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
@@ -116,8 +108,8 @@ export const approveSessionProposal = async ({
       supportedNamespaces: {
         stellar: {
           methods: stellarNamespaceMethods,
-          chains: stellarNamespaceChains,
-          events: stellarNamespaceEvents,
+          chains: activeChains,
+          events: [],
           accounts: activeAccounts,
         },
       },
