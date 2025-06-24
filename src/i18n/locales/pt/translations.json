@@ -462,8 +462,9 @@
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
     "notAuthenticated": "Carteira bloqueada",
     "pleaseLoginToConnect": "Por favor, desbloqueie sua carteira para conectar a este dApp",
-    "pleaseLoginToSign": "Por favor, desbloqueie sua carteira para assinar esta transação",
-    "userNotAuthenticated": "Carteira bloqueada"
+    "pleaseLoginToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
+    "userNotAuthenticated": "Carteira bloqueada",
+    "connectionNotFound": "Conexão não encontrada. Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter"
   },
   "sendRecipient": {
     "error": {

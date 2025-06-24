@@ -215,7 +215,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
         rejectSessionRequest({
           sessionRequest,
-          message: t("walletKit.topicNotFound"),
+          message: t("walletKit.connectionNotFound"),
         });
 
         clearEvent();
@@ -225,7 +225,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
         showToast({
           title: t("walletKit.notAuthenticated"),
-          message: t("walletKit.pleaseLoginToSign"),
+          message: t("walletKit.pleaseLoginToSignTransaction"),
           variant: "error",
         });
 
