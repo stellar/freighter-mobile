@@ -135,8 +135,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     // public key (activeAccount) and network (activeChain)
     approveSessionProposal({
       sessionProposal: proposalEvent,
-      activeAccounts: [activeAccount],
-      activeChains: [activeChain],
+      activeAccount,
+      activeChain,
       showToast,
       t,
     }).finally(() => {

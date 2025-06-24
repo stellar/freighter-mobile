@@ -89,28 +89,60 @@ export const rejectSessionProposal = async ({
  */
 export const approveSessionProposal = async ({
   sessionProposal,
-  activeChains,
-  activeAccounts,
+  activeChain,
+  activeAccount,
   showToast,
   t,
 }: {
   sessionProposal: WalletKitSessionProposal;
-  activeChains: string[];
-  activeAccounts: string[];
+  activeChain: string;
+  activeAccount: string;
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
 }) => {
   const { id, params } = sessionProposal;
 
   try {
+    const proposalChains = [
+      ...(params.requiredNamespaces?.stellar?.chains || []),
+      ...(params.optionalNamespaces?.stellar?.chains || []),
+    ];
+
+    if (proposalChains.length === 0) {
+      showToast({
+        title: t("walletKit.errorUnsupportedChain"),
+        message: t("walletKit.errorUnsupportedChainMessage"),
+        variant: "error",
+      });
+
+      return;
+    }
+
+    if (!proposalChains.includes(activeChain)) {
+      const targetNetworkName =
+        proposalChains[0] === (StellarRpcChains.PUBLIC as string)
+          ? NETWORK_NAMES.PUBLIC
+          : NETWORK_NAMES.TESTNET;
+
+      showToast({
+        title: t("walletKit.errorWrongNetwork"),
+        message: t("walletKit.errorWrongNetworkMessage", {
+          targetNetworkName,
+        }),
+        variant: "error",
+      });
+
+      return;
+    }
+
     const approvedNamespaces = buildApprovedNamespaces({
       proposal: params,
       supportedNamespaces: {
         stellar: {
           methods: stellarNamespaceMethods,
-          chains: activeChains,
+          chains: [activeChain],
           events: [],
-          accounts: activeAccounts,
+          accounts: [activeAccount],
         },
       },
     });

@@ -469,6 +469,8 @@
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
     "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again",
+    "errorUnsupportedChain": "Unsupported Chain",
+    "errorUnsupportedChainMessage": "Please make sure the dApp you are trying to connect with supports the Stellar network",
     "notAuthenticated": "Wallet Locked",
     "pleaseLoginToConnect": "Please unlock your wallet to connect to this dApp",
     "pleaseLoginToSignTransaction": "Please unlock your wallet to sign this transaction",
