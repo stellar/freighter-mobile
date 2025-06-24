@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseWelcomeBannerProps {
   account: ActiveAccount | null;
-  hasZeroBalance: boolean;
+  isFunded: boolean;
 }
 
 interface UseWelcomeBannerReturn {
@@ -17,7 +17,7 @@ interface UseWelcomeBannerReturn {
 
 export const useWelcomeBanner = ({
   account,
-  hasZeroBalance,
+  isFunded,
 }: UseWelcomeBannerProps): UseWelcomeBannerReturn => {
   const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [bannerPresented, setBannerPresented] = useState(false);
@@ -34,7 +34,7 @@ export const useWelcomeBanner = ({
       );
 
       // Only show banner for unfunded accounts that haven't seen it before
-      if (!hasSeenWelcome && hasZeroBalance) {
+      if (!hasSeenWelcome && !isFunded) {
         // Set banner as presented immediately to prevent multiple presentations
         setBannerPresented(true);
         welcomeBannerBottomSheetModalRef.current?.present();
@@ -45,7 +45,7 @@ export const useWelcomeBanner = ({
     } catch (error) {
       logger.error("Error checking welcome banner status:", String(error));
     }
-  }, [account?.publicKey, bannerPresented, hasZeroBalance]);
+  }, [account?.publicKey, bannerPresented, isFunded]);
 
   useEffect(() => {
     checkWelcomeBannerStatus();

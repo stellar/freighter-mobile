@@ -120,26 +120,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
-  const { formattedBalance, rawBalance } = useTotalBalance();
+  const { formattedBalance } = useTotalBalance();
   const balances = useBalancesStore((state) => state.balances);
+  const isFunded = useBalancesStore((state) => state.isFunded);
 
   const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
-  const hasZeroBalance = useMemo(
-    () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
-    [rawBalance],
-  );
 
   const navigateToBuyXLM = useCallback(() => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
       screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
-      params: { isUnfunded: hasZeroBalance },
+      params: { isUnfunded: !isFunded },
     });
-  }, [navigation, hasZeroBalance]);
+  }, [navigation, isFunded]);
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
     useWelcomeBanner({
       account,
-      hasZeroBalance,
+      isFunded,
     });
 
   useEffect(() => {
@@ -320,7 +317,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <IconButton
             Icon={Icon.ArrowUp}
             title={t("home.send")}
-            disabled={hasZeroBalance}
+            disabled={!isFunded}
             onPress={() =>
               navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK)
             }

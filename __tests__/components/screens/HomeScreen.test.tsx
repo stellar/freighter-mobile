@@ -63,6 +63,7 @@ jest.mock("ducks/balances", () => ({
       balances: {},
       pricedBalances: {},
       isLoading: false,
+      isFunded: true,
       error: null,
       fetchAccountBalances: jest
         .fn()

@@ -22,7 +22,7 @@ const CustomContent: React.FC<{
   const { themeColors } = useColors();
 
   return (
-    <View className="gap-6">
+    <View className="gap-4">
       <View className="flex-row justify-between items-center">
         <View className="w-10 h-10 rounded-full items-center justify-center bg-gold-3 border border-gold-6">
           <Icon.Wallet01 size={24} themeColor="gold" />
@@ -32,9 +32,10 @@ const CustomContent: React.FC<{
         </TouchableOpacity>
       </View>
       <View>
-        <Text xl medium className="mb-4">
+        <Text xl medium>
           {t("welcomeBanner.welcomeMessage")}
         </Text>
+        <View className="h-4" />
         <View className="h-px mb-4 bg-border-primary" />
         <View className="mb-5">
           <Text md medium>
