@@ -20,7 +20,6 @@ export enum TransactionStatus {
 
 // Base interfaces for transaction details
 export interface CreateAccountDetailsType {
-  isCreatingExternalAccount: boolean;
   accountPublicKey: string;
   startingBalance: string;
 }
@@ -38,7 +37,7 @@ export interface SwapDetailsType {
 
 export interface PaymentDetailsType {
   assetCode: string;
-  assetIssuer: string;
+  assetIssuer?: string;
   assetType: string;
   amount: string;
   from: string;
