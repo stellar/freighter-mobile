@@ -106,7 +106,7 @@ interface WalletKitState {
   /** Map of active sessions */
   activeSessions: ActiveSessions;
   /** Function to fetch active sessions */
-  fetchActiveSessions: () => Promise<void>;
+  fetchActiveSessions: (publicKey: string, network: NETWORKS) => void;
   /** Function to disconnect all sessions */
   disconnectAllSessions: (
     publicKey?: string,
@@ -122,8 +122,8 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
   activeSessions: {},
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
-  fetchActiveSessions: async () => {
-    const activeSessions = await getActiveSessions();
+  fetchActiveSessions: (publicKey: string, network: NETWORKS) => {
+    const activeSessions = getActiveSessions(publicKey, network);
     set({ activeSessions });
   },
   disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {

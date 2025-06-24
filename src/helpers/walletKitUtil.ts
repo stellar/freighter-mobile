@@ -10,7 +10,7 @@ import {
   getSdkError,
   SdkErrorKey,
 } from "@walletconnect/utils";
-import { NETWORK_NAMES } from "config/constants";
+import { NETWORK_NAMES, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   ActiveSessions,
@@ -296,15 +296,45 @@ export const approveSessionRequest = async ({
 };
 
 /**
- * Retrieves all active WalletKit sessions
+ * Retrieves all active Wallet Connect sessions for a given public key and network
+ * @param {string} publicKey - The public key of the account to get sessions for
+ * @param {NETWORKS} network - The network to get sessions for
  * @returns {Promise<ActiveSessions>} A promise that resolves with the active sessions
  */
 // eslint-disable-next-line @typescript-eslint/require-await
-export const getActiveSessions = async () =>
-  walletKit.getActiveSessions() as ActiveSessions;
+export const getActiveSessions = (
+  publicKey: string,
+  network: NETWORKS,
+): ActiveSessions => {
+  const allActiveSessions = walletKit.getActiveSessions() as ActiveSessions;
+  const activeChain =
+    network === NETWORKS.PUBLIC
+      ? StellarRpcChains.PUBLIC
+      : StellarRpcChains.TESTNET;
+  const activeAccount = `${activeChain}:${publicKey}`;
+
+  // Let's get only the sessions related to the active account
+  const activeAccountSessions: ActiveSessions = Object.values(
+    allActiveSessions,
+  ).reduce((sessionsMap, session) => {
+    if (
+      session.namespaces.stellar.accounts.some(
+        (account) => account === activeAccount,
+      )
+    ) {
+      return {
+        ...sessionsMap,
+        [session.topic]: session,
+      };
+    }
+    return sessionsMap;
+  }, {} as ActiveSessions);
+
+  return activeAccountSessions;
+};
 
 /**
- * Disconnects all active WalletKit sessions for a given public key and network
+ * Disconnects all active Wallet Connect sessions for a given public key and network
  * If no public key or network is provided, it will disconnect all existing sessions
  * @param {string} publicKey - The public key of the account to disconnect sessions for
  * @param {NETWORKS} network - The network to disconnect sessions for
@@ -320,7 +350,7 @@ export const disconnectAllSessions = async (
     if (publicKey === undefined || network === undefined) {
       activeSessions = walletKit.getActiveSessions() as ActiveSessions;
     } else {
-      activeSessions = getActiveSessions(publicKey, network) as ActiveSessions;
+      activeSessions = getActiveSessions(publicKey, network);
     }
 
     await Promise.all(

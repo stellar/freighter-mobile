@@ -139,7 +139,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       t,
     }).finally(() => {
       handleClearDappConnection();
-      fetchActiveSessions();
+
+      // Fetch active sessions to display the new connection on the UI
+      fetchActiveSessions(publicKey, network);
     });
   };
 
