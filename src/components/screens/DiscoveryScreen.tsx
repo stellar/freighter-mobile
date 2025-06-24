@@ -9,11 +9,13 @@ import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { VISUAL_DELAY_MS } from "config/constants";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
 import { useWalletKitStore } from "ducks/walletKit";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
 import { TouchableOpacity, View, ScrollView } from "react-native";
 
@@ -26,6 +28,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
   const { activeSessions, disconnectAllSessions } = useWalletKitStore();
 
   const [isConnecting, setIsConnecting] = useState(false);
@@ -33,6 +37,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const [dappUri, setDappUri] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [error, setError] = useState("");
+
+  const publicKey = account?.publicKey || "";
 
   // Let's use a key string to avoid re-rendering the list when
   // any random property of the activeSessions objects is updated
@@ -98,7 +104,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleDisconnectAllSessions = async () => {
     setIsDisconnecting(true);
-    await disconnectAllSessions();
+    await disconnectAllSessions(publicKey, network);
 
     // Add a small delay for smooth UX
     setTimeout(() => {

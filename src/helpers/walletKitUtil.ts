@@ -304,26 +304,47 @@ export const getActiveSessions = async () =>
   walletKit.getActiveSessions() as ActiveSessions;
 
 /**
- * Disconnects all active WalletKit sessions
+ * Disconnects all active WalletKit sessions for a given public key and network
+ * If no public key or network is provided, it will disconnect all existing sessions
+ * @param {string} publicKey - The public key of the account to disconnect sessions for
+ * @param {NETWORKS} network - The network to disconnect sessions for
  * @returns {Promise<void>} A promise that resolves when all sessions are disconnected
  */
-export const disconnectAllSessions = async () => {
-  const activeSessions = await getActiveSessions();
+export const disconnectAllSessions = async (
+  publicKey?: string,
+  network?: NETWORKS,
+): Promise<void> => {
+  let activeSessions: ActiveSessions = {};
 
-  await Promise.all(
-    Object.values(activeSessions).map(async (activeSession) => {
-      try {
-        await walletKit.disconnectSession({
-          topic: activeSession.topic,
-          reason: getSdkError("USER_DISCONNECTED"),
-        });
-      } catch (error) {
-        logger.error(
-          "disconnectAllSessions",
-          "Failed to disconnect a session",
-          error,
-        );
-      }
-    }),
-  );
+  try {
+    if (publicKey === undefined || network === undefined) {
+      activeSessions = walletKit.getActiveSessions() as ActiveSessions;
+    } else {
+      activeSessions = getActiveSessions(publicKey, network) as ActiveSessions;
+    }
+
+    await Promise.all(
+      Object.values(activeSessions).map(async (activeSession) => {
+        try {
+          await walletKit.disconnectSession({
+            topic: activeSession.topic,
+            reason: getSdkError("USER_DISCONNECTED"),
+          });
+        } catch (error) {
+          logger.error(
+            "disconnectAllSessions",
+            "Failed to disconnect a session",
+            error,
+          );
+        }
+      }),
+    );
+  } catch (error) {
+    // Let's not block the user from logging out if this fails
+    logger.error(
+      "disconnectAllSessions",
+      `Failed to disconnect all sessions. publicKey: ${publicKey}, network: ${network}`,
+      error,
+    );
+  }
 };

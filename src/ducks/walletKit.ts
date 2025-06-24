@@ -1,5 +1,6 @@
 import { WalletKitTypes } from "@reown/walletkit";
 import { SessionTypes } from "@walletconnect/types";
+import { NETWORKS } from "config/constants";
 import {
   disconnectAllSessions,
   getActiveSessions,
@@ -107,7 +108,10 @@ interface WalletKitState {
   /** Function to fetch active sessions */
   fetchActiveSessions: () => Promise<void>;
   /** Function to disconnect all sessions */
-  disconnectAllSessions: () => Promise<void>;
+  disconnectAllSessions: (
+    publicKey?: string,
+    network?: NETWORKS,
+  ) => Promise<void>;
 }
 
 /**
@@ -122,8 +126,8 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
     const activeSessions = await getActiveSessions();
     set({ activeSessions });
   },
-  disconnectAllSessions: async () => {
-    await disconnectAllSessions();
+  disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {
+    await disconnectAllSessions(publicKey, network);
     set({ activeSessions: {} });
   },
 }));
