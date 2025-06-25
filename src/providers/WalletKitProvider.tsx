@@ -45,6 +45,8 @@ interface WalletKitProviderProps {
  * - Handles transaction signing requests
  * - Maintains active sessions
  * - Provides bottom sheet modals for user interactions
+ * - Validates authentication status before processing requests
+ * - Automatically rejects invalid or unauthorized requests
  *
  * @component
  * @param {WalletKitProviderProps} props - The component props
@@ -77,11 +79,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  /**
+   * Network details mapped from the current network configuration
+   * @type {NetworkDetails}
+   */
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
     [network],
   );
 
+  /**
+   * Active chain identifier for WalletConnect
+   * @type {StellarRpcChains}
+   */
   const activeChain = useMemo(
     () =>
       network === NETWORKS.PUBLIC
@@ -90,11 +100,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     [network],
   );
 
+  /**
+   * Active account identifier in WalletConnect format
+   * @type {string}
+   */
   const activeAccount = useMemo(
     () => `${activeChain}:${publicKey}`,
     [activeChain, publicKey],
   );
 
+  /**
+   * Clears the dApp connection bottom sheet and resets connection state
+   * @function handleClearDappConnection
+   * @returns {void}
+   */
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
 
@@ -105,6 +124,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }, 200);
   };
 
+  /**
+   * Clears the dApp request bottom sheet and resets signing state
+   * Also rejects the current request to prevent it from reappearing
+   * @function handleClearDappRequest
+   * @returns {void}
+   */
   const handleClearDappRequest = () => {
     dappRequestBottomSheetModalRef.current?.dismiss();
 
@@ -124,6 +149,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }, 200);
   };
 
+  /**
+   * Handles dApp connection approval
+   * Establishes a new WalletConnect session with the dApp
+   * @function handleDappConnection
+   * @returns {void}
+   */
   const handleDappConnection = () => {
     if (!proposalEvent) {
       return;
@@ -147,6 +178,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     });
   };
 
+  /**
+   * Handles dApp transaction request approval
+   * Signs the transaction and sends the response back to the dApp
+   * @function handleDappRequest
+   * @returns {void}
+   */
   const handleDappRequest = () => {
     if (!requestEvent) {
       return;
@@ -175,6 +212,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * - Session proposals: Validates authentication, shows dApp connection bottom sheet
    * - Session requests: Validates session exists and authentication, shows dApp transaction request bottom sheet
    * - Automatic rejection of invalid requests with appropriate error messages
+   * - Authentication state validation before processing any requests
    *
    * @dependencies activeSessions, event.type, authStatus
    */
@@ -182,6 +220,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
       const sessionProposal = event as WalletKitSessionProposal;
 
+      // Check if user is not authenticated
       if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
           title: t("walletKit.notAuthenticated"),
@@ -198,6 +237,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Check if wallet is locked
       if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
         showToast({
           title: t("walletKit.walletLocked"),
@@ -215,6 +255,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
       const sessionRequest = event as WalletKitSessionRequest;
 
+      // Check if user is not authenticated
       if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
           title: t("walletKit.notAuthenticated"),
@@ -231,6 +272,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Check if wallet is locked
       if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
         showToast({
           title: t("walletKit.walletLocked"),
@@ -245,6 +287,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Validate that the session exists
       if (!activeSessions[sessionRequest.topic]) {
         showToast({
           title: t("walletKit.connectionNotFound"),
@@ -276,6 +319,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   return (
     <View className="flex-1">
+      {/* Bottom sheet for dApp connection requests */}
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
@@ -292,6 +336,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           />
         }
       />
+
+      {/* Bottom sheet for dApp transaction requests */}
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
