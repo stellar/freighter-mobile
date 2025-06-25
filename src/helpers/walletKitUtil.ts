@@ -39,7 +39,7 @@ export let walletKit: IWalletKit;
  * Initializes the WalletKit instance with core configuration
  * @returns {Promise<void>} A promise that resolves when initialization is complete
  */
-export const createWalletKit = async () => {
+export const createWalletKit = async (): Promise<void> => {
   const core = new Core({
     projectId: WALLET_KIT_PROJECT_ID,
   });
