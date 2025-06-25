@@ -7,6 +7,7 @@ import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
+import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -29,7 +30,14 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTotalBalance } from "hooks/useTotalBalance";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useWelcomeBanner } from "hooks/useWelcomeBanner";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
 import styled from "styled-components/native";
 
@@ -113,13 +121,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { copyToClipboard } = useClipboard();
 
   const { formattedBalance, rawBalance } = useTotalBalance();
-  const balances = useBalancesStore((state) => state.balances);
+  const { balances, isFunded } = useBalancesStore();
 
   const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
   const hasZeroBalance = useMemo(
     () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
     [rawBalance],
   );
+
+  const navigateToBuyXLM = useCallback(() => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+      screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+      params: { isUnfunded: !isFunded },
+    });
+  }, [navigation, isFunded]);
+
+  const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
+    useWelcomeBanner({
+      account,
+      isFunded,
+    });
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -254,6 +275,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           />
         }
       />
+      <WelcomeBannerBottomSheet
+        modalRef={welcomeBannerBottomSheetModalRef}
+        onAddXLM={navigateToBuyXLM}
+        onDismiss={() => {
+          handleWelcomeBannerDismiss();
+        }}
+      />
       <HeaderContainer>
         <ContextMenuButton
           contextMenuProps={{
@@ -287,12 +315,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <IconButton
             Icon={Icon.Plus}
             title={t("home.buy")}
-            onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-                screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
-                params: { isUnfunded: hasZeroBalance },
-              })
-            }
+            onPress={navigateToBuyXLM}
           />
           <IconButton
             Icon={Icon.ArrowUp}

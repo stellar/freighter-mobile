@@ -611,5 +611,14 @@
       "networkRequired": "Rede é obrigatória",
       "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta"
     }
+  },
+  "welcomeBanner": {
+    "welcomeMessage": "Bem-vindo ao Freighter!",
+    "fundingText": "Para começar a usar esta conta, ",
+    "fundingText2": "financie-a com pelo menos 1 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
+    "addXLM": "Adicionar XLM",
+    "doThisLater": "Fazer isso depois"
   }
 }

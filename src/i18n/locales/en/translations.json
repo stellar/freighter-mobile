@@ -603,5 +603,14 @@
       "networkRequired": "Network is required",
       "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
     }
+  },
+  "welcomeBanner": {
+    "welcomeMessage": "Welcome to Freighter!",
+    "fundingText": "To start using this account, ",
+    "fundingText2": "fund it with at least 1 XLM.",
+    "minimumBalanceText": "Stellar accounts require a minimum balance of 1 XLM to ensure network security and prevent spam.",
+    "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
+    "addXLM": "Add XLM",
+    "doThisLater": "Do this later"
   }
 }
