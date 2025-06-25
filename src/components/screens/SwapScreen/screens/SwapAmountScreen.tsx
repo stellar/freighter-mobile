@@ -462,6 +462,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enablePanDownToClose={false}
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
+        disableAutomaticBottomPadding
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}

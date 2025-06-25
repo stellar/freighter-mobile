@@ -47,6 +47,7 @@ type BottomSheetProps = {
   enablePanDownToClose?: boolean;
   enableContentPanningGesture?: boolean;
   enableDynamicSizing?: boolean;
+  disableAutomaticBottomPadding?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -63,6 +64,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   enablePanDownToClose = true,
   enableContentPanningGesture = true,
   enableDynamicSizing = true,
+  disableAutomaticBottomPadding = false,
 }) => {
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : null;
@@ -108,9 +110,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
-          paddingBottom: calculateEdgeSpacing(insets.bottom, {
-            toNumber: true,
-          }) as number,
+          paddingBottom: disableAutomaticBottomPadding
+            ? 0
+            : (calculateEdgeSpacing(insets.bottom, {
+                toNumber: true,
+              }) as number),
         }}
         {...bottomSheetViewProps}
       >
