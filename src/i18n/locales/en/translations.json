@@ -521,11 +521,16 @@
     "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again",
     "errorUnsupportedChain": "Unsupported Chain",
     "errorUnsupportedChainMessage": "Please make sure the App you are trying to connect with supports the Stellar chain",
-    "notAuthenticated": "Wallet Locked",
-    "pleaseLoginToConnect": "Please unlock your wallet to connect to this App",
-    "pleaseLoginToSignTransaction": "Please unlock your wallet to sign this transaction",
-    "userNotAuthenticated": "Wallet is locked",
-    "connectionNotFound": "Connection not found. Please try creating a new connection or switch to another account which has the connection in your Freighter wallet"
+    "notAuthenticated": "Logged out",
+    "pleaseLoginToConnect": "Please log in to your wallet and try again to connect to this App",
+    "pleaseLoginToSignTransaction": "Please log in to your wallet and try again to sign this transaction",
+    "walletLocked": "Wallet Locked",
+    "pleaseUnlockToConnect": "Please unlock your wallet to connect to this App",
+    "pleaseUnlockToSignTransaction": "Please unlock your wallet to sign this transaction",
+    "connectionNotFound": "Connection not found",
+    "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Freighter wallet",
+    "walletIsLocked": "Wallet is locked",
+    "userNotAuthenticated": "User not authenticated"
   },
   "sendRecipient": {
     "error": {

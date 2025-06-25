@@ -121,6 +121,6 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
   },
   disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {
     await disconnectAllSessions(publicKey, network);
-    set({ activeSessions: {} });
+    set({ event: noneEvent, activeSessions: {} });
   },
 }));

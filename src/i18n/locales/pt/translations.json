@@ -510,11 +510,16 @@
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
     "errorUnsupportedChain": "Rede não suportada",
     "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
-    "notAuthenticated": "Carteira bloqueada",
-    "pleaseLoginToConnect": "Por favor, desbloqueie sua carteira para conectar a este dApp",
-    "pleaseLoginToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
-    "userNotAuthenticated": "Carteira bloqueada",
-    "connectionNotFound": "Conexão não encontrada. Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter"
+    "notAuthenticated": "Desconectado",
+    "pleaseLoginToConnect": "Por favor, entre na sua carteira e tente novamente para se conectar a este App",
+    "pleaseLoginToSignTransaction": "Por favor, entre na sua carteira e tente novamente para assinar esta transação",
+    "walletLocked": "Carteira bloqueada",
+    "pleaseUnlockToConnect": "Por favor, desbloqueie sua carteira para se conectar a este App",
+    "pleaseUnlockToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
+    "connectionNotFound": "Conexão não encontrada",
+    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
+    "walletIsLocked": "Carteira bloqueada",
+    "userNotAuthenticated": "Usuário não autenticado"
   },
   "sendRecipient": {
     "error": {

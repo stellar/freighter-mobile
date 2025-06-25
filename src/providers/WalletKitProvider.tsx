@@ -182,7 +182,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
       const sessionProposal = event as WalletKitSessionProposal;
 
-      if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
+      if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
           title: t("walletKit.notAuthenticated"),
           message: t("walletKit.pleaseLoginToConnect"),
@@ -198,6 +198,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        showToast({
+          title: t("walletKit.walletLocked"),
+          message: t("walletKit.pleaseUnlockToConnect"),
+          variant: "error",
+        });
+        return;
+      }
+
       handleClearDappRequest();
       setProposalEvent(sessionProposal);
       dappConnectionBottomSheetModalRef.current?.present();
@@ -206,23 +215,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
       const sessionRequest = event as WalletKitSessionRequest;
 
-      if (!activeSessions[sessionRequest.topic]) {
-        logger.debug(
-          "WalletKitProvider",
-          "Event topic not found in active sessions:",
-          sessionRequest.topic,
-        );
-
-        rejectSessionRequest({
-          sessionRequest,
-          message: t("walletKit.connectionNotFound"),
-        });
-
-        clearEvent();
-        return;
-      }
-
-      if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
+      if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
           title: t("walletKit.notAuthenticated"),
           message: t("walletKit.pleaseLoginToSignTransaction"),
@@ -232,6 +225,42 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         rejectSessionRequest({
           sessionRequest,
           message: t("walletKit.userNotAuthenticated"),
+        });
+
+        clearEvent();
+        return;
+      }
+
+      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        showToast({
+          title: t("walletKit.walletLocked"),
+          message: t("walletKit.pleaseUnlockToSignTransaction"),
+          variant: "error",
+        });
+        return;
+      }
+
+      // Wait for active sessions to be fetched
+      if (Object.keys(activeSessions).length === 0) {
+        return;
+      }
+
+      if (!activeSessions[sessionRequest.topic]) {
+        showToast({
+          title: t("walletKit.connectionNotFound"),
+          message: t("walletKit.connectionNotFoundMessage"),
+          variant: "error",
+        });
+
+        logger.debug(
+          "WalletKitProvider",
+          "Event topic not found in active sessions:",
+          sessionRequest.topic,
+        );
+
+        rejectSessionRequest({
+          sessionRequest,
+          message: `${t("walletKit.connectionNotFound")}. ${t("walletKit.connectionNotFoundMessage")}`,
         });
 
         clearEvent();
