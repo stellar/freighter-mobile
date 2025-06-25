@@ -85,15 +85,22 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
     try {
       await walletKit.pair({ uri });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t("discovery.pairingError"),
-      );
-    } finally {
+
       // Add a delay for a smooth UX while we wait for the bottom sheet to animate
       setTimeout(() => {
         setIsConnecting(false);
-      }, 4000);
+
+        // Consume the input value to clean the UI
+        setDappUri("");
+      }, 3000);
+    } catch (err) {
+      // Add a delay for a smooth UX to prevent UI flickering when displaying the error
+      setTimeout(() => {
+        setIsConnecting(false);
+        setError(
+          err instanceof Error ? err.message : t("discovery.pairingError"),
+        );
+      }, 1000);
     }
   };
 
