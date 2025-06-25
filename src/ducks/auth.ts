@@ -251,9 +251,9 @@ interface AuthActions {
  */
 type AuthStore = AuthState & AuthActions;
 
-// Initial state
-const initialState: AuthState = {
-  network: NETWORKS.TESTNET,
+// Initial state. We omit the network because we don't want to override its state
+// whenever the ...initialState is used.
+const initialState: Omit<AuthState, "network"> = {
   isLoading: false,
   isCreatingAccount: false,
   isRenamingAccount: false,
@@ -289,9 +289,9 @@ const initializeStore = async (
 
 /**
  * Key manager instance for handling cryptographic operations
- * We're using testnet as the default, but the same key manager can be used for mainnet as well
+ * We're using mainnet as the default, but the same key manager can be used for testnet as well
  */
-const keyManager = createKeyManager(Networks.TESTNET);
+const keyManager = createKeyManager(Networks.PUBLIC);
 
 /**
  * Checks if a hash key is expired
@@ -1375,6 +1375,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
   return {
     ...initialState,
+
+    // Default to PUBLIC network
+    network: NETWORKS.PUBLIC,
 
     /**
      * Logs out the user by clearing sensitive data
