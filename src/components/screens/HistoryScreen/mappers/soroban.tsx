@@ -182,7 +182,7 @@ const processSorobanMint = async ({
               type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
               code: token.symbol,
               issuer: {
-                key: "",
+                key: sorobanAttributes.contractId,
               },
             }}
             size="lg"
@@ -324,7 +324,7 @@ const processSorobanTransfer = async ({
       return historyItemData as HistoryItemData;
     }
 
-    const { symbol, decimals, name } = tokenDetailsResponse;
+    const { symbol, decimals } = tokenDetailsResponse;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
     const formattedTokenAmount = formatTokenAmount(
@@ -357,7 +357,7 @@ const processSorobanTransfer = async ({
           type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
           code: symbol,
           issuer: {
-            key: "",
+            key: sorobanAttributes.contractId,
           },
         }}
         size="lg"
@@ -371,7 +371,7 @@ const processSorobanTransfer = async ({
     );
 
     historyItemData.isAddingFunds = isRecipient;
-    historyItemData.rowText = isNative ? NATIVE_TOKEN_CODE : (name ?? symbol);
+    historyItemData.rowText = isNative ? NATIVE_TOKEN_CODE : symbol;
     historyItemData.actionText = isRecipient
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent");
@@ -583,7 +583,8 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
                   type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
                   code: contractSymbol,
                   issuer: {
-                    key: "",
+                    key:
+                      transactionDetails.contractDetails?.contractAddress ?? "",
                   },
                 }
           }
