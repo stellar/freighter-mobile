@@ -19,11 +19,12 @@ const CustomNavigationHeader = (
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
   const baseColor = themeColors.base[1];
+  const insetsTop = insets.top || pxValue(10);
 
   return (
     <View
       className="flex-row justify-between items-center px-6 pb-4 bg-background-primary"
-      style={{ paddingTop: insets.top + pxValue(DEFAULT_PADDING) }}
+      style={{ paddingTop: insetsTop + pxValue(DEFAULT_PADDING) }}
     >
       {options.headerLeft ? (
         options.headerLeft({
