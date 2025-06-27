@@ -1,58 +1,42 @@
 import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
-import Icon from "components/sds/Icon";
+import {
+  CustomHeaderButton,
+  DEFAULT_HEADER_BUTTON_SIZE,
+} from "components/layout/CustomHeaderButton";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
-import { isAndroid } from "helpers/device";
-import { calculateEdgeSpacing, px } from "helpers/dimensions";
+import { calculateEdgeSpacing } from "helpers/dimensions";
+import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity } from "react-native";
-import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
-import styled from "styled-components/native";
-
-interface StyledProps {
-  $insets: EdgeInsets;
-}
-
-const StyledContainer = styled.View<StyledProps>`
-  padding-top: ${({ $insets }: StyledProps) =>
-    calculateEdgeSpacing($insets.top)};
-  padding-left: ${px(24)};
-  padding-right: ${px(24)};
-  padding-bottom: ${px(16)};
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  background-color: ${THEME.colors.background.default};
-`;
-
-const HeaderRight = styled.View`
-  width: ${px(24)};
-  height: ${px(24)};
-`;
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const CustomNavigationHeader = (
   props: NativeStackHeaderProps | BottomTabHeaderProps,
 ) => {
   const { navigation, options } = props;
+  const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
+  const baseColor = themeColors.base[1];
 
   return (
-    <StyledContainer $insets={insets}>
+    <View
+      className="flex-row justify-between items-center px-6 pb-4 bg-background-primary"
+      style={{
+        paddingTop: calculateEdgeSpacing(insets.top, {
+          toNumber: true,
+        }) as number,
+      }}
+    >
       {options.headerLeft ? (
         options.headerLeft({
           canGoBack: navigation.canGoBack(),
-          tintColor: THEME.colors.base.secondary,
-          pressColor: THEME.colors.base.secondary,
+          tintColor: baseColor,
+          pressColor: baseColor,
           pressOpacity: 0.5,
         })
       ) : (
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          className={isAndroid ? "p-2" : undefined}
-        >
-          <Icon.ArrowLeft color={THEME.colors.base.secondary} />
-        </TouchableOpacity>
+        <CustomHeaderButton position="left" />
       )}
       {typeof options.headerTitle === "string" && (
         <Text md primary semiBold>
@@ -62,14 +46,15 @@ const CustomNavigationHeader = (
       {options.headerRight ? (
         options.headerRight({
           canGoBack: navigation.canGoBack(),
-          tintColor: THEME.colors.base.secondary,
-          pressColor: THEME.colors.base.secondary,
+          tintColor: baseColor,
+          pressColor: baseColor,
           pressOpacity: 0.5,
         })
       ) : (
-        <HeaderRight />
+        // Need to leave this empty view here to maintain the correct alignment of the header title
+        <View className={DEFAULT_HEADER_BUTTON_SIZE} />
       )}
-    </StyledContainer>
+    </View>
   );
 };
 
