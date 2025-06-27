@@ -136,6 +136,7 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
       className={className}
       hitSlop={hitSlop}
       disabled={!handlePress}
+      testID="header-button"
     >
       <IconComponent size={iconSize} color={baseColor} />
     </TouchableOpacity>

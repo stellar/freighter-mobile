@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const CustomNavigationHeader = (
   props: NativeStackHeaderProps | BottomTabHeaderProps,
 ) => {
-  const { navigation, options } = props;
+  const { navigation, options = {} } = props;
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
   const baseColor = themeColors.base[1];
