@@ -4,7 +4,6 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -19,7 +18,6 @@ const CustomContent: React.FC<{
   onDismiss: () => void;
 }> = ({ onAddXLM, onDismiss }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
 
   return (
     <View className="gap-4">

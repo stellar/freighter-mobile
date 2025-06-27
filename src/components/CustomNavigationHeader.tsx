@@ -5,7 +5,8 @@ import {
   DEFAULT_HEADER_BUTTON_SIZE,
 } from "components/layout/CustomHeaderButton";
 import { Text } from "components/sds/Typography";
-import { calculateEdgeSpacing } from "helpers/dimensions";
+import { DEFAULT_PADDING } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
@@ -22,11 +23,7 @@ const CustomNavigationHeader = (
   return (
     <View
       className="flex-row justify-between items-center px-6 pb-4 bg-background-primary"
-      style={{
-        paddingTop: calculateEdgeSpacing(insets.top, {
-          toNumber: true,
-        }) as number,
-      }}
+      style={{ paddingTop: pxValue(insets.top + DEFAULT_PADDING) }}
     >
       {options.headerLeft ? (
         options.headerLeft({
