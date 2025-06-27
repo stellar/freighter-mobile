@@ -1,5 +1,4 @@
 import { logos } from "assets/logos";
-import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
 import { Asset, AssetSize } from "components/sds/Asset";
 import { Text } from "components/sds/Typography";
 import {
@@ -118,6 +117,36 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
 
   // For Soroban custom tokens, use the Soroban logo
   if (token.type === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
+    const tokenIdentifier = getTokenIdentifier(token);
+    let icon = icons[tokenIdentifier];
+    let imageUrl = icon?.imageUrl || "";
+
+    if (!imageUrl) {
+      const matchingKey = Object.keys(icons).find((key) =>
+        key.startsWith(`${token.code}:`),
+      );
+      if (matchingKey) {
+        icon = icons[matchingKey];
+        imageUrl = icon?.imageUrl || "";
+      }
+    }
+
+    if (imageUrl) {
+      return (
+        <Asset
+          variant="single"
+          size={size}
+          sourceOne={{
+            image: imageUrl,
+            altText: `${token.code} token icon`,
+            backgroundColor,
+          }}
+        />
+      );
+    }
+
+    // Fallback: mostrar as iniciais do token
+    const tokenInitials = token.code.slice(0, 2);
     return (
       <Asset
         variant="single"
@@ -125,7 +154,11 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
         sourceOne={{
           altText: `${token.code} token icon`,
           backgroundColor,
-          renderContent: () => <SorobanAssetIcon />,
+          renderContent: () => (
+            <Text sm bold secondary>
+              {tokenInitials}
+            </Text>
+          ),
         }}
       />
     );
