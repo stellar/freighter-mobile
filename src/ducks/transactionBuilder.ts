@@ -1,12 +1,13 @@
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
   buildSwapTransaction,
-  prepareSorobanTransaction,
+  simulateContractTransfer,
 } from "services/transactionService";
 import { create } from "zustand";
 
@@ -110,11 +111,18 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           params.recipientAddress && isContractId(params.recipientAddress);
 
         // If sending to a contract, prepare (simulate) the transaction
-        if (isRecipientContract && params.network) {
+        if (isRecipientContract && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
-          finalXdr = await prepareSorobanTransaction({
-            tx: builtTxResult.tx,
+          finalXdr = await simulateContractTransfer({
+            transaction: builtTxResult.tx,
             networkDetails,
+            memo: params.transactionMemo || "",
+            params: {
+              publicKey: params.senderAddress,
+              destination: params.recipientAddress!,
+              amount: xlmToStroop(params.tokenAmount).toString(),
+            },
+            contractAddress: builtTxResult.contractId!,
           });
         } else {
           logger.warn(
@@ -266,14 +274,12 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         logger.error(
           "TransactionBuilderStore",
           "Failed to submit transaction",
-          { error: errorMessage },
+          {
+            error: errorMessage,
+          },
         );
 
-        set({
-          error: errorMessage,
-          isSubmitting: false,
-        });
-
+        set({ error: errorMessage, isSubmitting: false });
         return null;
       }
     },

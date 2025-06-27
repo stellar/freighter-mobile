@@ -1,5 +1,5 @@
 /* eslint-disable arrow-body-style */
-import { Horizon } from "@stellar/stellar-sdk";
+import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import {
   FREIGHTER_BACKEND_URL,
@@ -365,5 +365,41 @@ export const handleContractLookup = async (
       : AssetTypeWithCustomToken.CUSTOM_TOKEN,
     decimals: tokenDetails.decimals,
     name: tokenDetails.name,
+  };
+};
+
+export interface SimulateTokenTransferParams {
+  address: string;
+  publicKey: string;
+  memo: string;
+  fee?: string;
+  params: {
+    publicKey: string;
+    destination: string;
+    amount: string;
+  };
+  networkUrl: string;
+  networkPassphrase: string;
+}
+
+export interface SimulateTransactionResponse {
+  simulationResponse: unknown;
+  preparedTransaction: string;
+}
+
+export const simulateTokenTransfer = async (
+  params: SimulateTokenTransferParams,
+) => {
+  const { data } = await freighterBackend.post<SimulateTransactionResponse>(
+    "/simulate-token-transfer",
+    params,
+  );
+
+  return {
+    ...data,
+    preparedTx: TransactionBuilder.fromXDR(
+      data.preparedTransaction,
+      params.networkPassphrase,
+    ),
   };
 };

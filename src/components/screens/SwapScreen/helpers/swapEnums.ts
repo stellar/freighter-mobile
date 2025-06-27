@@ -3,7 +3,7 @@
  */
 export enum TransactionStatus {
   SUBMITTING = "submitting",
-  SUCCESS = "success", 
+  SUCCESS = "success",
   FAILED = "failed",
   PENDING = "pending",
 }
@@ -13,7 +13,7 @@ export enum TransactionStatus {
  */
 export enum SwapStatus {
   SWAPPING = "swapping",
-  SWAPPED = "swapped", 
+  SWAPPED = "swapped",
   FAILED = "failed",
 }
 
@@ -23,4 +23,4 @@ export enum SwapStatus {
 export enum SwapButtonAction {
   SELECT_ASSET = "selectAsset",
   REVIEW = "review",
-} 
+}
