@@ -39,19 +39,19 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     $backgroundColor};
   padding-top: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.top) return 0;
-    return pxValue($insets.top + DEFAULT_PADDING);
+    return $insets.top + pxValue(DEFAULT_PADDING);
   }}px;
   padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.right) return 0;
-    return $insets.right + DEFAULT_PADDING;
+    return $insets.right + pxValue(DEFAULT_PADDING);
   }}px;
   padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    return pxValue($insets.bottom + DEFAULT_PADDING);
+    return $insets.bottom + pxValue(DEFAULT_PADDING);
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.left) return 0;
-    return $insets.left + DEFAULT_PADDING;
+    return $insets.left + pxValue(DEFAULT_PADDING);
   }}px;
 `;
 

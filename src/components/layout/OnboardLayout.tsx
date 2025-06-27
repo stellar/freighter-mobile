@@ -33,7 +33,7 @@ const StyledContainer = styled.View<StyledProps>`
   padding-left: ${px(24)};
   padding-right: ${px(24)};
   padding-bottom: ${({ $insets }: StyledProps) =>
-    pxValue($insets.bottom + DEFAULT_PADDING)};
+    $insets.bottom + pxValue(DEFAULT_PADDING)}px;
   flex: 1;
   justify-content: space-between;
   background-color: ${THEME.colors.background.default};

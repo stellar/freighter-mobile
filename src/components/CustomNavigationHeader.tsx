@@ -23,7 +23,7 @@ const CustomNavigationHeader = (
   return (
     <View
       className="flex-row justify-between items-center px-6 pb-4 bg-background-primary"
-      style={{ paddingTop: pxValue(insets.top + DEFAULT_PADDING) }}
+      style={{ paddingTop: insets.top + pxValue(DEFAULT_PADDING) }}
     >
       {options.headerLeft ? (
         options.headerLeft({

@@ -109,7 +109,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
-          paddingBottom: pxValue(insets.bottom + DEFAULT_PADDING),
+          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
         }}
         {...bottomSheetViewProps}
       >
