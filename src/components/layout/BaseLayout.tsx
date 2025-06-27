@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
+import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";

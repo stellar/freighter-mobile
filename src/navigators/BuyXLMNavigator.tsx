@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import BuyXLMScreen from "components/screens/BuyXLMScreen";
 import Icon from "components/sds/Icon";

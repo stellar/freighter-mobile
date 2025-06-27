@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";

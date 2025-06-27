@@ -1,8 +1,8 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";

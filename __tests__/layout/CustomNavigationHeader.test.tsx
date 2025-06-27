@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
-import CustomNavigationHeader from "components/CustomNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { renderWithProviders } from "helpers/testUtils";

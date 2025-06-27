@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
+import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
