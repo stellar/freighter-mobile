@@ -19,7 +19,10 @@ const CustomNavigationHeader = (
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
   const baseColor = themeColors.base[1];
-  const insetsTop = insets.top || pxValue(10);
+
+  // In case insets.top is not available, let's ensure at least 44px of top
+  // padding to avoid touching issues related to the notch and the status bar
+  const insetsTop = insets.top || pxValue(44 - DEFAULT_PADDING);
 
   return (
     <View
