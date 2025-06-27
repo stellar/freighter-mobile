@@ -1,8 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import BuyXLMScreen from "components/screens/BuyXLMScreen";
+import Icon from "components/sds/Icon";
 import {
   BUY_XLM_ROUTES,
   BuyXLMStackParamList,
@@ -27,6 +29,7 @@ export const BuyXLMStackNavigator = () => {
         component={BuyXLMScreen}
         options={{
           headerTitle: t("buyXLMScreen.title"),
+          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <BuyXLMStack.Screen

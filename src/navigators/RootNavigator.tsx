@@ -2,10 +2,12 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import Icon from "components/sds/Icon";
 import {
   ManageAssetsStackParamList,
   ManageWalletsStackParamList,
@@ -124,6 +126,7 @@ export const RootNavigator = () => {
             options={{
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
         </RootStack.Group>

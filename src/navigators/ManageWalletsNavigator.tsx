@@ -1,9 +1,11 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import AddAnotherWalletScreen from "components/screens/AddAnotherWallet";
 import ImportSecretKeyScreen from "components/screens/ImportSecretKeyScreen";
 import VerifyPasswordScreen from "components/screens/VerifyPasswordScreen";
+import Icon from "components/sds/Icon";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
@@ -28,6 +30,7 @@ export const ManageWalletsStackNavigator = () => {
         component={AddAnotherWalletScreen}
         options={{
           headerTitle: t("addAnotherWalletScreen.title"),
+          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <ManageWalletsStack.Screen

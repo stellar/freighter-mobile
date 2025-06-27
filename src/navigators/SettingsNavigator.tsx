@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/CustomNavigationHeader";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";
@@ -9,6 +10,7 @@ import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
+import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -29,6 +31,7 @@ export const SettingsStackNavigator = () => {
         component={SettingsScreen}
         options={{
           headerTitle: t("settings.title"),
+          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <SettingsStack.Screen
