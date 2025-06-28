@@ -22,7 +22,7 @@ const CustomNavigationHeader = (
 
   // In case insets.top is not available, let's ensure at least 44px of top
   // padding to avoid touching issues related to the notch and the status bar
-  const insetsTop = insets.top || pxValue(44 - DEFAULT_PADDING);
+  const insetsTop = insets.top || pxValue(34 - DEFAULT_PADDING);
 
   return (
     <View
