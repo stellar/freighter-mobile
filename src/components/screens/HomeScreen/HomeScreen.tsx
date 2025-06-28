@@ -1,15 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import {
-  BottomTabScreenProps,
-  BottomTabHeaderProps,
-} from "@react-navigation/bottom-tabs";
-import { NativeStackHeaderProps } from "@react-navigation/native-stack";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
-import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
@@ -32,6 +26,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, {
@@ -41,7 +36,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
+import { Dimensions, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -71,6 +66,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [renameAccountModalVisible, setRenameAccountModalVisible] =
     useState(false);
   const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const connectedAppsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -83,6 +79,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
     [rawBalance],
   );
+
+  useHomeHeaders({
+    navigation,
+    hasAssets,
+    connectedAppsBottomSheetModalRef,
+  });
 
   const navigateToBuyXLM = useCallback(() => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
@@ -104,75 +106,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
     fetchAccounts();
   }, [getAllAccounts]);
-
-  const menuActions = useMemo(
-    () => [
-      {
-        title: t("home.actions.settings"),
-        systemIcon: Platform.select({
-          ios: "gear",
-          android: "baseline_settings",
-        }),
-        onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
-      },
-      ...(hasAssets
-        ? [
-            {
-              title: t("home.actions.manageAssets"),
-              systemIcon: Platform.select({
-                ios: "pencil",
-                android: "baseline_delete",
-              }),
-              onPress: () =>
-                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
-            },
-          ]
-        : []),
-      {
-        title: t("home.actions.myQRCode"),
-        systemIcon: Platform.select({
-          ios: "qrcode",
-          android: "outline_circle",
-        }),
-        onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-            showNavigationAsCloseButton: true,
-          }),
-      },
-    ],
-    [t, navigation, hasAssets],
-  );
-
-  // Memoize the header components to avoid ESLint warnings
-  // related to re-rendering issues
-  const HeaderComponent = useCallback(
-    (props: NativeStackHeaderProps | BottomTabHeaderProps) => (
-      <CustomNavigationHeader {...props} />
-    ),
-    [],
-  );
-
-  const HeaderLeftComponent = useCallback(
-    () => (
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: menuActions,
-        }}
-      >
-        <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
-      </ContextMenuButton>
-    ),
-    [menuActions, themeColors],
-  );
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      header: HeaderComponent,
-      headerLeft: HeaderLeftComponent,
-    });
-  }, [navigation, HeaderComponent, HeaderLeftComponent]);
 
   const handleCopyAddress = (publicKey?: string) => {
     if (!publicKey) return;
@@ -241,6 +174,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           handleWelcomeBannerDismiss();
         }}
       />
+      {/* TODO: move this to a ManageAccountBottomSheet component */}
       <BottomSheet
         snapPoints={["80%"]}
         modalRef={manageAccountBottomSheetModalRef}
