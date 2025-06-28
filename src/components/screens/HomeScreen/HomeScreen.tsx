@@ -1,10 +1,15 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabScreenProps,
+  BottomTabHeaderProps,
+} from "@react-navigation/bottom-tabs";
+import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import { BalancesList } from "components/BalancesList";
 import BottomSheet from "components/BottomSheet";
 import ContextMenuButton from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
@@ -100,40 +105,74 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     fetchAccounts();
   }, [getAllAccounts]);
 
-  const actions = [
-    {
-      title: t("home.actions.settings"),
-      systemIcon: Platform.select({
-        ios: "gear",
-        android: "baseline_settings",
-      }),
-      onPress: () => navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
-    },
-    ...(hasAssets
-      ? [
-          {
-            title: t("home.actions.manageAssets"),
-            systemIcon: Platform.select({
-              ios: "pencil",
-              android: "baseline_delete",
-            }),
-            onPress: () =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
-          },
-        ]
-      : []),
-    {
-      title: t("home.actions.myQRCode"),
-      systemIcon: Platform.select({
-        ios: "qrcode",
-        android: "outline_circle",
-      }),
-      onPress: () =>
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-          showNavigationAsCloseButton: true,
+  const menuActions = useMemo(
+    () => [
+      {
+        title: t("home.actions.settings"),
+        systemIcon: Platform.select({
+          ios: "gear",
+          android: "baseline_settings",
         }),
-    },
-  ];
+        onPress: () =>
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
+      },
+      ...(hasAssets
+        ? [
+            {
+              title: t("home.actions.manageAssets"),
+              systemIcon: Platform.select({
+                ios: "pencil",
+                android: "baseline_delete",
+              }),
+              onPress: () =>
+                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
+            },
+          ]
+        : []),
+      {
+        title: t("home.actions.myQRCode"),
+        systemIcon: Platform.select({
+          ios: "qrcode",
+          android: "outline_circle",
+        }),
+        onPress: () =>
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
+            showNavigationAsCloseButton: true,
+          }),
+      },
+    ],
+    [t, navigation, hasAssets],
+  );
+
+  // Memoize the header components to avoid ESLint warnings
+  // related to re-rendering issues
+  const HeaderComponent = useCallback(
+    (props: NativeStackHeaderProps | BottomTabHeaderProps) => (
+      <CustomNavigationHeader {...props} />
+    ),
+    [],
+  );
+
+  const HeaderLeftComponent = useCallback(
+    () => (
+      <ContextMenuButton
+        contextMenuProps={{
+          actions: menuActions,
+        }}
+      >
+        <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
+      </ContextMenuButton>
+    ),
+    [menuActions, themeColors],
+  );
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      header: HeaderComponent,
+      headerLeft: HeaderLeftComponent,
+    });
+  }, [navigation, HeaderComponent, HeaderLeftComponent]);
 
   const handleCopyAddress = (publicKey?: string) => {
     if (!publicKey) return;
@@ -194,7 +233,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout insets={{ bottom: false }}>
+    <BaseLayout insets={{ bottom: false, top: false }}>
       <WelcomeBannerBottomSheet
         modalRef={welcomeBannerBottomSheetModalRef}
         onAddXLM={navigateToBuyXLM}
@@ -232,15 +271,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         account={accountToRename!}
         isRenamingAccount={isRenamingAccount}
       />
-      <View className="flex-row justify-between items-center mb-4">
-        <ContextMenuButton
-          contextMenuProps={{
-            actions,
-          }}
-        >
-          <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
-        </ContextMenuButton>
-      </View>
 
       <View className="pt-8 w-full items-center">
         <View className="flex-col gap-3 items-center">
