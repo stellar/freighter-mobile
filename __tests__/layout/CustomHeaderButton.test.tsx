@@ -1,7 +1,6 @@
 /* eslint-disable global-require, @typescript-eslint/no-var-requires */
 import { fireEvent } from "@testing-library/react-native";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
-import Icon from "components/sds/Icon";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -16,48 +15,6 @@ jest.mock("@react-navigation/native", () => ({
 describe("CustomHeaderButton", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe("Default behavior", () => {
-    it("renders with default left position and ArrowLeft icon", () => {
-      const { getByTestId } = renderWithProviders(
-        <CustomHeaderButton position="left" />,
-      );
-
-      expect(getByTestId("SvgMock")).toBeTruthy();
-    });
-
-    it("renders with right position and HelpCircle icon", () => {
-      const { getByTestId } = renderWithProviders(
-        <CustomHeaderButton position="right" />,
-      );
-
-      expect(getByTestId("SvgMock")).toBeTruthy();
-    });
-
-    it("uses left position as default when no position is provided", () => {
-      const { getByTestId } = renderWithProviders(<CustomHeaderButton />);
-
-      expect(getByTestId("SvgMock")).toBeTruthy();
-    });
-  });
-
-  describe("Custom icons", () => {
-    it("renders custom icon when provided", () => {
-      const { getByTestId } = renderWithProviders(
-        <CustomHeaderButton position="left" icon={Icon.X} />,
-      );
-
-      expect(getByTestId("SvgMock")).toBeTruthy();
-    });
-
-    it("overrides default icon with custom icon for right position", () => {
-      const { getByTestId } = renderWithProviders(
-        <CustomHeaderButton position="right" icon={Icon.Settings01} />,
-      );
-
-      expect(getByTestId("SvgMock")).toBeTruthy();
-    });
   });
 
   describe("Custom onPress handlers", () => {

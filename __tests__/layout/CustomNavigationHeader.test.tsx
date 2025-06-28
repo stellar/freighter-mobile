@@ -113,7 +113,7 @@ describe("CustomNavigationHeader", () => {
       expect(getByText("Test Title")).toBeTruthy();
     });
 
-    it("renders with default left and right buttons when no custom buttons are provided", () => {
+    it("renders with default left button when no custom buttons are provided", () => {
       const props = createMockNavigationProps();
       const { getByTestId } = renderWithProviders(
         <CustomNavigationHeader {...props} />,
