@@ -9,8 +9,8 @@ import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect } from "react";
-import { Linking, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Linking, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -22,16 +22,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const appVersion = getAppVersion();
   const { themeColors } = useColors();
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, t, themeColors]);
 
   const handleLogout = () => {
     logout();

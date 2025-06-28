@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
+import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
-import { calculateEdgeSpacing } from "helpers/dimensions";
+import { pxValue } from "helpers/dimensions";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
@@ -39,19 +39,19 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     $backgroundColor};
   padding-top: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.top) return 0;
-    return calculateEdgeSpacing($insets.top, { toNumber: true });
+    return $insets.top + pxValue(DEFAULT_PADDING);
   }}px;
   padding-right: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.right) return 0;
-    return $insets.right + DEFAULT_PADDING;
+    return $insets.right + pxValue(DEFAULT_PADDING);
   }}px;
   padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    return calculateEdgeSpacing($insets.bottom, { toNumber: true });
+    return $insets.bottom + pxValue(DEFAULT_PADDING);
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.left) return 0;
-    return $insets.left + DEFAULT_PADDING;
+    return $insets.left + pxValue(DEFAULT_PADDING);
   }}px;
 `;
 

@@ -7,6 +7,7 @@ import {
 import { logos } from "assets/logos";
 import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -19,7 +20,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useEffect, useRef } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
 type AccountQRCodeScreenProps = NativeStackScreenProps<
@@ -41,24 +42,19 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   useEffect(() => {
     const options: NativeStackNavigationOptions = {
       headerRight: () => (
-        <TouchableOpacity
+        <CustomHeaderButton
+          position="right"
           onPress={() => bottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
+        />
       ),
     };
 
     if (showNavigationAsCloseButton) {
-      options.headerLeft = () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      );
+      options.headerLeft = () => <CustomHeaderButton icon={Icon.X} />;
     }
 
     navigation.setOptions(options);
-  }, [navigation, showNavigationAsCloseButton, themeColors]);
+  }, [navigation, showNavigationAsCloseButton]);
 
   return (
     <BaseLayout>

@@ -11,7 +11,7 @@ import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBanne
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -19,11 +19,9 @@ import {
   RootStackParamList,
   BUY_XLM_ROUTES,
 } from "config/routes";
-import { THEME } from "config/theme";
 import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
-import { px } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -39,7 +37,6 @@ import React, {
   useState,
 } from "react";
 import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
-import styled from "styled-components/native";
 
 const { width } = Dimensions.get("window");
 
@@ -50,53 +47,6 @@ type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
-
-/**
- * Header container for the home screen menu
- */
-const HeaderContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${DEFAULT_PADDING}px;
-`;
-
-const TopSection = styled.View`
-  padding-top: ${px(22)};
-  width: 100%;
-  align-items: center;
-`;
-
-/**
- * Container for account total and name
- */
-const AccountTotal = styled.View`
-  flex-direction: column;
-  gap: ${px(12)};
-  align-items: center;
-`;
-
-/**
- * Row containing action buttons
- */
-const ButtonsRow = styled.View`
-  flex-direction: row;
-  gap: ${px(24)};
-  align-items: center;
-  justify-content: center;
-  margin-vertical: ${px(32)};
-`;
-
-/**
- * Divider line between sections
- */
-const BorderLine = styled.View`
-  width: ${width}px;
-  margin-left: ${px(-24)};
-  border-bottom-width: ${px(1)};
-  border-bottom-color: ${THEME.colors.border.default};
-  margin-bottom: ${px(24)};
-`;
 
 /**
  * Home screen component displaying account information and balances
@@ -245,12 +195,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <BaseLayout insets={{ bottom: false }}>
-      <RenameAccountModal
-        modalVisible={renameAccountModalVisible}
-        setModalVisible={setRenameAccountModalVisible}
-        handleRenameAccount={handleRenameAccount}
-        account={accountToRename!}
-        isRenamingAccount={isRenamingAccount}
+      <WelcomeBannerBottomSheet
+        modalRef={welcomeBannerBottomSheetModalRef}
+        onAddXLM={navigateToBuyXLM}
+        onDismiss={() => {
+          handleWelcomeBannerDismiss();
+        }}
       />
       <BottomSheet
         snapPoints={["80%"]}
@@ -275,14 +225,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           />
         }
       />
-      <WelcomeBannerBottomSheet
-        modalRef={welcomeBannerBottomSheetModalRef}
-        onAddXLM={navigateToBuyXLM}
-        onDismiss={() => {
-          handleWelcomeBannerDismiss();
-        }}
+      <RenameAccountModal
+        modalVisible={renameAccountModalVisible}
+        setModalVisible={setRenameAccountModalVisible}
+        handleRenameAccount={handleRenameAccount}
+        account={accountToRename!}
+        isRenamingAccount={isRenamingAccount}
       />
-      <HeaderContainer>
+      <View className="flex-row justify-between items-center mb-4">
         <ContextMenuButton
           contextMenuProps={{
             actions,
@@ -290,10 +240,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         >
           <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
         </ContextMenuButton>
-      </HeaderContainer>
+      </View>
 
-      <TopSection>
-        <AccountTotal>
+      <View className="pt-8 w-full items-center">
+        <View className="flex-col gap-3 items-center">
           <TouchableOpacity
             onPress={() => manageAccountBottomSheetModalRef.current?.present()}
           >
@@ -309,9 +259,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Display lg medium>
             {formattedBalance}
           </Display>
-        </AccountTotal>
+        </View>
 
-        <ButtonsRow>
+        <View className="flex-row gap-6 items-center justify-center my-8">
           <IconButton
             Icon={Icon.Plus}
             title={t("home.buy")}
@@ -338,10 +288,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             title={t("home.copy")}
             onPress={() => handleCopyAddress(account?.publicKey)}
           />
-        </ButtonsRow>
-      </TopSection>
+        </View>
+      </View>
 
-      <BorderLine />
+      <View
+        className="border-b mb-6 -ml-6"
+        style={{
+          width,
+          borderBottomColor: themeColors.border.primary,
+        }}
+      />
 
       <BalancesList
         publicKey={account?.publicKey ?? ""}
