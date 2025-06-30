@@ -292,11 +292,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </View>
 
       <View
-        className="border-b mb-6 -ml-6"
-        style={{
-          width,
-          borderBottomColor: themeColors.border.primary,
-        }}
+        className="border-b mb-6 -ml-7 border-border-primary"
+        style={{ width }}
       />
 
       <BalancesList
