@@ -507,7 +507,19 @@
     "errorSigning": "Erro ao assinar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
-    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente"
+    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
+    "errorUnsupportedChain": "Rede não suportada",
+    "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
+    "notAuthenticated": "Desconectado",
+    "pleaseLoginToConnect": "Por favor, entre na sua carteira e tente novamente para se conectar a este App",
+    "pleaseLoginToSignTransaction": "Por favor, entre na sua carteira e tente novamente para assinar esta transação",
+    "walletLocked": "Carteira bloqueada",
+    "pleaseUnlockToConnect": "Por favor, desbloqueie sua carteira para se conectar a este App",
+    "pleaseUnlockToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
+    "connectionNotFound": "Conexão não encontrada",
+    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
+    "walletIsLocked": "Carteira bloqueada",
+    "userNotAuthenticated": "Usuário não autenticado"
   },
   "sendRecipient": {
     "error": {
@@ -599,5 +611,14 @@
       "networkRequired": "Rede é obrigatória",
       "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta"
     }
+  },
+  "welcomeBanner": {
+    "welcomeMessage": "Bem-vindo ao Freighter!",
+    "fundingText": "Para começar a usar esta conta, ",
+    "fundingText2": "financie-a com pelo menos 1 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
+    "addXLM": "Adicionar XLM",
+    "doThisLater": "Fazer isso depois"
   }
 }
