@@ -14,7 +14,7 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
       <View
-        className="h-[48px] max-xs:h-[40px] items-center justify-center rounded-[12px]"
+        className="h-[48px] max-xs:h-[36px] items-center justify-center rounded-[12px]"
         onTouchEnd={() => onPress(typeof content === "string" ? content : "")}
       >
         {typeof content === "string" ? (
@@ -29,23 +29,23 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   );
 
   return (
-    <View className="gap-[12px] max-xs:gap-[8px]">
-      <View className="flex-row gap-[12px] max-xs:gap-[8px]">
+    <View className="gap-[12px] max-xs:gap-[6px]">
+      <View className="flex-row gap-[12px] max-xs:gap-[6px]">
         {renderButton("1")}
         {renderButton("2")}
         {renderButton("3")}
       </View>
-      <View className="flex-row gap-[12px] max-xs:gap-[8px]">
+      <View className="flex-row gap-[12px] max-xs:gap-[6px]">
         {renderButton("4")}
         {renderButton("5")}
         {renderButton("6")}
       </View>
-      <View className="flex-row gap-[12px] max-xs:gap-[8px]">
+      <View className="flex-row gap-[12px] max-xs:gap-[6px]">
         {renderButton("7")}
         {renderButton("8")}
         {renderButton("9")}
       </View>
-      <View className="flex-row gap-[12px] max-xs:gap-[8px]">
+      <View className="flex-row gap-[12px] max-xs:gap-[6px]">
         {renderButton(".")}
         {renderButton("0")}
         {renderButton(

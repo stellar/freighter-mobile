@@ -300,7 +300,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px]">
-          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[32px] max-xs:py-[16px] px-[24px] max-xs:px-[16px] items-center">
             {showFiatAmount ? (
               <Display
                 xl
@@ -374,8 +374,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
         </View>
-        <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
+        <View className="flex-1 items-center mt-[24px] max-xs:mt-[16px] gap-[24px] max-xs:gap-[16px]">
+          <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
@@ -400,7 +400,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="w-full mt-auto mb-4">
+          <View className="w-full mt-auto mb-4 max-xs:mb-2">
             <Button
               tertiary
               xl
