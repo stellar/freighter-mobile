@@ -241,13 +241,10 @@ export const buildSorobanTransferOperation = (
   } = params;
 
   try {
-    // For native XLM tokens, use the native token contract
-    // For other tokens, use the destination as the contract (this might need adjustment based on your use case)
     const contractId = asset.isNative()
       ? getContractIdForNativeToken(network)
       : destinationAddress;
 
-    // Create a contract instance for the appropriate contract
     const contract = new Contract(contractId);
 
     const amountInStroops = xlmToStroop(amount).toString();
@@ -541,11 +538,11 @@ export const simulateContractTransfer = async ({
 
   const result = await simulateTokenTransfer({
     address: contractAddress,
-    publicKey: transaction.source,
+    pub_key: transaction.source,
     memo,
     params,
-    networkUrl: networkDetails.sorobanRpcUrl,
-    networkPassphrase: networkDetails.networkPassphrase,
+    network_url: networkDetails.sorobanRpcUrl,
+    network_passphrase: networkDetails.networkPassphrase,
   });
 
   return result.preparedTx.toXDR();

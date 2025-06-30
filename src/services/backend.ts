@@ -370,7 +370,7 @@ export const handleContractLookup = async (
 
 export interface SimulateTokenTransferParams {
   address: string;
-  publicKey: string;
+  pub_key: string;
   memo: string;
   fee?: string;
   params: {
@@ -378,8 +378,8 @@ export interface SimulateTokenTransferParams {
     destination: string;
     amount: string;
   };
-  networkUrl: string;
-  networkPassphrase: string;
+  network_url: string;
+  network_passphrase: string;
 }
 
 export interface SimulateTransactionResponse {
@@ -399,7 +399,7 @@ export const simulateTokenTransfer = async (
     ...data,
     preparedTx: TransactionBuilder.fromXDR(
       data.preparedTransaction,
-      params.networkPassphrase,
+      params.network_passphrase,
     ),
   };
 };
