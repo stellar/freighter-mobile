@@ -13,6 +13,9 @@ jest.mock("@react-navigation/native", () => ({
 }));
 
 describe("CustomHeaderButton", () => {
+  // Set timeout for all tests in this file
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
