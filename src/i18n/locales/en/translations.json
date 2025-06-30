@@ -506,5 +506,6 @@
     "title": "Your Recovery Phrase",
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
-  }
+  },
+  "tokenIconAlt": "{{code}} token icon"
 }

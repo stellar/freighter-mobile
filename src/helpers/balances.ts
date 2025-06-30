@@ -298,3 +298,15 @@ export const getAssetType = (
 
 export const isPublicKeyValid = (publicKey: string) =>
   StrKey.isValidEd25519PublicKey(publicKey);
+
+export function isSacContract(name: string): boolean {
+  if (!name || typeof name !== "string") return false;
+  const [code, issuer] = name.split(":");
+  if (!code || !issuer) return false;
+  return (
+    code.length >= 1 &&
+    code.length <= 12 &&
+    issuer.length === 56 &&
+    issuer.startsWith("G")
+  );
+}

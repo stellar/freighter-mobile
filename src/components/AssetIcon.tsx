@@ -1,4 +1,5 @@
 import { logos } from "assets/logos";
+import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
 import { Asset, AssetSize } from "components/sds/Asset";
 import { Text } from "components/sds/Typography";
 import {
@@ -10,6 +11,7 @@ import {
 import { useAssetIconsStore } from "ducks/assetIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
@@ -62,8 +64,9 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   backgroundColor,
 }) => {
   const icons = useAssetIconsStore((state) => state.icons);
+  const { t } = useTranslation();
 
-  // For liquidity pool tokens, display "LP" text
+  // Liquidity pool: show "LP" text
   if (isLiquidityPool(tokenProp as Balance)) {
     return (
       <Asset
@@ -71,7 +74,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
         size={size}
         sourceOne={{
           image: "",
-          altText: "Liquidity Pool icon",
+          altText: t("tokenIconAlt", { code: "LP" }),
           backgroundColor,
           renderContent: () => (
             <Text sm bold secondary>
@@ -85,6 +88,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
 
   let token: Token;
 
+  // Normalize token prop
   if ("contractId" in tokenProp) {
     token = {
       ...tokenProp,
@@ -100,7 +104,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
     token = tokenProp as Token;
   }
 
-  // For native XLM token, use the Stellar logo
+  // Native XLM: show Stellar logo
   if (token.type === AssetTypeWithCustomToken.NATIVE) {
     return (
       <Asset
@@ -108,29 +112,20 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
         size={size}
         sourceOne={{
           image: logos.stellar,
-          altText: "XLM token icon",
+          altText: t("tokenIconAlt", { code: "XLM" }),
           backgroundColor,
         }}
       />
     );
   }
 
-  // For Soroban custom tokens, use the Soroban logo
+  // Soroban custom tokens: show icon if available, otherwise SorobanAssetIcon
   if (token.type === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
     const tokenIdentifier = getTokenIdentifier(token);
-    let icon = icons[tokenIdentifier];
-    let imageUrl = icon?.imageUrl || "";
+    const icon = icons[tokenIdentifier];
+    const imageUrl = icon?.imageUrl || "";
 
-    if (!imageUrl) {
-      const matchingKey = Object.keys(icons).find((key) =>
-        key.startsWith(`${token.code}:`),
-      );
-      if (matchingKey) {
-        icon = icons[matchingKey];
-        imageUrl = icon?.imageUrl || "";
-      }
-    }
-
+    // If we have a specific icon, use it
     if (imageUrl) {
       return (
         <Asset
@@ -138,38 +133,32 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
           size={size}
           sourceOne={{
             image: imageUrl,
-            altText: `${token.code} token icon`,
+            altText: t("tokenIconAlt", { code: token.code }),
             backgroundColor,
           }}
         />
       );
     }
 
-    // Fallback: mostrar as iniciais do token
-    const tokenInitials = token.code.slice(0, 2);
+    // Fallback: show SorobanAssetIcon for Soroban custom tokens
     return (
       <Asset
         variant="single"
         size={size}
         sourceOne={{
-          altText: `${token.code} token icon`,
+          altText: t("tokenIconAlt", { code: token.code }),
           backgroundColor,
-          renderContent: () => (
-            <Text sm bold secondary>
-              {tokenInitials}
-            </Text>
-          ),
+          renderContent: () => <SorobanAssetIcon />,
         }}
       />
     );
   }
 
-  // For other tokens, get the icon URL from the store
+  // Classic assets (and SACs): show icon if available, otherwise show token initials
   const tokenIdentifier = getTokenIdentifier(token);
   const icon = icons[tokenIdentifier];
   const imageUrl = icon?.imageUrl || "";
 
-  // Fallback to initials if no image is available
   const tokenInitials = token.code.slice(0, 2);
   const renderContent = !imageUrl
     ? () => (
@@ -185,7 +174,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
       size={size}
       sourceOne={{
         image: imageUrl,
-        altText: `${token.code} token icon`,
+        altText: t("tokenIconAlt", { code: token.code }),
         backgroundColor,
         renderContent,
       }}

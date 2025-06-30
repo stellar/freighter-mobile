@@ -516,5 +516,6 @@
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
-  }
+  },
+  "tokenIconAlt": "ícone do token {{code}}"
 }
