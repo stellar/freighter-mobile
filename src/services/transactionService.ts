@@ -6,7 +6,7 @@ import {
   Transaction,
   TransactionBuilder,
   Address,
-  xdr,
+  nativeToScVal,
 } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
@@ -247,26 +247,11 @@ export const buildSorobanTransferOperation = (
 
     const contract = new Contract(contractId);
 
-    const amountInStroops = xlmToStroop(amount).toString();
-    const destinationAmount = new BigNumber(amountInStroops).isInteger()
-      ? xdr.ScVal.scvI128(
-          new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString(amountInStroops),
-            hi: xdr.Int64.fromString("0"),
-          }),
-        )
-      : xdr.ScVal.scvI128(
-          new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("0"),
-            hi: xdr.Int64.fromString("0"),
-          }),
-        );
-
     const transaction = contract.call(
       "transfer",
       new Address(sourceAccount).toScVal(),
       new Address(destinationAddress).toScVal(),
-      destinationAmount,
+      nativeToScVal(amount, { type: "i128" }),
     );
 
     transactionBuilder.addOperation(transaction);

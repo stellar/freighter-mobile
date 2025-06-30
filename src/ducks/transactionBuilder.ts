@@ -24,6 +24,7 @@ interface TransactionBuilderState {
   isSubmitting: boolean;
   transactionHash: string | null;
   error: string | null;
+  requestId: string | null;
 
   buildTransaction: (params: {
     tokenAmount: string;
@@ -73,7 +74,12 @@ const initialState: Omit<
   isSubmitting: false,
   transactionHash: null,
   error: null,
+  requestId: null,
 };
+
+// Unique id to correlate async responses to the latest request
+const createRequestId = () =>
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /**
  * Transaction Builder Store
@@ -88,7 +94,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * Builds a transaction and stores the XDR
      */
     buildTransaction: async (params) => {
-      set({ isBuilding: true, error: null });
+      // Tag this build cycle
+      const newRequestId = createRequestId();
+
+      // Mark new cycle and reset flags
+      set({ isBuilding: true, error: null, requestId: newRequestId });
 
       try {
         const builtTxResult = await buildPaymentTransaction({
@@ -131,12 +141,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
 
-        set({
-          transactionXDR: finalXdr,
-          isBuilding: false,
-          signedTransactionXDR: null,
-          transactionHash: null,
-        });
+        // Ignore if an even newer cycle started
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: finalXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
 
         return finalXdr;
       } catch (error) {
@@ -146,11 +159,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           error: errorMessage,
         });
 
-        set({
-          error: errorMessage,
-          isBuilding: false,
-          transactionXDR: null,
-        });
+        if (get().requestId === newRequestId) {
+          set({
+            error: errorMessage,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
 
         return null;
       }
@@ -160,7 +175,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * Builds a swap transaction and stores the XDR
      */
     buildSwapTransaction: async (params) => {
-      set({ isBuilding: true, error: null });
+      // Tag this build cycle
+      const newRequestId = createRequestId();
+
+      // Mark new cycle and reset flags
+      set({ isBuilding: true, error: null, requestId: newRequestId });
 
       try {
         const builtTxResult = await buildSwapTransaction({
@@ -183,12 +202,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
         const finalXdr = builtTxResult.xdr;
 
-        set({
-          transactionXDR: finalXdr,
-          isBuilding: false,
-          signedTransactionXDR: null,
-          transactionHash: null,
-        });
+        // Ignore if an even newer cycle started
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: finalXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
 
         return finalXdr;
       } catch (error) {
@@ -202,11 +224,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           },
         );
 
-        set({
-          error: errorMessage,
-          isBuilding: false,
-          transactionXDR: null,
-        });
+        if (get().requestId === newRequestId) {
+          set({
+            error: errorMessage,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
 
         return null;
       }
@@ -247,7 +271,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * Submits a transaction and stores the hash
      */
     submitTransaction: async (params) => {
-      set({ isSubmitting: true, error: null });
+      // Tag this submit cycle (reuse current id if exists)
+      const currentRequestId = get().requestId || createRequestId();
+      set({ isSubmitting: true, error: null, requestId: currentRequestId });
 
       try {
         const { signedTransactionXDR } = get();
@@ -262,10 +288,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         });
 
         const { hash } = result;
-        set({
-          transactionHash: hash,
-          isSubmitting: false,
-        });
+
+        // Ignore if another submit started later
+        if (get().requestId === currentRequestId) {
+          set({
+            transactionHash: hash,
+            isSubmitting: false,
+          });
+        }
 
         return hash;
       } catch (error) {
@@ -279,7 +309,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           },
         );
 
-        set({ error: errorMessage, isSubmitting: false });
+        if (get().requestId === currentRequestId) {
+          set({ error: errorMessage, isSubmitting: false });
+        }
+
         return null;
       }
     },
