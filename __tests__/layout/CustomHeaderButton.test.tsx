@@ -1,5 +1,5 @@
 /* eslint-disable global-require, @typescript-eslint/no-var-requires */
-import { fireEvent } from "@testing-library/react-native";
+import { userEvent } from "@testing-library/react-native";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -13,60 +13,55 @@ jest.mock("@react-navigation/native", () => ({
 }));
 
 describe("CustomHeaderButton", () => {
+  // Set timeout for all tests in this file
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe("Custom onPress handlers", () => {
-    it("calls custom onPress when provided for left position", () => {
+    it("calls custom onPress when provided for left position", async () => {
       const mockOnPress = jest.fn();
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="left" onPress={mockOnPress} />,
       );
 
-      const button = getByTestId("SvgMock").parent;
-      if (button) {
-        fireEvent.press(button);
-        expect(mockOnPress).toHaveBeenCalledTimes(1);
-        expect(mockGoBack).not.toHaveBeenCalled();
-      }
+      const button = getByTestId("header-button");
+      await userEvent.press(button);
+      expect(mockOnPress).toHaveBeenCalledTimes(1);
+      expect(mockGoBack).not.toHaveBeenCalled();
     });
 
-    it("calls custom onPress when provided for right position", () => {
+    it("calls custom onPress when provided for right position", async () => {
       const mockOnPress = jest.fn();
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="right" onPress={mockOnPress} />,
       );
 
-      const button = getByTestId("SvgMock").parent;
-      if (button) {
-        fireEvent.press(button);
-        expect(mockOnPress).toHaveBeenCalledTimes(1);
-      }
+      const button = getByTestId("header-button");
+      await userEvent.press(button);
+      expect(mockOnPress).toHaveBeenCalledTimes(1);
     });
 
-    it("calls navigation.goBack() when no custom onPress is provided for left position", () => {
+    it("calls navigation.goBack() when no custom onPress is provided for left position", async () => {
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="left" />,
       );
 
-      const button = getByTestId("SvgMock").parent;
-      if (button) {
-        fireEvent.press(button);
-        expect(mockGoBack).toHaveBeenCalledTimes(1);
-      }
+      const button = getByTestId("header-button");
+      await userEvent.press(button);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
     });
 
-    it("does not call any action when no custom onPress is provided for right position", () => {
+    it("does not call any action when no custom onPress is provided for right position", async () => {
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="right" />,
       );
 
-      const button = getByTestId("SvgMock").parent;
-      if (button) {
-        fireEvent.press(button);
-        expect(mockGoBack).not.toHaveBeenCalled();
-      }
+      const button = getByTestId("header-button");
+      await userEvent.press(button);
+      expect(mockGoBack).not.toHaveBeenCalled();
     });
   });
 
@@ -142,29 +137,29 @@ describe("CustomHeaderButton", () => {
   });
 
   describe("Button disabled state", () => {
-    it("disables button when no onPress is provided for right position", () => {
+    it("disables button when no onPress is provided for right position", async () => {
       const mockOnPress = jest.fn();
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="right" />,
       );
 
       const button = getByTestId("header-button");
-      fireEvent.press(button);
+      await userEvent.press(button);
       expect(mockOnPress).not.toHaveBeenCalled();
     });
 
-    it("enables button when onPress is provided for right position", () => {
+    it("enables button when onPress is provided for right position", async () => {
       const mockOnPress = jest.fn();
       const { getByTestId } = renderWithProviders(
         <CustomHeaderButton position="right" onPress={mockOnPress} />,
       );
 
       const button = getByTestId("header-button");
-      fireEvent.press(button);
+      await userEvent.press(button);
       expect(mockOnPress).toHaveBeenCalledTimes(1);
     });
 
-    it("enables button for left position with default goBack action", () => {
+    it("enables button for left position with default goBack action", async () => {
       jest
         .spyOn(require("@react-navigation/native"), "useNavigation")
         .mockReturnValue({ goBack: mockGoBack });
@@ -173,7 +168,7 @@ describe("CustomHeaderButton", () => {
       );
 
       const button = getByTestId("header-button");
-      fireEvent.press(button);
+      await userEvent.press(button);
       expect(mockGoBack).toHaveBeenCalledTimes(1);
     });
   });
