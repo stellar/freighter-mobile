@@ -17,7 +17,7 @@ import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { ReactNode } from "react";
-import { FlatList, Linking, RefreshControl } from "react-native";
+import { FlatList, Linking, RefreshControl, View } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -207,6 +207,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
       <FlatList
         testID="balances-list"
         showsVerticalScrollIndicator={false}
+        ListFooterComponent={<View className="h-10" />}
         data={balanceItems}
         renderItem={({ item }) => (
           <BalanceRow
