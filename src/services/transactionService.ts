@@ -11,6 +11,7 @@ import {
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
+  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -342,7 +343,9 @@ export const buildPaymentTransaction = async (
         : recipientAddress;
 
       const decimals =
-        "decimals" in selectedBalance ? selectedBalance.decimals : 7;
+        "decimals" in selectedBalance
+          ? selectedBalance.decimals
+          : DEFAULT_DECIMALS;
       const amountInBaseUnits = BigNumber(amount)
         .shiftedBy(decimals)
         .toFixed(0);
