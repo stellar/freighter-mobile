@@ -141,7 +141,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
 
-        // Ignore if an even newer cycle started
+        // Only update store if this build request is still the latest one.
+        // This prevents race conditions where a slow async response from
+        // an older transaction overwrites state from a newer one.
         if (get().requestId === newRequestId) {
           set({
             transactionXDR: finalXdr,
@@ -159,6 +161,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           error: errorMessage,
         });
 
+        // Only set error state if this build request is still current.
+        // Prevents stale error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {
           set({
             error: errorMessage,
@@ -202,7 +206,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
         const finalXdr = builtTxResult.xdr;
 
-        // Ignore if an even newer cycle started
+        // Only update store if this swap build is still the latest one.
+        // Prevents race conditions from concurrent swap transactions.
         if (get().requestId === newRequestId) {
           set({
             transactionXDR: finalXdr,
@@ -224,6 +229,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           },
         );
 
+        // Only set error state if this swap build is still current.
+        // Prevents stale swap error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {
           set({
             error: errorMessage,
@@ -289,7 +296,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         const { hash } = result;
 
-        // Ignore if another submit started later
+        // Only update with success if this submit is still the latest one.
+        // Guards against late responses from previous submits showing wrong hash.
         if (get().requestId === currentRequestId) {
           set({
             transactionHash: hash,
@@ -309,6 +317,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           },
         );
 
+        // Only set error state if this submit request is still current.
+        // Prevents stale submit error from affecting newer transaction flows.
         if (get().requestId === currentRequestId) {
           set({ error: errorMessage, isSubmitting: false });
         }
