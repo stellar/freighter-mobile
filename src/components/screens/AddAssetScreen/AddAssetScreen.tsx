@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import AddAssetBottomSheetContent from "components/screens/AddAssetScreen/AddAssetBottomSheetContent";
 import AssetItem from "components/screens/AddAssetScreen/AssetItem";
 import EmptyState from "components/screens/AddAssetScreen/EmptyState";
@@ -26,7 +27,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
 import React, { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -70,20 +71,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
       headerRight: () => (
-        <TouchableOpacity
+        <CustomHeaderButton
+          position="right"
           onPress={() => moreInfoBottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
+        />
       ),
     });
-  }, [navigation, t, themeColors]);
+  }, [navigation]);
 
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);

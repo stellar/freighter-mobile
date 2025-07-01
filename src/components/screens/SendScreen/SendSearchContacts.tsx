@@ -16,7 +16,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 type SendSearchContactsProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -99,16 +99,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, themeColors]);
 
   return (
     <BaseLayout insets={{ top: false }}>

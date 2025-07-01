@@ -8,7 +8,8 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { calculateEdgeSpacing } from "helpers/dimensions";
+import { DEFAULT_PADDING } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -112,9 +113,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         style={{
           paddingBottom: disableAutomaticBottomPadding
             ? 0
-            : (calculateEdgeSpacing(insets.bottom, {
-                toNumber: true,
-              }) as number),
+            : insets.bottom + pxValue(DEFAULT_PADDING),
         }}
         {...bottomSheetViewProps}
       >

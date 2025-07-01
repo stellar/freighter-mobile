@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ScrollableKeyboardView } from "components/ScrollableKeyboardView";
+import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
 import { PALETTE, THEME } from "config/theme";
-import { calculateEdgeSpacing, px } from "helpers/dimensions";
+import { px, pxValue } from "helpers/dimensions";
 import { t } from "i18next";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,7 +33,7 @@ const StyledContainer = styled.View<StyledProps>`
   padding-left: ${px(24)};
   padding-right: ${px(24)};
   padding-bottom: ${({ $insets }: StyledProps) =>
-    calculateEdgeSpacing($insets.bottom)};
+    $insets.bottom + pxValue(DEFAULT_PADDING)}px;
   flex: 1;
   justify-content: space-between;
   background-color: ${THEME.colors.background.default};
