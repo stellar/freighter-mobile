@@ -6,6 +6,9 @@ export default {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      screens: {
+        xs: "380px",
+      },
       colors: {
         primary: "var(--color-lilac-9)",
         secondary: "var(--color-gray-12)",

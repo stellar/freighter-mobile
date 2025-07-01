@@ -340,7 +340,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center py-[24px] px-6">
+        <View className="items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -364,7 +364,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         )}
 
-        <View className="gap-3 mt-[16px]">
+        <View className="gap-3 mt-[16px] max-xs:mt-[8px]">
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
@@ -409,8 +409,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="flex-1 justify-between mt-[24px]">
-          <View className="flex-row gap-[8px]">
+        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
+          <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
@@ -462,6 +462,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enablePanDownToClose={false}
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
+        useInsetsBottomPadding={false}
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}

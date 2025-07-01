@@ -35,7 +35,7 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <TokenSelectionContent
         onTokenPress={handleTokenPress}
         customTitle={t("swapScreen.swapScreenTokenListTitle")}
