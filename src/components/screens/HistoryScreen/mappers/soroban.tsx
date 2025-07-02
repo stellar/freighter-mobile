@@ -198,7 +198,8 @@ const processSorobanMint = async ({
           displayName = NATIVE_TOKEN_CODE;
           assetIconToken = {
             code: NATIVE_TOKEN_CODE,
-          } as any;
+            type: AssetTypeWithCustomToken.NATIVE,
+          };
         } else if (token.name && isSacContract(token.name)) {
           displayName = token.symbol; // Show only symbol for SACs
           assetIconToken = {
