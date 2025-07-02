@@ -99,9 +99,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         snapPoints={["80%"]}
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
-        bottomSheetModalProps={{
-          enablePanDownToClose: false,
-        }}
+        enablePanDownToClose={false}
         customContent={
           <ManageAccountBottomSheet
             handleCloseModal={handleCloseModal}

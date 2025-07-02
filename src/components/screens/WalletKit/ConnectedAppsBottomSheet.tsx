@@ -19,6 +19,9 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
+const PAIRING_SUCCESS_VISUALDELAY_MS = 3000;
+const PAIRING_ERROR_VISUALDELAY_MS = 1000;
+
 interface ConnectedAppsBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
   onDismiss: () => void;
@@ -94,7 +97,7 @@ const ConnectedAppsCustomContent: React.FC<{
 
         // Consume the input value to clean the UI
         setDappUri("");
-      }, 3000);
+      }, PAIRING_SUCCESS_VISUALDELAY_MS);
     } catch (err) {
       // Add a delay for a smooth UX to prevent UI flickering when displaying the error
       setTimeout(() => {
@@ -102,7 +105,7 @@ const ConnectedAppsCustomContent: React.FC<{
         setError(
           err instanceof Error ? err.message : t("connectedApps.pairingError"),
         );
-      }, 1000);
+      }, PAIRING_ERROR_VISUALDELAY_MS);
     }
   };
 
