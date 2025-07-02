@@ -92,7 +92,7 @@ export const useHomeHeaders = ({
           actions: menuActions,
         }}
       >
-        <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
+        <Icon.DotsHorizontal color={themeColors.base[1]} />
       </ContextMenuButton>
     ),
     [menuActions, themeColors],

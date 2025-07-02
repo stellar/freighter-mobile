@@ -2394,18 +2394,18 @@ export interface IconProps {
  *
  * @example Basic usage with direct color
  * ```tsx
- * <Icon.AlertTriangle size={24} color="#000000" />
+ * <Icon.AlertTriangle size={44} color="#000000" />
  * ```
  *
  * @example Using theme colors
  * ```tsx
- * <Icon.AlertTriangle size={24} themeColor="mint" />
+ * <Icon.AlertTriangle size={44} themeColor="mint" />
  * ```
  *
  * @example With themed background
  * ```tsx
  * <Icon.AlertTriangle
- *   size={24}
+ *   size={44}
  *   themeColor="mint"
  *   withBackground
  * />
@@ -2414,7 +2414,7 @@ export interface IconProps {
  * @example In a circle container
  * ```tsx
  * <Icon.AlertTriangle
- *   size={24}
+ *   size={44}
  *   themeColor="mint"
  *   circle
  * />

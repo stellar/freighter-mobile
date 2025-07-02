@@ -127,7 +127,7 @@ const ConnectedAppsCustomContent: React.FC<{
       <View className="flex-1">
         <View className="flex-row items-center w-full">
           <TouchableOpacity onPress={() => setShowScanner(false)}>
-            <Icon.ArrowLeft size={24} color={themeColors.base[1]} />
+            <Icon.ArrowLeft color={themeColors.base[1]} />
           </TouchableOpacity>
         </View>
 
@@ -142,7 +142,7 @@ const ConnectedAppsCustomContent: React.FC<{
     <View className="flex-1">
       <View className="flex-row items-center justify-between w-full">
         <TouchableOpacity onPress={onDismiss}>
-          <Icon.X size={24} color={themeColors.base[1]} />
+          <Icon.X color={themeColors.base[1]} />
         </TouchableOpacity>
 
         <Text md primary semiBold>
@@ -150,7 +150,7 @@ const ConnectedAppsCustomContent: React.FC<{
         </Text>
 
         {/* Adding this duplicate hidden icon here to help with title alignment */}
-        <Icon.X size={24} color="transparent" />
+        <Icon.X color="transparent" />
       </View>
 
       <View className="w-full mt-6 gap-4">

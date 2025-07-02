@@ -36,7 +36,7 @@ const SelectTokenBottomSheet: React.FC<SelectTokenBottomSheetProps> = ({
       <View className="relative flex-row items-center justify-center mb-8">
         {onClose && (
           <TouchableOpacity onPress={onClose} className="absolute left-0">
-            <Icon.X size={24} color={themeColors.base[1]} />
+            <Icon.X color={themeColors.base[1]} />
           </TouchableOpacity>
         )}
         <Text md medium semiBold>

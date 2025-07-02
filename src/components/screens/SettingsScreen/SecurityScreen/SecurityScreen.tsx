@@ -19,15 +19,13 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   const listItems = [
     {
-      icon: (
-        <Icon.FileLock02 size={24} color={themeColors.foreground.primary} />
-      ),
+      icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
       title: t("securityScreen.showRecoveryPhrase"),
       titleColor: themeColors.text.primary,
       onPress: () =>
         navigation.navigate(SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "show-recovery-phrase-button",
     },

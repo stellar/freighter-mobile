@@ -37,13 +37,13 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
     <View className="flex-1 justify-between items-center">
       <View className="flex-row items-center justify-between w-full">
         <TouchableOpacity onPress={handleCloseModal}>
-          <Icon.X size={24} color={themeColors.base[1]} />
+          <Icon.X color={themeColors.base[1]} />
         </TouchableOpacity>
         <Text md primary semiBold>
           {t("home.manageAccount.title")}
         </Text>
         <TouchableOpacity onPress={onPressAddAnotherWallet}>
-          <Icon.PlusCircle size={24} color={themeColors.base[1]} />
+          <Icon.PlusCircle color={themeColors.base[1]} />
         </TouchableOpacity>
       </View>
       <BottomSheetScrollView

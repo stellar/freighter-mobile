@@ -36,7 +36,7 @@ const NetworkSettingsScreen: React.FC<NetworkSettingsScreenProps> = ({
       <View className="flex flex-col gap-9 mt-3">
         <View className="flex flex-col gap-[16px] bg-background-secondary rounded-[16px] p-[16px]">
           <View className="flex flex-row items-center gap-2">
-            <Icon.Globe02 size={24} color={networkColors[selectedNetwork]} />
+            <Icon.Globe02 color={networkColors[selectedNetwork]} />
             <Text md semiBold>
               {NETWORK_NAMES[selectedNetwork]}
             </Text>

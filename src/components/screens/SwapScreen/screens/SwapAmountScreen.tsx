@@ -229,7 +229,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             actions: menuActions,
           }}
         >
-          <Icon.Settings04 size={24} color={themeColors.base[1]} />
+          <Icon.Settings04 color={themeColors.base[1]} />
         </ContextMenuButton>
       ),
     });

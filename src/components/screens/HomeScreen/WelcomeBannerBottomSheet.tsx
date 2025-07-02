@@ -23,10 +23,10 @@ const CustomContent: React.FC<{
     <View className="gap-4">
       <View className="flex-row justify-between items-center">
         <View className="w-10 h-10 rounded-full items-center justify-center bg-gold-3 border border-gold-6">
-          <Icon.Wallet01 size={24} themeColor="gold" />
+          <Icon.Wallet01 themeColor="gold" />
         </View>
         <TouchableOpacity onPress={onDismiss}>
-          <Icon.X size={24} themeColor="mint" />
+          <Icon.X themeColor="mint" />
         </TouchableOpacity>
       </View>
       <View>
