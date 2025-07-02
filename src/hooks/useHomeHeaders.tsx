@@ -84,7 +84,6 @@ export const useHomeHeaders = ({
     [],
   );
 
-  // TODO: fix ellipsis left margin
   const HeaderLeftComponent = useCallback(
     () => (
       <ContextMenuButton
