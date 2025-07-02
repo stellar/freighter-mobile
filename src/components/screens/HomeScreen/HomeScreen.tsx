@@ -5,6 +5,7 @@ import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
+import { ConnectedAppsBottomSheet } from "components/screens/WalletKit/ConnectedAppsBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -124,6 +125,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         onDismiss={() => {
           handleWelcomeBannerDismiss();
         }}
+      />
+      <ConnectedAppsBottomSheet
+        modalRef={connectedAppsBottomSheetModalRef}
+        onDismiss={() => connectedAppsBottomSheetModalRef.current?.dismiss()}
       />
       <ManageAccounts
         navigation={navigation}
