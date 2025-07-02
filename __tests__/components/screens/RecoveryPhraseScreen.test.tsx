@@ -6,6 +6,15 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
 import StellarHDWallet from "stellar-hd-wallet";
 
+// Mock the RecoveryPhraseSkipBottomSheet component
+jest.mock(
+  "components/screens/RecoveryPhraseSkipBottomSheet",
+  () =>
+    function MockRecoveryPhraseSkipBottomSheet() {
+      return null;
+    },
+);
+
 const mockCopyToClipboard = jest.fn();
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({
