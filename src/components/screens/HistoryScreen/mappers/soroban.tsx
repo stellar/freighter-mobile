@@ -205,6 +205,7 @@ const processSorobanMint = async ({
             code: token.symbol,
             issuer: { key: token.name.split(":")[1] },
             // No type for SACs (classic asset)
+            type: undefined,
           };
         } else {
           displayName = token.name ?? token.symbol; // Show name for Custom Tokens
