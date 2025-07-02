@@ -5,8 +5,8 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
@@ -14,11 +14,10 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
 import React, { useEffect, useRef } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -32,7 +31,6 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { themeColors } = useColors();
   const { handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -47,20 +45,14 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
 
   useEffect(() => {
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
       headerRight: () => (
-        <TouchableOpacity
+        <CustomHeaderButton
+          position="right"
           onPress={() => bottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
+        />
       ),
     });
-  }, [navigation, t, themeColors]);
+  }, [navigation]);
 
   return (
     <BaseLayout insets={{ top: false }}>

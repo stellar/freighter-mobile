@@ -1,13 +1,15 @@
 import { WalletKitTypes } from "@reown/walletkit";
 import { getSdkError } from "@walletconnect/utils";
 import { logger } from "config/logger";
+import { useAuthenticationStore } from "ducks/auth";
 import {
   useWalletKitStore,
   WALLET_KIT_MT_REDIRECT_NATIVE,
   WalletKitEventTypes,
 } from "ducks/walletKit";
-import { ERROR_TOAST_DURATION, walletKit } from "helpers/walletKitUtil";
+import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect } from "react";
 import { Linking } from "react-native";
@@ -25,9 +27,13 @@ import { Linking } from "react-native";
  * ```
  */
 export const useWalletKitEventsManager = (initialized: boolean) => {
+  const { network } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
   const { setEvent, fetchActiveSessions } = useWalletKitStore();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
+
+  const publicKey = account?.publicKey || "";
 
   const onSessionProposal = useCallback(
     (args: WalletKitTypes.SessionProposal) => {
@@ -63,7 +69,12 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
           reason: getSdkError("USER_DISCONNECTED"),
         })
         .finally(() => {
-          fetchActiveSessions();
+          // Since this is happening asynchronously inside an event listener we
+          // need to get account and network directly from the store to make
+          // sure we're not using stale data
+          const { account: storeAccount, network: storeNetwork } =
+            useAuthenticationStore.getState();
+          fetchActiveSessions(storeAccount?.publicKey || "", storeNetwork);
         });
     },
     [fetchActiveSessions],
@@ -87,7 +98,6 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
             errorMessage: t("walletKit.errorNoUriParam"),
           }),
           variant: "error",
-          duration: ERROR_TOAST_DURATION,
         });
         return;
       }
@@ -101,7 +111,6 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
               error instanceof Error ? error.message : t("common.unknownError"),
           }),
           variant: "error",
-          duration: ERROR_TOAST_DURATION,
         });
       });
     },
@@ -118,9 +127,6 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
       walletKit.on("session_proposal", onSessionProposal);
       walletKit.on("session_request", onSessionRequest);
       walletKit.on("session_delete", onSessionDelete);
-
-      // Fetch all active sessions
-      fetchActiveSessions();
 
       // Handle deep links when app is already running
       deepLinkSubscription = Linking.addEventListener("url", onDeepLink);
@@ -140,4 +146,12 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
     onDeepLink,
     fetchActiveSessions,
   ]);
+
+  useEffect(() => {
+    // Automatically fetch active sessions when the component mounts or
+    // when the public key or network changes
+    if (initialized && publicKey !== undefined) {
+      fetchActiveSessions(publicKey, network);
+    }
+  }, [initialized, network, publicKey, fetchActiveSessions]);
 };
