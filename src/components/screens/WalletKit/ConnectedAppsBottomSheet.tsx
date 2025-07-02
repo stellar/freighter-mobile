@@ -78,7 +78,7 @@ const ConnectedAppsCustomContent: React.FC<{
 
   const handleConnect = async (uri: string) => {
     if (!uri) {
-      setError(t("discovery.invalidUriError"));
+      setError(t("connectedApps.invalidUriError"));
       return;
     }
 
@@ -100,7 +100,7 @@ const ConnectedAppsCustomContent: React.FC<{
       setTimeout(() => {
         setIsConnecting(false);
         setError(
-          err instanceof Error ? err.message : t("discovery.pairingError"),
+          err instanceof Error ? err.message : t("connectedApps.pairingError"),
         );
       }, 1000);
     }
@@ -146,7 +146,7 @@ const ConnectedAppsCustomContent: React.FC<{
         </TouchableOpacity>
 
         <Text md primary semiBold>
-          {t("discovery.title")}
+          {t("connectedApps.title")}
         </Text>
 
         {/* Adding this duplicate hidden icon here to help with title alignment */}
@@ -155,7 +155,7 @@ const ConnectedAppsCustomContent: React.FC<{
 
       <View className="w-full mt-6 gap-4">
         <Input
-          placeholder={t("discovery.inputPlaceholder")}
+          placeholder={t("connectedApps.inputPlaceholder")}
           fieldSize="lg"
           value={dappUri}
           onChangeText={setDappUri}
@@ -181,7 +181,7 @@ const ConnectedAppsCustomContent: React.FC<{
           icon={<Icon.Scan />}
           iconPosition={IconPosition.LEFT}
         >
-          {t("discovery.scanQRCode")}
+          {t("connectedApps.scanQRCode")}
         </Button>
 
         <Button
@@ -201,13 +201,13 @@ const ConnectedAppsCustomContent: React.FC<{
           disabled={dappUri.length === 0}
           isLoading={isConnecting}
         >
-          {t("discovery.connect")}
+          {t("connectedApps.connect")}
         </Button>
       </View>
 
       <View className="mt-10 mb-4">
         <Text md primary semiBold>
-          {t("discovery.connectedDapps")}
+          {t("connectedApps.connectedDapps")}
         </Text>
       </View>
 
@@ -231,12 +231,12 @@ const ConnectedAppsCustomContent: React.FC<{
               iconPosition={IconPosition.LEFT}
               isLoading={isDisconnecting}
             >
-              {t("discovery.disconnectAllSessions")}
+              {t("connectedApps.disconnectAllSessions")}
             </Button>
           </>
         ) : (
           <Text sm secondary>
-            {t("discovery.noConnectedDapps")}
+            {t("connectedApps.noConnectedDapps")}
           </Text>
         )}
       </BottomSheetScrollView>
