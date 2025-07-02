@@ -4,7 +4,7 @@ import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
 import { DEFAULT_ICON_SIZE } from "config/constants";
 import useColors from "hooks/useColors";
-import React, { useEffect } from "react";
+import React, { useLayoutEffect, useCallback } from "react";
 
 /**
  * Hook to set up a right header button with CustomHeaderButton
@@ -47,8 +47,10 @@ export const useRightHeaderButton = ({
 }) => {
   const navigation = useNavigation();
 
-  useEffect(() => {
-    const HeaderRightComponent = () => (
+  // Memoize the header component outside of the useLayoutEffect to improve
+  // performance by preventing unnecessary re-creations of the header component.
+  const HeaderRightComponent = useCallback(
+    () => (
       <CustomHeaderButton
         position="right"
         onPress={onPress}
@@ -56,12 +58,17 @@ export const useRightHeaderButton = ({
         iconSize={iconSize}
         className={className}
       />
-    );
+    ),
+    [onPress, icon, iconSize, className],
+  );
 
+  // useLayoutEffect is the official recommended hook to use for setting up
+  // the navigation headers to prevent UI flickering.
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: HeaderRightComponent,
     });
-  }, [navigation, onPress, icon, iconSize, className]);
+  }, [navigation, HeaderRightComponent]);
 };
 
 /**
@@ -122,8 +129,10 @@ export const useRightHeaderMenu = ({
   // Default to themeColors.base[1] if no iconColor is provided
   const finalIconColor = iconColor || themeColors.base[1];
 
-  useEffect(() => {
-    const HeaderRightComponent = () => (
+  // Memoize the header component outside of the useLayoutEffect to improve
+  // performance by preventing unnecessary re-creations of the header component.
+  const HeaderRightComponent = useCallback(
+    () => (
       <ContextMenuButton
         contextMenuProps={{
           actions,
@@ -138,10 +147,15 @@ export const useRightHeaderMenu = ({
           <Icon.Settings04 size={DEFAULT_ICON_SIZE} color={finalIconColor} />
         )}
       </ContextMenuButton>
-    );
+    ),
+    [actions, icon, finalIconColor],
+  );
 
+  // useLayoutEffect is the official recommended hook to use for setting up
+  // the navigation headers to prevent UI flickering.
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: HeaderRightComponent,
     });
-  }, [navigation, actions, icon, finalIconColor]);
+  }, [navigation, HeaderRightComponent]);
 };

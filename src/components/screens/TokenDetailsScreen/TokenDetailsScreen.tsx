@@ -12,7 +12,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import useTokenDetails from "hooks/useTokenDetails";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { View } from "react-native";
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
@@ -50,7 +50,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: displayTitle,
     });

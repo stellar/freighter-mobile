@@ -19,7 +19,7 @@ import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
 const TransactionStatus = {
@@ -72,7 +72,7 @@ const TransactionProcessingScreen: React.FC<
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const isContractAddress = isContractId(recipientAddress);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
     });

@@ -16,7 +16,7 @@ import {
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useLayoutEffect, useMemo } from "react";
 import { Platform } from "react-native";
 
 interface UseHomeHeadersProps {
@@ -75,8 +75,8 @@ export const useHomeHeaders = ({
     [t, navigation, hasAssets],
   );
 
-  // Memoize the header components to avoid ESLint warnings
-  // related to re-rendering issues
+  // Memoize the header components outside of the useLayoutEffect to improve
+  // performance by preventing unnecessary re-creations of the header components.
   const HeaderComponent = useCallback(
     (props: NativeStackHeaderProps | BottomTabHeaderProps) => (
       <CustomNavigationHeader {...props} />
@@ -108,7 +108,9 @@ export const useHomeHeaders = ({
     [connectedAppsBottomSheetModalRef],
   );
 
-  useEffect(() => {
+  // useLayoutEffect is the official recommended hook to use for setting up
+  // the navigation headers to prevent UI flickering.
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: true,
       header: HeaderComponent,

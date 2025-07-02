@@ -17,7 +17,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
@@ -41,7 +41,9 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     onPress: () => bottomSheetModalRef.current?.present(),
   });
 
-  useEffect(() => {
+  // useLayoutEffect is the official recommended hook to use for setting up
+  // the navigation headers to prevent UI flickering.
+  useLayoutEffect(() => {
     if (showNavigationAsCloseButton) {
       navigation.setOptions({
         headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
