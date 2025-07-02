@@ -1,5 +1,7 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
+import RecoveryPhraseSkipBottomSheet from "components/screens/RecoveryPhraseSkipBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -79,6 +81,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { error, isLoading, signUp, clearError } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+  const skipModalRef = React.useRef<BottomSheetModal | null>(null);
 
   useEffect(() => {
     clearError?.();
@@ -86,7 +89,6 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;
-
     navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
       password,
       recoveryPhrase,
@@ -94,10 +96,15 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   };
 
   const handleSkip = () => {
+    skipModalRef.current?.present();
+  };
+
+  const handleConfirmSkip = () => {
     signUp({
       password,
       mnemonicPhrase: recoveryPhrase,
     });
+    skipModalRef.current?.close();
   };
 
   const handleCopy = useCallback(() => {
@@ -119,36 +126,43 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   }
 
   return (
-    <OnboardLayout
-      icon={<Icon.ShieldTick circle />}
-      title={t("recoveryPhraseScreen.title")}
-      isLoading={isLoading}
-      footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
-      footer={
-        <Footer
-          isLoading={isLoading}
-          onPressContinue={handleContinue}
-          onPressSkip={handleSkip}
-        />
-      }
-    >
-      <Text secondary md>
-        {t("recoveryPhraseScreen.warning")}
-      </Text>
-      <RecoveryPhraseContainer>
-        <RecoveryPhraseText primary md>
-          {recoveryPhrase}
-        </RecoveryPhraseText>
-      </RecoveryPhraseContainer>
-      <Button
-        secondary
-        lg
-        isFullWidth
-        onPress={handleCopy}
-        icon={<Icon.Copy01 size={16} color={PALETTE.dark.gray["09"]} />}
+    <>
+      <OnboardLayout
+        icon={<Icon.ShieldTick circle />}
+        title={t("recoveryPhraseScreen.title")}
+        isLoading={isLoading}
+        footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
+        footer={
+          <Footer
+            isLoading={isLoading}
+            onPressContinue={handleContinue}
+            onPressSkip={handleSkip}
+          />
+        }
       >
-        {t("recoveryPhraseScreen.copyButtonText")}
-      </Button>
-    </OnboardLayout>
+        <Text secondary md>
+          {t("recoveryPhraseScreen.warning")}
+        </Text>
+        <RecoveryPhraseContainer>
+          <RecoveryPhraseText primary md>
+            {recoveryPhrase}
+          </RecoveryPhraseText>
+        </RecoveryPhraseContainer>
+        <Button
+          secondary
+          lg
+          isFullWidth
+          onPress={handleCopy}
+          icon={<Icon.Copy01 size={16} color={PALETTE.dark.gray["09"]} />}
+        >
+          {t("recoveryPhraseScreen.copyButtonText")}
+        </Button>
+      </OnboardLayout>
+      <RecoveryPhraseSkipBottomSheet
+        modalRef={skipModalRef}
+        onConfirm={handleConfirmSkip}
+        onDismiss={() => skipModalRef.current?.close()}
+      />
+    </>
   );
 };

@@ -608,5 +608,13 @@
     "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
+  },
+  "recoverySkipModal": {
+    "title": "Tem certeza que deseja pular?",
+    "description1": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la.",
+    "description2": "Se você perder, não poderemos recuperar. Antes de adicionar grandes quantias, certifique-se de visualizar e salvar sua frase de recuperação em um local seguro acessando ",
+    "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
+    "confirm": "Entendi, continuar",
+    "cancel": "Voltar"
   }
 }
