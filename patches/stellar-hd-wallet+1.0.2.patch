@@ -1,0 +1,10 @@
+diff --git a/node_modules/stellar-hd-wallet/lib/stellar-hd-wallet.js b/node_modules/stellar-hd-wallet/lib/stellar-hd-wallet.js
+index 29f8ec0..84541ef 100644
+--- a/node_modules/stellar-hd-wallet/lib/stellar-hd-wallet.js
++++ b/node_modules/stellar-hd-wallet/lib/stellar-hd-wallet.js
+@@ -1,4 +1,4 @@
+-import bip39 from "bip39";
++import * as bip39 from "bip39";
+ import { derivePath } from "./hd-key.js";
+ import { Keypair } from "@stellar/stellar-base";
+ const ENTROPY_BITS = 256; // = 24 word mnemonic
