@@ -1,9 +1,7 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -32,6 +30,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 
@@ -221,19 +220,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [navigation, swapFee, swapSlippage, swapTimeout, t],
   );
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: menuActions,
-          }}
-        >
-          <Icon.Settings04 color={themeColors.base[1]} />
-        </ContextMenuButton>
-      ),
-    });
-  }, [navigation, menuActions, themeColors]);
+  useRightHeaderMenu({ actions: menuActions });
 
   const handleSelectDestinationToken = () => {
     selectTokenBottomSheetModalRef.current?.present();

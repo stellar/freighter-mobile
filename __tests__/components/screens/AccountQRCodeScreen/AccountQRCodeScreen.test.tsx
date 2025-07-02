@@ -15,6 +15,11 @@ jest.mock("react-native-gesture-handler", () => ({
   createNativeWrapper: jest.fn((component) => component),
 }));
 
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderButton: jest.fn(),
+  useRightHeaderMenu: jest.fn(),
+}));
+
 jest.mock("react-native-qrcode-svg", () => {
   const QRCode = () => mockView;
   QRCode.displayName = "QRCode";

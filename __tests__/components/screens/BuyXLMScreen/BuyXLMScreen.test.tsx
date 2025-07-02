@@ -19,6 +19,11 @@ jest.mock("react-native-gesture-handler", () => ({
   createNativeWrapper: jest.fn((component) => component),
 }));
 
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderButton: jest.fn(),
+  useRightHeaderMenu: jest.fn(),
+}));
+
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {

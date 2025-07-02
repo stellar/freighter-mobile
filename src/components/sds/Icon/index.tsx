@@ -1172,6 +1172,7 @@ import ZapSquare from "assets/icons/zap-square.svg";
 import Zap from "assets/icons/zap.svg";
 import ZoomIn from "assets/icons/zoom-in.svg";
 import ZoomOut from "assets/icons/zoom-out.svg";
+import { DEFAULT_ICON_SIZE } from "config/constants";
 import { THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
@@ -2422,7 +2423,7 @@ export interface IconProps {
  */
 const IconComponent: React.FC<IconProps> = ({
   name,
-  size = 24,
+  size = DEFAULT_ICON_SIZE,
   color = THEME.colors.primary,
   circle,
   testID,

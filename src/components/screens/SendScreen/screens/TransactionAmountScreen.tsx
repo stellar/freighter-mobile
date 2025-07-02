@@ -1,10 +1,8 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -32,6 +30,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
@@ -189,19 +188,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [t, navigation, transactionFee, transactionTimeout, transactionMemo],
   );
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: menuActions,
-          }}
-        >
-          <Icon.Settings04 color={themeColors.base[1]} />
-        </ContextMenuButton>
-      ),
-    });
-  }, [navigation, menuActions, themeColors]);
+  useRightHeaderMenu({ actions: menuActions });
 
   const handleOpenReview = async () => {
     try {

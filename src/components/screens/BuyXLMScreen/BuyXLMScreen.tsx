@@ -1,9 +1,7 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -12,7 +10,8 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useEffect, useRef } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type BuyXLMScreenProps = NativeStackScreenProps<
@@ -25,16 +24,9 @@ const BuyXLMScreen: React.FC<BuyXLMScreenProps> = ({ navigation, route }) => {
   const { isUnfunded } = route.params;
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <CustomHeaderButton
-          position="right"
-          onPress={() => bottomSheetModalRef.current?.present()}
-        />
-      ),
-    });
-  }, [navigation]);
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

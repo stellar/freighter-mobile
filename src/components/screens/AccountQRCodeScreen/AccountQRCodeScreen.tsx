@@ -1,9 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import {
-  NativeStackNavigationOptions,
-  NativeStackScreenProps,
-} from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { logos } from "assets/logos";
 import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -19,6 +16,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
@@ -39,21 +37,16 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   const { copyToClipboard } = useClipboard();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
+
   useEffect(() => {
-    const options: NativeStackNavigationOptions = {
-      headerRight: () => (
-        <CustomHeaderButton
-          position="right"
-          onPress={() => bottomSheetModalRef.current?.present()}
-        />
-      ),
-    };
-
     if (showNavigationAsCloseButton) {
-      options.headerLeft = () => <CustomHeaderButton icon={Icon.X} />;
+      navigation.setOptions({
+        headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+      });
     }
-
-    navigation.setOptions(options);
   }, [navigation, showNavigationAsCloseButton]);
 
   return (
