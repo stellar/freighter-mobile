@@ -182,10 +182,7 @@ jest.mock("@gorhom/bottom-sheet", () => {
 
   return {
     __esModule: true,
-    BottomSheetModalProvider: jest.fn(({ children }) => children),
-    BottomSheetModal: jest.fn(({ children }) => children),
-    BottomSheetView: jest.fn(({ children }) => children),
-    BottomSheetScrollView: jest.fn(({ children }) => children),
+    ...jest.requireActual("@gorhom/bottom-sheet"),
     useBottomSheetModal: () => mockBottomSheet,
     useBottomSheet: () => mockBottomSheet,
   };
