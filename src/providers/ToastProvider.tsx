@@ -50,7 +50,7 @@ const ToastWrapper = styled.View<ToastWrapperProps>`
   width: 100%;
   padding-top: ${({ $insets }: ToastWrapperProps) =>
     `${$insets.top + pxValue(16)}px`};
-  padding-horizontal: ${DEFAULT_PADDING}px;
+  padding-horizontal: ${pxValue(DEFAULT_PADDING)}px;
   gap: ${px(16)};
 `;
 
