@@ -1,6 +1,10 @@
 import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  NATIVE_TOKEN_CODE,
+  BASE_RESERVE,
+  MIN_TRANSACTION_FEE,
+} from "config/constants";
 import {
   Balance,
   LiquidityPoolBalance,
@@ -13,6 +17,24 @@ import {
   PricedBalance,
   AssetTypeWithCustomToken,
 } from "config/types";
+
+interface GetTokenPriceFromBalanceParams {
+  prices: TokenPricesMap;
+  balance: Balance;
+}
+
+interface CalculateSpendableAmountParams {
+  balance: Balance;
+  subentryCount?: number;
+  transactionFee?: string;
+}
+
+interface IsAmountSpendableParams {
+  amount: string;
+  balance: Balance;
+  subentryCount?: number;
+  transactionFee?: string;
+}
 
 /**
  * Gets the human-readable share code for a liquidity pool balance
@@ -161,8 +183,7 @@ export const getTokenIdentifiersFromBalances = (
  * to a token identifier, then retrieving the corresponding price data from the
  * prices map. It handles cases where the token might not exist in the prices map.
  *
- * @param {TokenPricesMap} prices - The prices map from usePricesStore()
- * @param {Balance} balance - Balance object to find the price for
+ * @param {GetTokenPriceFromBalanceParams} params - Object containing prices map and balance
  * @returns {TokenPrice | null} The price data or null if not found
  *
  * @example
@@ -170,7 +191,7 @@ export const getTokenIdentifiersFromBalances = (
  * const { prices } = usePricesStore();
  * const { balances } = useBalancesStore();
  * const nativeBalance = balances["native"];
- * const xlmPrice = getTokenPriceFromBalance(prices, nativeBalance);
+ * const xlmPrice = getTokenPriceFromBalance({ prices, balance: nativeBalance });
  *
  * // Use the price data
  * if (xlmPrice) {
@@ -178,10 +199,10 @@ export const getTokenIdentifiersFromBalances = (
  *   console.log(`24h change: ${xlmPrice.percentagePriceChange24h.toString()}%`);
  * }
  */
-export const getTokenPriceFromBalance = (
-  prices: TokenPricesMap,
-  balance: Balance,
-): TokenPrice | null => {
+export const getTokenPriceFromBalance = ({
+  prices,
+  balance,
+}: GetTokenPriceFromBalanceParams): TokenPrice | null => {
   const tokenId = getTokenIdentifier(balance);
   if (!tokenId) {
     return null; // Liquidity pools or unknown token types
@@ -298,6 +319,126 @@ export const getAssetType = (
 
 export const isPublicKeyValid = (publicKey: string) =>
   StrKey.isValidEd25519PublicKey(publicKey);
+
+/**
+ * Calculates the spendable amount for a given balance, considering minimum balance requirements
+ * for XLM. Transaction fees are only subtracted from XLM balances since fees are always paid in XLM.
+ *
+ * @param {CalculateSpendableAmountParams} params - Object containing balance, subentry count, and transaction fee
+ * @returns {BigNumber} The spendable amount after considering all constraints
+ *
+ * @example
+ * // Calculate spendable XLM amount (subtracts fee and minimum balance)
+ * const spendable = calculateSpendableAmount({ balance: xlmBalance, subentryCount: 5, transactionFee: "0.00001" });
+ *
+ * // Calculate spendable amount for other assets (no fee subtraction)
+ * const spendable = calculateSpendableAmount({ balance: usdcBalance });
+ */
+export const calculateSpendableAmount = ({
+  balance,
+  subentryCount = 0,
+  transactionFee = MIN_TRANSACTION_FEE,
+}: CalculateSpendableAmountParams): BigNumber => {
+  if (!balance) return new BigNumber(0);
+
+  const totalBalance = new BigNumber(balance.total);
+
+  // For liquidity pools, return total balance (no fee subtraction)
+  if (isLiquidityPool(balance)) {
+    return totalBalance;
+  }
+
+  // For non-native assets, return available balance or total balance
+  if ("token" in balance && balance.token.type !== "native") {
+    // Use available balance if present
+    const availableBalance =
+      "available" in balance ? new BigNumber(balance.available) : totalBalance;
+
+    return availableBalance;
+  }
+
+  // For XLM (native asset), consider minimum balance requirements and transaction fee
+  if ("token" in balance && balance.token.type === "native") {
+    const fee = new BigNumber(transactionFee);
+
+    // Calculate minimum balance: (2 + subentryCount) * BASE_RESERVE
+    const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
+      BASE_RESERVE,
+    );
+
+    // Calculate spendable: total - minimum balance - transaction fee
+    const spendableAmount = totalBalance.minus(minBalance).minus(fee);
+
+    // Ensure we don't go below zero
+    return BigNumber.max(spendableAmount, new BigNumber(0));
+  }
+
+  return totalBalance;
+};
+
+/**
+ * Validates if an amount exceeds the spendable balance
+ *
+ * @param {IsAmountSpendableParams} params - Object containing amount, balance, subentry count, and transaction fee
+ * @returns {boolean} True if amount is valid (doesn't exceed spendable), false otherwise
+ */
+export const isAmountSpendable = ({
+  amount,
+  balance,
+  subentryCount = 0,
+  transactionFee = "0.00001",
+}: IsAmountSpendableParams): boolean => {
+  const amountBN = new BigNumber(amount);
+  const spendableAmount = calculateSpendableAmount({
+    balance,
+    subentryCount,
+    transactionFee,
+  });
+
+  return amountBN.isLessThanOrEqualTo(spendableAmount);
+};
+
+/**
+ * Calculates the swap rate between two amounts with proper validation
+ *
+ * This function computes the conversion rate from source amount to destination amount
+ * using BigNumber for precision. It validates inputs and handles edge cases like
+ * zero amounts or invalid numbers.
+ *
+ * @param {string | number} sourceAmount - The source amount to convert from
+ * @param {string | number} destinationAmount - The destination amount to convert to
+ * @returns {string} The conversion rate as a string, or "0" if calculation fails
+ *
+ * @example
+ * // Calculate conversion rate
+ * const rate = calculateSwapRate("100", "150"); // Returns "1.5"
+ * const invalidRate = calculateSwapRate("0", "100"); // Returns "0"
+ */
+export const calculateSwapRate = (
+  sourceAmount: string | number,
+  destinationAmount: string | number,
+): string => {
+  const sourceAmountBN = new BigNumber(sourceAmount);
+  const destinationAmountBN = new BigNumber(destinationAmount);
+
+  // Validate input amounts
+  if (sourceAmountBN.isNaN() || destinationAmountBN.isNaN()) {
+    return "0";
+  }
+
+  if (sourceAmountBN.isZero()) {
+    return "0";
+  }
+
+  const rate = destinationAmountBN.dividedBy(sourceAmountBN);
+
+  // Validate the calculated rate
+  if (rate.isNaN() || !rate.isFinite()) {
+    return "0";
+  }
+
+  return rate.toString();
+};
 
 export function isSacContract(name: string): boolean {
   if (!name || typeof name !== "string") return false;

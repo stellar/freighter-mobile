@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
@@ -25,15 +24,16 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
-import React, { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef, useState } from "react";
+import { ScrollView, View } from "react-native";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
   typeof MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN
 >;
 
-const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
+const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
@@ -68,22 +68,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = ({ navigation }) => {
       onSuccess: resetPageState,
     });
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => moreInfoBottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, t, themeColors]);
+  useRightHeaderButton({
+    onPress: () => moreInfoBottomSheetModalRef.current?.present(),
+  });
 
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);

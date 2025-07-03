@@ -12,6 +12,7 @@ import {
   DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
   NETWORKS,
   SOROBAN_RPC_URLS,
 } from "config/constants";
@@ -19,6 +20,7 @@ import { logger } from "config/logger";
 import { NetworkCongestion } from "config/types";
 import { formatAssetIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
+import { getIsSwap } from "helpers/history";
 
 interface HorizonError {
   response: {
@@ -33,6 +35,16 @@ export interface TransactionDetail {
   successful: boolean;
   memo?: string;
   fee: string;
+  swapDetails?: {
+    sourceAssetCode: string;
+    sourceAssetIssuer: string;
+    destinationAssetCode: string;
+    destinationAssetIssuer: string;
+    sourceAssetType: string;
+    destinationAssetType: string;
+    sourceAmount: string;
+    destinationAmount: string;
+  };
 }
 
 export type BuildChangeTrustTxParams = {
@@ -210,10 +222,7 @@ export const getAccount = async (
 };
 
 /**
- * Retrieves transaction details from the Horizon API including the creation timestamp
- * @param transactionHash The hash of the transaction to look up
- * @param network The Stellar network to query
- * @returns Promise resolving to transaction details or null if not found
+ * Retrieves transaction details from the Horizon API including swap data parsing
  */
 export const getTransactionDetails = async (
   transactionHash: string,
@@ -236,6 +245,40 @@ export const getTransactionDetails = async (
       return null;
     }
 
+    const operations = await server
+      .operations()
+      .forTransaction(transactionHash)
+      .call();
+
+    const swapOperation = operations.records.find((operation) =>
+      getIsSwap(operation),
+    );
+
+    let swapDetails;
+    if (swapOperation) {
+      const operation = swapOperation as Horizon.ServerApi.OperationRecord & {
+        amount?: string;
+        asset_code?: string;
+        asset_issuer?: string;
+        source_asset_code?: string;
+        source_asset_issuer?: string;
+        source_amount?: string;
+        asset_type?: string;
+        source_asset_type?: string;
+      };
+
+      swapDetails = {
+        sourceAssetIssuer: operation.source_asset_issuer || "",
+        destinationAssetIssuer: operation.asset_issuer || "",
+        sourceAssetCode: operation.source_asset_code || NATIVE_TOKEN_CODE,
+        destinationAssetCode: operation.asset_code || NATIVE_TOKEN_CODE,
+        sourceAmount: operation.source_amount || "",
+        destinationAmount: operation.amount || "",
+        sourceAssetType: operation.source_asset_type || "native",
+        destinationAssetType: operation.asset_type || "native",
+      };
+    }
+
     return {
       id: transaction.id,
       hash: transaction.hash,
@@ -243,6 +286,7 @@ export const getTransactionDetails = async (
       successful: transaction.successful,
       memo: transaction.memo,
       fee: String(transaction.fee_charged),
+      swapDetails,
     };
   } catch (error) {
     logger.error(

@@ -9,8 +9,8 @@ import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect } from "react";
-import { Linking, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Linking, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -23,82 +23,63 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const appVersion = getAppVersion();
   const { themeColors } = useColors();
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, t, themeColors]);
-
   const handleLogout = () => {
     logout();
   };
 
   const midListItems = [
     {
-      icon: <Icon.Server05 size={24} color={themeColors.foreground.primary} />,
+      icon: <Icon.Server05 color={themeColors.foreground.primary} />,
       title: t("settings.network"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "change-network-button",
     },
     {
-      icon: <Icon.Shield01 size={24} color={themeColors.foreground.primary} />,
+      icon: <Icon.Shield01 color={themeColors.foreground.primary} />,
       title: t("settings.security"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.SECURITY_SCREEN),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "security-button",
     },
     {
-      icon: (
-        <Icon.LifeBuoy01 size={24} color={themeColors.foreground.primary} />
-      ),
+      icon: <Icon.LifeBuoy01 color={themeColors.foreground.primary} />,
       title: t("settings.help"),
       titleColor: themeColors.text.primary,
       onPress: () => Linking.openURL(`${FREIGHTER_BASE_URL}/faq`),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "help-button",
     },
     {
-      icon: (
-        <Icon.MessageAlertCircle
-          size={24}
-          color={themeColors.foreground.primary}
-        />
-      ),
+      icon: <Icon.MessageAlertCircle color={themeColors.foreground.primary} />,
       title: t("settings.feedback"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "share-feedback-button",
     },
     {
-      icon: (
-        <Icon.InfoCircle size={24} color={themeColors.foreground.primary} />
-      ),
+      icon: <Icon.InfoCircle color={themeColors.foreground.primary} />,
       title: t("settings.about"),
       titleColor: themeColors.text.primary,
       onPress: () => navigation.navigate(SETTINGS_ROUTES.ABOUT_SCREEN),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "about-button",
     },
     {
-      icon: <Icon.LogOut01 size={24} color={themeColors.status.error} />,
+      icon: <Icon.LogOut01 color={themeColors.status.error} />,
       title: t("settings.logout"),
       titleColor: themeColors.status.error,
       onPress: handleLogout,
@@ -108,7 +89,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const bottomListItems = [
     {
-      icon: <Icon.GitCommit size={24} color={themeColors.foreground.primary} />,
+      icon: <Icon.GitCommit color={themeColors.foreground.primary} />,
       title: t("settings.version", { version: appVersion }),
       testID: "update-button",
     },

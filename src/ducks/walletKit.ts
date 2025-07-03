@@ -1,5 +1,6 @@
 import { WalletKitTypes } from "@reown/walletkit";
 import { SessionTypes } from "@walletconnect/types";
+import { NETWORKS } from "config/constants";
 import {
   disconnectAllSessions,
   getActiveSessions,
@@ -8,14 +9,24 @@ import Config from "react-native-config";
 import { create } from "zustand";
 
 /** Project ID for WalletKit initialization */
-export const { WALLET_KIT_PROJECT_ID } = Config;
+export const {
+  WALLET_KIT_PROJECT_ID,
+  WALLET_KIT_MT_NAME,
+  WALLET_KIT_MT_DESCRIPTION,
+  WALLET_KIT_MT_URL,
+  WALLET_KIT_MT_ICON,
+  WALLET_KIT_MT_REDIRECT_NATIVE,
+} = Config;
 
 /** Metadata for the WalletKit instance */
 export const WALLET_KIT_METADATA = {
-  name: "Freighter",
-  description: "Freighter, a stellar wallet for everyone",
-  url: "https://freighter.app",
-  icons: ["https://stellar.creit.tech/wallet-icons/freighter.png"],
+  name: WALLET_KIT_MT_NAME,
+  description: WALLET_KIT_MT_DESCRIPTION,
+  url: WALLET_KIT_MT_URL,
+  icons: [WALLET_KIT_MT_ICON],
+  redirect: {
+    native: WALLET_KIT_MT_REDIRECT_NATIVE,
+  },
 };
 
 /**
@@ -33,13 +44,6 @@ export enum WalletKitEventTypes {
 export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
-}
-
-/**
- * Enum representing supported Stellar events
- */
-export enum StellarRpcEvents {
-  ACCOUNT_CHANGED = "accountChanged",
 }
 
 /**
@@ -95,9 +99,12 @@ interface WalletKitState {
   /** Map of active sessions */
   activeSessions: ActiveSessions;
   /** Function to fetch active sessions */
-  fetchActiveSessions: () => Promise<void>;
+  fetchActiveSessions: (publicKey: string, network: NETWORKS) => void;
   /** Function to disconnect all sessions */
-  disconnectAllSessions: () => Promise<void>;
+  disconnectAllSessions: (
+    publicKey?: string,
+    network?: NETWORKS,
+  ) => Promise<void>;
 }
 
 /**
@@ -108,12 +115,12 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
   activeSessions: {},
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
-  fetchActiveSessions: async () => {
-    const activeSessions = await getActiveSessions();
+  fetchActiveSessions: (publicKey: string, network: NETWORKS) => {
+    const activeSessions = getActiveSessions(publicKey, network);
     set({ activeSessions });
   },
-  disconnectAllSessions: async () => {
-    await disconnectAllSessions();
-    set({ activeSessions: {} });
+  disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {
+    await disconnectAllSessions(publicKey, network);
+    set({ event: noneEvent, activeSessions: {} });
   },
 }));

@@ -1,11 +1,8 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CommonActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -16,7 +13,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { BASE_RESERVE } from "config/constants";
+import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -24,19 +21,19 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
-import { getAccount } from "services/stellar";
+import { TouchableOpacity, View, Text as RNText } from "react-native";
 
 // Define amount error types
 enum AmountError {
@@ -86,7 +83,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
-  const [subentryCount, setSubentryCount] = useState(0);
 
   const navigateToSendScreen = () => {
     try {
@@ -106,60 +102,46 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
-  useEffect(() => {
-    const fetchSenderAccount = async () => {
-      if (publicKey && network) {
-        try {
-          const senderAccount = await getAccount(publicKey, network);
-          setSubentryCount(senderAccount?.subentry_count || 0);
-        } catch (error) {
-          logger.error(
-            "Failed to fetch sender account details:",
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      }
-    };
-
-    fetchSenderAccount();
-  }, [publicKey, network]);
-
   const {
     tokenAmount,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
     handleAmountChange,
-    handlePercentagePress,
+    setTokenAmount,
+    setFiatAmount,
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance) return BigNumber(0);
+    if (!selectedBalance || !account) return BigNumber(0);
 
-    if (
-      selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CREDIT_ALPHANUM4 &&
-      selectedBalance.assetType !==
-        AssetTypeWithCustomToken.CREDIT_ALPHANUM12 &&
-      selectedBalance.assetType !== AssetTypeWithCustomToken.CUSTOM_TOKEN
-    ) {
-      return BigNumber(selectedBalance.total);
+    return calculateSpendableAmount({
+      balance: selectedBalance,
+      subentryCount: account.subentryCount,
+      transactionFee,
+    });
+  }, [selectedBalance, account, transactionFee]);
+
+  const handlePercentagePress = (percentage: number) => {
+    if (!selectedBalance) return;
+
+    let targetAmount: BigNumber;
+
+    if (percentage === 100) {
+      targetAmount = spendableBalance;
+    } else {
+      const totalBalance = BigNumber(selectedBalance.total);
+      targetAmount = totalBalance.multipliedBy(percentage / 100);
     }
 
-    if (selectedBalance.assetType !== AssetTypeWithCustomToken.NATIVE) {
-      return BigNumber(selectedBalance.total);
+    if (showFiatAmount) {
+      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
+      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
+      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
+    } else {
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
-
-    const currentBalance = BigNumber(selectedBalance.total);
-    const minBalance = BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
-    const calculatedSpendable = currentBalance
-      .minus(minBalance)
-      .minus(BigNumber(transactionFee));
-
-    return calculatedSpendable.isGreaterThan(0)
-      ? calculatedSpendable
-      : BigNumber(0);
-  }, [selectedBalance, subentryCount, transactionFee]);
+  };
 
   useEffect(() => {
     const currentTokenAmount = BigNumber(tokenAmount);
@@ -206,19 +188,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [t, navigation, transactionFee, transactionTimeout, transactionMemo],
   );
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: menuActions,
-          }}
-        >
-          <Icon.Settings04 size={24} color={themeColors.base[1]} />
-        </ContextMenuButton>
-      ),
-    });
-  }, [navigation, menuActions, themeColors]);
+  useRightHeaderMenu({ actions: menuActions });
 
   const handleOpenReview = async () => {
     try {
@@ -287,20 +257,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setIsProcessing(false);
     resetTransaction();
 
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-            state: {
-              index: 0,
-              routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
-            },
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with History tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HISTORY }],
+            index: 0,
           },
-        ],
-      }),
-    );
+        },
+      ],
+    });
   };
 
   if (isProcessing) {
@@ -317,12 +286,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center gap-[12px]">
-          <View className="rounded-[12px] gap-[8px] py-[32px] px-[24px] items-center">
+        <View className="items-center gap-[12px] max-xs:gap-[6px]">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[32px] max-xs:py-[16px] px-[24px] max-xs:px-[16px] items-center">
             {showFiatAmount ? (
               <Display
-                md
+                xl
                 medium
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                minimumFontScale={0.6}
                 {...(Number(fiatAmount) > 0
                   ? { primary: true }
                   : { secondary: true })}
@@ -332,17 +304,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display
-                  md
+                  xl
                   medium
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  minimumFontScale={0.6}
                   {...(Number(tokenAmount) > 0
                     ? { primary: true }
                     : { secondary: true })}
                 >
-                  {tokenAmount}
+                  {tokenAmount}{" "}
+                  <RNText style={{ color: themeColors.text.secondary }}>
+                    {selectedBalance?.tokenCode}
+                  </RNText>
                 </Display>
-                <Text md medium secondary>
-                  {selectedBalance?.tokenCode}
-                </Text>
               </View>
             )}
             <View className="flex-row items-center justify-center">
@@ -362,7 +337,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
+          <View className="rounded-[12px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-secondary">
             {selectedBalance && (
               <BalanceRow
                 balance={selectedBalance}
@@ -375,7 +350,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               />
             )}
           </View>
-          <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
+          <View className="rounded-[12px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-secondary">
             <ContactRow
               address={recipientAddress}
               rightElement={
@@ -386,8 +361,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
         </View>
-        <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
+        <View className="flex-1 items-center mt-[24px] max-xs:mt-[12px] gap-[24px] max-xs:gap-[12px]">
+          <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
@@ -412,7 +387,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="w-full mt-auto mb-4">
+          <View className="w-full mt-auto mb-4 max-xs:mb-2">
             <Button
               tertiary
               xl

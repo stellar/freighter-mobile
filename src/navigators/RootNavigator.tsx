@@ -1,11 +1,13 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import CustomNavigationHeader from "components/CustomNavigationHeader";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import Icon from "components/sds/Icon";
 import {
   ManageAssetsStackParamList,
   ManageWalletsStackParamList,
@@ -18,12 +20,15 @@ import {
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { AuthNavigator } from "navigators/AuthNavigator";
-import { BuyXLMStackNavigator } from "navigators/BuyXLMNavigator";
-import { ManageAssetsStackNavigator } from "navigators/ManageAssetsNavigator";
-import { ManageWalletsStackNavigator } from "navigators/ManageWalletsNavigator";
-import { SendPaymentStackNavigator } from "navigators/SendPaymentNavigator";
-import { SettingsStackNavigator } from "navigators/SettingsNavigator";
+import {
+  AuthNavigator,
+  BuyXLMStackNavigator,
+  ManageAssetsStackNavigator,
+  ManageWalletsStackNavigator,
+  SendPaymentStackNavigator,
+  SettingsStackNavigator,
+  SwapStackNavigator,
+} from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
@@ -99,6 +104,10 @@ export const RootNavigator = () => {
             component={SendPaymentStackNavigator}
           />
           <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
+            component={SwapStackNavigator}
+          />
+          <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
             component={AccountQRCodeScreen}
             options={{
@@ -117,6 +126,7 @@ export const RootNavigator = () => {
             options={{
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
         </RootStack.Group>

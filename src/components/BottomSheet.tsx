@@ -8,7 +8,8 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { calculateEdgeSpacing } from "helpers/dimensions";
+import { DEFAULT_PADDING } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -44,6 +45,10 @@ type BottomSheetProps = {
   bottomSheetViewProps?: Partial<BottomSheetViewProps>;
   shouldCloseOnPressBackdrop?: boolean;
   snapPoints?: string[];
+  enablePanDownToClose?: boolean;
+  enableContentPanningGesture?: boolean;
+  enableDynamicSizing?: boolean;
+  useInsetsBottomPadding?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -57,6 +62,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   bottomSheetViewProps,
   shouldCloseOnPressBackdrop = true,
   snapPoints,
+  enablePanDownToClose = true,
+  enableContentPanningGesture = true,
+  enableDynamicSizing = true,
+  useInsetsBottomPadding = true,
 }) => {
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : null;
@@ -87,8 +96,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   return (
     <BottomSheetModal
       ref={modalRef}
-      enablePanDownToClose
-      enableDynamicSizing
+      enablePanDownToClose={enablePanDownToClose}
+      enableContentPanningGesture={enableContentPanningGesture}
+      enableDynamicSizing={enableDynamicSizing}
       snapPoints={snapPoints}
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
@@ -101,9 +111,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
-          paddingBottom: calculateEdgeSpacing(insets.bottom, {
-            toNumber: true,
-          }) as number,
+          paddingBottom: useInsetsBottomPadding
+            ? insets.bottom + pxValue(DEFAULT_PADDING)
+            : 0,
         }}
         {...bottomSheetViewProps}
       >
@@ -119,7 +129,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                   })}
                 </View>
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X size={24} color={themeColors.base[1]} />
+                  <Icon.X color={themeColors.base[1]} />
                 </TouchableOpacity>
               </View>
             )}
@@ -129,7 +139,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               </Text>
               {!IconData && (
                 <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X size={24} color={themeColors.base[1]} />
+                  <Icon.X color={themeColors.base[1]} />
                 </TouchableOpacity>
               )}
             </View>

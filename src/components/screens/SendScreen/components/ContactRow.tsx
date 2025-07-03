@@ -54,7 +54,6 @@ export const ContactRow: React.FC<ContactRowProps> = ({
       {rightElement ||
         (onDotsPress && (
           <Icon.DotsHorizontal
-            size={24}
             color={themeColors.foreground.secondary}
             onPress={onDotsPress}
           />

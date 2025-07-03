@@ -4,18 +4,16 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import useTokenDetails from "hooks/useTokenDetails";
-import React, { useCallback, useEffect, useMemo } from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
+import { View } from "react-native";
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -32,7 +30,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { tokenId, tokenSymbol } = route.params;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -53,16 +50,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
       headerTitle: displayTitle,
     });
-  }, [navigation, themeColors, displayTitle]);
+  }, [navigation, displayTitle]);
 
   useEffect(() => {
     const loadHistory = async () => {

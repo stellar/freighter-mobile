@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
@@ -11,8 +10,8 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
-import React, { useEffect, useRef } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type BuyXLMScreenProps = NativeStackScreenProps<
@@ -22,26 +21,12 @@ type BuyXLMScreenProps = NativeStackScreenProps<
 
 const BuyXLMScreen: React.FC<BuyXLMScreenProps> = ({ navigation, route }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { isUnfunded } = route.params;
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => bottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, themeColors]);
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

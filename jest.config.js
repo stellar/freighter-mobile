@@ -25,6 +25,7 @@ module.exports = {
       "react-native-reanimated",
       "@gorhom/bottom-sheet",
       "react-native-qrcode-svg",
+      "stellar-hd-wallet",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],

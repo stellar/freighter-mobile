@@ -63,6 +63,7 @@ jest.mock("ducks/balances", () => ({
       balances: {},
       pricedBalances: {},
       isLoading: false,
+      isFunded: true,
       error: null,
       fetchAccountBalances: jest
         .fn()
@@ -118,13 +119,14 @@ jest.mock("hooks/useAppTranslation", () => () => ({
 }));
 
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: jest.fn(() => ({
+  useAuthenticationStore: () => ({
     network: "TESTNET",
     getAllAccounts: jest.fn().mockResolvedValue([]),
     renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
     selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
     isRenamingAccount: false,
-  })),
+    allAccounts: [{ publicKey: "GTESTPUBLICKEY", accountName: "Test Account" }],
+  }),
 }));
 
 // Mock the hooks
@@ -147,6 +149,11 @@ jest.mock("hooks/useTotalBalance", () => ({
   })),
 }));
 
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn().mockResolvedValue("true"),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -155,7 +162,13 @@ describe("HomeScreen", () => {
   const renderHomeScreen = () =>
     renderWithProviders(
       <HomeScreen
-        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
+        navigation={
+          {
+            replace: jest.fn(),
+            navigate: jest.fn(),
+            setOptions: jest.fn(),
+          } as never
+        }
         route={{} as never}
       />,
     );

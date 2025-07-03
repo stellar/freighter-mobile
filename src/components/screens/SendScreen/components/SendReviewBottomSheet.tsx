@@ -41,7 +41,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
 
-  // Use the new transaction builder store
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
 
   const handleCopyXdr = () => {
@@ -62,7 +61,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     if (error) {
       return (
         <Text md medium className="text-red-600">
-          {t("common.error")}
+          {t("common.error", { errorMessage: error })}
         </Text>
       );
     }

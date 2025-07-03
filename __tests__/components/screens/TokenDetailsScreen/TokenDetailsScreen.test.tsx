@@ -109,7 +109,6 @@ describe("TokenDetailsScreen", () => {
 
     expect(mockSetOptions).toHaveBeenCalledWith(
       expect.objectContaining({
-        headerLeft: expect.any(Function),
         headerTitle: "Stellar Lumens (XLM)",
       }),
     );
