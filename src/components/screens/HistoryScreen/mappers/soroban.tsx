@@ -21,6 +21,7 @@ import {
   BalanceMap,
   CustomToken,
 } from "config/types";
+import { isSacContract } from "helpers/balances";
 import { formatAssetAmount } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
@@ -182,16 +183,47 @@ const processSorobanMint = async ({
               type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
               code: token.symbol,
               issuer: {
-                key: "",
+                key: sorobanAttributes.contractId,
               },
             }}
             size="lg"
           />
         );
 
-        historyItemData.rowText = isNative
-          ? NATIVE_TOKEN_CODE
-          : (token.name ?? token.symbol);
+        // Check if it's a SAC and show appropriate text
+        let displayName;
+        let assetIconToken;
+
+        if (isNative) {
+          displayName = NATIVE_TOKEN_CODE;
+          assetIconToken = {
+            code: NATIVE_TOKEN_CODE,
+            issuer: { key: "" },
+            type: AssetTypeWithCustomToken.NATIVE,
+          };
+        } else if (token.name && isSacContract(token.name)) {
+          displayName = token.symbol; // Show only symbol for SACs
+          assetIconToken = {
+            code: token.symbol,
+            issuer: { key: token.name.split(":")[1] },
+            // No type for SACs (classic asset)
+            type: undefined,
+          };
+        } else {
+          displayName = token.name ?? token.symbol; // Show name for Custom Tokens
+          assetIconToken = {
+            type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+            code: token.symbol,
+            issuer: {
+              key: sorobanAttributes.contractId,
+            },
+          };
+        }
+
+        historyItemData.rowText = displayName;
+        historyItemData.IconComponent = (
+          <AssetIcon token={assetIconToken} size="lg" />
+        );
 
         const transactionDetails: TransactionDetails = {
           operation,
@@ -342,36 +374,49 @@ const processSorobanTransfer = async ({
       code,
     )}`;
 
-    historyItemData.amountText = formattedAmount;
-    historyItemData.IconComponent = isNative ? (
-      <AssetIcon
-        token={{
-          type: AssetTypeWithCustomToken.NATIVE,
-          code: NATIVE_TOKEN_CODE,
-        }}
-        size="lg"
-      />
-    ) : (
-      <AssetIcon
-        token={{
-          type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
-          code: symbol,
-          issuer: {
-            key: "",
-          },
-        }}
-        size="lg"
-      />
-    );
+    let displayName = code;
+    let assetIconToken;
+    if (isNative) {
+      displayName = NATIVE_TOKEN_CODE;
+      assetIconToken = {
+        code: NATIVE_TOKEN_CODE,
+        issuer: { key: "" },
+        type: AssetTypeWithCustomToken.NATIVE,
+      };
+    } else if (name && isSacContract(name)) {
+      displayName = code;
+      assetIconToken = {
+        code,
+        issuer: { key: name.split(":")[1] },
+        type: undefined,
+      };
+    } else if (name) {
+      displayName = name;
+      assetIconToken = {
+        type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        code,
+        issuer: { key: sorobanAttributes.contractId },
+      };
+    } else {
+      displayName = code;
+      assetIconToken = {
+        type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        code,
+        issuer: { key: sorobanAttributes.contractId },
+      };
+    }
 
+    historyItemData.amountText = formattedAmount;
+    historyItemData.IconComponent = (
+      <AssetIcon token={assetIconToken} size="lg" />
+    );
     historyItemData.ActionIconComponent = isRecipient ? (
       <Icon.ArrowCircleDown size={16} color={themeColors.foreground.primary} />
     ) : (
       <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
     );
-
     historyItemData.isAddingFunds = isRecipient;
-    historyItemData.rowText = isNative ? NATIVE_TOKEN_CODE : (name ?? symbol);
+    historyItemData.rowText = displayName;
     historyItemData.actionText = isRecipient
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent");
@@ -580,7 +625,8 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
                   type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
                   code: contractSymbol,
                   issuer: {
-                    key: "",
+                    key:
+                      transactionDetails.contractDetails?.contractAddress ?? "",
                   },
                 }
           }

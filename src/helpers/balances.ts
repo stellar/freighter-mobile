@@ -439,3 +439,16 @@ export const calculateSwapRate = (
 
   return rate.toString();
 };
+
+export function isSacContract(name: string): boolean {
+  if (!name || typeof name !== "string") return false;
+  const [code, issuer] = name.split(":");
+  if (!code || !issuer) return false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const asset = new Asset(code, issuer);
+    return true;
+  } catch {
+    return false;
+  }
+}

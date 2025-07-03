@@ -623,5 +623,6 @@
     "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
-  }
+  },
+  "tokenIconAlt": "ícone do token {{code}}"
 }
