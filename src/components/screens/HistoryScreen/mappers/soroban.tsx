@@ -198,6 +198,7 @@ const processSorobanMint = async ({
           displayName = NATIVE_TOKEN_CODE;
           assetIconToken = {
             code: NATIVE_TOKEN_CODE,
+            issuer: { key: "" },
             type: AssetTypeWithCustomToken.NATIVE,
           };
         } else if (token.name && isSacContract(token.name)) {
@@ -375,7 +376,14 @@ const processSorobanTransfer = async ({
 
     let displayName = code;
     let assetIconToken;
-    if (name && isSacContract(name)) {
+    if (isNative) {
+      displayName = NATIVE_TOKEN_CODE;
+      assetIconToken = {
+        code: NATIVE_TOKEN_CODE,
+        issuer: { key: "" },
+        type: AssetTypeWithCustomToken.NATIVE,
+      };
+    } else if (name && isSacContract(name)) {
       displayName = code;
       assetIconToken = {
         code,
