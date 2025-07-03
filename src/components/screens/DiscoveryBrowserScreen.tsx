@@ -56,7 +56,19 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
   // Update input URL when active tab changes
   useEffect(() => {
     if (activeTab) {
-      setInputUrl(activeTab.url);
+      // Don't update the input if it's a Google search URL - keep the original search term
+      if (activeTab.url.startsWith("https://www.google.com/search?q=")) {
+        // Extract the search query from the Google URL
+        const urlParams = new URL(activeTab.url);
+        const searchQuery = urlParams.searchParams.get("q");
+        if (searchQuery) {
+          setInputUrl(decodeURIComponent(searchQuery));
+        } else {
+          setInputUrl(activeTab.url);
+        }
+      } else {
+        setInputUrl(activeTab.url);
+      }
     }
   }, [activeTab]);
 
@@ -274,6 +286,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           value={inputUrl}
           onChangeText={setInputUrl}
           onSubmitEditing={handleUrlSubmit}
+          selectTextOnFocus
           placeholder="Search or enter a website"
           className="flex-1 px-3 py-2 bg-background-secondary rounded-lg text-foreground-primary"
           placeholderTextColor={themeColors.text.secondary}
