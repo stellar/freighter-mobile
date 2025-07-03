@@ -74,7 +74,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1 pt-5">
         <View>
-          <Icon.Download01 themeColor="pink" size={24} withBackground />
+          <Icon.Download01 themeColor="pink" withBackground />
           <View className="mt-6 mb-6">
             <Display sm primary medium>
               {t("importSecretKeyScreen.title")}

@@ -108,7 +108,7 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
     if (customClassName) return customClassName;
     return position === "left"
       ? `${DEFAULT_HEADER_BUTTON_SIZE} justify-center items-start`
-      : `${DEFAULT_HEADER_BUTTON_SIZE} justify-center items-end`;
+      : `${DEFAULT_HEADER_BUTTON_SIZE} justify-center items-center`;
   };
 
   const className = getClassName();

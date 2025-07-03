@@ -27,7 +27,7 @@ const ShareFeedbackScreen: React.FC<ShareFeedbackScreenProps> = () => {
       title: t("shareFeedbackScreen.discord"),
       onPress: () => Linking.openURL(FREIGHTER_DISCORD_URL),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
     },
     {
@@ -35,7 +35,7 @@ const ShareFeedbackScreen: React.FC<ShareFeedbackScreenProps> = () => {
       title: t("shareFeedbackScreen.github"),
       onPress: () => Linking.openURL(FREIGHTER_GITHUB_ISSUE_URL),
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
     },
   ];

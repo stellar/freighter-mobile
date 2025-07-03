@@ -1,10 +1,8 @@
-/* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -12,7 +10,8 @@ import {
   ManageWalletsStackParamList,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useEffect, useRef } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type AddAnotherWalletScreenProps = NativeStackScreenProps<
@@ -26,16 +25,9 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
   const { t } = useAppTranslation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <CustomHeaderButton
-          position="right"
-          onPress={() => bottomSheetModalRef.current?.present()}
-        />
-      ),
-    });
-  }, [navigation]);
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
   const handleCreateAccount = () => {
     navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);

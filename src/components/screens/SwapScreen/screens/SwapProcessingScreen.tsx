@@ -16,7 +16,13 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatAssetAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { View } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
@@ -50,7 +56,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
     });

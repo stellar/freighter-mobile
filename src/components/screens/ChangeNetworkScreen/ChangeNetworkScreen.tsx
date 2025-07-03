@@ -48,7 +48,7 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
         });
       },
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
     },
     {
@@ -60,7 +60,7 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
         });
       },
       trailingContent: (
-        <Icon.ChevronRight size={24} color={themeColors.foreground.primary} />
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
     },
   ];

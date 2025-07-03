@@ -104,7 +104,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
         </View>
       </TouchableOpacity>
       <ContextMenuButton contextMenuProps={{ actions }}>
-        <Icon.DotsHorizontal size={24} color={themeColors.foreground.primary} />
+        <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       </ContextMenuButton>
     </View>
   );

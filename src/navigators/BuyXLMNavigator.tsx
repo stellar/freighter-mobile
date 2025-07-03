@@ -37,6 +37,10 @@ export const BuyXLMStackNavigator = () => {
         component={AccountQRCodeScreen}
         options={{
           headerTitle: t("accountQRCodeScreen.title"),
+          // Let's explicitly set the left header button as the "arrow left" icon
+          // here so that it becomes more clear on why it could be set to the "X"
+          // icon on the AccountQRCodeScreen component itself.
+          headerLeft: () => <CustomHeaderButton icon={Icon.ArrowLeft} />,
         }}
       />
     </BuyXLMStack.Navigator>

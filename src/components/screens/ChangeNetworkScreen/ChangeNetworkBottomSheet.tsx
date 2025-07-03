@@ -31,7 +31,6 @@ const ChangeNetworkBottomSheetContent: React.FC<
           </Text>
         </View>
         <Icon.Check
-          size={24}
           color={
             activeNetwork === network.network
               ? themeColors.base[1]

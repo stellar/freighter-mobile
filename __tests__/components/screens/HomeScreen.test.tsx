@@ -162,7 +162,13 @@ describe("HomeScreen", () => {
   const renderHomeScreen = () =>
     renderWithProviders(
       <HomeScreen
-        navigation={{ replace: jest.fn(), navigate: jest.fn() } as never}
+        navigation={
+          {
+            replace: jest.fn(),
+            navigate: jest.fn(),
+            setOptions: jest.fn(),
+          } as never
+        }
         route={{} as never}
       />,
     );

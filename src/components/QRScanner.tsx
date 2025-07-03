@@ -1,10 +1,8 @@
 import Spinner from "components/Spinner";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING } from "config/constants";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect, useState } from "react";
-import { View, Dimensions, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import {
   Camera,
   useCameraDevice,
@@ -20,9 +18,6 @@ import {
 type QRScannerProps = {
   onRead: (data: string) => void;
 };
-
-/** Window width for camera view sizing */
-const windowWidth = Dimensions.get("window").width;
 
 /**
  * QR Scanner component that uses the device's camera to scan QR codes.
@@ -75,7 +70,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
 
   if (isMounting) {
     return (
-      <View className="flex-1 justify-center items-center">
+      <View className="flex-1 mt-40 items-center">
         <Spinner />
       </View>
     );
@@ -83,8 +78,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
 
   if (device == null || !hasPermission) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-white text-center mt-5">
+      <View className="flex-1 mt-40 items-center">
+        <Text sm secondary textAlign="center">
           {t("qrScanner.cameraNotAvailable")}
         </Text>
       </View>
@@ -92,14 +87,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
   }
 
   return (
-    <View
-      style={{
-        height: "100%",
-        width: windowWidth,
-        marginLeft: -pxValue(DEFAULT_PADDING),
-        overflow: "hidden",
-      }}
-    >
+    <View className="h-[300px] w-[300px] overflow-hidden rounded-[32px]">
       <Camera
         codeScanner={codeScanner}
         style={StyleSheet.absoluteFill}
