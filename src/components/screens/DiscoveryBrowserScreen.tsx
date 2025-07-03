@@ -1,15 +1,23 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import React, { useRef, useState, useCallback, useEffect } from "react";
-import { View, TextInput, TouchableOpacity, Alert, ScrollView, Animated } from "react-native";
-import { WebView, WebViewNavigation } from "react-native-webview";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
-import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
+import { useBrowserTabsStore } from "ducks/browserTabs";
+import { debug } from "helpers/debug";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Animated,
+} from "react-native";
+import { WebView, WebViewNavigation } from "react-native-webview";
 
 type DiscoveryScreenProps = BottomTabScreenProps<
   MainTabStackParamList,
@@ -18,9 +26,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
 
 const DEFAULT_URL = "https://stellar.org";
 
-export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({ 
-  navigation, 
-}) => {
+export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const webViewRef = useRef<WebView>(null);
@@ -28,17 +34,17 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
   const [showTabs, setShowTabs] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const { 
-    tabs, 
-    activeTabId, 
-    addTab, 
-    closeTab, 
-    setActiveTab, 
+  const {
+    tabs,
+    activeTabId,
+    addTab,
+    closeTab,
+    setActiveTab,
     updateTab,
-    closeAllTabs 
+    closeAllTabs,
   } = useBrowserTabsStore();
 
-  const activeTab = tabs.find(tab => tab.id === activeTabId);
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
 
   // Initialize with first tab if none exists
   useEffect(() => {
@@ -63,17 +69,20 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
     }).start();
   }, [showTabs, fadeAnim]);
 
-  const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
-    if (activeTabId) {
-      updateTab(activeTabId, {
-        url: navState.url,
-        title: navState.title || "New Tab",
-        canGoBack: navState.canGoBack,
-        canGoForward: navState.canGoForward,
-        isLoading: navState.loading,
-      });
-    }
-  }, [activeTabId, updateTab]);
+  const handleNavigationStateChange = useCallback(
+    (navState: WebViewNavigation) => {
+      if (activeTabId) {
+        updateTab(activeTabId, {
+          url: navState.url,
+          title: navState.title || "New Tab",
+          canGoBack: navState.canGoBack,
+          canGoForward: navState.canGoForward,
+          isLoading: navState.loading,
+        });
+      }
+    },
+    [activeTabId, updateTab],
+  );
 
   const handleGoBack = () => {
     if (activeTab?.canGoBack) {
@@ -112,25 +121,37 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
     if (!activeTabId) return;
 
     let url = inputUrl.trim();
-    
-    // Add https:// if no protocol specified
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = `https://${url}`;
+
+    // Check if it's already a valid URL
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      updateTab(activeTabId, { url });
+      webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
+      return;
     }
-    
-    updateTab(activeTabId, { url });
-    webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
+
+    // Check if it looks like a domain (contains . and no spaces)
+    if (url.includes(".") && !url.includes(" ")) {
+      url = `https://${url}`;
+      updateTab(activeTabId, { url });
+      webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
+      return;
+    }
+
+    // If it's not a URL, treat it as a Google search query
+    const searchQuery = encodeURIComponent(url);
+    const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
+
+    updateTab(activeTabId, { url: searchUrl });
+    webViewRef.current?.injectJavaScript(
+      `window.location.href = "${searchUrl}";`,
+    );
   };
 
   const handleSettings = () => {
-    Alert.alert(
-      "Browser Settings",
-      "Settings",
-      [
-        { text: "Close All Tabs", onPress: closeAllTabs },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
+    Alert.alert("Browser Settings", "Settings", [
+      { text: "Close All Tabs", onPress: closeAllTabs },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const handleShowTabs = () => {
@@ -154,12 +175,14 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
   // Tab Overview Screen (Rainbow-style)
   if (showTabs) {
     return (
-      <BaseLayout insets={{ top: true, bottom: false, left: false, right: false }}>
-        <Animated.View 
-          style={{ 
-            flex: 1, 
+      <BaseLayout
+        insets={{ top: true, bottom: false, left: false, right: false }}
+      >
+        <Animated.View
+          style={{
+            flex: 1,
             opacity: fadeAnim,
-            backgroundColor: themeColors.background.primary 
+            backgroundColor: themeColors.background.primary,
           }}
         >
           {/* Header */}
@@ -168,7 +191,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
               <Icon.X color={themeColors.base[1]} />
             </TouchableOpacity>
             <Text lg semiBold>
-              {tabs.length} Tab{tabs.length !== 1 ? 's' : ''}
+              {tabs.length} Tab{tabs.length !== 1 ? "s" : ""}
             </Text>
             <TouchableOpacity onPress={handleNewTab}>
               <Icon.Plus color={themeColors.base[1]} />
@@ -178,19 +201,24 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
           {/* Tabs Grid */}
           <ScrollView className="flex-1 p-4">
             <View className="flex-row flex-wrap justify-between">
-              {tabs.map((tab, index) => (
+              {tabs.map((tab) => (
                 <TouchableOpacity
                   key={tab.id}
                   onPress={() => handleSwitchTab(tab.id)}
                   className={`w-[48%] mb-4 rounded-lg overflow-hidden ${
-                    tab.id === activeTabId ? 'border-2 border-primary' : 'border border-border-default'
+                    tab.id === activeTabId
+                      ? "border-2 border-primary"
+                      : "border border-border-default"
                   }`}
                 >
                   {/* Tab Preview */}
                   <View className="h-32 bg-background-secondary justify-center items-center">
-                    <Icon.Browser size={32} color={themeColors.text.secondary} />
+                    <Icon.Browser
+                      size={32}
+                      color={themeColors.text.secondary}
+                    />
                   </View>
-                  
+
                   {/* Tab Info */}
                   <View className="p-3 bg-background-primary">
                     <Text sm semiBold numberOfLines={1} className="mb-1">
@@ -199,7 +227,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
                     <Text xs secondary numberOfLines={1} className="mb-2">
                       {tab.url}
                     </Text>
-                    
+
                     {/* Tab Actions */}
                     <View className="flex-row justify-between items-center">
                       <View className="flex-row items-center">
@@ -207,16 +235,19 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
                           <View className="w-2 h-2 rounded-full bg-primary mr-2" />
                         )}
                         <Text xs secondary>
-                          {tab.id === activeTabId ? 'Active' : 'Inactive'}
+                          {tab.id === activeTabId ? "Active" : "Inactive"}
                         </Text>
                       </View>
-                      
+
                       {tabs.length > 1 && (
                         <TouchableOpacity
                           onPress={() => handleCloseTab(tab.id)}
                           className="p-1"
                         >
-                          <Icon.X size={12} color={themeColors.text.secondary} />
+                          <Icon.X
+                            size={12}
+                            color={themeColors.text.secondary}
+                          />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -232,43 +263,46 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
 
   // Main Browser Screen
   return (
-    <BaseLayout insets={{ top: true, bottom: false, left: false, right: false }}>
+    <BaseLayout
+      insets={{ top: true, bottom: false, left: false, right: false }}
+    >
       {/* Top URL Bar */}
       <View className="flex-row items-center gap-2 p-4 bg-background-primary border-b border-border-default">
-        <Avatar size="sm"  publicAddress={account?.publicKey ?? ""} />
-        
+        <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+
         <TextInput
           value={inputUrl}
           onChangeText={setInputUrl}
           onSubmitEditing={handleUrlSubmit}
-          placeholder="Enter URL or search..."
+          placeholder="Search or enter a website"
           className="flex-1 px-3 py-2 bg-background-secondary rounded-lg text-foreground-primary"
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
           autoCorrect={false}
-          keyboardType="url"
+          keyboardType="default"
         />
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           onPress={handleRefresh}
           className="p-2"
           disabled={activeTab.isLoading}
         >
-          <Icon.RefreshCcw01 
-            color={activeTab.isLoading ? themeColors.text.secondary : themeColors.base[1]} 
+          <Icon.RefreshCcw01
+            color={
+              activeTab.isLoading
+                ? themeColors.text.secondary
+                : themeColors.base[1]
+            }
           />
         </TouchableOpacity>
 
         {/* Show Tabs Button */}
-        <TouchableOpacity 
-          onPress={handleShowTabs}
-          className="p-2 relative"
-        >
+        <TouchableOpacity onPress={handleShowTabs} className="p-2 relative">
           <Icon.LayoutGrid01 color={themeColors.base[1]} />
           {tabs.length > 1 && (
             <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 justify-center items-center">
               <Text xs className="text-base-00">
-                {tabs.length > 9 ? '9+' : tabs.length}
+                {tabs.length > 9 ? "9+" : tabs.length}
               </Text>
             </View>
           )}
@@ -281,14 +315,14 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
           ref={webViewRef}
           source={{ uri: activeTab.url }}
           onNavigationStateChange={handleNavigationStateChange}
-          startInLoadingState={true}
-          allowsBackForwardNavigationGestures={true}
+          startInLoadingState
+          allowsBackForwardNavigationGestures
           // Handle WalletConnect deep links
           onShouldStartLoadWithRequest={(request) => {
             // Handle WalletConnect URIs
-            if (request.url.startsWith('wc:')) {
+            if (request.url.startsWith("wc:")) {
               // Handle WalletConnect connection
-              console.log('WalletConnect URI detected:', request.url);
+              debug("WalletConnect URI detected:", request.url);
               return false;
             }
             return true;
@@ -298,37 +332,39 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = ({
 
       {/* Bottom Navigation Bar */}
       <View className="flex-row items-center justify-between p-4 bg-background-primary border-t border-border-default">
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleGoBack}
           disabled={!activeTab.canGoBack}
           className="p-3"
         >
-          <Icon.ArrowLeft 
-            color={activeTab.canGoBack ? themeColors.base[1] : themeColors.text.secondary} 
+          <Icon.ArrowLeft
+            color={
+              activeTab.canGoBack
+                ? themeColors.base[1]
+                : themeColors.text.secondary
+            }
           />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleGoForward}
           disabled={!activeTab.canGoForward}
           className="p-3"
         >
-          <Icon.ArrowRight 
-            color={activeTab.canGoForward ? themeColors.base[1] : themeColors.text.secondary} 
+          <Icon.ArrowRight
+            color={
+              activeTab.canGoForward
+                ? themeColors.base[1]
+                : themeColors.text.secondary
+            }
           />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={handleNewTab}
-          className="p-3"
-        >
+        <TouchableOpacity onPress={handleNewTab} className="p-3">
           <Icon.Plus color={themeColors.base[1]} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={handleSettings}
-          className="p-3"
-        >
+        <TouchableOpacity onPress={handleSettings} className="p-3">
           <Icon.Settings01 color={themeColors.base[1]} />
         </TouchableOpacity>
       </View>
