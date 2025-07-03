@@ -104,7 +104,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       password,
       mnemonicPhrase: recoveryPhrase,
     });
-    skipModalRef.current?.close();
+    skipModalRef.current?.dismiss();
   };
 
   const handleCopy = useCallback(() => {
@@ -161,7 +161,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <RecoveryPhraseSkipBottomSheet
         modalRef={skipModalRef}
         onConfirm={handleConfirmSkip}
-        onDismiss={() => skipModalRef.current?.close()}
+        onDismiss={() => skipModalRef.current?.dismiss()}
       />
     </>
   );
