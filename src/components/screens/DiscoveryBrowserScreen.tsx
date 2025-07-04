@@ -1,4 +1,5 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -13,9 +14,11 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
   Animated,
+  Platform,
+  Share,
+  Linking,
 } from "react-native";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
@@ -108,15 +111,19 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     }
   };
 
-  const handleRefresh = () => {
-    webViewRef.current?.reload();
+  const handleShowTabs = () => {
+    setShowTabs(true);
+  };
+
+  const handleCloseTabOverview = () => {
+    setShowTabs(false);
   };
 
   const handleNewTab = () => {
     addTab(DEFAULT_URL);
   };
 
-  const handleCloseTab = (tabId: string) => {
+  const handleCloseSpecificTab = (tabId: string) => {
     closeTab(tabId);
     // If it's the last tab, open a default tab
     if (tabs.length === 1) {
@@ -159,20 +166,128 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   };
 
-  const handleSettings = () => {
-    Alert.alert("Browser Settings", "Settings", [
-      { text: "Close All Tabs", onPress: closeAllTabs },
-      { text: "Cancel", style: "cancel" },
-    ]);
+  const handleCloseActiveTab = () => {
+    if (activeTabId) {
+      closeTab(activeTabId);
+      // If it's the last tab, open a default tab
+      if (tabs.length === 1) {
+        handleNewTab();
+      }
+    }
   };
 
-  const handleShowTabs = () => {
-    setShowTabs(true);
+  const handleCloseAllTabs = () => {
+    closeAllTabs();
+    // Always ensure at least one tab exists
+    handleNewTab();
   };
 
-  const handleCloseTabOverview = () => {
-    setShowTabs(false);
+  const handleReload = () => {
+    webViewRef.current?.reload();
   };
+
+  const handleShare = () => {
+    if (activeTab) {
+      Share.share({
+        message: `${activeTab.title}\n${activeTab.url}`,
+        url: activeTab.url,
+      }).catch((error) => {
+        debug("DiscoveryBrowserScreen", "Failed to share:", error);
+      });
+    }
+  };
+
+  const handleOpenInBrowser = () => {
+    if (activeTab) {
+      Linking.openURL(activeTab.url).catch((error) => {
+        debug("DiscoveryBrowserScreen", "Failed to open in browser:", error);
+      });
+    }
+  };
+
+  const handleGoHome = () => {
+    if (activeTabId) {
+      updateTab(activeTabId, { url: DEFAULT_URL });
+      webViewRef.current?.injectJavaScript(
+        `window.location.href = "${DEFAULT_URL}";`,
+      );
+    }
+  };
+
+  // Context menu actions for browser actions
+  const browserContextMenuActions: MenuItem[] = [
+    {
+      title: "Open in Browser",
+      systemIcon: Platform.select({
+        ios: "safari",
+        android: "public",
+      }),
+      onPress: handleOpenInBrowser,
+    },
+    {
+      title: "Share",
+      systemIcon: Platform.select({
+        ios: "square.and.arrow.up",
+        android: "share",
+      }),
+      onPress: handleShare,
+    },
+    {
+      title: "Home",
+      systemIcon: Platform.select({
+        ios: "house",
+        android: "home",
+      }),
+      onPress: handleGoHome,
+    },
+    {
+      title: "Reload",
+      systemIcon: Platform.select({
+        ios: "arrow.clockwise",
+        android: "refresh",
+      }),
+      onPress: handleReload,
+    },
+    {
+      title: "Close Tab",
+      systemIcon: Platform.select({
+        ios: "xmark.circle",
+        android: "close",
+      }),
+      onPress: handleCloseActiveTab,
+      destructive: true,
+    },
+  ];
+
+  // Context menu actions for tabs button
+  const tabsContextMenuActions: MenuItem[] = [
+    {
+      title: "Close All Tabs",
+      systemIcon: Platform.select({
+        ios: "xmark.circle.fill",
+        android: "close",
+      }),
+      onPress: handleCloseAllTabs,
+      destructive: true,
+    },
+    {
+      title: "Close This Tab",
+      systemIcon: Platform.select({
+        ios: "xmark.circle",
+        android: "close",
+      }),
+      onPress: handleCloseActiveTab,
+      destructive: true,
+    },
+    {
+      title: "New Tab",
+      systemIcon: Platform.select({
+        ios: "plus",
+        android: "add",
+      }),
+      onPress: handleNewTab,
+    },
+  ];
 
   if (!activeTab) {
     return (
@@ -253,7 +368,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
 
                       {tabs.length > 1 && (
                         <TouchableOpacity
-                          onPress={() => handleCloseTab(tab.id)}
+                          onPress={() => handleCloseSpecificTab(tab.id)}
                           className="p-1"
                         >
                           <Icon.X
@@ -295,31 +410,26 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           keyboardType="default"
         />
 
-        <TouchableOpacity
-          onPress={handleRefresh}
-          className="p-2"
-          disabled={activeTab.isLoading}
-        >
-          <Icon.RefreshCcw01
-            color={
-              activeTab.isLoading
-                ? themeColors.text.secondary
-                : themeColors.base[1]
-            }
-          />
-        </TouchableOpacity>
-
         {/* Show Tabs Button */}
-        <TouchableOpacity onPress={handleShowTabs} className="p-2 relative">
-          <Icon.LayoutGrid01 color={themeColors.base[1]} />
-          {tabs.length > 1 && (
-            <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 justify-center items-center">
-              <Text xs className="text-base-00">
-                {tabs.length > 9 ? "9+" : tabs.length}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: tabsContextMenuActions,
+          }}
+          side="top"
+          align="end"
+          sideOffset={8}
+        >
+          <TouchableOpacity onPress={handleShowTabs} className="p-2 relative">
+            <Icon.LayoutGrid01 color={themeColors.base[1]} />
+            {tabs.length > 1 && (
+              <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 justify-center items-center">
+                <Text xs className="text-base-00">
+                  {tabs.length > 9 ? "9+" : tabs.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </ContextMenuButton>
       </View>
 
       {/* WebView */}
@@ -377,9 +487,16 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           <Icon.Plus color={themeColors.base[1]} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSettings} className="p-3">
-          <Icon.Settings01 color={themeColors.base[1]} />
-        </TouchableOpacity>
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: browserContextMenuActions,
+          }}
+          side="top"
+          align="end"
+          sideOffset={8}
+        >
+          <Icon.DotsHorizontal color={themeColors.base[1]} />
+        </ContextMenuButton>
       </View>
     </BaseLayout>
   );
