@@ -249,19 +249,6 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
       onPress: handleReload,
     },
     {
-      title: "Close Tab",
-      systemIcon: Platform.select({
-        ios: "xmark.circle",
-        android: "close",
-      }),
-      onPress: handleCloseActiveTab,
-      destructive: true,
-    },
-  ];
-
-  // Context menu actions for tabs button
-  const tabsContextMenuActions: MenuItem[] = [
-    {
       title: "Close All Tabs",
       systemIcon: Platform.select({
         ios: "xmark.circle.fill",
@@ -278,14 +265,6 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
       }),
       onPress: handleCloseActiveTab,
       destructive: true,
-    },
-    {
-      title: "New Tab",
-      systemIcon: Platform.select({
-        ios: "plus",
-        android: "add",
-      }),
-      onPress: handleNewTab,
     },
   ];
 
@@ -394,7 +373,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
       insets={{ top: true, bottom: false, left: false, right: false }}
     >
       {/* Top URL Bar */}
-      <View className="flex-row items-center p-4 bg-background-primary border-b border-border-default">
+      <View className="flex-row items-center p-4 gap-3 bg-background-primary border-b border-border-default">
         <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
 
         <TextInput
@@ -403,7 +382,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           onSubmitEditing={handleUrlSubmit}
           selectTextOnFocus
           placeholder="Search or enter a website"
-          className="flex-1 px-3 py-2 h-10 bg-transparent border border-border-primary rounded-lg text-text-primary ml-3 mr-1"
+          className="flex-1 px-3 py-2 h-10 bg-transparent border border-border-primary rounded-lg text-text-primary"
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -411,23 +390,14 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
         />
 
         {/* Show Tabs Button */}
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: tabsContextMenuActions,
-          }}
-          side="top"
-          align="end"
-          sideOffset={8}
+        <TouchableOpacity
+          onPress={handleShowTabs}
+          className="w-10 h-10 border border-border-primary rounded-lg justify-center items-center bg-transparent"
         >
-          <TouchableOpacity
-            onPress={handleShowTabs}
-            className="-mr-1 w-10 h-10 border border-border-primary rounded-lg justify-center items-center bg-transparent"
-          >
-            <Text md semiBold>
-              {tabs.length > 9 ? "9+" : tabs.length}
-            </Text>
-          </TouchableOpacity>
-        </ContextMenuButton>
+          <Text md semiBold>
+            {tabs.length > 9 ? "9+" : tabs.length}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* WebView */}
@@ -452,13 +422,13 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
       </View>
 
       {/* Bottom Navigation Bar */}
-      <View className="flex-row items-center justify-between p-4 bg-background-primary border-t border-border-default">
+      <View className="flex-row items-center justify-between bg-background-primary border-t border-border-default pl-2 pr-5">
         <TouchableOpacity
           onPress={handleGoBack}
           disabled={!activeTab.canGoBack}
-          className="p-3"
+          className="p-4"
         >
-          <Icon.ArrowLeft
+          <Icon.ChevronLeft
             color={
               activeTab.canGoBack
                 ? themeColors.base[1]
@@ -470,9 +440,9 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
         <TouchableOpacity
           onPress={handleGoForward}
           disabled={!activeTab.canGoForward}
-          className="p-3"
+          className="p-4"
         >
-          <Icon.ArrowRight
+          <Icon.ChevronRight
             color={
               activeTab.canGoForward
                 ? themeColors.base[1]
@@ -481,7 +451,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleNewTab} className="p-3">
+        <TouchableOpacity onPress={handleNewTab} className="p-4">
           <Icon.Plus color={themeColors.base[1]} />
         </TouchableOpacity>
 
