@@ -394,8 +394,8 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
       insets={{ top: true, bottom: false, left: false, right: false }}
     >
       {/* Top URL Bar */}
-      <View className="flex-row items-center gap-2 p-4 bg-background-primary border-b border-border-default">
-        <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+      <View className="flex-row items-center p-4 bg-background-primary border-b border-border-default">
+        <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
 
         <TextInput
           value={inputUrl}
@@ -403,7 +403,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           onSubmitEditing={handleUrlSubmit}
           selectTextOnFocus
           placeholder="Search or enter a website"
-          className="flex-1 px-3 py-2 bg-background-secondary rounded-lg text-foreground-primary"
+          className="flex-1 px-3 py-2 h-10 bg-transparent border border-border-primary rounded-lg text-text-primary ml-3 mr-1"
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -419,15 +419,13 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           align="end"
           sideOffset={8}
         >
-          <TouchableOpacity onPress={handleShowTabs} className="p-2 relative">
-            <Icon.LayoutGrid01 color={themeColors.base[1]} />
-            {tabs.length > 1 && (
-              <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 justify-center items-center">
-                <Text xs className="text-base-00">
-                  {tabs.length > 9 ? "9+" : tabs.length}
-                </Text>
-              </View>
-            )}
+          <TouchableOpacity
+            onPress={handleShowTabs}
+            className="-mr-1 w-10 h-10 border border-border-primary rounded-lg justify-center items-center bg-transparent"
+          >
+            <Text md semiBold>
+              {tabs.length > 9 ? "9+" : tabs.length}
+            </Text>
           </TouchableOpacity>
         </ContextMenuButton>
       </View>
