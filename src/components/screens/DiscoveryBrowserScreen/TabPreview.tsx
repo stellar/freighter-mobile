@@ -42,6 +42,12 @@ const TabPreview: React.FC<TabPreviewProps> = ({
   };
 
   useEffect(() => {
+    // Skip favicon for homepage
+    if (url === "freighter://homepage") {
+      setFaviconUrl(null);
+      return;
+    }
+
     // Use logoUrl from store if available, otherwise try to get favicon
     if (logoUrl) {
       setFaviconUrl(logoUrl);

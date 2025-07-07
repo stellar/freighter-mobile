@@ -115,13 +115,19 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           screenshot: undefined, // Clear screenshot when URL changes
         });
 
-        // Try to extract favicon
-        try {
-          const urlObj = new URL(navState.url);
-          const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-          setLogo(activeTabId, faviconUrl);
-        } catch (error) {
-          debug("DiscoveryBrowserScreen", "Failed to extract favicon:", error);
+        // Try to extract favicon (skip for homepage)
+        if (navState.url !== HOMEPAGE_URL) {
+          try {
+            const urlObj = new URL(navState.url);
+            const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+            setLogo(activeTabId, faviconUrl);
+          } catch (error) {
+            debug(
+              "DiscoveryBrowserScreen",
+              "Failed to extract favicon:",
+              error,
+            );
+          }
         }
       }
     },
