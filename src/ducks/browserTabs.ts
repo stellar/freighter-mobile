@@ -7,6 +7,7 @@ export interface BrowserTab {
   canGoBack: boolean;
   canGoForward: boolean;
   isLoading: boolean;
+  screenshot?: string; // Base64 encoded screenshot of the website
 }
 
 interface BrowserTabsState {
@@ -19,7 +20,7 @@ interface BrowserTabsState {
   closeAllTabs: () => void;
 }
 
-export const useBrowserTabsStore = create<BrowserTabsState>((set, get) => ({
+export const useBrowserTabsStore = create<BrowserTabsState>((set) => ({
   tabs: [],
   activeTabId: null,
 
@@ -31,6 +32,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>((set, get) => ({
       canGoBack: false,
       canGoForward: false,
       isLoading: false,
+      screenshot: undefined,
     };
 
     set((state) => ({
@@ -49,7 +51,8 @@ export const useBrowserTabsStore = create<BrowserTabsState>((set, get) => ({
         const currentIndex = state.tabs.findIndex((tab) => tab.id === tabId);
         if (newTabs.length > 0) {
           // Switch to the next tab, or the previous one if we're at the end
-          const nextIndex = currentIndex < newTabs.length ? currentIndex : currentIndex - 1;
+          const nextIndex =
+            currentIndex < newTabs.length ? currentIndex : currentIndex - 1;
           newActiveTabId = newTabs[nextIndex]?.id || null;
         } else {
           newActiveTabId = null;
@@ -70,7 +73,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>((set, get) => ({
   updateTab: (tabId: string, updates: Partial<BrowserTab>) => {
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.id === tabId ? { ...tab, ...updates } : tab
+        tab.id === tabId ? { ...tab, ...updates } : tab,
       ),
     }));
   },
@@ -78,4 +81,4 @@ export const useBrowserTabsStore = create<BrowserTabsState>((set, get) => ({
   closeAllTabs: () => {
     set({ tabs: [], activeTabId: null });
   },
-})); 
+}));

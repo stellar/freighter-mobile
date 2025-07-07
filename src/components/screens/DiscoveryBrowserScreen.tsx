@@ -1,6 +1,8 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
+import TabPreview from "components/screens/DiscoveryBrowserScreen/TabPreview";
+import TabScreenshotCapture from "components/screens/DiscoveryBrowserScreen/TabScreenshotCapture";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -19,6 +21,7 @@ import {
   Platform,
   Share,
   Linking,
+  Image,
 } from "react-native";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
@@ -93,6 +96,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           canGoBack: navState.canGoBack,
           canGoForward: navState.canGoForward,
           isLoading: navState.loading,
+          screenshot: undefined, // Clear screenshot when URL changes
         });
       }
     },
@@ -143,7 +147,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
 
     // Check if it's already a valid URL
     if (url.startsWith("http://") || url.startsWith("https://")) {
-      updateTab(activeTabId, { url });
+      updateTab(activeTabId, { url, screenshot: undefined });
       webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
       return;
     }
@@ -151,7 +155,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     // Check if it looks like a domain (contains . and no spaces)
     if (url.includes(".") && !url.includes(" ")) {
       url = `https://${url}`;
-      updateTab(activeTabId, { url });
+      updateTab(activeTabId, { url, screenshot: undefined });
       webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
       return;
     }
@@ -160,7 +164,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     const searchQuery = encodeURIComponent(url);
     const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
 
-    updateTab(activeTabId, { url: searchUrl });
+    updateTab(activeTabId, { url: searchUrl, screenshot: undefined });
     webViewRef.current?.injectJavaScript(
       `window.location.href = "${searchUrl}";`,
     );
@@ -207,12 +211,20 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleGoHome = () => {
     if (activeTabId) {
-      updateTab(activeTabId, { url: DEFAULT_URL });
+      updateTab(activeTabId, { url: DEFAULT_URL, screenshot: undefined });
       webViewRef.current?.injectJavaScript(
         `window.location.href = "${DEFAULT_URL}";`,
       );
     }
   };
+
+  // Handle screenshot capture for tab previews
+  const handleScreenshotCaptured = useCallback(
+    (tabId: string, screenshot: string) => {
+      updateTab(tabId, { screenshot });
+    },
+    [updateTab],
+  );
 
   // Context menu actions for browser actions
   const browserContextMenuActions: MenuItem[] = [
@@ -318,12 +330,28 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                   }`}
                 >
                   {/* Tab Preview */}
-                  <View className="h-32 bg-background-secondary justify-center items-center">
-                    <Icon.Browser
-                      size={32}
-                      color={themeColors.text.secondary}
+                  {tab.screenshot ? (
+                    <View className="h-32 bg-background-secondary justify-center items-center overflow-hidden relative">
+                      <Image
+                        source={{ uri: tab.screenshot }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                        onError={() => {
+                          // Remove the screenshot if it fails to load
+                          updateTab(tab.id, { screenshot: undefined });
+                        }}
+                      />
+                      {tab.id === activeTabId && (
+                        <View className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary" />
+                      )}
+                    </View>
+                  ) : (
+                    <TabPreview
+                      url={tab.url}
+                      title={tab.title}
+                      isActive={tab.id === activeTabId}
                     />
-                  </View>
+                  )}
 
                   {/* Tab Info */}
                   <View className="p-3 bg-background-primary">
@@ -362,6 +390,18 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
               ))}
             </View>
           </ScrollView>
+
+          {/* Hidden WebViews for capturing screenshots */}
+          {tabs.map((tab) => (
+            <TabScreenshotCapture
+              key={`screenshot-${tab.id}`}
+              url={tab.url}
+              isVisible={showTabs && !tab.screenshot}
+              onScreenshotCaptured={(screenshot) => {
+                handleScreenshotCaptured(tab.id, screenshot);
+              }}
+            />
+          ))}
         </Animated.View>
       </BaseLayout>
     );

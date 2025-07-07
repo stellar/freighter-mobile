@@ -96,6 +96,7 @@
     "react-native-screens": "^4.7.0",
     "react-native-scrypt": "^1.2.1",
     "react-native-svg": "^15.12.0",
+    "react-native-view-shot": "^4.0.3",
     "react-native-vision-camera": "^4.6.4",
     "react-native-webview": "^13.15.0",
     "readable-stream": "1.0.33",
