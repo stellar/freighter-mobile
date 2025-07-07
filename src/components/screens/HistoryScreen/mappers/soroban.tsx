@@ -390,15 +390,8 @@ const processSorobanTransfer = async ({
         issuer: { key: name.split(":")[1] },
         type: undefined,
       };
-    } else if (name) {
-      displayName = name;
-      assetIconToken = {
-        type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
-        code,
-        issuer: { key: sorobanAttributes.contractId },
-      };
     } else {
-      displayName = code;
+      displayName = name ?? code;
       assetIconToken = {
         type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
         code,
