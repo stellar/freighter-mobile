@@ -154,8 +154,8 @@
     "continue": "Continuar",
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
-    "skip": "Pular",
-    "pasteFromClipboard": "Colar da área de transferência"
+    "pasteFromClipboard": "Colar da área de transferência",
+    "doThisLaterButtonText": "Fazer isso depois"
   },
   "connectedApps": {
     "title": "Walle Connect",
@@ -624,5 +624,13 @@
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
   },
-  "tokenIconAlt": "ícone do token {{code}}"
+  "tokenIconAlt": "ícone do token {{code}}",
+  "recoverySkipModal": {
+    "title": "Tem certeza que deseja pular?",
+    "description1": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la.",
+    "description2": "Se você perder, não poderemos recuperar. Antes de adicionar grandes quantias, certifique-se de visualizar e salvar sua frase de recuperação em um local seguro acessando ",
+    "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
+    "confirm": "Entendi, continuar",
+    "cancel": "Voltar"
+  }
 }

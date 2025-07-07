@@ -165,8 +165,8 @@
     "continue": "Continue",
     "typePassword": "Type your password",
     "typePasswordNote": "Minimum 8 characters",
-    "skip": "Skip",
-    "pasteFromClipboard": "Paste from clipboard"
+    "pasteFromClipboard": "Paste from clipboard",
+    "doThisLaterButtonText": "Do this later"
   },
   "connectedApps": {
     "title": "Wallet Connect",
@@ -616,5 +616,13 @@
     "addXLM": "Add XLM",
     "doThisLater": "Do this later"
   },
-  "tokenIconAlt": "{{code}} token icon"
+  "tokenIconAlt": "{{code}} token icon",
+  "recoverySkipModal": {
+    "title": "Are you sure you want to skip?",
+    "description1": "Your recovery phrase gives you access to your account and is the only way to access it.",
+    "description2": "If you lose, we can't recover it. Before adding large amounts, make sure to view and save your recovery phrase in a safe place by going to ",
+    "description3": "Settings → Security → Reveal Recovery Phrase.",
+    "confirm": "I understand, continue",
+    "cancel": "Go back"
+  }
 }

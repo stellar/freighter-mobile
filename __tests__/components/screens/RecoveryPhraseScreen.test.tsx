@@ -6,6 +6,15 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import React from "react";
 import StellarHDWallet from "stellar-hd-wallet";
 
+// Mock the RecoveryPhraseSkipBottomSheet component
+jest.mock(
+  "components/screens/RecoveryPhraseSkipBottomSheet",
+  () =>
+    function MockRecoveryPhraseSkipBottomSheet() {
+      return null;
+    },
+);
+
 const mockCopyToClipboard = jest.fn();
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({
@@ -35,6 +44,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "recoveryPhraseScreen.copyButtonText": "Copy",
       "onboarding.skip": "Skip",
       "onboarding.continue": "Continue",
+      "onboarding.doThisLaterButtonText": "Do this later",
     };
     return translations[key] || key;
   },
@@ -136,7 +146,7 @@ describe("RecoveryPhraseScreen", () => {
       />,
     );
 
-    const skipButton = getByText("Skip");
+    const skipButton = getByText("Do this later");
     fireEvent.press(skipButton);
 
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
