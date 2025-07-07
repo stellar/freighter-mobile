@@ -1,10 +1,17 @@
+import {
+  saveScreenshot,
+  ScreenshotData,
+} from "components/screens/DiscoveryBrowserScreen/screenshots";
+import { useBrowserTabsStore } from "ducks/browserTabs";
 import { debug } from "helpers/debug";
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Freeze } from "react-freeze";
 import { View } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 interface TabScreenshotCaptureProps {
+  tabId: string;
   url: string;
   onScreenshotCaptured: (screenshot: string) => void;
   isVisible: boolean;
@@ -20,6 +27,7 @@ interface ContentCheckData {
 }
 
 const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
+  tabId,
   url,
   onScreenshotCaptured,
   isVisible,
@@ -29,7 +37,8 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasAttemptedCapture, setHasAttemptedCapture] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
+  const maxRetries = 3;
+  const { updateTab } = useBrowserTabsStore();
 
   // JavaScript to check if the page has meaningful content
   const checkContentScript = `
@@ -72,13 +81,26 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
 
         const uri = await viewShotRef.current.capture();
 
+        // Save to persistent storage
+        const screenshotData: ScreenshotData = {
+          id: tabId,
+          timestamp: Date.now(),
+          uri,
+          url,
+        };
+
+        await saveScreenshot(screenshotData);
+
         onScreenshotCaptured(uri);
+
+        // Also update the tab with the screenshot
+        updateTab(tabId, { screenshot: uri });
       }
     } catch (error) {
       debug("TabScreenshotCapture", "Failed to capture screenshot:", error);
       setHasAttemptedCapture(true);
     }
-  }, [onScreenshotCaptured]);
+  }, [onScreenshotCaptured, updateTab, tabId, url]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -156,37 +178,37 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   }
 
   return (
-    <View
-      style={{ position: "absolute", left: -9999, width: 300, height: 200 }}
-    >
-      <ViewShot
-        ref={viewShotRef}
-        options={{
-          format: "png",
-          quality: 0.8,
-          result: "data-uri",
-        }}
-        style={{ width: 300, height: 200 }}
-      >
-        <WebView
-          ref={webViewRef}
-          source={{ uri: url }}
-          onLoadEnd={handleLoadEnd}
-          onMessage={handleMessage}
+    <View className="absolute -left-[9999px] w-[300px] h-[200px]">
+      <Freeze freeze={!isVisible}>
+        <ViewShot
+          ref={viewShotRef}
+          options={{
+            format: "png",
+            quality: 0.8,
+            result: "data-uri",
+          }}
           style={{ width: 300, height: 200 }}
-          scrollEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          javaScriptEnabled
-          domStorageEnabled
-          cacheEnabled
-          mixedContentMode="compatibility"
-          // Add these for better performance
-          startInLoadingState={false}
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-        />
-      </ViewShot>
+        >
+          <WebView
+            ref={webViewRef}
+            source={{ uri: url }}
+            onLoadEnd={handleLoadEnd}
+            onMessage={handleMessage}
+            className="w-[300px] h-[200px]"
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            javaScriptEnabled
+            domStorageEnabled
+            cacheEnabled
+            mixedContentMode="compatibility"
+            // Add these for better performance
+            startInLoadingState={false}
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+          />
+        </ViewShot>
+      </Freeze>
     </View>
   );
 };

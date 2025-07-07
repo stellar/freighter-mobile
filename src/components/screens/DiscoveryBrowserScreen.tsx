@@ -1,17 +1,19 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
+import Homepage from "components/screens/DiscoveryBrowserScreen/Homepage";
 import TabPreview from "components/screens/DiscoveryBrowserScreen/TabPreview";
 import TabScreenshotCapture from "components/screens/DiscoveryBrowserScreen/TabScreenshotCapture";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
-import { useBrowserTabsStore } from "ducks/browserTabs";
+import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { debug } from "helpers/debug";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef, useState, useCallback, useEffect } from "react";
+import { Freeze } from "react-freeze";
 import {
   View,
   TextInput,
@@ -30,7 +32,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
   typeof MAIN_TAB_ROUTES.TAB_DISCOVERY
 >;
 
-const DEFAULT_URL = "https://stellar.org";
+const HOMEPAGE_URL = "freighter://homepage";
 
 export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
   const { themeColors } = useColors();
@@ -48,16 +50,25 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     setActiveTab,
     updateTab,
     closeAllTabs,
+    getActiveTab,
+    isTabActive,
+    goToPage,
+    setLogo,
+    setNavState,
+    loadScreenshots,
   } = useBrowserTabsStore();
 
-  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const activeTab = getActiveTab();
 
-  // Initialize with first tab if none exists
+  // Initialize with first tab if none exists and load screenshots
   useEffect(() => {
     if (tabs.length === 0) {
-      addTab(DEFAULT_URL);
+      addTab(HOMEPAGE_URL);
+    } else {
+      // Load screenshots for existing tabs
+      loadScreenshots();
     }
-  }, [tabs.length, addTab]);
+  }, [tabs.length, addTab, loadScreenshots]);
 
   // Update input URL when active tab changes
   useEffect(() => {
@@ -72,6 +83,8 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
         } else {
           setInputUrl(activeTab.url);
         }
+      } else if (activeTab.url === HOMEPAGE_URL) {
+        setInputUrl("");
       } else {
         setInputUrl(activeTab.url);
       }
@@ -90,17 +103,29 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
   const handleNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
       if (activeTabId) {
-        updateTab(activeTabId, {
-          url: navState.url,
-          title: navState.title || "New Tab",
+        setNavState(activeTabId, {
           canGoBack: navState.canGoBack,
           canGoForward: navState.canGoForward,
           isLoading: navState.loading,
+        });
+
+        updateTab(activeTabId, {
+          url: navState.url,
+          title: navState.title || "New Tab",
           screenshot: undefined, // Clear screenshot when URL changes
         });
+
+        // Try to extract favicon
+        try {
+          const urlObj = new URL(navState.url);
+          const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+          setLogo(activeTabId, faviconUrl);
+        } catch (error) {
+          debug("DiscoveryBrowserScreen", "Failed to extract favicon:", error);
+        }
       }
     },
-    [activeTabId, updateTab],
+    [activeTabId, updateTab, setNavState, setLogo],
   );
 
   const handleGoBack = () => {
@@ -124,7 +149,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
   };
 
   const handleNewTab = () => {
-    addTab(DEFAULT_URL);
+    addTab(HOMEPAGE_URL);
   };
 
   const handleCloseSpecificTab = (tabId: string) => {
@@ -147,7 +172,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
 
     // Check if it's already a valid URL
     if (url.startsWith("http://") || url.startsWith("https://")) {
-      updateTab(activeTabId, { url, screenshot: undefined });
+      goToPage(activeTabId, url);
       webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
       return;
     }
@@ -155,7 +180,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     // Check if it looks like a domain (contains . and no spaces)
     if (url.includes(".") && !url.includes(" ")) {
       url = `https://${url}`;
-      updateTab(activeTabId, { url, screenshot: undefined });
+      goToPage(activeTabId, url);
       webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
       return;
     }
@@ -164,7 +189,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     const searchQuery = encodeURIComponent(url);
     const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
 
-    updateTab(activeTabId, { url: searchUrl, screenshot: undefined });
+    goToPage(activeTabId, searchUrl);
     webViewRef.current?.injectJavaScript(
       `window.location.href = "${searchUrl}";`,
     );
@@ -211,9 +236,9 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleGoHome = () => {
     if (activeTabId) {
-      updateTab(activeTabId, { url: DEFAULT_URL, screenshot: undefined });
+      goToPage(activeTabId, HOMEPAGE_URL);
       webViewRef.current?.injectJavaScript(
-        `window.location.href = "${DEFAULT_URL}";`,
+        `window.location.href = "${HOMEPAGE_URL}";`,
       );
     }
   };
@@ -225,6 +250,10 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
     },
     [updateTab],
   );
+
+  // Check if tab is on homepage
+  const isTabOnHomepage = (tab: BrowserTab) =>
+    !tab.url || tab.url === HOMEPAGE_URL;
 
   // Context menu actions for browser actions
   const browserContextMenuActions: MenuItem[] = [
@@ -324,7 +353,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                   key={tab.id}
                   onPress={() => handleSwitchTab(tab.id)}
                   className={`w-[48%] mb-4 rounded-lg overflow-hidden ${
-                    tab.id === activeTabId
+                    isTabActive(tab.id)
                       ? "border-2 border-primary"
                       : "border border-border-default"
                   }`}
@@ -345,7 +374,8 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                       <TabPreview
                         url={tab.url}
                         title={tab.title}
-                        isActive={tab.id === activeTabId}
+                        isActive={isTabActive(tab.id)}
+                        logoUrl={tab.logoUrl}
                       />
                     )}
 
@@ -368,8 +398,9 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           {tabs.map((tab) => (
             <TabScreenshotCapture
               key={`screenshot-${tab.id}`}
+              tabId={tab.id}
               url={tab.url}
-              isVisible={showTabs && !tab.screenshot}
+              isVisible={showTabs && !tab.screenshot && !isTabOnHomepage(tab)}
               onScreenshotCaptured={(screenshot) => {
                 handleScreenshotCaptured(tab.id, screenshot);
               }}
@@ -413,25 +444,47 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
         </TouchableOpacity>
       </View>
 
-      {/* WebView */}
+      {/* WebViews for all tabs - only active tab is unfrozen */}
       <View className="flex-1">
-        <WebView
-          ref={webViewRef}
-          source={{ uri: activeTab.url }}
-          onNavigationStateChange={handleNavigationStateChange}
-          startInLoadingState
-          allowsBackForwardNavigationGestures
-          // Handle WalletConnect deep links
-          onShouldStartLoadWithRequest={(request) => {
-            // Handle WalletConnect URIs
-            if (request.url.startsWith("wc:")) {
-              // Handle WalletConnect connection
-              debug("WalletConnect URI detected:", request.url);
-              return false;
-            }
-            return true;
-          }}
-        />
+        {tabs.map((tab) => (
+          <Freeze key={tab.id} freeze={!isTabActive(tab.id)}>
+            {isTabOnHomepage(tab) ? (
+              <Homepage tabId={tab.id} />
+            ) : (
+              <WebView
+                ref={isTabActive(tab.id) ? webViewRef : null}
+                source={{ uri: tab.url }}
+                onNavigationStateChange={
+                  isTabActive(tab.id) ? handleNavigationStateChange : undefined
+                }
+                startInLoadingState={isTabActive(tab.id)}
+                allowsBackForwardNavigationGestures={isTabActive(tab.id)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  opacity: isTabActive(tab.id) ? 1 : 0,
+                }}
+                // Handle WalletConnect deep links
+                onShouldStartLoadWithRequest={
+                  isTabActive(tab.id)
+                    ? (request) => {
+                        // Handle WalletConnect URIs
+                        if (request.url.startsWith("wc:")) {
+                          // Handle WalletConnect connection
+                          debug("WalletConnect URI detected:", request.url);
+                          return false;
+                        }
+                        return true;
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </Freeze>
+        ))}
       </View>
 
       {/* Bottom Navigation Bar */}

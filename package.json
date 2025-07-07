@@ -76,6 +76,7 @@
     "postinstall-postinstall": "^2.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-freeze": "^1.0.4",
     "react-i18next": "^15.4.1",
     "react-native": "0.78.0",
     "react-native-bootsplash": "^6.3.3",

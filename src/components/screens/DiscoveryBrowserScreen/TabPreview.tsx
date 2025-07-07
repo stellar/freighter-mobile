@@ -8,9 +8,15 @@ interface TabPreviewProps {
   url: string;
   title: string;
   isActive: boolean;
+  logoUrl?: string;
 }
 
-const TabPreview: React.FC<TabPreviewProps> = ({ url, title, isActive }) => {
+const TabPreview: React.FC<TabPreviewProps> = ({
+  url,
+  title,
+  isActive,
+  logoUrl,
+}) => {
   const { themeColors } = useColors();
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [faviconError, setFaviconError] = useState(false);
@@ -36,11 +42,16 @@ const TabPreview: React.FC<TabPreviewProps> = ({ url, title, isActive }) => {
   };
 
   useEffect(() => {
-    const favicon = getFaviconUrl(url);
-    if (favicon) {
-      setFaviconUrl(favicon);
+    // Use logoUrl from store if available, otherwise try to get favicon
+    if (logoUrl) {
+      setFaviconUrl(logoUrl);
+    } else {
+      const favicon = getFaviconUrl(url);
+      if (favicon) {
+        setFaviconUrl(favicon);
+      }
     }
-  }, [url]);
+  }, [url, logoUrl]);
 
   const domain = getDomainFromUrl(url);
   const displayTitle = title && title !== "New Tab" ? title : domain;
@@ -62,6 +73,7 @@ const TabPreview: React.FC<TabPreviewProps> = ({ url, title, isActive }) => {
               source={{ uri: faviconUrl }}
               className="w-4 h-4 mr-2"
               onError={() => setFaviconError(true)}
+              resizeMode="contain"
             />
           ) : (
             <View className="mr-2">
