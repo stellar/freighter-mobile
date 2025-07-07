@@ -166,7 +166,8 @@
     "typePassword": "Type your password",
     "typePasswordNote": "Minimum 8 characters",
     "skip": "Skip",
-    "pasteFromClipboard": "Paste from clipboard"
+    "pasteFromClipboard": "Paste from clipboard",
+    "doThisLaterButtonText": "Do this later"
   },
   "discovery": {
     "title": "Wallet Connect",

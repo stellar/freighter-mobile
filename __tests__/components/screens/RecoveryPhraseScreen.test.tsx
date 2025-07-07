@@ -44,6 +44,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "recoveryPhraseScreen.copyButtonText": "Copy",
       "onboarding.skip": "Skip",
       "onboarding.continue": "Continue",
+      "onboarding.doThisLaterButtonText": "Do this later",
     };
     return translations[key] || key;
   },
@@ -145,7 +146,7 @@ describe("RecoveryPhraseScreen", () => {
       />,
     );
 
-    const skipButton = getByText("Skip");
+    const skipButton = getByText("Do this later");
     fireEvent.press(skipButton);
 
     expect(mockNavigation.navigate).not.toHaveBeenCalled();

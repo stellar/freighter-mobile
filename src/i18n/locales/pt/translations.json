@@ -155,7 +155,8 @@
     "typePassword": "Digite sua senha",
     "typePasswordNote": "Mínimo de 8 caracteres",
     "skip": "Pular",
-    "pasteFromClipboard": "Colar da área de transferência"
+    "pasteFromClipboard": "Colar da área de transferência",
+    "doThisLaterButtonText": "Fazer isso depois"
   },
   "discovery": {
     "title": "Wallet Connect",

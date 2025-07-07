@@ -62,7 +62,7 @@ const Footer: React.FC<{
         isLoading={isLoading}
         onPress={onPressSkip}
       >
-        {t("onboarding.skip")}
+        {t("onboarding.doThisLaterButtonText")}
       </Button>
     </StyledFooterButtonContainer>
   );
