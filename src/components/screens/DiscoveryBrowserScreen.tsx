@@ -2,6 +2,7 @@ import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Homepage from "components/screens/DiscoveryBrowserScreen/Homepage";
+import HomepagePreview from "components/screens/DiscoveryBrowserScreen/HomepagePreview";
 import TabPreview from "components/screens/DiscoveryBrowserScreen/TabPreview";
 import TabScreenshotCapture from "components/screens/DiscoveryBrowserScreen/TabScreenshotCapture";
 import Avatar from "components/sds/Avatar";
@@ -366,24 +367,34 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                 >
                   {/* Tab Preview */}
                   <View className="h-64 bg-background-secondary justify-center items-center overflow-hidden relative">
-                    {tab.screenshot ? (
-                      <Image
-                        source={{ uri: tab.screenshot }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                        onError={() => {
-                          // Remove the screenshot if it fails to load
-                          updateTab(tab.id, { screenshot: undefined });
-                        }}
-                      />
-                    ) : (
-                      <TabPreview
-                        url={tab.url}
-                        title={tab.title}
-                        isActive={isTabActive(tab.id)}
-                        logoUrl={tab.logoUrl}
-                      />
-                    )}
+                    {(() => {
+                      if (tab.screenshot) {
+                        return (
+                          <Image
+                            source={{ uri: tab.screenshot }}
+                            className="w-full h-full"
+                            resizeMode="cover"
+                            onError={() => {
+                              // Remove the screenshot if it fails to load
+                              updateTab(tab.id, { screenshot: undefined });
+                            }}
+                          />
+                        );
+                      }
+
+                      if (isTabOnHomepage(tab)) {
+                        return <HomepagePreview tabId={tab.id} />;
+                      }
+
+                      return (
+                        <TabPreview
+                          url={tab.url}
+                          title={tab.title}
+                          isActive={isTabActive(tab.id)}
+                          logoUrl={tab.logoUrl}
+                        />
+                      );
+                    })()}
 
                     {/* Close button */}
                     {tabs.length > 1 && (
@@ -401,17 +412,20 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
           </ScrollView>
 
           {/* Hidden WebViews for capturing screenshots */}
-          {tabs.map((tab) => (
-            <TabScreenshotCapture
-              key={`screenshot-${tab.id}`}
-              tabId={tab.id}
-              url={tab.url}
-              isVisible={showTabs && !tab.screenshot && !isTabOnHomepage(tab)}
-              onScreenshotCaptured={(screenshot) => {
-                handleScreenshotCaptured(tab.id, screenshot);
-              }}
-            />
-          ))}
+          {tabs.map(
+            (tab) =>
+              !isTabOnHomepage(tab) && (
+                <TabScreenshotCapture
+                  key={`screenshot-${tab.id}`}
+                  tabId={tab.id}
+                  url={tab.url}
+                  isVisible={showTabs && !tab.screenshot}
+                  onScreenshotCaptured={(screenshot) => {
+                    handleScreenshotCaptured(tab.id, screenshot);
+                  }}
+                />
+              ),
+          )}
         </Animated.View>
       </BaseLayout>
     );
