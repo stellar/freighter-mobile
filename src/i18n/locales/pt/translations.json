@@ -157,16 +157,19 @@
     "pasteFromClipboard": "Colar da área de transferência",
     "doThisLaterButtonText": "Fazer isso depois"
   },
-  "discovery": {
-    "title": "Wallet Connect",
-    "inputPlaceholder": "Insira um URI do WalletConnect",
-    "scanQRCode": "Scanear QR Code",
+  "connectedApps": {
+    "title": "Walle Connect",
+    "inputPlaceholder": "Cole o QR Code",
+    "scanQRCode": "Escanear QR Code",
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um URI válido",
+    "invalidUriError": "Por favor, insira um QR Code válido",
     "disconnectAllSessions": "Desconectar de todos os aplicativos",
     "connectedDapps": "Aplicativos Conectados",
     "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
+  },
+  "discovery": {
+    "title": "Discovery"
   },
   "history": {
     "title": "Histórico",
@@ -493,7 +496,7 @@
     "itemCopied": "{{itemName}} copiado para a área de transferência!"
   },
   "qrScanner": {
-    "cameraNotAvailable": "Câmera não disponível ou não permitida"
+    "cameraNotAvailable": "Câmera não disponível\nou não permitida"
   },
   "walletKit": {
     "connectionSuccessfull": "Conexão com {{dappName}} realizada com sucesso!",

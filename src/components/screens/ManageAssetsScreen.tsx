@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-/* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Button } from "components/sds/Button";
 import {
   MANAGE_ASSETS_ROUTES,
@@ -16,7 +14,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
-import React, { useEffect, useRef } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef } from "react";
 import { View } from "react-native";
 
 type ManageAssetsScreenProps = NativeStackScreenProps<
@@ -43,16 +42,9 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     onSuccess: handleRefresh,
   });
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <CustomHeaderButton
-          position="right"
-          onPress={() => bottomSheetModalRef.current?.present()}
-        />
-      ),
-    });
-  }, [navigation]);
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

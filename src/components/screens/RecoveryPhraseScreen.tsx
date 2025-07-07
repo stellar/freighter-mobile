@@ -12,7 +12,7 @@ import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useEffect, useState } from "react";
-import { generateMnemonic } from "stellar-hd-wallet";
+import StellarHDWallet from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
 type RecoveryPhraseScreenProps = NativeStackScreenProps<
@@ -74,7 +74,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 }) => {
   const { password } = route.params;
   const [recoveryPhrase] = useState(
-    generateMnemonic({
+    StellarHDWallet.generateMnemonic({
       entropyBits: 128,
     }),
   );

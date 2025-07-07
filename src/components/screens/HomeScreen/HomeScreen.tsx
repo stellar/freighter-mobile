@@ -1,13 +1,11 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
-import BottomSheet from "components/BottomSheet";
-import ContextMenuButton from "components/ContextMenuButton";
 import { IconButton } from "components/IconButton";
 import { BaseLayout } from "components/layout/BaseLayout";
-import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
-import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
+import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
+import { ConnectedAppsBottomSheet } from "components/screens/WalletKit/ConnectedAppsBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -19,7 +17,6 @@ import {
   RootStackParamList,
   BUY_XLM_ROUTES,
 } from "config/routes";
-import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { isContractId } from "helpers/soroban";
@@ -27,16 +24,11 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { Dimensions, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -53,19 +45,10 @@ type HomeScreenProps = BottomTabScreenProps<
  */
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
-  const {
-    network,
-    getAllAccounts,
-    renameAccount,
-    selectAccount,
-    allAccounts,
-    isRenamingAccount,
-  } = useAuthenticationStore();
+  const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
   const { themeColors } = useColors();
-  const [accountToRename, setAccountToRename] = useState<Account | null>(null);
-  const [renameAccountModalVisible, setRenameAccountModalVisible] =
-    useState(false);
-  const manageAccountBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const connectedAppsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -79,12 +62,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     [rawBalance],
   );
 
-  const navigateToBuyXLM = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-      screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
-      params: { isUnfunded: !isFunded },
-    });
-  }, [navigation, isFunded]);
+  useHomeHeaders({
+    navigation,
+    hasAssets,
+    connectedAppsBottomSheetModalRef,
+  });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
     useWelcomeBanner({
@@ -100,40 +82,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     fetchAccounts();
   }, [getAllAccounts]);
 
-  const actions = [
-    {
-      title: t("home.actions.settings"),
-      systemIcon: Platform.select({
-        ios: "gear",
-        android: "baseline_settings",
-      }),
-      onPress: () => navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
-    },
-    ...(hasAssets
-      ? [
-          {
-            title: t("home.actions.manageAssets"),
-            systemIcon: Platform.select({
-              ios: "pencil",
-              android: "baseline_delete",
-            }),
-            onPress: () =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
-          },
-        ]
-      : []),
-    {
-      title: t("home.actions.myQRCode"),
-      systemIcon: Platform.select({
-        ios: "qrcode",
-        android: "outline_circle",
-      }),
-      onPress: () =>
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-          showNavigationAsCloseButton: true,
-        }),
-    },
-  ];
+  const navigateToBuyXLM = useCallback(() => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+      screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+      params: { isUnfunded: !isFunded },
+    });
+  }, [navigation, isFunded]);
 
   const handleCopyAddress = (publicKey?: string) => {
     if (!publicKey) return;
@@ -141,36 +95,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     copyToClipboard(publicKey, {
       notificationMessage: t("accountAddressCopied"),
     });
-  };
-
-  const handleAddAnotherWallet = () => {
-    manageAccountBottomSheetModalRef.current?.dismiss();
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
-  };
-
-  const handleRenameAccount = async (newAccountName: string) => {
-    if (!accountToRename || !account) return;
-
-    await renameAccount({
-      accountName: newAccountName,
-      publicKey: accountToRename.publicKey,
-    });
-    setRenameAccountModalVisible(false);
-  };
-
-  const handleSelectAccount = async (publicKey: string) => {
-    if (publicKey === account?.publicKey) {
-      return;
-    }
-
-    await selectAccount(publicKey);
-    manageAccountBottomSheetModalRef.current?.dismiss();
-  };
-
-  const handleOpenRenameAccountModal = (selectedAccount: Account) => {
-    setAccountToRename(selectedAccount);
-
-    setRenameAccountModalVisible(true);
   };
 
   const handleTokenPress = (tokenId: string) => {
@@ -194,7 +118,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout insets={{ bottom: false }}>
+    <BaseLayout insets={{ bottom: false, top: false }}>
       <WelcomeBannerBottomSheet
         modalRef={welcomeBannerBottomSheetModalRef}
         onAddXLM={navigateToBuyXLM}
@@ -202,50 +126,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           handleWelcomeBannerDismiss();
         }}
       />
-      <BottomSheet
-        snapPoints={["80%"]}
-        modalRef={manageAccountBottomSheetModalRef}
-        handleCloseModal={() =>
-          manageAccountBottomSheetModalRef.current?.dismiss()
-        }
-        bottomSheetModalProps={{
-          enablePanDownToClose: false,
-        }}
-        customContent={
-          <ManageAccountBottomSheet
-            handleCloseModal={() =>
-              manageAccountBottomSheetModalRef.current?.dismiss()
-            }
-            onPressAddAnotherWallet={handleAddAnotherWallet}
-            handleCopyAddress={handleCopyAddress}
-            handleRenameAccount={handleOpenRenameAccountModal}
-            accounts={allAccounts}
-            activeAccount={account}
-            handleSelectAccount={handleSelectAccount}
-          />
-        }
+      <ConnectedAppsBottomSheet
+        modalRef={connectedAppsBottomSheetModalRef}
+        onDismiss={() => connectedAppsBottomSheetModalRef.current?.dismiss()}
       />
-      <RenameAccountModal
-        modalVisible={renameAccountModalVisible}
-        setModalVisible={setRenameAccountModalVisible}
-        handleRenameAccount={handleRenameAccount}
-        account={accountToRename!}
-        isRenamingAccount={isRenamingAccount}
+      <ManageAccounts
+        navigation={navigation}
+        accounts={allAccounts}
+        activeAccount={account}
+        bottomSheetRef={manageAccountsBottomSheetRef}
       />
-      <View className="flex-row justify-between items-center mb-4">
-        <ContextMenuButton
-          contextMenuProps={{
-            actions,
-          }}
-        >
-          <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
-        </ContextMenuButton>
-      </View>
 
       <View className="pt-8 w-full items-center">
         <View className="flex-col gap-3 items-center">
           <TouchableOpacity
-            onPress={() => manageAccountBottomSheetModalRef.current?.present()}
+            onPress={() => manageAccountsBottomSheetRef.current?.present()}
           >
             <View className="flex-row items-center gap-2">
               <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />

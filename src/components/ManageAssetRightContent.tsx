@@ -95,7 +95,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
         actions: menuActions,
       }}
     >
-      <Icon.DotsHorizontal size={24} color={themeColors.foreground.primary} />
+      <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       <Modal visible={modalVisible} onClose={() => setModalVisible(false)}>
         <Text xl regular>
           {t("manageAssetRightContent.removeAssetModal.title", {

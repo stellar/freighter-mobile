@@ -4,6 +4,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -18,15 +19,16 @@ const CustomContent: React.FC<{
   onDismiss: () => void;
 }> = ({ onAddXLM, onDismiss }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   return (
     <View className="gap-4">
       <View className="flex-row justify-between items-center">
         <View className="w-10 h-10 rounded-full items-center justify-center bg-gold-3 border border-gold-6">
-          <Icon.Wallet01 size={24} themeColor="gold" />
+          <Icon.Wallet01 themeColor="gold" />
         </View>
         <TouchableOpacity onPress={onDismiss}>
-          <Icon.X size={24} themeColor="mint" />
+          <Icon.X color={themeColors.text.primary} />
         </TouchableOpacity>
       </View>
       <View>
