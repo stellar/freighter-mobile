@@ -330,8 +330,8 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                   }`}
                 >
                   {/* Tab Preview */}
-                  {tab.screenshot ? (
-                    <View className="h-32 bg-background-secondary justify-center items-center overflow-hidden relative">
+                  <View className="h-64 bg-background-secondary justify-center items-center overflow-hidden relative">
+                    {tab.screenshot ? (
                       <Image
                         source={{ uri: tab.screenshot }}
                         className="w-full h-full"
@@ -341,50 +341,23 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
                           updateTab(tab.id, { screenshot: undefined });
                         }}
                       />
-                      {tab.id === activeTabId && (
-                        <View className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary" />
-                      )}
-                    </View>
-                  ) : (
-                    <TabPreview
-                      url={tab.url}
-                      title={tab.title}
-                      isActive={tab.id === activeTabId}
-                    />
-                  )}
+                    ) : (
+                      <TabPreview
+                        url={tab.url}
+                        title={tab.title}
+                        isActive={tab.id === activeTabId}
+                      />
+                    )}
 
-                  {/* Tab Info */}
-                  <View className="p-3 bg-background-primary">
-                    <Text sm semiBold numberOfLines={1} className="mb-1">
-                      {tab.title}
-                    </Text>
-                    <Text xs secondary numberOfLines={1} className="mb-2">
-                      {tab.url}
-                    </Text>
-
-                    {/* Tab Actions */}
-                    <View className="flex-row justify-between items-center">
-                      <View className="flex-row items-center">
-                        {tab.id === activeTabId && (
-                          <View className="w-2 h-2 rounded-full bg-primary mr-2" />
-                        )}
-                        <Text xs secondary>
-                          {tab.id === activeTabId ? "Active" : "Inactive"}
-                        </Text>
-                      </View>
-
-                      {tabs.length > 1 && (
-                        <TouchableOpacity
-                          onPress={() => handleCloseSpecificTab(tab.id)}
-                          className="p-1"
-                        >
-                          <Icon.X
-                            size={12}
-                            color={themeColors.text.secondary}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    {/* Close button */}
+                    {tabs.length > 1 && (
+                      <TouchableOpacity
+                        onPress={() => handleCloseSpecificTab(tab.id)}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 justify-center items-center"
+                      >
+                        <Icon.X size={12} color="white" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
