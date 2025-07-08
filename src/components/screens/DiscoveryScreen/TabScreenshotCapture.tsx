@@ -203,7 +203,9 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   }
 
   return (
-    <View className="absolute -left-[9999px] w-[300px] h-[200px]">
+    <View
+      className={`absolute -left-[9999px] ${BROWSER_CONSTANTS.SCREENSHOT_DIMENSIONS_CLASS}`}
+    >
       <Freeze freeze={!isVisible}>
         <ViewShot
           ref={viewShotRef}
@@ -222,7 +224,7 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
             source={{ uri: url }}
             onLoadEnd={handleLoadEnd}
             onMessage={handleMessage}
-            className="w-[300px] h-[200px]"
+            className={BROWSER_CONSTANTS.SCREENSHOT_DIMENSIONS_CLASS}
             scrollEnabled={false}
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
