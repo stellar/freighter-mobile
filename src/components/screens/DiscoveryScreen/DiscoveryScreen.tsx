@@ -8,10 +8,10 @@ import {
 } from "components/screens/DiscoveryScreen/components";
 import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS } from "config/constants";
+import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { formatDisplayUrl, isHomepageUrl } from "helpers/browser";
-import { debug } from "helpers/debug";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, View } from "react-native";
@@ -47,15 +47,25 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   // Get browser actions from custom hook
   const browserActions = useBrowserActions(webViewRef);
 
-  // Initialize with first tab if none exists and load screenshots
+  // Adds a new default homepage tab
+  const handleNewTab = useCallback(() => {
+    addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
+  }, [addTab]);
+
+  // Initialize with first tab if none exists
   useEffect(() => {
     if (tabs.length === 0) {
-      addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
-    } else {
+      handleNewTab();
+    }
+  }, [tabs.length, handleNewTab]);
+
+  useEffect(() => {
+    if (tabs.length > 0) {
       // Load screenshots for existing tabs
       loadScreenshots();
     }
-  }, [tabs.length, addTab, loadScreenshots]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update input URL when active tab changes
   useEffect(() => {
@@ -110,7 +120,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
             setLogo(activeTabId, faviconUrl);
           } catch (error) {
-            debug("DiscoveryScreen", "Failed to extract favicon:", error);
+            logger.debug(
+              "DiscoveryScreen",
+              "Failed to extract favicon:",
+              error,
+            );
           }
         }
       }
@@ -122,10 +136,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const handleUrlSubmit = useCallback(() => {
     browserActions.handleUrlSubmit(inputUrl);
   }, [browserActions, inputUrl]);
-
-  const handleNewTab = useCallback(() => {
-    addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
-  }, [addTab]);
 
   const handleCloseSpecificTab = useCallback(
     (tabId: string) => {
@@ -150,7 +160,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     setShowTabs(true);
   }, []);
 
-  const handleCloseTabOverview = useCallback(() => {
+  const handleHideTabs = useCallback(() => {
     setShowTabs(false);
   }, []);
 
@@ -171,7 +181,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   }
 
-  // Tab Overview Screen (Rainbow-style) - Render when shouldRenderTabs is true
+  // Tabs Grid Overview Screen
   if (shouldRenderTabs) {
     return (
       <BaseLayout
@@ -179,8 +189,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       >
         <TabOverview
           fadeAnim={fadeAnim}
-          onClose={handleCloseTabOverview}
           onNewTab={handleNewTab}
+          onClose={handleHideTabs}
           onSwitchTab={handleSwitchTab}
           onCloseTab={handleCloseSpecificTab}
           onScreenshotCaptured={handleScreenshotCaptured}

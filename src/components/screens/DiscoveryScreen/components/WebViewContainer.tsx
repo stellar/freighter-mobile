@@ -31,6 +31,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
               onNavigationStateChange={
                 isTabActive(tab.id) ? onNavigationStateChange : undefined
               }
+              // TODO: try removing this
               startInLoadingState={isTabActive(tab.id)}
               allowsBackForwardNavigationGestures={isTabActive(tab.id)}
               style={{
@@ -41,10 +42,16 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
                 bottom: 0,
                 opacity: isTabActive(tab.id) ? 1 : 0,
               }}
-              // Handle WalletConnect deep links
+              // TODO: Handle WalletConnect deep links
               onShouldStartLoadWithRequest={
                 isTabActive(tab.id)
                   ? (request) => {
+                      logger.debug(
+                        "WebViewContainer",
+                        "onShouldStartLoadWithRequest, request:",
+                        request,
+                      );
+
                       // Handle WalletConnect URIs
                       if (request.url.startsWith("wc:")) {
                         // Handle WalletConnect connection

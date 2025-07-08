@@ -3,6 +3,7 @@ import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
 import TabScreenshotCapture from "components/screens/DiscoveryScreen/TabScreenshotCapture";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
 import useColors from "hooks/useColors";
@@ -44,6 +45,7 @@ const TabOverview: React.FC<TabOverviewProps> = ({
       }}
     >
       {/* Header */}
+      {/* TODO: use a custom header component instead */}
       <View className="flex-row items-center justify-between p-4 border-b border-border-default">
         <TouchableOpacity onPress={onClose}>
           <Icon.X color={themeColors.base[1]} />
@@ -72,24 +74,32 @@ const TabOverview: React.FC<TabOverviewProps> = ({
               {/* Tab Preview */}
               <View className="h-64 bg-background-secondary justify-center items-center overflow-hidden relative">
                 {(() => {
+                  // Show screenshot if available
                   if (tab.screenshot) {
                     return (
                       <Image
                         source={{ uri: tab.screenshot }}
                         className="w-full h-full"
-                        resizeMode="cover"
-                        onError={() => {
+                        resizeMode="contain"
+                        onError={(error) => {
                           // Remove the screenshot if it fails to load
                           // This would need to be handled by the parent component
+                          logger.error(
+                            "TabOverview",
+                            "Failed to load screenshot:",
+                            error,
+                          );
                         }}
                       />
                     );
                   }
 
+                  // Show homepage simplified preview if URL is homepage
                   if (isHomepageUrl(tab.url)) {
-                    return <HomepagePreview tabId={tab.id} />;
+                    return <HomepagePreview />;
                   }
 
+                  // Show preview with centered logo and domain name
                   return <TabPreview url={tab.url} logoUrl={tab.logoUrl} />;
                 })()}
 
@@ -97,9 +107,9 @@ const TabOverview: React.FC<TabOverviewProps> = ({
                 {tabs.length > 1 && (
                   <TouchableOpacity
                     onPress={() => onCloseTab(tab.id)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 justify-center items-center"
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
                   >
-                    <Icon.X size={12} color="white" />
+                    <Icon.X size={12} color={themeColors.base[1]} />
                   </TouchableOpacity>
                 )}
               </View>

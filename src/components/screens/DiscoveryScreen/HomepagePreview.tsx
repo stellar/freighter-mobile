@@ -4,11 +4,7 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
-interface HomepagePreviewProps {
-  tabId: string;
-}
-
-const HomepagePreview: React.FC<HomepagePreviewProps> = () => {
+const HomepagePreview: React.FC = () => {
   const { themeColors } = useColors();
 
   return (

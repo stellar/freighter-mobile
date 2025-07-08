@@ -1,10 +1,6 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  getDomainFromUrl,
-  getFaviconUrl,
-  isHomepageUrl,
-} from "helpers/browser";
+import { getDomainFromUrl, getFaviconUrl } from "helpers/browser";
 import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
 import { View, Image } from "react-native";
@@ -20,12 +16,6 @@ const TabPreview: React.FC<TabPreviewProps> = ({ url, logoUrl }) => {
   const [faviconError, setFaviconError] = useState(false);
 
   useEffect(() => {
-    // Skip favicon for homepage
-    if (isHomepageUrl(url)) {
-      setFaviconUrl(null);
-      return;
-    }
-
     // Use logoUrl from store if available, otherwise try to get favicon
     if (logoUrl) {
       setFaviconUrl(logoUrl);

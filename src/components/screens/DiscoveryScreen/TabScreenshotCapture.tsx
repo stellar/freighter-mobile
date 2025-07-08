@@ -203,6 +203,8 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   }
 
   return (
+    // TODO: try capturing screenshots from the webview container instead of this component
+    // Move to the left of the screen to avoid being visible since we use it just for capturing screenshots
     <View
       className={`absolute -left-[9999px] ${BROWSER_CONSTANTS.SCREENSHOT_DIMENSIONS_CLASS}`}
     >
