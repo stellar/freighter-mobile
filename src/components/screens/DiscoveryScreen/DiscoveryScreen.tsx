@@ -164,13 +164,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     setShowTabs(false);
   }, []);
 
-  const handleScreenshotCaptured = useCallback(
-    (tabId: string, screenshot: string) => {
-      updateTab(tabId, { screenshot });
-    },
-    [updateTab],
-  );
-
   if (!activeTab) {
     return (
       <BaseLayout>
@@ -193,7 +186,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           onClose={handleHideTabs}
           onSwitchTab={handleSwitchTab}
           onCloseTab={handleCloseSpecificTab}
-          onScreenshotCaptured={handleScreenshotCaptured}
         />
       </BaseLayout>
     );

@@ -1,6 +1,5 @@
 import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
-import TabScreenshotCapture from "components/screens/DiscoveryScreen/TabScreenshotCapture";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
@@ -22,7 +21,6 @@ interface TabOverviewProps {
   onNewTab: () => void;
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onScreenshotCaptured: (tabId: string, screenshot: string) => void;
 }
 
 const TabOverview: React.FC<TabOverviewProps> = ({
@@ -31,7 +29,6 @@ const TabOverview: React.FC<TabOverviewProps> = ({
   onNewTab,
   onSwitchTab,
   onCloseTab,
-  onScreenshotCaptured,
 }) => {
   const { themeColors } = useColors();
   const { tabs, isTabActive } = useBrowserTabsStore();
@@ -80,10 +77,8 @@ const TabOverview: React.FC<TabOverviewProps> = ({
                       <Image
                         source={{ uri: tab.screenshot }}
                         className="w-full h-full"
-                        resizeMode="contain"
+                        resizeMode="cover"
                         onError={(error) => {
-                          // Remove the screenshot if it fails to load
-                          // This would need to be handled by the parent component
                           logger.error(
                             "TabOverview",
                             "Failed to load screenshot:",
@@ -117,22 +112,6 @@ const TabOverview: React.FC<TabOverviewProps> = ({
           ))}
         </View>
       </ScrollView>
-
-      {/* Hidden WebViews for capturing screenshots */}
-      {tabs.map(
-        (tab) =>
-          !isHomepageUrl(tab.url) && (
-            <TabScreenshotCapture
-              key={`screenshot-${tab.id}`}
-              tabId={tab.id}
-              url={tab.url}
-              isVisible={!tab.screenshot}
-              onScreenshotCaptured={(screenshot) => {
-                onScreenshotCaptured(tab.id, screenshot);
-              }}
-            />
-          ),
-      )}
     </Animated.View>
   );
 };

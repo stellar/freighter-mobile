@@ -91,21 +91,3 @@ export const formatDisplayUrl = (url: string): string => {
  * Generates unique tab ID
  */
 export const generateTabId = (): string => Date.now().toString();
-
-/**
- * Calculates tab grid layout dimensions
- */
-export const getTabGridDimensions = (containerWidth: number) => {
-  const gap = BROWSER_CONSTANTS.TAB_GRID_GAP;
-  const columns = BROWSER_CONSTANTS.TAB_GRID_COLUMNS;
-  const totalGaps = columns - 1;
-  const availableWidth = containerWidth - totalGaps * gap;
-  const itemWidth = availableWidth / columns;
-  const itemHeight = itemWidth / BROWSER_CONSTANTS.TAB_PREVIEW_ASPECT_RATIO;
-
-  return {
-    itemWidth,
-    itemHeight,
-    gap,
-  };
-};

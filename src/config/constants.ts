@@ -235,15 +235,10 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_ERROR_RETRY_DELAY: 1500,
   MAX_SCREENSHOT_RETRIES: 3,
   SCREENSHOT_QUALITY: 0.8,
-  SCREENSHOT_WIDTH: 200,
-  SCREENSHOT_HEIGHT: 300,
-  // Make sure it matches the above SCREENSHOT_WIDTH and SCREENSHOT_HEIGHT values
-  SCREENSHOT_DIMENSIONS_CLASS: "w-[200px] h-[300px]",
+  // Full-size screenshot settings (will be captured at WebView's actual size)
+  SCREENSHOT_CAPTURE_DELAY: 1000, // Delay after page load before capturing
   TAB_ANIMATION_DURATION_OPEN: 300,
   TAB_ANIMATION_DURATION_CLOSE: 100,
-  TAB_GRID_COLUMNS: 2,
-  TAB_GRID_GAP: 16, // mb-4
-  TAB_PREVIEW_ASPECT_RATIO: 1.5, // width/height ratio
 } as const;
 
 // Popular sites for homepage
