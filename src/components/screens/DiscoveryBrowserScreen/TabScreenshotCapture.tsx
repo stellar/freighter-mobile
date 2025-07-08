@@ -2,6 +2,7 @@ import {
   saveScreenshot,
   ScreenshotData,
 } from "components/screens/DiscoveryBrowserScreen/screenshots";
+import { BROWSER_CONSTANTS } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { debug } from "helpers/debug";
 import React, { useRef, useEffect, useState, useCallback } from "react";
@@ -37,7 +38,6 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasAttemptedCapture, setHasAttemptedCapture] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
   const { updateTab } = useBrowserTabsStore();
 
   // JavaScript to check if the page has meaningful content
@@ -112,19 +112,25 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
             // If we have content and no errors, capture immediately
             setTimeout(() => {
               captureScreenshot();
-            }, 500); // Reduced delay
-          } else if (data.isLoading && retryCount < maxRetries) {
+            }, BROWSER_CONSTANTS.SCREENSHOT_CONTENT_CHECK_DELAY);
+          } else if (
+            data.isLoading &&
+            retryCount < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
+          ) {
             // If still loading, wait less time
             setRetryCount((prev) => prev + 1);
             setTimeout(() => {
               webViewRef.current?.injectJavaScript(checkContentScript);
-            }, 1000); // Reduced from 2000 to 1000ms
-          } else if (data.hasError && retryCount < maxRetries) {
+            }, BROWSER_CONSTANTS.SCREENSHOT_RETRY_DELAY);
+          } else if (
+            data.hasError &&
+            retryCount < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
+          ) {
             // For JavaScript errors, try one more time with a delay
             setRetryCount((prev) => prev + 1);
             setTimeout(() => {
               webViewRef.current?.injectJavaScript(checkContentScript);
-            }, 1500);
+            }, BROWSER_CONSTANTS.SCREENSHOT_ERROR_RETRY_DELAY);
           } else {
             // If we've tried enough or no content, capture anyway
             captureScreenshot();
@@ -135,7 +141,7 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
         captureScreenshot();
       }
     },
-    [captureScreenshot, retryCount, maxRetries, checkContentScript],
+    [captureScreenshot, retryCount, checkContentScript],
   );
 
   const handleLoadEnd = useCallback(() => {
@@ -150,14 +156,14 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
         if (isLoaded && viewShotRef.current) {
           webViewRef.current?.injectJavaScript(checkContentScript);
         }
-      }, 2000); // Reduced from 4000 to 2000ms
+      }, BROWSER_CONSTANTS.SCREENSHOT_INITIAL_DELAY);
 
       // Reduced fallback timeout
       const fallbackTimer = setTimeout(() => {
         if (!hasAttemptedCapture) {
           captureScreenshot();
         }
-      }, 8000); // Reduced from 15000 to 8000ms
+      }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_TIMEOUT);
 
       return () => {
         clearTimeout(timer);
@@ -184,10 +190,13 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
           ref={viewShotRef}
           options={{
             format: "png",
-            quality: 0.8,
+            quality: BROWSER_CONSTANTS.SCREENSHOT_QUALITY,
             result: "data-uri",
           }}
-          style={{ width: 300, height: 200 }}
+          style={{
+            width: BROWSER_CONSTANTS.SCREENSHOT_WIDTH,
+            height: BROWSER_CONSTANTS.SCREENSHOT_HEIGHT,
+          }}
         >
           <WebView
             ref={webViewRef}

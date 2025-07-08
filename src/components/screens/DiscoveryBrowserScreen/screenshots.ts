@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BROWSER_CONSTANTS } from "config/constants";
 import { debug } from "helpers/debug";
 
 export interface ScreenshotData {
@@ -8,11 +9,11 @@ export interface ScreenshotData {
   url: string;
 }
 
-const SCREENSHOT_STORAGE_KEY = "browser_screenshots";
-
 export const getStoredScreenshots = async (): Promise<ScreenshotData[]> => {
   try {
-    const data = await AsyncStorage.getItem(SCREENSHOT_STORAGE_KEY);
+    const data = await AsyncStorage.getItem(
+      BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
+    );
     return data ? (JSON.parse(data) as ScreenshotData[]) : [];
   } catch (error) {
     debug("screenshots", "Failed to get stored screenshots:", error);
@@ -24,7 +25,7 @@ export const findTabScreenshot = async (
   tabId: string,
   url?: string,
 ): Promise<ScreenshotData | null> => {
-  if (!url || url === "freighter://homepage") return null;
+  if (!url || url === BROWSER_CONSTANTS.HOMEPAGE_URL) return null;
 
   try {
     const screenshots = await getStoredScreenshots();
@@ -62,13 +63,13 @@ export const saveScreenshot = async (
     // Add new screenshot
     const updatedScreenshots = [...filteredScreenshots, screenshot];
 
-    // Keep only the 50 most recent screenshots to prevent storage bloat
+    // Keep only the most recent screenshots to prevent storage bloat
     const sortedScreenshots = updatedScreenshots
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 50);
+      .slice(0, BROWSER_CONSTANTS.MAX_SCREENSHOTS_STORED);
 
     await AsyncStorage.setItem(
-      SCREENSHOT_STORAGE_KEY,
+      BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
       JSON.stringify(sortedScreenshots),
     );
   } catch (error) {
@@ -89,7 +90,7 @@ export const pruneScreenshots = async (
     );
 
     await AsyncStorage.setItem(
-      SCREENSHOT_STORAGE_KEY,
+      BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
       JSON.stringify(screenshotsToKeep),
     );
   } catch (error) {
@@ -99,7 +100,7 @@ export const pruneScreenshots = async (
 
 export const clearAllScreenshots = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(SCREENSHOT_STORAGE_KEY);
+    await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
   } catch (error) {
     debug("screenshots", "Failed to clear screenshots:", error);
   }

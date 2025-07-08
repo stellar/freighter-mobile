@@ -199,3 +199,48 @@ export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
 }
+
+// Browser constants
+export const BROWSER_CONSTANTS = {
+  HOMEPAGE_URL: "freighter://homepage",
+  GOOGLE_SEARCH_BASE_URL: "https://www.google.com/search?q=",
+  DEFAULT_TAB_TITLE: "New Tab",
+  SCREENSHOT_STORAGE_KEY: "browser_screenshots",
+  MAX_SCREENSHOTS_STORED: 50,
+  SCREENSHOT_CAPTURE_TIMEOUT: 8000,
+  SCREENSHOT_INITIAL_DELAY: 2000,
+  SCREENSHOT_CONTENT_CHECK_DELAY: 500,
+  SCREENSHOT_RETRY_DELAY: 1000,
+  SCREENSHOT_ERROR_RETRY_DELAY: 1500,
+  MAX_SCREENSHOT_RETRIES: 3,
+  SCREENSHOT_QUALITY: 0.8,
+  SCREENSHOT_WIDTH: 300,
+  SCREENSHOT_HEIGHT: 200,
+  TAB_PREVIEW_HEIGHT: 256, // 64 * 4 (h-64)
+  TAB_ANIMATION_DURATION: 300,
+  TAB_GRID_COLUMNS: 2,
+  TAB_GRID_GAP: 16, // mb-4
+  TAB_PREVIEW_ASPECT_RATIO: 1.5, // width/height ratio
+} as const;
+
+// Popular sites for homepage
+export const POPULAR_SITES = [
+  { name: "Stellar", url: "https://stellar.org", icon: "Globe02" },
+  { name: "StellarX", url: "https://stellarx.com", icon: "Globe02" },
+  { name: "Lobstr", url: "https://lobstr.co", icon: "Globe02" },
+  { name: "StellarTerm", url: "https://stellarterm.com", icon: "Globe02" },
+] as const;
+
+// Quick actions for homepage
+export const QUICK_ACTIONS = [
+  {
+    title: "Developer Resources",
+    url: "https://stellar.org/developers",
+    icon: "Terminal",
+  },
+  {
+    title: "Stellar Ecosystem",
+    url: "https://stellar.org/ecosystem",
+    icon: "Globe02",
+  },
+] as const;

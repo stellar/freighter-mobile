@@ -1,5 +1,10 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import {
+  getDomainFromUrl,
+  getFaviconUrl,
+  isHomepageUrl,
+} from "helpers/browser";
 import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
 import { View, Image } from "react-native";
@@ -14,29 +19,9 @@ const TabPreview: React.FC<TabPreviewProps> = ({ url, logoUrl }) => {
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [faviconError, setFaviconError] = useState(false);
 
-  // Helper function to extract domain from URL
-  const getDomainFromUrl = (urlInput: string): string => {
-    try {
-      const urlObj = new URL(urlInput);
-      return urlObj.hostname.replace("www.", "");
-    } catch {
-      return "Unknown";
-    }
-  };
-
-  // Helper function to get favicon URL
-  const getFaviconUrl = (urlInput: string): string => {
-    try {
-      const urlObj = new URL(urlInput);
-      return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-    } catch {
-      return "";
-    }
-  };
-
   useEffect(() => {
     // Skip favicon for homepage
-    if (url === "freighter://homepage") {
+    if (isHomepageUrl(url)) {
       setFaviconUrl(null);
       return;
     }
@@ -55,7 +40,7 @@ const TabPreview: React.FC<TabPreviewProps> = ({ url, logoUrl }) => {
   const domain = getDomainFromUrl(url);
 
   return (
-    <View className="w-full h-full bg-background-primary justify-center items-center bg-green-500">
+    <View className="w-full h-full bg-background-primary justify-center items-center">
       {faviconUrl && !faviconError ? (
         <Image
           source={{ uri: faviconUrl }}

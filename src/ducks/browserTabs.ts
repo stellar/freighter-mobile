@@ -3,6 +3,8 @@ import {
   findTabScreenshot,
   pruneScreenshots,
 } from "components/screens/DiscoveryBrowserScreen/screenshots";
+import { BROWSER_CONSTANTS } from "config/constants";
+import { generateTabId } from "helpers/browser";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -45,11 +47,11 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       tabs: [],
       activeTabId: null,
 
-      addTab: (url = "freighter://homepage") => {
+      addTab: (url = BROWSER_CONSTANTS.HOMEPAGE_URL) => {
         const newTab: BrowserTab = {
-          id: Date.now().toString(),
+          id: generateTabId(),
           url,
-          title: "New Tab",
+          title: BROWSER_CONSTANTS.DEFAULT_TAB_TITLE,
           canGoBack: false,
           canGoForward: false,
           isLoading: false,
@@ -170,7 +172,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
 
         // Use Promise.all to load screenshots in parallel
         const screenshotPromises = updatedTabs.map(async (tab, index) => {
-          if (tab.url && tab.url !== "freighter://homepage") {
+          if (tab.url && tab.url !== BROWSER_CONSTANTS.HOMEPAGE_URL) {
             try {
               const screenshot = await findTabScreenshot(tab.id, tab.url);
               if (screenshot) {

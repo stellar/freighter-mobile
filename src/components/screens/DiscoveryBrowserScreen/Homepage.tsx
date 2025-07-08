@@ -1,5 +1,6 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { POPULAR_SITES, QUICK_ACTIONS } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -12,13 +13,6 @@ interface HomepageProps {
 const Homepage: React.FC<HomepageProps> = ({ tabId }) => {
   const { themeColors } = useColors();
   const { goToPage } = useBrowserTabsStore();
-
-  const popularSites = [
-    { name: "Stellar", url: "https://stellar.org", icon: "Globe02" },
-    { name: "StellarX", url: "https://stellarx.com", icon: "Globe02" },
-    { name: "Lobstr", url: "https://lobstr.co", icon: "Globe02" },
-    { name: "StellarTerm", url: "https://stellarterm.com", icon: "Globe02" },
-  ];
 
   const handleSitePress = (url: string) => {
     goToPage(tabId, url);
@@ -58,7 +52,7 @@ const Homepage: React.FC<HomepageProps> = ({ tabId }) => {
           Popular Sites
         </Text>
         <View className="flex-row flex-wrap justify-between">
-          {popularSites.map((site) => (
+          {POPULAR_SITES.map((site) => (
             <TouchableOpacity
               key={site.url}
               className="w-[48%] mb-4 p-4 bg-background-secondary rounded-lg border border-border-primary"
@@ -81,25 +75,18 @@ const Homepage: React.FC<HomepageProps> = ({ tabId }) => {
           Quick Actions
         </Text>
         <View className="space-y-3">
-          <TouchableOpacity
-            className="flex-row items-center p-4 bg-background-secondary rounded-lg border border-border-primary"
-            onPress={() => goToPage(tabId, "https://stellar.org/developers")}
-          >
-            <Icon.Terminal size={20} color={themeColors.primary} />
-            <Text md className="ml-3 text-text-primary">
-              Developer Resources
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center p-4 bg-background-secondary rounded-lg border border-border-primary"
-            onPress={() => goToPage(tabId, "https://stellar.org/ecosystem")}
-          >
-            <Icon.Globe02 size={20} color={themeColors.primary} />
-            <Text md className="ml-3 text-text-primary">
-              Stellar Ecosystem
-            </Text>
-          </TouchableOpacity>
+          {QUICK_ACTIONS.map((action) => (
+            <TouchableOpacity
+              key={action.url}
+              className="flex-row items-center p-4 bg-background-secondary rounded-lg border border-border-primary"
+              onPress={() => handleSitePress(action.url)}
+            >
+              <Icon.Terminal size={20} color={themeColors.primary} />
+              <Text md className="ml-3 text-text-primary">
+                {action.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </ScrollView>
