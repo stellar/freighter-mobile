@@ -1,5 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { DiscoveryBrowserScreen } from "components/screens/DiscoveryBrowserScreen";
+import { DiscoveryScreen } from "components/screens/DiscoveryScreen/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
@@ -112,7 +112,7 @@ export const TabNavigator = () => {
       <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
-        component={DiscoveryBrowserScreen}
+        component={DiscoveryScreen}
       />
     </MainTab.Navigator>
   );

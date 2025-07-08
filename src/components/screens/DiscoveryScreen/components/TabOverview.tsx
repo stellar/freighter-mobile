@@ -1,6 +1,6 @@
-import HomepagePreview from "components/screens/DiscoveryBrowserScreen/HomepagePreview";
-import TabPreview from "components/screens/DiscoveryBrowserScreen/TabPreview";
-import TabScreenshotCapture from "components/screens/DiscoveryBrowserScreen/TabScreenshotCapture";
+import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
+import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
+import TabScreenshotCapture from "components/screens/DiscoveryScreen/TabScreenshotCapture";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { useBrowserTabsStore } from "ducks/browserTabs";

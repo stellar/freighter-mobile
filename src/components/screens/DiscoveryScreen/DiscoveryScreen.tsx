@@ -5,7 +5,7 @@ import {
   BottomNavigation,
   TabOverview,
   WebViewContainer,
-} from "components/screens/DiscoveryBrowserScreen/components";
+} from "components/screens/DiscoveryScreen/components";
 import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
@@ -22,7 +22,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
   typeof MAIN_TAB_ROUTES.TAB_DISCOVERY
 >;
 
-export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
+export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [showTabs, setShowTabs] = useState(false);
@@ -94,11 +94,7 @@ export const DiscoveryBrowserScreen: React.FC<DiscoveryScreenProps> = () => {
             const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
             setLogo(activeTabId, faviconUrl);
           } catch (error) {
-            debug(
-              "DiscoveryBrowserScreen",
-              "Failed to extract favicon:",
-              error,
-            );
+            debug("DiscoveryScreen", "Failed to extract favicon:", error);
           }
         }
       }

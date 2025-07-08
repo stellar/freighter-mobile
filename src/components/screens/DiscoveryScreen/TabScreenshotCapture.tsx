@@ -1,7 +1,7 @@
 import {
   saveScreenshot,
   ScreenshotData,
-} from "components/screens/DiscoveryBrowserScreen/screenshots";
+} from "components/screens/DiscoveryScreen/screenshots";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { debug } from "helpers/debug";

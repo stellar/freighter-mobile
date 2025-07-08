@@ -1,4 +1,4 @@
-import Homepage from "components/screens/DiscoveryBrowserScreen/Homepage";
+import Homepage from "components/screens/DiscoveryScreen/Homepage";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
