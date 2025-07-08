@@ -4,28 +4,15 @@ import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
 import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
-import React, { useRef, useCallback, useEffect } from "react";
+import React, { useRef, useCallback } from "react";
 import { Freeze } from "react-freeze";
 import { View } from "react-native";
 import ViewShot from "react-native-view-shot";
-import {
-  WebView,
-  WebViewNavigation,
-  WebViewMessageEvent,
-} from "react-native-webview";
+import { WebView, WebViewNavigation } from "react-native-webview";
 
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
   onNavigationStateChange: (navState: WebViewNavigation) => void;
-}
-
-interface ContentCheckData {
-  type: string;
-  hasContent: boolean;
-  isLoading: boolean;
-  hasError: boolean;
-  title: string;
-  bodyText: string;
 }
 
 const WebViewContainer: React.FC<WebViewContainerProps> = ({
@@ -37,38 +24,6 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
   // Refs to track ViewShot components for each tab
   const viewShotRefs = useRef<{ [tabId: string]: ViewShot | null }>({});
   const webViewRefs = useRef<{ [tabId: string]: WebView | null }>({});
-  const captureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
-
-  // JavaScript to check if the page has meaningful content
-  const checkContentScript = `
-    (function() {
-      const hasContent = document.body && 
-        (document.body.children.length > 0 || 
-         document.body.textContent.trim().length > 10 ||
-         document.querySelector('img, video, canvas, svg') !== null ||
-         document.querySelector('div, section, main, article') !== null);
-      
-      const isLoading = document.body && 
-        (document.body.textContent.includes('Loading...') ||
-         document.body.textContent.includes('loading...') ||
-         document.querySelector('.loading, .spinner, .loader, [class*="loading"]') !== null);
-      
-      const hasError = document.body && 
-        (document.body.textContent.includes('Enable JavaScript to run this app') ||
-         document.body.textContent.includes('Please enable JavaScript') ||
-         document.body.textContent.includes('JavaScript is required') ||
-         document.body.textContent.includes('not supported'));
-      
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'contentCheck',
-        hasContent: hasContent,
-        isLoading: isLoading,
-        hasError: hasError,
-        title: document.title || '',
-        bodyText: document.body ? document.body.textContent.substring(0, 50) : ''
-      }));
-    })();
-  `;
 
   const captureScreenshot = useCallback(
     async (tabId: string) => {
@@ -107,67 +62,15 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
     [tabs, updateTab],
   );
 
-  const handleMessage = useCallback(
-    (event: WebViewMessageEvent, tabId: string) => {
-      try {
-        const data: ContentCheckData = JSON.parse(event.nativeEvent.data);
-        if (data.type === "contentCheck") {
-          // Clear any existing timeout
-          if (captureTimeouts.current[tabId]) {
-            clearTimeout(captureTimeouts.current[tabId]);
-          }
-
-          if (data.hasContent && !data.hasError) {
-            // If we have content and no errors, capture after a delay
-            captureTimeouts.current[tabId] = setTimeout(() => {
-              captureScreenshot(tabId);
-            }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_DELAY);
-          } else if (data.isLoading) {
-            // If still loading, try again after a delay
-            captureTimeouts.current[tabId] = setTimeout(() => {
-              const webVwRef = webViewRefs.current[tabId];
-              if (webVwRef) {
-                webVwRef.injectJavaScript(checkContentScript);
-              }
-            }, BROWSER_CONSTANTS.SCREENSHOT_RETRY_DELAY);
-          } else {
-            // If we've tried enough or no content, capture anyway
-            captureScreenshot(tabId);
-          }
-        }
-      } catch (error) {
-        logger.error(
-          "WebViewContainer",
-          "Error parsing WebView message:",
-          error,
-        );
-        captureScreenshot(tabId);
-      }
-    },
-    [captureScreenshot, checkContentScript],
-  );
-
   const handleLoadEnd = useCallback(
     (tabId: string) => {
-      // Start content check after page loads
+      logger.debug("WebViewContainer", "handleLoadEnd, tabId:", tabId);
+      // Capture screenshot after page loads
       setTimeout(() => {
-        const webVwRef = webViewRefs.current[tabId];
-        if (webVwRef) {
-          webVwRef.injectJavaScript(checkContentScript);
-        }
-      }, BROWSER_CONSTANTS.SCREENSHOT_INITIAL_DELAY);
+        captureScreenshot(tabId);
+      }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_DELAY);
     },
-    [checkContentScript],
-  );
-
-  // Cleanup timeouts when component unmounts
-  useEffect(
-    () => () => {
-      Object.values(captureTimeouts.current).forEach((timeout) => {
-        if (timeout) clearTimeout(timeout);
-      });
-    },
-    [],
+    [captureScreenshot],
   );
 
   return (
@@ -208,7 +111,6 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
                   isTabActive(tab.id) ? onNavigationStateChange : undefined
                 }
                 onLoadEnd={() => handleLoadEnd(tab.id)}
-                onMessage={(event) => handleMessage(event, tab.id)}
                 startInLoadingState={isTabActive(tab.id)}
                 allowsBackForwardNavigationGestures={isTabActive(tab.id)}
                 onShouldStartLoadWithRequest={
