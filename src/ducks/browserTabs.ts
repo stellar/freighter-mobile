@@ -1,10 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  findTabScreenshot,
-  pruneScreenshots,
-} from "components/screens/DiscoveryScreen/screenshots";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { generateTabId } from "helpers/browser";
+import { findTabScreenshot, pruneScreenshots } from "helpers/screenshots";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 

@@ -1,10 +1,7 @@
-import {
-  saveScreenshot,
-  ScreenshotData,
-} from "components/screens/DiscoveryScreen/screenshots";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { debug } from "helpers/debug";
+import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Freeze } from "react-freeze";
 import { View } from "react-native";
