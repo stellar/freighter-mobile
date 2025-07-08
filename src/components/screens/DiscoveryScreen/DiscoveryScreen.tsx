@@ -26,6 +26,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [showTabs, setShowTabs] = useState(false);
+  const [shouldRenderTabs, setShouldRenderTabs] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const {
@@ -63,13 +64,28 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     }
   }, [activeTab]);
 
-  // Animate tab overview screen
+  // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: showTabs ? 1 : 0,
-      duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION,
-      useNativeDriver: true,
-    }).start();
+    if (showTabs) {
+      // Show tabs immediately when opening
+      setShouldRenderTabs(true);
+
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Fade out when closing
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION / 3,
+        useNativeDriver: true,
+      }).start(() => {
+        // Only unmount after animation completes
+        setShouldRenderTabs(false);
+      });
+    }
   }, [showTabs, fadeAnim]);
 
   const handleNavigationStateChange = useCallback(
@@ -155,8 +171,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   }
 
-  // Tab Overview Screen (Rainbow-style)
-  if (showTabs) {
+  // Tab Overview Screen (Rainbow-style) - Render when shouldRenderTabs is true
+  if (shouldRenderTabs) {
     return (
       <BaseLayout
         insets={{ top: true, bottom: false, left: false, right: false }}
