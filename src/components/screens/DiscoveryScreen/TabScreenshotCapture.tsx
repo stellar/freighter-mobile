@@ -1,6 +1,6 @@
 import { BROWSER_CONSTANTS } from "config/constants";
+import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { debug } from "helpers/debug";
 import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Freeze } from "react-freeze";
@@ -36,6 +36,24 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
   const [hasAttemptedCapture, setHasAttemptedCapture] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const { updateTab } = useBrowserTabsStore();
+
+  // Use refs to track current state values and avoid closure issues
+  const hasAttemptedCaptureRef = useRef(hasAttemptedCapture);
+  const isLoadedRef = useRef(isLoaded);
+  const retryCountRef = useRef(retryCount);
+
+  // Update refs when state changes
+  useEffect(() => {
+    hasAttemptedCaptureRef.current = hasAttemptedCapture;
+  }, [hasAttemptedCapture]);
+
+  useEffect(() => {
+    isLoadedRef.current = isLoaded;
+  }, [isLoaded]);
+
+  useEffect(() => {
+    retryCountRef.current = retryCount;
+  }, [retryCount]);
 
   // JavaScript to check if the page has meaningful content
   const checkContentScript = `
@@ -94,7 +112,11 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
         updateTab(tabId, { screenshot: uri });
       }
     } catch (error) {
-      debug("TabScreenshotCapture", "Failed to capture screenshot:", error);
+      logger.error(
+        "TabScreenshotCapture",
+        "Failed to capture screenshot:",
+        error,
+      );
       setHasAttemptedCapture(true);
     }
   }, [onScreenshotCaptured, updateTab, tabId, url]);
@@ -112,7 +134,7 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
             }, BROWSER_CONSTANTS.SCREENSHOT_CONTENT_CHECK_DELAY);
           } else if (
             data.isLoading &&
-            retryCount < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
+            retryCountRef.current < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
           ) {
             // If still loading, wait less time
             setRetryCount((prev) => prev + 1);
@@ -121,7 +143,7 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
             }, BROWSER_CONSTANTS.SCREENSHOT_RETRY_DELAY);
           } else if (
             data.hasError &&
-            retryCount < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
+            retryCountRef.current < BROWSER_CONSTANTS.MAX_SCREENSHOT_RETRIES
           ) {
             // For JavaScript errors, try one more time with a delay
             setRetryCount((prev) => prev + 1);
@@ -134,11 +156,15 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
           }
         }
       } catch (error) {
-        debug("TabScreenshotCapture", "Error parsing WebView message:", error);
+        logger.error(
+          "TabScreenshotCapture",
+          "Error parsing WebView message:",
+          error,
+        );
         captureScreenshot();
       }
     },
-    [captureScreenshot, retryCount, checkContentScript],
+    [captureScreenshot, checkContentScript],
   );
 
   const handleLoadEnd = useCallback(() => {
@@ -150,14 +176,16 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
     if (isVisible && !hasAttemptedCapture) {
       // Reduced initial wait time
       const timer = setTimeout(() => {
-        if (isLoaded && viewShotRef.current) {
+        // Use ref to get current value, avoiding closure issues
+        if (isLoadedRef.current && viewShotRef.current) {
           webViewRef.current?.injectJavaScript(checkContentScript);
         }
       }, BROWSER_CONSTANTS.SCREENSHOT_INITIAL_DELAY);
 
       // Reduced fallback timeout
       const fallbackTimer = setTimeout(() => {
-        if (!hasAttemptedCapture) {
+        // Use ref to get current value, avoiding closure issues
+        if (!hasAttemptedCaptureRef.current) {
           captureScreenshot();
         }
       }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_TIMEOUT);
@@ -167,13 +195,7 @@ const TabScreenshotCapture: React.FC<TabScreenshotCaptureProps> = ({
         clearTimeout(fallbackTimer);
       };
     }
-  }, [
-    isVisible,
-    isLoaded,
-    hasAttemptedCapture,
-    captureScreenshot,
-    checkContentScript,
-  ]);
+  }, [isVisible, hasAttemptedCapture, captureScreenshot, checkContentScript]);
   /* eslint-enable consistent-return */
 
   if (!isVisible) {

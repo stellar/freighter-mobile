@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
-import { debug } from "helpers/debug";
+import { logger } from "config/logger";
 
 export interface ScreenshotData {
   id: string; // tab ID
@@ -16,7 +16,7 @@ export const getStoredScreenshots = async (): Promise<ScreenshotData[]> => {
     );
     return data ? (JSON.parse(data) as ScreenshotData[]) : [];
   } catch (error) {
-    debug("screenshots", "Failed to get stored screenshots:", error);
+    logger.error("screenshots", "Failed to get stored screenshots:", error);
     return [];
   }
 };
@@ -43,7 +43,7 @@ export const findTabScreenshot = async (
       );
     }
   } catch (error) {
-    debug("screenshots", "Failed to find tab screenshot:", error);
+    logger.error("screenshots", "Failed to find tab screenshot:", error);
   }
 
   return null;
@@ -73,7 +73,7 @@ export const saveScreenshot = async (
       JSON.stringify(sortedScreenshots),
     );
   } catch (error) {
-    debug("screenshots", "Failed to save screenshot:", error);
+    logger.error("screenshots", "Failed to save screenshot:", error);
   }
 };
 
@@ -94,7 +94,7 @@ export const pruneScreenshots = async (
       JSON.stringify(screenshotsToKeep),
     );
   } catch (error) {
-    debug("screenshots", "Failed to prune screenshots:", error);
+    logger.error("screenshots", "Failed to prune screenshots:", error);
   }
 };
 
@@ -102,6 +102,6 @@ export const clearAllScreenshots = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
   } catch (error) {
-    debug("screenshots", "Failed to clear screenshots:", error);
+    logger.error("screenshots", "Failed to clear screenshots:", error);
   }
 };
