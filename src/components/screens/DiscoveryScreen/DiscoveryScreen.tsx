@@ -72,14 +72,14 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION,
+        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_OPEN,
         useNativeDriver: true,
       }).start();
     } else {
       // Fade out when closing
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION / 3,
+        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_CLOSE,
         useNativeDriver: true,
       }).start(() => {
         // Only unmount after animation completes
