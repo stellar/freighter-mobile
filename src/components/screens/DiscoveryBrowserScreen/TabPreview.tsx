@@ -6,17 +6,10 @@ import { View, Image } from "react-native";
 
 interface TabPreviewProps {
   url: string;
-  title: string;
-  isActive: boolean;
   logoUrl?: string;
 }
 
-const TabPreview: React.FC<TabPreviewProps> = ({
-  url,
-  title,
-  isActive,
-  logoUrl,
-}) => {
+const TabPreview: React.FC<TabPreviewProps> = ({ url, logoUrl }) => {
   const { themeColors } = useColors();
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [faviconError, setFaviconError] = useState(false);
@@ -60,49 +53,24 @@ const TabPreview: React.FC<TabPreviewProps> = ({
   }, [url, logoUrl]);
 
   const domain = getDomainFromUrl(url);
-  const displayTitle = title && title !== "New Tab" ? title : domain;
 
   return (
-    <View className="h-32 bg-background-secondary justify-center items-center overflow-hidden relative">
-      {/* Background gradient */}
-      <View className="absolute inset-0 bg-gradient-to-b from-gray-50 to-gray-100" />
-
-      {/* Header bar simulation */}
-      <View className="absolute top-0 left-0 right-0 h-8 bg-white border-b border-gray-200" />
-
-      {/* Content area */}
-      <View className="flex-1 w-full px-4 pt-10 pb-4">
-        {/* Favicon and title row */}
-        <View className="flex-row items-center mb-2">
-          {faviconUrl && !faviconError ? (
-            <Image
-              source={{ uri: faviconUrl }}
-              className="w-4 h-4 mr-2"
-              onError={() => setFaviconError(true)}
-              resizeMode="contain"
-            />
-          ) : (
-            <View className="mr-2">
-              <Icon.Globe02 size={16} color={themeColors.text.secondary} />
-            </View>
-          )}
-          <Text xs semiBold numberOfLines={1} className="flex-1">
-            {displayTitle}
-          </Text>
-        </View>
-
-        {/* Content lines simulation */}
-        <View className="space-y-1">
-          <View className="h-2 bg-gray-200 rounded" style={{ width: "80%" }} />
-          <View className="h-2 bg-gray-200 rounded" style={{ width: "60%" }} />
-          <View className="h-2 bg-gray-200 rounded" style={{ width: "90%" }} />
-        </View>
-      </View>
-
-      {/* Active tab indicator */}
-      {isActive && (
-        <View className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary" />
+    <View className="w-full h-full bg-background-primary justify-center items-center bg-green-500">
+      {faviconUrl && !faviconError ? (
+        <Image
+          source={{ uri: faviconUrl }}
+          style={{ width: 32, height: 32 }}
+          onError={() => setFaviconError(true)}
+          resizeMode="contain"
+        />
+      ) : (
+        <Icon.Globe02 size={32} color={themeColors.text.primary} circle />
       )}
+      <View className="mt-2">
+        <Text xs semiBold>
+          {domain}
+        </Text>
+      </View>
     </View>
   );
 };
