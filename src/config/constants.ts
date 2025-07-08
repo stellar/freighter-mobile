@@ -200,9 +200,30 @@ export enum SENSITIVE_STORAGE_KEYS {
   HASH_KEY = "hashKey",
 }
 
+/*
+ * TODO:
+ * - Review screenshot delays and capture logic
+ * - Test on Android
+ * - Test on real devices
+ *
+ * - Add a way to clear the browser history (not sure if this is needed)
+ * - Add a way to clear the browser cache (not sure if this is needed)
+ * - Add a way to clear the browser cookies (not sure if this is needed)
+ * - Add a way to clear the browser local storage (not sure if this is needed)
+ * - Add a way to clear the browser session storage (not sure if this is needed)
+ * - Add a way to clear the browser indexedDB (not sure if this is needed)
+ * - Add a way to clear the browser webSQL (not sure if this is needed)
+ *
+ *
+ *
+ *
+ *
+ *
+ */
+
 // Browser constants
 export const BROWSER_CONSTANTS = {
-  HOMEPAGE_URL: "freighter://homepage",
+  HOMEPAGE_URL: "freighter://discovery-homepage",
   GOOGLE_SEARCH_BASE_URL: "https://www.google.com/search?q=",
   DEFAULT_TAB_TITLE: "New Tab",
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
