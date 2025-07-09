@@ -1,10 +1,13 @@
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
+import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
 import {
@@ -15,6 +18,31 @@ import {
   Image,
 } from "react-native";
 import { EdgeInsets } from "react-native-safe-area-context";
+
+interface TabOverviewHeaderProps {
+  tabsCount: number;
+  onClose: () => void;
+  onNewTab: () => void;
+  insets: EdgeInsets;
+}
+
+const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
+  tabsCount,
+  onClose,
+  onNewTab,
+  insets,
+}) => (
+  <View
+    className="flex-row items-center justify-between p-4 border-b border-border-default"
+    style={{ paddingTop: insets.top + pxValue(DEFAULT_PADDING) }}
+  >
+    <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
+    <Text lg semiBold>
+      {tabsCount} Tab{tabsCount !== 1 ? "s" : ""}
+    </Text>
+    <CustomHeaderButton position="right" icon={Icon.Plus} onPress={onNewTab} />
+  </View>
+);
 
 interface TabOverviewProps {
   fadeAnim: Animated.Value;
@@ -49,22 +77,12 @@ const TabOverview: React.FC<TabOverviewProps> = ({
         backgroundColor: themeColors.background.primary,
       }}
     >
-      {/* Header */}
-      {/* TODO: use a custom header component instead */}
-      <View
-        className="flex-row items-center justify-between p-4 border-b border-border-default"
-        style={{ paddingTop: insets.top + 16 }}
-      >
-        <TouchableOpacity onPress={onClose}>
-          <Icon.X color={themeColors.base[1]} />
-        </TouchableOpacity>
-        <Text lg semiBold>
-          {tabs.length} Tab{tabs.length !== 1 ? "s" : ""}
-        </Text>
-        <TouchableOpacity onPress={onNewTab}>
-          <Icon.Plus color={themeColors.base[1]} />
-        </TouchableOpacity>
-      </View>
+      <TabOverviewHeader
+        tabsCount={tabs.length}
+        onClose={onClose}
+        onNewTab={onNewTab}
+        insets={insets}
+      />
 
       {/* Tabs Grid */}
       <ScrollView className="flex-1 p-4">
