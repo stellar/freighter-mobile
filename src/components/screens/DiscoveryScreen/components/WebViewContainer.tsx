@@ -4,7 +4,7 @@ import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
 import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useEffect } from "react";
 import { Freeze } from "react-freeze";
 import { View } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -24,9 +24,16 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
   // Refs to track ViewShot components for each tab
   const viewShotRefs = useRef<{ [tabId: string]: ViewShot | null }>({});
   const webViewRefs = useRef<{ [tabId: string]: WebView | null }>({});
+  const quickCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
+  const finalCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
 
   const captureScreenshot = useCallback(
     async (tabId: string) => {
+      logger.debug(
+        "WebViewContainer",
+        "attempting to capture screenshot for tabId:",
+        tabId,
+      );
       try {
         const viewShotRef = viewShotRefs.current[tabId];
         if (viewShotRef && viewShotRef.capture) {
@@ -65,12 +72,47 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
   const handleLoadEnd = useCallback(
     (tabId: string) => {
       logger.debug("WebViewContainer", "handleLoadEnd, tabId:", tabId);
-      // Capture screenshot after page loads
-      setTimeout(() => {
+
+      // Clear any existing timeouts for this tab
+      if (quickCaptureTimeouts.current[tabId]) {
+        clearTimeout(quickCaptureTimeouts.current[tabId]);
+      }
+      if (finalCaptureTimeouts.current[tabId]) {
+        clearTimeout(finalCaptureTimeouts.current[tabId]);
+      }
+
+      // Quick screenshot for immediate preview (500ms)
+      quickCaptureTimeouts.current[tabId] = setTimeout(() => {
         captureScreenshot(tabId);
+        delete quickCaptureTimeouts.current[tabId];
       }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_DELAY);
+
+      // Final screenshot after animations complete (2000ms)
+      finalCaptureTimeouts.current[tabId] = setTimeout(() => {
+        // Clear the quick timeout if it hasn't fired yet
+        if (quickCaptureTimeouts.current[tabId]) {
+          clearTimeout(quickCaptureTimeouts.current[tabId]);
+          delete quickCaptureTimeouts.current[tabId];
+        }
+        // Capture final screenshot after animations should be complete
+        captureScreenshot(tabId);
+        delete finalCaptureTimeouts.current[tabId];
+      }, BROWSER_CONSTANTS.SCREENSHOT_FINAL_DELAY);
     },
     [captureScreenshot],
+  );
+
+  // Cleanup timeouts when component unmounts
+  useEffect(
+    () => () => {
+      Object.values(quickCaptureTimeouts.current).forEach((timeout) => {
+        if (timeout) clearTimeout(timeout);
+      });
+      Object.values(finalCaptureTimeouts.current).forEach((timeout) => {
+        if (timeout) clearTimeout(timeout);
+      });
+    },
+    [],
   );
 
   return (

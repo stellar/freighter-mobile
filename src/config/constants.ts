@@ -228,15 +228,9 @@ export const BROWSER_CONSTANTS = {
   DEFAULT_TAB_TITLE: "New Tab",
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_SCREENSHOTS_STORED: 50,
-  SCREENSHOT_CAPTURE_TIMEOUT: 8000,
-  SCREENSHOT_INITIAL_DELAY: 2000,
-  SCREENSHOT_CONTENT_CHECK_DELAY: 500,
-  SCREENSHOT_RETRY_DELAY: 1000,
-  SCREENSHOT_ERROR_RETRY_DELAY: 1500,
-  MAX_SCREENSHOT_RETRIES: 3,
   SCREENSHOT_QUALITY: 0.8,
-  // Full-size screenshot settings (will be captured at WebView's actual size)
-  SCREENSHOT_CAPTURE_DELAY: 1000, // Delay after page load before capturing
+  SCREENSHOT_CAPTURE_DELAY: 500, // Quick screenshot for immediate preview
+  SCREENSHOT_FINAL_DELAY: 2000, // Final screenshot after animations complete
   TAB_ANIMATION_DURATION_OPEN: 300,
   TAB_ANIMATION_DURATION_CLOSE: 100,
 } as const;
