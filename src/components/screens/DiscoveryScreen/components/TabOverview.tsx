@@ -10,13 +10,7 @@ import { isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  Image,
-} from "react-native";
+import { View, ScrollView, TouchableOpacity, Image } from "react-native";
 import { EdgeInsets } from "react-native-safe-area-context";
 
 interface TabOverviewHeaderProps {
@@ -45,7 +39,6 @@ const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
 );
 
 interface TabOverviewProps {
-  fadeAnim: Animated.Value;
   onClose: () => void;
   onNewTab: () => void;
   onSwitchTab: (tabId: string) => void;
@@ -54,7 +47,6 @@ interface TabOverviewProps {
 }
 
 const TabOverview: React.FC<TabOverviewProps> = ({
-  fadeAnim,
   onClose,
   onNewTab,
   onSwitchTab,
@@ -65,10 +57,7 @@ const TabOverview: React.FC<TabOverviewProps> = ({
   const { tabs, isTabActive } = useBrowserTabsStore();
 
   return (
-    <Animated.View
-      className="absolute inset-0 z-50 bg-background-primary"
-      style={{ opacity: fadeAnim }}
-    >
+    <View className="absolute inset-0 bg-background-primary">
       <TabOverviewHeader
         tabsCount={tabs.length}
         onClose={onClose}
@@ -133,7 +122,7 @@ const TabOverview: React.FC<TabOverviewProps> = ({
           ))}
         </View>
       </ScrollView>
-    </Animated.View>
+    </View>
   );
 };
 

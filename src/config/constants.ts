@@ -211,14 +211,6 @@ export enum SENSITIVE_STORAGE_KEYS {
  * - Add a way to clear the browser cookies (not sure if this is needed)
  * - Add a way to clear the browser local storage (not sure if this is needed)
  * - Add a way to clear the browser session storage (not sure if this is needed)
- * - Add a way to clear the browser indexedDB (not sure if this is needed)
- * - Add a way to clear the browser webSQL (not sure if this is needed)
- *
- *
- *
- *
- *
- *
  */
 
 // Browser constants
@@ -233,7 +225,7 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_CAPTURE_DELAY: 500, // Quick screenshot for immediate preview
   SCREENSHOT_FINAL_DELAY: 2000, // Final screenshot after animations complete
   TAB_ANIMATION_DURATION_OPEN: 300,
-  TAB_ANIMATION_DURATION_CLOSE: 100,
+  TAB_ANIMATION_DURATION_CLOSE: 300,
 } as const;
 
 // Popular sites for homepage

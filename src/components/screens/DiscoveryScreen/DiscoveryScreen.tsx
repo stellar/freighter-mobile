@@ -27,7 +27,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [showTabs, setShowTabs] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
+  const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
   const {
@@ -78,21 +79,35 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
     if (showTabs) {
-      // Fade in the overlay
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_OPEN,
-        useNativeDriver: true,
-      }).start();
+      // Fade out main content and fade in tab overview
+      Animated.parallel([
+        Animated.timing(mainContentFadeAnim, {
+          toValue: 0,
+          duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_OPEN,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tabOverviewFadeAnim, {
+          toValue: 1,
+          duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_OPEN,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
-      // Fade out the overlay
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_CLOSE,
-        useNativeDriver: true,
-      }).start();
+      // Fade in main content and fade out tab overview
+      Animated.parallel([
+        Animated.timing(mainContentFadeAnim, {
+          toValue: 1,
+          duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_CLOSE,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tabOverviewFadeAnim, {
+          toValue: 0,
+          duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_CLOSE,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [showTabs, fadeAnim]);
+  }, [showTabs, tabOverviewFadeAnim, mainContentFadeAnim]);
 
   const handleNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
@@ -175,37 +190,47 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     <BaseLayout
       insets={{ top: true, bottom: false, left: false, right: false }}
     >
-      <UrlBar
-        inputUrl={inputUrl}
-        onInputChange={setInputUrl}
-        onUrlSubmit={handleUrlSubmit}
-        onShowTabs={handleShowTabs}
-        tabsCount={tabs.length}
-      />
+      {/* Main content that fades out when tabs are shown */}
+      <Animated.View
+        className="flex-1"
+        style={{ opacity: mainContentFadeAnim }}
+      >
+        <UrlBar
+          inputUrl={inputUrl}
+          onInputChange={setInputUrl}
+          onUrlSubmit={handleUrlSubmit}
+          onShowTabs={handleShowTabs}
+          tabsCount={tabs.length}
+        />
 
-      <WebViewContainer
-        webViewRef={webViewRef}
-        onNavigationStateChange={handleNavigationStateChange}
-      />
+        <WebViewContainer
+          webViewRef={webViewRef}
+          onNavigationStateChange={handleNavigationStateChange}
+        />
 
-      <BottomNavigation
-        canGoBack={activeTab.canGoBack}
-        canGoForward={activeTab.canGoForward}
-        onGoBack={browserActions.handleGoBack}
-        onGoForward={browserActions.handleGoForward}
-        onNewTab={handleNewTab}
-        contextMenuActions={browserActions.contextMenuActions}
-      />
+        <BottomNavigation
+          canGoBack={activeTab.canGoBack}
+          canGoForward={activeTab.canGoForward}
+          onGoBack={browserActions.handleGoBack}
+          onGoForward={browserActions.handleGoForward}
+          onNewTab={handleNewTab}
+          contextMenuActions={browserActions.contextMenuActions}
+        />
+      </Animated.View>
 
-      {/* TabOverview overlay */}
-      <TabOverview
-        fadeAnim={fadeAnim}
-        onNewTab={handleNewTab}
-        onClose={handleHideTabs}
-        onSwitchTab={handleSwitchTab}
-        onCloseTab={handleCloseSpecificTab}
-        insets={insets}
-      />
+      {/* Tabs overview overlay that fades out when tabs are hidden */}
+      <Animated.View
+        className="absolute inset-0 z-50"
+        style={{ opacity: tabOverviewFadeAnim }}
+      >
+        <TabOverview
+          onNewTab={handleNewTab}
+          onClose={handleHideTabs}
+          onSwitchTab={handleSwitchTab}
+          onCloseTab={handleCloseSpecificTab}
+          insets={insets}
+        />
+      </Animated.View>
     </BaseLayout>
   );
 };
