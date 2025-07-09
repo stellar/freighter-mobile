@@ -1,12 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import {
-  NativeStackNavigationOptions,
-  NativeStackScreenProps,
-} from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { logos } from "assets/logos";
 import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -18,8 +16,9 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useRef } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useLayoutEffect, useRef } from "react";
+import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
 type AccountQRCodeScreenProps = NativeStackScreenProps<
@@ -38,27 +37,19 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   const { copyToClipboard } = useClipboard();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  useEffect(() => {
-    const options: NativeStackNavigationOptions = {
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => bottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    };
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
+  // useLayoutEffect is the official recommended hook to use for setting up
+  // the navigation headers to prevent UI flickering.
+  useLayoutEffect(() => {
     if (showNavigationAsCloseButton) {
-      options.headerLeft = () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      );
+      navigation.setOptions({
+        headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+      });
     }
-
-    navigation.setOptions(options);
-  }, [navigation, showNavigationAsCloseButton, themeColors]);
+  }, [navigation, showNavigationAsCloseButton]);
 
   return (
     <BaseLayout>

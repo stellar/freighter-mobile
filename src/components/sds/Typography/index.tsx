@@ -189,6 +189,9 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 export interface DisplayProps extends TypographyBaseProps {
   size?: TextSize;
   style?: StyleProp<TextStyle>;
+  adjustsFontSizeToFit?: boolean;
+  numberOfLines?: number;
+  minimumFontScale?: number;
 }
 
 const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
@@ -208,6 +211,11 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
  * - sm: 32px/40px - Subsection headers (default)
  * - xs: 24px/32px - Smallest display text
  *
+ * Responsive props:
+ * - adjustsFontSizeToFit: Automatically scales text to fit available space
+ * - numberOfLines: Limits text to specified number of lines
+ * - minimumFontScale: Sets minimum scale factor (0.0 - 1.0) for font scaling
+ *
  * @example
  * ```tsx
  * // Extra large bold display text
@@ -215,6 +223,17 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
  *
  * // Medium display with secondary color
  * <Display md secondary>Section Title</Display>
+ *
+ * // Responsive text that scales to fit in one line
+ * <Display
+ *   xl
+ *   medium
+ *   adjustsFontSizeToFit
+ *   numberOfLines={1}
+ *   minimumFontScale={0.6}
+ * >
+ *   Very long amount: 1,234,567.89 XLM
+ * </Display>
  *
  * // Explicit props with custom color
  * <Display
@@ -231,12 +250,18 @@ export const Display: React.FC<DisplayProps> = ({
   weight,
   color,
   children,
+  adjustsFontSizeToFit,
+  numberOfLines,
+  minimumFontScale,
   ...props
 }) => (
   <StyledDisplay
     $size={getSize({ size, ...props }, "sm")}
     $weight={getWeight({ weight, ...props }, "regular")}
     $color={getColor({ color, ...props }, THEME.colors.text.primary)}
+    adjustsFontSizeToFit={adjustsFontSizeToFit}
+    numberOfLines={numberOfLines}
+    minimumFontScale={minimumFontScale}
     {...props}
   >
     {children}

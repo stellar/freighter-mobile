@@ -60,7 +60,7 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       title={t("verifyPasswordScreen.verifyPasswordTemplateTitle")}
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}
-      insets={{ top: false, bottom: false }}
+      insets={{ top: false, bottom: true }}
     />
   );
 };

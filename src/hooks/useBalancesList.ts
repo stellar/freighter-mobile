@@ -20,12 +20,14 @@ interface UseBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   shouldPoll?: boolean;
+  searchTerm?: string;
 }
 
 export const useBalancesList = ({
   publicKey,
   network,
   shouldPoll = true,
+  searchTerm,
 }: UseBalancesListProps): UseBalancesListResult => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMounting, setIsMounting] = useState(true);
@@ -93,22 +95,50 @@ export const useBalancesList = ({
     });
   }, [fetchAccountBalances, publicKey, network]);
 
-  // Convert balances object to array
+  // Utility: check if a balance item matches the current search term
+  const matchesSearchTerm = (
+    item: PricedBalance & { id: string; assetType: AssetTypeWithCustomToken },
+    term: string,
+  ): boolean => {
+    if (!term) {
+      return true;
+    }
+
+    const normalizedTerm = term.toLowerCase();
+
+    if (item.tokenCode?.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
+
+    if (item.displayName?.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
+
+    if (item.id.toLowerCase().includes(normalizedTerm)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Convert balances object to array and apply optional filtering
   const balanceItems = useMemo(
     () =>
-      Object.entries(pricedBalances).map(([id, balance]) => {
-        const assetType = getAssetType(id);
+      Object.entries(pricedBalances)
+        .map(([id, balance]) => {
+          const assetType = getAssetType(id);
 
-        return {
-          id,
-          assetType,
-          ...balance,
-        } as PricedBalance & {
-          id: string;
-          assetType: AssetTypeWithCustomToken;
-        };
-      }),
-    [pricedBalances],
+          return {
+            id,
+            assetType,
+            ...balance,
+          } as PricedBalance & {
+            id: string;
+            assetType: AssetTypeWithCustomToken;
+          };
+        })
+        .filter((item) => matchesSearchTerm(item, searchTerm ?? "")),
+    [pricedBalances, searchTerm],
   );
 
   // Only show error if we're not in the initial loading state and there is an error

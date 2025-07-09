@@ -3,7 +3,9 @@ import React, { useEffect, useCallback, useRef } from "react";
 import { Animated, PanResponder, View } from "react-native";
 import styled from "styled-components/native";
 
-const DEFAULT_DURATION = 3000;
+const DEFAULT_REGULAR_DURATION = 3000;
+// Let's give users a bit more time to read an error message
+const DEFAULT_ERROR_DURATION = 5000;
 const ANIMATION_DURATION = 300;
 const SWIPE_THRESHOLD = 20; // Minimum dragged distance to trigger dismiss
 
@@ -48,7 +50,9 @@ export const Toast: React.FC<ToastProps> = ({
   title,
   icon,
   message,
-  duration = DEFAULT_DURATION,
+  duration = variant === "error"
+    ? DEFAULT_ERROR_DURATION
+    : DEFAULT_REGULAR_DURATION,
   onDismiss,
   isFilled,
 }) => {

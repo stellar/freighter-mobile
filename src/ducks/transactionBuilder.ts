@@ -1,11 +1,13 @@
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
-  prepareSorobanTransaction,
+  buildSwapTransaction,
+  simulateContractTransfer,
 } from "services/transactionService";
 import { create } from "zustand";
 
@@ -22,12 +24,26 @@ interface TransactionBuilderState {
   isSubmitting: boolean;
   transactionHash: string | null;
   error: string | null;
+  requestId: string | null;
 
   buildTransaction: (params: {
     tokenAmount: string;
     selectedBalance?: PricedBalance;
     recipientAddress?: string;
     transactionMemo?: string;
+    transactionFee?: string;
+    transactionTimeout?: number;
+    network?: NETWORKS;
+    senderAddress?: string;
+  }) => Promise<string | null>;
+
+  buildSwapTransaction: (params: {
+    sourceAmount: string;
+    sourceBalance: PricedBalance;
+    destinationBalance: PricedBalance;
+    path: string[];
+    destinationAmount: string;
+    destinationAmountMin: string;
     transactionFee?: string;
     transactionTimeout?: number;
     network?: NETWORKS;
@@ -47,6 +63,7 @@ interface TransactionBuilderState {
 const initialState: Omit<
   TransactionBuilderState,
   | "buildTransaction"
+  | "buildSwapTransaction"
   | "signTransaction"
   | "submitTransaction"
   | "resetTransaction"
@@ -57,7 +74,12 @@ const initialState: Omit<
   isSubmitting: false,
   transactionHash: null,
   error: null,
+  requestId: null,
 };
+
+// Unique id to correlate async responses to the latest request
+const createRequestId = () =>
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /**
  * Transaction Builder Store
@@ -72,7 +94,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * Builds a transaction and stores the XDR
      */
     buildTransaction: async (params) => {
-      set({ isBuilding: true, error: null });
+      // Tag this build cycle
+      const newRequestId = createRequestId();
+
+      // Mark new cycle and reset flags
+      set({ isBuilding: true, error: null, requestId: newRequestId });
 
       try {
         const builtTxResult = await buildPaymentTransaction({
@@ -95,11 +121,18 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           params.recipientAddress && isContractId(params.recipientAddress);
 
         // If sending to a contract, prepare (simulate) the transaction
-        if (isRecipientContract && params.network) {
+        if (isRecipientContract && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
-          finalXdr = await prepareSorobanTransaction({
-            tx: builtTxResult.tx,
+          finalXdr = await simulateContractTransfer({
+            transaction: builtTxResult.tx,
             networkDetails,
+            memo: params.transactionMemo || "",
+            params: {
+              publicKey: params.senderAddress,
+              destination: params.recipientAddress!,
+              amount: xlmToStroop(params.tokenAmount).toString(),
+            },
+            contractAddress: builtTxResult.contractId!,
           });
         } else {
           logger.warn(
@@ -108,12 +141,17 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
 
-        set({
-          transactionXDR: finalXdr,
-          isBuilding: false,
-          signedTransactionXDR: null,
-          transactionHash: null,
-        });
+        // Only update store if this build request is still the latest one.
+        // This prevents race conditions where a slow async response from
+        // an older transaction overwrites state from a newer one.
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: finalXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
 
         return finalXdr;
       } catch (error) {
@@ -123,11 +161,83 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           error: errorMessage,
         });
 
-        set({
-          error: errorMessage,
-          isBuilding: false,
-          transactionXDR: null,
+        // Only set error state if this build request is still current.
+        // Prevents stale error from overwriting newer transaction state.
+        if (get().requestId === newRequestId) {
+          set({
+            error: errorMessage,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
+
+        return null;
+      }
+    },
+
+    /**
+     * Builds a swap transaction and stores the XDR
+     */
+    buildSwapTransaction: async (params) => {
+      // Tag this build cycle
+      const newRequestId = createRequestId();
+
+      // Mark new cycle and reset flags
+      set({ isBuilding: true, error: null, requestId: newRequestId });
+
+      try {
+        const builtTxResult = await buildSwapTransaction({
+          sourceAmount: params.sourceAmount,
+          sourceBalance: params.sourceBalance,
+          destinationBalance: params.destinationBalance,
+          path: params.path,
+          destinationAmount: params.destinationAmount,
+          destinationAmountMin: params.destinationAmountMin,
+          transactionFee: params.transactionFee,
+          transactionTimeout: params.transactionTimeout,
+          network: params.network,
+          senderAddress: params.senderAddress,
         });
+
+        if (!builtTxResult) {
+          throw new Error("Failed to build swap transaction");
+        }
+
+        // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
+        const finalXdr = builtTxResult.xdr;
+
+        // Only update store if this swap build is still the latest one.
+        // Prevents race conditions from concurrent swap transactions.
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: finalXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
+
+        return finalXdr;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build swap transaction",
+          {
+            error: errorMessage,
+          },
+        );
+
+        // Only set error state if this swap build is still current.
+        // Prevents stale swap error from overwriting newer transaction state.
+        if (get().requestId === newRequestId) {
+          set({
+            error: errorMessage,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
 
         return null;
       }
@@ -168,7 +278,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * Submits a transaction and stores the hash
      */
     submitTransaction: async (params) => {
-      set({ isSubmitting: true, error: null });
+      // Tag this submit cycle (reuse current id if exists)
+      const currentRequestId = get().requestId || createRequestId();
+      set({ isSubmitting: true, error: null, requestId: currentRequestId });
 
       try {
         const { signedTransactionXDR } = get();
@@ -183,10 +295,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         });
 
         const { hash } = result;
-        set({
-          transactionHash: hash,
-          isSubmitting: false,
-        });
+
+        // Only update with success if this submit is still the latest one.
+        // Guards against late responses from previous submits showing wrong hash.
+        if (get().requestId === currentRequestId) {
+          set({
+            transactionHash: hash,
+            isSubmitting: false,
+          });
+        }
 
         return hash;
       } catch (error) {
@@ -195,13 +312,16 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         logger.error(
           "TransactionBuilderStore",
           "Failed to submit transaction",
-          { error: errorMessage },
+          {
+            error: errorMessage,
+          },
         );
 
-        set({
-          error: errorMessage,
-          isSubmitting: false,
-        });
+        // Only set error state if this submit request is still current.
+        // Prevents stale submit error from affecting newer transaction flows.
+        if (get().requestId === currentRequestId) {
+          set({ error: errorMessage, isSubmitting: false });
+        }
 
         return null;
       }

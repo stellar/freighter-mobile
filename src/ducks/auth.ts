@@ -23,6 +23,8 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
+import { useWalletKitStore } from "ducks/walletKit";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
@@ -103,19 +105,21 @@ interface StoreAccountParams {
 /**
  * Active account information
  *
- * Contains the active account's public and private keys, name, and ID
+ * Contains the active account's public and private keys, name, ID, and subentry count
  *
  * @interface ActiveAccount
  * @property {string} publicKey - The account's public key
  * @property {string} privateKey - The account's private key
  * @property {string} accountName - The account's display name
  * @property {string} id - The account's unique identifier
+ * @property {number} subentryCount - The number of subentries (trustlines, offers, data entries)
  */
 export interface ActiveAccount {
   publicKey: string;
   privateKey: string;
   accountName: string;
   id: string;
+  subentryCount: number;
 }
 
 /**
@@ -247,9 +251,9 @@ interface AuthActions {
  */
 type AuthStore = AuthState & AuthActions;
 
-// Initial state
-const initialState: AuthState = {
-  network: NETWORKS.TESTNET,
+// Initial state. We omit the network because we don't want to override its state
+// whenever the ...initialState is used.
+const initialState: Omit<AuthState, "network"> = {
   isLoading: false,
   isCreatingAccount: false,
   isRenamingAccount: false,
@@ -285,9 +289,9 @@ const initializeStore = async (
 
 /**
  * Key manager instance for handling cryptographic operations
- * We're using testnet as the default, but the same key manager can be used for mainnet as well
+ * We're using mainnet as the default, but the same key manager can be used for testnet as well
  */
-const keyManager = createKeyManager(Networks.TESTNET);
+const keyManager = createKeyManager(Networks.PUBLIC);
 
 /**
  * Checks if a hash key is expired
@@ -1184,11 +1188,15 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
         throw new Error(t("authStore.error.privateKeyNotFound"));
       }
 
+      // Get subentry count from the balances store (already fetched with balance data)
+      const { subentryCount } = useBalancesStore.getState();
+
       return {
         publicKey: account.publicKey,
         privateKey,
         accountName: account.name,
         id: activeAccountId,
+        subentryCount,
       };
     }
 
@@ -1368,6 +1376,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
   return {
     ...initialState,
 
+    // Default to PUBLIC network
+    network: NETWORKS.PUBLIC,
+
     /**
      * Logs out the user by clearing sensitive data
      *
@@ -1383,6 +1394,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       setTimeout(() => {
         (async () => {
           try {
+            // Make sure to disconnect all WalletConnect sessions first
+            await useWalletKitStore.getState().disconnectAllSessions();
+
             const accountList = await getAllAccounts();
             const hasAccountList = accountList.length > 0;
 

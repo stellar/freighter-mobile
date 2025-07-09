@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -11,8 +10,8 @@ import {
   ManageWalletsStackParamList,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
-import React, { useEffect, useRef } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type AddAnotherWalletScreenProps = NativeStackScreenProps<
@@ -24,25 +23,11 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon.X size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => bottomSheetModalRef.current?.present()}
-        >
-          <Icon.HelpCircle size={24} color={themeColors.base[1]} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, themeColors]);
+  useRightHeaderButton({
+    onPress: () => bottomSheetModalRef.current?.present(),
+  });
 
   const handleCreateAccount = () => {
     navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);

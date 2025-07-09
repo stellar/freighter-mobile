@@ -17,8 +17,9 @@
     "remove": "Remove",
     "copied": "Copied to clipboard!",
     "loading": "Loading...",
-    "error": "Error",
-    "unknownError": "Unknown error"
+    "error": "Error: {{errorMessage}}",
+    "unknownError": "Unknown error",
+    "review": "Review"
   },
   "home": {
     "title": "Home",
@@ -164,19 +165,22 @@
     "continue": "Continue",
     "typePassword": "Type your password",
     "typePasswordNote": "Minimum 8 characters",
-    "skip": "Skip",
-    "pasteFromClipboard": "Paste from clipboard"
+    "pasteFromClipboard": "Paste from clipboard",
+    "doThisLaterButtonText": "Do this later"
   },
-  "discovery": {
+  "connectedApps": {
     "title": "Wallet Connect",
-    "inputPlaceholder": "Enter WalletConnect URI",
+    "inputPlaceholder": "Paste QR Code",
     "scanQRCode": "Scan QR Code",
     "connect": "Connect",
     "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid URI",
+    "invalidUriError": "Please enter a valid QR Code",
     "disconnectAllSessions": "Clear all connected apps",
     "connectedDapps": "Connected Apps",
     "noConnectedDapps": "You're not connected to any apps"
+  },
+  "discovery": {
+    "title": "Discovery"
   },
   "history": {
     "title": "History",
@@ -189,6 +193,7 @@
     "transactionHistory": {
       "transaction": "Transaction",
       "createAccount": "Create account",
+      "accountFunded": "Account funded",
       "addedTrustline": "Added trustline",
       "removedTrustline": "Removed trustline",
       "received": "Received",
@@ -327,6 +332,54 @@
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address"
   },
+  "swapScreen": {
+    "swapFrom": "Swap from",
+    "swapTo": "Swap to",
+    "title": "Swap",
+    "searchTokenInputPlaceholder": "Search token name or address",
+    "setMax": "Set max",
+    "receive": "Receive",
+    "chooseAsset": "Choose asset",
+    "selectAsset": "Select an asset",
+    "swapScreenTokenListTitle": "Your tokens",
+    "copyContractAddress": "Copy contract address",
+    "viewOnStellarExpert": "View on stellar.expert",
+    "menu": {
+      "fee": "Fee: {{fee}} XLM",
+      "timeout": "Timeout: {{timeout}}(s)",
+      "slippage": "Slippage: {{slippage}}%"
+    },
+    "review": {
+      "title": "You are swapping",
+      "wallet": "Wallet",
+      "minimum": "Minimum",
+      "rate": "Rate",
+      "fee": "Fee",
+      "xdr": "XDR",
+      "warning": "Make sure to review the transaction above, once you confirm it's irreversible"
+    },
+    "errors": {
+      "failedToSetupTransaction": "Failed to setup swap transaction",
+      "swapTransactionFailed": "Swap transaction failed",
+      "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
+      "noPathFound": "No path found between these assets"
+    }
+  },
+  "swapProcessingScreen": {
+    "swapping": "Swapping",
+    "swapped": "Swapped!",
+    "failed": "Failed",
+    "to": " to ",
+    "wasSwappedFor": " was swapped for ",
+    "couldNotBeSwappedFor": " could not be swapped for ",
+    "viewTransaction": "View transaction",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute"
+  },
+  "swapTransactionDetails": {
+    "swapped": "Swapped",
+    "conversionRate": "Conversion rate",
+    "minimumReceived": "Minimum received"
+  },
   "transactionTokenScreen": {
     "title": "Sending"
   },
@@ -454,7 +507,7 @@
     "itemCopied": "{{itemName}} copied to clipboard!"
   },
   "qrScanner": {
-    "cameraNotAvailable": "Camera not available or not permitted"
+    "cameraNotAvailable": "Camera not permitted\nor not available"
   },
   "walletKit": {
     "connectionSuccessfull": "{{dappName}} connection successfull!",
@@ -462,11 +515,25 @@
     "signingSuccessfull": "Transaction successfully signed!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
+    "errorPairing": "Failed to pair with App",
+    "errorNoUriParam": "No URI parameter found in the link",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
-    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again"
+    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again",
+    "errorUnsupportedChain": "Unsupported Chain",
+    "errorUnsupportedChainMessage": "Please make sure the App you are trying to connect with supports the Stellar chain",
+    "notAuthenticated": "Logged out",
+    "pleaseLoginToConnect": "Please log in to your wallet and try again to connect to this App",
+    "pleaseLoginToSignTransaction": "Please log in to your wallet and try again to sign this transaction",
+    "walletLocked": "Wallet Locked",
+    "pleaseUnlockToConnect": "Please unlock your wallet to connect to this App",
+    "pleaseUnlockToSignTransaction": "Please unlock your wallet to sign this transaction",
+    "connectionNotFound": "Connection not found",
+    "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Freighter wallet",
+    "walletIsLocked": "Wallet is locked",
+    "userNotAuthenticated": "User not authenticated"
   },
   "sendRecipient": {
     "error": {
@@ -507,5 +574,55 @@
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
   },
-  "tokenIconAlt": "{{code}} token icon"
+  "slippageScreen": {
+    "title": "Allowed Slippage",
+    "customPlaceholder": "Custom %",
+    "setDefault": "Set default",
+    "errors": {
+      "customRequired": "Custom slippage is required",
+      "invalidNumber": "Invalid number",
+      "minSlippage": "Slippage must be at least {{min}}%",
+      "maxSlippage": "Slippage must be below {{max}}%"
+    }
+  },
+  "transaction": {
+    "errors": {
+      "amountRequired": "Source amount must be greater than 0",
+      "destinationAmountRequired": "Destination amount must be greater than 0",
+      "feeRequired": "Fee must be greater than 0",
+      "timeoutRequired": "Timeout must be greater than 0",
+      "insufficientBalance": "Insufficient balance",
+      "insufficientBalanceForSwap": "Insufficient balance for swap",
+      "cannotSwapSameAsset": "Cannot swap to the same asset",
+      "invalidRecipientAddress": "Invalid recipient address",
+      "cannotSendToSelf": "Cannot send to yourself",
+      "publicKeyRequired": "Public key is required",
+      "recipientAddressRequired": "Recipient address is required",
+      "selectedBalanceNotFound": "Selected balance not found",
+      "sourceBalanceNotFound": "Source balance not found",
+      "destinationBalanceNotFound": "Destination balance not found",
+      "transactionFeeRequired": "Transaction fee is required",
+      "transactionTimeoutRequired": "Transaction timeout is required",
+      "networkRequired": "Network is required",
+      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
+    }
+  },
+  "welcomeBanner": {
+    "welcomeMessage": "Welcome to Freighter!",
+    "fundingText": "To start using this account, ",
+    "fundingText2": "fund it with at least 1 XLM.",
+    "minimumBalanceText": "Stellar accounts require a minimum balance of 1 XLM to ensure network security and prevent spam.",
+    "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
+    "addXLM": "Add XLM",
+    "doThisLater": "Do this later"
+  },
+  "tokenIconAlt": "{{code}} token icon",
+  "recoverySkipModal": {
+    "title": "Are you sure you want to skip?",
+    "description1": "Your recovery phrase gives you access to your account and is the only way to access it.",
+    "description2": "If you lose, we can't recover it. Before adding large amounts, make sure to view and save your recovery phrase in a safe place by going to ",
+    "description3": "Settings → Security → Reveal Recovery Phrase.",
+    "confirm": "I understand, continue",
+    "cancel": "Go back"
+  }
 }

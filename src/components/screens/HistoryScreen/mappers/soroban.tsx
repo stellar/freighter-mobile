@@ -390,15 +390,8 @@ const processSorobanTransfer = async ({
         issuer: { key: name.split(":")[1] },
         type: undefined,
       };
-    } else if (name) {
-      displayName = name;
-      assetIconToken = {
-        type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
-        code,
-        issuer: { key: sorobanAttributes.contractId },
-      };
     } else {
-      displayName = code;
+      displayName = name ?? code;
       assetIconToken = {
         type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
         code,
@@ -607,13 +600,10 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
 
   return (
     <TransactionDetailsContent>
-      <View className="flex-row justify-between">
+      <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
             {formatAssetAmount(tokenAmount, contractSymbol)}
-          </Text>
-          <Text md secondary numberOfLines={1}>
-            {/* TODO: priced amount */}-
           </Text>
         </View>
         {transactionDetails.IconComponent}

@@ -60,7 +60,7 @@ describe("transactionBuilder Duck", () => {
       { xdr: mockBuiltXDR, tx: { sequence: "1" } },
     );
     (
-      transactionService.prepareSorobanTransaction as jest.Mock
+      transactionService.simulateContractTransfer as jest.Mock
     ).mockResolvedValue(mockPreparedXDR);
     (stellarServices.signTransaction as jest.Mock).mockReturnValue(
       mockSignedXDR,
@@ -105,10 +105,18 @@ describe("transactionBuilder Duck", () => {
         recipientAddress: mockRecipientAddress,
       }),
     );
-    expect(transactionService.prepareSorobanTransaction).not.toHaveBeenCalled();
+    expect(transactionService.simulateContractTransfer).not.toHaveBeenCalled();
   });
 
   it("should build and prepare a Soroban transaction successfully", async () => {
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+    });
+
     await act(async () => {
       await store.getState().buildTransaction({
         tokenAmount: mockTokenValue,
@@ -125,7 +133,7 @@ describe("transactionBuilder Duck", () => {
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalled();
-    expect(transactionService.prepareSorobanTransaction).toHaveBeenCalled();
+    expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
   });
 
   it("should handle errors during buildTransaction", async () => {
@@ -147,27 +155,6 @@ describe("transactionBuilder Duck", () => {
     expect(state.isBuilding).toBe(false);
     expect(state.transactionXDR).toBeNull();
     expect(state.error).toBe(buildError.message);
-  });
-
-  it("should handle errors during prepareSorobanTransaction", async () => {
-    const prepareError = new Error("Prepare failed");
-    (
-      transactionService.prepareSorobanTransaction as jest.Mock
-    ).mockRejectedValue(prepareError);
-
-    await act(async () => {
-      await store.getState().buildTransaction({
-        tokenAmount: mockTokenValue,
-        recipientAddress: mockContractAddress,
-        senderAddress: mockPublicKey,
-        network: mockNetwork,
-      });
-    });
-
-    const state = store.getState();
-    expect(state.isBuilding).toBe(false);
-    expect(state.transactionXDR).toBeNull();
-    expect(state.error).toBe(prepareError.message);
   });
 
   it("should sign a transaction successfully", () => {

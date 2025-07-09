@@ -5,6 +5,7 @@ import { View, TouchableOpacity } from "react-native";
 
 interface ListItemProps {
   icon?: React.ReactNode;
+  key?: string;
   title: string;
   titleColor?: string;
   trailingContent?: React.ReactNode;
@@ -31,7 +32,7 @@ export const List: React.FC<ListProps> = ({
     className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""} ${className}`}
   >
     {items.map((item, index) => (
-      <React.Fragment key={item.title}>
+      <React.Fragment key={item.key || item.title}>
         <TouchableOpacity
           disabled={!item.onPress}
           onPress={item.onPress}

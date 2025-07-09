@@ -73,7 +73,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
 
               <View className="flex flex-col gap-6">
                 <View className="flex-row items-center gap-3">
-                  <Icon.Lock01 size={24} color={themeColors.lime[10]} />
+                  <Icon.Lock01 color={themeColors.lime[10]} />
                   <View className="flex-1">
                     <Text sm color={themeColors.white}>
                       {t("showRecoveryPhraseScreen.yourRecoveryPhrase")}
@@ -82,7 +82,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <Icon.EyeOff size={24} color={themeColors.lime[10]} />
+                  <Icon.EyeOff color={themeColors.lime[10]} />
                   <View className="flex-1">
                     <Text sm color={themeColors.white}>
                       {t("showRecoveryPhraseScreen.dontShareWithAnyone")}
@@ -91,7 +91,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <Icon.XSquare size={24} color={themeColors.lime[10]} />
+                  <Icon.XSquare color={themeColors.lime[10]} />
                   <View className="flex-1">
                     <Text sm color={themeColors.white}>
                       {t("showRecoveryPhraseScreen.neverAskForYourPhrase")}

@@ -5,13 +5,13 @@ import {
   Operation,
   Transaction,
   TransactionBuilder,
-  xdr,
-  nativeToScVal,
   Address,
-  TimeoutInfinite,
+  nativeToScVal,
 } from "@stellar/stellar-sdk";
+import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
+  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -27,13 +27,28 @@ import {
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
-import { getSorobanRpcServer, stellarSdkServer } from "services/stellar";
+import { t } from "i18next";
+import { simulateTokenTransfer } from "services/backend";
+import { stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
+  transactionFee?: string;
+  transactionTimeout?: number;
+  network?: NETWORKS;
+  senderAddress?: string;
+}
+
+export interface BuildSwapTransactionParams {
+  sourceAmount: string;
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  path: string[];
+  destinationAmount: string;
+  destinationAmountMin: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
@@ -71,27 +86,27 @@ export const validateTransactionParams = (
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
   // Validate amount is positive
   if (Number(amount) <= 0) {
-    return "Amount must be greater than 0";
+    return t("transaction.errors.amountRequired");
   }
 
   // Validate fee is positive
   if (Number(fee) <= 0) {
-    return "Fee must be greater than 0";
+    return t("transaction.errors.feeRequired");
   }
 
   // Validate timeout
   if (timeout <= 0) {
-    return "Timeout must be greater than 0";
+    return t("transaction.errors.timeoutRequired");
   }
 
   // Check if the recipient address is valid
   if (!isValidStellarAddress(destination)) {
-    return "Invalid recipient address";
+    return t("transaction.errors.invalidRecipientAddress");
   }
 
   // Prevent sending to self
   if (isSameAccount(senderAddress, destination)) {
-    return "Cannot send to yourself";
+    return t("transaction.errors.cannotSendToSelf");
   }
 
   // Validate sufficient balance
@@ -99,7 +114,64 @@ export const validateTransactionParams = (
   const balanceAmount = new BigNumber(balance.total);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
-    return "Insufficient balance";
+    return t("transaction.errors.insufficientBalance");
+  }
+
+  return null;
+};
+
+/**
+ * Validates swap transaction parameters
+ * Returns an error message if any validation fails
+ */
+export const validateSwapTransactionParams = (params: {
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  sourceAmount: string;
+  destinationAmount: string;
+  fee: string;
+  timeout: number;
+}): string | null => {
+  const {
+    sourceBalance,
+    destinationBalance,
+    sourceAmount,
+    destinationAmount,
+    fee,
+    timeout,
+  } = params;
+
+  // Validate amount is positive
+  if (Number(sourceAmount) <= 0) {
+    return t("transaction.errors.amountRequired");
+  }
+
+  // Validate destination amount is positive
+  if (Number(destinationAmount) <= 0) {
+    return t("transaction.errors.destinationAmountRequired");
+  }
+
+  // Validate fee is positive
+  if (Number(fee) <= 0) {
+    return t("transaction.errors.feeRequired");
+  }
+
+  // Validate timeout
+  if (timeout <= 0) {
+    return t("transaction.errors.timeoutRequired");
+  }
+
+  // Validate sufficient balance
+  const transactionAmount = new BigNumber(sourceAmount);
+  const balanceAmount = new BigNumber(sourceBalance.total);
+
+  if (transactionAmount.isGreaterThan(balanceAmount)) {
+    return t("transaction.errors.insufficientBalanceForSwap");
+  }
+
+  // Validate different assets
+  if (sourceBalance.id === destinationBalance.id) {
+    return t("transaction.errors.cannotSwapSameAsset");
   }
 
   return null;
@@ -150,7 +222,7 @@ interface IBuildSorobanTransferOperation {
   destinationAddress: string;
   amount: string;
   asset: Asset;
-  txBuilder: TransactionBuilder;
+  transactionBuilder: TransactionBuilder;
   network: NETWORKS;
 }
 
@@ -165,309 +237,301 @@ export const buildSorobanTransferOperation = (
     destinationAddress,
     amount,
     asset,
-    txBuilder,
+    transactionBuilder,
     network,
   } = params;
+
   try {
-    // For native XLM tokens, use the native token contract
-    // For other tokens, use the destination as the contract (this might need adjustment based on your use case)
     const contractId = asset.isNative()
       ? getContractIdForNativeToken(network)
       : destinationAddress;
 
-    // Create a contract instance for the appropriate contract
     const contract = new Contract(contractId);
 
-    if (asset.isNative()) {
-      // Convert the amount to stroops (1 XLM = 10,000,000 stroops)
-      const amountInStroops = xlmToStroop(amount).toString();
-
-      // Create parameters for the transfer
-      const fromParam = new Address(sourceAccount).toScVal();
-      const toParam = new Address(destinationAddress).toScVal();
-      const amountParam = new BigNumber(amountInStroops).isInteger()
-        ? xdr.ScVal.scvI128(
-            new xdr.Int128Parts({
-              lo: xdr.Uint64.fromString(amountInStroops),
-              hi: xdr.Int64.fromString("0"),
-            }),
-          )
-        : xdr.ScVal.scvI128(
-            new xdr.Int128Parts({
-              lo: xdr.Uint64.fromString("0"),
-              hi: xdr.Int64.fromString("0"),
-            }),
-          );
-
-      // Add the operation to the transaction builder and return the updated builder
-      txBuilder.addOperation(
-        contract.call("transfer", fromParam, toParam, amountParam),
-      );
-
-      // Set the timeout to infinite for Soroban transactions
-      txBuilder.setTimeout(TimeoutInfinite);
-
-      return txBuilder;
-    }
-
-    // For non-native assets, use a similar approach
-    const fromParam = new Address(sourceAccount).toScVal();
-    const toParam = new Address(destinationAddress).toScVal();
-    const amountParam = nativeToScVal(amount);
-
-    // Add the operation to the transaction builder and return the updated builder
-    txBuilder.addOperation(
-      contract.call("transfer", fromParam, toParam, amountParam),
+    const transaction = contract.call(
+      "transfer",
+      new Address(sourceAccount).toScVal(),
+      new Address(destinationAddress).toScVal(),
+      nativeToScVal(amount, { type: "i128" }),
     );
 
-    // Set the timeout to infinite for Soroban transactions
-    txBuilder.setTimeout(TimeoutInfinite);
-
-    return txBuilder;
-  } catch (error) {
-    logger.error("TransactionBuilder", "Failed to create Soroban operation", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw new Error(
-      `Unable to create contract operation: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-};
-
-interface SorobanRpcServerWithPrepare {
-  prepareTransaction: (tx: Transaction) => Promise<unknown>;
-}
-
-interface IPrepareSorobanTransaction {
-  tx: Transaction;
-  networkDetails: NetworkDetails;
-}
-
-/**
- * Helper function to prepare a Soroban transaction with RPC simulation
- */
-export const prepareSorobanTransaction = async (
-  params: IPrepareSorobanTransaction,
-): Promise<string> => {
-  const { tx, networkDetails } = params;
-  try {
-    const sorobanRpc = getSorobanRpcServer(networkDetails.network);
-    if (!sorobanRpc) {
-      logger.warn(
-        "TransactionBuilder",
-        "Soroban RPC server not available, using standard transaction",
-      );
-
-      // Return the standard transaction XDR string if RPC is not available
-      return tx.toXDR();
-    }
-
-    try {
-      if (
-        typeof sorobanRpc !== "object" ||
-        typeof (sorobanRpc as SorobanRpcServerWithPrepare)
-          .prepareTransaction !== "function"
-      ) {
-        return tx.toXDR();
-      }
-
-      // The SDK's prepareTransaction is expected to return the prepared Transaction object
-      const preparedTx: unknown = await (
-        sorobanRpc as SorobanRpcServerWithPrepare
-      ).prepareTransaction(tx);
-
-      if (preparedTx instanceof Transaction) {
-        // Return the XDR of the PREPARED transaction
-        return preparedTx.toXDR();
-      }
-
-      // Return the original XDR only if preparation failed unexpectedly
-      return tx.toXDR();
-    } catch (prepError) {
-      const errorMessage =
-        prepError instanceof Error ? prepError.message : String(prepError);
-      logger.error("TransactionBuilder", "Error during prepareTransaction", {
-        error: errorMessage,
-      });
-
-      throw new Error(`Error during prepareTransaction: ${errorMessage}`);
-    }
+    transactionBuilder.addOperation(transaction);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
-      "TransactionBuilder",
-      "Error during Soroban transaction preparation",
-      { error: errorMessage },
+      "TransactionService",
+      "Error building Soroban transfer operation",
+      {
+        error: errorMessage,
+      },
     );
-
     throw new Error(
-      `Error during Soroban transaction preparation: ${errorMessage}`,
+      `Error building Soroban transfer operation: ${errorMessage}`,
     );
   }
+
+  return transactionBuilder;
 };
 
 interface BuildPaymentTransactionResult {
   tx: Transaction;
   xdr: string;
+  contractId?: string;
 }
 
 /**
- * Builds a payment transaction
- * @param params Object containing tokenAmount (required) and optional overrides
- * @returns The transaction XDR string or throws an error with details
+ * Builds a payment transaction (standard or Soroban)
  */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
   const {
     tokenAmount: amount,
-    selectedBalance: balance,
-    recipientAddress: destination,
+    selectedBalance,
+    recipientAddress,
     transactionMemo: memo,
-    transactionFee: fee,
-    transactionTimeout: timeout,
-    network: currentNetwork,
+    transactionFee,
+    transactionTimeout,
+    network,
+    senderAddress,
+  } = params;
+  try {
+    if (
+      !senderAddress ||
+      !network ||
+      !selectedBalance ||
+      !recipientAddress ||
+      !transactionFee ||
+      !transactionTimeout
+    ) {
+      throw new Error("Missing required parameters for building transaction");
+    }
+
+    const validationError = validateTransactionParams({
+      senderAddress,
+      balance: selectedBalance,
+      amount,
+      destination: recipientAddress,
+      fee: transactionFee,
+      timeout: transactionTimeout,
+    });
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+    const networkDetails = mapNetworkToNetworkDetails(network);
+    const server = stellarSdkServer(networkDetails.networkUrl);
+    const sourceAccount = await server.loadAccount(senderAddress);
+    const fee = xlmToStroop(transactionFee).toString();
+
+    const transactionBuilder = new TransactionBuilder(sourceAccount, {
+      fee,
+      timebounds: await server.fetchTimebounds(transactionTimeout),
+      networkPassphrase: networkDetails.networkPassphrase,
+    });
+
+    if (memo) {
+      transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
+    }
+
+    const isToContractAddress = isContractId(recipientAddress);
+
+    if (isToContractAddress) {
+      const asset = getAssetForPayment(selectedBalance);
+      const contractId = asset.isNative()
+        ? getContractIdForNativeToken(network)
+        : recipientAddress;
+
+      const decimals =
+        "decimals" in selectedBalance
+          ? selectedBalance.decimals
+          : DEFAULT_DECIMALS;
+      const amountInBaseUnits = BigNumber(amount)
+        .shiftedBy(decimals)
+        .toFixed(0);
+
+      buildSorobanTransferOperation({
+        sourceAccount: senderAddress,
+        destinationAddress: recipientAddress,
+        amount: amountInBaseUnits,
+        asset,
+        transactionBuilder,
+        network,
+      });
+
+      const transaction = transactionBuilder.build();
+
+      return { tx: transaction, xdr: transaction.toXDR(), contractId };
+    }
+
+    const asset = getAssetForPayment(selectedBalance);
+
+    // Check if destination is funded, but only for XLM transfers
+    if (asset.isNative()) {
+      try {
+        await server.loadAccount(recipientAddress);
+      } catch (e) {
+        const error = e as AxiosError;
+
+        if (error.response && error.response.status === 404) {
+          // Ensure the amount is sufficient for account creation
+          if (BigNumber(amount).isLessThan(1)) {
+            throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
+          }
+
+          transactionBuilder.addOperation(
+            Operation.createAccount({
+              destination: recipientAddress,
+              startingBalance: amount,
+            }),
+          );
+
+          const transaction = transactionBuilder.build();
+
+          return { tx: transaction, xdr: transaction.toXDR() };
+        }
+
+        throw error;
+      }
+    }
+
+    // If account is funded or asset is not XLM, use standard payment
+    transactionBuilder.addOperation(
+      Operation.payment({
+        destination: recipientAddress,
+        asset,
+        amount,
+      }),
+    );
+
+    const transaction = transactionBuilder.build();
+    return { tx: transaction, xdr: transaction.toXDR() };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("TransactionService", "Failed to build payment transaction", {
+      error: errorMessage,
+    });
+    throw new Error(`Failed to build payment transaction: ${errorMessage}`);
+  }
+};
+
+/**
+ * Builds a swap transaction (path payment)
+ */
+export const buildSwapTransaction = async (
+  params: BuildSwapTransactionParams,
+): Promise<BuildPaymentTransactionResult> => {
+  const {
+    sourceAmount,
+    sourceBalance,
+    destinationBalance,
+    path,
+    destinationAmount,
+    destinationAmountMin,
+    transactionFee,
+    transactionTimeout,
+    network,
     senderAddress,
   } = params;
 
-  if (!senderAddress) {
-    throw new Error("Public key is required");
-  }
-
-  if (!destination) {
-    throw new Error("Recipient address is required");
-  }
-
-  if (!balance) {
-    throw new Error("Selected balance not found");
-  }
-
-  if (!fee) {
-    throw new Error("Transaction fee is required");
-  }
-
-  if (!timeout) {
-    throw new Error("Transaction timeout is required");
-  }
-
-  if (!currentNetwork) {
-    throw new Error("Network is required");
-  }
-
   try {
-    const validationError = validateTransactionParams({
-      senderAddress,
-      balance,
-      amount,
-      destination,
-      fee,
-      timeout,
+    if (!senderAddress || !network || !transactionFee || !transactionTimeout) {
+      throw new Error("Missing required parameters for building transaction");
+    }
+
+    const validationError = validateSwapTransactionParams({
+      sourceBalance,
+      destinationBalance,
+      sourceAmount,
+      destinationAmount,
+      fee: transactionFee,
+      timeout: transactionTimeout,
     });
 
     if (validationError) {
       throw new Error(validationError);
     }
 
-    const networkDetails = mapNetworkToNetworkDetails(currentNetwork);
+    const networkDetails = mapNetworkToNetworkDetails(network);
     const server = stellarSdkServer(networkDetails.networkUrl);
-
-    // Load the source account
     const sourceAccount = await server.loadAccount(senderAddress);
+    const fee = xlmToStroop(transactionFee).toString();
 
-    // Create transaction builder with validated parameters
     const txBuilder = new TransactionBuilder(sourceAccount, {
-      fee: xlmToStroop(fee).toFixed(),
+      fee,
+      timebounds: await server.fetchTimebounds(transactionTimeout),
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    // Check if we're sending to a contract address
-    const isToContractAddress = isContractId(destination);
-
-    // Get the asset object
-    const asset = getAssetForPayment(balance);
-
-    // Add the appropriate operation based on the destination type
-    if (isToContractAddress) {
-      // For contract addresses, use Soroban operations
-      buildSorobanTransferOperation({
-        sourceAccount: senderAddress,
-        destinationAddress: destination,
-        amount,
-        asset,
-        txBuilder,
-        network: currentNetwork,
-      });
-    } else {
-      // Determine if destination account exists (for XLM sends)
-      const isNativeAsset =
-        balance.tokenCode === NATIVE_TOKEN_CODE || isNativeBalance(balance);
-      let isDestinationFunded = true;
-
-      if (isNativeAsset) {
-        try {
-          await server.loadAccount(destination);
-        } catch (e) {
-          isDestinationFunded = false;
-
-          // Validate minimum starting balance for account creation (1 XLM)
-          if (new BigNumber(amount).isLessThan(1)) {
-            throw new Error(
-              "Minimum of 1 XLM required to create a new account",
-            );
-          }
-        }
+    const sourceAsset = getAssetForPayment(sourceBalance);
+    const destAsset = getAssetForPayment(destinationBalance);
+    const pathAssets = path.map((pathItem) => {
+      if (pathItem === "native") {
+        return Asset.native();
       }
 
-      // Add the appropriate operation based on destination and asset type
-      if (isNativeAsset && !isDestinationFunded) {
-        // Create account operation for new accounts receiving XLM
-        txBuilder.addOperation(
-          Operation.createAccount({
-            destination,
-            startingBalance: amount,
-          }),
-        );
-      } else {
-        // Regular payment operation
-        txBuilder.addOperation(
-          Operation.payment({
-            destination,
-            asset,
-            amount,
-          }),
-        );
-      }
+      const [code, issuer] = pathItem.split(":");
 
-      // Set the timeout for regular transactions
-      txBuilder.setTimeout(timeout);
-    }
+      return new Asset(code, issuer);
+    });
 
-    // Add memo if provided
-    if (memo) {
-      txBuilder.addMemo(Memo.text(memo));
-    }
+    txBuilder.addOperation(
+      Operation.pathPaymentStrictSend({
+        sendAsset: sourceAsset,
+        sendAmount: sourceAmount,
+        destination: senderAddress,
+        destAsset,
+        destMin: destinationAmountMin,
+        path: pathAssets,
+      }),
+    );
 
-    // Build the transaction
     const transaction = txBuilder.build();
-
-    if (isToContractAddress) {
-      const preparedXdr = await prepareSorobanTransaction({
-        tx: transaction,
-        networkDetails,
-      });
-
-      // Return the original transaction object and the prepared XDR
-      return { tx: transaction, xdr: preparedXdr };
-    }
-
-    // For regular transactions, just return the transaction object and its XDR
     return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("TransactionService", "Failed to build transaction", {
+    logger.error("TransactionService", "Failed to build swap transaction", {
       error: errorMessage,
     });
-
-    throw new Error(`Failed to build transaction: ${errorMessage}`);
+    throw new Error(`Failed to build swap transaction: ${errorMessage}`);
   }
+};
+
+interface SimulateContractTransferParams {
+  transaction: Transaction;
+  networkDetails: NetworkDetails;
+  memo: string;
+  params: {
+    publicKey: string;
+    destination: string;
+    amount: string;
+  };
+  contractAddress: string;
+}
+
+export const simulateContractTransfer = async ({
+  transaction,
+  networkDetails,
+  memo,
+  params,
+  contractAddress,
+}: SimulateContractTransferParams) => {
+  if (!transaction.source) {
+    throw new Error("Transaction source is not defined");
+  }
+
+  if (!networkDetails.sorobanRpcUrl) {
+    throw new Error("Soroban RPC URL is not defined for this network");
+  }
+
+  const result = await simulateTokenTransfer({
+    address: contractAddress,
+    pub_key: transaction.source,
+    memo,
+    params,
+    network_url: networkDetails.sorobanRpcUrl,
+    network_passphrase: networkDetails.networkPassphrase,
+  });
+
+  return result.preparedTx.toXDR();
 };
