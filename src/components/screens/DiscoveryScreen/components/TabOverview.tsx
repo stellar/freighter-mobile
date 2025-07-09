@@ -66,16 +66,8 @@ const TabOverview: React.FC<TabOverviewProps> = ({
 
   return (
     <Animated.View
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1000,
-        opacity: fadeAnim,
-        backgroundColor: themeColors.background.primary,
-      }}
+      className="absolute inset-0 z-50 bg-background-primary"
+      style={{ opacity: fadeAnim }}
     >
       <TabOverviewHeader
         tabsCount={tabs.length}
