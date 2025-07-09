@@ -287,8 +287,8 @@ const processSorobanMint = async ({
       transactionType: TransactionType.CONTRACT,
       status: TransactionStatus.SUCCESS,
       fee,
-      IconComponent,
-      ActionIconComponent,
+      IconComponent: historyItemData.IconComponent,
+      ActionIconComponent: historyItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
       contractDetails: {
         contractAddress: sorobanAttributes.contractId,
@@ -604,7 +604,6 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
 
   const contractSymbol =
     transactionDetails.contractDetails?.contractSymbol ?? "";
-  const isNative = contractSymbol === NATIVE_TOKEN_CODE;
 
   return (
     <TransactionDetailsContent>
@@ -617,24 +616,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
             {/* TODO: priced amount */}-
           </Text>
         </View>
-        <AssetIcon
-          token={
-            isNative
-              ? {
-                  type: AssetTypeWithCustomToken.NATIVE,
-                  code: NATIVE_TOKEN_CODE,
-                }
-              : {
-                  type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
-                  code: contractSymbol,
-                  issuer: {
-                    key:
-                      transactionDetails.contractDetails?.contractAddress ?? "",
-                  },
-                }
-          }
-          size="lg"
-        />
+        {transactionDetails.IconComponent}
       </View>
 
       <Icon.ChevronDownDouble
