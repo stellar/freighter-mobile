@@ -127,7 +127,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
                 viewShotRefs.current[tab.id] = ref;
               }}
               options={{
-                format: "png",
+                format: BROWSER_CONSTANTS.SCREENSHOT_FORMAT,
                 quality: BROWSER_CONSTANTS.SCREENSHOT_QUALITY,
                 result: "data-uri",
               }}

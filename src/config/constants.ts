@@ -228,7 +228,8 @@ export const BROWSER_CONSTANTS = {
   DEFAULT_TAB_TITLE: "New Tab",
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_SCREENSHOTS_STORED: 50,
-  SCREENSHOT_QUALITY: 0.8,
+  SCREENSHOT_FORMAT: "jpg",
+  SCREENSHOT_QUALITY: 0.4,
   SCREENSHOT_CAPTURE_DELAY: 500, // Quick screenshot for immediate preview
   SCREENSHOT_FINAL_DELAY: 2000, // Final screenshot after animations complete
   TAB_ANIMATION_DURATION_OPEN: 300,
