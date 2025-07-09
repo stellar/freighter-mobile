@@ -14,6 +14,7 @@ import {
   Animated,
   Image,
 } from "react-native";
+import { EdgeInsets } from "react-native-safe-area-context";
 
 interface TabOverviewProps {
   fadeAnim: Animated.Value;
@@ -21,6 +22,7 @@ interface TabOverviewProps {
   onNewTab: () => void;
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
+  insets: EdgeInsets;
 }
 
 const TabOverview: React.FC<TabOverviewProps> = ({
@@ -29,6 +31,7 @@ const TabOverview: React.FC<TabOverviewProps> = ({
   onNewTab,
   onSwitchTab,
   onCloseTab,
+  insets,
 }) => {
   const { themeColors } = useColors();
   const { tabs, isTabActive } = useBrowserTabsStore();
@@ -36,14 +39,22 @@ const TabOverview: React.FC<TabOverviewProps> = ({
   return (
     <Animated.View
       style={{
-        flex: 1,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
         opacity: fadeAnim,
         backgroundColor: themeColors.background.primary,
       }}
     >
       {/* Header */}
       {/* TODO: use a custom header component instead */}
-      <View className="flex-row items-center justify-between p-4 border-b border-border-default">
+      <View
+        className="flex-row items-center justify-between p-4 border-b border-border-default"
+        style={{ paddingTop: insets.top + 16 }}
+      >
         <TouchableOpacity onPress={onClose}>
           <Icon.X color={themeColors.base[1]} />
         </TouchableOpacity>

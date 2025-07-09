@@ -153,7 +153,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
                   isTabActive(tab.id) ? onNavigationStateChange : undefined
                 }
                 onLoadEnd={() => handleLoadEnd(tab.id)}
-                startInLoadingState={isTabActive(tab.id)}
+                startInLoadingState
                 allowsBackForwardNavigationGestures={isTabActive(tab.id)}
                 onShouldStartLoadWithRequest={
                   isTabActive(tab.id)

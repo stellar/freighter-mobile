@@ -15,6 +15,7 @@ import { formatDisplayUrl, isHomepageUrl } from "helpers/browser";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
 type DiscoveryScreenProps = BottomTabScreenProps<
@@ -26,8 +27,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [showTabs, setShowTabs] = useState(false);
-  const [shouldRenderTabs, setShouldRenderTabs] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
 
   const {
     tabs,
@@ -77,24 +78,19 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
     if (showTabs) {
-      // Show tabs immediately when opening
-      setShouldRenderTabs(true);
-
+      // Fade in the overlay
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_OPEN,
         useNativeDriver: true,
       }).start();
     } else {
-      // Fade out when closing
+      // Fade out the overlay
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: BROWSER_CONSTANTS.TAB_ANIMATION_DURATION_CLOSE,
         useNativeDriver: true,
-      }).start(() => {
-        // Only unmount after animation completes
-        setShouldRenderTabs(false);
-      });
+      }).start();
     }
   }, [showTabs, fadeAnim]);
 
@@ -174,24 +170,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   }
 
-  // Tabs Grid Overview Screen
-  if (shouldRenderTabs) {
-    return (
-      <BaseLayout
-        insets={{ top: true, bottom: false, left: false, right: false }}
-      >
-        <TabOverview
-          fadeAnim={fadeAnim}
-          onNewTab={handleNewTab}
-          onClose={handleHideTabs}
-          onSwitchTab={handleSwitchTab}
-          onCloseTab={handleCloseSpecificTab}
-        />
-      </BaseLayout>
-    );
-  }
-
-  // Main Browser Screen
+  // Main Browser Screen with TabOverview overlay
   return (
     <BaseLayout
       insets={{ top: true, bottom: false, left: false, right: false }}
@@ -216,6 +195,16 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         onGoForward={browserActions.handleGoForward}
         onNewTab={handleNewTab}
         contextMenuActions={browserActions.contextMenuActions}
+      />
+
+      {/* TabOverview overlay */}
+      <TabOverview
+        fadeAnim={fadeAnim}
+        onNewTab={handleNewTab}
+        onClose={handleHideTabs}
+        onSwitchTab={handleSwitchTab}
+        onCloseTab={handleCloseSpecificTab}
+        insets={insets}
       />
     </BaseLayout>
   );
