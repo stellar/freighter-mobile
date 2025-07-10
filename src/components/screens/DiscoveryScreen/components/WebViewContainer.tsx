@@ -78,10 +78,10 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
             const tab = tabs.find((t) => t.id === tabId);
             if (tab) {
               const screenshotData: ScreenshotData = {
-                id: tabId,
-                timestamp: Date.now(),
+                tabId,
+                tabUrl: tab.url,
                 uri,
-                url: tab.url,
+                timestamp: Date.now(),
               };
 
               await saveScreenshot(screenshotData);

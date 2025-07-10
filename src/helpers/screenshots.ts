@@ -3,10 +3,10 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 
 export interface ScreenshotData {
-  id: string; // tab ID
+  tabId: string;
+  tabUrl: string;
+  uri: string; // base64 image data URI
   timestamp: number;
-  uri: string; // base64 data URI
-  url: string;
 }
 
 export const getStoredScreenshots = async (): Promise<ScreenshotData[]> => {
@@ -23,17 +23,17 @@ export const getStoredScreenshots = async (): Promise<ScreenshotData[]> => {
 
 export const findTabScreenshot = async (
   tabId: string,
-  url?: string,
+  tabUrl?: string,
 ): Promise<ScreenshotData | null> => {
-  if (!url || url === BROWSER_CONSTANTS.HOMEPAGE_URL) return null;
+  if (!tabUrl || tabUrl === BROWSER_CONSTANTS.HOMEPAGE_URL) return null;
 
   try {
     const screenshots = await getStoredScreenshots();
     const matchingScreenshots = screenshots.filter(
-      (screenshot) => screenshot.id === tabId,
+      (screenshot) => screenshot.tabId === tabId,
     );
     const screenshotsWithMatchingUrl = matchingScreenshots.filter(
-      (screenshot) => screenshot.url === url,
+      (screenshot) => screenshot.tabUrl === tabUrl,
     );
 
     if (screenshotsWithMatchingUrl.length > 0) {
@@ -57,7 +57,7 @@ export const saveScreenshot = async (
 
     // Remove old screenshots for the same tab and URL
     const filteredScreenshots = screenshots.filter(
-      (s) => !(s.id === screenshot.id && s.url === screenshot.url),
+      (s) => !(s.tabId === screenshot.tabId && s.tabUrl === screenshot.tabUrl),
     );
 
     // Add new screenshot
@@ -86,7 +86,7 @@ export const pruneScreenshots = async (
 
     // Keep only screenshots for active tabs
     const screenshotsToKeep = screenshots.filter((screenshot) =>
-      activeTabIdsSet.has(screenshot.id),
+      activeTabIdsSet.has(screenshot.tabId),
     );
 
     await AsyncStorage.setItem(
