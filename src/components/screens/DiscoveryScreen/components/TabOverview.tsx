@@ -1,16 +1,12 @@
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
-import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING } from "config/constants";
-import { logger } from "config/logger";
+import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
-import useColors from "hooks/useColors";
 import React from "react";
-import { View, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, TouchableOpacity, FlatList } from "react-native";
 import { EdgeInsets } from "react-native-safe-area-context";
 
 interface TabOverviewHeaderProps {
@@ -53,7 +49,6 @@ const TabOverview: React.FC<TabOverviewProps> = ({
   onCloseTab,
   insets,
 }) => {
-  const { themeColors } = useColors();
   const { tabs, isTabActive } = useBrowserTabsStore();
 
   return (
@@ -66,62 +61,39 @@ const TabOverview: React.FC<TabOverviewProps> = ({
       />
 
       {/* Tabs Grid */}
-      <ScrollView className="flex-1 p-4">
-        <View className="flex-row flex-wrap justify-between">
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => onSwitchTab(tab.id)}
-              className={`w-[48%] mb-4 rounded-lg overflow-hidden ${
-                isTabActive(tab.id)
-                  ? "border-2 border-primary"
-                  : "border border-border-default"
-              }`}
-            >
-              {/* Tab Preview */}
-              <View className="h-64 bg-background-secondary justify-center items-center overflow-hidden relative">
-                {(() => {
-                  // Show screenshot if available
-                  if (tab.screenshot) {
-                    return (
-                      <Image
-                        source={{ uri: tab.screenshot }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                        onError={(error) => {
-                          logger.error(
-                            "TabOverview",
-                            "Failed to load screenshot:",
-                            error,
-                          );
-                        }}
-                      />
-                    );
-                  }
-
-                  // Show homepage simplified preview if URL is homepage
-                  if (isHomepageUrl(tab.url)) {
-                    return <HomepagePreview />;
-                  }
-
-                  // Show preview with centered logo and domain name
-                  return <TabPreview url={tab.url} logoUrl={tab.logoUrl} />;
-                })()}
-
-                {/* Close button */}
-                {tabs.length > 1 && (
-                  <TouchableOpacity
-                    onPress={() => onCloseTab(tab.id)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
-                  >
-                    <Icon.X size={12} color={themeColors.base[1]} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      <FlatList
+        data={tabs}
+        numColumns={2}
+        columnWrapperStyle={{
+          justifyContent: "space-between",
+          marginBottom: pxValue(16),
+        }}
+        contentContainerStyle={{ padding: pxValue(16) }}
+        keyExtractor={(tab) => tab.id}
+        renderItem={({ item: tab }) => (
+          <TouchableOpacity
+            key={tab.id}
+            onPress={() => onSwitchTab(tab.id)}
+            className={BROWSER_CONSTANTS.TAB_PREVIEW_TILE_SIZE}
+          >
+            <TabPreview
+              url={tab.url}
+              logoUrl={tab.logoUrl}
+              screenshot={tab.screenshot}
+              isActive={isTabActive(tab.id)}
+              showCloseButton={tabs.length > 1}
+              onClose={() => onCloseTab(tab.id)}
+            />
+          </TouchableOpacity>
+        )}
+        showsVerticalScrollIndicator={false}
+        // Remove clipped subviews to improve performance
+        removeClippedSubviews
+        // Rendering 10 items at a time to improve performance
+        maxToRenderPerBatch={10}
+        // Reduced out-of-bounds window size to improve performance (default is 21)
+        windowSize={5}
+      />
     </View>
   );
 };

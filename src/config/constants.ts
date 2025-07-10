@@ -226,6 +226,9 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_FINAL_DELAY: 2000, // Final screenshot after animations complete
   TAB_ANIMATION_DURATION_OPEN: 300,
   TAB_ANIMATION_DURATION_CLOSE: 300,
+  TAB_PREVIEW_FAVICON_SIZE: 32,
+  TAB_PREVIEW_CLOSE_ICON_SIZE: 12,
+  TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
 } as const;
 
 // Popular sites for homepage
