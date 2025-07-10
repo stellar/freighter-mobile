@@ -35,25 +35,28 @@ const TabPreview: React.FC<TabPreviewProps> = ({
   const [faviconError, setFaviconError] = useState(false);
 
   useEffect(() => {
-    // Use logoUrl from store if available, otherwise try to get favicon
+    // Homepage doesn't have a favicon
+    if (isHomepageUrl(url)) {
+      setFaviconUrl(null);
+      return;
+    }
+
+    // Use logoUrl from store if available
     if (logoUrl) {
       setFaviconUrl(logoUrl);
-    } else {
-      const favicon = getFaviconUrl(url);
-      if (favicon) {
-        setFaviconUrl(favicon);
-      }
+      return;
+    }
+
+    // Otherwise try to get favicon from the URL
+    const favicon = getFaviconUrl(url);
+    if (favicon) {
+      setFaviconUrl(favicon);
     }
   }, [url, logoUrl]);
 
   const domain = getDomainFromUrl(url);
 
   const renderPreviewContent = () => {
-    // Show homepage simplified preview if URL is homepage
-    if (isHomepageUrl(url)) {
-      return <HomepagePreview />;
-    }
-
     // Show screenshot if available
     if (screenshot) {
       return (
@@ -66,6 +69,11 @@ const TabPreview: React.FC<TabPreviewProps> = ({
           }}
         />
       );
+    }
+
+    // Show homepage simplified preview if URL is homepage
+    if (isHomepageUrl(url)) {
+      return <HomepagePreview />;
     }
 
     // Show preview with centered logo and domain name
