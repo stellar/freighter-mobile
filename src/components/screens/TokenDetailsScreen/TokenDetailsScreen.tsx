@@ -7,9 +7,13 @@ import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/compon
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SWAP_ROUTES,
+  SEND_PAYMENT_ROUTES,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
@@ -33,7 +37,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { saveSelectedTokenId } = useTransactionSettingsStore();
+  const { width } = Dimensions.get("window");
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -79,20 +83,17 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   const handleSwapPress = () => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
-      screen: "SwapAmountScreen",
+      screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
       params: { tokenId, tokenSymbol },
     });
   };
 
   const handleSendPress = () => {
-    saveSelectedTokenId(tokenId);
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-      screen: "SendSearchContactsScreen",
-      params: { tokenId, tokenSymbol },
+      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      params: { tokenId },
     });
   };
-
-  const { width } = Dimensions.get("window");
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>

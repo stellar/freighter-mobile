@@ -8,7 +8,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect } from "react";
+import React from "react";
 import { View } from "react-native";
 
 type TransactionTokenScreenProps = NativeStackScreenProps<
@@ -20,17 +20,11 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { recipientAddress, saveSelectedTokenId, selectedTokenId } =
+  const { recipientAddress, saveSelectedTokenId } =
     useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
-
-  useEffect(() => {
-    if (selectedTokenId) {
-      navigation.replace(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN);
-    }
-  }, [selectedTokenId, navigation]);
 
   const handleTokenPress = (tokenId: string) => {
     saveSelectedTokenId(tokenId);
