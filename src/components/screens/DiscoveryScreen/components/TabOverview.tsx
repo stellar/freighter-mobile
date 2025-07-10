@@ -42,60 +42,58 @@ interface TabOverviewProps {
   insets: EdgeInsets;
 }
 
-const TabOverview: React.FC<TabOverviewProps> = ({
-  onClose,
-  onNewTab,
-  onSwitchTab,
-  onCloseTab,
-  insets,
-}) => {
-  const { tabs, isTabActive } = useBrowserTabsStore();
+const TabOverview: React.FC<TabOverviewProps> = React.memo(
+  ({ onClose, onNewTab, onSwitchTab, onCloseTab, insets }) => {
+    const { tabs, isTabActive } = useBrowserTabsStore();
 
-  return (
-    <View className="absolute inset-0 bg-background-primary">
-      <TabOverviewHeader
-        tabsCount={tabs.length}
-        onClose={onClose}
-        onNewTab={onNewTab}
-        insets={insets}
-      />
+    return (
+      <View className="absolute inset-0 bg-background-primary">
+        <TabOverviewHeader
+          tabsCount={tabs.length}
+          onClose={onClose}
+          onNewTab={onNewTab}
+          insets={insets}
+        />
 
-      {/* Tabs Grid */}
-      <FlatList
-        data={tabs}
-        numColumns={2}
-        columnWrapperStyle={{
-          justifyContent: "space-between",
-          marginBottom: pxValue(16),
-        }}
-        contentContainerStyle={{ padding: pxValue(16) }}
-        keyExtractor={(tab) => tab.id}
-        renderItem={({ item: tab }) => (
-          <TouchableOpacity
-            key={tab.id}
-            onPress={() => onSwitchTab(tab.id)}
-            className={BROWSER_CONSTANTS.TAB_PREVIEW_TILE_SIZE}
-          >
-            <TabPreview
-              url={tab.url}
-              logoUrl={tab.logoUrl}
-              screenshot={tab.screenshot}
-              isActive={isTabActive(tab.id)}
-              showCloseButton={tabs.length > 1}
-              onClose={() => onCloseTab(tab.id)}
-            />
-          </TouchableOpacity>
-        )}
-        showsVerticalScrollIndicator={false}
-        // Remove clipped subviews to improve performance
-        removeClippedSubviews
-        // Rendering 10 items at a time to improve performance
-        maxToRenderPerBatch={10}
-        // Reduced out-of-bounds window size to improve performance (default is 21)
-        windowSize={5}
-      />
-    </View>
-  );
-};
+        {/* Tabs Grid */}
+        <FlatList
+          data={tabs}
+          numColumns={2}
+          columnWrapperStyle={{
+            justifyContent: "space-between",
+            marginBottom: pxValue(16),
+          }}
+          contentContainerStyle={{ padding: pxValue(16) }}
+          keyExtractor={(tab) => tab.id}
+          renderItem={({ item: tab }) => (
+            <TouchableOpacity
+              key={tab.id}
+              onPress={() => onSwitchTab(tab.id)}
+              className={BROWSER_CONSTANTS.TAB_PREVIEW_TILE_SIZE}
+            >
+              <TabPreview
+                url={tab.url}
+                logoUrl={tab.logoUrl}
+                screenshot={tab.screenshot}
+                isActive={isTabActive(tab.id)}
+                showCloseButton={tabs.length > 1}
+                onClose={() => onCloseTab(tab.id)}
+              />
+            </TouchableOpacity>
+          )}
+          showsVerticalScrollIndicator={false}
+          // Remove clipped subviews to improve performance
+          removeClippedSubviews
+          // Rendering 10 items at a time to improve performance
+          maxToRenderPerBatch={10}
+          // Reduced out-of-bounds window size to improve performance (default is 21)
+          windowSize={5}
+        />
+      </View>
+    );
+  },
+);
+
+TabOverview.displayName = "TabOverview";
 
 export default TabOverview;

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";

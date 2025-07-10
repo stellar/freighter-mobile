@@ -143,21 +143,22 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     [activeTabId, updateTab, setNavState, setLogo],
   );
 
-  // Enhanced browser actions with proper state management
+  // Memoize these callbacks to prevent child re-renders
   const handleUrlSubmit = useCallback(() => {
     browserActions.handleUrlSubmit(inputUrl);
   }, [browserActions, inputUrl]);
 
-  const handleCloseSpecificTab = useCallback(
-    (tabId: string) => {
-      closeTab(tabId);
-      // If it's the last tab, open a default tab
-      if (tabs.length === 1) {
-        handleNewTab();
-      }
-    },
-    [closeTab, tabs.length, handleNewTab],
-  );
+  const handleInputChange = useCallback((text: string) => {
+    setInputUrl(text);
+  }, []);
+
+  const handleShowTabs = useCallback(() => {
+    setShowTabs(true);
+  }, []);
+
+  const handleHideTabs = useCallback(() => {
+    setShowTabs(false);
+  }, []);
 
   const handleSwitchTab = useCallback(
     (tabId: string) => {
@@ -167,13 +168,15 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     [setActiveTab],
   );
 
-  const handleShowTabs = useCallback(() => {
-    setShowTabs(true);
-  }, []);
-
-  const handleHideTabs = useCallback(() => {
-    setShowTabs(false);
-  }, []);
+  const handleCloseSpecificTab = useCallback(
+    (tabId: string) => {
+      closeTab(tabId);
+      if (tabs.length === 1) {
+        handleNewTab();
+      }
+    },
+    [closeTab, tabs.length, handleNewTab],
+  );
 
   if (!activeTab) {
     return (
@@ -197,7 +200,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       >
         <UrlBar
           inputUrl={inputUrl}
-          onInputChange={setInputUrl}
+          onInputChange={handleInputChange}
           onUrlSubmit={handleUrlSubmit}
           onShowTabs={handleShowTabs}
           tabsCount={tabs.length}

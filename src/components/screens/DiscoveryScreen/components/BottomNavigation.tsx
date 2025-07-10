@@ -13,56 +13,60 @@ interface BottomNavigationProps {
   contextMenuActions: MenuItem[];
 }
 
-const BottomNavigation: React.FC<BottomNavigationProps> = ({
-  canGoBack,
-  canGoForward,
-  onGoBack,
-  onGoForward,
-  onNewTab,
-  contextMenuActions,
-}) => {
-  const { themeColors } = useColors();
+const BottomNavigation: React.FC<BottomNavigationProps> = React.memo(
+  ({
+    canGoBack,
+    canGoForward,
+    onGoBack,
+    onGoForward,
+    onNewTab,
+    contextMenuActions,
+  }) => {
+    const { themeColors } = useColors();
 
-  return (
-    <View className="flex-row items-center justify-between bg-background-primary border-t border-border-default pl-2 pr-5">
-      <TouchableOpacity
-        onPress={onGoBack}
-        disabled={!canGoBack}
-        className="p-4"
-      >
-        <Icon.ChevronLeft
-          color={canGoBack ? themeColors.base[1] : themeColors.text.secondary}
-        />
-      </TouchableOpacity>
+    return (
+      <View className="flex-row items-center justify-between bg-background-primary border-t border-border-default pl-2 pr-5">
+        <TouchableOpacity
+          onPress={onGoBack}
+          disabled={!canGoBack}
+          className="p-4"
+        >
+          <Icon.ChevronLeft
+            color={canGoBack ? themeColors.base[1] : themeColors.text.secondary}
+          />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={onGoForward}
-        disabled={!canGoForward}
-        className="p-4"
-      >
-        <Icon.ChevronRight
-          color={
-            canGoForward ? themeColors.base[1] : themeColors.text.secondary
-          }
-        />
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onGoForward}
+          disabled={!canGoForward}
+          className="p-4"
+        >
+          <Icon.ChevronRight
+            color={
+              canGoForward ? themeColors.base[1] : themeColors.text.secondary
+            }
+          />
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={onNewTab} className="p-4">
-        <Icon.Plus color={themeColors.base[1]} />
-      </TouchableOpacity>
+        <TouchableOpacity onPress={onNewTab} className="p-4">
+          <Icon.Plus color={themeColors.base[1]} />
+        </TouchableOpacity>
 
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: contextMenuActions,
-        }}
-        side="top"
-        align="end"
-        sideOffset={8}
-      >
-        <Icon.DotsHorizontal color={themeColors.base[1]} />
-      </ContextMenuButton>
-    </View>
-  );
-};
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: contextMenuActions,
+          }}
+          side="top"
+          align="end"
+          sideOffset={8}
+        >
+          <Icon.DotsHorizontal color={themeColors.base[1]} />
+        </ContextMenuButton>
+      </View>
+    );
+  },
+);
+
+BottomNavigation.displayName = "BottomNavigation";
 
 export default BottomNavigation;
