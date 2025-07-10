@@ -71,10 +71,10 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Update input URL when active tab changes
   useEffect(() => {
-    if (activeTab) {
+    if (activeTab?.url) {
       setInputUrl(formatDisplayUrl(activeTab.url));
     }
-  }, [activeTab]);
+  }, [activeTab?.url]);
 
   // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
