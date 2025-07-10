@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -10,7 +11,7 @@ import {
 } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Image, TouchableOpacity } from "react-native";
 
 interface TabPreviewProps {
@@ -22,111 +23,124 @@ interface TabPreviewProps {
   onClose?: () => void;
 }
 
-const TabPreview: React.FC<TabPreviewProps> = ({
-  url,
-  logoUrl,
-  screenshot,
-  isActive = false,
-  showCloseButton = false,
-  onClose,
-}) => {
-  const { themeColors } = useColors();
-  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
-  const [faviconError, setFaviconError] = useState(false);
+// Memoize to avoid unnecessary expensive re-renders
+const TabPreview: React.FC<TabPreviewProps> = React.memo(
+  ({
+    url,
+    logoUrl,
+    screenshot,
+    isActive = false,
+    showCloseButton = false,
+    onClose,
+  }) => {
+    const { themeColors } = useColors();
+    const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
+    const [faviconError, setFaviconError] = useState(false);
 
-  useEffect(() => {
-    // Homepage doesn't have a favicon
-    if (isHomepageUrl(url)) {
-      setFaviconUrl(null);
-      return;
-    }
+    const domain = useMemo(() => getDomainFromUrl(url), [url]);
+    const isHomepage = useMemo(() => isHomepageUrl(url), [url]);
 
-    // Use logoUrl from store if available
-    if (logoUrl) {
-      setFaviconUrl(logoUrl);
-      return;
-    }
+    useEffect(() => {
+      // Homepage doesn't have a favicon
+      if (isHomepage) {
+        setFaviconUrl(null);
+        return;
+      }
 
-    // Otherwise try to get favicon from the URL
-    const favicon = getFaviconUrl(url);
-    if (favicon) {
-      setFaviconUrl(favicon);
-    }
-  }, [url, logoUrl]);
+      // Use logoUrl from store if available
+      if (logoUrl) {
+        setFaviconUrl(logoUrl);
+        return;
+      }
 
-  const domain = getDomainFromUrl(url);
+      // Otherwise try to get favicon from the URL
+      const favicon = getFaviconUrl(url);
+      if (favicon) {
+        setFaviconUrl(favicon);
+      }
+    }, [url, logoUrl, isHomepage]);
 
-  const renderPreviewContent = () => {
-    // Show screenshot if available
-    if (screenshot) {
-      return (
-        <Image
-          source={{ uri: screenshot }}
-          className="w-full h-full"
-          resizeMode="cover"
-          onError={(error) => {
-            logger.error("TabPreview", "Failed to load screenshot:", error);
-          }}
-        />
-      );
-    }
-
-    // Show homepage simplified preview if URL is homepage
-    if (isHomepageUrl(url)) {
-      return <HomepagePreview />;
-    }
-
-    // Show preview with centered logo and domain name
-    return (
-      <View className="w-full h-full bg-background-primary justify-center items-center">
-        {faviconUrl && !faviconError ? (
+    const renderPreviewContent = useMemo(() => {
+      // Show screenshot if available
+      if (screenshot) {
+        return (
           <Image
-            source={{ uri: faviconUrl }}
-            style={{
-              width: pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE),
-              height: pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE),
+            source={{ uri: screenshot }}
+            className="w-full h-full"
+            resizeMode="cover"
+            onError={(error) => {
+              logger.error("TabPreview", "Failed to load screenshot:", error);
             }}
-            onError={() => setFaviconError(true)}
-            resizeMode="contain"
           />
-        ) : (
-          <Icon.Globe02
-            size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE)}
-            color={themeColors.text.primary}
-            circle
-          />
-        )}
-        <View className="mt-2">
-          <Text xs semiBold>
-            {domain}
-          </Text>
+        );
+      }
+
+      // Show homepage simplified preview if URL is homepage
+      if (isHomepage) {
+        return <HomepagePreview />;
+      }
+
+      // Show preview with centered logo and domain name
+      return (
+        <View className="w-full h-full bg-background-primary justify-center items-center">
+          {faviconUrl && !faviconError ? (
+            <Image
+              source={{ uri: faviconUrl }}
+              style={{
+                width: pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE),
+                height: pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE),
+              }}
+              onError={() => setFaviconError(true)}
+              resizeMode="contain"
+            />
+          ) : (
+            <Icon.Globe02
+              size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_FAVICON_SIZE)}
+              color={themeColors.text.primary}
+              circle
+            />
+          )}
+          <View className="mt-2">
+            <Text xs semiBold>
+              {domain}
+            </Text>
+          </View>
         </View>
+      );
+    }, [
+      screenshot,
+      isHomepage,
+      faviconUrl,
+      faviconError,
+      domain,
+      themeColors.text.primary,
+    ]);
+
+    return (
+      <View
+        className={`w-full h-full rounded-lg bg-background-secondary overflow-hidden relative ${
+          isActive ? "border-2 border-primary" : "border border-border-default"
+        }`}
+      >
+        {renderPreviewContent}
+
+        {/* Close button */}
+        {showCloseButton && (
+          <TouchableOpacity
+            onPress={onClose}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
+          >
+            <Icon.X
+              size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
+              color={themeColors.base[1]}
+            />
+          </TouchableOpacity>
+        )}
       </View>
     );
-  };
+  },
+);
 
-  return (
-    <View
-      className={`w-full h-full rounded-lg bg-background-secondary overflow-hidden relative ${
-        isActive ? "border-2 border-primary" : "border border-border-default"
-      }`}
-    >
-      {renderPreviewContent()}
-
-      {/* Close button */}
-      {showCloseButton && (
-        <TouchableOpacity
-          onPress={onClose}
-          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
-        >
-          <Icon.X
-            size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
-            color={themeColors.base[1]}
-          />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
+TabPreview.displayName = "TabPreview";
 
 export default TabPreview;
