@@ -1,12 +1,24 @@
 import { BROWSER_CONSTANTS } from "config/constants";
+import { logger } from "config/logger";
+
+/**
+ * Checks if URL is the homepage
+ */
+export const isHomepageUrl = (url: string): boolean =>
+  !url || url === BROWSER_CONSTANTS.HOMEPAGE_URL;
 
 /**
  * Extracts domain from URL for display purposes
  */
 export const getDomainFromUrl = (url: string): string => {
+  if (isHomepageUrl(url)) {
+    return "";
+  }
+
   try {
     const urlObj = new URL(url);
-    return urlObj.hostname.replace("www.", "");
+    const domain = urlObj.hostname.replace("www.", "");
+    return domain;
   } catch {
     return "Unknown";
   }
@@ -16,19 +28,19 @@ export const getDomainFromUrl = (url: string): string => {
  * Generates favicon URL from website URL
  */
 export const getFaviconUrl = (url: string): string => {
+  if (isHomepageUrl(url)) {
+    return "";
+  }
+
   try {
     const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-  } catch {
+    const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+    return faviconUrl;
+  } catch (error) {
+    logger.debug("getFaviconUrl", "Failed to extract favicon:", url, error);
     return "";
   }
 };
-
-/**
- * Checks if URL is the homepage
- */
-export const isHomepageUrl = (url: string): boolean =>
-  !url || url === BROWSER_CONSTANTS.HOMEPAGE_URL;
 
 /**
  * Normalizes URL input (adds https:// if needed, converts to Google search if not a URL)
@@ -65,7 +77,10 @@ export const extractSearchQuery = (url: string): string | null => {
   try {
     const urlObj = new URL(url);
     const searchQuery = urlObj.searchParams.get("q");
-    return searchQuery ? decodeURIComponent(searchQuery) : null;
+    const decodedSearchQuery = searchQuery
+      ? decodeURIComponent(searchQuery)
+      : null;
+    return decodedSearchQuery;
   } catch {
     return null;
   }

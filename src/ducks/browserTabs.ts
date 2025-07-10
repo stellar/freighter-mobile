@@ -11,7 +11,6 @@ export interface BrowserTab {
   title: string;
   canGoBack: boolean;
   canGoForward: boolean;
-  isLoading: boolean;
   screenshot?: string; // Base64 encoded screenshot of the website
   logoUrl?: string; // Favicon URL
   lastAccessed: number; // Timestamp for sorting
@@ -32,7 +31,7 @@ interface BrowserTabsState {
   setLogo: (tabId: string, logoUrl: string) => void;
   setNavState: (
     tabId: string,
-    navState: { canGoBack: boolean; canGoForward: boolean; isLoading: boolean },
+    navState: { canGoBack: boolean; canGoForward: boolean },
   ) => void;
   loadScreenshots: () => Promise<void>;
   cleanupScreenshots: () => Promise<void>;
@@ -51,7 +50,6 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
           title: BROWSER_CONSTANTS.DEFAULT_TAB_TITLE,
           canGoBack: false,
           canGoForward: false,
-          isLoading: false,
           screenshot: undefined,
           logoUrl: undefined,
           lastAccessed: Date.now(),
@@ -153,7 +151,6 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         navState: {
           canGoBack: boolean;
           canGoForward: boolean;
-          isLoading: boolean;
         },
       ) => {
         set((state) => ({

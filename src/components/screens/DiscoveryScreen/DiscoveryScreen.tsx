@@ -11,7 +11,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { formatDisplayUrl, isHomepageUrl } from "helpers/browser";
+import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, View } from "react-native";
@@ -39,7 +39,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     setActiveTab,
     updateTab,
     getActiveTab,
-    setLogo,
     setNavState,
     loadScreenshots,
   } = useBrowserTabsStore();
@@ -72,7 +71,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   // Update input URL when active tab changes
   useEffect(() => {
     if (activeTab?.url) {
-      setInputUrl(formatDisplayUrl(activeTab.url));
+      const formattedUrl = formatDisplayUrl(activeTab.url);
+      setInputUrl(formattedUrl);
     }
   }, [activeTab?.url]);
 
@@ -111,36 +111,29 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
-      if (activeTabId) {
-        setNavState(activeTabId, {
-          canGoBack: navState.canGoBack,
-          canGoForward: navState.canGoForward,
-          isLoading: navState.loading,
-        });
-
-        updateTab(activeTabId, {
-          url: navState.url,
-          title: navState.title || BROWSER_CONSTANTS.DEFAULT_TAB_TITLE,
-          screenshot: undefined, // Clear screenshot when URL changes
-        });
-
-        // Try to extract favicon (skip for homepage)
-        if (!isHomepageUrl(navState.url)) {
-          try {
-            const urlObj = new URL(navState.url);
-            const faviconUrl = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-            setLogo(activeTabId, faviconUrl);
-          } catch (error) {
-            logger.debug(
-              "DiscoveryScreen",
-              "Failed to extract favicon:",
-              error,
-            );
-          }
-        }
+      // We are not interested in inactive tabs or loading states
+      if (!activeTabId || navState.loading) {
+        return;
       }
+
+      logger.debug(
+        "DiscoveryScreen",
+        "handleNavigationStateChange, navState:",
+        navState,
+      );
+
+      setNavState(activeTabId, {
+        canGoBack: navState.canGoBack,
+        canGoForward: navState.canGoForward,
+      });
+
+      updateTab(activeTabId, {
+        url: navState.url,
+        logoUrl: getFaviconUrl(navState.url),
+        title: navState.title || BROWSER_CONSTANTS.DEFAULT_TAB_TITLE,
+      });
     },
-    [activeTabId, updateTab, setNavState, setLogo],
+    [activeTabId, updateTab, setNavState],
   );
 
   // Memoize these callbacks to prevent child re-renders
