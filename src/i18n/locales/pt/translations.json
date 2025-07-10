@@ -218,7 +218,9 @@
     "priceChange": "{{percentage}}%",
     "balance": "Saldo",
     "value": "Valor",
-    "listHeader": "Sua atividade de {{tokenName}}"
+    "listHeader": "Sua atividade de {{tokenName}}",
+    "swap": "Trocar",
+    "send": "Enviar"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",

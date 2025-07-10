@@ -4,16 +4,18 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
+import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import useTokenDetails from "hooks/useTokenDetails";
 import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
-import { View } from "react-native";
+import { View, Dimensions } from "react-native";
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -31,6 +33,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const { saveSelectedTokenId } = useTransactionSettingsStore();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -74,6 +77,23 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     fetchData({ isRefresh: true });
   }, [fetchData]);
 
+  const handleSwapPress = () => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
+      screen: "SwapAmountScreen",
+      params: { tokenId, tokenSymbol },
+    });
+  };
+
+  const handleSendPress = () => {
+    saveSelectedTokenId(tokenId);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+      screen: "SendSearchContactsScreen",
+      params: { tokenId, tokenSymbol },
+    });
+  };
+
+  const { width } = Dimensions.get("window");
+
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
       <View className="flex-1 gap-8 mt-5">
@@ -101,6 +121,24 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
               </Text>
             </View>
           }
+        />
+      </View>
+      <View className="mt-7 pb-3 gap-7">
+        <View className="flex-row gap-3 px-6">
+          <View className="flex-1">
+            <Button tertiary lg isFullWidth onPress={handleSwapPress}>
+              {t("tokenDetailsScreen.swap")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button tertiary lg isFullWidth onPress={handleSendPress}>
+              {t("tokenDetailsScreen.send")}
+            </Button>
+          </View>
+        </View>
+        <View
+          className="border-b mb-6 -ml-7 border-border-primary"
+          style={{ width }}
         />
       </View>
     </BaseLayout>

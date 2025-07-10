@@ -229,7 +229,9 @@
     "priceChange": "{{percentage}}%",
     "balance": "Balance",
     "value": "Value",
-    "listHeader": "Your {{tokenName}} activity"
+    "listHeader": "Your {{tokenName}} activity",
+    "swap": "Swap",
+    "send": "Send"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",

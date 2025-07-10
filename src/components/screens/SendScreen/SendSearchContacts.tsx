@@ -33,13 +33,17 @@ type SendSearchContactsProps = NativeStackScreenProps<
  * @returns {JSX.Element} The rendered component
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
+  route,
   navigation,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const { saveRecipientAddress, resetSettings } = useTransactionSettingsStore();
+  const { saveRecipientAddress, resetSettings, saveSelectedTokenId } =
+    useTransactionSettingsStore();
+
+  const { tokenId } = route.params || {};
 
   const {
     recentAddresses,
@@ -57,17 +61,32 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
     // Clear any previous search state on component mount
     resetSendRecipient();
-    // Reset transaction settings
-    resetSettings();
-  }, [loadRecentAddresses, resetSendRecipient, resetSettings]);
+
+    if (!tokenId) {
+      resetSettings();
+    }
+
+    if (tokenId) {
+      saveSelectedTokenId(tokenId);
+    }
+  }, [
+    loadRecentAddresses,
+    resetSendRecipient,
+    resetSettings,
+    tokenId,
+    saveSelectedTokenId,
+  ]);
 
   // Reset search input and store state when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       setAddress("");
       resetSendRecipient();
-      resetSettings();
-    }, [resetSendRecipient, resetSettings]),
+
+      if (!tokenId) {
+        resetSettings();
+      }
+    }, [resetSendRecipient, resetSettings, tokenId]),
   );
 
   /**
@@ -93,7 +112,11 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     // Transaction settings store is for the transaction flow
     saveRecipientAddress(contactAddress);
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
+    if (tokenId) {
+      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN);
+    } else {
+      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
+    }
   };
 
   const handlePasteFromClipboard = () => {

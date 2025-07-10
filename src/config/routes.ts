@@ -89,8 +89,8 @@ export type RootStackParamList = {
     showNavigationAsCloseButton?: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
-  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
@@ -164,7 +164,10 @@ export type BuyXLMStackParamList = {
 };
 
 export type SendPaymentStackParamList = {
-  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: {
+    tokenId?: string;
+    tokenSymbol?: string;
+  };
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
