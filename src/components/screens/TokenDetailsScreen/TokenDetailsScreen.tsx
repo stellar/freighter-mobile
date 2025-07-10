@@ -124,7 +124,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         />
       </View>
       <View className="mt-7 pb-3 gap-7">
-        <View className="flex-row gap-3 px-6">
+        <View className="flex-row gap-3">
           <View className="flex-1">
             <Button tertiary lg isFullWidth onPress={handleSwapPress}>
               {t("tokenDetailsScreen.swap")}
