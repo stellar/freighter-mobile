@@ -26,6 +26,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
   const webViewRefs = useRef<{ [tabId: string]: WebView | null }>({});
   const quickCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
   const finalCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
+  const scrollCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>({});
 
   const captureScreenshot = useCallback(
     async (tabId: string) => {
@@ -67,6 +68,22 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
       }
     },
     [tabs, updateTab],
+  );
+
+  const handleScroll = useCallback(
+    (tabId: string) => {
+      // Clear any existing scroll capture timeout for this tab
+      if (scrollCaptureTimeouts.current[tabId]) {
+        clearTimeout(scrollCaptureTimeouts.current[tabId]);
+      }
+
+      // Capture screenshot after 1s of no-scrolling
+      scrollCaptureTimeouts.current[tabId] = setTimeout(() => {
+        captureScreenshot(tabId);
+        delete scrollCaptureTimeouts.current[tabId];
+      }, 1000);
+    },
+    [captureScreenshot],
   );
 
   const handleLoadEnd = useCallback(
@@ -111,6 +128,9 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
       Object.values(finalCaptureTimeouts.current).forEach((timeout) => {
         if (timeout) clearTimeout(timeout);
       });
+      Object.values(scrollCaptureTimeouts.current).forEach((timeout) => {
+        if (timeout) clearTimeout(timeout);
+      });
     },
     [],
   );
@@ -153,6 +173,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = ({
                   isTabActive(tab.id) ? onNavigationStateChange : undefined
                 }
                 onLoadEnd={() => handleLoadEnd(tab.id)}
+                onScroll={() => handleScroll(tab.id)}
                 startInLoadingState
                 allowsBackForwardNavigationGestures={isTabActive(tab.id)}
                 onShouldStartLoadWithRequest={
