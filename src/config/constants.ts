@@ -233,10 +233,10 @@ export const BROWSER_CONSTANTS = {
 
 // Popular sites for homepage
 export const POPULAR_SITES = [
-  { name: "Stellar", url: "https://stellar.org", icon: "Globe02" },
-  { name: "StellarX", url: "https://stellarx.com", icon: "Globe02" },
-  { name: "Lobstr", url: "https://lobstr.co", icon: "Globe02" },
-  { name: "StellarTerm", url: "https://stellarterm.com", icon: "Globe02" },
+  { name: "Stellar", url: "https://stellar.org/", icon: "Globe02" },
+  { name: "StellarX", url: "https://www.stellarx.com/", icon: "Globe02" },
+  { name: "Lobstr", url: "https://lobstr.co/", icon: "Globe02" },
+  { name: "StellarTerm", url: "https://stellarterm.com/", icon: "Globe02" },
 ] as const;
 
 // Quick actions for homepage
