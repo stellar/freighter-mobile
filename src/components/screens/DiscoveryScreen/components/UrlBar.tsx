@@ -24,7 +24,10 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
     return (
       <View
         className="flex-row items-center gap-3"
-        style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+        style={{
+          paddingHorizontal: pxValue(DEFAULT_PADDING),
+          paddingBottom: pxValue(DEFAULT_PADDING),
+        }}
       >
         <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
 
