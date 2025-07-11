@@ -26,7 +26,6 @@ type DiscoveryScreenProps = BottomTabScreenProps<
 export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const [inputUrl, setInputUrl] = useState("");
-  const [showTabs, setShowTabs] = useState(false);
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
@@ -41,6 +40,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     getActiveTab,
     setNavState,
     loadScreenshots,
+    showTabOverview,
+    setShowTabOverview,
   } = useBrowserTabsStore();
 
   const activeTab = getActiveTab();
@@ -78,7 +79,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
-    if (showTabs) {
+    if (showTabOverview) {
       // Fade out main content and fade in tab overview
       Animated.parallel([
         Animated.timing(mainContentFadeAnim, {
@@ -107,7 +108,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         }),
       ]).start();
     }
-  }, [showTabs, tabOverviewFadeAnim, mainContentFadeAnim]);
+  }, [showTabOverview, tabOverviewFadeAnim, mainContentFadeAnim]);
 
   const handleNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
@@ -146,19 +147,19 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   }, []);
 
   const handleShowTabs = useCallback(() => {
-    setShowTabs(true);
-  }, []);
+    setShowTabOverview(true);
+  }, [setShowTabOverview]);
 
   const handleHideTabs = useCallback(() => {
-    setShowTabs(false);
-  }, []);
+    setShowTabOverview(false);
+  }, [setShowTabOverview]);
 
   const handleSwitchTab = useCallback(
     (tabId: string) => {
       setActiveTab(tabId);
-      setShowTabs(false);
+      setShowTabOverview(false);
     },
-    [setActiveTab],
+    [setActiveTab, setShowTabOverview],
   );
 
   const handleCloseSpecificTab = useCallback(

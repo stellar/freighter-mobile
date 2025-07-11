@@ -7,12 +7,15 @@ import {
   TRENDING_SITES,
   TrendingSite,
 } from "config/constants";
+import { logger } from "config/logger";
 import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
+import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
 import useColors from "hooks/useColors";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import { View, FlatList, TouchableOpacity } from "react-native";
+import ViewShot from "react-native-view-shot";
 
 interface DiscoveryHomepageProps {
   tabId: string;
@@ -23,6 +26,7 @@ interface HorizontalListSectionProps {
   icon: React.ReactNode;
   data: (TrendingSite | BrowserTab)[];
   onItemPress: (url: string) => void;
+  onScrollEnd: () => Promise<void>;
 }
 
 const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
@@ -30,8 +34,12 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
   icon,
   data,
   onItemPress,
+  onScrollEnd,
 }) => {
   const { themeColors } = useColors();
+  const handleScrollEnd = useCallback(() => {
+    onScrollEnd();
+  }, [onScrollEnd]);
 
   const renderSiteItem = ({ item }: { item: TrendingSite | BrowserTab }) => {
     const getSiteName = (siteItem: TrendingSite | BrowserTab): string => {
@@ -94,6 +102,7 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
         renderItem={renderSiteItem}
         keyExtractor={(item) => ("name" in item ? item.url : item.id)}
         showsHorizontalScrollIndicator={false}
+        onScrollEndDrag={handleScrollEnd}
         contentContainerStyle={{
           paddingHorizontal: pxValue(DEFAULT_PADDING),
         }}
@@ -104,7 +113,8 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
 
 const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
   const { themeColors } = useColors();
-  const { goToPage, tabs } = useBrowserTabsStore();
+  const { goToPage, tabs, updateTab, showTabOverview } = useBrowserTabsStore();
+  const viewShotRef = useRef<ViewShot>(null);
 
   const handleSitePress = (url: string) => {
     goToPage(tabId, url);
@@ -119,24 +129,83 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
     [tabs],
   );
 
-  return (
-    <View className="flex-1 bg-background-primary">
-      {recentTabs.length > 0 && (
-        <HorizontalListSection
-          title="Recent"
-          icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
-          data={recentTabs}
-          onItemPress={handleSitePress}
-        />
-      )}
+  const captureScreenshot = useCallback(async () => {
+    logger.debug(
+      "DiscoveryHomepage",
+      "attempting to capture screenshot for tabId:",
+      tabId,
+    );
 
-      <HorizontalListSection
-        title="Trending"
-        icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
-        data={TRENDING_SITES}
-        onItemPress={handleSitePress}
-      />
-    </View>
+    try {
+      if (viewShotRef.current?.capture) {
+        const uri = await viewShotRef.current.capture();
+
+        // Save to persistent storage
+        const tab = tabs.find((t) => t.id === tabId);
+        if (tab) {
+          const screenshotData: ScreenshotData = {
+            tabId,
+            timestamp: Date.now(),
+            uri,
+            tabUrl: tab.url,
+          };
+
+          await saveScreenshot(screenshotData);
+          updateTab(tabId, { screenshot: uri });
+
+          logger.debug(
+            "DiscoveryHomepage",
+            `Screenshot captured for tab ${tabId}`,
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        "DiscoveryHomepage",
+        "Failed to capture homepage screenshot:",
+        error,
+      );
+    }
+  }, [tabs, tabId, updateTab]);
+
+  // Capture screenshot on initial render and when tab overview is closed
+  useEffect(() => {
+    if (!showTabOverview) {
+      captureScreenshot();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTabOverview]);
+
+  return (
+    <ViewShot
+      ref={viewShotRef}
+      options={{
+        format: BROWSER_CONSTANTS.SCREENSHOT_FORMAT,
+        quality: BROWSER_CONSTANTS.SCREENSHOT_QUALITY,
+        result: "data-uri",
+      }}
+      style={{ flex: 1 }}
+    >
+      <View className="flex-1 bg-background-primary">
+        {recentTabs.length > 0 && (
+          <HorizontalListSection
+            title="Recent"
+            icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
+            data={recentTabs}
+            onItemPress={handleSitePress}
+            onScrollEnd={captureScreenshot}
+          />
+        )}
+
+        <HorizontalListSection
+          title="Trending"
+          icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
+          data={TRENDING_SITES}
+          onItemPress={handleSitePress}
+          onScrollEnd={captureScreenshot}
+        />
+      </View>
+    </ViewShot>
   );
 };
 

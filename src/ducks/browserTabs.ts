@@ -19,6 +19,7 @@ export interface BrowserTab {
 interface BrowserTabsState {
   tabs: BrowserTab[];
   activeTabId: string | null;
+  showTabOverview: boolean;
   addTab: (url?: string) => void;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
@@ -35,6 +36,7 @@ interface BrowserTabsState {
   ) => void;
   loadScreenshots: () => Promise<void>;
   cleanupScreenshots: () => Promise<void>;
+  setShowTabOverview: (show: boolean) => void;
 }
 
 export const useBrowserTabsStore = create<BrowserTabsState>()(
@@ -42,6 +44,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
     (set, get) => ({
       tabs: [],
       activeTabId: null,
+      showTabOverview: false,
 
       addTab: (url = BROWSER_CONSTANTS.HOMEPAGE_URL) => {
         const newTab: BrowserTab = {
@@ -160,6 +163,10 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         }));
       },
 
+      setShowTabOverview: (show: boolean) => {
+        set({ showTabOverview: show });
+      },
+
       loadScreenshots: async () => {
         const state = get();
         const updatedTabs = [...state.tabs];
@@ -194,6 +201,8 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId,
+        // Note: showTabOverview is intentionally excluded from persistence
+        // as it should always start as false when the app loads
       }),
     },
   ),
