@@ -26,15 +26,15 @@ export const useBrowserActions = (
   );
 
   const handleGoBack = useCallback(() => {
-    if (activeTab?.canGoBack) {
-      webViewRef.current?.goBack();
-    }
+    if (!activeTab?.canGoBack) return;
+
+    webViewRef.current?.goBack();
   }, [activeTab?.canGoBack, webViewRef]);
 
   const handleGoForward = useCallback(() => {
-    if (activeTab?.canGoForward) {
-      webViewRef.current?.goForward();
-    }
+    if (!activeTab?.canGoForward) return;
+
+    webViewRef.current?.goForward();
   }, [activeTab?.canGoForward, webViewRef]);
 
   const handleReload = useCallback(() => {
@@ -45,6 +45,7 @@ export const useBrowserActions = (
     if (!activeTabId) return;
 
     goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
+
     webViewRef.current?.injectJavaScript(
       `window.location.href = "${BROWSER_CONSTANTS.HOMEPAGE_URL}";`,
     );
