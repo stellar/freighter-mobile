@@ -1,4 +1,3 @@
-import HomepagePreview from "components/screens/DiscoveryScreen/HomepagePreview";
 import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -54,9 +53,16 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
         );
       }
 
-      // Show homepage simplified preview if URL is homepage
+      // Show homepage preview with Home icon and title
       if (isHomepageUrl(url)) {
-        return <HomepagePreview />;
+        return (
+          <View className="w-full h-full bg-background-primary justify-center items-center gap-2">
+            <Icon.Home01 size={32} color={themeColors.text.primary} />
+            <Text xs semiBold>
+              {title}
+            </Text>
+          </View>
+        );
       }
 
       // Show preview with centered site logo and domain name
@@ -74,7 +80,7 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
           </View>
         </View>
       );
-    }, [screenshot, domain, title, logoUrl, url]);
+    }, [screenshot, title, logoUrl, url, domain, themeColors.text.primary]);
 
     return (
       <View
