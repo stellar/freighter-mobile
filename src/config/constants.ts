@@ -231,24 +231,17 @@ export const BROWSER_CONSTANTS = {
   TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
 } as const;
 
-// Popular sites for homepage
-export const POPULAR_SITES = [
-  { name: "Stellar", url: "https://stellar.org/", icon: "Globe02" },
-  { name: "StellarX", url: "https://www.stellarx.com/", icon: "Globe02" },
-  { name: "Lobstr", url: "https://lobstr.co/", icon: "Globe02" },
-  { name: "StellarTerm", url: "https://stellarterm.com/", icon: "Globe02" },
-] as const;
+// Trending sites for DiscoveryHomepage
+export type TrendingSite = {
+  name: string;
+  url: string;
+};
 
-// Quick actions for homepage
-export const QUICK_ACTIONS = [
-  {
-    title: "Developer Resources",
-    url: "https://stellar.org/developers",
-    icon: "Terminal",
-  },
-  {
-    title: "Stellar Ecosystem",
-    url: "https://stellar.org/ecosystem",
-    icon: "Globe02",
-  },
-] as const;
+export const TRENDING_SITES: TrendingSite[] = [
+  { name: "StellarX", url: "https://www.stellarx.com/" },
+  { name: "StellarTerm", url: "https://stellarterm.com/" },
+  { name: "Blend", url: "https://www.blend.capital/" },
+  { name: "Aquarius", url: "https://aqua.network/" },
+  { name: "FxDAO", url: "https://app.fxdao.io/" },
+  { name: "Phoenix", url: "https://app.phoenix-hub.io/" },
+];

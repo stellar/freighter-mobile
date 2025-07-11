@@ -1,5 +1,5 @@
 import Spinner from "components/Spinner";
-import Homepage from "components/screens/DiscoveryScreen/Homepage";
+import DiscoveryHomepage from "components/screens/DiscoveryScreen/DiscoveryHomepage";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
@@ -177,7 +177,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
           return (
             <Freeze key={tab.id} freeze={!isActive}>
               {isHomepageUrl(tab.url) ? (
-                <Homepage tabId={tab.id} />
+                <DiscoveryHomepage tabId={tab.id} />
               ) : (
                 <View
                   className={`absolute inset-0 ${isActive ? "opacity-100" : "opacity-0"}`}
