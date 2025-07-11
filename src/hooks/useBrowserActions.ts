@@ -1,7 +1,7 @@
 import { BROWSER_CONSTANTS } from "config/constants";
+import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { normalizeUrl } from "helpers/browser";
-import { debug } from "helpers/debug";
 import { useCallback } from "react";
 import { Share, Linking, Platform } from "react-native";
 import { WebView } from "react-native-webview";
@@ -9,8 +9,10 @@ import { WebView } from "react-native-webview";
 export const useBrowserActions = (
   webViewRef: React.RefObject<WebView | null>,
 ) => {
-  const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab, tabs } =
+  const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
+
+  const activeTab = getActiveTab();
 
   const handleUrlSubmit = useCallback(
     (inputUrl: string) => {
@@ -24,99 +26,58 @@ export const useBrowserActions = (
   );
 
   const handleGoBack = useCallback(() => {
-    const activeTab = getActiveTab();
     if (activeTab?.canGoBack) {
       webViewRef.current?.goBack();
     }
-  }, [getActiveTab, webViewRef]);
+  }, [activeTab?.canGoBack, webViewRef]);
 
   const handleGoForward = useCallback(() => {
-    const activeTab = getActiveTab();
     if (activeTab?.canGoForward) {
       webViewRef.current?.goForward();
     }
-  }, [getActiveTab, webViewRef]);
+  }, [activeTab?.canGoForward, webViewRef]);
 
   const handleReload = useCallback(() => {
     webViewRef.current?.reload();
   }, [webViewRef]);
 
   const handleGoHome = useCallback(() => {
-    if (activeTabId) {
-      goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
-      webViewRef.current?.injectJavaScript(
-        `window.location.href = "${BROWSER_CONSTANTS.HOMEPAGE_URL}";`,
-      );
-    }
+    if (!activeTabId) return;
+
+    goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
+    webViewRef.current?.injectJavaScript(
+      `window.location.href = "${BROWSER_CONSTANTS.HOMEPAGE_URL}";`,
+    );
   }, [activeTabId, goToPage, webViewRef]);
 
   const handleCloseActiveTab = useCallback(() => {
-    if (activeTabId) {
-      closeTab(activeTabId);
-      // If it's the last tab, open a default tab
-      if (tabs.length === 1) {
-        // This will be handled by the component that uses this hook
-      }
-    }
-  }, [activeTabId, closeTab, tabs.length]);
+    if (!activeTabId) return;
+
+    closeTab(activeTabId);
+  }, [activeTabId, closeTab]);
 
   const handleCloseAllTabs = useCallback(() => {
     closeAllTabs();
-    // Always ensure at least one tab exists
-    // This will be handled by the component that uses this hook
   }, [closeAllTabs]);
 
   const handleShare = useCallback(() => {
-    const activeTab = getActiveTab();
-    if (activeTab) {
-      Share.share({
-        message: `${activeTab.title}\n${activeTab.url}`,
-        url: activeTab.url,
-      }).catch((error) => {
-        debug("useBrowserActions", "Failed to share:", error);
-      });
-    }
-  }, [getActiveTab]);
+    if (!activeTab) return;
+
+    Share.share({
+      message: `${activeTab.title}\n${activeTab.url}`,
+      url: activeTab.url,
+    }).catch((error) => {
+      logger.error("useBrowserActions", "Failed to share:", error);
+    });
+  }, [activeTab]);
 
   const handleOpenInBrowser = useCallback(() => {
-    const activeTab = getActiveTab();
-    if (activeTab) {
-      Linking.openURL(activeTab.url).catch((error) => {
-        debug("useBrowserActions", "Failed to open in browser:", error);
-      });
-    }
-  }, [getActiveTab]);
+    if (!activeTab) return;
 
-  const handleCloseSpecificTab = useCallback(
-    (tabId: string) => {
-      closeTab(tabId);
-      // If it's the last tab, open a default tab
-      if (tabs.length === 1) {
-        // This will be handled by the component that uses this hook
-      }
-    },
-    [closeTab, tabs.length],
-  );
-
-  const handleNewTab = useCallback(() => {
-    // This will be handled by the component that uses this hook
-  }, []);
-
-  const handleSwitchTab = useCallback(
-    (tabId: string, onSwitch?: () => void) => {
-      // This will be handled by the component that uses this hook
-      onSwitch?.();
-    },
-    [],
-  );
-
-  const handleShowTabs = useCallback(() => {
-    // This will be handled by the component that uses this hook
-  }, []);
-
-  const handleCloseTabOverview = useCallback(() => {
-    // This will be handled by the component that uses this hook
-  }, []);
+    Linking.openURL(activeTab.url).catch((error) => {
+      logger.error("useBrowserActions", "Failed to open in browser:", error);
+    });
+  }, [activeTab]);
 
   const contextMenuActions = [
     {
@@ -181,11 +142,6 @@ export const useBrowserActions = (
     handleCloseAllTabs,
     handleShare,
     handleOpenInBrowser,
-    handleCloseSpecificTab,
-    handleNewTab,
-    handleSwitchTab,
-    handleShowTabs,
-    handleCloseTabOverview,
     contextMenuActions,
   };
 };
