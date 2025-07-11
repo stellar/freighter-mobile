@@ -1,5 +1,5 @@
 import Spinner from "components/Spinner";
-import DiscoveryHomepage from "components/screens/DiscoveryScreen/DiscoveryHomepage";
+import { DiscoveryHomepage } from "components/screens/DiscoveryScreen/components";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";

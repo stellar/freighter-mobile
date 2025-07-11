@@ -1,5 +1,5 @@
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
-import TabPreview from "components/screens/DiscoveryScreen/TabPreview";
+import { TabPreview } from "components/screens/DiscoveryScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
