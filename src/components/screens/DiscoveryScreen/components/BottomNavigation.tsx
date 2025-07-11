@@ -25,7 +25,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = React.memo(
     const { themeColors } = useColors();
 
     return (
-      <View className="flex-row items-center justify-between bg-background-primary border-t border-border-default pl-2 pr-5">
+      <View className="flex-row items-center justify-between bg-background-primary border-t border-border-primary pl-2 pr-5">
         <TouchableOpacity
           onPress={onGoBack}
           disabled={!canGoBack}

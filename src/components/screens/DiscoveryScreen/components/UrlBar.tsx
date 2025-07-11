@@ -1,9 +1,12 @@
 import Avatar from "components/sds/Avatar";
+import { StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
-import { View, TextInput, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 
 interface UrlBarProps {
   inputUrl: string;
@@ -19,16 +22,25 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
     const { account } = useGetActiveAccount();
 
     return (
-      <View className="flex-row items-center p-4 gap-3 bg-background-primary border-b border-border-default">
+      <View
+        className="flex-row items-center gap-3"
+        style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+      >
         <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
 
-        <TextInput
+        <StyledTextInput
+          $fieldSize="md"
+          style={{
+            borderColor: themeColors.border.primary,
+            borderWidth: pxValue(1),
+            borderRadius: pxValue(8),
+            paddingHorizontal: pxValue(12),
+          }}
           value={inputUrl}
           onChangeText={onInputChange}
           onSubmitEditing={onUrlSubmit}
           selectTextOnFocus
           placeholder="Search or enter a website"
-          className="flex-1 px-3 py-2 h-10 bg-transparent border border-border-primary rounded-lg text-text-primary"
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -38,7 +50,10 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
         {/* Show Tabs Button */}
         <TouchableOpacity
           onPress={onShowTabs}
-          className="w-10 h-10 border border-border-primary rounded-lg justify-center items-center bg-transparent"
+          className="w-11 h-11 border border-border-primary justify-center items-center"
+          style={{
+            borderRadius: pxValue(8),
+          }}
         >
           <Text md semiBold>
             {tabsCount > 9 ? "9+" : tabsCount}

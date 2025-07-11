@@ -93,7 +93,7 @@ const InputContainer = styled.View<
     px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
 `;
 
-const StyledTextInput = styled.TextInput<
+export const StyledTextInput = styled.TextInput<
   Pick<
     StyledProps,
     "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
