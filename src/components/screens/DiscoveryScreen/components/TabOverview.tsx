@@ -72,6 +72,7 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
               className={BROWSER_CONSTANTS.TAB_PREVIEW_TILE_SIZE}
             >
               <TabPreview
+                title={tab.title}
                 url={tab.url}
                 logoUrl={tab.logoUrl}
                 screenshot={tab.screenshot}
