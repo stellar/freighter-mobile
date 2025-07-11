@@ -34,8 +34,24 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
   const { themeColors } = useColors();
 
   const renderSiteItem = ({ item }: { item: TrendingSite | BrowserTab }) => {
-    const isTrendingSite = "name" in item;
-    const name = isTrendingSite ? item.name : item.title;
+    const getSiteName = (siteItem: TrendingSite | BrowserTab): string => {
+      if ("name" in siteItem) {
+        return siteItem.name;
+      }
+
+      // Try to relate the site title with some of the known trending sites for copy consistency
+      const matchedTrendingSite = TRENDING_SITES.find(({ name }) =>
+        siteItem.title.toLowerCase().includes(name.toLowerCase()),
+      );
+
+      if (matchedTrendingSite) {
+        return matchedTrendingSite.name;
+      }
+
+      return siteItem.title;
+    };
+
+    const name = getSiteName(item);
 
     return (
       <TouchableOpacity
