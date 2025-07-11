@@ -6,6 +6,11 @@ import { useAuthenticationStore } from "ducks/auth";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
 import {
+  getVersion,
+  getBuildNumber,
+  getBundleId,
+} from "react-native-device-info";
+import {
   AMPLITUDE_API_KEY,
   DEBUG_CONFIG,
   TIMING,
@@ -96,6 +101,9 @@ const buildCommonContext = (): Record<string, unknown> => {
     platform: Platform.OS,
     platformVersion: Platform.Version,
     network: network.toUpperCase(),
+    appVersion: getVersion(),
+    buildVersion: getBuildNumber(),
+    bundleId: getBundleId(),
   };
 };
 
