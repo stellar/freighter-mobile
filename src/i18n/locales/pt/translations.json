@@ -631,5 +631,36 @@
     "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
     "confirm": "Entendi, continuar",
     "cancel": "Voltar"
+  },
+  "analytics": {
+    "debug": {
+      "title": "📊 Debug Analytics",
+      "status": "Status",
+      "enabled": "✅ Habilitado",
+      "disabled": "❌ Desabilitado",
+      "initialized": "🚀 Inicializado",
+      "notInitialized": "⏳ Não Inicializado",
+      "sending": "📤 Enviando para Amplitude",
+      "notSending": "📝 Apenas registrando (não enviando)",
+      "apiKeyMissing": "⚠️ Chave da API Ausente",
+      "apiKeyMissingWarning": "Os eventos estão sendo registrados para desenvolvimento, mas NÃO enviados para o Amplitude porque a chave da API não está configurada.",
+      "userId": "ID do Usuário: {{userId}}",
+      "userIdNotSet": "ID do Usuário: Não definido",
+      "environment": "Ambiente: {{environment}}",
+      "apiKey": "Chave da API: {{apiKey}}",
+      "recentEvents": "Eventos Recentes ({{count}})",
+      "clear": "Limpar",
+      "noRecentEvents": "Nenhum evento recente",
+      "actions": "Ações",
+      "refresh": "🔄 Atualizar",
+      "clearEvents": "Limpar Eventos",
+      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
+    }
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Compartilhar Dados Anônimos",
+      "description": "Ajude-nos a melhorar o Freighter compartilhando dados anônimos sobre como você usa o aplicativo. Isso nos ajuda a entender melhor o comportamento do usuário e a identificar problemas."
+    }
   }
 }

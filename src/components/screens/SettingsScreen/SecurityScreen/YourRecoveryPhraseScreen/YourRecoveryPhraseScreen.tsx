@@ -3,12 +3,14 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 type YourRecoveryPhraseScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -23,9 +25,10 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   const { themeColors } = useColors();
   const { recoveryPhrase } = route.params;
   const { copyToClipboard } = useClipboard();
-
   const handleCopyToClipboard = () => {
     copyToClipboard(recoveryPhrase);
+
+    analytics.track(AnalyticsEvent.COPY_BACKUP_PHRASE);
   };
 
   return (

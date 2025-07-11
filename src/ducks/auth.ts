@@ -33,6 +33,7 @@ import {
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { t } from "i18next";
+import { analytics } from "services/analytics";
 import { getAccount } from "services/stellar";
 import {
   clearNonSensitiveData,
@@ -1507,6 +1508,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           }
 
           // Only if we can successfully load the account, set the authenticated state
+          analytics.trackReAuthSuccess();
           set({
             ...initialState,
             authStatus: AUTH_STATUS.AUTHENTICATED,
@@ -1516,6 +1518,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           });
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
+          analytics.trackReAuthFail();
           logger.error(
             "useAuthenticationStore.signIn",
             "Failed to access account",
@@ -1536,6 +1539,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           get().navigateToLockScreen();
         }
       } catch (error) {
+        analytics.trackReAuthFail();
         logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
         set({
           error:

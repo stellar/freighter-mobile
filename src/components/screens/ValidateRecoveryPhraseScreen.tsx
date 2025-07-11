@@ -2,12 +2,14 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import { VISUAL_DELAY_MS } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useWordSelection } from "hooks/useWordSelection";
 import React, { useCallback, useMemo, useState } from "react";
+import { analytics } from "services/analytics";
 
 type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -39,10 +41,14 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const handleContinue = useCallback(() => {
     if (!canContinue) {
       setIsLoading(true);
+
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL);
+
       setTimeout(() => {
         setError(t("validateRecoveryPhraseScreen.errorText"));
         setIsLoading(false);
       }, VISUAL_DELAY_MS);
+
       return;
     }
 
@@ -54,6 +60,8 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         setCurrentWord("");
         setError(undefined);
       } else {
+        analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+
         signUp({
           password,
           mnemonicPhrase: recoveryPhrase,

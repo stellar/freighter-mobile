@@ -42,6 +42,7 @@ export const MANAGE_ASSETS_ROUTES = {
 
 export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
+  PREFERENCES_SCREEN: "PreferencesScreen",
   CHANGE_NETWORK_SCREEN: "ChangeNetworkScreen",
   NETWORK_SETTINGS_SCREEN: "NetworkSettingsScreen",
   SHARE_FEEDBACK_SCREEN: "ShareFeedbackScreen",
@@ -135,6 +136,7 @@ export type ManageAssetsStackParamList = {
 
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
+  [SETTINGS_ROUTES.PREFERENCES_SCREEN]: undefined;
   [SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN]: undefined;
   [SETTINGS_ROUTES.NETWORK_SETTINGS_SCREEN]: {
     selectedNetwork: NETWORKS;

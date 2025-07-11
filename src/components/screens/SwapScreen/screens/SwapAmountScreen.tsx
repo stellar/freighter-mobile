@@ -33,6 +33,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { analytics } from "services/analytics";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -156,6 +157,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     swapFee,
     swapTimeout,
+    swapSlippage,
     network,
     navigation,
   });
@@ -241,6 +243,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleSetMax = () => {
     if (spendableAmount) {
+      analytics.trackSendPaymentSetMax();
+
       setSourceAmount(spendableAmount.toString());
     }
   };

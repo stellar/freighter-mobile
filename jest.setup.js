@@ -224,3 +224,70 @@ jest.mock("ducks/walletKit", () => ({
     disconnectAllSessions: jest.fn(),
   }),
 }));
+
+jest.mock("services/analytics", () => ({
+  analytics: {
+    track: jest.fn(),
+    trackAppOpened: jest.fn(),
+    setAnalyticsEnabled: jest.fn(),
+    identifyUser: jest.fn(),
+    trackReAuthSuccess: jest.fn(),
+    trackReAuthFail: jest.fn(),
+    trackSignedTransaction: jest.fn(),
+    trackSimulationError: jest.fn(),
+    trackCopyPublicKey: jest.fn(),
+    trackSendPaymentSuccess: jest.fn(),
+    trackSendPaymentPathPaymentSuccess: jest.fn(),
+    trackSwapSuccess: jest.fn(),
+    trackTransactionError: jest.fn(),
+    trackSendPaymentSetMax: jest.fn(),
+    trackSendPaymentTypeSelected: jest.fn(),
+    trackCopyBackupPhrase: jest.fn(),
+    trackQRScanSuccess: jest.fn(),
+    trackQRScanError: jest.fn(),
+    getAnalyticsDebugInfo: jest.fn(() => ({
+      isEnabled: false,
+      userId: null,
+      hasInitialized: false,
+      environment: "test",
+      amplitudeKey: "test-key...",
+      recentEvents: [],
+    })),
+    clearRecentEvents: jest.fn(),
+  },
+  TransactionType: {
+    Classic: "classic",
+    Soroban: "soroban",
+  },
+}));
+
+jest.mock("services/analytics/core", () => ({
+  initAnalytics: jest.fn(),
+  setAnalyticsEnabled: jest.fn(),
+  track: jest.fn(),
+  flushEvents: jest.fn(),
+  trackAppOpened: jest.fn(),
+  flushOnBackground: jest.fn(),
+  isInitialized: jest.fn(() => false),
+}));
+
+jest.mock("services/analytics/user", () => ({
+  identifyUser: jest.fn(),
+  getUserId: jest.fn(() => Promise.resolve("test-user-id")),
+}));
+
+jest.mock("services/analytics/debug", () => ({
+  getAnalyticsDebugInfo: jest.fn(() => ({
+    isEnabled: false,
+    userId: null,
+    hasInitialized: false,
+    environment: "test",
+    amplitudeKey: "test-key...",
+    recentEvents: [],
+  })),
+  clearRecentEvents: jest.fn(),
+  logAnalyticsDebugInfo: jest.fn(),
+  addToRecentEvents: jest.fn(),
+}));
+
+// Mock the main analytics export (this is what failing tests import)

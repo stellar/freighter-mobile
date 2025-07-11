@@ -8,6 +8,7 @@ module.exports = {
     ...getSrcDirs(__dirname, "jest"),
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
     "^helpers/(.*)$": "<rootDir>/__mocks__/helpers/$1",
+    "^services/(.*)$": "<rootDir>/__mocks__/services/$1",
   },
   transformIgnorePatterns: [
     `node_modules/(?!(${[
@@ -26,6 +27,7 @@ module.exports = {
       "@gorhom/bottom-sheet",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
+      "react-native-config",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],

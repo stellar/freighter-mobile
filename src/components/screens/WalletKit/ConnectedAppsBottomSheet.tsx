@@ -135,7 +135,7 @@ const ConnectedAppsCustomContent: React.FC<{
         </View>
 
         <View className="flex-1 pt-10 items-center">
-          <QRScanner onRead={handleOnRead} />
+          <QRScanner onRead={handleOnRead} context="wallet_connect" />
         </View>
       </View>
     );

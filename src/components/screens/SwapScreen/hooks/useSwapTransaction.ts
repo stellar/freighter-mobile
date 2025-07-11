@@ -1,6 +1,6 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import {
   SWAP_ROUTES,
@@ -13,6 +13,7 @@ import { ActiveAccount } from "ducks/auth";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useState } from "react";
+import { analytics } from "services/analytics";
 
 interface SwapTransactionParams {
   sourceAmount: string;
@@ -22,6 +23,7 @@ interface SwapTransactionParams {
   account: ActiveAccount | null;
   swapFee: string;
   swapTimeout: number;
+  swapSlippage?: number;
   network: NETWORKS;
   navigation: NativeStackNavigationProp<
     SwapStackParamList,
@@ -46,11 +48,11 @@ export const useSwapTransaction = ({
   account,
   swapFee,
   swapTimeout,
+  swapSlippage,
   network,
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
-
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
 
@@ -113,9 +115,22 @@ export const useSwapTransaction = ({
       if (!transactionHash) {
         throw new Error("Failed to submit transaction");
       }
+
+      analytics.trackSwapSuccess({
+        sourceAsset: sourceBalance?.tokenCode || NATIVE_TOKEN_CODE,
+        destAsset: destinationBalance?.tokenCode || NATIVE_TOKEN_CODE,
+        allowedSlippage: swapSlippage?.toString(),
+        isSwap: true,
+      });
     } catch (error) {
       setIsProcessing(false);
       logger.error("SwapTransaction", "Swap failed", error);
+
+      analytics.trackTransactionError({
+        error: error instanceof Error ? error.message : String(error),
+        isSwap: true,
+      });
+
       throw error;
     }
   };

@@ -1,6 +1,8 @@
+import { useAuthenticationStore } from "ducks/auth";
 import useAuthCheck from "hooks/useAuthCheck";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 interface AuthCheckProviderProps {
   children: ReactNode;
@@ -14,6 +16,14 @@ export const AuthCheckProvider: React.FC<AuthCheckProviderProps> = ({
   children,
 }) => {
   const { panHandlers } = useAuthCheck();
+  const { account } = useAuthenticationStore();
+
+  useEffect(() => {
+    // Checking for public key to make sure the account is loaded
+    if (account?.publicKey) {
+      analytics.identifyUser();
+    }
+  }, [account?.publicKey]);
 
   // The View with panHandlers will detect user interaction across the entire app
   return (
