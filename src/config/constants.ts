@@ -219,7 +219,7 @@ export const BROWSER_CONSTANTS = {
   GOOGLE_SEARCH_BASE_URL: "https://www.google.com/search?q=",
   DEFAULT_TAB_TITLE: "New Tab",
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
-  MAX_RECENT_TABS: 10,
+  MAX_RECENT_TABS: 20,
   MAX_SCREENSHOTS_STORED: 50,
   SCREENSHOT_FORMAT: "jpg",
   SCREENSHOT_QUALITY: 0.4,

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
-import { generateTabId } from "helpers/browser";
+import { generateTabId, isHomepageUrl } from "helpers/browser";
 import { findTabScreenshot, pruneScreenshots } from "helpers/screenshots";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -26,14 +26,8 @@ interface BrowserTabsState {
   updateTab: (tabId: string, updates: Partial<BrowserTab>) => void;
   closeAllTabs: () => void;
   getActiveTab: () => BrowserTab | undefined;
-  getTabById: (tabId: string) => BrowserTab | undefined;
   isTabActive: (tabId: string) => boolean;
   goToPage: (tabId: string, url: string) => void;
-  setLogo: (tabId: string, logoUrl: string) => void;
-  setNavState: (
-    tabId: string,
-    navState: { canGoBack: boolean; canGoForward: boolean },
-  ) => void;
   loadScreenshots: () => Promise<void>;
   cleanupScreenshots: () => Promise<void>;
   setShowTabOverview: (show: boolean) => void;
@@ -121,11 +115,6 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         return state.tabs.find((tab) => tab.id === state.activeTabId);
       },
 
-      getTabById: (tabId: string) => {
-        const state = get();
-        return state.tabs.find((tab) => tab.id === tabId);
-      },
-
       isTabActive: (tabId: string) => {
         const state = get();
         return state.activeTabId === tabId;
@@ -133,33 +122,34 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
 
       goToPage: (tabId: string, url: string) => {
         set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId
-              ? { ...tab, url, screenshot: undefined, lastAccessed: Date.now() }
-              : tab,
-          ),
-        }));
-      },
+          tabs: state.tabs.map((tab) => {
+            if (tab.id === tabId) {
+              // If we are navigating from existing webview to homepage we should
+              // reset more of the tab state as the homepage is not actually a webview
+              // e.g.: we can't "go back" or "go forward" from home using the web bottom navigator
+              if (isHomepageUrl(url)) {
+                return {
+                  ...tab,
+                  url,
+                  lastAccessed: Date.now(),
+                  canGoBack: false,
+                  canGoForward: false,
+                  screenshot: undefined,
+                  logoUrl: undefined,
+                };
+              }
 
-      setLogo: (tabId: string, logoUrl: string) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId ? { ...tab, logoUrl } : tab,
-          ),
-        }));
-      },
+              // Otherwise we should just update the url so that the webview can navigate to it
+              return {
+                ...tab,
+                url,
+                screenshot: undefined,
+                lastAccessed: Date.now(),
+              };
+            }
 
-      setNavState: (
-        tabId: string,
-        navState: {
-          canGoBack: boolean;
-          canGoForward: boolean;
-        },
-      ) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId ? { ...tab, ...navState } : tab,
-          ),
+            return tab;
+          }),
         }));
       },
 

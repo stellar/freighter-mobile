@@ -38,7 +38,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     setActiveTab,
     updateTab,
     getActiveTab,
-    setNavState,
     loadScreenshots,
     showTabOverview,
     setShowTabOverview,
@@ -123,18 +122,15 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         navState,
       );
 
-      setNavState(activeTabId, {
-        canGoBack: navState.canGoBack,
-        canGoForward: navState.canGoForward,
-      });
-
       updateTab(activeTabId, {
         url: navState.url,
         logoUrl: getFaviconUrl(navState.url),
         title: navState.title || BROWSER_CONSTANTS.DEFAULT_TAB_TITLE,
+        canGoBack: navState.canGoBack,
+        canGoForward: navState.canGoForward,
       });
     },
-    [activeTabId, updateTab, setNavState],
+    [activeTabId, updateTab],
   );
 
   // Memoize these callbacks to prevent child re-renders
