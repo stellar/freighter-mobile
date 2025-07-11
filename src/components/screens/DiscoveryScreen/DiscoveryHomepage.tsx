@@ -1,3 +1,4 @@
+import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -6,6 +7,7 @@ import {
   TrendingSite,
 } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { getFaviconUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -23,7 +25,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
     goToPage(tabId, url);
   };
 
-  const renderTrendingSite = ({ item }: { item: TrendingSite }) => (
+  const renderSiteItem = ({ item }: { item: TrendingSite }) => (
     <TouchableOpacity
       className="mr-3 items-center"
       onPress={() => handleSitePress(item.url)}
@@ -32,7 +34,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
         className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"
         style={{ backgroundColor: themeColors.background.tertiary }}
       >
-        <Icon.Globe02 size={32} color={themeColors.text.secondary} />
+        <App appName={item.name} favicon={getFaviconUrl(item.url)} size="lg" />
       </View>
       <Text
         sm
@@ -61,7 +63,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
         <FlatList
           horizontal
           data={TRENDING_SITES}
-          renderItem={renderTrendingSite}
+          renderItem={renderSiteItem}
           keyExtractor={(item) => item.url}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
