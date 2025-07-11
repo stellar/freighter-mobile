@@ -236,7 +236,9 @@
     "priceChange": "{{percentage}}%",
     "balance": "Balance",
     "value": "Value",
-    "listHeader": "Your {{tokenName}} activity"
+    "listHeader": "Your {{tokenName}} activity",
+    "swap": "Swap",
+    "send": "Send"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
@@ -623,6 +625,7 @@
     "addXLM": "Add XLM",
     "doThisLater": "Do this later"
   },
+  "tokenIconAlt": "{{code}} token icon",
   "recoverySkipModal": {
     "title": "Are you sure you want to skip?",
     "description1": "Your recovery phrase gives you access to your account and is the only way to access it.",

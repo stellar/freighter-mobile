@@ -218,7 +218,9 @@
     "priceChange": "{{percentage}}%",
     "balance": "Saldo",
     "value": "Valor",
-    "listHeader": "Sua atividade de {{tokenName}}"
+    "listHeader": "Sua atividade de {{tokenName}}",
+    "swap": "Trocar",
+    "send": "Enviar"
   },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
@@ -624,6 +626,7 @@
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
   },
+  "tokenIconAlt": "ícone do token {{code}}",
   "recoverySkipModal": {
     "title": "Tem certeza que deseja pular?",
     "description1": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la.",
