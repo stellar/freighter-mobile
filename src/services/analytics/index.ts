@@ -19,9 +19,23 @@ import {
   trackTransactionError,
   trackSendPaymentSetMax,
   trackSendPaymentTypeSelected,
+  trackSendPaymentRecentAddress,
   trackCopyBackupPhrase,
   trackQRScanSuccess,
   trackQRScanError,
+  trackAddTokenConfirmed,
+  trackAddTokenRejected,
+  trackManageAssetListsModify,
+  trackAccountScreenAddAccount,
+  trackAccountScreenCopyPublicKey,
+  trackAccountScreenImportAccount,
+  trackAccountScreenImportAccountFail,
+  trackViewPublicKeyAccountRenamed,
+  trackViewPublicKeyClickedStellarExpert,
+  trackGrantAccessSuccess,
+  trackGrantAccessFail,
+  trackHistoryOpenFullHistory,
+  trackHistoryOpenItem,
 } from "services/analytics/transactions";
 import { identifyUser } from "services/analytics/user";
 
@@ -46,9 +60,31 @@ export interface AnalyticsInstance {
   readonly trackTransactionError: typeof trackTransactionError;
   readonly trackSendPaymentSetMax: typeof trackSendPaymentSetMax;
   readonly trackSendPaymentTypeSelected: typeof trackSendPaymentTypeSelected;
+  readonly trackSendPaymentRecentAddress: typeof trackSendPaymentRecentAddress;
   readonly trackCopyBackupPhrase: typeof trackCopyBackupPhrase;
   readonly trackQRScanSuccess: typeof trackQRScanSuccess;
   readonly trackQRScanError: typeof trackQRScanError;
+
+  // Asset management analytics
+  readonly trackAddTokenConfirmed: typeof trackAddTokenConfirmed;
+  readonly trackAddTokenRejected: typeof trackAddTokenRejected;
+  readonly trackManageAssetListsModify: typeof trackManageAssetListsModify;
+
+  // Account management analytics
+  readonly trackAccountScreenAddAccount: typeof trackAccountScreenAddAccount;
+  readonly trackAccountScreenCopyPublicKey: typeof trackAccountScreenCopyPublicKey;
+  readonly trackAccountScreenImportAccount: typeof trackAccountScreenImportAccount;
+  readonly trackAccountScreenImportAccountFail: typeof trackAccountScreenImportAccountFail;
+  readonly trackViewPublicKeyAccountRenamed: typeof trackViewPublicKeyAccountRenamed;
+  readonly trackViewPublicKeyClickedStellarExpert: typeof trackViewPublicKeyClickedStellarExpert;
+
+  // WalletConnect/dApp analytics
+  readonly trackGrantAccessSuccess: typeof trackGrantAccessSuccess;
+  readonly trackGrantAccessFail: typeof trackGrantAccessFail;
+
+  // History analytics
+  readonly trackHistoryOpenFullHistory: typeof trackHistoryOpenFullHistory;
+  readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
 
   // Development tools
   readonly getAnalyticsDebugInfo: typeof getAnalyticsDebugInfo;
@@ -88,9 +124,23 @@ export const analytics: AnalyticsInstance = {
   trackTransactionError,
   trackSendPaymentSetMax,
   trackSendPaymentTypeSelected,
+  trackSendPaymentRecentAddress,
   trackCopyBackupPhrase,
   trackQRScanSuccess,
   trackQRScanError,
+  trackAddTokenConfirmed,
+  trackAddTokenRejected,
+  trackManageAssetListsModify,
+  trackAccountScreenAddAccount,
+  trackAccountScreenCopyPublicKey,
+  trackAccountScreenImportAccount,
+  trackAccountScreenImportAccountFail,
+  trackViewPublicKeyAccountRenamed,
+  trackViewPublicKeyClickedStellarExpert,
+  trackGrantAccessSuccess,
+  trackGrantAccessFail,
+  trackHistoryOpenFullHistory,
+  trackHistoryOpenItem,
 
   // Development tools (only available in __DEV__)
   getAnalyticsDebugInfo,

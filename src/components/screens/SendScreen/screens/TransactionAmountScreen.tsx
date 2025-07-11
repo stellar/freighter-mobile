@@ -13,6 +13,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -415,6 +416,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
+        analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}

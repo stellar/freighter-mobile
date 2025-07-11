@@ -3,6 +3,7 @@ import { AnalyticsEvent } from "config/analyticsEvents";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
+import { useNetworkStore } from "ducks/networkInfo";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
 import {
@@ -93,18 +94,33 @@ export const setAnalyticsEnabled = (enabled: boolean): void => {
 
 /**
  * Builds common context data for all events.
+ *
+ * Context includes both static app data and dynamic mobile connectivity information:
+ * - network: Stellar network (TESTNET, MAINNET, etc.)
+ * - connectionType: Internet connectivity (wifi, cellular, bluetooth, none, etc.)
+ * - effectiveType: Cellular quality (slow-2g, 2g, 3g, 4g) when on cellular
  */
 const buildCommonContext = (): Record<string, unknown> => {
   const { network } = useAuthenticationStore.getState();
+  const { connectionType, effectiveType } = useNetworkStore.getState();
 
-  return {
+  const context: Record<string, unknown> = {
     platform: Platform.OS,
     platformVersion: Platform.Version,
-    network: network.toUpperCase(),
+    network: network.toUpperCase(), // Stellar network (TESTNET, MAINNET)
+    connectionType, // Internet connectivity (wifi, cellular, etc.)
     appVersion: getVersion(),
     buildVersion: getBuildNumber(),
     bundleId: getBundleId(),
   };
+
+  // Add effectiveType only when available (mainly for cellular connections)
+  // Values: slow-2g, 2g, 3g, 4g
+  if (effectiveType) {
+    context.effectiveType = effectiveType;
+  }
+
+  return context;
 };
 
 /**

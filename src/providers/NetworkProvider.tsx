@@ -19,7 +19,7 @@ export const NetworkProvider = ({ children }: Props) => {
 
     // Initial network check to consume initial "null" values
     // and avoid UI glitches due to initial network state
-    NetInfo.fetch();
+    NetInfo.fetch().then(setNetworkInfo);
 
     // We still need to wait a while before subscribing to the network change event
     // otherwise we could get the initial transient "null" values which would cause a UI glitch
@@ -30,10 +30,7 @@ export const NetworkProvider = ({ children }: Props) => {
           `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
         );
 
-        setNetworkInfo({
-          isConnected: event.isConnected,
-          isInternetReachable: event.isInternetReachable,
-        });
+        setNetworkInfo(event);
       });
     }, NETWORK_CHECK_INITIAL_DELAY);
 

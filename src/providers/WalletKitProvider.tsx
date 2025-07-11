@@ -2,6 +2,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
@@ -26,6 +27,7 @@ import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import { useToast } from "providers/ToastProvider";
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 /**
  * Props for the WalletKitProvider component
@@ -161,6 +163,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }
 
     setIsConnecting(true);
+
+    analytics.trackGrantAccessSuccess(
+      proposalEvent.params.proposer.metadata.url,
+    );
 
     // Establish a new dApp connection with the given
     // public key (activeAccount) and network (activeChain)
@@ -326,6 +332,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
         }}
+        analyticsEvent={AnalyticsEvent.VIEW_GRANT_ACCESS}
         customContent={
           <DappConnectionBottomSheetContent
             account={account}
@@ -344,6 +351,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
         }}
+        analyticsEvent={AnalyticsEvent.VIEW_SIGN_TRANSACTION}
         customContent={
           <DappRequestBottomSheetContent
             account={account}

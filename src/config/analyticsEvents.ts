@@ -56,6 +56,10 @@ export enum AnalyticsEvent {
   VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
   VIEW_BUY_XLM = "loaded screen: add fund",
 
+  // Additional Extension Screen Events (Missing from Mobile)
+  VIEW_SEARCH_ASSET = "loaded screen: search asset",
+  VIEW_ADD_ASSET_MANUALLY = "loaded screen: add asset manually",
+
   // User Action Events
   CREATE_PASSWORD_SUCCESS = "account creator: create password: success",
   CREATE_PASSWORD_FAIL = "account creator: create password: error",
@@ -76,6 +80,7 @@ export enum AnalyticsEvent {
   SEND_PAYMENT_SET_MAX = "send payment: set max",
   SEND_PAYMENT_TYPE_PAYMENT = "send payment: selected type payment",
   SEND_PAYMENT_TYPE_PATH_PAYMENT = "send payment: selected type path payment",
+  SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
 
   // Swap Events (Mobile-only feature)
   SWAP_SUCCESS = "swap: success",
@@ -99,10 +104,31 @@ export enum AnalyticsEvent {
   REMOVE_ASSET_SUCCESS = "manage asset: remove asset",
   ASSET_MANAGEMENT_FAIL = "manage asset: error",
 
+  // Additional Asset Management Events (From Extension)
+  ADD_TOKEN_CONFIRMED = "add token: confirmed",
+  ADD_TOKEN_REJECTED = "add token: rejected",
+  MANAGE_ASSET_LISTS_MODIFY = "manage asset list: modify asset list",
+
   // Trustline Error Events
   TRUSTLINE_INSUFFICIENT_BALANCE_FAIL = "trustline removal error: asset has balance",
   TRUSTLINE_HAS_LIABILITIES_FAIL = "trustline removal error: asset has buying liabilties",
   TRUSTLINE_LOW_RESERVE_FAIL = "trustline removal error: asset has low reserve",
+
+  // Account Management Events (From Extension)
+  ACCOUNT_SCREEN_ADD_ACCOUNT = "account screen: created new account",
+  ACCOUNT_SCREEN_COPY_PUBLIC_KEY = "account screen: copied public key",
+  ACCOUNT_SCREEN_IMPORT_ACCOUNT = "account screen: imported new account",
+  ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL = "account screen: imported new account: error",
+  VIEW_PUBLIC_KEY_ACCOUNT_RENAMED = "viewPublicKey: renamed account",
+  VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT = "viewPublicKey: clicked StellarExpert",
+
+  // WalletConnect/dApp Events (From Extension)
+  GRANT_ACCESS_SUCCESS = "grant access: granted",
+  GRANT_ACCESS_FAIL = "grant access: rejected",
+
+  // History Events (From Extension)
+  HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
+  HISTORY_OPEN_ITEM = "history: opened item on external website",
 
   APP_OPENED = "event: App Opened",
 

@@ -161,7 +161,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="pt-8 w-full items-center">
         <View className="flex-col gap-3 items-center">
           <TouchableOpacity
-            onPress={() => manageAccountsBottomSheetRef.current?.present()}
+            onPress={() => {
+              manageAccountsBottomSheetRef.current?.present();
+            }}
           >
             <View className="flex-row items-center gap-2">
               <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />

@@ -11,6 +11,7 @@ import ErrorState from "components/screens/AddAssetScreen/ErrorState";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
@@ -27,6 +28,7 @@ import { useManageAssets } from "hooks/useManageAssets";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
+import { analytics } from "services/analytics";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -86,6 +88,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       return;
     }
 
+    analytics.trackAddTokenConfirmed(selectedAsset.assetCode);
+
     await addAsset(selectedAsset);
     addAssetBottomSheetModalRef.current?.dismiss();
   };
@@ -109,6 +113,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
           bottomSheetModalProps={{
             enablePanDownToClose: false,
           }}
+          analyticsEvent={AnalyticsEvent.VIEW_ADD_ASSET_MANUALLY}
           shouldCloseOnPressBackdrop={!isAddingAsset}
           customContent={
             <AddAssetBottomSheetContent

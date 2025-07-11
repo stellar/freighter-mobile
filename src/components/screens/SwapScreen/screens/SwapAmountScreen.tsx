@@ -16,6 +16,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsEvents";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
@@ -454,6 +455,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
+        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_ASSET}
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}
@@ -471,6 +473,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
         snapPoints={["80%"]}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}

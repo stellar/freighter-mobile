@@ -19,13 +19,21 @@ export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   });
 };
 
+export const trackSimulationError = (
+  error: string,
+  transactionType: string,
+): void => {
+  track(AnalyticsEvent.SIMULATE_TOKEN_PAYMENT_ERROR, {
+    error,
+    transactionType,
+  });
+};
+
 export const trackSendPaymentSuccess = (
   data: TransactionSuccessEvent,
 ): void => {
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
     sourceAsset: data.sourceAsset,
-    destAsset: data.destAsset,
-    allowedSlippage: data.allowedSlippage,
     transactionType: data.transactionType,
   });
 };
@@ -51,7 +59,11 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
 };
 
 export const trackTransactionError = (data: TransactionErrorEvent): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_FAIL, {
+  const event = data.isSwap
+    ? AnalyticsEvent.SWAP_FAIL
+    : AnalyticsEvent.SEND_PAYMENT_FAIL;
+
+  track(event, {
     error: data.error,
     errorCode: data.errorCode,
     transactionType: data.transactionType,
@@ -59,37 +71,100 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   });
 };
 
-export const trackSimulationError = (error: string): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_FAIL, {
-    error,
-    errorType: "simulation",
-    context: "transaction_preview",
-  });
-};
-
-// -----------------------------------------------------------------------------
-// PAYMENT FLOW ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackSendPaymentSetMax = (): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_SET_MAX, {
-    context: "amount_input",
-    action: "set_max_amount",
-  });
+  track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
 };
 
 export const trackSendPaymentTypeSelected = (
-  type: "payment" | "pathPayment",
+  paymentType: "payment" | "pathPayment",
 ): void => {
   const event =
-    type === "payment"
+    paymentType === "payment"
       ? AnalyticsEvent.SEND_PAYMENT_TYPE_PAYMENT
       : AnalyticsEvent.SEND_PAYMENT_TYPE_PATH_PAYMENT;
 
-  track(event, {
-    paymentType: type,
-    context: "payment_flow",
+  track(event, { paymentType });
+};
+
+export const trackSendPaymentRecentAddress = (): void => {
+  track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
+};
+
+// -----------------------------------------------------------------------------
+// ASSET MANAGEMENT ANALYTICS
+// -----------------------------------------------------------------------------
+
+export const trackAddTokenConfirmed = (asset?: string): void => {
+  track(AnalyticsEvent.ADD_TOKEN_CONFIRMED, { asset });
+};
+
+export const trackAddTokenRejected = (asset?: string): void => {
+  track(AnalyticsEvent.ADD_TOKEN_REJECTED, { asset });
+};
+
+export const trackManageAssetListsModify = (action: string): void => {
+  track(AnalyticsEvent.MANAGE_ASSET_LISTS_MODIFY, { action });
+};
+
+// -----------------------------------------------------------------------------
+// ACCOUNT MANAGEMENT ANALYTICS
+// -----------------------------------------------------------------------------
+
+export const trackAccountScreenAddAccount = (): void => {
+  track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
+};
+
+export const trackAccountScreenCopyPublicKey = (): void => {
+  track(AnalyticsEvent.ACCOUNT_SCREEN_COPY_PUBLIC_KEY);
+};
+
+export const trackAccountScreenImportAccount = (): void => {
+  track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+};
+
+export const trackAccountScreenImportAccountFail = (error: string): void => {
+  track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, { error });
+};
+
+export const trackViewPublicKeyAccountRenamed = (
+  oldName: string,
+  newName: string,
+): void => {
+  track(AnalyticsEvent.VIEW_PUBLIC_KEY_ACCOUNT_RENAMED, {
+    oldName,
+    newName,
   });
+};
+
+export const trackViewPublicKeyClickedStellarExpert = (): void => {
+  track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
+};
+
+// -----------------------------------------------------------------------------
+// WALLETCONNECT/DAPP ANALYTICS
+// -----------------------------------------------------------------------------
+
+export const trackGrantAccessSuccess = (domain?: string): void => {
+  track(AnalyticsEvent.GRANT_ACCESS_SUCCESS, { domain });
+};
+
+export const trackGrantAccessFail = (
+  domain?: string,
+  reason?: string,
+): void => {
+  track(AnalyticsEvent.GRANT_ACCESS_FAIL, { domain, reason });
+};
+
+// -----------------------------------------------------------------------------
+// HISTORY ANALYTICS
+// -----------------------------------------------------------------------------
+
+export const trackHistoryOpenFullHistory = (): void => {
+  track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
+};
+
+export const trackHistoryOpenItem = (transactionHash: string): void => {
+  track(AnalyticsEvent.HISTORY_OPEN_ITEM, { transactionHash });
 };
 
 // -----------------------------------------------------------------------------
@@ -115,9 +190,7 @@ export const trackReAuthSuccess = (): void => {
 };
 
 export const trackReAuthFail = (): void => {
-  trackAuthEvent(AnalyticsEvent.RE_AUTH_FAIL, {
-    reason: "incorrect_password",
-  });
+  trackAuthEvent(AnalyticsEvent.RE_AUTH_FAIL);
 };
 
 // -----------------------------------------------------------------------------
@@ -136,45 +209,20 @@ const trackUserAction = (
 };
 
 export const trackCopyPublicKey = (): void => {
-  trackUserAction(
-    AnalyticsEvent.COPY_PUBLIC_KEY,
-    "account_details",
-    "copy_address",
-  );
+  trackUserAction(AnalyticsEvent.COPY_PUBLIC_KEY, "home_screen", "copy");
 };
 
 export const trackCopyBackupPhrase = (): void => {
-  trackUserAction(
-    AnalyticsEvent.COPY_BACKUP_PHRASE,
-    "security_settings",
-    "copy_recovery_phrase",
-  );
+  trackUserAction(AnalyticsEvent.COPY_BACKUP_PHRASE, "backup_phrase", "copy");
 };
 
-// -----------------------------------------------------------------------------
-// MOBILE-SPECIFIC ANALYTICS
-// -----------------------------------------------------------------------------
-
-/**
- * Generic helper for QR scan events with mobile context.
- */
-const trackQRScanEvent = (
-  event: AnalyticsEvent,
-  context: string = "general",
-  additional?: Record<string, unknown>,
+export const trackQRScanSuccess = (
+  context: string,
+  timeToScan?: number,
 ): void => {
-  track(event, {
-    context,
-    platform: "mobile",
-    scanMethod: "camera",
-    ...additional,
-  });
+  track(AnalyticsEvent.QR_SCAN_SUCCESS, { context, timeToScan });
 };
 
-export const trackQRScanSuccess = (context?: string): void => {
-  trackQRScanEvent(AnalyticsEvent.QR_SCAN_SUCCESS, context);
-};
-
-export const trackQRScanError = (error: string, context?: string): void => {
-  trackQRScanEvent(AnalyticsEvent.QR_SCAN_ERROR, context, { error });
+export const trackQRScanError = (context: string, error: string): void => {
+  track(AnalyticsEvent.QR_SCAN_ERROR, { context, error });
 };
