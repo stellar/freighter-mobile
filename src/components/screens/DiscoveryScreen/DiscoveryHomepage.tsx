@@ -7,11 +7,10 @@ import {
   TRENDING_SITES,
   TrendingSite,
 } from "config/constants";
-import { logger } from "config/logger";
 import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
-import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
+import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import { View, FlatList, TouchableOpacity } from "react-native";
@@ -130,42 +129,13 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
   );
 
   const captureScreenshot = useCallback(async () => {
-    logger.debug(
-      "DiscoveryHomepage",
-      "attempting to capture screenshot for tabId:",
+    await captureTabScreenshot({
+      viewShotRef: viewShotRef.current,
       tabId,
-    );
-
-    try {
-      if (viewShotRef.current?.capture) {
-        const uri = await viewShotRef.current.capture();
-
-        // Save to persistent storage
-        const tab = tabs.find((t) => t.id === tabId);
-        if (tab) {
-          const screenshotData: ScreenshotData = {
-            tabId,
-            timestamp: Date.now(),
-            uri,
-            tabUrl: tab.url,
-          };
-
-          await saveScreenshot(screenshotData);
-          updateTab(tabId, { screenshot: uri });
-
-          logger.debug(
-            "DiscoveryHomepage",
-            `Screenshot captured for tab ${tabId}`,
-          );
-        }
-      }
-    } catch (error) {
-      logger.error(
-        "DiscoveryHomepage",
-        "Failed to capture homepage screenshot:",
-        error,
-      );
-    }
+      tabs,
+      updateTab,
+      source: "DiscoveryHomepage",
+    });
   }, [tabs, tabId, updateTab]);
 
   // Capture screenshot on initial render and when tab overview is closed

@@ -4,7 +4,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
-import { saveScreenshot, ScreenshotData } from "helpers/screenshots";
+import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { Freeze } from "react-freeze";
@@ -64,42 +64,13 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
 
     const captureScreenshot = useCallback(
       async (tabId: string) => {
-        logger.debug(
-          "WebViewContainer",
-          "attempting to capture screenshot for tabId:",
+        await captureTabScreenshot({
+          viewShotRef: viewShotRefs.current[tabId],
           tabId,
-        );
-        try {
-          const viewShotRef = viewShotRefs.current[tabId];
-          if (viewShotRef && viewShotRef.capture) {
-            const uri = await viewShotRef.capture();
-
-            // Save to persistent storage
-            const tab = tabs.find((t) => t.id === tabId);
-            if (tab) {
-              const screenshotData: ScreenshotData = {
-                tabId,
-                tabUrl: tab.url,
-                uri,
-                timestamp: Date.now(),
-              };
-
-              await saveScreenshot(screenshotData);
-              updateTab(tabId, { screenshot: uri });
-
-              logger.debug(
-                "WebViewContainer",
-                `Screenshot captured for tab ${tabId}`,
-              );
-            }
-          }
-        } catch (error) {
-          logger.error(
-            "WebViewContainer",
-            `Failed to capture screenshot for tab ${tabId}:`,
-            error,
-          );
-        }
+          tabs,
+          updateTab,
+          source: "WebViewContainer",
+        });
       },
       [tabs, updateTab],
     );

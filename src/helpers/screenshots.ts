@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
+import { BrowserTab } from "ducks/browserTabs";
+import ViewShot from "react-native-view-shot";
 
 export interface ScreenshotData {
   tabId: string;
@@ -103,5 +105,47 @@ export const clearAllScreenshots = async (): Promise<void> => {
     await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
   } catch (error) {
     logger.error("screenshots", "Failed to clear screenshots:", error);
+  }
+};
+
+export interface CaptureScreenshotParams {
+  viewShotRef: ViewShot | null;
+  tabId: string;
+  tabs: BrowserTab[];
+  updateTab: (tabId: string, updates: Partial<BrowserTab>) => void;
+  source: string; // used for logging
+}
+
+export const captureTabScreenshot = async ({
+  viewShotRef,
+  tabId,
+  tabs,
+  updateTab,
+  source,
+}: CaptureScreenshotParams): Promise<void> => {
+  logger.debug(source, "attempting to capture screenshot for tabId:", tabId);
+
+  try {
+    if (viewShotRef?.capture) {
+      const uri = await viewShotRef.capture();
+
+      // Save to persistent storage
+      const tab = tabs.find((t) => t.id === tabId);
+      if (tab) {
+        const screenshotData: ScreenshotData = {
+          tabId,
+          timestamp: Date.now(),
+          uri,
+          tabUrl: tab.url,
+        };
+
+        await saveScreenshot(screenshotData);
+        updateTab(tabId, { screenshot: uri });
+
+        logger.debug(source, `Screenshot captured for tab ${tabId}`);
+      }
+    }
+  } catch (error) {
+    logger.error(source, "Failed to capture screenshot:", error);
   }
 };
