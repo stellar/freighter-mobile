@@ -202,15 +202,14 @@ export enum SENSITIVE_STORAGE_KEYS {
 
 /*
  * TODO:
- * - Review screenshot delays and capture logic
+ * - Add translations
+ * - Use pxValue() or classNames
+ * - Add a way to clear the browser history/cookies on logout (test with StellarTerm connection or gmail login)
+ * - Tweak userAgent to make WC work for the moment, see Rainbow userAgent
  * - Test on Android
  * - Test on real devices
- *
- * - Add a way to clear the browser history (not sure if this is needed)
- * - Add a way to clear the browser cache (not sure if this is needed)
- * - Add a way to clear the browser cookies (not sure if this is needed)
- * - Add a way to clear the browser local storage (not sure if this is needed)
- * - Add a way to clear the browser session storage (not sure if this is needed)
+ * - Add CI tests
+ * - Add JSDocs
  */
 
 // Browser constants
