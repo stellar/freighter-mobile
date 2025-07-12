@@ -23,9 +23,8 @@ export const useBrowserActions = (
 
       const { url } = normalizeUrl(inputUrl);
       goToPage(activeTabId, url);
-      webViewRef.current?.injectJavaScript(`window.location.href = "${url}";`);
     },
-    [activeTabId, goToPage, webViewRef],
+    [activeTabId, goToPage],
   );
 
   const handleGoBack = useCallback(() => {
@@ -48,11 +47,7 @@ export const useBrowserActions = (
     if (!activeTabId) return;
 
     goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
-
-    webViewRef.current?.injectJavaScript(
-      `window.location.href = "${BROWSER_CONSTANTS.HOMEPAGE_URL}";`,
-    );
-  }, [activeTabId, goToPage, webViewRef]);
+  }, [activeTabId, goToPage]);
 
   const handleCloseActiveTab = useCallback(() => {
     if (!activeTabId) return;
