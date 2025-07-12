@@ -169,7 +169,18 @@
     "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
   },
   "discovery": {
-    "title": "Discovery"
+    "defaultTabTitle": "Nova Aba",
+    "recent": "Recentes",
+    "trending": "Em Alta",
+    "oneTab": "1 Aba",
+    "tabs": "{{count}} Abas",
+    "urlBarPlaceholder": "Pesquisar ou digitar um site",
+    "openInBrowser": "Abrir no Navegador",
+    "share": "Compartilhar",
+    "home": "Início",
+    "reload": "Recarregar",
+    "closeAllTabs": "Fechar todas as abas",
+    "closeThisTab": "Fechar esta aba"
   },
   "history": {
     "title": "Histórico",

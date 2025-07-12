@@ -38,7 +38,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       {},
     );
 
-    // Show spinner when active tab changes
+    // Show spinner when switching tabs
     useEffect(() => {
       if (!activeTabId) {
         return undefined;
@@ -52,12 +52,12 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       const timer = setTimeout(() => {
         Animated.timing(fadeLoadingAnim, {
           toValue: 0,
-          duration: 300, // 300ms fade out
+          duration: BROWSER_CONSTANTS.TAB_SWITCH_ANIMATION_DURATION,
           useNativeDriver: true,
         }).start(() => {
           setIsLoading(false);
         });
-      }, 500);
+      }, BROWSER_CONSTANTS.TAB_SWITCH_ANIMATION_DELAY);
 
       return () => clearTimeout(timer);
     }, [activeTabId, fadeLoadingAnim]);
@@ -86,7 +86,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
         scrollCaptureTimeouts.current[tabId] = setTimeout(() => {
           captureScreenshot(tabId);
           delete scrollCaptureTimeouts.current[tabId];
-        }, 1000);
+        }, BROWSER_CONSTANTS.SCREENSHOT_SCROLL_DELAY);
       },
       [captureScreenshot],
     );
@@ -107,7 +107,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
         quickCaptureTimeouts.current[tabId] = setTimeout(() => {
           captureScreenshot(tabId);
           delete quickCaptureTimeouts.current[tabId];
-        }, BROWSER_CONSTANTS.SCREENSHOT_CAPTURE_DELAY);
+        }, BROWSER_CONSTANTS.SCREENSHOT_ON_LOAD_DELAY);
 
         // Final screenshot after animations complete (2000ms)
         finalCaptureTimeouts.current[tabId] = setTimeout(() => {

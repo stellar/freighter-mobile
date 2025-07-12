@@ -3,6 +3,7 @@ import { StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
@@ -20,6 +21,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
   ({ inputUrl, onInputChange, onUrlSubmit, onShowTabs, tabsCount }) => {
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
+    const { t } = useAppTranslation();
 
     return (
       <View
@@ -43,7 +45,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
           onChangeText={onInputChange}
           onSubmitEditing={onUrlSubmit}
           selectTextOnFocus
-          placeholder="Search or enter a website"
+          placeholder={t("discovery.urlBarPlaceholder")}
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
           autoCorrect={false}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { t } from "i18next";
 
 export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
@@ -202,8 +203,6 @@ export enum SENSITIVE_STORAGE_KEYS {
 
 /*
  * TODO:
- * - Add translations
- * - Use pxValue() or classNames
  * - Add a way to clear the browser history/cookies on logout (test with StellarTerm connection or gmail login)
  * - Tweak userAgent to make WC work for the moment, see Rainbow userAgent
  * - Test on Android
@@ -216,14 +215,17 @@ export enum SENSITIVE_STORAGE_KEYS {
 export const BROWSER_CONSTANTS = {
   HOMEPAGE_URL: "freighter://discovery-homepage",
   GOOGLE_SEARCH_BASE_URL: "https://www.google.com/search?q=",
-  DEFAULT_TAB_TITLE: "New Tab",
+  DEFAULT_TAB_TITLE: t("discovery.defaultTabTitle"),
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_RECENT_TABS: 20,
   MAX_SCREENSHOTS_STORED: 50,
   SCREENSHOT_FORMAT: "jpg",
   SCREENSHOT_QUALITY: 0.4,
-  SCREENSHOT_CAPTURE_DELAY: 500, // Quick screenshot for immediate preview
-  SCREENSHOT_FINAL_DELAY: 2000, // Final screenshot after animations complete
+  SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading
+  SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
+  SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
+  TAB_SWITCH_ANIMATION_DELAY: 500,
+  TAB_SWITCH_ANIMATION_DURATION: 300,
   TAB_ANIMATION_DURATION_OPEN: 300,
   TAB_ANIMATION_DURATION_CLOSE: 300,
   TAB_PREVIEW_FAVICON_SIZE: 32,

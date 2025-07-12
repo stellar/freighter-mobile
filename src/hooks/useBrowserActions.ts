@@ -2,6 +2,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { normalizeUrl } from "helpers/browser";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useCallback } from "react";
 import { Share, Linking, Platform } from "react-native";
 import { WebView } from "react-native-webview";
@@ -11,6 +12,8 @@ export const useBrowserActions = (
 ) => {
   const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
+
+  const { t } = useAppTranslation();
 
   const activeTab = getActiveTab();
 
@@ -82,7 +85,7 @@ export const useBrowserActions = (
 
   const contextMenuActions = [
     {
-      title: "Open in Browser",
+      title: t("discovery.openInBrowser"),
       systemIcon: Platform.select({
         ios: "safari",
         android: "public",
@@ -90,7 +93,7 @@ export const useBrowserActions = (
       onPress: handleOpenInBrowser,
     },
     {
-      title: "Share",
+      title: t("discovery.share"),
       systemIcon: Platform.select({
         ios: "square.and.arrow.up",
         android: "share",
@@ -98,7 +101,7 @@ export const useBrowserActions = (
       onPress: handleShare,
     },
     {
-      title: "Home",
+      title: t("discovery.home"),
       systemIcon: Platform.select({
         ios: "house",
         android: "home",
@@ -106,7 +109,7 @@ export const useBrowserActions = (
       onPress: handleGoHome,
     },
     {
-      title: "Reload",
+      title: t("discovery.reload"),
       systemIcon: Platform.select({
         ios: "arrow.clockwise",
         android: "refresh",
@@ -114,7 +117,7 @@ export const useBrowserActions = (
       onPress: handleReload,
     },
     {
-      title: "Close All Tabs",
+      title: t("discovery.closeAllTabs"),
       systemIcon: Platform.select({
         ios: "xmark.circle.fill",
         android: "close",
@@ -123,7 +126,7 @@ export const useBrowserActions = (
       destructive: true,
     },
     {
-      title: "Close This Tab",
+      title: t("discovery.closeThisTab"),
       systemIcon: Platform.select({
         ios: "xmark.circle",
         android: "close",

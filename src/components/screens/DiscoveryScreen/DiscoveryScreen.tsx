@@ -12,6 +12,7 @@ import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, View } from "react-native";
@@ -29,6 +30,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const { t } = useAppTranslation();
 
   const {
     tabs,
@@ -172,7 +174,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     return (
       <BaseLayout>
         <View className="flex-1 justify-center items-center">
-          <Text>Loading...</Text>
+          <Text>{t("common.loading")}</Text>
         </View>
       </BaseLayout>
     );

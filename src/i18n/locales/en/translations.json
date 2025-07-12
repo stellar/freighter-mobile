@@ -180,7 +180,18 @@
     "noConnectedDapps": "You're not connected to any apps"
   },
   "discovery": {
-    "title": "Discovery"
+    "defaultTabTitle": "New Tab",
+    "recent": "Recent",
+    "trending": "Trending",
+    "oneTab": "1 Tab",
+    "tabs": "{{count}} Tabs",
+    "urlBarPlaceholder": "Search or enter a website",
+    "openInBrowser": "Open in Browser",
+    "share": "Share",
+    "home": "Home",
+    "reload": "Reload",
+    "closeAllTabs": "Close All Tabs",
+    "closeThisTab": "Close This Tab"
   },
   "history": {
     "title": "History",

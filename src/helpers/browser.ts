@@ -20,7 +20,7 @@ export const getDomainFromUrl = (url: string): string => {
     const domain = urlObj.hostname.replace("www.", "");
     return domain;
   } catch {
-    return "Unknown";
+    return url;
   }
 };
 

@@ -11,6 +11,7 @@ import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import { captureTabScreenshot } from "helpers/screenshots";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import { View, FlatList, TouchableOpacity } from "react-native";
@@ -75,7 +76,7 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
           sm
           medium
           numberOfLines={2}
-          style={{ maxWidth: 76, textAlign: "center" }}
+          style={{ maxWidth: pxValue(76), textAlign: "center" }}
         >
           {name}
         </Text>
@@ -111,6 +112,7 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = ({
 };
 
 const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
+  const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { goToPage, tabs, updateTab, showTabOverview } = useBrowserTabsStore();
   const viewShotRef = useRef<ViewShot>(null);
@@ -159,7 +161,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
       <View className="flex-1 bg-background-primary">
         {recentTabs.length > 0 && (
           <HorizontalListSection
-            title="Recent"
+            title={t("discovery.recent")}
             icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
             data={recentTabs}
             onItemPress={handleSitePress}
@@ -168,7 +170,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = ({ tabId }) => {
         )}
 
         <HorizontalListSection
-          title="Trending"
+          title={t("discovery.trending")}
           icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
           data={TRENDING_SITES}
           onItemPress={handleSitePress}

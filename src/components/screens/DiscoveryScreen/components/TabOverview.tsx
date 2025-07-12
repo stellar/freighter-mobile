@@ -5,6 +5,7 @@ import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View, TouchableOpacity, FlatList } from "react-native";
 import { EdgeInsets } from "react-native-safe-area-context";
@@ -21,18 +22,28 @@ const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
   onClose,
   onNewTab,
   insets,
-}) => (
-  <View
-    className="flex-row items-center justify-between p-4 border-b border-border-default"
-    style={{ paddingTop: insets.top + pxValue(DEFAULT_PADDING) }}
-  >
-    <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
-    <Text lg semiBold>
-      {tabsCount} Tab{tabsCount !== 1 ? "s" : ""}
-    </Text>
-    <CustomHeaderButton position="right" icon={Icon.Plus} onPress={onNewTab} />
-  </View>
-);
+}) => {
+  const { t } = useAppTranslation();
+
+  return (
+    <View
+      className="flex-row items-center justify-between p-4 border-b border-border-default"
+      style={{ paddingTop: insets.top + pxValue(DEFAULT_PADDING) }}
+    >
+      <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
+      <Text lg semiBold>
+        {tabsCount > 1
+          ? t("discovery.tabs", { count: tabsCount })
+          : t("discovery.oneTab")}
+      </Text>
+      <CustomHeaderButton
+        position="right"
+        icon={Icon.Plus}
+        onPress={onNewTab}
+      />
+    </View>
+  );
+};
 
 interface TabOverviewProps {
   onClose: () => void;
