@@ -1,5 +1,7 @@
+import CookieManager from "@react-native-cookies/cookies";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
+import { clearAllScreenshots } from "helpers/screenshots";
 
 /**
  * Checks if URL is the homepage
@@ -106,3 +108,65 @@ export const formatDisplayUrl = (url: string): string => {
  * Generates unique tab ID
  */
 export const generateTabId = (): string => Date.now().toString();
+
+/**
+ * Clears all cookies from WebView instances
+ * This is called during logout for security reasons to prevent data leakage
+ *
+ * @returns Promise<boolean> - True if cookies were cleared successfully
+ */
+export const clearAllCookies = async (): Promise<boolean> => {
+  try {
+    logger.info("clearAllCookies", "Starting cookie cleanup");
+
+    // Clear all cookies using CookieManager
+    const result = await CookieManager.clearAll(true); // true = useWebKit for WebView
+
+    if (result) {
+      logger.info("clearAllCookies", "All cookies cleared successfully");
+    } else {
+      logger.warn("clearAllCookies", "Cookie cleanup may have failed");
+    }
+
+    return result;
+  } catch (error) {
+    logger.error("clearAllCookies", "Failed to clear cookies", error);
+    return false;
+  }
+};
+
+/**
+ * Clears all WebView data including cookies and screenshots
+ * This is called during logout for security reasons to prevent data leakage
+ *
+ * @returns Promise<boolean> - True if cleanup was successful
+ */
+export const clearAllWebViewData = async (): Promise<boolean> => {
+  try {
+    logger.info("clearAllWebViewData", "Starting WebView data cleanup");
+
+    // Clear cookies and screenshots in parallel
+    const [cookieResult, screenshotResult] = await Promise.all([
+      clearAllCookies(),
+      clearAllScreenshots(),
+    ]);
+
+    const success = cookieResult && screenshotResult;
+    if (success) {
+      logger.info(
+        "clearAllWebViewData",
+        "WebView data cleanup completed successfully",
+      );
+    } else {
+      logger.warn(
+        "clearAllWebViewData",
+        "WebView data cleanup may have failed",
+      );
+    }
+
+    return success;
+  } catch (error) {
+    logger.error("clearAllWebViewData", "Failed to clear WebView data", error);
+    return false;
+  }
+};

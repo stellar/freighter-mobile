@@ -24,7 +24,9 @@ import {
   TemporaryStore,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
+import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useWalletKitStore } from "ducks/walletKit";
+import { clearAllWebViewData } from "helpers/browser";
 import {
   deriveKeyFromPassword,
   encryptDataWithPassword,
@@ -1396,6 +1398,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           try {
             // Make sure to disconnect all WalletConnect sessions first
             await useWalletKitStore.getState().disconnectAllSessions();
+
+            // Clear all WebView data (cookies and screenshots)
+            await clearAllWebViewData();
+            useBrowserTabsStore.getState().closeAllTabs();
 
             const accountList = await getAllAccounts();
             const hasAccountList = accountList.length > 0;

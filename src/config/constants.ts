@@ -203,12 +203,12 @@ export enum SENSITIVE_STORAGE_KEYS {
 
 /*
  * TODO:
- * - Add a way to clear the browser history/cookies on logout (test with StellarTerm connection or gmail login)
  * - Tweak userAgent to make WC work for the moment, see Rainbow userAgent
  * - Test on Android
  * - Test on real devices
  * - Add CI tests
  * - Add JSDocs
+ * - Try handling Discovery sessions separately for each account and network
  */
 
 // Browser constants
