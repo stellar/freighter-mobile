@@ -145,14 +145,14 @@ export const trackViewPublicKeyClickedStellarExpert = (): void => {
 // -----------------------------------------------------------------------------
 
 export const trackGrantAccessSuccess = (domain?: string): void => {
-  track(AnalyticsEvent.GRANT_ACCESS_SUCCESS, { domain });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { domain });
 };
 
 export const trackGrantAccessFail = (
   domain?: string,
   reason?: string,
 ): void => {
-  track(AnalyticsEvent.GRANT_ACCESS_FAIL, { domain, reason });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, { domain, reason });
 };
 
 // -----------------------------------------------------------------------------

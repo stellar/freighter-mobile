@@ -20,8 +20,6 @@ export const STORAGE_KEYS = {
 
 export const TIMING = {
   THROTTLE_DELAY_MS: 500,
-  DEBUG_REFRESH_INTERVAL_MS: 2000,
-  QR_SCAN_TIMEOUT_MS: 30000,
 } as const;
 
 // -----------------------------------------------------------------------------

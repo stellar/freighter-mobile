@@ -332,7 +332,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
         }}
-        analyticsEvent={AnalyticsEvent.VIEW_GRANT_ACCESS}
+        analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         customContent={
           <DappConnectionBottomSheetContent
             account={account}
@@ -351,7 +351,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
         }}
-        analyticsEvent={AnalyticsEvent.VIEW_SIGN_TRANSACTION}
+        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         customContent={
           <DappRequestBottomSheetContent
             account={account}

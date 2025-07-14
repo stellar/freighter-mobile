@@ -2,7 +2,6 @@
  * Analytics events enum for tracking user behavior across the Freighter mobile app.
  *
  * Events are aligned with Freighter extension to ensure consistent cross-platform
-
  */
 export enum AnalyticsEvent {
   // Screen Navigation Events
@@ -18,8 +17,8 @@ export enum AnalyticsEvent {
   VIEW_DISCOVERY = "loaded screen: discover",
   VIEW_TOKEN_DETAILS = "loaded screen: asset detail",
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
-  VIEW_GRANT_ACCESS = "loaded screen: grant access",
-  VIEW_SIGN_TRANSACTION = "loaded screen: sign transaction",
+  VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
+  VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
   VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
   VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
   VIEW_SEND_MEMO = "loaded screen: send payment settings",
@@ -110,8 +109,8 @@ export enum AnalyticsEvent {
   VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT = "viewPublicKey: clicked StellarExpert",
 
   // WalletConnect/dApp Events
-  GRANT_ACCESS_SUCCESS = "grant access: granted",
-  GRANT_ACCESS_FAIL = "grant access: rejected",
+  GRANT_DAPP_ACCESS_SUCCESS = "grant access: granted",
+  GRANT_DAPP_ACCESS_FAIL = "grant access: rejected",
 
   // History Events
   HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
