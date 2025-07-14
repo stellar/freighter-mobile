@@ -2,7 +2,7 @@
  * Analytics events enum for tracking user behavior across the Freighter mobile app.
  *
  * Events are aligned with Freighter extension to ensure consistent cross-platform
- * tracking to the same Amplitude project.
+
  */
 export enum AnalyticsEvent {
   // Screen Navigation Events
@@ -13,7 +13,6 @@ export enum AnalyticsEvent {
   VIEW_VALIDATE_RECOVERY_PHRASE = "loaded screen: confirm mnemonic phrase",
   VIEW_IMPORT_WALLET = "loaded screen: recover account",
   VIEW_LOCK_SCREEN = "loaded screen: unlock account",
-
   VIEW_HOME = "loaded screen: account",
   VIEW_HISTORY = "loaded screen: account history",
   VIEW_DISCOVERY = "loaded screen: discover",
@@ -21,8 +20,6 @@ export enum AnalyticsEvent {
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
   VIEW_GRANT_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_TRANSACTION = "loaded screen: sign transaction",
-
-  // Send Payment Flow
   VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
   VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
   VIEW_SEND_MEMO = "loaded screen: send payment settings",
@@ -30,8 +27,6 @@ export enum AnalyticsEvent {
   VIEW_SEND_TIMEOUT = "loaded screen: send payment timeout",
   VIEW_SEND_CONFIRM = "loaded screen: send payment confirm",
   VIEW_SEND_PROCESSING = "loaded screen: send payment processing",
-
-  // Swap Flow
   VIEW_SWAP = "loaded screen: swap",
   VIEW_SWAP_AMOUNT = "loaded screen: swap amount",
   VIEW_SWAP_FEE = "loaded screen: swap fee",
@@ -39,8 +34,6 @@ export enum AnalyticsEvent {
   VIEW_SWAP_TIMEOUT = "loaded screen: swap timeout",
   VIEW_SWAP_SETTINGS = "loaded screen: swap settings",
   VIEW_SWAP_CONFIRM = "loaded screen: swap confirm",
-
-  // Settings Flow
   VIEW_SETTINGS = "loaded screen: settings",
   VIEW_PREFERENCES = "loaded screen: preferences",
   VIEW_CHANGE_NETWORK = "loaded screen: manage network",
@@ -55,8 +48,6 @@ export enum AnalyticsEvent {
   VIEW_MANAGE_WALLETS = "loaded screen: manage wallets",
   VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
   VIEW_BUY_XLM = "loaded screen: add fund",
-
-  // Additional Extension Screen Events (Missing from Mobile)
   VIEW_SEARCH_ASSET = "loaded screen: search asset",
   VIEW_ADD_ASSET_MANUALLY = "loaded screen: add asset manually",
 
@@ -81,8 +72,6 @@ export enum AnalyticsEvent {
   SEND_PAYMENT_TYPE_PAYMENT = "send payment: selected type payment",
   SEND_PAYMENT_TYPE_PATH_PAYMENT = "send payment: selected type path payment",
   SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
-
-  // Swap Events (Mobile-only feature)
   SWAP_SUCCESS = "swap: success",
   SWAP_FAIL = "swap: error",
 
@@ -103,8 +92,6 @@ export enum AnalyticsEvent {
   ADD_UNSAFE_ASSET_SUCCESS = "manage asset: add unsafe asset",
   REMOVE_ASSET_SUCCESS = "manage asset: remove asset",
   ASSET_MANAGEMENT_FAIL = "manage asset: error",
-
-  // Additional Asset Management Events (From Extension)
   ADD_TOKEN_CONFIRMED = "add token: confirmed",
   ADD_TOKEN_REJECTED = "add token: rejected",
   MANAGE_ASSET_LISTS_MODIFY = "manage asset list: modify asset list",
@@ -114,7 +101,7 @@ export enum AnalyticsEvent {
   TRUSTLINE_HAS_LIABILITIES_FAIL = "trustline removal error: asset has buying liabilties",
   TRUSTLINE_LOW_RESERVE_FAIL = "trustline removal error: asset has low reserve",
 
-  // Account Management Events (From Extension)
+  // Account Management Events
   ACCOUNT_SCREEN_ADD_ACCOUNT = "account screen: created new account",
   ACCOUNT_SCREEN_COPY_PUBLIC_KEY = "account screen: copied public key",
   ACCOUNT_SCREEN_IMPORT_ACCOUNT = "account screen: imported new account",
@@ -122,11 +109,11 @@ export enum AnalyticsEvent {
   VIEW_PUBLIC_KEY_ACCOUNT_RENAMED = "viewPublicKey: renamed account",
   VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT = "viewPublicKey: clicked StellarExpert",
 
-  // WalletConnect/dApp Events (From Extension)
+  // WalletConnect/dApp Events
   GRANT_ACCESS_SUCCESS = "grant access: granted",
   GRANT_ACCESS_FAIL = "grant access: rejected",
 
-  // History Events (From Extension)
+  // History Events
   HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
   HISTORY_OPEN_ITEM = "history: opened item on external website",
 

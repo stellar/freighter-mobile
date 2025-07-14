@@ -1,4 +1,4 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -8,7 +8,7 @@ import { formatTimeAgo } from "helpers/date";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
 
 interface AnalyticsDebugBottomSheetProps {
@@ -43,8 +43,8 @@ const CustomContent: React.FC<{
   };
 
   return (
-    <View className="gap-4">
-      <View className="flex-row justify-between items-center">
+    <View className="flex-1">
+      <View className="flex-row justify-between items-center mb-4">
         <Text xl medium>
           {t("analytics.debug.title")}
         </Text>
@@ -53,7 +53,11 @@ const CustomContent: React.FC<{
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
+      <BottomSheetScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
+      >
         <View className="gap-3 mb-4">
           <Text lg medium>
             {t("analytics.debug.status")}
@@ -199,7 +203,8 @@ const CustomContent: React.FC<{
             {t("analytics.debug.simulateSessionExpiry")}
           </Button>
         </View>
-      </ScrollView>
+        <View className="h-10" />
+      </BottomSheetScrollView>
     </View>
   );
 };
@@ -216,10 +221,10 @@ export const AnalyticsDebugBottomSheet: React.FC<
     <BottomSheet
       modalRef={modalRef}
       handleCloseModal={onDismiss}
-      bottomSheetModalProps={{
-        onDismiss,
-        enableDynamicSizing: true,
-      }}
+      snapPoints={["60%"]}
+      enablePanDownToClose={false}
+      enableDynamicSizing={false}
+      useInsetsBottomPadding={false}
       customContent={<CustomContent onDismiss={onDismiss} />}
     />
   );
