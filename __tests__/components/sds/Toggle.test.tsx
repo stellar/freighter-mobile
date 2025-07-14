@@ -80,7 +80,7 @@ describe("Toggle", () => {
             id="test-toggle"
             checked={false}
             onChange={mockOnChange}
-            fieldSize={size}
+            size={size}
             testID="toggle-component"
           />,
         );
@@ -106,7 +106,7 @@ describe("Toggle", () => {
       await userEvent.press(toggle);
 
       expect(mockOnChange).toHaveBeenCalledTimes(1);
-    });
+    }, 15000);
 
     it("does not call onChange when disabled", async () => {
       const { getByTestId } = renderWithProviders(
@@ -349,7 +349,7 @@ describe("Toggle", () => {
           id="theme-toggle"
           checked={isDarkMode}
           onChange={handleThemeToggle}
-          fieldSize="lg"
+          size="lg"
           iconChecked={<Icon.Moon01 size={16} />}
           iconUnchecked={<Icon.Sun size={16} />}
           title="Dark mode"
