@@ -41,8 +41,6 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Freighter needs access to your Camera to scan QR codes.</string>
