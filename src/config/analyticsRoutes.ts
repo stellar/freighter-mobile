@@ -75,8 +75,6 @@ const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
     "loaded screen: send payment timeout" as AnalyticsEvent,
   [SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN]:
     "loaded screen: manage network" as AnalyticsEvent,
-  [SETTINGS_ROUTES.NETWORK_SETTINGS_SCREEN]:
-    "loaded screen: network settings" as AnalyticsEvent,
   [SETTINGS_ROUTES.SHARE_FEEDBACK_SCREEN]:
     "loaded screen: leave feedback" as AnalyticsEvent,
   [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]:
