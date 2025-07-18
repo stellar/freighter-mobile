@@ -129,12 +129,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleSendPress = () => {
-    // Navigation analytics already tracked by useNavigationAnalytics
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK);
   };
 
   const handleSwapPress = () => {
-    // Navigation analytics already tracked by useNavigationAnalytics
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK);
   };
 

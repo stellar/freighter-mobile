@@ -211,8 +211,8 @@ export const track = (
 // APP LIFECYCLE
 // -----------------------------------------------------------------------------
 
-export const trackAppOpened = (): void => {
-  track(AnalyticsEvent.APP_OPENED);
+export const trackAppOpened = (props?: { previousState: string }): void => {
+  track(AnalyticsEvent.APP_OPENED, props);
 };
 
 // -----------------------------------------------------------------------------

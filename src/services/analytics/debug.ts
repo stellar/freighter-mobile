@@ -7,6 +7,11 @@ import type { AnalyticsDebugInfo } from "services/analytics/types";
 // DEBUG STATE
 // -----------------------------------------------------------------------------
 
+// Constants for debug information
+export const DEBUG_CONSTANTS = {
+  API_KEY_NOT_SET: "Not set",
+} as const;
+
 let recentEvents: Array<{
   event: string;
   timestamp: number;
@@ -59,7 +64,7 @@ export const getAnalyticsDebugInfo = (): AnalyticsDebugInfo => {
     environment: __DEV__ ? "development" : "production",
     amplitudeKey: AMPLITUDE_API_KEY
       ? `${AMPLITUDE_API_KEY.slice(0, 6)}...`
-      : "Not set",
+      : DEBUG_CONSTANTS.API_KEY_NOT_SET,
     isSendingToAmplitude,
     recentEvents: [...recentEvents],
   };

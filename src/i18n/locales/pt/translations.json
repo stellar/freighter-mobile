@@ -53,6 +53,7 @@
     "title": "Configurações",
     "logout": "Sair",
     "network": "Rede",
+    "preferences": "Preferências",
     "version": "Versão {{version}}",
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
@@ -662,8 +663,8 @@
   },
   "preferences": {
     "anonymousDataSharing": {
-      "title": "Compartilhar Dados Anônimos",
-      "description": "Ajude-nos a melhorar o Freighter compartilhando dados anônimos sobre como você usa o aplicativo. Isso nos ajuda a entender melhor o comportamento do usuário e a identificar problemas."
+      "title": "Compartilhamento de dados anônimos",
+      "description": "Permitir que o Freighter colete informações anônimas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Nunca coletaremos PII como nome/endereço."
     }
   }
 }

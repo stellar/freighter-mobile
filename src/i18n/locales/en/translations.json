@@ -62,7 +62,7 @@
   "preferences": {
     "anonymousDataSharing": {
       "title": "Anonymous data sharing",
-      "description": "Allow Freighter to collect anonymous information about usage. Freighter will never collect your personal information such as IP address, keys, balance or transaction amounts."
+      "description": "Allow Freighter to collect anonymous information about usage. We will collect public keys, transaction amounts, and balances. We will never collect PII like name/address."
     }
   },
   "shareFeedbackScreen": {

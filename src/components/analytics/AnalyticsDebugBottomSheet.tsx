@@ -10,6 +10,7 @@ import useColors from "hooks/useColors";
 import React, { useState } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
+import { DEBUG_CONSTANTS } from "services/analytics/debug";
 
 interface AnalyticsDebugBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
@@ -111,7 +112,7 @@ const CustomContent: React.FC<{
             </Text>
           </View>
 
-          {debugInfo.amplitudeKey === "Not set" && (
+          {debugInfo.amplitudeKey === DEBUG_CONSTANTS.API_KEY_NOT_SET && (
             <View className="p-3 rounded-lg border-2 border-amber-500 bg-amber-50">
               <Text sm semiBold color={themeColors.status.warning}>
                 {t("analytics.debug.apiKeyMissing")}
