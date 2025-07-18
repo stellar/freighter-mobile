@@ -1,6 +1,6 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
-import { NETWORKS, NATIVE_TOKEN_CODE } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   SWAP_ROUTES,
@@ -98,6 +98,15 @@ export const useSwapTransaction = ({
       return;
     }
 
+    // Validate required data before proceeding
+    if (!sourceBalance?.tokenCode) {
+      throw new Error("Source asset is required for swap transaction");
+    }
+
+    if (!destinationBalance?.tokenCode) {
+      throw new Error("Destination asset is required for swap transaction");
+    }
+
     setIsProcessing(true);
 
     try {
@@ -117,8 +126,8 @@ export const useSwapTransaction = ({
       }
 
       analytics.trackSwapSuccess({
-        sourceAsset: sourceBalance?.tokenCode || NATIVE_TOKEN_CODE,
-        destAsset: destinationBalance?.tokenCode || NATIVE_TOKEN_CODE,
+        sourceAsset: sourceBalance.tokenCode,
+        destAsset: destinationBalance.tokenCode,
         allowedSlippage: swapSlippage?.toString(),
         isSwap: true,
       });
