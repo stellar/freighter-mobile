@@ -83,7 +83,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     addAssetBottomSheetModalRef.current?.present();
   };
 
-  const handleAddAssetTrustline = async () => {
+  const handleConfirmAssetAddition = async () => {
     if (!selectedAsset) {
       return;
     }
@@ -120,7 +120,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
               asset={selectedAsset}
               account={account}
               onCancel={() => addAssetBottomSheetModalRef.current?.dismiss()}
-              onAddAsset={handleAddAssetTrustline}
+              onAddAsset={handleConfirmAssetAddition}
               isAddingAsset={isAddingAsset}
             />
           }
