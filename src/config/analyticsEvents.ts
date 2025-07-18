@@ -1,7 +1,7 @@
 /**
  * Analytics events enum for tracking user behavior across the Freighter mobile app.
  *
- * Events are aligned with Freighter extension to ensure consistent cross-platform
+ * Events are aligned with Freighter extension to ensure cross-platform consistency.
  */
 export enum AnalyticsEvent {
   // Screen Navigation Events
