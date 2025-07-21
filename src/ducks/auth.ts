@@ -6,6 +6,7 @@ import {
   KeyType,
   ScryptEncrypter,
 } from "@stellar/typescript-wallet-sdk-km";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE,
   HASH_KEY_EXPIRATION_MS,
@@ -1124,7 +1125,13 @@ const importWallet = async ({
     });
 
     await verifyAndCreateExistingAccountsOnNetwork(mnemonicPhrase, password);
+
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
   } catch (error) {
+    analytics.trackAccountScreenImportAccountFail(
+      error instanceof Error ? error.message : String(error),
+    );
+
     logger.error("importWallet", "Failed to import wallet", error);
 
     // Clean up any partial data on error
@@ -1308,37 +1315,46 @@ const importSecretKeyLocal = async (
 ): Promise<void> => {
   const { secretKey, password } = params;
 
-  const keypair = Keypair.fromSecret(secretKey);
-  const publicKey = keypair.publicKey();
-  const privateKey = keypair.secret();
+  try {
+    const keypair = Keypair.fromSecret(secretKey);
+    const publicKey = keypair.publicKey();
+    const privateKey = keypair.secret();
 
-  const existingAccounts = await getAllAccounts();
-  const accountExists = hasAccountInAccountList(existingAccounts, {
-    publicKey,
-    privateKey,
-  });
-
-  if (accountExists) {
-    throw new Error(t("authStore.error.accountAlreadyExists"));
-  }
-
-  const temporaryStore = await getTemporaryStore();
-  if (!temporaryStore) {
-    throw new Error(t("authStore.error.temporaryStoreNotFound"));
-  }
-
-  await storeAccount({
-    mnemonicPhrase: temporaryStore.mnemonicPhrase,
-    password,
-    keyPair: {
+    const existingAccounts = await getAllAccounts();
+    const accountExists = hasAccountInAccountList(existingAccounts, {
       publicKey,
       privateKey,
-    },
-    accountNumber: existingAccounts.length + 1,
-    shouldRefreshHashKey: false,
-    shouldSetActiveAccount: true,
-    importedFromSecretKey: true,
-  });
+    });
+
+    if (accountExists) {
+      throw new Error(t("authStore.error.accountAlreadyExists"));
+    }
+
+    const temporaryStore = await getTemporaryStore();
+    if (!temporaryStore) {
+      throw new Error(t("authStore.error.temporaryStoreNotFound"));
+    }
+
+    await storeAccount({
+      mnemonicPhrase: temporaryStore.mnemonicPhrase,
+      password,
+      keyPair: {
+        publicKey,
+        privateKey,
+      },
+      accountNumber: existingAccounts.length + 1,
+      shouldRefreshHashKey: false,
+      shouldSetActiveAccount: true,
+      importedFromSecretKey: true,
+    });
+
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+  } catch (error) {
+    analytics.trackAccountScreenImportAccountFail(
+      error instanceof Error ? error.message : String(error),
+    );
+    throw error;
+  }
 };
 
 /**
