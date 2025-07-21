@@ -211,6 +211,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       activeChain,
       showToast,
       t,
+      publicKey,
     }).finally(() => {
       handleClearDappRequest();
     });

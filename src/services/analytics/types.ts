@@ -20,6 +20,7 @@ export interface SignedTransactionEvent {
   transactionHash: string;
   transactionType: TransactionType;
   network: string;
+  dappDomain?: string;
 }
 
 export interface TransactionSuccessEvent {

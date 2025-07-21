@@ -24,6 +24,8 @@ import {
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
+import { analytics } from "services/analytics";
+import { TransactionType } from "services/analytics/types";
 
 /** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
@@ -215,111 +217,6 @@ export const rejectSessionRequest = async ({
 };
 
 /**
- * Approves and processes a session request from a dApp
- * @param {Object} params - The parameters object
- * @param {WalletKitSessionRequest} params.sessionRequest - The session request to approve
- * @param {Function} params.signTransaction - Function to sign the transaction
- * @param {string} params.networkPassphrase - The network passphrase
- * @param {string} params.activeChain - The active chain identifier
- * @param {Function} params.showToast - Function to display toast messages
- * @param {TFunction} params.t - Translation function
- * @returns {Promise<void>} A promise that resolves when the approval is complete
- */
-export const approveSessionRequest = async ({
-  sessionRequest,
-  signTransaction,
-  networkPassphrase,
-  activeChain,
-  showToast,
-  t,
-}: {
-  sessionRequest: WalletKitSessionRequest;
-  signTransaction: (
-    transaction: Transaction | FeeBumpTransaction,
-  ) => string | null;
-  networkPassphrase: string;
-  activeChain: string;
-  showToast: (options: ToastOptions) => void;
-  t: TFunction<"translations", undefined>;
-}) => {
-  const { id, params, topic } = sessionRequest;
-  const { request, chainId } = params || {};
-  const { params: requestParams } = request || {};
-  const { xdr } = requestParams || {};
-
-  if (chainId !== activeChain) {
-    const targetNetworkName =
-      chainId === (StellarRpcChains.PUBLIC as string)
-        ? NETWORK_NAMES.PUBLIC
-        : NETWORK_NAMES.TESTNET;
-    const message = t("walletKit.errorWrongNetworkMessage", {
-      targetNetworkName,
-    });
-
-    showToast({
-      title: t("walletKit.errorWrongNetwork"),
-      message,
-      variant: "error",
-    });
-
-    rejectSessionRequest({ sessionRequest, message });
-    return;
-  }
-
-  let signedTransaction;
-  try {
-    const transaction = TransactionBuilder.fromXDR(
-      xdr as string,
-      networkPassphrase,
-    );
-    signedTransaction = signTransaction(transaction);
-  } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
-    });
-
-    showToast({
-      title: t("walletKit.errorSigning"),
-      message,
-      variant: "error",
-    });
-
-    rejectSessionRequest({ sessionRequest, message });
-    return;
-  }
-
-  const response = {
-    id,
-    result: { signedXDR: signedTransaction },
-    jsonrpc: "2.0",
-  };
-
-  try {
-    await walletKit.respondSessionRequest({ topic, response });
-
-    showToast({
-      title: t("walletKit.signingSuccessfull"),
-      message: t("walletKit.returnToBrowser"),
-      variant: "success",
-    });
-  } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
-    });
-
-    showToast({
-      title: t("walletKit.errorRespondingRequest"),
-      message,
-      variant: "error",
-    });
-
-    rejectSessionRequest({ sessionRequest, message });
-  }
-};
-
-/**
  * Retrieves all active Wallet Connect sessions for a given public key and network
  * @param {string} publicKey - The public key of the account to get sessions for
  * @param {NETWORKS} network - The network to get sessions for
@@ -355,6 +252,124 @@ export const getActiveSessions = (
   }, {} as ActiveSessions);
 
   return activeAccountSessions;
+};
+
+/**
+ * Approves and processes a session request from a dApp
+ * @param {Object} params - The parameters object
+ * @param {WalletKitSessionRequest} params.sessionRequest - The session request to approve
+ * @param {Function} params.signTransaction - Function to sign the transaction
+ * @param {string} params.networkPassphrase - The network passphrase
+ * @param {string} params.activeChain - The active chain identifier
+ * @param {Function} params.showToast - Function to display toast messages
+ * @param {TFunction} params.t - Translation function
+ * @returns {Promise<void>} A promise that resolves when the approval is complete
+ */
+export const approveSessionRequest = async ({
+  sessionRequest,
+  signTransaction,
+  networkPassphrase,
+  activeChain,
+  showToast,
+  t,
+  publicKey,
+}: {
+  sessionRequest: WalletKitSessionRequest;
+  signTransaction: (
+    transaction: Transaction | FeeBumpTransaction,
+  ) => string | null;
+  networkPassphrase: string;
+  activeChain: string;
+  showToast: (options: ToastOptions) => void;
+  t: TFunction<"translations", undefined>;
+  publicKey: string;
+}) => {
+  const { id, params, topic } = sessionRequest;
+  const { request, chainId } = params || {};
+  const { params: requestParams } = request || {};
+  const { xdr } = requestParams || {};
+
+  if (chainId !== activeChain) {
+    const targetNetworkName =
+      chainId === (StellarRpcChains.PUBLIC as string)
+        ? NETWORK_NAMES.PUBLIC
+        : NETWORK_NAMES.TESTNET;
+    const message = t("walletKit.errorWrongNetworkMessage", {
+      targetNetworkName,
+    });
+    showToast({
+      title: t("walletKit.errorWrongNetwork"),
+      message,
+      variant: "error",
+    });
+    rejectSessionRequest({ sessionRequest, message });
+    return;
+  }
+
+  let signedTransaction;
+  try {
+    const transaction = TransactionBuilder.fromXDR(
+      xdr as string,
+      networkPassphrase,
+    );
+    signedTransaction = signTransaction(transaction);
+
+    // Look up the dApp domain from the active session to send on analytics
+    const activeSessions = getActiveSessions(
+      publicKey,
+      activeChain as NETWORKS,
+    );
+    const session = activeSessions[topic];
+    const dappDomain = session?.peer?.metadata?.url;
+
+    analytics.trackSignedTransaction({
+      transactionHash: transaction.hash().toString("hex"),
+      transactionType: TransactionType.Classic,
+      network: activeChain,
+      ...(dappDomain ? { dappDomain } : {}),
+    });
+  } catch (error) {
+    const message = t("common.error", {
+      errorMessage:
+        error instanceof Error ? error.message : t("common.unknownError"),
+    });
+    showToast({
+      title: t("walletKit.errorSigning"),
+      message,
+      variant: "error",
+    });
+    rejectSessionRequest({ sessionRequest, message });
+    return;
+  }
+
+  const response = {
+    id,
+    result: { signedXDR: signedTransaction },
+    jsonrpc: "2.0",
+  };
+
+  try {
+    await walletKit.respondSessionRequest({ topic, response });
+
+    showToast({
+      title: t("walletKit.signingSuccessfull"),
+      message: t("walletKit.returnToBrowser"),
+      variant: "success",
+    });
+  } catch (error) {
+    const message = t("common.error", {
+      errorMessage:
+        error instanceof Error ? error.message : t("common.unknownError"),
+    });
+
+    showToast({
+      title: t("walletKit.errorRespondingRequest"),
+      message,
+      variant: "error",
+    });
+
+    rejectSessionRequest({ sessionRequest, message });
+  }
 };
 
 /**
