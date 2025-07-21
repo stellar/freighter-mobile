@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { STORAGE_KEYS, DEBUG_CONFIG } from "services/analytics/constants";
+import { isInitialized } from "services/analytics/core";
 
 // -----------------------------------------------------------------------------
 // USER ID MANAGEMENT
@@ -92,7 +93,7 @@ export const identifyUser = async (): Promise<void> => {
     userId: currentUserId,
   } = useAnalyticsStore.getState();
 
-  if (!isEnabled) {
+  if (!isEnabled || !isInitialized()) {
     return;
   }
 
