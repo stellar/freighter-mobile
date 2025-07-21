@@ -19,11 +19,10 @@ export const AuthCheckProvider: React.FC<AuthCheckProviderProps> = ({
   const { account } = useAuthenticationStore();
 
   useEffect(() => {
-    // Checking for public key to make sure the account is loaded
-    if (account?.publicKey) {
+    if (account) {
       analytics.identifyUser();
     }
-  }, [account?.publicKey]);
+  }, [account]);
 
   // The View with panHandlers will detect user interaction across the entire app
   return (
