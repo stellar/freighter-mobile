@@ -3,7 +3,6 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -28,7 +27,7 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   const handleCopyToClipboard = () => {
     copyToClipboard(recoveryPhrase);
 
-    analytics.track(AnalyticsEvent.COPY_BACKUP_PHRASE);
+    analytics.trackCopyBackupPhrase();
   };
 
   return (

@@ -118,7 +118,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     if (!recoveryPhrase) return;
     copyToClipboard(recoveryPhrase);
 
-    analytics.track(AnalyticsEvent.COPY_BACKUP_PHRASE);
+    analytics.trackCopyBackupPhrase();
   }, [recoveryPhrase, copyToClipboard]);
 
   if (error) {
