@@ -11,7 +11,7 @@ import ErrorState from "components/screens/AddAssetScreen/ErrorState";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,

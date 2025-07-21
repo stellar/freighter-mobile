@@ -1,6 +1,30 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 import { NETWORKS } from "config/constants";
 
+/**
+ * ROUTE NAMING CONVENTIONS FOR ANALYTICS
+ *
+ * ⚠️  IMPORTANT: Route names are automatically used for analytics tracking!
+ *
+ * ## Analytics Impact:
+ * - Route names are automatically transformed to analytics events
+ * - "WelcomeScreen" → "loaded screen: welcome"
+ * - "SettingsScreen" → "loaded screen: settings"
+ *
+ * ## Naming Guidelines:
+ * 1. Use PascalCase: "SendPaymentScreen" ✅
+ * 2. End with "Screen": "WelcomeScreen" ✅
+ * 3. Be descriptive: "TransactionAmountScreen" ✅
+ * 4. Avoid abbreviations: "SendPaymentScreen" not "SendPayScreen" ✅
+ *
+ *
+ * ## Adding New Routes:
+ * 1. Add route constant here
+ * 2. Add to appropriate stack param list
+ * 3. Analytics tracking works automatically ✨
+ * 4. Only override in analyticsConfig.ts if auto-generated name is wrong
+ */
+
 export const ROOT_NAVIGATOR_ROUTES = {
   AUTH_STACK: "AuthStack",
   MAIN_TAB_STACK: "MainTabStack",
@@ -78,6 +102,28 @@ export const SWAP_ROUTES = {
   SWAP_TIMEOUT_SCREEN: "SwapTimeoutScreen",
   SWAP_SLIPPAGE_SCREEN: "SwapSlippageScreen",
 } as const;
+
+/**
+ * ALL_ROUTE_OBJECTS - Centralized export for analytics
+ *
+ * This array contains all route objects and is used by analyticsConfig.ts
+ * to automatically generate route-to-analytics mappings.
+ * 🔧 MAINTENANCE:
+ * - Add new route objects here when creating new stacks
+ * - Analytics will automatically pick up new routes
+ * - No need to manually update analyticsConfig.ts unless you want to override the auto-generated name
+ */
+export const ALL_ROUTES_OBJECT = [
+  ROOT_NAVIGATOR_ROUTES,
+  AUTH_STACK_ROUTES,
+  MAIN_TAB_ROUTES,
+  MANAGE_ASSETS_ROUTES,
+  SETTINGS_ROUTES,
+  MANAGE_WALLETS_ROUTES,
+  BUY_XLM_ROUTES,
+  SEND_PAYMENT_ROUTES,
+  SWAP_ROUTES,
+] as const;
 
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;

@@ -7,7 +7,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { VISUAL_DELAY_MS } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useWalletKitStore } from "ducks/walletKit";

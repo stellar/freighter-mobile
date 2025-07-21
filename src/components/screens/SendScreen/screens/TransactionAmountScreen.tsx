@@ -13,7 +13,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {

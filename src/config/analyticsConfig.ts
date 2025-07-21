@@ -1,10 +1,13 @@
+import { ALL_ROUTES_OBJECT } from "config/routes";
+
 /**
- * Analytics events enum for tracking user behavior across the Freighter mobile app.
+ * Analytics Event Definitions
  *
- * Events are aligned with Freighter extension to ensure cross-platform consistency.
+ * These events define all analytics tracking points in the Freighter mobile app.
+ * Events are organized by category for better maintainability.
  */
 export enum AnalyticsEvent {
-  // Screen Navigation Events
+  // Screen Navigation Events (Auto-generated from routes)
   VIEW_WELCOME = "loaded screen: welcome",
   VIEW_CHOOSE_PASSWORD = "loaded screen: account creator",
   VIEW_RECOVERY_PHRASE_ALERT = "loaded screen: mnemonic phrase alert",
@@ -50,7 +53,7 @@ export enum AnalyticsEvent {
   VIEW_SEARCH_ASSET = "loaded screen: search asset",
   VIEW_ADD_ASSET_MANUALLY = "loaded screen: add asset manually",
 
-  // User Action Events
+  // User Action Events (Manual tracking)
   CREATE_PASSWORD_SUCCESS = "account creator: create password: success",
   CREATE_PASSWORD_FAIL = "account creator: create password: error",
   VIEWED_RECOVERY_PHRASE = "account creator: viewed phrase",
@@ -58,8 +61,8 @@ export enum AnalyticsEvent {
   CONFIRM_RECOVERY_PHRASE_FAIL = "account creator: confirm phrase: error confirming",
 
   // Authentication Events
-  RE_AUTH_SUCCESS = "re-auth: success", // Used for both confirm password and unlock
-  RE_AUTH_FAIL = "re-auth: error", // Used for both confirm password and unlock
+  RE_AUTH_SUCCESS = "re-auth: success",
+  RE_AUTH_FAIL = "re-auth: error",
   RECOVER_ACCOUNT_SUCCESS = "recover account: success",
   RECOVER_ACCOUNT_FAIL = "recover account: error",
 
@@ -122,3 +125,157 @@ export enum AnalyticsEvent {
   QR_SCAN_SUCCESS = "mobile: qr scan success",
   QR_SCAN_ERROR = "mobile: qr scan error",
 }
+
+/**
+ * Route-to-Analytics Mapping Configuration
+ *
+ * This configuration defines how routes are mapped to analytics events.
+ * The system uses automatic transformation with manual overrides for special cases.
+ */
+
+/**
+ * Automatically identifies routes that should NOT have analytics events.
+ * Filters by "Stack" suffix to exclude navigator-level routes.
+ */
+const getRoutesWithoutAnalytics = (): Set<string> => {
+  const excludedRoutes = new Set<string>();
+
+  ALL_ROUTES_OBJECT.forEach((routeObject) => {
+    Object.values(routeObject).forEach((routeName) => {
+      // Exclude navigator-level routes (end with "Stack")
+      if (typeof routeName === "string" && routeName.endsWith("Stack")) {
+        excludedRoutes.add(routeName);
+      }
+    });
+  });
+
+  return excludedRoutes;
+};
+
+// Routes that should NOT have analytics events (automatically generated)
+export const ROUTES_WITHOUT_ANALYTICS = getRoutesWithoutAnalytics();
+
+/**
+ * Manual overrides for routes that don't follow the auto-transformation pattern.
+ *
+ * These are special cases where the automatic transformation doesn't produce
+ * the correct analytics event name. Keep this list minimal!
+ */
+export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
+  // Auth flow overrides (extension uses different names)
+  ChoosePasswordScreen: AnalyticsEvent.VIEW_CHOOSE_PASSWORD,
+  RecoveryPhraseAlertScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT,
+  RecoveryPhraseScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE,
+  ValidateRecoveryPhraseScreen: AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE,
+  ImportWalletScreen: AnalyticsEvent.VIEW_IMPORT_WALLET,
+  LockScreen: AnalyticsEvent.VIEW_LOCK_SCREEN,
+
+  // Main tab overrides (extension uses different names)
+  Home: AnalyticsEvent.VIEW_HOME,
+  History: AnalyticsEvent.VIEW_HISTORY,
+  Discovery: AnalyticsEvent.VIEW_DISCOVERY,
+
+  // Root navigator overrides
+  AccountQRCodeScreen: AnalyticsEvent.VIEW_ACCOUNT_QR_CODE,
+  TokenDetailsScreen: AnalyticsEvent.VIEW_TOKEN_DETAILS,
+
+  // Send payment overrides (extension uses different names)
+  SendSearchContactsScreen: AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS,
+  TransactionAmountScreen: AnalyticsEvent.VIEW_SEND_AMOUNT,
+  TransactionMemoScreen: AnalyticsEvent.VIEW_SEND_MEMO,
+  TransactionFeeScreen: AnalyticsEvent.VIEW_SEND_FEE,
+  TransactionTimeoutScreen: AnalyticsEvent.VIEW_SEND_TIMEOUT,
+
+  // Settings overrides
+  ChangeNetworkScreen: AnalyticsEvent.VIEW_CHANGE_NETWORK,
+  ShareFeedbackScreen: AnalyticsEvent.VIEW_SHARE_FEEDBACK,
+  ShowRecoveryPhraseScreen: AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE,
+
+  // Buy XLM override
+  BuyXLMScreen: AnalyticsEvent.VIEW_BUY_XLM,
+};
+
+/**
+ * Transform route name to analytics event name automatically.
+ *
+ * This function implements the core transformation logic that converts
+ * React Navigation route names to analytics event names.
+ *
+ * Examples:
+ * - "WelcomeScreen" → "loaded screen: welcome"
+ * - "SettingsScreen" → "loaded screen: settings"
+ * - "SwapAmountScreen" → "loaded screen: swap amount"
+ */
+export const transformRouteToEventName = (routeName: string): string => {
+  // Remove "Screen" suffix if present
+  const baseName = routeName.replace(/Screen$/, "");
+
+  // Convert PascalCase to lowercase with spaces
+  // "SwapAmount" → "swap amount"
+  const withSpaces = baseName
+    .replace(/([A-Z])/g, " $1") // Add space before capitals
+    .toLowerCase()
+    .trim();
+
+  return `loaded screen: ${withSpaces}`;
+};
+
+/**
+ * Processes a single route for analytics mapping.
+ * Uses automatic transformation unless there's a manual override.
+ */
+export const processRouteForAnalytics = (
+  routeName: string,
+): AnalyticsEvent | null => {
+  // Check exclusion list first
+  if (ROUTES_WITHOUT_ANALYTICS.has(routeName)) {
+    return null;
+  }
+
+  // Check manual overrides first
+  if (CUSTOM_ROUTE_MAPPINGS[routeName]) {
+    return CUSTOM_ROUTE_MAPPINGS[routeName];
+  }
+
+  // Use automatic transformation for all other routes
+  const autoEvent = transformRouteToEventName(routeName);
+
+  return autoEvent as AnalyticsEvent;
+};
+
+/**
+ * Generates the complete route-to-analytics mapping using ALL_ROUTE_OBJECTS.
+ *
+ * This function automatically discovers all routes and creates analytics mappings
+ * without requiring manual maintenance of route lists.
+ */
+export const generateRouteToAnalyticsMapping = () => {
+  const mapping: Record<string, AnalyticsEvent | null> = {};
+
+  ALL_ROUTES_OBJECT.forEach((routeObject) => {
+    Object.values(routeObject).forEach((routeName) => {
+      if (typeof routeName === "string") {
+        const analyticsEvent = processRouteForAnalytics(routeName);
+        mapping[routeName] = analyticsEvent;
+      }
+    });
+  });
+
+  return mapping;
+};
+
+/**
+ * Pre-generated mapping of routes to analytics events.
+ *
+ * This mapping is generated once at module load time and provides
+ * O(1) lookup performance for route-to-analytics conversion.
+ */
+export const ROUTE_TO_ANALYTICS_EVENT_MAP = generateRouteToAnalyticsMapping();
+
+/**
+ * Type-safe route discovery for compile-time checking.
+ *
+ * This type ensures that all route objects are properly typed
+ * and can be used for analytics mapping.
+ */
+export type RouteObject = (typeof ALL_ROUTES_OBJECT)[number];

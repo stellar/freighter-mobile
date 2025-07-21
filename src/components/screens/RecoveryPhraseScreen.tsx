@@ -5,7 +5,7 @@ import RecoveryPhraseSkipBottomSheet from "components/screens/RecoveryPhraseSkip
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";

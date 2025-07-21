@@ -1,5 +1,5 @@
 import { NavigationState, PartialState } from "@react-navigation/native";
-import { getAnalyticsEventForRoute } from "config/analyticsRoutes";
+import { processRouteForAnalytics } from "config/analyticsConfig";
 import { useRef } from "react";
 import { track } from "services/analytics/core";
 
@@ -35,7 +35,7 @@ export const useNavigationAnalytics = () => {
     const currentRouteName = getActiveRouteName(state);
 
     if (previousRouteName !== currentRouteName) {
-      const event = getAnalyticsEventForRoute(currentRouteName);
+      const event = processRouteForAnalytics(currentRouteName);
 
       if (event) {
         track(event);

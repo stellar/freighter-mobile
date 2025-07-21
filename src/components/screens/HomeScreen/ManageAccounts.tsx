@@ -3,7 +3,7 @@ import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import BottomSheet from "components/BottomSheet";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   MainTabStackParamList,
   RootStackParamList,

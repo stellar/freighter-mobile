@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 
 // -----------------------------------------------------------------------------
 // CORE TYPES

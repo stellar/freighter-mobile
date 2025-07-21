@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { TransactionType } from "services/analytics/types";
 
 describe("Analytics Service", () => {

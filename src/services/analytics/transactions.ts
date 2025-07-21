@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from "config/analyticsEvents";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { track } from "services/analytics/core";
 import type {
   SignedTransactionEvent,
