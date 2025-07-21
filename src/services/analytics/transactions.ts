@@ -60,17 +60,6 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   });
 };
 
-export const trackSendPaymentTypeSelected = (
-  paymentType: "payment" | "pathPayment",
-): void => {
-  const event =
-    paymentType === "payment"
-      ? AnalyticsEvent.SEND_PAYMENT_TYPE_PAYMENT
-      : AnalyticsEvent.SEND_PAYMENT_TYPE_PATH_PAYMENT;
-
-  track(event, { paymentType });
-};
-
 // -----------------------------------------------------------------------------
 // ASSET MANAGEMENT ANALYTICS
 // -----------------------------------------------------------------------------

@@ -14,10 +14,8 @@ import {
   trackReAuthFail,
   trackCopyPublicKey,
   trackSendPaymentSuccess,
-  trackSendPaymentPathPaymentSuccess,
   trackSwapSuccess,
   trackTransactionError,
-  trackSendPaymentTypeSelected,
   trackCopyBackupPhrase,
   trackQRScanSuccess,
   trackQRScanError,
@@ -48,10 +46,8 @@ export interface AnalyticsInstance {
   readonly trackSimulationError: typeof trackSimulationError;
   readonly trackCopyPublicKey: typeof trackCopyPublicKey;
   readonly trackSendPaymentSuccess: typeof trackSendPaymentSuccess;
-  readonly trackSendPaymentPathPaymentSuccess: typeof trackSendPaymentPathPaymentSuccess;
   readonly trackSwapSuccess: typeof trackSwapSuccess;
   readonly trackTransactionError: typeof trackTransactionError;
-  readonly trackSendPaymentTypeSelected: typeof trackSendPaymentTypeSelected;
   readonly trackCopyBackupPhrase: typeof trackCopyBackupPhrase;
   readonly trackQRScanSuccess: typeof trackQRScanSuccess;
   readonly trackQRScanError: typeof trackQRScanError;
@@ -105,10 +101,8 @@ export const analytics: AnalyticsInstance = {
   trackSimulationError,
   trackCopyPublicKey,
   trackSendPaymentSuccess,
-  trackSendPaymentPathPaymentSuccess,
   trackSwapSuccess,
   trackTransactionError,
-  trackSendPaymentTypeSelected,
   trackCopyBackupPhrase,
   trackQRScanSuccess,
   trackQRScanError,
