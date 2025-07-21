@@ -3,7 +3,7 @@ import { getDomainFromUrl } from "helpers/browser";
 
 interface FindMatchedProtocolParams {
   protocols: DiscoverProtocol[];
-  searchName: string;
+  searchName?: string;
   searchUrl?: string;
 }
 
@@ -18,7 +18,9 @@ export const findMatchedProtocol = ({
   searchUrl,
 }: FindMatchedProtocolParams): DiscoverProtocol | undefined =>
   protocols.find(({ name, websiteUrl }) => {
-    const matchedName = searchName.toLowerCase().includes(name.toLowerCase());
-    const matchedDomain = searchUrl?.includes(getDomainFromUrl(websiteUrl));
+    const matchedName =
+      searchName?.toLowerCase().includes(name.toLowerCase()) || false;
+    const matchedDomain =
+      searchUrl?.includes(getDomainFromUrl(websiteUrl)) || false;
     return matchedName || matchedDomain;
   });
