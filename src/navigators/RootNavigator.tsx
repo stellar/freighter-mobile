@@ -32,6 +32,7 @@ import {
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
+import { analytics } from "services/analytics";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -46,6 +47,11 @@ export const RootNavigator = () => {
   const { authStatus, getAuthStatus } = useAuthenticationStore();
   const [initializing, setInitializing] = useState(true);
   const { t } = useAppTranslation();
+
+  // Identify user for analytics (device-unique, random ID)
+  useEffect(() => {
+    analytics.identifyUser();
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
