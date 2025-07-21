@@ -1,11 +1,14 @@
 /* eslint-disable react/no-unstable-nested-components */
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { AssetIcon } from "components/AssetIcon";
-import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatAssetAmount,
+  formatFiatAmount,
+  formatPercentageAmount,
+} from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -101,15 +104,12 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
       percentageChange !== undefined && percentageChange !== null;
 
     let changeColor = themeColors.foreground.secondary;
-    let ChangeIcon = null;
 
     if (hasPercentageChange) {
       if (percentageChange.isGreaterThan(0)) {
         changeColor = themeColors.status.success;
-        ChangeIcon = Icon.ArrowUp;
-      } else if (percentageChange.isLessThan(0)) {
-        changeColor = themeColors.status.error;
-        ChangeIcon = Icon.ArrowDown;
+      } else {
+        changeColor = themeColors.text.secondary;
       }
     }
 
@@ -120,11 +120,8 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         </Display>
         {hasPercentageChange && (
           <View className="flex-row items-center gap-1">
-            {ChangeIcon && <ChangeIcon size={16} color={changeColor} />}
             <Text md medium color={changeColor}>
-              {t("tokenDetailsScreen.priceChange", {
-                percentage: Math.abs(percentageChange.toNumber()).toFixed(2),
-              })}
+              {formatPercentageAmount(percentageChange)}
             </Text>
           </View>
         )}

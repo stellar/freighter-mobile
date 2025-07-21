@@ -1796,6 +1796,13 @@
   dependencies:
     "@noble/hashes" "1.8.0"
 
+"@noble/curves@^1.9.2":
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.9.3.tgz#822c61359875a4d3bfdacaa724ceca6c5e6708c3"
+  integrity sha512-NiHFh8qtZRREtY0Bpup+xpmLnB0bn9UAtj8CARBc2x1zjpVLDC84u+Bvy2+uaSgA3AmMP9zsacMZT1echgVAdQ==
+  dependencies:
+    "@noble/hashes" "1.8.0"
+
 "@noble/hashes@1.7.0":
   version "1.7.0"
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.7.0.tgz#5d9e33af2c7d04fee35de1519b80c958b2e35e39"
@@ -2622,19 +2629,17 @@
   optionalDependencies:
     sodium-native "^4.3.3"
 
-"@stellar/stellar-base@^13.0.1":
-  version "13.0.1"
-  resolved "https://registry.yarnpkg.com/@stellar/stellar-base/-/stellar-base-13.0.1.tgz#0897f77349ded61e838c0d55519f36f720efe3c9"
-  integrity sha512-Xbd12mc9Oj/130Tv0URmm3wXG77XMshZtZ2yNCjqX5ZbMD5IYpbBs3DVCteLU/4SLj/Fnmhh1dzhrQXnk4r+pQ==
+"@stellar/stellar-base@^14.0.0-rc.2":
+  version "14.0.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@stellar/stellar-base/-/stellar-base-14.0.0-rc.2.tgz#51251177f5a3b2023b99f0977aae17e2ecea1263"
+  integrity sha512-jzDJANrh8hcW3yWikS0At6MWOmf2dCD2cwWS1o0nZLRDj3tFMCrIcOGmw9uB7Widomdu4DzKHetpgn+XB1prpg==
   dependencies:
+    "@noble/curves" "^1.9.2"
     "@stellar/js-xdr" "^3.1.2"
     base32.js "^0.1.0"
-    bignumber.js "^9.1.2"
+    bignumber.js "^9.3.0"
     buffer "^6.0.3"
     sha.js "^2.3.6"
-    tweetnacl "^1.0.3"
-  optionalDependencies:
-    sodium-native "^4.3.0"
 
 "@stellar/stellar-sdk@13.0.0-beta.1":
   version "13.0.0-beta.1"
@@ -2650,14 +2655,14 @@
     toml "^3.0.0"
     urijs "^1.19.1"
 
-"@stellar/stellar-sdk@^13.1.0":
-  version "13.1.0"
-  resolved "https://registry.yarnpkg.com/@stellar/stellar-sdk/-/stellar-sdk-13.1.0.tgz#5eefee4fd340163f4fca656a97ebc5434b6eb6c5"
-  integrity sha512-ARQkUdyGefXdTgwSF0eONkzv/geAqUfyfheJ9Nthz6GAr5b41fNwWW9UtE8JpXC4IpvE3t5elIUN5hKJzASN9w==
+"@stellar/stellar-sdk@^14.0.0-rc.3":
+  version "14.0.0-rc.3"
+  resolved "https://registry.yarnpkg.com/@stellar/stellar-sdk/-/stellar-sdk-14.0.0-rc.3.tgz#f3410578a6609e852e57532c95d341edd478c401"
+  integrity sha512-RI+8uPYAHvauuwmGNbofv9e6Q2LnUjdqUwRCBSN7ZCEWH48DA/bAL6u+X7+WcF13PHsZPeNlp5bHZ5xHbzXdYA==
   dependencies:
-    "@stellar/stellar-base" "^13.0.1"
-    axios "^1.7.9"
-    bignumber.js "^9.1.2"
+    "@stellar/stellar-base" "^14.0.0-rc.2"
+    axios "^1.8.4"
+    bignumber.js "^9.3.1"
     eventsource "^2.0.2"
     feaxios "^0.0.23"
     randombytes "^2.1.0"
@@ -3809,10 +3814,19 @@ axe-core@^4.10.0:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.10.3.tgz#04145965ac7894faddbac30861e5d8f11bfd14fc"
   integrity sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==
 
-axios@^1.7.7, axios@^1.7.9, axios@^1.8.3:
+axios@^1.7.7, axios@^1.8.3:
   version "1.8.4"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.8.4.tgz#78990bb4bc63d2cae072952d374835950a82f447"
   integrity sha512-eBSYY4Y68NNlHbHBMdeDmKNtDgXWhQsJcGqzO3iLUM0GraQFSS9cVgPX5I9b3lbdFKyYoAEGAZF1DwhTaljNAw==
+  dependencies:
+    follow-redirects "^1.15.6"
+    form-data "^4.0.0"
+    proxy-from-env "^1.1.0"
+
+axios@^1.8.4:
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.10.0.tgz#af320aee8632eaf2a400b6a1979fa75856f38d54"
+  integrity sha512-/1xYAC4MP/HEG+3duIhFr4ZQXR4sQXOIe+o6sdqzeykGLx6Upp/1p8MHqhINOvGeP7xyNHe7tsiJByc4SSVUxw==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.0"
@@ -4045,6 +4059,11 @@ bignumber.js@^9.1.2:
   version "9.1.2"
   resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.1.2.tgz#b7c4242259c008903b13707983b5f4bbd31eda0c"
   integrity sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==
+
+bignumber.js@^9.3.0, bignumber.js@^9.3.1:
+  version "9.3.1"
+  resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.3.1.tgz#759c5aaddf2ffdc4f154f7b493e1c8770f88c4d7"
+  integrity sha512-Ko0uX15oIUS7wJ3Rb30Fs6SkVbLmPBAKdlm7q9+ak9bbIeFf0MwuBsQV6z7+X768/cHsfg+WlysDWJcmthjsjQ==
 
 binary-extensions@^2.0.0:
   version "2.3.0"
@@ -10594,7 +10613,7 @@ snake-case@^3.0.4:
     dot-case "^3.0.4"
     tslib "^2.0.3"
 
-sodium-native@^4.1.1, sodium-native@^4.3.0, sodium-native@^4.3.3:
+sodium-native@^4.1.1, sodium-native@^4.3.3:
   version "4.3.3"
   resolved "https://registry.yarnpkg.com/sodium-native/-/sodium-native-4.3.3.tgz#fae4866b52366f5e6cc1b7ae8c8a71673d50c7df"
   integrity sha512-OnxSlN3uyY8D0EsLHpmm2HOFmKddQVvEMmsakCrXUzSd8kjjbzL413t4ZNF3n0UxSwNgwTyUvkmZHTfuCeiYSw==

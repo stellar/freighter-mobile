@@ -332,14 +332,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center py-[24px] max-xs:py-[16px] px-6">
+        <View className="items-center py-[16px] max-xs:py-[12px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
               medium
               adjustsFontSizeToFit
               numberOfLines={1}
-              minimumFontScale={0.6}
+              minimumFontScale={0.8}
             >
               {sourceAmount}{" "}
               <RNText style={{ color: themeColors.text.secondary }}>
@@ -401,7 +401,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
+        <View className="flex-1 items-center mt-[16px] max-xs:mt-[12px] gap-[20px] max-xs:gap-[16px]">
           <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
@@ -424,12 +424,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               </Button>
             </View>
           </View>
-
-          <View className="flex-1 justify-center">
+          <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-
-          <View className="mb-4">
+          <View className="w-full mt-auto mb-8 max-xs:mb-6">
             <Button
               tertiary
               xl
