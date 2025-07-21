@@ -94,6 +94,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     addAssetBottomSheetModalRef.current?.dismiss();
   };
 
+  const handleCancelAssetAddition = () => {
+    if (selectedAsset) {
+      analytics.trackAddTokenRejected(selectedAsset.assetCode);
+    }
+
+    addAssetBottomSheetModalRef.current?.dismiss();
+  };
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
@@ -119,7 +127,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
             <AddAssetBottomSheetContent
               asset={selectedAsset}
               account={account}
-              onCancel={() => addAssetBottomSheetModalRef.current?.dismiss()}
+              onCancel={handleCancelAssetAddition}
               onAddAsset={handleConfirmAssetAddition}
               isAddingAsset={isAddingAsset}
             />
