@@ -12,10 +12,11 @@ import { NETWORKS } from "config/constants";
  * - "SettingsScreen" → "loaded screen: settings"
  *
  * ## Naming Guidelines:
- * 1. Use PascalCase: "SendPaymentScreen" ✅
- * 2. End with "Screen": "WelcomeScreen" ✅
- * 3. Be descriptive: "TransactionAmountScreen" ✅
- * 4. Avoid abbreviations: "SendPaymentScreen" not "SendPayScreen" ✅
+ * 1. Check the existing routes to keep naming consistent ✅
+ * 2. Use PascalCase: "SendPaymentScreen" ✅
+ * 3. End with "Screen": "WelcomeScreen" ✅
+ * 4. Be descriptive: "TransactionAmountScreen" ✅
+ * 5. Avoid abbreviations: "SendPaymentScreen" not "SendPayScreen" ✅
  *
  *
  * ## Adding New Routes:
