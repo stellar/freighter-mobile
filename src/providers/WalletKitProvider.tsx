@@ -119,6 +119,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
 
+    if (proposalEvent) {
+      analytics.trackGrantAccessFail(
+        proposalEvent.params.proposer.metadata.url,
+        "user_rejected",
+      );
+    }
+
     setTimeout(() => {
       setIsConnecting(false);
       setProposalEvent(null);
@@ -238,6 +245,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           sessionProposal,
           message: t("walletKit.userNotAuthenticated"),
         });
+
+        analytics.trackGrantAccessFail(
+          sessionProposal.params.proposer.metadata.url,
+          "user_not_authenticated",
+        );
 
         clearEvent();
         return;

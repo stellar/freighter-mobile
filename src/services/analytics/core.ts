@@ -96,7 +96,7 @@ export const setAnalyticsEnabled = (enabled: boolean): void => {
  * Builds common context data for all events.
  *
  * Context includes both static app data and dynamic mobile connectivity information:
- * - network: Stellar network (TESTNET, MAINNET, etc.)
+ * - network: Stellar network (TESTNET, PUBLIC, FUTURENET, etc.)
  * - connectionType: Internet connectivity (wifi, cellular, bluetooth, none, etc.)
  * - effectiveType: Cellular quality (slow-2g, 2g, 3g, 4g) when on cellular
  */
@@ -107,7 +107,7 @@ const buildCommonContext = (): Record<string, unknown> => {
   const context: Record<string, unknown> = {
     platform: Platform.OS,
     platformVersion: Platform.Version,
-    network: network.toUpperCase(), // Stellar network (TESTNET, MAINNET)
+    network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)
     connectionType, // Internet connectivity (wifi, cellular, etc.)
     appVersion: getVersion(),
     buildVersion: getBuildNumber(),
@@ -133,7 +133,7 @@ const dispatchUnthrottled = (
 ): void => {
   const { isEnabled } = useAnalyticsStore.getState();
 
-  const eventData = ANALYTICS_CONFIG.INCLUDE_PLATFORM_CONTEXT
+  const eventData = ANALYTICS_CONFIG.INCLUDE_COMMON_CONTEXT
     ? { ...buildCommonContext(), ...props }
     : props;
 

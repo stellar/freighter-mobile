@@ -37,6 +37,6 @@ export const DEBUG_CONFIG = {
 
 export const ANALYTICS_CONFIG = {
   DEFAULT_ENABLED: false,
-  INCLUDE_PLATFORM_CONTEXT: true,
+  INCLUDE_COMMON_CONTEXT: true,
   THROTTLE_DUPLICATE_EVENTS: true,
 } as const;
