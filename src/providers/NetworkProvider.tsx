@@ -19,7 +19,7 @@ export const NetworkProvider = ({ children }: Props) => {
 
     // Initial network check to consume initial "null" values
     // and avoid UI glitches due to initial network state
-    NetInfo.fetch().then(setNetworkInfo);
+    NetInfo.fetch();
 
     // We still need to wait a while before subscribing to the network change event
     // otherwise we could get the initial transient "null" values which would cause a UI glitch
