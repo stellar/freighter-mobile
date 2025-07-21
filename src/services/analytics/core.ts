@@ -47,10 +47,6 @@ export const initAnalytics = (): void => {
     const { isEnabled } = useAnalyticsStore.getState();
     amplitude.setOptOut(!isEnabled);
 
-    logger.debug(
-      DEBUG_CONFIG.LOG_PREFIX,
-      `Initialized with key: ${AMPLITUDE_API_KEY.slice(0, 8)}...`,
-    );
     logger.debug(DEBUG_CONFIG.LOG_PREFIX, `Analytics enabled: ${isEnabled}`);
 
     hasInitialised = true;

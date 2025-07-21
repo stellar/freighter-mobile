@@ -62,9 +62,7 @@ export const getAnalyticsDebugInfo = (): AnalyticsDebugInfo => {
     userId,
     hasInitialized: hasInit,
     environment: __DEV__ ? "development" : "production",
-    amplitudeKey: AMPLITUDE_API_KEY
-      ? `${AMPLITUDE_API_KEY.slice(0, 6)}...`
-      : DEBUG_CONSTANTS.API_KEY_NOT_SET,
+    amplitudeKey: AMPLITUDE_API_KEY ? "[set]" : DEBUG_CONSTANTS.API_KEY_NOT_SET,
     isSendingToAmplitude,
     recentEvents: [...recentEvents],
   };
