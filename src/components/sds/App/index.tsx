@@ -1,6 +1,10 @@
 import { APP_DATA } from "components/sds/App/data";
 import { Text } from "components/sds/Typography";
-import React, { useState } from "react";
+import { useProtocolsStore } from "ducks/protocols";
+import { pxValue } from "helpers/dimensions";
+import { findMatchedProtocol } from "helpers/protocols";
+import useColors from "hooks/useColors";
+import React, { useState, useMemo } from "react";
 import { Image, View } from "react-native";
 import { SvgUri } from "react-native-svg";
 
@@ -30,15 +34,15 @@ export interface AppProps {
 }
 
 /**
- * Size mapping for different App component sizes
- * @constant
- * @type {Record<AppSize, string>}
+ * Size mapping for different App component sizes, we need to use numbers here
+ * because SvgUri does not support className props
  */
 const sizeMap = {
-  sm: "w-6 h-6",
-  md: "w-8 h-8",
-  lg: "w-10 h-10",
-  xl: "w-12 h-12",
+  sm: pxValue(24),
+  md: pxValue(32),
+  lg: pxValue(40),
+  xl: pxValue(48),
+  borderRadius: pxValue(8),
 };
 
 /**
@@ -47,10 +51,16 @@ const sizeMap = {
  * @param {string} appName - The name of the application
  * @returns {string | undefined} The matching app data key or undefined if no match found
  */
-const getAppDataKey = (appName: string): string | undefined => {
-  const appDataKey = Object.keys(APP_DATA).find((key) =>
-    appName.toLowerCase().includes(APP_DATA[key].name.toLowerCase()),
-  );
+const getAppDataKey = (
+  appName: string,
+  favicon?: string,
+): string | undefined => {
+  const appDataKey = Object.keys(APP_DATA).find((key) => {
+    const appDataName = APP_DATA[key].name.toLowerCase();
+    const matchedName = appName.toLowerCase().includes(appDataName);
+    const matchedFavicon = favicon?.toLowerCase().includes(appDataName);
+    return matchedName || matchedFavicon;
+  });
   return appDataKey;
 };
 
@@ -65,14 +75,23 @@ const getAppDataKey = (appName: string): string | undefined => {
  */
 const AppInitials: React.FC<{
   appName: string;
+  color: string;
   size: AppSize;
   testID?: string;
-}> = ({ appName, size, testID }) => (
+}> = ({ appName, color, size, testID }) => (
   <View
     testID={testID}
-    className={`${sizeMap[size]} border border-border-primary rounded-full items-center justify-center`}
+    style={{
+      width: sizeMap[size],
+      height: sizeMap[size],
+      borderWidth: 1,
+      borderColor: color,
+      borderRadius: sizeMap.borderRadius,
+      alignItems: "center",
+      justifyContent: "center",
+    }}
   >
-    <Text sm bold secondary>
+    <Text sm bold color={color}>
       {appName.slice(0, 2)}
     </Text>
   </View>
@@ -104,15 +123,33 @@ export const App: React.FC<AppProps> = ({
   size = "md",
   testID,
 }) => {
-  let imageUri = favicon;
+  const { themeColors } = useColors();
+  const { protocols } = useProtocolsStore();
   const [imageError, setImageError] = useState(false);
 
-  // Give priority to the app data image in case it exists
-  const appDataKey = getAppDataKey(appName);
-  const appData = APP_DATA[appDataKey || ""];
-  if (appData) {
-    imageUri = appData.src;
-  }
+  // Memoize imageUri calculation for performance
+  const imageUri = useMemo(() => {
+    // Give priority to the local app data image
+    const appDataKey = getAppDataKey(appName, favicon);
+    const appData = APP_DATA[appDataKey || ""];
+    if (appData) {
+      return appData.src;
+    }
+
+    // Try to relate with some of the known protocols
+    const matchedProtocolSite = findMatchedProtocol({
+      protocols,
+      searchName: appName,
+      searchUrl: favicon,
+    });
+    if (matchedProtocolSite) {
+      return matchedProtocolSite.iconUrl;
+    }
+
+    // Fallback to the original favicon url
+    return favicon;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appName, favicon, protocols]);
 
   // If there is an image and no error, render it
   if (imageUri && !imageError) {
@@ -121,18 +158,25 @@ export const App: React.FC<AppProps> = ({
     return (
       <View
         testID={testID}
-        className={`${sizeMap[size]} rounded-lg overflow-hidden`}
+        style={{
+          width: sizeMap[size],
+          height: sizeMap[size],
+          borderRadius: sizeMap.borderRadius,
+          overflow: "hidden",
+        }}
       >
         {isSvg ? (
           <SvgUri
             uri={imageUri}
-            className="w-full h-full"
+            width={sizeMap[size]}
+            height={sizeMap[size]}
+            preserveAspectRatio="xMidYMid meet"
             onError={() => setImageError(true)}
           />
         ) : (
           <Image
             source={{ uri: imageUri }}
-            className="w-full h-full"
+            style={{ width: sizeMap[size], height: sizeMap[size] }}
             resizeMode="contain"
             onError={() => setImageError(true)}
           />
@@ -142,5 +186,12 @@ export const App: React.FC<AppProps> = ({
   }
 
   // Fallback to the app name initials
-  return <AppInitials appName={appName} size={size} testID={testID} />;
+  return (
+    <AppInitials
+      appName={appName}
+      color={themeColors.text.secondary}
+      size={size}
+      testID={testID}
+    />
+  );
 };

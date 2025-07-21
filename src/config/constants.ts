@@ -37,9 +37,7 @@ export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
 
-export const FREIGHTER_BACKEND_URL =
-  "https://freighter-backend-prd.stellar.org/api/v1";
-export const CREATE_ACCOUNT_URL =
+export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
 export enum FRIENDBOT_URLS {
@@ -229,18 +227,3 @@ export const BROWSER_CONSTANTS = {
   ANDROID_USER_AGENT:
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
 } as const;
-
-// Trending sites for DiscoveryHomepage
-export type TrendingSite = {
-  name: string;
-  url: string;
-};
-
-export const TRENDING_SITES: TrendingSite[] = [
-  { name: "StellarX", url: "https://www.stellarx.com/" },
-  { name: "StellarTerm", url: "https://stellarterm.com/" },
-  { name: "Blend", url: "https://www.blend.capital/" },
-  { name: "Aquarius", url: "https://aqua.network/" },
-  { name: "FxDAO", url: "https://app.fxdao.io/" },
-  { name: "Phoenix", url: "https://app.phoenix-hub.io/" },
-];

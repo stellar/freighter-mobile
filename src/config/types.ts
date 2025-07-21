@@ -312,3 +312,15 @@ export type CustomTokenStorage = {
     [network: string]: CustomToken[];
   };
 };
+
+/**
+ * Represents a discover protocol from the backend API
+ */
+export type DiscoverProtocol = {
+  description: string;
+  iconUrl: string;
+  name: string;
+  websiteUrl: string;
+  tags: string[];
+  isBlacklisted: boolean;
+};

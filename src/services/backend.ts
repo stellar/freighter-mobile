@@ -1,17 +1,14 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import {
-  FREIGHTER_BACKEND_URL,
-  NetworkDetails,
-  NETWORKS,
-} from "config/constants";
+import { NetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   AssetTypeWithCustomToken,
   BalanceMap,
   FormattedSearchAssetRecord,
   GetTokenDetailsParams,
+  DiscoverProtocol,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPricesMap,
@@ -19,11 +16,15 @@ import {
 import { getAssetType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
+import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
 
-// Create a dedicated API service for backend operations
+// Create dedicated API services for backend operations
 const freighterBackend = createApiService({
-  baseURL: FREIGHTER_BACKEND_URL,
+  baseURL: Config.FREIGHTER_BACKEND_URL,
+});
+const freighterBackendV2 = createApiService({
+  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 
 export type FetchBalancesResponse = {
@@ -402,4 +403,59 @@ export const simulateTokenTransfer = async (
       params.network_passphrase,
     ),
   };
+};
+
+/**
+ * Response from the protocols API
+ */
+interface ProtocolsResponse {
+  data: {
+    protocols: {
+      description: string;
+      icon_url: string;
+      name: string;
+      website_url: string;
+      tags: string[];
+      is_blacklisted: boolean;
+    }[];
+  };
+}
+
+/**
+ * Fetches trending protocols from the backend protocols endpoint
+ * @returns Promise resolving to an array of protocols
+ */
+export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
+  try {
+    const { data } =
+      await freighterBackendV2.get<ProtocolsResponse>("/protocols");
+
+    if (!data.data || !data.data.protocols) {
+      logger.error(
+        "backendApi.fetchProtocols",
+        "Invalid response from server",
+        data,
+      );
+
+      throw new Error("Invalid response from server");
+    }
+
+    // Transform the response to match our Protocol type
+    return data.data.protocols.map((protocol) => ({
+      description: protocol.description,
+      iconUrl: protocol.icon_url,
+      name: protocol.name,
+      websiteUrl: protocol.website_url,
+      tags: protocol.tags,
+      isBlacklisted: protocol.is_blacklisted,
+    }));
+  } catch (error) {
+    logger.error(
+      "backendApi.fetchProtocols",
+      "Error fetching protocols",
+      error,
+    );
+
+    throw error;
+  }
 };
