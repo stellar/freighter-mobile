@@ -3,12 +3,9 @@ describe("Backend Service - Protocol Filtering Logic", () => {
   // Import the filtering logic from the backend service
   const testFilteringLogic = (protocols: any[]) =>
     protocols.filter((protocol) => {
-      // Ensure props are not undefined when filtering
       if (
-        (protocol.is_blacklisted !== undefined &&
-          protocol.is_blacklisted === true) ||
-        (protocol.is_wc_supported !== undefined &&
-          protocol.is_wc_supported === false)
+        protocol.is_blacklisted === true ||
+        protocol.is_wc_not_supported === true
       ) {
         return false;
       }
@@ -26,7 +23,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://blacklisted.example.com",
           tags: ["blacklisted"],
           is_blacklisted: true,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
         {
           description: "Valid Protocol",
@@ -35,7 +32,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -54,7 +51,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://unsupported.example.com",
           tags: ["unsupported"],
           is_blacklisted: false,
-          is_wc_supported: false,
+          is_wc_not_supported: true,
         },
         {
           description: "Valid Protocol",
@@ -63,7 +60,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -82,7 +79,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://double.example.com",
           tags: ["double"],
           is_blacklisted: true,
-          is_wc_supported: false,
+          is_wc_not_supported: true,
         },
         {
           description: "Valid Protocol",
@@ -91,7 +88,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -110,7 +107,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://undefined.example.com",
           tags: ["undefined"],
           is_blacklisted: undefined,
-          is_wc_supported: undefined,
+          is_wc_not_supported: undefined,
         },
         {
           description: "Valid Protocol",
@@ -119,7 +116,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -139,7 +136,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://null.example.com",
           tags: ["null"],
           is_blacklisted: null,
-          is_wc_supported: null,
+          is_wc_not_supported: null,
         },
         {
           description: "Valid Protocol",
@@ -148,7 +145,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -159,7 +156,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
       expect(result[1].name).toBe("ValidProtocol");
     });
 
-    it("should include protocols with is_blacklisted: false and is_wc_supported: true", () => {
+    it("should include protocols with is_blacklisted: false and is_wc_not_supported: false", () => {
       const mockProtocols = [
         {
           description: "Valid Protocol 1",
@@ -168,7 +165,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid1.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
         {
           description: "Valid Protocol 2",
@@ -177,7 +174,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://valid2.example.com",
           tags: ["valid"],
           is_blacklisted: false,
-          is_wc_supported: true,
+          is_wc_not_supported: false,
         },
       ];
 
@@ -197,7 +194,7 @@ describe("Backend Service - Protocol Filtering Logic", () => {
           website_url: "https://undefined.example.com",
           tags: ["undefined"],
           is_blacklisted: undefined,
-          is_wc_supported: undefined,
+          is_wc_not_supported: undefined,
         },
       ];
 

@@ -651,7 +651,7 @@ export const simulateTokenTransfer = async (
  * @property {string} data.protocols[].website_url - Protocol website URL
  * @property {string[]} data.protocols[].tags - Protocol tags/categories
  * @property {boolean} [data.protocols[].is_blacklisted] - Whether protocol is blacklisted
- * @property {boolean} [data.protocols[].is_wc_supported] - Whether protocol supports WalletConnect
+ * @property {boolean} [data.protocols[].is_wc_not_supported] - Whether protocol supports WalletConnect
  */
 interface ProtocolsResponse {
   data: {
@@ -662,7 +662,7 @@ interface ProtocolsResponse {
       website_url: string;
       tags: string[];
       is_blacklisted?: boolean;
-      is_wc_supported?: boolean;
+      is_wc_not_supported?: boolean;
     }[];
   };
 }
@@ -677,7 +677,7 @@ interface ProtocolsResponse {
  * Retrieves and filters protocols from the backend:
  * - Fetches all protocols from the /protocols endpoint
  * - Filters out blacklisted protocols (is_blacklisted: true)
- * - Filters out unsupported protocols (is_wc_supported: false)
+ * - Filters out unsupported protocols (is_wc_not_supported: true)
  * - Transforms response to match DiscoverProtocol interface
  * - Handles API errors gracefully with logging
  *
@@ -708,12 +708,9 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
     // transform the response to match our Protocol type
     return data.data.protocols
       .filter((protocol) => {
-        // Ensure props are not undefined when filtering
         if (
-          (protocol.is_blacklisted !== undefined &&
-            protocol.is_blacklisted === true) ||
-          (protocol.is_wc_supported !== undefined &&
-            protocol.is_wc_supported === false)
+          protocol.is_blacklisted === true ||
+          protocol.is_wc_not_supported === true
         ) {
           return false;
         }
