@@ -446,12 +446,16 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
     return data.data.protocols
       .filter((protocol) => {
         // Ensure props are not undefined when filtering
-        return (
+        if (
           (protocol.is_blacklisted !== undefined &&
             protocol.is_blacklisted === true) ||
           (protocol.is_wc_supported !== undefined &&
             protocol.is_wc_supported === false)
-        );
+        ) {
+          return false;
+        }
+
+        return true;
       })
       .map((protocol) => ({
         description: protocol.description,
