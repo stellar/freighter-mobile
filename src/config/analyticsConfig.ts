@@ -70,7 +70,6 @@ export enum AnalyticsEvent {
 
   // Send Payment Events
   SEND_PAYMENT_SUCCESS = "send payment: payment success",
-  SEND_PAYMENT_PATH_PAYMENT_SUCCESS = "send payment: path payment success",
   SEND_PAYMENT_FAIL = "send payment: error",
   SEND_PAYMENT_SET_MAX = "send payment: set max",
   SEND_PAYMENT_TYPE_PAYMENT = "send payment: selected type payment",

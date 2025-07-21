@@ -38,17 +38,6 @@ export const trackSendPaymentSuccess = (
   });
 };
 
-export const trackSendPaymentPathPaymentSuccess = (
-  data: TransactionSuccessEvent,
-): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_PATH_PAYMENT_SUCCESS, {
-    sourceAsset: data.sourceAsset,
-    destAsset: data.destAsset,
-    allowedSlippage: data.allowedSlippage,
-    transactionType: data.transactionType,
-  });
-};
-
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     sourceAsset: data.sourceAsset,
