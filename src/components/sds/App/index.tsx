@@ -10,11 +10,7 @@ import { SvgUri } from "react-native-svg";
 
 /**
  * Available sizes for the App component
- * @typedef {Object} AppSize
- * @property {string} sm - Small size (24x24)
- * @property {string} md - Medium size (32x32)
- * @property {string} lg - Large size (40x40)
- * @property {string} xl - Extra large size (48x48)
+ * @typedef {"sm" | "md" | "lg" | "xl"} AppSize
  */
 export type AppSize = "sm" | "md" | "lg" | "xl";
 
@@ -34,8 +30,10 @@ export interface AppProps {
 }
 
 /**
- * Size mapping for different App component sizes, we need to use numbers here
- * because SvgUri does not support className props
+ * Size mapping for different App component sizes
+ * @type {Object.<string, number>}
+ * @description Maps size names to pixel values. Uses numbers instead of className
+ * because SvgUri does not support className props.
  */
 const sizeMap = {
   sm: pxValue(24),
@@ -49,6 +47,7 @@ const sizeMap = {
  * Finds the matching app data key based on the app name
  * @function getAppDataKey
  * @param {string} appName - The name of the application
+ * @param {string} [favicon] - Optional favicon URL to match against
  * @returns {string | undefined} The matching app data key or undefined if no match found
  */
 const getAppDataKey = (
@@ -69,6 +68,7 @@ const getAppDataKey = (
  * @component AppInitials
  * @param {Object} props - Component props
  * @param {string} props.appName - The name of the application
+ * @param {string} props.color - The color for the border and text
  * @param {AppSize} props.size - The size of the initials display
  * @param {string} [props.testID] - Test ID for testing purposes
  * @returns {JSX.Element} A circular view containing the first two letters of the app name
@@ -101,13 +101,15 @@ const AppInitials: React.FC<{
  * App component that displays an application icon with fallback to initials
  * @component App
  * @description
- * This component displays an application icon that can be either:
- * - A PNG image from a URL
- * - An SVG image from a URL
- * - App initials as a fallback when image loading fails
+ * This component displays an application icon with the following priority order:
+ * 1. Local app data image (if app name/URL matches known apps)
+ * 2. Protocol icon (if app name/URL matches known protocols)
+ * 3. Provided favicon URL
+ * 4. App initials as a fallback when image loading fails
  *
- * The component prioritizes the app data image if available, otherwise uses the provided favicon.
- * If both image loading fails, it falls back to displaying the first two letters of the app name.
+ * The component supports both PNG and SVG images, with automatic format detection.
+ * If image loading fails, it gracefully falls back to displaying the first two letters
+ * of the app name in a styled container.
  *
  * @param {AppProps} props - Component props
  * @returns {JSX.Element} The rendered app icon or initials
