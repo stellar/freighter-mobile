@@ -21,6 +21,7 @@ import {
   WalletKitSessionProposal,
   WalletKitSessionRequest,
 } from "ducks/walletKit";
+import { extractDappMetadata } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
@@ -217,44 +218,6 @@ export const rejectSessionRequest = async ({
 };
 
 /**
- * Retrieves all active Wallet Connect sessions for a given public key and network
- * @param {string} publicKey - The public key of the account to get sessions for
- * @param {NETWORKS} network - The network to get sessions for
- * @returns {Promise<ActiveSessions>} A promise that resolves with the active sessions
- */
-// eslint-disable-next-line @typescript-eslint/require-await
-export const getActiveSessions = (
-  publicKey: string,
-  network: NETWORKS,
-): ActiveSessions => {
-  const allActiveSessions = walletKit.getActiveSessions() as ActiveSessions;
-  const activeChain =
-    network === NETWORKS.PUBLIC
-      ? StellarRpcChains.PUBLIC
-      : StellarRpcChains.TESTNET;
-  const activeAccount = `${activeChain}:${publicKey}`;
-
-  // Let's get only the sessions related to the active account
-  const activeAccountSessions: ActiveSessions = Object.values(
-    allActiveSessions,
-  ).reduce((sessionsMap, session) => {
-    if (
-      session.namespaces.stellar.accounts.some(
-        (account) => account === activeAccount,
-      )
-    ) {
-      return {
-        ...sessionsMap,
-        [session.topic]: session,
-      };
-    }
-    return sessionsMap;
-  }, {} as ActiveSessions);
-
-  return activeAccountSessions;
-};
-
-/**
  * Approves and processes a session request from a dApp
  * @param {Object} params - The parameters object
  * @param {WalletKitSessionRequest} params.sessionRequest - The session request to approve
@@ -272,7 +235,6 @@ export const approveSessionRequest = async ({
   activeChain,
   showToast,
   t,
-  publicKey,
 }: {
   sessionRequest: WalletKitSessionRequest;
   signTransaction: (
@@ -282,7 +244,6 @@ export const approveSessionRequest = async ({
   activeChain: string;
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
-  publicKey: string;
 }) => {
   const { id, params, topic } = sessionRequest;
   const { request, chainId } = params || {};
@@ -314,18 +275,12 @@ export const approveSessionRequest = async ({
     );
     signedTransaction = signTransaction(transaction);
 
-    // Look up the dApp domain from the active session to send on analytics
-    const activeSessions = getActiveSessions(
-      publicKey,
-      activeChain as NETWORKS,
-    );
-    const session = activeSessions[topic];
-    const dappDomain = session?.peer?.metadata?.url;
+    const dappMetadata = extractDappMetadata(sessionRequest);
+    const dappDomain = dappMetadata?.url;
 
     analytics.trackSignedTransaction({
       transactionHash: transaction.hash().toString("hex"),
       transactionType: TransactionType.Classic,
-      network: activeChain,
       ...(dappDomain ? { dappDomain } : {}),
     });
   } catch (error) {
@@ -370,6 +325,44 @@ export const approveSessionRequest = async ({
 
     rejectSessionRequest({ sessionRequest, message });
   }
+};
+
+/**
+ * Retrieves all active Wallet Connect sessions for a given public key and network
+ * @param {string} publicKey - The public key of the account to get sessions for
+ * @param {NETWORKS} network - The network to get sessions for
+ * @returns {Promise<ActiveSessions>} A promise that resolves with the active sessions
+ */
+// eslint-disable-next-line @typescript-eslint/require-await
+export const getActiveSessions = (
+  publicKey: string,
+  network: NETWORKS,
+): ActiveSessions => {
+  const allActiveSessions = walletKit.getActiveSessions() as ActiveSessions;
+  const activeChain =
+    network === NETWORKS.PUBLIC
+      ? StellarRpcChains.PUBLIC
+      : StellarRpcChains.TESTNET;
+  const activeAccount = `${activeChain}:${publicKey}`;
+
+  // Let's get only the sessions related to the active account
+  const activeAccountSessions: ActiveSessions = Object.values(
+    allActiveSessions,
+  ).reduce((sessionsMap, session) => {
+    if (
+      session.namespaces.stellar.accounts.some(
+        (account) => account === activeAccount,
+      )
+    ) {
+      return {
+        ...sessionsMap,
+        [session.topic]: session,
+      };
+    }
+    return sessionsMap;
+  }, {} as ActiveSessions);
+
+  return activeAccountSessions;
 };
 
 /**

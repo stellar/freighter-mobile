@@ -119,13 +119,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
 
-    if (proposalEvent) {
-      analytics.trackGrantAccessFail(
-        proposalEvent.params.proposer.metadata.url,
-        "user_rejected",
-      );
-    }
-
     setTimeout(() => {
       setIsConnecting(false);
       setProposalEvent(null);
@@ -211,7 +204,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       activeChain,
       showToast,
       t,
-      publicKey,
     }).finally(() => {
       handleClearDappRequest();
     });

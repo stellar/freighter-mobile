@@ -15,7 +15,6 @@ export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
-    network: data.network,
   });
 };
 
