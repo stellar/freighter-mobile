@@ -72,10 +72,6 @@ export const trackAddTokenRejected = (asset?: string): void => {
   track(AnalyticsEvent.ADD_TOKEN_REJECTED, { asset });
 };
 
-export const trackManageAssetListsModify = (action: string): void => {
-  track(AnalyticsEvent.MANAGE_ASSET_LISTS_MODIFY, { action });
-};
-
 // -----------------------------------------------------------------------------
 // ACCOUNT MANAGEMENT ANALYTICS
 // -----------------------------------------------------------------------------

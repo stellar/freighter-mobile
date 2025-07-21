@@ -21,7 +21,6 @@ import {
   trackQRScanError,
   trackAddTokenConfirmed,
   trackAddTokenRejected,
-  trackManageAssetListsModify,
   trackAccountScreenImportAccountFail,
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
@@ -55,7 +54,6 @@ export interface AnalyticsInstance {
   // Asset management analytics
   readonly trackAddTokenConfirmed: typeof trackAddTokenConfirmed;
   readonly trackAddTokenRejected: typeof trackAddTokenRejected;
-  readonly trackManageAssetListsModify: typeof trackManageAssetListsModify;
 
   // Account management analytics
   readonly trackAccountScreenImportAccountFail: typeof trackAccountScreenImportAccountFail;
@@ -108,7 +106,6 @@ export const analytics: AnalyticsInstance = {
   trackQRScanError,
   trackAddTokenConfirmed,
   trackAddTokenRejected,
-  trackManageAssetListsModify,
   trackAccountScreenImportAccountFail,
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
