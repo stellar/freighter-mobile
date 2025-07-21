@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CoreTypes } from "@walletconnect/types";
 import {
   WalletKitEvent,
   WalletKitEventTypes,
-  WalletKitSessionRequest,
+  useWalletKitStore,
 } from "ducks/walletKit";
 import { useMemo } from "react";
 
@@ -19,65 +18,56 @@ export const emptyMetadata: CoreTypes.Metadata = {
 };
 
 /**
- * Pure utility to extract dApp metadata from a WalletKit event or session request.
+ * Pure utility to extract dApp metadata from a WalletKit event and activeSessions map.
  */
 export function extractDappMetadata(
-  eventOrRequest: WalletKitEvent | WalletKitSessionRequest | null,
-): CoreTypes.Metadata {
-  if (!eventOrRequest) return emptyMetadata;
+  event: WalletKitEvent | null,
+  activeSessions: Record<
+    string,
+    { peer?: { metadata?: CoreTypes.Metadata }; topic?: string }
+  > = {},
+): CoreTypes.Metadata | null {
+  if (!event) {
+    return null;
+  }
 
-  if ("type" in eventOrRequest) {
-    const event = eventOrRequest;
-    if (event.type === WalletKitEventTypes.NONE) {
-      return emptyMetadata;
-    }
-
-    if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
-      return "params" in event
-        ? event.params?.proposer?.metadata
-        : emptyMetadata;
-    }
-
-    if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
-      const maybeMetadata = (
-        event as unknown as {
-          params?: { request?: { params?: { metadata?: unknown } } };
-        }
-      ).params?.request?.params?.metadata;
-      if (maybeMetadata && typeof maybeMetadata === "object") {
-        return maybeMetadata as CoreTypes.Metadata;
-      }
-
-      const proposerMetadata = (
-        event as unknown as { params?: { proposer?: { metadata?: unknown } } }
-      ).params?.proposer?.metadata;
-      if (proposerMetadata && typeof proposerMetadata === "object") {
-        return proposerMetadata as CoreTypes.Metadata;
-      }
-
-      return emptyMetadata;
-    }
-
+  if (event.type === WalletKitEventTypes.NONE) {
     return emptyMetadata;
   }
 
-  // If it's a WalletKitSessionRequest
-  const maybeMetadata = (
-    eventOrRequest as unknown as {
-      params?: { request?: { params?: { metadata?: unknown } } };
-    }
-  ).params?.request?.params?.metadata;
-  if (maybeMetadata && typeof maybeMetadata === "object") {
-    return maybeMetadata as CoreTypes.Metadata;
+  if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
+    return "params" in event
+      ? (event.params?.proposer?.metadata ?? emptyMetadata)
+      : emptyMetadata;
   }
 
-  const proposerMetadata = (
-    eventOrRequest as unknown as {
-      params?: { proposer?: { metadata?: unknown } };
+  if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
+    // Try to find by event.topic as key
+    if ("topic" in event && event.topic) {
+      const matchedSessionByKey = activeSessions[event.topic];
+      if (
+        matchedSessionByKey &&
+        matchedSessionByKey.peer &&
+        matchedSessionByKey.peer.metadata
+      ) {
+        return matchedSessionByKey.peer.metadata;
+      }
+
+      // Try to find by session.topic
+      const matchedSessionByTopic = Object.values(activeSessions).find(
+        (session) => session.topic === event.topic,
+      );
+
+      if (
+        matchedSessionByTopic &&
+        matchedSessionByTopic.peer &&
+        matchedSessionByTopic.peer.metadata
+      ) {
+        return matchedSessionByTopic.peer.metadata;
+      }
     }
-  ).params?.proposer?.metadata;
-  if (proposerMetadata && typeof proposerMetadata === "object") {
-    return proposerMetadata as CoreTypes.Metadata;
+
+    return emptyMetadata;
   }
 
   return emptyMetadata;
@@ -106,5 +96,11 @@ export function extractDappMetadata(
  */
 export const useDappMetadata = (
   event: WalletKitEvent | null,
-): CoreTypes.Metadata | null =>
-  useMemo(() => extractDappMetadata(event), [event]);
+): CoreTypes.Metadata | null => {
+  const activeSessions = useWalletKitStore((state) => state.activeSessions);
+
+  return useMemo(
+    () => extractDappMetadata(event, activeSessions),
+    [event, activeSessions],
+  );
+};
