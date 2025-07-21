@@ -49,6 +49,8 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       copyToClipboard(publicKey, {
         notificationMessage: t("accountAddressCopied"),
       });
+
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_COPY_PUBLIC_KEY);
     },
     [copyToClipboard, t],
   );
