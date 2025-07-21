@@ -244,7 +244,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleSetMax = () => {
     if (spendableAmount) {
-      analytics.trackSendPaymentSetMax();
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
 
       setSourceAmount(spendableAmount.toString());
     }

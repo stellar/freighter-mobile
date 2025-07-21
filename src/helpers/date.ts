@@ -70,6 +70,7 @@ export const formatTransactionDate = (
 
 /**
  * Formats a timestamp as relative time (e.g., "just now", "5m ago", "2h ago")
+ * It doesn't need to be translated as it's only being used for DEBUGGING information
  * @param timestamp - Timestamp in milliseconds
  * @returns Formatted relative time string
  */

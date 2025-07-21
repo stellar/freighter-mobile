@@ -108,6 +108,9 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       password,
       mnemonicPhrase: recoveryPhrase,
     });
+
+    analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+
     skipModalRef.current?.dismiss();
   };
 

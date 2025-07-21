@@ -59,6 +59,8 @@ export enum AnalyticsEvent {
   VIEWED_RECOVERY_PHRASE = "account creator: viewed phrase",
   CONFIRM_RECOVERY_PHRASE_SUCCESS = "account creator: confirm phrase: confirmed phrase",
   CONFIRM_RECOVERY_PHRASE_FAIL = "account creator: confirm phrase: error confirming",
+  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "account creator: confirm phrase: back to phrase",
+  ACCOUNT_CREATOR_FINISHED = "account creator finished: closed account creator flow",
 
   // Authentication Events
   RE_AUTH_SUCCESS = "re-auth: success",
@@ -90,7 +92,6 @@ export enum AnalyticsEvent {
 
   // Asset Management Events
   ADD_ASSET_SUCCESS = "manage asset: add asset",
-  ADD_TOKEN_SUCCESS = "manage asset: add token",
   ADD_UNSAFE_ASSET_SUCCESS = "manage asset: add unsafe asset",
   REMOVE_ASSET_SUCCESS = "manage asset: remove asset",
   ASSET_MANAGEMENT_FAIL = "manage asset: error",

@@ -71,10 +71,6 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   });
 };
 
-export const trackSendPaymentSetMax = (): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-};
-
 export const trackSendPaymentTypeSelected = (
   paymentType: "payment" | "pathPayment",
 ): void => {
@@ -84,10 +80,6 @@ export const trackSendPaymentTypeSelected = (
       : AnalyticsEvent.SEND_PAYMENT_TYPE_PATH_PAYMENT;
 
   track(event, { paymentType });
-};
-
-export const trackSendPaymentRecentAddress = (): void => {
-  track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
 };
 
 // -----------------------------------------------------------------------------
@@ -110,18 +102,6 @@ export const trackManageAssetListsModify = (action: string): void => {
 // ACCOUNT MANAGEMENT ANALYTICS
 // -----------------------------------------------------------------------------
 
-export const trackAccountScreenAddAccount = (): void => {
-  track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
-};
-
-export const trackAccountScreenCopyPublicKey = (): void => {
-  track(AnalyticsEvent.ACCOUNT_SCREEN_COPY_PUBLIC_KEY);
-};
-
-export const trackAccountScreenImportAccount = (): void => {
-  track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
-};
-
 export const trackAccountScreenImportAccountFail = (error: string): void => {
   track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, { error });
 };
@@ -134,10 +114,6 @@ export const trackViewPublicKeyAccountRenamed = (
     oldName,
     newName,
   });
-};
-
-export const trackViewPublicKeyClickedStellarExpert = (): void => {
-  track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
 };
 
 // -----------------------------------------------------------------------------
@@ -158,10 +134,6 @@ export const trackGrantAccessFail = (
 // -----------------------------------------------------------------------------
 // HISTORY ANALYTICS
 // -----------------------------------------------------------------------------
-
-export const trackHistoryOpenFullHistory = (): void => {
-  track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
-};
 
 export const trackHistoryOpenItem = (transactionHash: string): void => {
   track(AnalyticsEvent.HISTORY_OPEN_ITEM, { transactionHash });

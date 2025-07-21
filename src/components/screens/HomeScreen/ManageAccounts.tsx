@@ -54,7 +54,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   );
 
   const handleAddAnotherWallet = useCallback(() => {
-    analytics.trackAccountScreenAddAccount();
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
 
     bottomSheetRef.current?.dismiss();
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);

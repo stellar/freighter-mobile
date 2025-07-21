@@ -129,7 +129,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     if (percentage === 100) {
       targetAmount = spendableBalance;
 
-      analytics.trackSendPaymentSetMax();
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
       const totalBalance = BigNumber(selectedBalance.total);
       targetAmount = totalBalance.multipliedBy(percentage / 100);
