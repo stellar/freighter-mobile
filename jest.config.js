@@ -29,6 +29,7 @@ module.exports = {
       "@react-native-cookies/cookies",
       "react-native-view-shot",
       "react-native-webview",
+      "react-native-config",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
