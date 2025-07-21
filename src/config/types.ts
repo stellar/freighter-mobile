@@ -322,5 +322,4 @@ export type DiscoverProtocol = {
   name: string;
   websiteUrl: string;
   tags: string[];
-  isBlacklisted: boolean;
 };

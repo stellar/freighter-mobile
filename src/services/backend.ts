@@ -416,7 +416,8 @@ interface ProtocolsResponse {
       name: string;
       website_url: string;
       tags: string[];
-      is_blacklisted: boolean;
+      is_blacklisted?: boolean;
+      is_wc_supported?: boolean;
     }[];
   };
 }
@@ -440,15 +441,25 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       throw new Error("Invalid response from server");
     }
 
-    // Transform the response to match our Protocol type
-    return data.data.protocols.map((protocol) => ({
-      description: protocol.description,
-      iconUrl: protocol.icon_url,
-      name: protocol.name,
-      websiteUrl: protocol.website_url,
-      tags: protocol.tags,
-      isBlacklisted: protocol.is_blacklisted,
-    }));
+    // Filter out blacklisted/unsupported protocols and
+    // transform the response to match our Protocol type
+    return data.data.protocols
+      .filter((protocol) => {
+        // Ensure props are not undefined when filtering
+        return (
+          (protocol.is_blacklisted !== undefined &&
+            protocol.is_blacklisted === true) ||
+          (protocol.is_wc_supported !== undefined &&
+            protocol.is_wc_supported === false)
+        );
+      })
+      .map((protocol) => ({
+        description: protocol.description,
+        iconUrl: protocol.icon_url,
+        name: protocol.name,
+        websiteUrl: protocol.website_url,
+        tags: protocol.tags,
+      }));
   } catch (error) {
     logger.error(
       "backendApi.fetchProtocols",
