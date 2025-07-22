@@ -664,7 +664,7 @@
   "preferences": {
     "anonymousDataSharing": {
       "title": "Compartilhamento de dados anônimos",
-      "description": "Permitir que o Freighter colete informações anônimas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Nunca coletaremos PII como nome/endereço."
+      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
     }
   }
 }
