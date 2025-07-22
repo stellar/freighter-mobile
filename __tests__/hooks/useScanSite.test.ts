@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { useScanSite } from "hooks/useScanSite";
+import * as backend from "services/backend";
 import * as blockaidSDK from "services/blockaidSDK";
 import type { ScanSiteParams, BlockAidScanSiteResult } from "types/blockaid";
 
@@ -12,12 +13,17 @@ jest.mock("config/logger", () => ({
   },
 }));
 
+jest.mock("services/backend", () => ({
+  scanSiteBackend: jest.fn(),
+}));
+
 jest.mock("services/blockaidSDK", () => ({
   scanSiteSDK: jest.fn(),
   isBlockaidSDKAvailable: jest.fn(),
 }));
 
 describe("useScanSite", () => {
+  const mockScanSiteBackend = jest.mocked(backend.scanSiteBackend);
   const mockScanSiteSDK = jest.mocked(blockaidSDK.scanSiteSDK);
   const mockIsBlockaidSDKAvailable = jest.mocked(
     blockaidSDK.isBlockaidSDKAvailable,
@@ -74,7 +80,22 @@ describe("useScanSite", () => {
   });
 
   describe("scanSite function", () => {
-    it("successfully scans a site when SDK is available", async () => {
+    it("successfully scans a site using backend", async () => {
+      mockScanSiteBackend.mockResolvedValue(mockSafeResponse);
+      const { result } = renderHook(() => useScanSite());
+
+      await act(async () => {
+        await result.current.scanSite(mockSiteParams);
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.data).toEqual(mockSafeResponse);
+      expect(mockScanSiteBackend).toHaveBeenCalledWith(mockSiteParams);
+    });
+
+    it("falls back to SDK when backend fails", async () => {
+      mockScanSiteBackend.mockResolvedValue(null);
       mockScanSiteSDK.mockResolvedValue(mockSafeResponse);
       const { result } = renderHook(() => useScanSite());
 
@@ -85,6 +106,7 @@ describe("useScanSite", () => {
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.data).toEqual(mockSafeResponse);
+      expect(mockScanSiteBackend).toHaveBeenCalledWith(mockSiteParams);
       expect(mockScanSiteSDK).toHaveBeenCalledWith(mockSiteParams);
     });
 
@@ -96,7 +118,7 @@ describe("useScanSite", () => {
         },
       );
 
-      mockScanSiteSDK.mockReturnValue(pendingPromise);
+      mockScanSiteBackend.mockReturnValue(pendingPromise);
       const { result } = renderHook(() => useScanSite());
 
       act(() => {
@@ -116,9 +138,9 @@ describe("useScanSite", () => {
       expect(result.current.data).toEqual(mockSafeResponse);
     });
 
-    it("handles SDK errors gracefully", async () => {
+    it("handles errors gracefully", async () => {
       const mockError = new Error("Network error");
-      mockScanSiteSDK.mockRejectedValue(mockError);
+      mockScanSiteBackend.mockRejectedValue(mockError);
       const { result } = renderHook(() => useScanSite());
 
       await act(async () => {
@@ -131,8 +153,9 @@ describe("useScanSite", () => {
       expect(result.current.error?.message).toBe("Network error");
     });
 
-    it("throws error when SDK is not available", async () => {
-      mockIsBlockaidSDKAvailable.mockReturnValue(false);
+    it("throws error when both backend and SDK fail", async () => {
+      mockScanSiteBackend.mockResolvedValue(null);
+      mockScanSiteSDK.mockResolvedValue(null);
       const { result } = renderHook(() => useScanSite());
 
       await act(async () => {
@@ -146,7 +169,7 @@ describe("useScanSite", () => {
     });
 
     it("handles malicious sites correctly", async () => {
-      mockScanSiteSDK.mockResolvedValue(mockMaliciousResponse);
+      mockScanSiteBackend.mockResolvedValue(mockMaliciousResponse);
       const { result } = renderHook(() => useScanSite());
 
       await act(async () => {

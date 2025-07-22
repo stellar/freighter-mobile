@@ -1,5 +1,6 @@
 import { logger } from "config/logger";
 import { useState, useCallback } from "react";
+import { scanSiteBackend } from "services/backend";
 import { scanSiteSDK, isBlockaidSDKAvailable } from "services/blockaidSDK";
 import type {
   ScanSiteParams,
@@ -7,9 +8,7 @@ import type {
   BlockaidHookResult,
 } from "types/blockaid";
 
-/**
- * Hook for scanning websites/dApps for security threats
- */
+// Hook for scanning websites/dApps for security threats
 export const useScanSite = (): BlockaidHookResult<BlockAidScanSiteResult> & {
   scanSite: (params: ScanSiteParams) => Promise<void>;
 } => {
@@ -30,17 +29,16 @@ export const useScanSite = (): BlockaidHookResult<BlockAidScanSiteResult> & {
 
       let result: BlockAidScanSiteResult | null = null;
 
-      // Try SDK first if available
-      if (isBlockaidSDKAvailable()) {
+      // Try backend first (recommended approach)
+      result = await scanSiteBackend(params);
+
+      // Fallback to SDK if backend fails and SDK is available
+      if (!result && isBlockaidSDKAvailable()) {
+        logger.warn("useScanSite", "Backend failed, trying SDK fallback");
         result = await scanSiteSDK(params);
       }
 
-      // TODO: Add backend proxy fallback if SDK fails
       if (!result) {
-        logger.warn(
-          "useScanSite",
-          "SDK scan failed, backend proxy not implemented yet",
-        );
         throw new Error("Site scan not available");
       }
 

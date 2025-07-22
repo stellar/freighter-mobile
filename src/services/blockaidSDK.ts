@@ -27,9 +27,6 @@ const getBlockaidClient = (): BlockaidClient => {
   return blockaidClient;
 };
 
-/**
- * Scan site using official Blockaid SDK
- */
 export const scanSiteSDK = async (
   params: ScanSiteParams,
 ): Promise<BlockAidScanSiteResult | null> => {
@@ -55,10 +52,7 @@ export const scanSiteSDK = async (
   }
 };
 
-/**
- * Scan asset using official Blockaid SDK
- * Uses Stellar format: "SYMBOL-ISSUER" or "XLM-native"
- */
+// Uses Stellar format: "SYMBOL-ISSUER" or "XLM-native"
 export const scanAssetSDK = async (
   params: ScanAssetParams,
 ): Promise<BlockAidScanAssetResult | null> => {
@@ -95,10 +89,7 @@ export const scanAssetSDK = async (
   }
 };
 
-/**
- * Scan Stellar transaction using official Blockaid SDK
- * Note: Limited support for Stellar XDR format
- */
+// Note: Limited support for Stellar XDR format
 export const scanTransactionSDK = async (
   params: ScanTxParams,
 ): Promise<BlockAidScanTxResult | null> => {
@@ -133,8 +124,6 @@ export const scanTransactionSDK = async (
   }
 };
 
-/**
- * Check if Blockaid SDK is available (API key configured)
- */
+// Check if Blockaid SDK is available (API key configured)
 export const isBlockaidSDKAvailable = (): boolean =>
   Boolean(process.env.BLOCKAID_API_KEY);

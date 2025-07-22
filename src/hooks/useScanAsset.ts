@@ -1,5 +1,6 @@
 import { logger } from "config/logger";
 import { useState, useCallback } from "react";
+import { scanAssetBackend } from "services/backend";
 import { scanAssetSDK, isBlockaidSDKAvailable } from "services/blockaidSDK";
 import type {
   ScanAssetParams,
@@ -7,9 +8,7 @@ import type {
   BlockaidHookResult,
 } from "types/blockaid";
 
-/**
- * Hook for scanning Stellar assets/tokens for security threats
- */
+// Hook for scanning Stellar assets/tokens for security threats
 export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
   scanAsset: (params: ScanAssetParams) => Promise<void>;
 } => {
@@ -31,17 +30,16 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
 
       let result: BlockAidScanAssetResult | null = null;
 
-      // Try SDK first if available
-      if (isBlockaidSDKAvailable()) {
+      // Try backend first (recommended approach)
+      result = await scanAssetBackend(params);
+
+      // Fallback to SDK if backend fails and SDK is available
+      if (!result && isBlockaidSDKAvailable()) {
+        logger.warn("useScanAsset", "Backend failed, trying SDK fallback");
         result = await scanAssetSDK(params);
       }
 
-      // TODO: Add backend proxy fallback if SDK fails
       if (!result) {
-        logger.warn(
-          "useScanAsset",
-          "SDK scan failed, backend proxy not implemented yet",
-        );
         throw new Error("Asset scan not available");
       }
 
@@ -60,19 +58,30 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
 
   const refetch = useCallback(() => {
     if (data) {
-      // Re-run last scan if data exists - reconstruct params from result
-      const lastAddress = (data as { address?: string })?.address;
-      const lastChain = (data as { chain?: string })?.chain;
+      // Reconstruct params from result data
+      const lastResult = data as { address?: string };
+      if (lastResult.address) {
+        let assetCode: string;
+        let assetIssuer: string | undefined;
 
-      if (lastAddress && lastChain === "stellar") {
-        // Parse address back to assetCode/assetIssuer format
-        const [assetCode, issuerOrNative] = lastAddress.split("-");
-        const params: ScanAssetParams = {
+        // Parse address back to params
+        if (lastResult.address === "XLM-native") {
+          assetCode = "XLM";
+          assetIssuer = undefined;
+        } else if (lastResult.address.includes("-")) {
+          const [code, issuer] = lastResult.address.split("-");
+          assetCode = code;
+          assetIssuer = issuer;
+        } else {
+          // Fallback for unexpected format
+          return;
+        }
+
+        scanAsset({
           assetCode,
-          assetIssuer: issuerOrNative === "native" ? undefined : issuerOrNative,
-          network: "public", // Default to public, TODO: store original network
-        };
-        scanAsset(params);
+          assetIssuer,
+          network: "public", // Default network for refetch
+        });
       }
     }
   }, [data, scanAsset]);
@@ -81,7 +90,7 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
     data,
     loading,
     error,
-    refetch,
     scanAsset,
+    refetch,
   };
 };

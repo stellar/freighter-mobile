@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { useScanAsset } from "hooks/useScanAsset";
+import * as backend from "services/backend";
 import * as blockaidSDK from "services/blockaidSDK";
 import type { ScanAssetParams, BlockAidScanAssetResult } from "types/blockaid";
 
@@ -12,12 +13,17 @@ jest.mock("config/logger", () => ({
   },
 }));
 
+jest.mock("services/backend", () => ({
+  scanAssetBackend: jest.fn(),
+}));
+
 jest.mock("services/blockaidSDK", () => ({
   scanAssetSDK: jest.fn(),
   isBlockaidSDKAvailable: jest.fn(),
 }));
 
 describe("useScanAsset", () => {
+  const mockScanAssetBackend = jest.mocked(backend.scanAssetBackend);
   const mockScanAssetSDK = jest.mocked(blockaidSDK.scanAssetSDK);
   const mockIsBlockaidSDKAvailable = jest.mocked(
     blockaidSDK.isBlockaidSDKAvailable,
@@ -65,7 +71,22 @@ describe("useScanAsset", () => {
   });
 
   describe("scanAsset function", () => {
-    it("successfully scans an asset when SDK is available", async () => {
+    it("successfully scans an asset using backend", async () => {
+      mockScanAssetBackend.mockResolvedValue(mockSuccessResponse);
+      const { result } = renderHook(() => useScanAsset());
+
+      await act(async () => {
+        await result.current.scanAsset(mockAssetParams);
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.data).toEqual(mockSuccessResponse);
+      expect(mockScanAssetBackend).toHaveBeenCalledWith(mockAssetParams);
+    });
+
+    it("falls back to SDK when backend fails", async () => {
+      mockScanAssetBackend.mockResolvedValue(null);
       mockScanAssetSDK.mockResolvedValue(mockSuccessResponse);
       const { result } = renderHook(() => useScanAsset());
 
@@ -76,6 +97,7 @@ describe("useScanAsset", () => {
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.data).toEqual(mockSuccessResponse);
+      expect(mockScanAssetBackend).toHaveBeenCalledWith(mockAssetParams);
       expect(mockScanAssetSDK).toHaveBeenCalledWith(mockAssetParams);
     });
 
@@ -87,7 +109,7 @@ describe("useScanAsset", () => {
         },
       );
 
-      mockScanAssetSDK.mockReturnValue(pendingPromise);
+      mockScanAssetBackend.mockReturnValue(pendingPromise);
       const { result } = renderHook(() => useScanAsset());
 
       act(() => {
@@ -107,9 +129,9 @@ describe("useScanAsset", () => {
       expect(result.current.data).toEqual(mockSuccessResponse);
     });
 
-    it("handles SDK errors gracefully", async () => {
+    it("handles errors gracefully", async () => {
       const mockError = new Error("Network error");
-      mockScanAssetSDK.mockRejectedValue(mockError);
+      mockScanAssetBackend.mockRejectedValue(mockError);
       const { result } = renderHook(() => useScanAsset());
 
       await act(async () => {
@@ -122,8 +144,9 @@ describe("useScanAsset", () => {
       expect(result.current.error?.message).toBe("Network error");
     });
 
-    it("throws error when SDK is not available", async () => {
-      mockIsBlockaidSDKAvailable.mockReturnValue(false);
+    it("throws error when both backend and SDK fail", async () => {
+      mockScanAssetBackend.mockResolvedValue(null);
+      mockScanAssetSDK.mockResolvedValue(null);
       const { result } = renderHook(() => useScanAsset());
 
       await act(async () => {

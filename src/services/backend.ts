@@ -20,6 +20,14 @@ import { getAssetType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService } from "services/apiFactory";
+import type {
+  ScanSiteParams,
+  ScanAssetParams,
+  ScanTxParams,
+  BlockAidScanSiteResult,
+  BlockAidScanAssetResult,
+  BlockAidScanTxResult,
+} from "types/blockaid";
 
 // Create a dedicated API service for backend operations
 const freighterBackend = createApiService({
@@ -402,4 +410,95 @@ export const simulateTokenTransfer = async (
       params.network_passphrase,
     ),
   };
+};
+
+// ==================== BLOCKAID ENDPOINTS ====================
+
+export const scanSiteBackend = async (
+  params: ScanSiteParams,
+): Promise<BlockAidScanSiteResult | null> => {
+  try {
+    logger.info("backend.scanSite", "Starting backend site scan", {
+      url: params.url,
+    });
+
+    const { data } = await freighterBackend.post<BlockAidScanSiteResult>(
+      "/blockaid/scan-site",
+      {
+        url: params.url,
+      },
+    );
+
+    logger.info("backend.scanSite", "Backend site scan completed successfully");
+    return data;
+  } catch (error) {
+    logger.error("backend.scanSite", "Backend site scan failed", error);
+    return null;
+  }
+};
+
+export const scanAssetBackend = async (
+  params: ScanAssetParams,
+): Promise<BlockAidScanAssetResult | null> => {
+  try {
+    logger.info("backend.scanAsset", "Starting backend asset scan", {
+      assetCode: params.assetCode,
+      network: params.network,
+    });
+
+    const { data } = await freighterBackend.post<BlockAidScanAssetResult>(
+      "/blockaid/scan-asset",
+      {
+        assetCode: params.assetCode,
+        assetIssuer: params.assetIssuer,
+        network: params.network,
+      },
+    );
+
+    logger.info(
+      "backend.scanAsset",
+      "Backend asset scan completed successfully",
+    );
+    return data;
+  } catch (error) {
+    logger.error("backend.scanAsset", "Backend asset scan failed", error);
+    return null;
+  }
+};
+
+export const scanTransactionBackend = async (
+  params: ScanTxParams,
+): Promise<BlockAidScanTxResult | null> => {
+  try {
+    logger.info(
+      "backend.scanTransaction",
+      "Starting backend transaction scan",
+      {
+        network: params.network,
+        sourceAccount: `${params.sourceAccount.slice(0, 10)}...`,
+      },
+    );
+
+    const { data } = await freighterBackend.post<BlockAidScanTxResult>(
+      "/blockaid/scan-transaction",
+      {
+        xdr: params.xdr,
+        sourceAccount: params.sourceAccount,
+        network: params.network,
+      },
+    );
+
+    logger.info(
+      "backend.scanTransaction",
+      "Backend transaction scan completed successfully",
+    );
+    return data;
+  } catch (error) {
+    logger.error(
+      "backend.scanTransaction",
+      "Backend transaction scan failed",
+      error,
+    );
+    return null;
+  }
 };

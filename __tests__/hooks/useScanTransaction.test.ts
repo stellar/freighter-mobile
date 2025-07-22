@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
-import { useScanTx } from "hooks/useScanTx";
+import { useScanTransaction } from "hooks/useScanTransaction";
+import * as backend from "services/backend";
 import * as blockaidSDK from "services/blockaidSDK";
 import type { ScanTxParams, BlockAidScanTxResult } from "types/blockaid";
 
@@ -12,12 +13,19 @@ jest.mock("config/logger", () => ({
   },
 }));
 
+jest.mock("services/backend", () => ({
+  scanTransactionBackend: jest.fn(),
+}));
+
 jest.mock("services/blockaidSDK", () => ({
   scanTransactionSDK: jest.fn(),
   isBlockaidSDKAvailable: jest.fn(),
 }));
 
-describe("useScanTx", () => {
+describe("useScanTransaction", () => {
+  const mockScanTransactionBackend = jest.mocked(
+    backend.scanTransactionBackend,
+  );
   const mockScanTransactionSDK = jest.mocked(blockaidSDK.scanTransactionSDK);
   const mockIsBlockaidSDKAvailable = jest.mocked(
     blockaidSDK.isBlockaidSDKAvailable,
@@ -89,7 +97,7 @@ describe("useScanTx", () => {
 
   describe("initial state", () => {
     it("should have correct initial state", () => {
-      const { result } = renderHook(() => useScanTx());
+      const { result } = renderHook(() => useScanTransaction());
 
       expect(result.current.data).toBeNull();
       expect(result.current.loading).toBe(false);
@@ -100,9 +108,9 @@ describe("useScanTx", () => {
   });
 
   describe("scanTransaction function", () => {
-    it("successfully scans a transaction when SDK is available", async () => {
-      mockScanTransactionSDK.mockResolvedValue(mockSuccessResponse);
-      const { result } = renderHook(() => useScanTx());
+    it("successfully scans a transaction using backend", async () => {
+      mockScanTransactionBackend.mockResolvedValue(mockSuccessResponse);
+      const { result } = renderHook(() => useScanTransaction());
 
       await act(async () => {
         await result.current.scanTransaction(mockTxParams);
@@ -115,6 +123,23 @@ describe("useScanTx", () => {
       expect(result.current.data?.validation).toEqual(
         mockSuccessResponse.validation,
       );
+      expect(mockScanTransactionBackend).toHaveBeenCalledWith(mockTxParams);
+    });
+
+    it("falls back to SDK when backend fails", async () => {
+      mockScanTransactionBackend.mockResolvedValue(null);
+      mockScanTransactionSDK.mockResolvedValue(mockSuccessResponse);
+      const { result } = renderHook(() => useScanTransaction());
+
+      await act(async () => {
+        await result.current.scanTransaction(mockTxParams);
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.data).toBeDefined();
+      expect(result.current.data?.raw).toEqual(mockSuccessResponse);
+      expect(mockScanTransactionBackend).toHaveBeenCalledWith(mockTxParams);
       expect(mockScanTransactionSDK).toHaveBeenCalledWith(mockTxParams);
     });
 
@@ -126,8 +151,8 @@ describe("useScanTx", () => {
         },
       );
 
-      mockScanTransactionSDK.mockReturnValue(pendingPromise);
-      const { result } = renderHook(() => useScanTx());
+      mockScanTransactionBackend.mockReturnValue(pendingPromise);
+      const { result } = renderHook(() => useScanTransaction());
 
       act(() => {
         result.current.scanTransaction(mockTxParams);
@@ -147,10 +172,10 @@ describe("useScanTx", () => {
       expect(result.current.data?.raw).toEqual(mockSuccessResponse);
     });
 
-    it("handles SDK errors gracefully", async () => {
+    it("handles errors gracefully", async () => {
       const mockError = new Error("Network error");
-      mockScanTransactionSDK.mockRejectedValue(mockError);
-      const { result } = renderHook(() => useScanTx());
+      mockScanTransactionBackend.mockRejectedValue(mockError);
+      const { result } = renderHook(() => useScanTransaction());
 
       await act(async () => {
         await result.current.scanTransaction(mockTxParams);
@@ -162,9 +187,10 @@ describe("useScanTx", () => {
       expect(result.current.error?.message).toBe("Network error");
     });
 
-    it("throws error when SDK is not available", async () => {
-      mockIsBlockaidSDKAvailable.mockReturnValue(false);
-      const { result } = renderHook(() => useScanTx());
+    it("throws error when both backend and SDK fail", async () => {
+      mockScanTransactionBackend.mockResolvedValue(null);
+      mockScanTransactionSDK.mockResolvedValue(null);
+      const { result } = renderHook(() => useScanTransaction());
 
       await act(async () => {
         await result.current.scanTransaction(mockTxParams);
@@ -179,8 +205,8 @@ describe("useScanTx", () => {
     });
 
     it("handles risky transactions correctly", async () => {
-      mockScanTransactionSDK.mockResolvedValue(mockRiskyResponse);
-      const { result } = renderHook(() => useScanTx());
+      mockScanTransactionBackend.mockResolvedValue(mockRiskyResponse);
+      const { result } = renderHook(() => useScanTransaction());
 
       await act(async () => {
         await result.current.scanTransaction(mockTxParams);
