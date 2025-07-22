@@ -20,8 +20,9 @@ import {
   WALLET_KIT_PROJECT_ID,
   WalletKitSessionProposal,
   WalletKitSessionRequest,
+  useWalletKitStore,
 } from "ducks/walletKit";
-import { extractDappMetadata } from "hooks/useDappMetadata";
+import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
@@ -275,7 +276,11 @@ export const approveSessionRequest = async ({
     );
     signedTransaction = signTransaction(transaction);
 
-    const dappMetadata = extractDappMetadata(sessionRequest);
+    const { activeSessions } = useWalletKitStore.getState();
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionRequest,
+      activeSessions,
+    );
     const dappDomain = dappMetadata?.url;
 
     analytics.trackSignedTransaction({
