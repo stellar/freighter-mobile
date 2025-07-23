@@ -1,3 +1,5 @@
+import { NETWORKS } from "config/constants";
+
 export type SecurityStatus = "safe" | "warning" | "malicious" | "unknown";
 
 export interface SecurityAlert {
@@ -15,13 +17,13 @@ export interface ScanSiteParams {
 export interface ScanAssetParams {
   assetCode: string;
   assetIssuer?: string;
-  network: "public" | "testnet";
+  network: NETWORKS;
 }
 
-export interface ScanTxParams {
+export interface ScanTransactionParams {
   xdr: string;
   sourceAccount: string;
-  network: "public" | "testnet";
+  network: NETWORKS;
   url?: string;
 }
 

@@ -23,7 +23,7 @@ import { createApiService } from "services/apiFactory";
 import type {
   ScanSiteParams,
   ScanAssetParams,
-  ScanTxParams,
+  ScanTransactionParams,
   BlockAidScanSiteResult,
   BlockAidScanAssetResult,
   BlockAidScanTxResult,
@@ -451,7 +451,7 @@ export const scanAssetBackend = async (
 };
 
 export const scanTransactionBackend = async (
-  params: ScanTxParams,
+  params: ScanTransactionParams,
 ): Promise<BlockAidScanTxResult | null> => {
   try {
     const requestBody = {

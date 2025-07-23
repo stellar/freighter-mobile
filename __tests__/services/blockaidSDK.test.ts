@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import BlockaidClient from "@blockaid/client";
+import { NETWORKS } from "config/constants";
 import {
   scanSiteSDK,
   scanAssetSDK,
@@ -9,7 +10,7 @@ import {
 import type {
   ScanSiteParams,
   ScanAssetParams,
-  ScanTxParams,
+  ScanTransactionParams,
 } from "types/blockaid";
 
 // Mock BlockaidClient
@@ -51,13 +52,13 @@ describe("blockaidSDK", () => {
   const mockAssetParams: ScanAssetParams = {
     assetCode: "USDC",
     assetIssuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    network: "public",
+    network: NETWORKS.PUBLIC,
   };
 
-  const mockTxParams: ScanTxParams = {
+  const mockTxParams: ScanTransactionParams = {
     xdr: "AAAA...XDR...",
     sourceAccount: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    network: "public",
+    network: NETWORKS.PUBLIC,
   };
 
   const mockSiteResponse = {
@@ -167,7 +168,7 @@ describe("blockaidSDK", () => {
     it("formats XLM as native asset", async () => {
       const xlmParams: ScanAssetParams = {
         assetCode: "XLM",
-        network: "public",
+        network: NETWORKS.PUBLIC,
       };
       mockClient.token.scan.mockResolvedValue(mockAssetResponse);
 

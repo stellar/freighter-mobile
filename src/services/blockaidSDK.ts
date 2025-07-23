@@ -3,7 +3,7 @@ import { logger } from "config/logger";
 import type {
   ScanSiteParams,
   ScanAssetParams,
-  ScanTxParams,
+  ScanTransactionParams,
   BlockAidScanSiteResult,
   BlockAidScanAssetResult,
   BlockAidScanTxResult,
@@ -91,7 +91,7 @@ export const scanAssetSDK = async (
 
 // Note: Limited support for Stellar XDR format
 export const scanTransactionSDK = async (
-  params: ScanTxParams,
+  params: ScanTransactionParams,
 ): Promise<BlockAidScanTxResult | null> => {
   try {
     logger.info("blockaidSDK.scanTransaction", "Starting transaction scan", {

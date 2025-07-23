@@ -1,3 +1,4 @@
+import { NETWORKS } from "config/constants";
 import { useState, useCallback } from "react";
 import { scanAssetBackend } from "services/backend";
 import { scanAssetSDK, isBlockaidSDKAvailable } from "services/blockaidSDK";
@@ -72,7 +73,7 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
         scanAsset({
           assetCode,
           assetIssuer,
-          network: "public", // Default network for refetch
+          network: NETWORKS.PUBLIC, // Default network for refetch
         });
       }
     }

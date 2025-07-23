@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+import { NETWORKS } from "config/constants";
 import { useScanAsset } from "hooks/useScanAsset";
 import * as backend from "services/backend";
 import * as blockaidSDK from "services/blockaidSDK";
@@ -33,7 +34,7 @@ describe("useScanAsset", () => {
   const mockAssetParams: ScanAssetParams = {
     assetCode: "USDC",
     assetIssuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    network: "public",
+    network: NETWORKS.PUBLIC,
   };
 
   const mockSuccessResponse: BlockAidScanAssetResult = {

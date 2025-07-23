@@ -1,8 +1,12 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+import { NETWORKS } from "config/constants";
 import { useScanTransaction } from "hooks/useScanTransaction";
 import * as backend from "services/backend";
 import * as blockaidSDK from "services/blockaidSDK";
-import type { ScanTxParams, BlockAidScanTxResult } from "types/blockaid";
+import type {
+  ScanTransactionParams,
+  BlockAidScanTxResult,
+} from "types/blockaid";
 
 // Mock dependencies
 jest.mock("config/logger", () => ({
@@ -32,10 +36,10 @@ describe("useScanTransaction", () => {
   );
 
   // Sample test data
-  const mockTxParams: ScanTxParams = {
+  const mockTxParams: ScanTransactionParams = {
     xdr: "AAAA...XDR...",
     sourceAccount: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    network: "public",
+    network: NETWORKS.PUBLIC,
   };
 
   const mockSuccessResponse: BlockAidScanTxResult = {
