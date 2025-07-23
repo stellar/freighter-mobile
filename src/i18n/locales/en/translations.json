@@ -1,5 +1,8 @@
 {
   "wallet": "Wallet",
+  "network": "Network",
+  "mainnet": "Mainnet",
+  "testnet": "Testnet",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
@@ -302,19 +305,30 @@
   },
   "addAssetScreen": {
     "title": "Add an asset",
-    "addAssetButton": "Add asset",
+    "addAssetButton": "Approve",
     "searchPlaceholder": "Search token name or address",
     "pasteFromClipboard": "Paste from clipboard",
     "tokenAddressCopied": "Token address copied!",
     "popular": "Popular",
     "native": "Native",
     "onYourList": "On your list",
-    "addAsset": "Add Asset",
-    "disclaimer": "Allow asset to be viewable from your wallet. Only add assets you recognize and trust.",
+    "addAsset": "Add token",
+    "disclaimer": "Allow token to be displayed and used with this wallet address",
+    "confirmTrust": "Only confirm if you trust this token",
     "toastSuccess": "{{assetCode}} successfully added as an asset",
     "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
-    "somethingWentWrong": "Something went wrong, please try again later"
+    "somethingWentWrong": "Something went wrong, please try again later",
+    "security": {
+      "notOnYourLists": "This asset is not on one of your lists",
+      "relativelyNewAsset": "This is a relatively new asset",
+      "assetIsScam": "This asset is a scam",
+      "suspiciousAsset": "This asset may be suspicious",
+      "lowLiquidity": "This asset has low liquidity",
+      "poweredByBlockaid": "Powered by",
+      "learnMore": "Learn more",
+      "addAnyway": "Add anyway"
+    }
   },
   "manageAssetRightContent": {
     "copyAddress": "Copy address",

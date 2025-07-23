@@ -1,5 +1,8 @@
 {
   "wallet": "Carteira",
+  "network": "Rede",
+  "mainnet": "Mainnet",
+  "testnet": "Testnet",
   "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
@@ -291,19 +294,30 @@
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",
-    "addAssetButton": "Adicionar ativo",
+    "addAssetButton": "Aprovar",
     "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
     "native": "Nativo",
     "onYourList": "Na sua lista",
-    "addAsset": "Adicionar Ativo",
-    "disclaimer": "Permitir que o ativo seja visível na sua carteira. Adicione apenas ativos que você reconheça e confie.",
+    "addAsset": "Adicionar toke",
+    "disclaimer": "Permitir que o token seja exibido e usado com este endereço de carteira",
+    "confirmTrust": "Só confirme se você confia neste token",
     "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
     "toastError": "Erro ao adicionar ativo {{assetCode}}",
     "emptyState": "Nenhum ativo encontrado",
-    "somethingWentWrong": "Algo deu errado, por favor tente novamente mais tarde"
+    "somethingWentWrong": "Algo deu errado, por favor tente novamente mais tarde",
+    "security": {
+      "notOnYourLists": "Este ativo não está em uma das suas listas",
+      "relativelyNewAsset": "Este é um ativo relativamente novo",
+      "assetIsScam": "Este ativo é uma fraude",
+      "suspiciousAsset": "Este ativo pode ser suspeito",
+      "lowLiquidity": "Este ativo tem baixa liquidez",
+      "poweredByBlockaid": "Powered by",
+      "learnMore": "Saiba mais",
+      "addAnyway": "Adicionar mesmo assim"
+    }
   },
   "manageAssetRightContent": {
     "copyAddress": "Copiar endereço",

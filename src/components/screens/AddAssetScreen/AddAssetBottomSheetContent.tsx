@@ -4,11 +4,12 @@ import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NETWORKS } from "config/constants";
 import {
   AssetTypeWithCustomToken,
   FormattedSearchAssetRecord,
 } from "config/types";
-import { ActiveAccount } from "ducks/auth";
+import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -32,6 +33,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { network } = useAuthenticationStore();
 
   if (!asset) {
     return null;
@@ -62,7 +64,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       <Badge
         variant="secondary"
         size="md"
-        icon={<Icon.ShieldPlus size={16} />}
+        icon={<Icon.Link01 size={16} />}
         iconPosition={IconPosition.LEFT}
       >
         {t("addAssetScreen.addAsset")}
@@ -72,32 +74,60 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
           {t("addAssetScreen.disclaimer")}
         </Text>
       </View>
-      <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
-        <View className="flex-row items-center">
-          <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginLeft: pxValue(8) }}
-          >
-            {t("wallet")}
-          </Text>
+      <View className="w-full flex-col items-center mt-6 bg-background-tertiary rounded-xl justify-between">
+        <View className="flex-row items-center px-6 py-4 justify-between w-full">
+          <View className="flex-row items-center">
+            <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+            <Text
+              md
+              secondary
+              style={{ textAlign: "center", marginLeft: pxValue(8) }}
+            >
+              {t("wallet")}
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <View style={{ transform: [{ scale: 0.7 }] }} className="mr-1">
+              <Avatar
+                size="sm"
+                hasBorder
+                publicAddress={account?.publicKey ?? ""}
+              />
+            </View>
+            <Text md style={{ textAlign: "center", marginRight: pxValue(8) }}>
+              {account?.accountName}
+            </Text>
+          </View>
         </View>
-        <View className="flex-row items-center">
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginRight: pxValue(8) }}
-          >
-            {account?.accountName}
+        <View
+          className="h-px self-center w-11/12"
+          style={{ backgroundColor: "#343434" }}
+        />
+
+        <View className="flex-row items-center px-6 py-4 justify-between w-full">
+          <View className="flex-row items-center">
+            <Icon.Globe01 size={16} color={themeColors.foreground.primary} />
+            <Text
+              md
+              secondary
+              style={{ textAlign: "center", marginLeft: pxValue(8) }}
+            >
+              {t("network")}
+            </Text>
+          </View>
+          <Text md>
+            {network === NETWORKS.PUBLIC ? t("mainnet") : t("testnet")}
           </Text>
-          <Avatar
-            size="sm"
-            hasBorder={false}
-            publicAddress={account?.publicKey ?? ""}
-          />
         </View>
       </View>
+
+      {/* Confirmation Text */}
+      <View className="mt-4 px-6">
+        <Text sm secondary className="text-center" style={{ lineHeight: 16 }}>
+          {t("addAssetScreen.confirmTrust")}
+        </Text>
+      </View>
+
       <View className="flex-row justify-between w-full mt-6 gap-3">
         <View className="flex-1">
           <Button
@@ -118,7 +148,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
             onPress={onAddAsset}
             isLoading={isAddingAsset}
           >
-            {t("addAssetScreen.addAsset")}
+            {t("addAssetScreen.addAssetButton")}
           </Button>
         </View>
       </View>
