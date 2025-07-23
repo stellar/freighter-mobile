@@ -22,6 +22,7 @@ export interface ScanTxParams {
   xdr: string;
   sourceAccount: string;
   network: "public" | "testnet";
+  url?: string;
 }
 
 // Base response structure from Blockaid API

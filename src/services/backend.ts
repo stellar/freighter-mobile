@@ -418,21 +418,12 @@ export const scanSiteBackend = async (
   params: ScanSiteParams,
 ): Promise<BlockAidScanSiteResult | null> => {
   try {
-    logger.info("backend.scanSite", "Starting backend site scan", {
-      url: params.url,
-    });
-
-    const { data } = await freighterBackend.post<BlockAidScanSiteResult>(
-      "/blockaid/scan-site",
-      {
-        url: params.url,
-      },
+    const { data } = await freighterBackend.get<BlockAidScanSiteResult>(
+      `/scan-dapp?url=${encodeURIComponent(params.url)}`,
     );
 
-    logger.info("backend.scanSite", "Backend site scan completed successfully");
     return data;
   } catch (error) {
-    logger.error("backend.scanSite", "Backend site scan failed", error);
     return null;
   }
 };
@@ -441,27 +432,20 @@ export const scanAssetBackend = async (
   params: ScanAssetParams,
 ): Promise<BlockAidScanAssetResult | null> => {
   try {
-    logger.info("backend.scanAsset", "Starting backend asset scan", {
-      assetCode: params.assetCode,
-      network: params.network,
-    });
+    // Format asset address for Stellar
+    let address: string;
+    if (params.assetCode === "XLM" || !params.assetIssuer) {
+      address = "XLM-native";
+    } else {
+      address = `${params.assetCode}-${params.assetIssuer}`;
+    }
 
-    const { data } = await freighterBackend.post<BlockAidScanAssetResult>(
-      "/blockaid/scan-asset",
-      {
-        assetCode: params.assetCode,
-        assetIssuer: params.assetIssuer,
-        network: params.network,
-      },
+    const { data } = await freighterBackend.get<BlockAidScanAssetResult>(
+      `/scan-asset?address=${address}`,
     );
 
-    logger.info(
-      "backend.scanAsset",
-      "Backend asset scan completed successfully",
-    );
     return data;
   } catch (error) {
-    logger.error("backend.scanAsset", "Backend asset scan failed", error);
     return null;
   }
 };
@@ -470,35 +454,19 @@ export const scanTransactionBackend = async (
   params: ScanTxParams,
 ): Promise<BlockAidScanTxResult | null> => {
   try {
-    logger.info(
-      "backend.scanTransaction",
-      "Starting backend transaction scan",
-      {
-        network: params.network,
-        sourceAccount: `${params.sourceAccount.slice(0, 10)}...`,
-      },
-    );
+    const requestBody = {
+      url: encodeURIComponent(params.url || ""),
+      tx_xdr: params.xdr,
+      network: params.network,
+    };
 
     const { data } = await freighterBackend.post<BlockAidScanTxResult>(
-      "/blockaid/scan-transaction",
-      {
-        xdr: params.xdr,
-        sourceAccount: params.sourceAccount,
-        network: params.network,
-      },
+      "/scan-tx",
+      requestBody,
     );
 
-    logger.info(
-      "backend.scanTransaction",
-      "Backend transaction scan completed successfully",
-    );
     return data;
   } catch (error) {
-    logger.error(
-      "backend.scanTransaction",
-      "Backend transaction scan failed",
-      error,
-    );
     return null;
   }
 };

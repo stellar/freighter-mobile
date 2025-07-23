@@ -1,4 +1,3 @@
-import { logger } from "config/logger";
 import { useState, useCallback } from "react";
 import { scanAssetBackend } from "services/backend";
 import { scanAssetSDK, isBlockaidSDKAvailable } from "services/blockaidSDK";
@@ -10,24 +9,20 @@ import type {
 
 // Hook for scanning Stellar assets/tokens for security threats
 export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
-  scanAsset: (params: ScanAssetParams) => Promise<void>;
+  scanAsset: (
+    params: ScanAssetParams,
+  ) => Promise<BlockAidScanAssetResult | null>;
 } => {
   const [data, setData] = useState<BlockAidScanAssetResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const scanAsset = useCallback(async (params: ScanAssetParams) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      setData(null);
-
-      logger.info("useScanAsset", "Starting asset scan", {
-        assetCode: params.assetCode,
-        network: params.network,
-        hasSDK: isBlockaidSDKAvailable(),
-      });
-
       let result: BlockAidScanAssetResult | null = null;
 
       // Try backend first (recommended approach)
@@ -35,7 +30,6 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
 
       // Fallback to SDK if backend fails and SDK is available
       if (!result && isBlockaidSDKAvailable()) {
-        logger.warn("useScanAsset", "Backend failed, trying SDK fallback");
         result = await scanAssetSDK(params);
       }
 
@@ -44,13 +38,11 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
       }
 
       setData(result);
-      logger.info("useScanAsset", "Asset scan completed successfully");
+      return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      logger.error("useScanAsset", "Asset scan failed", {
-        error: errorMessage,
-      });
       setError(new Error(errorMessage));
+      return null;
     } finally {
       setLoading(false);
     }
