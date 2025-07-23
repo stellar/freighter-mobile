@@ -13,6 +13,7 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -34,12 +35,10 @@ import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { analytics } from "services/analytics";
 
-// Define amount error types
 enum AmountError {
   TOO_HIGH = "amount too high",
-  // DEC_MAX handled by formatNumericInput
-  // SEND_MAX is less critical for mobile? (Extension has it)
 }
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
@@ -129,6 +128,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     if (percentage === 100) {
       targetAmount = spendableBalance;
+
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
       const totalBalance = BigNumber(selectedBalance.total);
       targetAmount = totalBalance.multipliedBy(percentage / 100);
@@ -214,39 +215,47 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleTransactionConfirmation = () => {
+    setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
-
-    // Wait for the bottom sheet to dismiss before showing the processing screen
-    setTimeout(() => {
-      setIsProcessing(true);
-    }, 100);
 
     const processTransaction = async () => {
       try {
-        if (!account) {
-          throw new Error("Unable to retrieve account");
+        if (!account?.privateKey || !selectedBalance) {
+          throw new Error("Missing account or balance information");
         }
 
         const { privateKey } = account;
-
-        if (!privateKey) {
-          throw new Error("Unable to retrieve account secret key");
-        }
 
         signTransaction({
           secretKey: privateKey,
           network,
         });
 
-        await submitTransaction({
+        const success = await submitTransaction({
           network,
         });
+
+        if (success) {
+          analytics.trackSendPaymentSuccess({
+            sourceAsset: selectedBalance?.tokenCode || "unknown",
+          });
+        } else {
+          analytics.trackTransactionError({
+            error: "Transaction failed",
+            transactionType: "payment",
+          });
+        }
       } catch (error) {
         logger.error(
           "TransactionAmountScreen",
           "Transaction submission failed:",
           error instanceof Error ? error.message : String(error),
         );
+
+        analytics.trackTransactionError({
+          error: error instanceof Error ? error.message : String(error),
+          transactionType: "payment",
+        });
       }
     };
 
@@ -407,6 +416,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
+        analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}

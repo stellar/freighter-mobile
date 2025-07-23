@@ -67,3 +67,22 @@ export const formatTransactionDate = (
 
   return `${formattedDate} · ${formattedTime}`;
 };
+
+/**
+ * Formats a timestamp as relative time (e.g., "just now", "5m ago", "2h ago")
+ * It doesn't need to be translated as it's only being used for DEBUGGING information
+ * @param timestamp - Timestamp in milliseconds
+ * @returns Formatted relative time string
+ */
+export const formatTimeAgo = (timestamp: number): string => {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+};

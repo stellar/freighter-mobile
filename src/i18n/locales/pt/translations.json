@@ -53,6 +53,7 @@
     "title": "Configurações",
     "logout": "Sair",
     "network": "Rede",
+    "preferences": "Preferências",
     "version": "Versão {{version}}",
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
@@ -645,5 +646,36 @@
     "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
     "confirm": "Entendi, continuar",
     "cancel": "Voltar"
+  },
+  "analytics": {
+    "debug": {
+      "title": "📊 Debug Analytics",
+      "status": "Status",
+      "enabled": "✅ Habilitado",
+      "disabled": "❌ Desabilitado",
+      "initialized": "🚀 Inicializado",
+      "notInitialized": "⏳ Não Inicializado",
+      "sending": "📤 Enviando para Amplitude",
+      "notSending": "📝 Apenas registrando (não enviando)",
+      "apiKeyMissing": "⚠️ Chave da API Ausente",
+      "apiKeyMissingWarning": "Os eventos estão sendo registrados para desenvolvimento, mas NÃO enviados para o Amplitude porque a chave da API não está configurada.",
+      "userId": "ID do Usuário: {{userId}}",
+      "userIdNotSet": "ID do Usuário: Não definido",
+      "environment": "Ambiente: {{environment}}",
+      "apiKey": "Chave da API: {{apiKey}}",
+      "recentEvents": "Eventos Recentes ({{count}})",
+      "clear": "Limpar",
+      "noRecentEvents": "Nenhum evento recente",
+      "actions": "Ações",
+      "refresh": "🔄 Atualizar",
+      "clearEvents": "Limpar Eventos",
+      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
+    }
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Compartilhamento de dados anônimos",
+      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
+    }
   }
 }

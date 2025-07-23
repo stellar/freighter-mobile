@@ -13,6 +13,7 @@ import { ActiveAccount } from "ducks/auth";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useState } from "react";
+import { analytics } from "services/analytics";
 
 interface SwapTransactionParams {
   sourceAmount: string;
@@ -22,6 +23,7 @@ interface SwapTransactionParams {
   account: ActiveAccount | null;
   swapFee: string;
   swapTimeout: number;
+  swapSlippage?: number;
   network: NETWORKS;
   navigation: NativeStackNavigationProp<
     SwapStackParamList,
@@ -46,11 +48,11 @@ export const useSwapTransaction = ({
   account,
   swapFee,
   swapTimeout,
+  swapSlippage,
   network,
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
-
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
 
@@ -96,6 +98,15 @@ export const useSwapTransaction = ({
       return;
     }
 
+    // Validate required data before proceeding
+    if (!sourceBalance?.tokenCode) {
+      throw new Error("Source asset is required for swap transaction");
+    }
+
+    if (!destinationBalance?.tokenCode) {
+      throw new Error("Destination asset is required for swap transaction");
+    }
+
     setIsProcessing(true);
 
     try {
@@ -113,9 +124,22 @@ export const useSwapTransaction = ({
       if (!transactionHash) {
         throw new Error("Failed to submit transaction");
       }
+
+      analytics.trackSwapSuccess({
+        sourceAsset: sourceBalance.tokenCode,
+        destAsset: destinationBalance.tokenCode,
+        allowedSlippage: swapSlippage?.toString(),
+        isSwap: true,
+      });
     } catch (error) {
       setIsProcessing(false);
       logger.error("SwapTransaction", "Swap failed", error);
+
+      analytics.trackTransactionError({
+        error: error instanceof Error ? error.message : String(error),
+        isSwap: true,
+      });
+
       throw error;
     }
   };

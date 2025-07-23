@@ -1,5 +1,13 @@
+import { NetInfoStateType } from "@react-native-community/netinfo";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { useNetworkStore } from "ducks/networkInfo";
+
+jest.mock("@react-native-community/netinfo", () => ({
+  NetInfoStateType: {
+    none: "none",
+    unknown: "unknown",
+  },
+}));
 
 describe("networkInfo store", () => {
   beforeEach(() => {
@@ -24,8 +32,10 @@ describe("networkInfo store", () => {
 
     act(() => {
       result.current.setNetworkInfo({
+        type: NetInfoStateType.none,
         isConnected: false,
         isInternetReachable: false,
+        details: null,
       });
     });
 
@@ -33,17 +43,19 @@ describe("networkInfo store", () => {
     expect(result.current.isInternetReachable).toBe(false);
   });
 
-  it("should handle null values in setNetworkInfo", () => {
+  it("should handle unknown network state", () => {
     const { result } = renderHook(() => useNetworkStore());
 
     act(() => {
       result.current.setNetworkInfo({
+        type: NetInfoStateType.unknown,
         isConnected: null,
         isInternetReachable: null,
+        details: null,
       });
     });
 
-    expect(result.current.isConnected).toBe(false);
-    expect(result.current.isInternetReachable).toBe(false);
+    expect(result.current.isConnected).toBe(null);
+    expect(result.current.isInternetReachable).toBe(null);
   });
 });

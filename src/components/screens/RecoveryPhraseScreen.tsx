@@ -5,6 +5,7 @@ import RecoveryPhraseSkipBottomSheet from "components/screens/RecoveryPhraseSkip
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
@@ -12,6 +13,7 @@ import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useEffect, useState } from "react";
+import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
@@ -89,6 +91,8 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const handleContinue = () => {
     if (!recoveryPhrase) return;
+    analytics.track(AnalyticsEvent.VIEWED_RECOVERY_PHRASE);
+
     navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
       password,
       recoveryPhrase,
@@ -104,12 +108,17 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       password,
       mnemonicPhrase: recoveryPhrase,
     });
+
+    analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+
     skipModalRef.current?.dismiss();
   };
 
   const handleCopy = useCallback(() => {
     if (!recoveryPhrase) return;
     copyToClipboard(recoveryPhrase);
+
+    analytics.trackCopyBackupPhrase();
   }, [recoveryPhrase, copyToClipboard]);
 
   if (error) {

@@ -84,7 +84,12 @@ type ValidateRecoveryPhraseScreenRouteProp = RouteProp<
 const renderScreen = () =>
   renderWithProviders(
     <ValidateRecoveryPhraseScreen
-      navigation={{} as ValidateRecoveryPhraseScreenNavigationProp}
+      navigation={
+        {
+          setOptions: jest.fn(),
+          goBack: jest.fn(),
+        } as unknown as ValidateRecoveryPhraseScreenNavigationProp
+      }
       route={mockRoute as unknown as ValidateRecoveryPhraseScreenRouteProp}
     />,
   );

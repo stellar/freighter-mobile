@@ -2,6 +2,8 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BalancesList } from "components/BalancesList";
 import { IconButton } from "components/IconButton";
+import { AnalyticsDebugBottomSheet } from "components/analytics/AnalyticsDebugBottomSheet";
+import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
@@ -29,6 +31,7 @@ import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Dimensions, TouchableOpacity, View } from "react-native";
+import { analytics } from "services/analytics";
 
 const { width } = Dimensions.get("window");
 
@@ -49,6 +52,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { themeColors } = useColors();
   const connectedAppsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
+  const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
 
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -62,6 +66,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     [rawBalance],
   );
 
+  // Set up navigation headers (hook handles navigation.setOptions internally)
   useHomeHeaders({
     navigation,
     hasAssets,
@@ -74,6 +79,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       isFunded,
     });
 
+  // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
+  // when the user navigates to this screen. No need for additional tracking here.
+
   useEffect(() => {
     const fetchAccounts = async () => {
       await getAllAccounts();
@@ -83,6 +91,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, [getAllAccounts]);
 
   const navigateToBuyXLM = useCallback(() => {
+    // Navigation analytics already tracked by useNavigationAnalytics
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
       screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
       params: { isUnfunded: !isFunded },
@@ -91,6 +100,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const handleCopyAddress = (publicKey?: string) => {
     if (!publicKey) return;
+
+    analytics.trackCopyPublicKey();
 
     copyToClipboard(publicKey, {
       notificationMessage: t("accountAddressCopied"),
@@ -117,6 +128,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     });
   };
 
+  const handleSendPress = () => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK);
+  };
+
+  const handleSwapPress = () => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK);
+  };
+
   return (
     <BaseLayout insets={{ bottom: false, top: false }}>
       <WelcomeBannerBottomSheet
@@ -140,7 +159,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="pt-8 w-full items-center">
         <View className="flex-col gap-3 items-center">
           <TouchableOpacity
-            onPress={() => manageAccountsBottomSheetRef.current?.present()}
+            onPress={() => {
+              manageAccountsBottomSheetRef.current?.present();
+            }}
           >
             <View className="flex-row items-center gap-2">
               <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
@@ -166,17 +187,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             Icon={Icon.ArrowUp}
             title={t("home.send")}
             disabled={hasZeroBalance}
-            onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK)
-            }
+            onPress={handleSendPress}
           />
           <IconButton
             Icon={Icon.RefreshCw02}
             title={t("home.swap")}
             disabled={hasZeroBalance}
-            onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK)
-            }
+            onPress={handleSwapPress}
           />
           <IconButton
             Icon={Icon.Copy01}
@@ -195,6 +212,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}
+      />
+
+      {/* Analytics Debug - Development Only */}
+      <AnalyticsDebugBottomSheet
+        modalRef={analyticsDebugBottomSheetRef}
+        onDismiss={() => analyticsDebugBottomSheetRef.current?.dismiss()}
+      />
+      <AnalyticsDebugTrigger
+        onPress={() => analyticsDebugBottomSheetRef.current?.present()}
       />
     </BaseLayout>
   );

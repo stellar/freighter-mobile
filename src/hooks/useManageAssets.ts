@@ -1,3 +1,4 @@
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   NETWORKS,
@@ -16,6 +17,7 @@ import { formatAssetIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { ToastOptions, useToast } from "providers/ToastProvider";
 import { useState } from "react";
+import { analytics } from "services/analytics";
 import {
   buildChangeTrustTx,
   signTransaction,
@@ -172,12 +174,22 @@ export const useManageAssets = ({
           tx: signedTx,
         });
       }
+      analytics.track(AnalyticsEvent.ADD_ASSET_SUCCESS, {
+        asset: `${assetCode}:${issuer}`,
+      });
     } catch (error) {
+      analytics.track(AnalyticsEvent.ASSET_MANAGEMENT_FAIL, {
+        error: error instanceof Error ? error.message : String(error),
+        action: "add",
+        asset: `${assetCode}:${issuer}`,
+      });
+
       logger.error(
         "useManageAssets.addAsset",
         "Error adding asset trustline",
         error,
       );
+
       toastOptions = {
         title: t("addAssetScreen.toastError", {
           assetCode,
@@ -284,7 +296,16 @@ export const useManageAssets = ({
           tx: signedTx,
         });
       }
+      analytics.track(AnalyticsEvent.REMOVE_ASSET_SUCCESS, {
+        asset: assetIdentifier,
+      });
     } catch (error) {
+      analytics.track(AnalyticsEvent.ASSET_MANAGEMENT_FAIL, {
+        error: error instanceof Error ? error.message : String(error),
+        action: "remove",
+        asset: assetIdentifier,
+      });
+
       logger.error(
         "useManageAssets.removeAsset",
         "Error removing asset",

@@ -8,6 +8,8 @@ interface ListItemProps {
   key?: string;
   title: string;
   titleColor?: string;
+  description?: string;
+  descriptionColor?: string;
   trailingContent?: React.ReactNode;
   onPress?: () => void;
   testID?: string;
@@ -37,9 +39,13 @@ export const List: React.FC<ListProps> = ({
           disabled={!item.onPress}
           onPress={item.onPress}
           testID={item.testID}
-          className={`flex-row items-center gap-3 ${compact ? "py-2" : "p-4"}`}
+          className={`flex-row gap-3 ${compact ? "py-2" : "p-4"} ${
+            item.description ? "items-start" : "items-center"
+          }`}
         >
-          {item.icon}
+          {item.icon && (
+            <View className={item.description ? "mt-1" : ""}>{item.icon}</View>
+          )}
           <View className="flex-1">
             <Text
               md
@@ -48,8 +54,23 @@ export const List: React.FC<ListProps> = ({
             >
               {item.title}
             </Text>
+            {item.description && (
+              <View className="mt-4">
+                <Text
+                  sm
+                  secondary
+                  color={item.descriptionColor || THEME.colors.text.secondary}
+                >
+                  {item.description}
+                </Text>
+              </View>
+            )}
           </View>
-          {item.trailingContent}
+          {item.trailingContent && (
+            <View className={item.description ? "mt-1" : ""}>
+              {item.trailingContent}
+            </View>
+          )}
         </TouchableOpacity>
         {!hideDivider && index < items.length - 1 && (
           <View

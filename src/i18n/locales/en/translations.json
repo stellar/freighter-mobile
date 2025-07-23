@@ -52,11 +52,18 @@
     "title": "Settings",
     "logout": "Log Out",
     "network": "Network",
+    "preferences": "Preferences",
     "version": "Version {{version}}",
     "help": "Help",
     "feedback": "Share Feedback",
     "about": "About",
     "security": "Security"
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Anonymous data sharing",
+      "description": "Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc."
+    }
   },
   "shareFeedbackScreen": {
     "title": "Share Feedback",
@@ -637,5 +644,30 @@
     "description3": "Settings → Security → Reveal Recovery Phrase.",
     "confirm": "I understand, continue",
     "cancel": "Go back"
+  },
+  "analytics": {
+    "debug": {
+      "title": "📊 Analytics Debug",
+      "status": "Status",
+      "enabled": "✅ Enabled",
+      "disabled": "❌ Disabled",
+      "initialized": "🚀 Initialized",
+      "notInitialized": "⏳ Not Initialized",
+      "sending": "📤 Sending to Amplitude",
+      "notSending": "📝 Logging only (not sending)",
+      "apiKeyMissing": "⚠️ API Key Missing",
+      "apiKeyMissingWarning": "Events are being logged for development but NOT sent to Amplitude because the API key is not configured.",
+      "userId": "User ID: {{userId}}",
+      "userIdNotSet": "User ID: Not set",
+      "environment": "Environment: {{environment}}",
+      "apiKey": "API Key: {{apiKey}}",
+      "recentEvents": "Recent Events ({{count}})",
+      "clear": "Clear",
+      "noRecentEvents": "No recent events",
+      "actions": "Actions",
+      "refresh": "🔄 Refresh",
+      "clearEvents": "Clear Events",
+      "simulateSessionExpiry": "⏰ Simulate Session Expiry"
+    }
   }
 }

@@ -16,6 +16,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
@@ -33,6 +34,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { analytics } from "services/analytics";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -156,6 +158,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     swapFee,
     swapTimeout,
+    swapSlippage,
     network,
     navigation,
   });
@@ -241,6 +244,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleSetMax = () => {
     if (spendableAmount) {
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
+
       setSourceAmount(spendableAmount.toString());
     }
   };
@@ -327,14 +332,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center py-[24px] max-xs:py-[16px] px-6">
+        <View className="items-center py-[16px] max-xs:py-[12px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
               medium
               adjustsFontSizeToFit
               numberOfLines={1}
-              minimumFontScale={0.6}
+              minimumFontScale={0.8}
             >
               {sourceAmount}{" "}
               <RNText style={{ color: themeColors.text.secondary }}>
@@ -396,7 +401,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
+        <View className="flex-1 items-center mt-[16px] max-xs:mt-[12px] gap-[20px] max-xs:gap-[16px]">
           <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
@@ -419,12 +424,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               </Button>
             </View>
           </View>
-
-          <View className="flex-1 justify-center">
+          <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-
-          <View className="mb-4">
+          <View className="w-full mt-auto mb-8 max-xs:mb-6">
             <Button
               tertiary
               xl
@@ -450,6 +453,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
+        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_ASSET}
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}
@@ -467,6 +471,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
         snapPoints={["80%"]}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}

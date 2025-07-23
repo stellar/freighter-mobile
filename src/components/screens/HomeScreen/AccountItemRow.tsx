@@ -3,6 +3,7 @@ import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
@@ -11,6 +12,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View, Platform, Linking } from "react-native";
+import { analytics } from "services/analytics";
 
 interface AccountItemRowProps {
   account: Account;
@@ -48,6 +50,8 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
 
   const handleViewOnExplorer = async () => {
     const url = `${getStellarExpertUrl(network)}/account/${account.publicKey}`;
+    analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
+
     await Linking.openURL(url);
   };
 
