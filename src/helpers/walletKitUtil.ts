@@ -27,7 +27,6 @@ import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
 import { analytics } from "services/analytics";
-import { TransactionType } from "services/analytics/types";
 
 /** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
@@ -285,7 +284,6 @@ export const approveSessionRequest = async ({
 
     analytics.trackSignedTransaction({
       transactionHash: transaction.hash().toString("hex"),
-      transactionType: TransactionType.Classic,
       ...(dappDomain ? { dappDomain } : {}),
     });
   } catch (error) {

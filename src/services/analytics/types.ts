@@ -18,7 +18,7 @@ export type AnalyticsProps = Record<string, unknown> | undefined;
 
 export interface SignedTransactionEvent {
   transactionHash: string;
-  transactionType: TransactionType;
+  transactionType?: TransactionType | string;
   dappDomain?: string;
 }
 
