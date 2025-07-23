@@ -4,7 +4,6 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
-import { isIOS } from "helpers/device";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
@@ -16,11 +15,12 @@ import { WebView, WebViewNavigation } from "react-native-webview";
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
   onNavigationStateChange: (navState: WebViewNavigation) => void;
+  onShouldStartLoadWithRequest: (request: WebViewNavigation) => boolean;
 }
 
 // Memoize to avoid unnecessary expensive re-renders
 const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
-  ({ webViewRef, onNavigationStateChange }) => {
+  ({ webViewRef, onNavigationStateChange, onShouldStartLoadWithRequest }) => {
     const { tabs, isTabActive, updateTab, activeTabId } = useBrowserTabsStore();
     const { themeColors } = useColors();
 
@@ -175,11 +175,11 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                     }}
                   >
                     <WebView
-                      userAgent={
-                        isIOS
-                          ? BROWSER_CONSTANTS.IOS_USER_AGENT
-                          : BROWSER_CONSTANTS.ANDROID_USER_AGENT
-                      }
+                      // The "iOS" user agent seems to work better for WalletConnect in all cases
+                      userAgent={BROWSER_CONSTANTS.IOS_USER_AGENT}
+                      allowsLinkPreview={false}
+                      javaScriptEnabled
+                      domStorageEnabled
                       startInLoadingState
                       ref={(ref) => {
                         webViewRefs.current[tab.id] = ref;
@@ -196,25 +196,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                         isActive ? onNavigationStateChange : undefined
                       }
                       onShouldStartLoadWithRequest={
-                        isActive
-                          ? (request: WebViewNavigation) => {
-                              logger.debug(
-                                "WebViewContainer",
-                                "onShouldStartLoadWithRequest, request:",
-                                request,
-                              );
-
-                              // TODO: Handle WalletConnect URIs
-                              if (request.url.startsWith("wc:")) {
-                                logger.debug(
-                                  "WalletConnect URI detected:",
-                                  request.url,
-                                );
-                                return false;
-                              }
-                              return true;
-                            }
-                          : () => true
+                        isActive ? onShouldStartLoadWithRequest : () => true
                       }
                     />
                   </ViewShot>
