@@ -1,13 +1,17 @@
+/* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { VISUAL_DELAY_MS } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useWordSelection } from "hooks/useWordSelection";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useLayoutEffect } from "react";
+import { analytics } from "services/analytics";
 
 type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -16,7 +20,7 @@ type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
 
 export const ValidateRecoveryPhraseScreen: React.FC<
   ValidateRecoveryPhraseScreenProps
-> = ({ route }) => {
+> = ({ route, navigation }) => {
   const { password, recoveryPhrase } = route.params;
   const [currentWord, setCurrentWord] = useState("");
   const [error, setError] = useState<string | undefined>();
@@ -39,10 +43,14 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const handleContinue = useCallback(() => {
     if (!canContinue) {
       setIsLoading(true);
+
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL);
+
       setTimeout(() => {
         setError(t("validateRecoveryPhraseScreen.errorText"));
         setIsLoading(false);
       }, VISUAL_DELAY_MS);
+
       return;
     }
 
@@ -58,6 +66,9 @@ export const ValidateRecoveryPhraseScreen: React.FC<
           password,
           mnemonicPhrase: recoveryPhrase,
         });
+
+        analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       }
       setIsLoading(false);
     }, VISUAL_DELAY_MS);
@@ -67,6 +78,23 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     setCurrentWord(value.trim());
     setError(undefined);
   }, []);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <CustomHeaderButton
+          position="left"
+          onPress={() => {
+            analytics.track(
+              AnalyticsEvent.ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK,
+            );
+
+            navigation.goBack();
+          }}
+        />
+      ),
+    });
+  }, [navigation]);
 
   return (
     <OnboardLayout

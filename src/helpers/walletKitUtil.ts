@@ -21,10 +21,13 @@ import {
   WALLET_KIT_PROJECT_ID,
   WalletKitSessionProposal,
   WalletKitSessionRequest,
+  useWalletKitStore,
 } from "ducks/walletKit";
+import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { Linking } from "react-native";
+import { analytics } from "services/analytics";
 
 /** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
@@ -256,13 +259,11 @@ export const approveSessionRequest = async ({
     const message = t("walletKit.errorWrongNetworkMessage", {
       targetNetworkName,
     });
-
     showToast({
       title: t("walletKit.errorWrongNetwork"),
       message,
       variant: "error",
     });
-
     rejectSessionRequest({ sessionRequest, message });
     return;
   }
@@ -274,18 +275,28 @@ export const approveSessionRequest = async ({
       networkPassphrase,
     );
     signedTransaction = signTransaction(transaction);
+
+    const { activeSessions } = useWalletKitStore.getState();
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionRequest,
+      activeSessions,
+    );
+    const dappDomain = dappMetadata?.url;
+
+    analytics.trackSignedTransaction({
+      transactionHash: transaction.hash().toString("hex"),
+      ...(dappDomain ? { dappDomain } : {}),
+    });
   } catch (error) {
     const message = t("common.error", {
       errorMessage:
         error instanceof Error ? error.message : t("common.unknownError"),
     });
-
     showToast({
       title: t("walletKit.errorSigning"),
       message,
       variant: "error",
     });
-
     rejectSessionRequest({ sessionRequest, message });
     return;
   }

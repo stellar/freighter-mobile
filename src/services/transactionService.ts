@@ -28,6 +28,7 @@ import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
 import { t } from "i18next";
+import { analytics } from "services/analytics";
 import { simulateTokenTransfer } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -524,14 +525,21 @@ export const simulateContractTransfer = async ({
     throw new Error("Soroban RPC URL is not defined for this network");
   }
 
-  const result = await simulateTokenTransfer({
-    address: contractAddress,
-    pub_key: transaction.source,
-    memo,
-    params,
-    network_url: networkDetails.sorobanRpcUrl,
-    network_passphrase: networkDetails.networkPassphrase,
-  });
+  try {
+    const result = await simulateTokenTransfer({
+      address: contractAddress,
+      pub_key: transaction.source,
+      memo,
+      params,
+      network_url: networkDetails.sorobanRpcUrl,
+      network_passphrase: networkDetails.networkPassphrase,
+    });
+    return result.preparedTx.toXDR();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
-  return result.preparedTx.toXDR();
+    analytics.trackSimulationError(errorMessage, "contract_transfer");
+
+    throw error;
+  }
 };

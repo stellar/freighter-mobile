@@ -27,6 +27,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     logout();
   };
 
+  const topListItems = [
+    {
+      icon: <Icon.UserCircle color={themeColors.foreground.primary} />,
+      title: t("settings.preferences"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.PREFERENCES_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
+      ),
+      testID: "preferences-button",
+    },
+  ];
+
   const midListItems = [
     {
       icon: <Icon.Server05 color={themeColors.foreground.primary} />,
@@ -98,6 +111,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex flex-col gap-6 mt-4">
+        <List items={topListItems} />
         <List items={midListItems} />
         <List items={bottomListItems} />
       </View>

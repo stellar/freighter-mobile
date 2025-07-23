@@ -41,9 +41,10 @@
     ]
   },
   "dependencies": {
+    "@amplitude/analytics-react-native": "^1.4.13",
     "@babel/runtime": "^7.26.10",
     "@gorhom/bottom-sheet": "^5.1.2",
-    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.1",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-cookies/cookies": "^6.2.1",
@@ -55,7 +56,7 @@
     "@shopify/react-native-skia": "^2.0.0-next.1",
     "@stablelib/base64": "^2.0.1",
     "@stablelib/utf8": "^2.0.1",
-    "@stellar/stellar-sdk": "^13.1.0",
+    "@stellar/stellar-sdk": "^14.0.0-rc.3",
     "@stellar/typescript-wallet-sdk-km": "^1.9.0",
     "@tradle/react-native-http": "^2.0.0",
     "@walletconnect/core": "^2.21.2",

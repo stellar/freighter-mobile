@@ -9,6 +9,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 type YourRecoveryPhraseScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -23,9 +24,10 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   const { themeColors } = useColors();
   const { recoveryPhrase } = route.params;
   const { copyToClipboard } = useClipboard();
-
   const handleCopyToClipboard = () => {
     copyToClipboard(recoveryPhrase);
+
+    analytics.trackCopyBackupPhrase();
   };
 
   return (

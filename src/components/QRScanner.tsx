@@ -9,14 +9,17 @@ import {
   useCodeScanner,
   useCameraPermission,
 } from "react-native-vision-camera";
+import { analytics } from "services/analytics";
 
 /**
  * Props for the QRScanner component
  * @interface QRScannerProps
  * @property {(data: string) => void} onRead - Callback function called when a QR code is successfully scanned
+ * @property {string} [context] - Context for analytics tracking
  */
 type QRScannerProps = {
   onRead: (data: string) => void;
+  context?: "wallet_connect" | "address_input" | "import_wallet";
 };
 
 /**
@@ -28,6 +31,7 @@ type QRScannerProps = {
  * - Loading state handling
  * - Error state display
  * - QR code detection and callback
+ * - Analytics tracking for mobile-specific usage
  *
  * @component
  * @param {QRScannerProps} props - The component props
@@ -39,10 +43,14 @@ type QRScannerProps = {
  *   onRead={(data) => {
  *     console.log('Scanned QR code:', data);
  *   }}
+ *   context="wallet_connect"
  * />
  * ```
  */
-export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
+export const QRScanner: React.FC<QRScannerProps> = ({
+  onRead,
+  context = "wallet_connect",
+}) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
   const { t } = useAppTranslation();
@@ -53,6 +61,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
     codeTypes: ["qr"],
     onCodeScanned: (codes) => {
       if (codes.length > 0 && codes[0].value) {
+        analytics.trackQRScanSuccess(context);
+
         onRead(codes[0].value);
       }
     },
@@ -67,6 +77,15 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onRead }) => {
       setIsMounting(false);
     }, 500);
   }, []);
+
+  useEffect(() => {
+    // Track error if permissions denied or camera unavailable (mobile-specific feature)
+    if (!isMounting && (device == null || !hasPermission)) {
+      const error = device == null ? "camera_unavailable" : "permission_denied";
+
+      analytics.trackQRScanError(error, context);
+    }
+  }, [isMounting, device, hasPermission, context]);
 
   if (isMounting) {
     return (

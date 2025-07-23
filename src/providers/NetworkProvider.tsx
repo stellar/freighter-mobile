@@ -30,10 +30,7 @@ export const NetworkProvider = ({ children }: Props) => {
           `Connection status changed: connected=${event.isConnected}, reachable=${event.isInternetReachable}`,
         );
 
-        setNetworkInfo({
-          isConnected: event.isConnected,
-          isInternetReachable: event.isInternetReachable,
-        });
+        setNetworkInfo(event);
       });
     }, NETWORK_CHECK_INITIAL_DELAY);
 

@@ -15,6 +15,7 @@ import {
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
@@ -23,6 +24,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { Linking, View } from "react-native";
+import { analytics } from "services/analytics";
 
 interface TransactionDetailsBottomSheetCustomContentProps {
   transactionDetails: TransactionDetails | null;
@@ -161,6 +163,8 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         lg
         icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
         onPress={() => {
+          analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
+
           Linking.openURL(transactionDetails.externalUrl);
         }}
       >

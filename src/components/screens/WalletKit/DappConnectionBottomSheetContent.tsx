@@ -12,6 +12,7 @@ import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 /**
  * Props for the DappConnectionBottomSheetContent component
@@ -51,6 +52,16 @@ const DappConnectionBottomSheetContent: React.FC<
   }
 
   const dappDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
+
+  const handleUserCancel = () => {
+    if (proposalEvent) {
+      analytics.trackGrantAccessFail(
+        proposalEvent.params.proposer.metadata.url,
+        "user_rejected",
+      );
+    }
+    onCancel();
+  };
 
   return (
     <View className="flex-1 justify-center items-center mt-2">
@@ -115,7 +126,7 @@ const DappConnectionBottomSheetContent: React.FC<
             secondary
             lg
             isFullWidth
-            onPress={onCancel}
+            onPress={handleUserCancel}
             disabled={isConnecting}
           >
             {t("common.cancel")}
