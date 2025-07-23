@@ -73,6 +73,9 @@ tools.
     2. Add the required environment variables:
 
        ```
+       FREIGHTER_BACKEND_URL=your_backend_url_here
+       FREIGHTER_BACKEND_V2_URL=your_backend_v2_url_here
+
        WALLET_KIT_PROJECT_ID=your_project_id_here
        WALLET_KIT_MT_NAME=your_wallet_name_here
        other variables...
@@ -80,7 +83,11 @@ tools.
 
     3. Update the `.env.example` file for documentation, add the same variables
        without values:
+
        ```
+       FREIGHTER_BACKEND_URL=
+       FREIGHTER_BACKEND_V2_URL=
+
        WALLET_KIT_PROJECT_ID=
        WALLET_KIT_MT_NAME=
        other variables...

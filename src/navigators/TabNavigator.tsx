@@ -8,12 +8,13 @@ import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { useProtocolsStore } from "ducks/protocols";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
@@ -66,6 +67,7 @@ export const TabNavigator = () => {
     () => mapNetworkToNetworkDetails(activeNetwork),
     [activeNetwork],
   );
+  const { fetchProtocols } = useProtocolsStore();
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({
@@ -81,6 +83,12 @@ export const TabNavigator = () => {
     publicKey: publicKey ?? "",
     network: networkDetails.network,
   });
+
+  // Fetch discover protocols on mount
+  useEffect(() => {
+    fetchProtocols();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!publicKey) {
     return <LoadingScreen />;

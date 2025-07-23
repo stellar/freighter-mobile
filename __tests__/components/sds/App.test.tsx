@@ -18,16 +18,21 @@ describe("App", () => {
       );
       const app = getByTestId("test-app");
 
-      expect(app.props.className).toContain("w-8 h-8");
+      expect(app.props.style).toEqual(
+        expect.objectContaining({
+          width: 32,
+          height: 32,
+        }),
+      );
     });
 
     it("uses specified size", () => {
       const sizes: AppSize[] = ["sm", "md", "lg", "xl"];
-      const sizeClasses = {
-        sm: "w-6 h-6",
-        md: "w-8 h-8",
-        lg: "w-10 h-10",
-        xl: "w-12 h-12",
+      const sizeValues = {
+        sm: 24,
+        md: 32,
+        lg: 40,
+        xl: 48,
       };
 
       sizes.forEach((size) => {
@@ -36,7 +41,12 @@ describe("App", () => {
         );
         const app = getByTestId(`test-app-${size}`);
 
-        expect(app.props.className).toContain(sizeClasses[size]);
+        expect(app.props.style).toEqual(
+          expect.objectContaining({
+            width: sizeValues[size],
+            height: sizeValues[size],
+          }),
+        );
       });
     });
   });

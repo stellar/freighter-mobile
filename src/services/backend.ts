@@ -1,17 +1,29 @@
+/**
+ * Backend Service Module
+ * @fileoverview API service functions for interacting with Freighter backend services
+ *
+ * This module provides functions for:
+ * - Account balance fetching and transformation
+ * - Token price retrieval and caching
+ * - Token details and contract validation
+ * - Account history retrieval
+ * - Protocol discovery and filtering
+ * - Transaction simulation
+ *
+ * All functions handle error scenarios gracefully and provide consistent
+ * data transformation (e.g., BigNumber conversion via bigize helper).
+ */
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import {
-  FREIGHTER_BACKEND_URL,
-  NetworkDetails,
-  NETWORKS,
-} from "config/constants";
+import { NetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   AssetTypeWithCustomToken,
   BalanceMap,
   FormattedSearchAssetRecord,
   GetTokenDetailsParams,
+  DiscoverProtocol,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPricesMap,
@@ -19,13 +31,27 @@ import {
 import { getAssetType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
+import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
 
-// Create a dedicated API service for backend operations
+// Create dedicated API services for backend operations
 const freighterBackend = createApiService({
-  baseURL: FREIGHTER_BACKEND_URL,
+  baseURL: Config.FREIGHTER_BACKEND_URL,
+});
+const freighterBackendV2 = createApiService({
+  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 
+/**
+ * Response type for account balance fetching
+ * @typedef {Object} FetchBalancesResponse
+ * @property {BalanceMap} [balances] - Map of account balances by asset
+ * @property {boolean} [isFunded] - Whether the account is funded
+ * @property {number} [subentryCount] - Number of subentries on the account
+ * @property {Object} [error] - Error information from horizon/soroban
+ * @property {any} error.horizon - Horizon-specific error details
+ * @property {any} error.soroban - Soroban-specific error details
+ */
 export type FetchBalancesResponse = {
   balances?: BalanceMap;
   isFunded?: boolean;
@@ -35,12 +61,47 @@ export type FetchBalancesResponse = {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 };
 
+/**
+ * Parameters for fetching account balances
+ * @typedef {Object} FetchBalancesParams
+ * @property {string} publicKey - The public key of the account
+ * @property {NETWORKS} network - The network to query (mainnet/testnet)
+ * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
+ */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
 };
 
+/**
+ * Fetches account balances from the backend API
+ * @async
+ * @function fetchBalances
+ * @param {FetchBalancesParams} params - Parameters for balance fetching
+ * @param {string} params.publicKey - The public key of the account
+ * @param {NETWORKS} params.network - The network to query (mainnet/testnet)
+ * @param {string[]} [params.contractIds] - Optional contract IDs to include
+ * @returns {Promise<FetchBalancesResponse>} Promise resolving to account balance data
+ *
+ * @description
+ * Fetches account balances from the backend and transforms the response:
+ * - Converts numeric values to BigNumber for precision
+ * - Handles native balance conversion (native → XLM)
+ * - Supports optional contract ID filtering
+ * - Preserves error information from horizon/soroban
+ *
+ * @throws {Error} When the API request fails
+ *
+ * @example
+ * ```ts
+ * const balances = await fetchBalances({
+ *   publicKey: "GABC...",
+ *   network: NETWORKS.PUBLIC,
+ *   contractIds: ["contract123"]
+ * });
+ * ```
+ */
 export const fetchBalances = async ({
   publicKey,
   network,
@@ -91,6 +152,8 @@ export const fetchBalances = async ({
 
 /**
  * Response from the token prices API
+ * @interface TokenPricesResponse
+ * @property {TokenPricesMap} data - Map of token identifiers to price information
  */
 interface TokenPricesResponse {
   data: TokenPricesMap;
@@ -196,6 +259,31 @@ export const fetchTokenPrices = async ({
   return bigize(pricesMap, ["currentPrice", "percentagePriceChange24h"]);
 };
 
+/**
+ * Fetches detailed information about a specific token contract
+ * @async
+ * @function getTokenDetails
+ * @param {GetTokenDetailsParams} params - Parameters for token details fetching
+ * @returns {Promise<TokenDetailsResponse | null>} Promise resolving to token details or null if not found
+ *
+ * @description
+ * Retrieves comprehensive token information from the backend:
+ * - Token symbol, name, and decimals
+ * - Contract validation and type detection
+ * - Handles both SAC and custom token contracts
+ * - Returns null for non-token contracts (400 status)
+ *
+ * @throws {Error} When the API request fails (except 400 status)
+ *
+ * @example
+ * ```ts
+ * const tokenDetails = await getTokenDetails({
+ *   contractId: "contract123",
+ *   publicKey: "GABC...",
+ *   network: NETWORKS.PUBLIC
+ * });
+ * ```
+ */
 export const getTokenDetails = async ({
   contractId,
   publicKey,
@@ -239,6 +327,30 @@ export const getTokenDetails = async ({
   }
 };
 
+/**
+ * Checks if a contract is a Stellar Asset Contract (SAC)
+ * @async
+ * @function isSacContractExecutable
+ * @param {string} contractId - The contract ID to check
+ * @param {NETWORKS} network - The network to query
+ * @returns {Promise<boolean>} Promise resolving to true if contract is SAC, false otherwise
+ *
+ * @description
+ * Validates whether a contract implements the Stellar Asset Contract interface:
+ * - Checks contract executable status
+ * - Determines if contract can be used for token operations
+ * - Returns false on any error (graceful degradation)
+ *
+ * @throws {Error} When the API request fails (logged but not re-thrown)
+ *
+ * @example
+ * ```ts
+ * const isSac = await isSacContractExecutable("contract123", NETWORKS.PUBLIC);
+ * if (isSac) {
+ *   // Handle SAC token operations
+ * }
+ * ```
+ */
 export const isSacContractExecutable = async (
   contractId: string,
   network: NETWORKS,
@@ -275,6 +387,31 @@ export const isSacContractExecutable = async (
   }
 };
 
+/**
+ * Fetches account operation history from the indexer
+ * @async
+ * @function getIndexerAccountHistory
+ * @param {Object} params - Parameters for history fetching
+ * @param {string} params.publicKey - The public key of the account
+ * @param {NetworkDetails} params.networkDetails - Network configuration details
+ * @returns {Promise<Horizon.ServerApi.OperationRecord[]>} Promise resolving to operation records
+ *
+ * @description
+ * Retrieves comprehensive account operation history:
+ * - Includes both successful and failed operations
+ * - Uses indexer for enhanced performance and data
+ * - Returns empty array on error (graceful degradation)
+ *
+ * @throws {Error} When the API request fails (logged but not re-thrown)
+ *
+ * @example
+ * ```ts
+ * const history = await getIndexerAccountHistory({
+ *   publicKey: "GABC...",
+ *   networkDetails: { network: NETWORKS.PUBLIC, ... }
+ * });
+ * ```
+ */
 export const getIndexerAccountHistory = async ({
   publicKey,
   networkDetails,
@@ -307,6 +444,27 @@ export const getIndexerAccountHistory = async ({
   }
 };
 
+/**
+ * Fetches account operation history (wrapper for indexer)
+ * @async
+ * @function getAccountHistory
+ * @param {Object} params - Parameters for history fetching
+ * @param {string} params.publicKey - The public key of the account
+ * @param {NetworkDetails} params.networkDetails - Network configuration details
+ * @returns {Promise<Horizon.ServerApi.OperationRecord[]>} Promise resolving to operation records
+ *
+ * @description
+ * Wrapper function that delegates to getIndexerAccountHistory.
+ * Currently uses the indexer for all account history requests.
+ *
+ * @example
+ * ```ts
+ * const history = await getAccountHistory({
+ *   publicKey: "GABC...",
+ *   networkDetails: { network: NETWORKS.PUBLIC, ... }
+ * });
+ * ```
+ */
 export const getAccountHistory = async ({
   publicKey,
   networkDetails,
@@ -320,6 +478,33 @@ export const getAccountHistory = async ({
     networkDetails,
   });
 
+/**
+ * Looks up contract details and formats them for display
+ * @async
+ * @function handleContractLookup
+ * @param {string} contractId - The contract ID to look up
+ * @param {NETWORKS} network - The network to query
+ * @param {string} [publicKey] - Optional public key for token details
+ * @returns {Promise<FormattedSearchAssetRecord | null>} Promise resolving to formatted asset record or null
+ *
+ * @description
+ * Comprehensive contract lookup that handles multiple contract types:
+ * - Native contracts (XLM, etc.)
+ * - SAC (Stellar Asset Contract) tokens
+ * - Custom tokens
+ * - Returns null for unrecognized contracts
+ *
+ * @throws {Error} When API requests fail (logged but not re-thrown)
+ *
+ * @example
+ * ```ts
+ * const assetRecord = await handleContractLookup(
+ *   "contract123",
+ *   NETWORKS.PUBLIC,
+ *   "GABC..."
+ * );
+ * ```
+ */
 export const handleContractLookup = async (
   contractId: string,
   network: NETWORKS,
@@ -368,6 +553,20 @@ export const handleContractLookup = async (
   };
 };
 
+/**
+ * Parameters for token transfer simulation
+ * @interface SimulateTokenTransferParams
+ * @property {string} address - Contract address for the token
+ * @property {string} pub_key - Public key of the sender
+ * @property {string} memo - Transaction memo
+ * @property {string} [fee] - Optional fee amount
+ * @property {Object} params - Transfer parameters
+ * @property {string} params.publicKey - Sender's public key
+ * @property {string} params.destination - Recipient's address
+ * @property {string} params.amount - Amount to transfer
+ * @property {string} network_url - Network URL for simulation
+ * @property {string} network_passphrase - Network passphrase
+ */
 export interface SimulateTokenTransferParams {
   address: string;
   pub_key: string;
@@ -382,11 +581,48 @@ export interface SimulateTokenTransferParams {
   network_passphrase: string;
 }
 
+/**
+ * Response from token transfer simulation
+ * @interface SimulateTransactionResponse
+ * @property {unknown} simulationResponse - Raw simulation response from backend
+ * @property {string} preparedTransaction - XDR-encoded prepared transaction
+ */
 export interface SimulateTransactionResponse {
   simulationResponse: unknown;
   preparedTransaction: string;
 }
 
+/**
+ * Simulates a token transfer operation
+ * @async
+ * @function simulateTokenTransfer
+ * @param {SimulateTokenTransferParams} params - Simulation parameters
+ * @returns {Promise<Object>} Promise resolving to simulation result with prepared transaction
+ *
+ * @description
+ * Simulates a token transfer to validate the operation:
+ * - Validates transaction parameters
+ * - Returns simulation response and prepared transaction
+ * - Converts XDR to TransactionBuilder for easy manipulation
+ *
+ * @throws {Error} When the simulation fails
+ *
+ * @example
+ * ```ts
+ * const result = await simulateTokenTransfer({
+ *   address: "contract123",
+ *   pub_key: "GABC...",
+ *   memo: "Transfer",
+ *   params: {
+ *     publicKey: "GABC...",
+ *     destination: "GDEF...",
+ *     amount: "100"
+ *   },
+ *   network_url: "https://horizon.stellar.org",
+ *   network_passphrase: "Public Global Stellar Network"
+ * });
+ * ```
+ */
 export const simulateTokenTransfer = async (
   params: SimulateTokenTransferParams,
 ) => {
@@ -402,4 +638,99 @@ export const simulateTokenTransfer = async (
       params.network_passphrase,
     ),
   };
+};
+
+/**
+ * Response from the protocols API
+ * @interface ProtocolsResponse
+ * @property {Object} data - Response data container
+ * @property {Object[]} data.protocols - Array of protocol objects
+ * @property {string} data.protocols[].description - Protocol description
+ * @property {string} data.protocols[].icon_url - Protocol icon URL
+ * @property {string} data.protocols[].name - Protocol name
+ * @property {string} data.protocols[].website_url - Protocol website URL
+ * @property {string[]} data.protocols[].tags - Protocol tags/categories
+ * @property {boolean} [data.protocols[].is_blacklisted] - Whether protocol is blacklisted
+ * @property {boolean} [data.protocols[].is_wc_not_supported] - Whether protocol supports WalletConnect
+ */
+interface ProtocolsResponse {
+  data: {
+    protocols: {
+      description: string;
+      icon_url: string;
+      name: string;
+      website_url: string;
+      tags: string[];
+      is_blacklisted?: boolean;
+      is_wc_not_supported?: boolean;
+    }[];
+  };
+}
+
+/**
+ * Fetches trending protocols from the backend protocols endpoint
+ * @async
+ * @function fetchProtocols
+ * @returns {Promise<DiscoverProtocol[]>} Promise resolving to filtered array of protocols
+ *
+ * @description
+ * Retrieves and filters protocols from the backend:
+ * - Fetches all protocols from the /protocols endpoint
+ * - Filters out blacklisted protocols (is_blacklisted: true)
+ * - Filters out unsupported protocols (is_wc_not_supported: true)
+ * - Transforms response to match DiscoverProtocol interface
+ * - Handles API errors gracefully with logging
+ *
+ * @throws {Error} When the API request fails or response is invalid
+ *
+ * @example
+ * ```ts
+ * const protocols = await fetchProtocols();
+ * // Returns only non-blacklisted, supported protocols
+ * ```
+ */
+export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
+  try {
+    const { data } =
+      await freighterBackendV2.get<ProtocolsResponse>("/protocols");
+
+    if (!data.data || !data.data.protocols) {
+      logger.error(
+        "backendApi.fetchProtocols",
+        "Invalid response from server",
+        data,
+      );
+
+      throw new Error("Invalid response from server");
+    }
+
+    // Filter out blacklisted/unsupported protocols and
+    // transform the response to match our Protocol type
+    return data.data.protocols
+      .filter((protocol) => {
+        if (
+          protocol.is_blacklisted === true ||
+          protocol.is_wc_not_supported === true
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((protocol) => ({
+        description: protocol.description,
+        iconUrl: protocol.icon_url,
+        name: protocol.name,
+        websiteUrl: protocol.website_url,
+        tags: protocol.tags,
+      }));
+  } catch (error) {
+    logger.error(
+      "backendApi.fetchProtocols",
+      "Error fetching protocols",
+      error,
+    );
+
+    throw error;
+  }
 };

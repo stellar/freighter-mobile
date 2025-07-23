@@ -92,13 +92,11 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
 
       // Early return if the URI param is not found
       if (!uriParam) {
-        showToast({
-          title: t("walletKit.errorPairing"),
-          message: t("common.error", {
-            errorMessage: t("walletKit.errorNoUriParam"),
-          }),
-          variant: "error",
-        });
+        logger.error(
+          "onDeepLink",
+          "WalletConnect URI param not found: ",
+          event.url,
+        );
         return;
       }
 

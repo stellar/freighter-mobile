@@ -11,6 +11,7 @@ import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
 import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -142,6 +143,29 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     [activeTabId, updateTab],
   );
 
+  const handleShouldStartLoadWithRequest = useCallback(
+    (request: WebViewNavigation) => {
+      logger.debug(
+        "WebViewContainer",
+        "onShouldStartLoadWithRequest, request:",
+        request,
+      );
+
+      // We should not handle WalletConnect URIs here
+      // let's handle them in the useWalletKitEventsManager hook instead
+      if (request.url.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
+        logger.debug(
+          "WebViewContainer",
+          "onShouldStartLoadWithRequest, WalletConnect URI detected:",
+          request.url,
+        );
+        return false;
+      }
+      return true;
+    },
+    [],
+  );
+
   // Memoize these callbacks to prevent child re-renders
   const handleUrlSubmit = useCallback(() => {
     browserActions.handleUrlSubmit(inputUrl);
@@ -213,6 +237,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         <WebViewContainer
           webViewRef={webViewRef}
           onNavigationStateChange={handleNavigationStateChange}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         />
 
         <BottomNavigation
