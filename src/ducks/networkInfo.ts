@@ -16,17 +16,19 @@ interface NetworkState {
 }
 
 export const useNetworkStore = create<NetworkState>((set) => ({
-  isConnected: null,
-  isInternetReachable: null,
-  isOffline: true,
+  isConnected: true,
+  isInternetReachable: true,
+  isOffline: false,
   connectionType: UNKNOWN_CONNECTION,
   effectiveType: null,
   setNetworkInfo: (payload) =>
-    set(() => ({
-      isConnected: payload.isConnected,
-      isInternetReachable: payload.isInternetReachable,
-      isOffline: !payload.isConnected || !payload.isInternetReachable,
-      connectionType: payload.type,
+    set((state) => ({
+      isConnected: payload.isConnected ?? false,
+      isInternetReachable: payload.isInternetReachable ?? false,
+      isOffline:
+        !(payload.isConnected ?? state.isConnected) ||
+        !(payload.isInternetReachable ?? state.isInternetReachable),
+      connectionType: payload.type ?? UNKNOWN_CONNECTION,
       effectiveType:
         payload.type === NetInfoStateType.cellular &&
         payload.details?.cellularGeneration

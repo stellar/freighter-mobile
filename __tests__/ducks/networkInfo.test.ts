@@ -55,7 +55,7 @@ describe("networkInfo store", () => {
       });
     });
 
-    expect(result.current.isConnected).toBe(null);
-    expect(result.current.isInternetReachable).toBe(null);
+    expect(result.current.isConnected).toBe(false);
+    expect(result.current.isInternetReachable).toBe(false);
   });
 });

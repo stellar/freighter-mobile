@@ -67,5 +67,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSUserTrackingUsageDescription</key>
+    <string>Freighter uses device identifiers to track marketing attribution and app usage. Your data is kept confidential and is not shared with any 3rd parties or advertising partners.</string>
 </dict>
 </plist>

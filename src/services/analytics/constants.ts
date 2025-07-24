@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import Config from "react-native-config";
 
 // -----------------------------------------------------------------------------
@@ -36,7 +37,8 @@ export const DEBUG_CONFIG = {
 // -----------------------------------------------------------------------------
 
 export const ANALYTICS_CONFIG = {
-  DEFAULT_ENABLED: true,
+  // On iOS, we don't have permission to track the user by default, so we set it to false
+  DEFAULT_ENABLED: Platform.OS !== "ios",
   INCLUDE_COMMON_CONTEXT: true,
   THROTTLE_DUPLICATE_EVENTS: true,
 } as const;

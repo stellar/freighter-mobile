@@ -19,6 +19,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useAnalyticsAndPermissions } from "hooks/useAnalyticsAndPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import {
   AuthNavigator,
@@ -32,7 +33,6 @@ import {
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
-import { analytics } from "services/analytics";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -48,10 +48,10 @@ export const RootNavigator = () => {
   const [initializing, setInitializing] = useState(true);
   const { t } = useAppTranslation();
 
-  // Identify user for analytics (device-unique, random ID)
-  useEffect(() => {
-    analytics.identifyUser();
-  }, []);
+  // Use analytics/permissions hook only after splash is hidden
+  useAnalyticsAndPermissions({
+    previousState: initializing ? undefined : "none",
+  });
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -59,7 +59,6 @@ export const RootNavigator = () => {
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     };
-
     initializeApp();
   }, [getAuthStatus]);
 

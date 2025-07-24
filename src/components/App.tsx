@@ -12,53 +12,19 @@ import { AuthCheckProvider } from "providers/AuthCheckProvider";
 import { NetworkProvider } from "providers/NetworkProvider";
 import { ToastProvider } from "providers/ToastProvider";
 import { WalletKitProvider } from "providers/WalletKitProvider";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
-import { Appearance, AppState, StatusBar, AppStateStatus } from "react-native";
+import { Appearance, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { analytics } from "services/analytics";
-import { initAnalytics } from "services/analytics/core";
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export const App = (): React.JSX.Element => {
   const { onStateChange } = useNavigationAnalytics();
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  const isFirstLaunchRef = useRef(true);
 
   useEffect(() => {
     Appearance.setColorScheme("dark");
-    initAnalytics();
-
-    // Track fresh app launch (cold boot)
-    // when the app is launched the first time the previous state is always "none"
-    analytics.trackAppOpened({
-      previousState: "none",
-    });
-  }, []);
-
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      const previousState = appStateRef.current;
-
-      if (nextAppState === "active" && !isFirstLaunchRef.current) {
-        // Track app foregrounded from background
-        analytics.trackAppOpened({
-          previousState,
-        });
-      }
-
-      appStateRef.current = nextAppState;
-      isFirstLaunchRef.current = false;
-    };
-
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange,
-    );
-
-    return () => subscription?.remove();
   }, []);
 
   return (

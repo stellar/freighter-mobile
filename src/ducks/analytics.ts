@@ -6,8 +6,10 @@ import { persist, createJSONStorage } from "zustand/middleware";
 export interface AnalyticsState {
   isEnabled: boolean;
   userId: string | null;
+  attRequested: boolean; // ATT (App Tracking Transparency) is an iOS-only requirement.
   setEnabled: (enabled: boolean) => void;
   setUserId: (userId: string | null) => void;
+  setAttRequested: (requested: boolean) => void;
 }
 
 export const useAnalyticsStore = create<AnalyticsState>()(
@@ -15,8 +17,10 @@ export const useAnalyticsStore = create<AnalyticsState>()(
     (set) => ({
       isEnabled: ANALYTICS_CONFIG.DEFAULT_ENABLED,
       userId: null,
+      attRequested: false,
       setEnabled: (enabled) => set({ isEnabled: enabled }),
       setUserId: (userId) => set({ userId }),
+      setAttRequested: (requested) => set({ attRequested: requested }),
     }),
     {
       name: "analytics-storage",
