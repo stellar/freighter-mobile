@@ -19,7 +19,8 @@
     "loading": "Loading...",
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
-    "review": "Review"
+    "review": "Review",
+    "and": " and "
   },
   "home": {
     "title": "Home",
@@ -119,7 +120,8 @@
     "iAlreadyHaveWallet": "I already have a wallet",
     "terms": {
       "byProceeding": "By proceeding, you agree to Freighter's ",
-      "termsOfService": "terms of use"
+      "termsOfService": "terms of use",
+      "privacyPolicy": "privacy policy"
     }
   },
   "choosePasswordScreen": {

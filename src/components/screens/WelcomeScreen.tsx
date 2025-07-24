@@ -75,6 +75,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             <Text md medium url="https://stellar.org/terms-of-service">
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
+            {t("common.and")}
+            <Text md medium url="https://stellar.org/privacy-policy">
+              {t("welcomeScreen.terms.privacyPolicy")}
+            </Text>
           </StyledTermsText>
         </View>
       </Container>
