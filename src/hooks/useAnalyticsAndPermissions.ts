@@ -28,6 +28,7 @@ export const useAnalyticsAndPermissions = ({
 
     try {
       const result = await request(PERMISSIONS.IOS.APP_TRACKING_TRANSPARENCY);
+
       analytics.setAnalyticsEnabled(result === RESULTS.GRANTED);
 
       if (shouldSetAttRequested(result)) {
