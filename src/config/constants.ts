@@ -148,6 +148,7 @@ export enum OPERATION_TYPES {
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
 export const MIN_TRANSACTION_TIMEOUT = 1;
+export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14;
 
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,

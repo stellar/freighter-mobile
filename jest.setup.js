@@ -290,4 +290,10 @@ jest.mock("services/analytics/debug", () => ({
   addToRecentEvents: jest.fn(),
 }));
 
-// Mock the main analytics export (this is what failing tests import)
+jest.mock("react-native-permissions", () => ({
+  PERMISSIONS: {
+    IOS: {
+      APP_TRACKING_TRANSPARENCY: "app-tracking-transparency",
+    },
+  },
+}));

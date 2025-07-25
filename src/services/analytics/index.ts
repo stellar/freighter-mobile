@@ -1,5 +1,7 @@
 import {
   setAnalyticsEnabled,
+  setAttRequested,
+  setAnalyticsUserId,
   track,
   trackAppOpened,
 } from "services/analytics/core";
@@ -34,6 +36,8 @@ export interface AnalyticsInstance {
   readonly track: typeof track;
   readonly trackAppOpened: typeof trackAppOpened;
   readonly setAnalyticsEnabled: typeof setAnalyticsEnabled;
+  readonly setAttRequested: typeof setAttRequested;
+  readonly setAnalyticsUserId: typeof setAnalyticsUserId;
   readonly identifyUser: typeof identifyUser;
 
   // Authentication analytics
@@ -92,6 +96,8 @@ export const analytics: AnalyticsInstance = {
   track,
   trackAppOpened,
   setAnalyticsEnabled,
+  setAttRequested,
+  setAnalyticsUserId,
   identifyUser,
   trackReAuthSuccess,
   trackReAuthFail,

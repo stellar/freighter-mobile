@@ -3,6 +3,7 @@ import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
+import { STELLAR_FOUNDATION_BASE_URL } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -72,8 +73,20 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
         <View>
           <StyledTermsText md secondary medium>
             {t("welcomeScreen.terms.byProceeding")}
-            <Text md medium url="https://stellar.org/terms-of-service">
+            <Text
+              md
+              medium
+              url={`${STELLAR_FOUNDATION_BASE_URL}/terms-of-service`}
+            >
               {t("welcomeScreen.terms.termsOfService")}
+            </Text>
+            {t("common.and")}
+            <Text
+              md
+              medium
+              url={`${STELLAR_FOUNDATION_BASE_URL}/privacy-policy`}
+            >
+              {t("welcomeScreen.terms.privacyPolicy")}
             </Text>
           </StyledTermsText>
         </View>

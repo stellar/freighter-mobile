@@ -19,7 +19,8 @@
     "loading": "Carregando...",
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
-    "review": "Revisar"
+    "review": "Revisar",
+    "and": " e "
   },
   "home": {
     "title": "Início",
@@ -100,7 +101,8 @@
     "iAlreadyHaveWallet": "Já tenho uma carteira",
     "terms": {
       "byProceeding": "Ao prosseguir, você concorda com os ",
-      "termsOfService": "termos de uso do Freighter"
+      "termsOfService": "termos de uso do Freighter",
+      "privacyPolicy": "política de privacidade"
     }
   },
   "choosePasswordScreen": {
