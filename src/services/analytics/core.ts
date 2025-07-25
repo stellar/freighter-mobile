@@ -84,6 +84,36 @@ export const setAnalyticsEnabled = (enabled: boolean): void => {
   }
 };
 
+export const setAttRequested = (requested: boolean): void => {
+  try {
+    useAnalyticsStore.getState().setAttRequested(requested);
+
+    logger.debug(DEBUG_CONFIG.LOG_PREFIX, `ATT requested set to: ${requested}`);
+  } catch (error) {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to update ATT requested state",
+      {
+        requested,
+        error,
+      },
+    );
+  }
+};
+
+export const setAnalyticsUserId = (userId: string | null): void => {
+  try {
+    useAnalyticsStore.getState().setUserId(userId);
+
+    logger.debug(DEBUG_CONFIG.LOG_PREFIX, `Analytics userId set to: ${userId}`);
+  } catch (error) {
+    logger.error(DEBUG_CONFIG.LOG_PREFIX, "Failed to update analytics userId", {
+      userId,
+      error,
+    });
+  }
+};
+
 // -----------------------------------------------------------------------------
 // CORE TRACKING
 // -----------------------------------------------------------------------------
