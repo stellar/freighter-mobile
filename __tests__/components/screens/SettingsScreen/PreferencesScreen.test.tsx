@@ -3,7 +3,7 @@ import { userEvent } from "@testing-library/react-native";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
-import { useAnalyticsAndPermissions } from "hooks/useAnalyticsAndPermissions";
+import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import React from "react";
 
 jest.mock("@react-navigation/native", () => ({
@@ -13,16 +13,18 @@ jest.mock("@react-navigation/native", () => ({
   }),
 }));
 
-const mockHandleAnalyticsToggleClick = jest.fn(() => Promise.resolve());
+const mockHandleAnalyticsToggle = jest.fn(() => Promise.resolve());
 const mockSyncTrackingPermission = jest.fn();
+const mockSetShowPermissionModal = jest.fn();
+const mockHandleOpenSettings = jest.fn(() => Promise.resolve());
 
-jest.mock("hooks/useAnalyticsAndPermissions", () => ({
-  useAnalyticsAndPermissions: jest.fn(),
+jest.mock("hooks/useAnalyticsPermissions", () => ({
+  useAnalyticsPermissions: jest.fn(),
 }));
 
-const mockUseAnalyticsAndPermissions =
-  useAnalyticsAndPermissions as jest.MockedFunction<
-    typeof useAnalyticsAndPermissions
+const mockUseAnalyticsPermissions =
+  useAnalyticsPermissions as jest.MockedFunction<
+    typeof useAnalyticsPermissions
   >;
 
 type PreferencesScreenNavigationProp = NativeStackScreenProps<
@@ -49,12 +51,16 @@ describe("PreferencesScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockUseAnalyticsAndPermissions.mockReturnValue({
+    mockUseAnalyticsPermissions.mockReturnValue({
       isTrackingEnabled: false,
-      attRequested: false,
-      handleAnalyticsToggleClick: mockHandleAnalyticsToggleClick,
+      isAttRequested: false,
+      handleAnalyticsToggle: mockHandleAnalyticsToggle,
       syncTrackingPermission: mockSyncTrackingPermission,
       isPermissionLoading: false,
+      showPermissionModal: false,
+      setShowPermissionModal: mockSetShowPermissionModal,
+      handleOpenSettings: mockHandleOpenSettings,
+      permissionAction: "enable",
     });
   });
 
@@ -83,16 +89,20 @@ describe("PreferencesScreen", () => {
     const toggle = getByTestId("toggle-analytics-toggle");
     await userEvent.press(toggle);
 
-    expect(mockHandleAnalyticsToggleClick).toHaveBeenCalledTimes(1);
+    expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
   });
 
   it("shows loading spinner when permission is being checked", () => {
-    mockUseAnalyticsAndPermissions.mockReturnValue({
+    mockUseAnalyticsPermissions.mockReturnValue({
       isTrackingEnabled: false,
-      attRequested: false,
-      handleAnalyticsToggleClick: mockHandleAnalyticsToggleClick,
+      isAttRequested: false,
+      handleAnalyticsToggle: mockHandleAnalyticsToggle,
       syncTrackingPermission: mockSyncTrackingPermission,
       isPermissionLoading: true,
+      showPermissionModal: false,
+      setShowPermissionModal: mockSetShowPermissionModal,
+      handleOpenSettings: mockHandleOpenSettings,
+      permissionAction: "enable",
     });
 
     const { getByTestId } = renderPreferencesScreen();

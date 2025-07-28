@@ -19,7 +19,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useAnalyticsAndPermissions } from "hooks/useAnalyticsAndPermissions";
+import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import {
   AuthNavigator,
@@ -49,7 +49,7 @@ export const RootNavigator = () => {
   const { t } = useAppTranslation();
 
   // Use analytics/permissions hook only after splash is hidden
-  useAnalyticsAndPermissions({
+  useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
   });
 

@@ -3,31 +3,46 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
+import PermissionModal from "components/screens/SettingsScreen/PreferencesScreen/PermissionModal";
 import { Toggle } from "components/sds/Toggle";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { useAnalyticsAndPermissions } from "hooks/useAnalyticsAndPermissions";
+import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useRef, useCallback, useEffect } from "react";
-import { View, AppState } from "react-native";
+import React, { useRef, useCallback, useEffect, useMemo } from "react";
+import { View, AppState, AppStateStatus } from "react-native";
 
-type PreferencesScreenProps = NativeStackScreenProps<
-  SettingsStackParamList,
-  typeof SETTINGS_ROUTES.PREFERENCES_SCREEN
->;
+interface PreferencesScreenProps
+  extends NativeStackScreenProps<
+    SettingsStackParamList,
+    typeof SETTINGS_ROUTES.PREFERENCES_SCREEN
+  > {}
+
+interface PreferenceListItem {
+  title: string;
+  titleColor: string;
+  description: string;
+  trailingContent: React.ReactNode;
+  testID: string;
+}
 
 const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const {
     isTrackingEnabled,
-    handleAnalyticsToggleClick,
+    handleAnalyticsToggle,
     syncTrackingPermission,
     isPermissionLoading,
-  } = useAnalyticsAndPermissions();
-  const isFocusedRef = useRef(false);
+    showPermissionModal,
+    setShowPermissionModal,
+    handleOpenSettings,
+    permissionAction,
+  } = useAnalyticsPermissions();
 
-  const renderTrailingContent = () => {
+  const isScreenFocusedRef = useRef(false);
+
+  const renderAnalyticsToggle = useCallback((): React.ReactNode => {
     if (isPermissionLoading) {
       return <Spinner size="small" testID="analytics-toggle-loading" />;
     }
@@ -37,28 +52,55 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
         id="analytics-toggle"
         checked={isTrackingEnabled}
         onChange={() => {
-          handleAnalyticsToggleClick();
+          handleAnalyticsToggle();
         }}
       />
     );
-  };
+  }, [isPermissionLoading, isTrackingEnabled, handleAnalyticsToggle]);
 
-  // Sync tracking permission on screen focus and app state change
+  const handleAnalyticsPermissionOpenSettings = useCallback(() => {
+    handleOpenSettings();
+  }, [handleOpenSettings]);
+
+  const preferencesItems: PreferenceListItem[] = useMemo(
+    () => [
+      {
+        title: t("preferences.anonymousDataSharing.title"),
+        titleColor: themeColors.text.primary,
+        description: t("preferences.anonymousDataSharing.description"),
+        trailingContent: renderAnalyticsToggle(),
+        testID: "anonymous-data-sharing-item",
+      },
+    ],
+    [t, themeColors.text.primary, renderAnalyticsToggle],
+  );
+
+  /**
+   * Handles screen focus events to initialize permission sync.
+   * Ensures permissions are up-to-date when user navigates to this screen.
+   */
   useFocusEffect(
     useCallback(() => {
-      isFocusedRef.current = true;
+      isScreenFocusedRef.current = true;
 
       syncTrackingPermission();
 
       return () => {
-        isFocusedRef.current = false;
+        isScreenFocusedRef.current = false;
       };
     }, [syncTrackingPermission]),
   );
 
+  /**
+   * Monitors app state changes for immediate device settings synchronization.
+   *
+   * When user returns from device settings, this ensures the UI immediately
+   * reflects any permission changes made outside the app.
+   * Only syncs when this screen is focused to avoid unnecessary operations.
+   */
   useEffect(() => {
-    const handleAppStateChange = (state: string) => {
-      if (state === "active" && isFocusedRef.current) {
+    const handleAppStateChange = (nextAppState: AppStateStatus): void => {
+      if (nextAppState === "active" && isScreenFocusedRef.current) {
         syncTrackingPermission();
       }
     };
@@ -71,21 +113,19 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     return () => subscription.remove();
   }, [syncTrackingPermission]);
 
-  const preferencesItems = [
-    {
-      title: t("preferences.anonymousDataSharing.title"),
-      titleColor: themeColors.text.primary,
-      description: t("preferences.anonymousDataSharing.description"),
-      trailingContent: renderTrailingContent(),
-      testID: "anonymous-data-sharing-item",
-    },
-  ];
-
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex gap-6 mt-4">
         <List items={preferencesItems} />
       </View>
+
+      <PermissionModal
+        isModalVisible={showPermissionModal}
+        setIsModalVisible={setShowPermissionModal}
+        onOpenSettings={handleAnalyticsPermissionOpenSettings}
+        isLoading={isPermissionLoading}
+        action={permissionAction}
+      />
     </BaseLayout>
   );
 };

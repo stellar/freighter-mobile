@@ -38,6 +38,10 @@ export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
+export const STELLAR_FOUNDATION_TERMS_URL =
+  "https://stellar.org/terms-of-service";
+export const STELLAR_FOUNDATION_PRIVACY_URL =
+  "https://stellar.org/privacy-policy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
@@ -148,7 +152,7 @@ export enum OPERATION_TYPES {
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
 export const MIN_TRANSACTION_TIMEOUT = 1;
-export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14;
+export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14.5;
 
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,

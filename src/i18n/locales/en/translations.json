@@ -64,6 +64,20 @@
     "anonymousDataSharing": {
       "title": "Anonymous data sharing",
       "description": "Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc."
+    },
+    "permissionModal": {
+      "enable": {
+        "title": "Enable Analytics",
+        "description": "To enable anonymous data sharing, you'll need to allow tracking permissions in your device settings.",
+        "instruction": "Tap \"Open Settings\" below, then find Freighter and enable \"Allow Tracking\"."
+      },
+      "disable": {
+        "title": "Disable Analytics",
+        "description": "To disable anonymous data sharing, you'll need to change tracking permissions in your device settings.",
+        "instruction": "Tap \"Open Settings\" below, then find Freighter and disable \"Allow Tracking\"."
+      },
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "shareFeedbackScreen": {

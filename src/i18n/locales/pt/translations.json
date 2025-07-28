@@ -678,6 +678,20 @@
     "anonymousDataSharing": {
       "title": "Compartilhamento de dados anônimos",
       "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
+    },
+    "permissionModal": {
+      "enable": {
+        "title": "Habilitar Analytics",
+        "description": "Para habilitar o compartilhamento de dados anônimos, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+      },
+      "disable": {
+        "title": "Desabilitar Analytics",
+        "description": "Para desabilitar o compartilhamento de dados anônimos, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+      },
+      "openSettings": "Abrir Configurações",
+      "notNow": "Agora não"
     }
   }
 }
