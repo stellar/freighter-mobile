@@ -39,19 +39,27 @@ export enum WalletKitEventTypes {
 }
 
 /**
- * Enum representing supported Stellar RPC methods
- */
-export enum StellarRpcMethods {
-  SIGN_XDR = "stellar_signXDR",
-  SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
-}
-
-/**
  * Enum representing supported Stellar chains
  */
 export enum StellarRpcChains {
   PUBLIC = "stellar:pubnet",
   TESTNET = "stellar:testnet",
+}
+
+/**
+ * Enum representing supported Stellar RPC methods
+ */
+export enum StellarRpcMethods {
+  SIGN_XDR = "stellar_signXDR",
+  SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
+  PERSONAL_SIGN = "personal_sign",
+}
+
+/**
+ * Enum representing supported Stellar events
+ */
+export enum StellarRpcEvents {
+  ACCOUNTS_CHANGED = "accountsChanged",
 }
 
 /**

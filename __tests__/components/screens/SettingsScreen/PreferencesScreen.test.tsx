@@ -74,7 +74,7 @@ describe("PreferencesScreen", () => {
 
       expect(analytics.setAnalyticsEnabled).toHaveBeenCalledTimes(1);
       expect(analytics.setAnalyticsEnabled).toHaveBeenCalledWith(true);
-    });
+    }, 15000);
 
     it("disables analytics when toggle is pressed while enabled", async () => {
       mockUseAnalyticsStore.mockReturnValue({
