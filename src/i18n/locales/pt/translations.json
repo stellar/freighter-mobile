@@ -367,6 +367,7 @@
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
       "swapTransactionFailed": "Transação de troca falhou",
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
+      "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes ativos"
     }
   },

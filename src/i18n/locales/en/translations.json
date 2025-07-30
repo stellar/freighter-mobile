@@ -398,6 +398,7 @@
       "failedToSetupTransaction": "Failed to setup swap transaction",
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
+      "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these assets"
     }
   },

@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
@@ -20,6 +21,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -100,9 +102,46 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [sourceBalance, account, swapFee]);
 
+  // Check if user has enough XLM for fees when swapping TO XLM
+  const hasXLMForFees = useMemo(() => {
+    if (!destinationBalance || !account) return true;
+
+    // Only check XLM fees when swapping TO XLM
+    if (
+      "token" in destinationBalance &&
+      destinationBalance.token.type === AssetTypeWithCustomToken.NATIVE
+    ) {
+      // Lookup on balanceItems instead of destinationBalance
+      // to avoid using outdated memoized amount
+      const xlmBalance = balanceItems.find(
+        (item) =>
+          "token" in item &&
+          item.token.type === AssetTypeWithCustomToken.NATIVE,
+      );
+
+      if (xlmBalance) {
+        return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(swapFee));
+      }
+
+      return false;
+    }
+
+    return true;
+  }, [destinationBalance, balanceItems, swapFee, account]);
+
   useEffect(() => {
     if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
       setAmountError(null);
+      return;
+    }
+
+    if (!hasXLMForFees) {
+      setAmountError(
+        t("swapScreen.errors.insufficientXlmForFees", {
+          fee: swapFee,
+        }),
+      );
+
       return;
     }
 
@@ -131,6 +170,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account?.subentryCount,
     swapFee,
     sourceBalance,
+    hasXLMForFees,
   ]);
 
   useSwapPathFinding({
