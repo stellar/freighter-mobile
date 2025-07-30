@@ -18,12 +18,8 @@ import {
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import {
-  Balance,
-  NativeBalance,
-  LiquidityPoolBalance,
-  PricedBalance,
-} from "config/types";
+import { Balance, NativeBalance, PricedBalance } from "config/types";
+import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
@@ -55,12 +51,6 @@ export interface BuildSwapTransactionParams {
   network?: NETWORKS;
   senderAddress?: string;
 }
-
-// Type guards for Balance types
-export const isLiquidityPool = (
-  balance: Balance,
-): balance is LiquidityPoolBalance =>
-  "liquidityPoolId" in balance && "reserves" in balance;
 
 export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
   "token" in balance &&

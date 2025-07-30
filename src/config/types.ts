@@ -99,6 +99,11 @@ export type AssetToken = {
 };
 
 /**
+ * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
+ */
+export type Token = AssetToken | NativeToken;
+
+/**
  * Base balance type with total amount
  * @property {BigNumber} total - The total balance amount
  */

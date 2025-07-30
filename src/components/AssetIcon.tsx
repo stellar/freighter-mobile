@@ -2,21 +2,11 @@ import { logos } from "assets/logos";
 import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
 import { Asset, AssetSize } from "components/sds/Asset";
 import { Text } from "components/sds/Typography";
-import {
-  AssetToken,
-  AssetTypeWithCustomToken,
-  Balance,
-  NativeToken,
-} from "config/types";
+import { AssetTypeWithCustomToken, Balance, Token } from "config/types";
 import { useAssetIconsStore } from "ducks/assetIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import React from "react";
 import { useTranslation } from "react-i18next";
-
-/**
- * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
- */
-type Token = AssetToken | NativeToken;
 
 /**
  * Props for the AssetIcon component
@@ -67,7 +57,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   const { t } = useTranslation();
 
   // Liquidity pool: show "LP" text
-  if (isLiquidityPool(tokenProp as Balance)) {
+  if (isLiquidityPool(tokenProp)) {
     return (
       <Asset
         variant="single"
@@ -159,7 +149,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   const icon = icons[tokenIdentifier];
   const imageUrl = icon?.imageUrl || "";
 
-  const tokenInitials = token.code.slice(0, 2);
+  const tokenInitials = token.code?.slice(0, 2) || "";
   const renderContent = !imageUrl
     ? () => (
         <Text sm bold secondary>

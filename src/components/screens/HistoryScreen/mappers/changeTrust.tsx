@@ -12,6 +12,7 @@ import {
 import Icon from "components/sds/Icon";
 import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
+import { capitalize } from "lodash";
 import React from "react";
 
 interface ChangeTrustHistoryItemData {
@@ -77,7 +78,7 @@ export const mapChangeTrustHistoryItem = ({
 
   return {
     transactionDetails,
-    rowText: destAssetCode,
+    rowText: destAssetCode || capitalize(assetType).replaceAll("_", " "),
     actionText,
     dateText: date,
     IconComponent,
