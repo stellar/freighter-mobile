@@ -372,7 +372,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center py-[16px] max-xs:py-[12px] px-6">
+        <View className="flex-none items-center py-[16px] max-xs:py-[12px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -396,7 +396,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         )}
 
-        <View className="gap-3 mt-[16px] max-xs:mt-[8px]">
+        <View className="flex-none gap-3 mt-[16px] max-xs:mt-[8px]">
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
