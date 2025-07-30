@@ -16,6 +16,7 @@ import { logger } from "config/logger";
 import {
   ActiveSessions,
   StellarRpcChains,
+  StellarRpcEvents,
   StellarRpcMethods,
   WALLET_KIT_METADATA,
   WALLET_KIT_PROJECT_ID,
@@ -33,7 +34,14 @@ import { analytics } from "services/analytics";
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
+
+  // This is actually a Ethereum RPC method, but it's being used by Allbridge
+  // so let's just recognize it as a valid method so we don't reject their connection
+  StellarRpcMethods.PERSONAL_SIGN,
 ];
+
+/** Supported Stellar RPC events for WalletKit */
+const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNTS_CHANGED];
 
 /** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
@@ -143,10 +151,10 @@ export const approveSessionProposal = async ({
       proposal: params,
       supportedNamespaces: {
         stellar: {
-          methods: stellarNamespaceMethods,
-          chains: [activeChain],
-          events: [],
           accounts: [activeAccount],
+          chains: [activeChain],
+          methods: stellarNamespaceMethods,
+          events: stellarNamespaceEvents,
         },
       },
     });

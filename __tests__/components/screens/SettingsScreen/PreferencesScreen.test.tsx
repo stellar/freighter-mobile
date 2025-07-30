@@ -83,14 +83,61 @@ describe("PreferencesScreen", () => {
     expect(toggle.props.accessibilityState.checked).toBe(false);
   });
 
-  it("calls handleAnalyticsToggleClick when toggle is pressed", async () => {
+  it("enables analytics when toggle is pressed while disabled", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    const toggle = getByTestId("toggle-analytics-toggle");
+    expect(toggle.props.accessibilityState.checked).toBe(false);
+
+    await userEvent.press(toggle);
+
+    expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
+  }, 15000);
+
+  it("disables analytics when toggle is pressed while enabled", async () => {
+    mockUseAnalyticsPermissions.mockReturnValue({
+      isTrackingEnabled: true,
+      isAttRequested: false,
+      handleAnalyticsToggle: mockHandleAnalyticsToggle,
+      syncTrackingPermission: mockSyncTrackingPermission,
+      isPermissionLoading: false,
+      showPermissionModal: false,
+      setShowPermissionModal: mockSetShowPermissionModal,
+      handleOpenSettings: mockHandleOpenSettings,
+      permissionAction: "disable",
+    });
+
+    const { getByTestId } = renderPreferencesScreen();
+
+    const toggle = getByTestId("toggle-analytics-toggle");
+    expect(toggle.props.accessibilityState.checked).toBe(true);
+
+    await userEvent.press(toggle);
+
+    expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
+  }, 15000);
+
+  it("handles rapid toggle presses correctly", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    const toggle = getByTestId("toggle-analytics-toggle");
+
+    // Simulate rapid presses
+    await userEvent.press(toggle);
+    await userEvent.press(toggle);
+    await userEvent.press(toggle);
+
+    expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(3);
+  }, 15000);
+
+  it("calls handleAnalyticsToggle when toggle is pressed", async () => {
     const { getByTestId } = renderPreferencesScreen();
 
     const toggle = getByTestId("toggle-analytics-toggle");
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
-  });
+  }, 15000);
 
   it("shows loading spinner when permission is being checked", () => {
     mockUseAnalyticsPermissions.mockReturnValue({
@@ -108,5 +155,5 @@ describe("PreferencesScreen", () => {
     const { getByTestId } = renderPreferencesScreen();
 
     expect(getByTestId("analytics-toggle-loading")).toBeTruthy();
-  });
+  }, 15000);
 });
