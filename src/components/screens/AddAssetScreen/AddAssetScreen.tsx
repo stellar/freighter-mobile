@@ -111,6 +111,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     addAssetBottomSheetModalRef.current?.dismiss();
   };
 
+  const handleCancelAssetAddition = () => {
+    if (selectedAsset) {
+      analytics.trackAddTokenRejected(selectedAsset.assetCode);
+    }
+
+    addAssetBottomSheetModalRef.current?.dismiss();
+  };
+
   const handleSecurityWarning = () => {
     securityWarningBottomSheetModalRef.current?.present();
   };
@@ -184,14 +192,6 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     }
 
     return false;
-  };
-
-  const handleCancelAssetAddition = () => {
-    if (selectedAsset) {
-      analytics.trackAddTokenRejected(selectedAsset.assetCode);
-    }
-
-    addAssetBottomSheetModalRef.current?.dismiss();
   };
 
   return (
