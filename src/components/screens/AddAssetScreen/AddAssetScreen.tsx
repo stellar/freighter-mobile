@@ -108,6 +108,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     analytics.trackAddTokenConfirmed(selectedAsset.assetCode);
 
     await addAsset(selectedAsset);
+
     addAssetBottomSheetModalRef.current?.dismiss();
   };
 

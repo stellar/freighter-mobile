@@ -18,11 +18,33 @@ interface ListItemProps {
 
 interface ListProps {
   items: ListItemProps[];
-  variant?: "filled" | "transparent";
+  variant?: "filled" | "transparent" | "secondary";
   className?: string;
   hideDivider?: boolean;
   compact?: boolean;
 }
+
+const getContainerStyles = (variant: ListProps["variant"]) => {
+  switch (variant) {
+    case "filled":
+      return "bg-background-secondary rounded-[12px]";
+    case "transparent":
+      return "";
+    case "secondary":
+      return "bg-background-tertiary rounded-[16px]";
+    default:
+      return "";
+  }
+};
+
+const getTextStyles = (variant: ListProps["variant"]) => {
+  switch (variant) {
+    case "secondary":
+      return { md: true, medium: true };
+    default:
+      return { sm: true, semiBold: true };
+  }
+};
 
 export const List: React.FC<ListProps> = ({
   items,
@@ -31,9 +53,7 @@ export const List: React.FC<ListProps> = ({
   hideDivider = false,
   compact = false,
 }) => (
-  <View
-    className={`${variant === "filled" ? "bg-background-secondary rounded-[12px]" : ""} ${className}`}
-  >
+  <View className={`${getContainerStyles(variant)} ${className}`}>
     {items.map((item, index) => (
       <React.Fragment key={item.key || item.title}>
         <TouchableOpacity
@@ -50,8 +70,7 @@ export const List: React.FC<ListProps> = ({
           )}
           <View className="flex-1">
             <Text
-              md
-              semiBold
+              {...getTextStyles(variant)}
               color={item.titleColor || THEME.colors.text.primary}
             >
               {item.title}

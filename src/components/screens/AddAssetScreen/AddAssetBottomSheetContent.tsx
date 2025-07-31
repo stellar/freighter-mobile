@@ -1,5 +1,6 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { AssetIcon } from "components/AssetIcon";
+import { List } from "components/List";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
@@ -54,6 +55,36 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
     return null;
   }
 
+  const listItems = [
+    {
+      icon: <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />,
+      title: t("wallet"),
+      trailingContent: (
+        <View className="flex-row items-center gap-2">
+          <Avatar
+            size="sm"
+            publicAddress={account?.publicKey ?? ""}
+            hasBorder={false}
+            hasBackground={false}
+          />
+          <Text sm primary regular>
+            {account?.accountName}
+          </Text>
+        </View>
+      ),
+      titleColor: themeColors.text.secondary,
+    },
+    {
+      icon: <Icon.Globe01 size={14} />,
+      title: t("network"),
+      trailingContent: (
+        <Text sm secondary regular>
+          {network === NETWORKS.PUBLIC ? t("mainnet") : t("testnet")}
+        </Text>
+      ),
+    },
+  ];
+
   return (
     <View className="flex-1 justify-center items-center mt-2">
       <View className="relative">
@@ -91,7 +122,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       <Badge
         variant="secondary"
         size="md"
-        icon={<Icon.Link01 size={16} />}
+        icon={<Icon.Link01 size={14} />}
         iconPosition={IconPosition.LEFT}
       >
         {isMalicious || isSuspicious
@@ -217,6 +248,10 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
               <Text md>{getDisplayText()}</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View className="flex">
+          <List items={listItems} variant="secondary" />
         </View>
       </View>
 
