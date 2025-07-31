@@ -129,7 +129,6 @@ export const RootNavigator = () => {
               headerTitle: t("scanQRCodeScreen.title"),
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
           <RootStack.Screen

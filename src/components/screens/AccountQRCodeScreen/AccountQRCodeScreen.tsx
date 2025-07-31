@@ -1,8 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { logos } from "assets/logos";
-import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Avatar } from "components/sds/Avatar";
@@ -17,7 +15,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
@@ -31,15 +29,10 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   navigation,
 }) => {
   const { account } = useGetActiveAccount();
-  const { showNavigationAsCloseButton } = route.params;
+  const { showNavigationAsCloseButton } = route.params || {};
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-
-  useRightHeaderButton({
-    onPress: () => bottomSheetModalRef.current?.present(),
-  });
 
   // useLayoutEffect is the official recommended hook to use for setting up
   // the navigation headers to prevent UI flickering.
@@ -56,14 +49,27 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     }
   }, [navigation, showNavigationAsCloseButton]);
 
+  useRightHeaderButton({
+    hidden: !showNavigationAsCloseButton,
+    icon: Icon.Scan,
+    onPress: () => {
+      const routes = navigation.getState()?.routes ?? [];
+      const scanRouteIndex = routes.findIndex(
+        (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
+      );
+
+      // If the scan route is already in the stack, pop to it
+      // Otherwise, navigate to it
+      if (scanRouteIndex !== -1) {
+        navigation.popTo(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN);
+      } else {
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN);
+      }
+    },
+  });
+
   return (
     <BaseLayout>
-      <BottomSheet
-        title={t("accountQRCodeScreen.bottomSheet.title")}
-        description={t("accountQRCodeScreen.bottomSheet.description")}
-        modalRef={bottomSheetModalRef}
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
-      />
       <View className="flex-1 gap-[32px]">
         <View className="gap-[16px] items-center">
           <Avatar size="xl" publicAddress={account?.publicKey ?? ""} />

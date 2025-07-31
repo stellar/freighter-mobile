@@ -35,11 +35,13 @@ import React, { useLayoutEffect, useCallback } from "react";
  * });
  */
 export const useRightHeaderButton = ({
+  hidden = false,
   onPress,
   icon,
   iconSize,
   className,
 }: {
+  hidden?: boolean;
   onPress?: () => void;
   icon?: React.ComponentType<{ size?: number; color?: string }>;
   iconSize?: number;
@@ -66,9 +68,9 @@ export const useRightHeaderButton = ({
   // the navigation headers to prevent UI flickering.
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: HeaderRightComponent,
+      headerRight: hidden ? undefined : HeaderRightComponent,
     });
-  }, [navigation, HeaderRightComponent]);
+  }, [navigation, HeaderRightComponent, hidden]);
 };
 
 /**
