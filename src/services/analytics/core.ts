@@ -127,7 +127,6 @@ export const setAnalyticsUserId = (userId: string | null): void => {
  * - effectiveType: Cellular quality (slow-2g, 2g, 3g, 4g) when on cellular
  */
 const buildCommonContext = (): Record<string, unknown> => {
-  const { network } = useAuthenticationStore.getState();
   const { connectionType, effectiveType } = useNetworkStore.getState();
   const { network, account } = useAuthenticationStore.getState();
 
