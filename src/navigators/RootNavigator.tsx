@@ -125,11 +125,6 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
             component={ScanQRCodeScreen}
-            options={{
-              headerTitle: t("scanQRCodeScreen.title"),
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-            }}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
