@@ -129,7 +129,7 @@ export const setAnalyticsUserId = (userId: string | null): void => {
 const buildCommonContext = (): Record<string, unknown> => {
   const { network } = useAuthenticationStore.getState();
   const { connectionType, effectiveType } = useNetworkStore.getState();
-  const { account } = useAuthenticationStore.getState();
+  const { network, account } = useAuthenticationStore.getState();
 
   const context: Record<string, unknown> = {
     publicKey: account?.publicKey ?? "N/A",
