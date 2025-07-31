@@ -477,3 +477,36 @@ export function isSacContract(name: string): boolean {
     return false;
   }
 }
+
+/**
+ * Validates if the user has enough XLM for transaction fees
+ *
+ * This function checks if the user has sufficient XLM balance to pay for transaction fees.
+ * All Stellar transactions require XLM fees, regardless of what assets are being transferred.
+ *
+ * @param {Array<PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }>} balanceItems - Array of user's balances
+ * @param {string} transactionFee - The transaction fee in XLM (default: MIN_TRANSACTION_FEE)
+ * @returns {boolean} True if user has enough XLM for fees, false otherwise
+ *
+ * @example
+ * // Check if user has enough XLM for fees
+ * const hasEnoughXLM = hasXLMForFees(balanceItems, "0.00001");
+ */
+export const hasXLMForFees = (
+  balanceItems: Array<
+    PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }
+  >,
+  transactionFee: string = MIN_TRANSACTION_FEE,
+): boolean => {
+  // Find XLM balance
+  const xlmBalance = balanceItems.find(
+    (item) => "token" in item && item.token.type === "native",
+  );
+
+  if (!xlmBalance) {
+    return false;
+  }
+
+  // Check if XLM balance is sufficient for transaction fees
+  return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(transactionFee));
+};
