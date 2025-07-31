@@ -102,32 +102,21 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [sourceBalance, account, swapFee]);
 
-  // Check if user has enough XLM for fees when swapping TO XLM
+  // Check if user has enough XLM for transaction fees
   const hasXLMForFees = useMemo(() => {
-    if (!destinationBalance || !account) return true;
+    if (!account) return true;
 
-    // Only check XLM fees when swapping TO XLM
-    if (
-      "token" in destinationBalance &&
-      destinationBalance.token.type === AssetTypeWithCustomToken.NATIVE
-    ) {
-      // Lookup on balanceItems instead of destinationBalance
-      // to avoid using outdated memoized amount
-      const xlmBalance = balanceItems.find(
-        (item) =>
-          "token" in item &&
-          item.token.type === AssetTypeWithCustomToken.NATIVE,
-      );
+    const xlmBalance = balanceItems.find(
+      (item) =>
+        "token" in item && item.token.type === AssetTypeWithCustomToken.NATIVE,
+    );
 
-      if (xlmBalance) {
-        return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(swapFee));
-      }
-
+    if (!xlmBalance) {
       return false;
     }
 
-    return true;
-  }, [destinationBalance, balanceItems, swapFee, account]);
+    return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(swapFee));
+  }, [balanceItems, swapFee, account]);
 
   useEffect(() => {
     if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
@@ -141,7 +130,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           fee: swapFee,
         }),
       );
-
       return;
     }
 
