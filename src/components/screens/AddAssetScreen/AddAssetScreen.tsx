@@ -8,6 +8,7 @@ import AddAssetBottomSheetContent from "components/screens/AddAssetScreen/AddAss
 import AssetItem from "components/screens/AddAssetScreen/AssetItem";
 import EmptyState from "components/screens/AddAssetScreen/EmptyState";
 import ErrorState from "components/screens/AddAssetScreen/ErrorState";
+import SecurityWarningBottomSheet from "components/screens/AddAssetScreen/SecurityWarningBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -25,6 +26,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
 import { useRightHeaderButton } from "hooks/useRightHeader";
+import { useScanAsset } from "hooks/useScanAsset";
 import React, { useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 
@@ -42,6 +44,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     useState<FormattedSearchAssetRecord | null>(null);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const addAssetBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -68,6 +71,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       onSuccess: resetPageState,
     });
 
+  const { scanAsset, data: scanData } = useScanAsset();
+
   useRightHeaderButton({
     onPress: () => moreInfoBottomSheetModalRef.current?.present(),
   });
@@ -76,8 +81,20 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     getClipboardText().then(handleSearch);
   };
 
-  const handleAddAsset = (asset: FormattedSearchAssetRecord) => {
+  const handleAddAsset = async (asset: FormattedSearchAssetRecord) => {
     setSelectedAsset(asset);
+
+    // Scan the asset for security threats
+    try {
+      await scanAsset({
+        assetCode: asset.assetCode,
+        assetIssuer: asset.issuer,
+        network,
+      });
+    } catch (error) {
+      // Handle scan error silently
+    }
+
     addAssetBottomSheetModalRef.current?.present();
   };
 
@@ -88,6 +105,81 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
 
     await addAsset(selectedAsset);
     addAssetBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleSecurityWarning = () => {
+    securityWarningBottomSheetModalRef.current?.present();
+  };
+
+  const handleProceedAnyway = () => {
+    securityWarningBottomSheetModalRef.current?.dismiss();
+    handleAddAssetTrustline();
+  };
+
+  // Check if the selected asset is malicious based on scan results
+  const isAssetMalicious = () => {
+    if (!selectedAsset || !scanData || !scanData.data) {
+      return false;
+    }
+
+    const scanResult = scanData.data;
+
+    // Check if the scan result indicates malicious activity
+    const maliciousScore = scanResult.malicious_score;
+
+    // Convert string to number if needed
+    const score =
+      typeof maliciousScore === "string"
+        ? parseFloat(maliciousScore)
+        : maliciousScore;
+
+    if (typeof score === "number" && score > 0.7) {
+      return true;
+    }
+
+    // Check for specific attack types
+    const attackTypes = scanResult.attack_types;
+
+    if (attackTypes && Object.keys(attackTypes).length > 0) {
+      return true;
+    }
+
+    // Check result_type
+    const resultType = scanResult.result_type;
+
+    if (resultType === "Malicious") {
+      return true;
+    }
+
+    return false;
+  };
+
+  const isAssetSuspicious = () => {
+    if (!selectedAsset || !scanData || !scanData.data) {
+      return false;
+    }
+
+    const scanResult = scanData.data;
+
+    // Check if the scan result indicates suspicious activity
+    const maliciousScore = scanResult.malicious_score;
+    const score =
+      typeof maliciousScore === "string"
+        ? parseFloat(maliciousScore)
+        : maliciousScore;
+
+    // Suspicious if score is between 0.3 and 0.7
+    if (typeof score === "number" && score >= 0.3 && score <= 0.7) {
+      return true;
+    }
+
+    // Check result_type
+    const resultType = scanResult.result_type;
+    if (resultType === "Warning") {
+      return true;
+    }
+
+    return false;
   };
 
   return (
@@ -115,8 +207,49 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
               asset={selectedAsset}
               account={account}
               onCancel={() => addAssetBottomSheetModalRef.current?.dismiss()}
-              onAddAsset={handleAddAssetTrustline}
+              onAddAsset={
+                isAssetMalicious() || isAssetSuspicious()
+                  ? handleSecurityWarning
+                  : handleAddAssetTrustline
+              }
               isAddingAsset={isAddingAsset}
+              isMalicious={isAssetMalicious()}
+              isSuspicious={isAssetSuspicious()}
+            />
+          }
+        />
+        <BottomSheet
+          modalRef={securityWarningBottomSheetModalRef}
+          handleCloseModal={() =>
+            securityWarningBottomSheetModalRef.current?.dismiss()
+          }
+          customContent={
+            <SecurityWarningBottomSheet
+              warnings={[
+                {
+                  id: "malicious-token",
+                  title: "This token is a scam",
+                  description: "The token has been flagged as malicious",
+                },
+                {
+                  id: "low-liquidity",
+                  title: "This token has low liquidity",
+                  description: "Trading this token may be risky",
+                },
+                {
+                  id: "malicious-site",
+                  title: "This site is a malicious app",
+                  description: "The source has been flagged as unsafe",
+                },
+              ]}
+              onCancel={() =>
+                securityWarningBottomSheetModalRef.current?.dismiss()
+              }
+              onProceedAnyway={handleProceedAnyway}
+              onClose={() =>
+                securityWarningBottomSheetModalRef.current?.dismiss()
+              }
+              severity={isAssetMalicious() ? "malicious" : "suspicious"}
             />
           }
         />

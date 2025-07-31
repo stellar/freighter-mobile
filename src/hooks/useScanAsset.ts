@@ -1,7 +1,6 @@
 import { NETWORKS } from "config/constants";
 import { useState, useCallback } from "react";
 import { scanAssetBackend } from "services/backend";
-import { scanAssetSDK, isBlockaidSDKAvailable } from "services/blockaidSDK";
 import type {
   ScanAssetParams,
   BlockAidScanAssetResult,
@@ -9,12 +8,18 @@ import type {
 } from "types/blockaid";
 
 // Hook for scanning Stellar assets/tokens for security threats
-export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
+export const useScanAsset = (): BlockaidHookResult<{
+  data: BlockAidScanAssetResult;
+  error: null;
+}> & {
   scanAsset: (
     params: ScanAssetParams,
-  ) => Promise<BlockAidScanAssetResult | null>;
+  ) => Promise<{ data: BlockAidScanAssetResult; error: null } | null>;
 } => {
-  const [data, setData] = useState<BlockAidScanAssetResult | null>(null);
+  const [data, setData] = useState<{
+    data: BlockAidScanAssetResult;
+    error: null;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -24,15 +29,8 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
     setData(null);
 
     try {
-      let result: BlockAidScanAssetResult | null = null;
-
-      // Try backend first (recommended approach)
-      result = await scanAssetBackend(params);
-
-      // Fallback to SDK if backend fails and SDK is available
-      if (!result && isBlockaidSDKAvailable()) {
-        result = await scanAssetSDK(params);
-      }
+      // Use only backend for security (no SDK fallback)
+      const result = await scanAssetBackend(params);
 
       if (!result) {
         throw new Error("Asset scan not available");
@@ -50,9 +48,9 @@ export const useScanAsset = (): BlockaidHookResult<BlockAidScanAssetResult> & {
   }, []);
 
   const refetch = useCallback(() => {
-    if (data) {
+    if (data?.data) {
       // Reconstruct params from result data
-      const lastResult = data as { address?: string };
+      const lastResult = data.data as { address?: string };
       if (lastResult.address) {
         let assetCode: string;
         let assetIssuer: string | undefined;

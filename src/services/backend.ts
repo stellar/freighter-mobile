@@ -430,7 +430,7 @@ export const scanSiteBackend = async (
 
 export const scanAssetBackend = async (
   params: ScanAssetParams,
-): Promise<BlockAidScanAssetResult | null> => {
+): Promise<{ data: BlockAidScanAssetResult; error: null } | null> => {
   try {
     // Format asset address for Stellar
     let address: string;
@@ -440,11 +440,12 @@ export const scanAssetBackend = async (
       address = `${params.assetCode}-${params.assetIssuer}`;
     }
 
-    const { data } = await freighterBackend.get<BlockAidScanAssetResult>(
-      `/scan-asset?address=${address}`,
-    );
+    const response = await freighterBackend.get<{
+      data: BlockAidScanAssetResult;
+      error: null;
+    }>(`/scan-asset?address=${address}`);
 
-    return data;
+    return response.data;
   } catch (error) {
     return null;
   }

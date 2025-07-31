@@ -155,6 +155,7 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
 
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
+export const BLOCKAID_FEEDBACK_URL = "https://report.blockaid.io/";
 
 export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
   switch (network) {
