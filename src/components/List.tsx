@@ -1,4 +1,5 @@
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { THEME } from "config/theme";
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
@@ -38,6 +39,7 @@ export const List: React.FC<ListProps> = ({
         <TouchableOpacity
           disabled={!item.onPress}
           onPress={item.onPress}
+          delayPressIn={DEFAULT_PRESS_DELAY}
           testID={item.testID}
           className={`flex-row gap-3 ${compact ? "py-2" : "p-4"} ${
             item.description ? "items-start" : "items-center"

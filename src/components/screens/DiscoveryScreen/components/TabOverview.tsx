@@ -2,7 +2,11 @@ import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
+import {
+  BROWSER_CONSTANTS,
+  DEFAULT_PADDING,
+  DEFAULT_PRESS_DELAY,
+} from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -80,6 +84,7 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
             <TouchableOpacity
               key={tab.id}
               onPress={() => onSwitchTab(tab.id)}
+              delayPressIn={DEFAULT_PRESS_DELAY}
               className={BROWSER_CONSTANTS.TAB_PREVIEW_TILE_SIZE}
             >
               <TabPreview
