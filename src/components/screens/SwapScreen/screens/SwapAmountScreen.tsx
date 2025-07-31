@@ -1,6 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
@@ -21,12 +20,15 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import { AssetTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
+import {
+  calculateSpendableAmount,
+  isAmountSpendable,
+  hasXLMForFees,
+} from "helpers/balances";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -102,29 +104,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [sourceBalance, account, swapFee]);
 
-  // Check if user has enough XLM for transaction fees
-  const hasXLMForFees = useMemo(() => {
-    if (!account) return true;
-
-    const xlmBalance = balanceItems.find(
-      (item) =>
-        "token" in item && item.token.type === AssetTypeWithCustomToken.NATIVE,
-    );
-
-    if (!xlmBalance) {
-      return false;
-    }
-
-    return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(swapFee));
-  }, [balanceItems, swapFee, account]);
-
   useEffect(() => {
     if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
       setAmountError(null);
       return;
     }
 
-    if (!hasXLMForFees) {
+    if (!hasXLMForFees(balanceItems, swapFee)) {
       setAmountError(
         t("swapScreen.errors.insufficientXlmForFees", {
           fee: swapFee,
@@ -158,7 +144,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account?.subentryCount,
     swapFee,
     sourceBalance,
-    hasXLMForFees,
+    balanceItems,
   ]);
 
   useSwapPathFinding({
