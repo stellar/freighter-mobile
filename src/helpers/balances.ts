@@ -7,7 +7,6 @@ import {
 } from "config/constants";
 import {
   Balance,
-  LiquidityPoolBalance,
   NativeToken,
   AssetToken,
   TokenIdentifier,
@@ -16,6 +15,7 @@ import {
   PricedBalanceMap,
   PricedBalance,
   AssetTypeWithCustomToken,
+  Token,
 } from "config/types";
 
 interface GetTokenPriceFromBalanceParams {
@@ -70,13 +70,17 @@ export const getLPShareCode = (balance: Balance) => {
 };
 
 /**
- * Determines if a balance object represents a liquidity pool
+ * Determines if a balance or token object represents a liquidity pool
  *
- * This is a type guard function that checks if a balance object has the
- * required properties to be considered a liquidity pool balance.
+ * This is a type guard function that checks if a balance or token object has the
+ * required properties to be considered a liquidity pool. It handles both Balance objects
+ * and raw Token objects.
  *
- * @param {Balance} balance - The balance object to check
- * @returns {boolean} True if the balance is a liquidity pool, false otherwise
+ * For Balance objects, it checks for the presence of `liquidityPoolId` and `reserves` properties.
+ * For Token objects, it checks if the type is `LIQUIDITY_POOL_SHARES`.
+ *
+ * @param {Balance | Token} balanceOrToken - The balance or token object to check
+ * @returns {boolean} True if the object is a liquidity pool, false otherwise
  *
  * @example
  * // Check if a balance is a liquidity pool
@@ -87,11 +91,32 @@ export const getLPShareCode = (balance: Balance) => {
  *   // It's a regular asset balance
  *   console.log(balance.token.code);
  * }
+ *
+ * // Check if a token is a liquidity pool
+ * if (isLiquidityPool(token)) {
+ *   // It's a liquidity pool token
+ *   console.log(token.type); // "liquidity_pool_shares"
+ * } else {
+ *   // It's a regular token
+ *   console.log(token.code);
+ * }
  */
-export const isLiquidityPool = (
-  balance: Balance,
-): balance is LiquidityPoolBalance =>
-  "liquidityPoolId" in balance && "reserves" in balance;
+export const isLiquidityPool = (balanceOrToken: Balance | Token): boolean => {
+  // Liquidity pool balance
+  if ("liquidityPoolId" in balanceOrToken && "reserves" in balanceOrToken) {
+    return true;
+  }
+
+  // Liquidity pool "token" (not a balance)
+  if (
+    "type" in balanceOrToken &&
+    balanceOrToken.type === AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 /**
  * Gets a unique identifier for a token or balance

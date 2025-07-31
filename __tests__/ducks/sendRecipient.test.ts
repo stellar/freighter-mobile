@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Federation } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import { STORAGE_KEYS } from "config/constants";

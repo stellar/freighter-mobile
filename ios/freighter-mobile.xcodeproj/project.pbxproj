@@ -14,6 +14,7 @@
 		3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EA47F7F1A9043699AECB850 /* Colors.xcassets */; };
 		45E4ECDFC1E44ACBAC326AE6 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AFA1D0A6FE1E4E61A68B2CE8 /* Inter-Medium.ttf */; };
 		732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */; };
+		75BAEB762E32B39B0084934A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 75BAEB742E32B39B0084934A /* InfoPlist.strings */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A2041D19B8E0479689872965 /* Inter-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6962430A58434A4F99BDACDC /* Inter-Light.ttf */; };
@@ -34,6 +35,8 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-freighter-mobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-freighter-mobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6962430A58434A4F99BDACDC /* Inter-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Light.ttf"; path = "../src/assets/fonts/Inter-Light.ttf"; sourceTree = "<group>"; };
 		6EA47F7F1A9043699AECB850 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = "freighter-mobile/Colors.xcassets"; sourceTree = "<group>"; };
+		75BAEB752E32B39B0084934A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		75BAEB782E3789260084934A /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = "freighter-mobile/AppDelegate.swift"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = "freighter-mobile/LaunchScreen.storyboard"; sourceTree = "<group>"; };
 		9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-SemiBold.ttf"; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; };
@@ -65,6 +68,7 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */,
 				6EA47F7F1A9043699AECB850 /* Colors.xcassets */,
+				75BAEB742E32B39B0084934A /* InfoPlist.strings */,
 			);
 			name = "freighter-mobile";
 			sourceTree = "<group>";
@@ -174,6 +178,7 @@
 			knownRegions = (
 				en,
 				Base,
+				pt,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
@@ -191,6 +196,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				75BAEB762E32B39B0084934A /* InfoPlist.strings in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */,
 				37FAF0580CF841D4A66C64CA /* Inter-Bold.ttf in Resources */,
@@ -292,6 +298,18 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		75BAEB742E32B39B0084934A /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				75BAEB752E32B39B0084934A /* en */,
+				75BAEB782E3789260084934A /* pt */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -301,7 +319,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = 4JWM8JNM37;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = "freighter-mobile/Info.plist";
@@ -310,7 +328,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.22;
+				MARKETING_VERSION = 0.7.23;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -333,7 +351,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = 4JWM8JNM37;
 				INFOPLIST_FILE = "freighter-mobile/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -341,7 +359,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.22;
+				MARKETING_VERSION = 0.7.23;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

@@ -1,19 +1,26 @@
+import {
+  NetInfoState,
+  NetInfoStateType,
+} from "@react-native-community/netinfo";
 import { create } from "zustand";
 
+const UNKNOWN_CONNECTION = "unknown";
+
 interface NetworkState {
-  isConnected: boolean;
-  isInternetReachable: boolean;
+  isConnected: boolean | null;
+  isInternetReachable: boolean | null;
   isOffline: boolean;
-  setNetworkInfo: (payload: {
-    isConnected: boolean | null;
-    isInternetReachable: boolean | null;
-  }) => void;
+  connectionType: NetInfoStateType | typeof UNKNOWN_CONNECTION;
+  effectiveType: string | null;
+  setNetworkInfo: (payload: NetInfoState) => void;
 }
 
 export const useNetworkStore = create<NetworkState>((set) => ({
   isConnected: true,
   isInternetReachable: true,
   isOffline: false,
+  connectionType: UNKNOWN_CONNECTION,
+  effectiveType: null,
   setNetworkInfo: (payload) =>
     set((state) => ({
       isConnected: payload.isConnected ?? false,
@@ -21,5 +28,11 @@ export const useNetworkStore = create<NetworkState>((set) => ({
       isOffline:
         !(payload.isConnected ?? state.isConnected) ||
         !(payload.isInternetReachable ?? state.isInternetReachable),
+      connectionType: payload.type ?? UNKNOWN_CONNECTION,
+      effectiveType:
+        payload.type === NetInfoStateType.cellular &&
+        payload.details?.cellularGeneration
+          ? payload.details.cellularGeneration
+          : null,
     })),
 }));

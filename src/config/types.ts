@@ -99,6 +99,11 @@ export type AssetToken = {
 };
 
 /**
+ * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
+ */
+export type Token = AssetToken | NativeToken;
+
+/**
  * Base balance type with total amount
  * @property {BigNumber} total - The total balance amount
  */
@@ -311,4 +316,15 @@ export type CustomTokenStorage = {
   [publicKey: string]: {
     [network: string]: CustomToken[];
   };
+};
+
+/**
+ * Represents a discover protocol from the backend API
+ */
+export type DiscoverProtocol = {
+  description: string;
+  iconUrl: string;
+  name: string;
+  websiteUrl: string;
+  tags: string[];
 };

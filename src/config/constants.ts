@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { t } from "i18next";
 
 export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
+
+export const TOGGLE_ANIMATION_DURATION = 400;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
@@ -35,10 +38,12 @@ export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
+export const STELLAR_FOUNDATION_TERMS_URL =
+  "https://stellar.org/terms-of-service";
+export const STELLAR_FOUNDATION_PRIVACY_URL =
+  "https://stellar.org/privacy-policy";
 
-export const FREIGHTER_BACKEND_URL =
-  "https://freighter-backend-prd.stellar.org/api/v1";
-export const CREATE_ACCOUNT_URL =
+export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
 export enum FRIENDBOT_URLS {
@@ -147,6 +152,7 @@ export enum OPERATION_TYPES {
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
 export const MIN_TRANSACTION_TIMEOUT = 1;
+export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14.5;
 
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
@@ -200,3 +206,32 @@ export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
 }
+
+// Browser constants
+export const BROWSER_CONSTANTS = {
+  HOMEPAGE_URL: "freighter://discovery-homepage",
+  GOOGLE_SEARCH_BASE_URL: "https://www.google.com/search?q=",
+  DEFAULT_TAB_TITLE: t("discovery.defaultTabTitle"),
+  SCREENSHOT_STORAGE_KEY: "browser_screenshots",
+  MAX_RECENT_TABS: 20,
+  MAX_SCREENSHOTS_STORED: 100,
+  SCREENSHOT_FORMAT: "jpg",
+  SCREENSHOT_QUALITY: 0.5,
+  SCREENSHOT_WIDTH: 400,
+  SCREENSHOT_HEIGHT: 600,
+  SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading
+  SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
+  SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
+  TAB_OPEN_ANIMATION_DURATION: 200,
+  TAB_CLOSE_ANIMATION_DURATION: 200,
+  TAB_SWITCH_SPINNER_DELAY: 500,
+  TAB_SWITCH_SPINNER_DURATION: 200,
+  TAB_PREVIEW_FAVICON_SIZE: 32,
+  TAB_PREVIEW_CLOSE_ICON_SIZE: 12,
+  TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
+  // dApps work differently depending on the user agent, let's use the below for consistent behavior
+  IOS_USER_AGENT:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
+  ANDROID_USER_AGENT:
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
+} as const;

@@ -19,6 +19,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import {
   AuthNavigator,
@@ -47,13 +48,17 @@ export const RootNavigator = () => {
   const [initializing, setInitializing] = useState(true);
   const { t } = useAppTranslation();
 
+  // Use analytics/permissions hook only after splash is hidden
+  useAnalyticsPermissions({
+    previousState: initializing ? undefined : "none",
+  });
+
   useEffect(() => {
     const initializeApp = async () => {
       await getAuthStatus();
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     };
-
     initializeApp();
   }, [getAuthStatus]);
 

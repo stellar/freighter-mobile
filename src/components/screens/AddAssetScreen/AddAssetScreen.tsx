@@ -12,6 +12,7 @@ import SecurityWarningBottomSheet from "components/screens/AddAssetScreen/Securi
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
@@ -29,6 +30,7 @@ import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useScanAsset } from "hooks/useScanAsset";
 import React, { useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
+import { analytics } from "services/analytics";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -98,10 +100,12 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     addAssetBottomSheetModalRef.current?.present();
   };
 
-  const handleAddAssetTrustline = async () => {
+  const handleConfirmAssetAddition = async () => {
     if (!selectedAsset) {
       return;
     }
+
+    analytics.trackAddTokenConfirmed(selectedAsset.assetCode);
 
     await addAsset(selectedAsset);
     addAssetBottomSheetModalRef.current?.dismiss();
@@ -113,7 +117,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
 
   const handleProceedAnyway = () => {
     securityWarningBottomSheetModalRef.current?.dismiss();
-    handleAddAssetTrustline();
+    handleConfirmAssetAddition();
   };
 
   // Check if the selected asset is malicious based on scan results
@@ -182,6 +186,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     return false;
   };
 
+  const handleCancelAssetAddition = () => {
+    if (selectedAsset) {
+      analytics.trackAddTokenRejected(selectedAsset.assetCode);
+    }
+
+    addAssetBottomSheetModalRef.current?.dismiss();
+  };
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
@@ -201,16 +213,17 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
           bottomSheetModalProps={{
             enablePanDownToClose: false,
           }}
+          analyticsEvent={AnalyticsEvent.VIEW_ADD_ASSET_MANUALLY}
           shouldCloseOnPressBackdrop={!isAddingAsset}
           customContent={
             <AddAssetBottomSheetContent
               asset={selectedAsset}
               account={account}
-              onCancel={() => addAssetBottomSheetModalRef.current?.dismiss()}
+              onCancel={handleCancelAssetAddition}
               onAddAsset={
                 isAssetMalicious() || isAssetSuspicious()
                   ? handleSecurityWarning
-                  : handleAddAssetTrustline
+                  : handleConfirmAssetAddition
               }
               isAddingAsset={isAddingAsset}
               isMalicious={isAssetMalicious()}

@@ -9,6 +9,7 @@ import {
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -17,6 +18,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -106,6 +108,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    * @param {string} contactAddress - The selected contact address
    */
   const handleContactPress = (contactAddress: string) => {
+    if (recentAddresses.some((c) => c.address === contactAddress)) {
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
+    }
     // Save to both stores for different purposes
     // Send store is for contact management
     setDestinationAddress(contactAddress);

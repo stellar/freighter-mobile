@@ -8,12 +8,15 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { track } from "services/analytics/core";
+import type { AnalyticsProps } from "services/analytics/types";
 
 const Icons = {
   Assets: {
@@ -49,6 +52,8 @@ type BottomSheetProps = {
   enableContentPanningGesture?: boolean;
   enableDynamicSizing?: boolean;
   useInsetsBottomPadding?: boolean;
+  analyticsEvent?: AnalyticsEvent;
+  analyticsProps?: AnalyticsProps;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -66,10 +71,15 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   enableContentPanningGesture = true,
   enableDynamicSizing = true,
   useInsetsBottomPadding = true,
+  analyticsEvent,
+  analyticsProps,
 }) => {
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : null;
   const insets = useSafeAreaInsets();
+
+  // Track bottom-sheet open exactly once per presentation
+  const hasTrackedRef = useRef(false);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -93,6 +103,24 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
+  const handleChange = useCallback(
+    (index: number) => {
+      // index >= 0 means sheet is visible
+      if (analyticsEvent && index >= 0 && !hasTrackedRef.current) {
+        track(analyticsEvent, analyticsProps);
+        hasTrackedRef.current = true;
+      }
+
+      // Call any user-supplied onChange handler (cast to allow differing signatures)
+      if (bottomSheetModalProps?.onChange) {
+        (bottomSheetModalProps.onChange as unknown as (idx: number) => void)(
+          index,
+        );
+      }
+    },
+    [analyticsEvent, analyticsProps, bottomSheetModalProps],
+  );
+
   return (
     <BottomSheetModal
       ref={modalRef}
@@ -107,6 +135,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         backgroundColor: themeColors.background.primary,
       }}
       {...bottomSheetModalProps}
+      onChange={handleChange}
     >
       <BottomSheetView
         className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"

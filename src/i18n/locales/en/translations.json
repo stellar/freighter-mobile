@@ -22,7 +22,8 @@
     "loading": "Loading...",
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
-    "review": "Review"
+    "review": "Review",
+    "and": " and "
   },
   "home": {
     "title": "Home",
@@ -55,11 +56,32 @@
     "title": "Settings",
     "logout": "Log Out",
     "network": "Network",
+    "preferences": "Preferences",
     "version": "Version {{version}}",
     "help": "Help",
     "feedback": "Share Feedback",
     "about": "About",
     "security": "Security"
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Anonymous data sharing",
+      "description": "Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc."
+    },
+    "permissionModal": {
+      "enable": {
+        "title": "Enable Analytics",
+        "description": "To enable anonymous data sharing, you'll need to allow tracking permissions in your device settings.",
+        "instruction": "Tap \"Open Settings\" below, then find Freighter and enable \"Allow Tracking\"."
+      },
+      "disable": {
+        "title": "Disable Analytics",
+        "description": "To disable anonymous data sharing, you'll need to change tracking permissions in your device settings.",
+        "instruction": "Tap \"Open Settings\" below, then find Freighter and disable \"Allow Tracking\"."
+      },
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
+    }
   },
   "shareFeedbackScreen": {
     "title": "Share Feedback",
@@ -115,7 +137,8 @@
     "iAlreadyHaveWallet": "I already have a wallet",
     "terms": {
       "byProceeding": "By proceeding, you agree to Freighter's ",
-      "termsOfService": "terms of use"
+      "termsOfService": "terms of use",
+      "privacyPolicy": "privacy policy"
     }
   },
   "choosePasswordScreen": {
@@ -183,7 +206,18 @@
     "noConnectedDapps": "You're not connected to any apps"
   },
   "discovery": {
-    "title": "Discovery"
+    "defaultTabTitle": "New Tab",
+    "recent": "Recent",
+    "trending": "Trending",
+    "oneTab": "1 Tab",
+    "tabs": "{{count}} Tabs",
+    "urlBarPlaceholder": "Search or enter a website",
+    "openInBrowser": "Open in Browser",
+    "share": "Share",
+    "home": "Home",
+    "reload": "Reload",
+    "closeAllTabs": "Close All Tabs",
+    "closeThisTab": "Close This Tab"
   },
   "history": {
     "title": "History",
@@ -666,5 +700,30 @@
     "description3": "Settings → Security → Reveal Recovery Phrase.",
     "confirm": "I understand, continue",
     "cancel": "Go back"
+  },
+  "analytics": {
+    "debug": {
+      "title": "📊 Analytics Debug",
+      "status": "Status",
+      "enabled": "✅ Enabled",
+      "disabled": "❌ Disabled",
+      "initialized": "🚀 Initialized",
+      "notInitialized": "⏳ Not Initialized",
+      "sending": "📤 Sending to Amplitude",
+      "notSending": "📝 Logging only (not sending)",
+      "apiKeyMissing": "⚠️ API Key Missing",
+      "apiKeyMissingWarning": "Events are being logged for development but NOT sent to Amplitude because the API key is not configured.",
+      "userId": "User ID: {{userId}}",
+      "userIdNotSet": "User ID: Not set",
+      "environment": "Environment: {{environment}}",
+      "apiKey": "API Key: {{apiKey}}",
+      "recentEvents": "Recent Events ({{count}})",
+      "clear": "Clear",
+      "noRecentEvents": "No recent events",
+      "actions": "Actions",
+      "refresh": "🔄 Refresh",
+      "clearEvents": "Clear Events",
+      "simulateSessionExpiry": "⏰ Simulate Session Expiry"
+    }
   }
 }

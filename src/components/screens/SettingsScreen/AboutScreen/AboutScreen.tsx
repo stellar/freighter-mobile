@@ -7,6 +7,8 @@ import { Text } from "components/sds/Typography";
 import {
   FREIGHTER_BASE_URL,
   STELLAR_FOUNDATION_BASE_URL,
+  STELLAR_FOUNDATION_TERMS_URL,
+  STELLAR_FOUNDATION_PRIVACY_URL,
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
@@ -41,14 +43,12 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.privacyPolicy"),
-      onPress: () =>
-        Linking.openURL(`${STELLAR_FOUNDATION_BASE_URL}/privacy-policy`),
+      onPress: () => Linking.openURL(STELLAR_FOUNDATION_PRIVACY_URL),
     },
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.termsOfService"),
-      onPress: () =>
-        Linking.openURL(`${STELLAR_FOUNDATION_BASE_URL}/terms-of-service`),
+      onPress: () => Linking.openURL(STELLAR_FOUNDATION_TERMS_URL),
     },
   ];
 

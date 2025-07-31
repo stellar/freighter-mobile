@@ -37,7 +37,6 @@ jest.mock("helpers/debug", () => ({
 }));
 
 // Disable the specific ESLint rule for this file
-/* eslint-disable @typescript-eslint/unbound-method */
 
 describe("getIconUrlFromIssuer", () => {
   // Test constants

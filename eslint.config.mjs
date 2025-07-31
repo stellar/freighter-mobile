@@ -2,13 +2,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/no-extraneous-dependencies */
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
 import globals from "globals";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +33,10 @@ export default [
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/await-thenable": "off",
     },
   },
   {
@@ -90,6 +93,7 @@ export default [
 
       "react/require-default-props": "off",
       "react/jsx-props-no-spreading": "off",
+      "react/prop-types": "off", // Disable prop-types since we use TypeScript
       "import/prefer-default-export": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",

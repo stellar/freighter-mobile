@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { NavigationContainerRef } from "@react-navigation/native";
 import { act, renderHook } from "@testing-library/react-hooks";
 import {

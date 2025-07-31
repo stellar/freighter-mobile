@@ -22,7 +22,8 @@
     "loading": "Carregando...",
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
-    "review": "Revisar"
+    "review": "Revisar",
+    "and": " e "
   },
   "home": {
     "title": "Início",
@@ -56,6 +57,7 @@
     "title": "Configurações",
     "logout": "Sair",
     "network": "Rede",
+    "preferences": "Preferências",
     "version": "Versão {{version}}",
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
@@ -102,7 +104,8 @@
     "iAlreadyHaveWallet": "Já tenho uma carteira",
     "terms": {
       "byProceeding": "Ao prosseguir, você concorda com os ",
-      "termsOfService": "termos de uso do Freighter"
+      "termsOfService": "termos de uso do Freighter",
+      "privacyPolicy": "política de privacidade"
     }
   },
   "choosePasswordScreen": {
@@ -172,7 +175,18 @@
     "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
   },
   "discovery": {
-    "title": "Discovery"
+    "defaultTabTitle": "Nova Aba",
+    "recent": "Recentes",
+    "trending": "Em Alta",
+    "oneTab": "1 Aba",
+    "tabs": "{{count}} Abas",
+    "urlBarPlaceholder": "Pesquisar ou digitar um site",
+    "openInBrowser": "Abrir no Navegador",
+    "share": "Compartilhar",
+    "home": "Início",
+    "reload": "Recarregar",
+    "closeAllTabs": "Fechar todas as abas",
+    "closeThisTab": "Fechar esta aba"
   },
   "history": {
     "title": "Histórico",
@@ -674,5 +688,50 @@
     "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
     "confirm": "Entendi, continuar",
     "cancel": "Voltar"
+  },
+  "analytics": {
+    "debug": {
+      "title": "📊 Debug Analytics",
+      "status": "Status",
+      "enabled": "✅ Habilitado",
+      "disabled": "❌ Desabilitado",
+      "initialized": "🚀 Inicializado",
+      "notInitialized": "⏳ Não Inicializado",
+      "sending": "📤 Enviando para Amplitude",
+      "notSending": "📝 Apenas registrando (não enviando)",
+      "apiKeyMissing": "⚠️ Chave da API Ausente",
+      "apiKeyMissingWarning": "Os eventos estão sendo registrados para desenvolvimento, mas NÃO enviados para o Amplitude porque a chave da API não está configurada.",
+      "userId": "ID do Usuário: {{userId}}",
+      "userIdNotSet": "ID do Usuário: Não definido",
+      "environment": "Ambiente: {{environment}}",
+      "apiKey": "Chave da API: {{apiKey}}",
+      "recentEvents": "Eventos Recentes ({{count}})",
+      "clear": "Limpar",
+      "noRecentEvents": "Nenhum evento recente",
+      "actions": "Ações",
+      "refresh": "🔄 Atualizar",
+      "clearEvents": "Limpar Eventos",
+      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
+    }
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Compartilhamento de dados anônimos",
+      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
+    },
+    "permissionModal": {
+      "enable": {
+        "title": "Habilitar Analytics",
+        "description": "Para habilitar o compartilhamento de dados anônimos, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+      },
+      "disable": {
+        "title": "Desabilitar Analytics",
+        "description": "Para desabilitar o compartilhamento de dados anônimos, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+      },
+      "openSettings": "Abrir Configurações",
+      "notNow": "Agora não"
+    }
   }
 }

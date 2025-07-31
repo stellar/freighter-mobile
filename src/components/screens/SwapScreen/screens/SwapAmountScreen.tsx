@@ -16,6 +16,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
@@ -33,6 +34,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { analytics } from "services/analytics";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -156,6 +158,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     swapFee,
     swapTimeout,
+    swapSlippage,
     network,
     navigation,
   });
@@ -241,6 +244,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleSetMax = () => {
     if (spendableAmount) {
+      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
+
       setSourceAmount(spendableAmount.toString());
     }
   };
@@ -448,6 +453,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
+        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_ASSET}
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}
@@ -465,6 +471,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
         snapPoints={["80%"]}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}

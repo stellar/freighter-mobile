@@ -158,7 +158,6 @@ describe("Input", () => {
       );
 
       fireEvent.press(getByText("Copy"));
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(Clipboard.setString).toHaveBeenCalledWith("test value");
     });
   });

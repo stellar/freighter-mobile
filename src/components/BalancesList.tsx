@@ -5,7 +5,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
-import { CREATE_ACCOUNT_URL, NETWORKS } from "config/constants";
+import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
 import {
   BUY_XLM_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
@@ -156,7 +156,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <Notification
             variant="primary"
             onPress={() => {
-              Linking.openURL(CREATE_ACCOUNT_URL);
+              Linking.openURL(CREATE_ACCOUNT_TUTORIAL_URL);
             }}
             customContent={
               <NotificationContent>

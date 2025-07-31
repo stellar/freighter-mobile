@@ -4,6 +4,8 @@ import AboutScreen from "components/screens/SettingsScreen/AboutScreen/AboutScre
 import {
   FREIGHTER_BASE_URL,
   STELLAR_FOUNDATION_BASE_URL,
+  STELLAR_FOUNDATION_TERMS_URL,
+  STELLAR_FOUNDATION_PRIVACY_URL,
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -99,9 +101,7 @@ describe("AboutScreen", () => {
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Privacy Policy"));
-    expect(mockOpenURL).toHaveBeenCalledWith(
-      `${STELLAR_FOUNDATION_BASE_URL}/privacy-policy`,
-    );
+    expect(mockOpenURL).toHaveBeenCalledWith(STELLAR_FOUNDATION_PRIVACY_URL);
   });
 
   it("opens Terms of Service link when pressed", () => {
@@ -109,8 +109,6 @@ describe("AboutScreen", () => {
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Terms of Service"));
-    expect(mockOpenURL).toHaveBeenCalledWith(
-      `${STELLAR_FOUNDATION_BASE_URL}/terms-of-service`,
-    );
+    expect(mockOpenURL).toHaveBeenCalledWith(STELLAR_FOUNDATION_TERMS_URL);
   });
 });

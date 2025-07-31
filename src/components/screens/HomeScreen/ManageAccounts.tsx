@@ -3,6 +3,7 @@ import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import BottomSheet from "components/BottomSheet";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   MainTabStackParamList,
   RootStackParamList,
@@ -14,6 +15,7 @@ import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useState } from "react";
+import { analytics } from "services/analytics";
 
 interface ManageAccountsProps {
   navigation: BottomTabNavigationProp<
@@ -47,11 +49,15 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       copyToClipboard(publicKey, {
         notificationMessage: t("accountAddressCopied"),
       });
+
+      analytics.trackCopyPublicKey();
     },
     [copyToClipboard, t],
   );
 
   const handleAddAnotherWallet = useCallback(() => {
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
+
     bottomSheetRef.current?.dismiss();
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
   }, [navigation, bottomSheetRef]);
@@ -59,6 +65,11 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const handleRenameAccount = useCallback(
     async (newAccountName: string) => {
       if (!accountToRename || !activeAccount) return;
+
+      analytics.trackViewPublicKeyAccountRenamed(
+        accountToRename.name,
+        newAccountName,
+      );
 
       await renameAccount({
         accountName: newAccountName,
@@ -100,6 +111,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
         enablePanDownToClose={false}
+        analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         customContent={
           <ManageAccountBottomSheet
             handleCloseModal={handleCloseModal}
