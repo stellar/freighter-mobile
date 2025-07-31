@@ -6,6 +6,7 @@ import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
+import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {
@@ -119,6 +120,16 @@ export const RootNavigator = () => {
               headerTitle: t("accountQRCodeScreen.title"),
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
+            }}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
+            component={ScanQRCodeScreen}
+            options={{
+              headerTitle: t("scanQRCodeScreen.title"),
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
           <RootStack.Screen

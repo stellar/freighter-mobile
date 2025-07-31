@@ -46,7 +46,12 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   useLayoutEffect(() => {
     if (showNavigationAsCloseButton) {
       navigation.setOptions({
-        headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+        headerLeft: () => (
+          <CustomHeaderButton
+            icon={Icon.X}
+            onPress={() => navigation.popToTop()}
+          />
+        ),
       });
     }
   }, [navigation, showNavigationAsCloseButton]);

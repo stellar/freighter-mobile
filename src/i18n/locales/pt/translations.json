@@ -559,6 +559,10 @@
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
   },
+  "scanQRCodeScreen": {
+    "title": "Escaneie para Conectar",
+    "scanWCQrCode": "Escaneie um código QR do WalletConnect"
+  },
   "buyXLMScreen": {
     "title": "Adicionar XLM",
     "bottomSheet": {

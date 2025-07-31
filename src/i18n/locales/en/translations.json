@@ -106,6 +106,10 @@
       "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
     }
   },
+  "scanQRCodeScreen": {
+    "title": "Scan to Connect",
+    "scanWCQrCode": "Scan a WalletConnect QR code"
+  },
   "buyXLMScreen": {
     "title": "Add XLM",
     "bottomSheet": {

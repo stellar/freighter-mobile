@@ -17,7 +17,7 @@ import {
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useLayoutEffect, useMemo } from "react";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 
 interface UseHomeHeadersProps {
   navigation: BottomTabNavigationProp<
@@ -86,26 +86,36 @@ export const useHomeHeaders = ({
 
   const HeaderLeftComponent = useCallback(
     () => (
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: menuActions,
-        }}
-      >
-        <Icon.DotsHorizontal color={themeColors.base[1]} />
-      </ContextMenuButton>
+      <View className="flex-row gap-4">
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: menuActions,
+          }}
+        >
+          <Icon.DotsHorizontal color={themeColors.base[1]} />
+        </ContextMenuButton>
+
+        <CustomHeaderButton
+          position="left"
+          icon={Icon.NotificationBox}
+          onPress={() => connectedAppsBottomSheetModalRef.current?.present()}
+        />
+      </View>
     ),
-    [menuActions, themeColors],
+    [menuActions, themeColors, connectedAppsBottomSheetModalRef],
   );
 
   const HeaderRightComponent = useCallback(
     () => (
       <CustomHeaderButton
         position="right"
-        icon={Icon.NotificationBox}
-        onPress={() => connectedAppsBottomSheetModalRef.current?.present()}
+        icon={Icon.Scan}
+        onPress={() =>
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN)
+        }
       />
     ),
-    [connectedAppsBottomSheetModalRef],
+    [navigation],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up
