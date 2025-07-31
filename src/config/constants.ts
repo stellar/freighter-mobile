@@ -11,7 +11,7 @@ export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
 export const TOGGLE_ANIMATION_DURATION = 400;
 
 // This is used to prevent rows from highlighting when the user is scrolling
-export const DEFAULT_PRESS_DELAY = 80;
+export const DEFAULT_PRESS_DELAY = 100;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
