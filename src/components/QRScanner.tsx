@@ -24,7 +24,7 @@ const CUTOUT_TEXT_TOP_OFFSET = 33;
  * Props for the QRScanner component
  * @interface QRScannerProps
  * @property {(data: string) => void} onRead - Callback function called when a QR code is successfully scanned
- * @property {string} [context] - Context for analytics tracking
+ * @property {"wallet_connect" | "address_input" | "import_wallet"} [context] - Context for analytics tracking
  */
 type QRScannerProps = {
   onRead: (data: string) => void;
@@ -33,24 +33,31 @@ type QRScannerProps = {
 
 /**
  * QR Scanner component that uses the device's camera to scan QR codes.
- * Handles camera permissions, device availability, and QR code detection.
+ *
+ * This component provides a full-screen camera interface with a custom overlay
+ * that includes a centered cutout area for QR code scanning. It handles camera
+ * permissions, device availability, and provides real-time QR code detection.
  *
  * Features:
- * - Camera permission management
- * - Loading state handling
- * - Error state display
- * - QR code detection and callback
- * - Analytics tracking for mobile-specific usage
+ * - Camera permission management with automatic request
+ * - Custom SVG mask overlay with rounded cutout
+ * - Gold border guide around the scanning area
+ * - Instructional text below the scanning area
+ * - Loading and error state handling
+ * - QR code detection with callback
+ * - Analytics tracking for success/error events
+ * - Mounting delay to prevent UI flickering
  *
  * @component
  * @param {QRScannerProps} props - The component props
- * @returns {JSX.Element} The QR scanner component
+ * @returns {JSX.Element | null} The QR scanner component or null during initial mounting
  *
  * @example
  * ```tsx
  * <QRScanner
  *   onRead={(data) => {
  *     console.log('Scanned QR code:', data);
+ *     // Handle the scanned QR code data
  *   }}
  *   context="wallet_connect"
  * />
