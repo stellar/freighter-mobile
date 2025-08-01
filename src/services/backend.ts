@@ -43,10 +43,10 @@ import type {
 } from "types/blockaid";
 
 // Create dedicated API services for backend operations
-const freighterBackend = createApiService({
+export const freighterBackend = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_URL,
 });
-const freighterBackendV2 = createApiService({
+export const freighterBackendV2 = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 

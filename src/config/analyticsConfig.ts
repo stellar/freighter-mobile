@@ -124,6 +124,11 @@ export enum AnalyticsEvent {
   // Mobile-Only Events
   QR_SCAN_SUCCESS = "mobile: qr scan success",
   QR_SCAN_ERROR = "mobile: qr scan error",
+
+  // Blockaid Events
+  BLOCKAID_ASSET_SCAN = "blockaid: scanned asset",
+  BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
+  BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
 }
 
 /**

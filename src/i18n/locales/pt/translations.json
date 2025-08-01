@@ -714,6 +714,25 @@
       "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
     }
   },
+  "blockaid": {
+    "security": {
+      "asset": {
+        "malicious": "Este token foi marcado como malicioso",
+        "suspicious": "Este token foi marcado como suspeito",
+        "warning": "Este token foi marcado como aviso",
+        "spam": "Este token foi marcado como spam"
+      },
+      "site": {
+        "malicious": "Este site foi marcado como malicioso",
+        "suspicious": "Este site foi encontrado no banco de dados de segurança"
+      },
+      "transaction": {
+        "simulationFailed": "Falha na simulação da transação",
+        "malicious": "Esta transação foi marcada como maliciosa",
+        "warning": "Esta transação foi marcada como aviso"
+      }
+    }
+  },
   "preferences": {
     "anonymousDataSharing": {
       "title": "Compartilhamento de dados anônimos",

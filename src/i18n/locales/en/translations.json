@@ -725,5 +725,24 @@
       "clearEvents": "Clear Events",
       "simulateSessionExpiry": "⏰ Simulate Session Expiry"
     }
+  },
+  "blockaid": {
+    "security": {
+      "asset": {
+        "malicious": "This token was flagged as malicious",
+        "suspicious": "This token was flagged as suspicious",
+        "warning": "This token was flagged as warning",
+        "spam": "This token was flagged as spam"
+      },
+      "site": {
+        "malicious": "This site was flagged as malicious",
+        "suspicious": "This site was found in security database"
+      },
+      "transaction": {
+        "simulationFailed": "Transaction simulation failed",
+        "malicious": "This transaction was flagged as malicious",
+        "warning": "This transaction was flagged as warning"
+      }
+    }
   }
 }
