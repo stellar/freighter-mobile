@@ -13,6 +13,7 @@ import {
 } from "react-native-vision-camera";
 import { analytics } from "services/analytics";
 
+const CUTOUT_TOP_OFFSET = "45%";
 const CUTOUT_SIZE = 232;
 const CUTOUT_RADIUS = 32;
 const CUTOUT_BORDER_WIDTH = 6;
@@ -129,8 +130,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({
             <Mask id="cutout">
               <Rect width="100%" height="100%" fill="white" />
               <Rect
+                y={CUTOUT_TOP_OFFSET}
                 x="50%"
-                y="50%"
                 width={CUTOUT_SIZE}
                 height={CUTOUT_SIZE}
                 rx={CUTOUT_RADIUS}
@@ -156,7 +157,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
           style={{
             position: "absolute",
             zIndex: 10,
-            top: "50%",
+            top: CUTOUT_TOP_OFFSET,
             left: "50%",
             width: CUTOUT_SIZE,
             height: CUTOUT_SIZE,
@@ -176,7 +177,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
           style={{
             position: "absolute",
             zIndex: 10,
-            top: "50%",
+            top: CUTOUT_TOP_OFFSET,
             width: "100%",
             transform: [
               {
