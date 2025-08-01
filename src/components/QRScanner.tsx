@@ -16,6 +16,7 @@ import { analytics } from "services/analytics";
 const CUTOUT_SIZE = 232;
 const CUTOUT_RADIUS = 32;
 const CUTOUT_BORDER_WIDTH = 6;
+const CUTOUT_TEXT_TOP_OFFSET = 33;
 
 /**
  * Props for the QRScanner component
@@ -169,6 +170,26 @@ export const QRScanner: React.FC<QRScannerProps> = ({
             ],
           }}
         />
+
+        {/* Scan instruction text */}
+        <View
+          style={{
+            position: "absolute",
+            zIndex: 10,
+            top: "50%",
+            width: "100%",
+            transform: [
+              {
+                translateY:
+                  -CUTOUT_SIZE / 2 + CUTOUT_SIZE + CUTOUT_TEXT_TOP_OFFSET,
+              },
+            ],
+          }}
+        >
+          <Text md primary medium textAlign="center">
+            {t("scanQRCodeScreen.scanWCQrCode")}
+          </Text>
+        </View>
       </View>
     </>
   );
