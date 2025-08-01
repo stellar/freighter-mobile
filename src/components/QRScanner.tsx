@@ -1,4 +1,3 @@
-import Spinner from "components/Spinner";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -12,6 +11,8 @@ import {
   useCameraPermission,
 } from "react-native-vision-camera";
 import { analytics } from "services/analytics";
+
+const MOUNTING_DELAY = 500;
 
 const CUTOUT_TOP_OFFSET = "45%";
 const CUTOUT_SIZE = 232;
@@ -64,7 +65,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const [isMounting, setIsMounting] = useState(true);
+  const [hasMounted, setHasMounted] = useState(false);
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr"],
@@ -83,25 +84,23 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 
   useEffect(() => {
     setTimeout(() => {
-      setIsMounting(false);
-    }, 500);
+      setHasMounted(true);
+    }, MOUNTING_DELAY);
   }, []);
 
   useEffect(() => {
+    if (!hasMounted) return;
+
     // Track error if permissions denied or camera unavailable (mobile-specific feature)
-    if (!isMounting && (device == null || !hasPermission)) {
+    if (device == null || !hasPermission) {
       const error = device == null ? "camera_unavailable" : "permission_denied";
 
       analytics.trackQRScanError(error, context);
     }
-  }, [isMounting, device, hasPermission, context]);
+  }, [hasMounted, device, hasPermission, context]);
 
-  if (isMounting) {
-    return (
-      <View className="flex-1 justify-center items-center">
-        <Spinner />
-      </View>
-    );
+  if (!hasMounted && device == null) {
+    return null;
   }
 
   if (device == null || !hasPermission) {
