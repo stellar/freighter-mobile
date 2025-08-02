@@ -39,6 +39,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
+  CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
 } as const;
 
@@ -138,6 +139,7 @@ export type RootStackParamList = {
     showNavigationAsCloseButton?: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;

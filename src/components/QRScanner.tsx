@@ -112,7 +112,12 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 
   if (device == null || !hasPermission) {
     return (
-      <View className="flex-1 justify-center items-center">
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <Text sm secondary textAlign="center">
           {t("qrScanner.cameraNotAvailable")}
         </Text>
@@ -121,7 +126,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   }
 
   return (
-    <>
+    <View style={StyleSheet.absoluteFill}>
       <Camera
         codeScanner={codeScanner}
         style={StyleSheet.absoluteFill}
@@ -198,6 +203,6 @@ export const QRScanner: React.FC<QRScannerProps> = ({
           </Text>
         </View>
       </View>
-    </>
+    </View>
   );
 };

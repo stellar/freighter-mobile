@@ -29,7 +29,7 @@ const CameraNavigationHeader = ({
 
   return (
     <View
-      className="absolute w-full z-[999] flex-row justify-between items-center px-6 pb-4 bg-background-transparent"
+      className="absolute left-0 right-0 z-[999] flex-row justify-between items-center px-6 pb-4 bg-background-transparent"
       style={{ paddingTop }}
     >
       {headerLeft ? headerLeft() : <CustomHeaderButton position="left" />}

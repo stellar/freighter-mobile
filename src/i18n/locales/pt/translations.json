@@ -161,15 +161,10 @@
     "doThisLaterButtonText": "Fazer isso depois"
   },
   "connectedApps": {
-    "title": "Walle Connect",
-    "inputPlaceholder": "Cole o QR Code",
-    "scanQRCode": "Escanear QR Code",
-    "connect": "Conectar",
-    "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um QR Code válido",
-    "disconnectAllSessions": "Desconectar de todos os aplicativos",
-    "connectedDapps": "Aplicativos Conectados",
-    "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
+    "title": "Aplicativos Conectados",
+    "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "goToDiscover": "Ir para o Discover",
+    "disconnectAllSessions": "Desconectar todos"
   },
   "discovery": {
     "defaultTabTitle": "Nova Aba",
@@ -561,7 +556,12 @@
   },
   "scanQRCodeScreen": {
     "title": "Escaneie para Conectar",
-    "scanWCQrCode": "Escaneie um código QR do WalletConnect"
+    "scanWCQrCode": "Escaneie um código QR do WalletConnect",
+    "connectWithWalletConnect": "Conectar com WalletConnect",
+    "inputPlaceholder": "Insira o URI do WalletConnect",
+    "connect": "Conectar",
+    "pairingError": "Falha ao parear",
+    "invalidUriError": "Por favor, insira um código QR válido"
   },
   "buyXLMScreen": {
     "title": "Adicionar XLM",

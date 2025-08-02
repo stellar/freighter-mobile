@@ -108,7 +108,12 @@
   },
   "scanQRCodeScreen": {
     "title": "Scan to Connect",
-    "scanWCQrCode": "Scan a WalletConnect QR code"
+    "scanWCQrCode": "Scan a WalletConnect QR code",
+    "connectWithWalletConnect": "Connect with WalletConnect",
+    "inputPlaceholder": "Enter WalletConnect URI",
+    "connect": "Connect",
+    "pairingError": "Failed to pair",
+    "invalidUriError": "Please enter a valid QR Code"
   },
   "buyXLMScreen": {
     "title": "Add XLM",
@@ -196,15 +201,10 @@
     "doThisLaterButtonText": "Do this later"
   },
   "connectedApps": {
-    "title": "Wallet Connect",
-    "inputPlaceholder": "Paste QR Code",
-    "scanQRCode": "Scan QR Code",
-    "connect": "Connect",
-    "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid QR Code",
-    "disconnectAllSessions": "Clear all connected apps",
-    "connectedDapps": "Connected Apps",
-    "noConnectedDapps": "You're not connected to any apps"
+    "title": "Connected Apps",
+    "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "goToDiscover": "Go to Discover",
+    "disconnectAllSessions": "Disconnect all"
   },
   "discovery": {
     "defaultTabTitle": "New Tab",

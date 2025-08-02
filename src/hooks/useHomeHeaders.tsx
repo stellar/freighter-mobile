@@ -1,4 +1,3 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import {
   BottomTabHeaderProps,
   BottomTabNavigationProp,
@@ -25,13 +24,11 @@ interface UseHomeHeadersProps {
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
   hasAssets: boolean;
-  connectedAppsBottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
 }
 
 export const useHomeHeaders = ({
   navigation,
   hasAssets,
-  connectedAppsBottomSheetModalRef,
 }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -98,11 +95,13 @@ export const useHomeHeaders = ({
         <CustomHeaderButton
           position="left"
           icon={Icon.NotificationBox}
-          onPress={() => connectedAppsBottomSheetModalRef.current?.present()}
+          onPress={() =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
+          }
         />
       </View>
     ),
-    [menuActions, themeColors, connectedAppsBottomSheetModalRef],
+    [menuActions, themeColors, navigation],
   );
 
   const HeaderRightComponent = useCallback(
