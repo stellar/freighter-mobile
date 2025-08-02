@@ -17,6 +17,8 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   BUY_XLM_ROUTES,
+  SEND_PAYMENT_ROUTES,
+  SWAP_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -126,11 +128,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleSendPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      params: { tokenId: undefined },
+    });
   };
 
   const handleSwapPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
+      screen: SWAP_ROUTES.SWAP_SCREEN,
+    });
   };
 
   return (
