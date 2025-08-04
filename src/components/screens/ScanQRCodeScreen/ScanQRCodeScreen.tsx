@@ -31,8 +31,12 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
   const [dappUri, setDappUri] = useState("");
   const [error, setError] = useState("");
 
-  const handleHeaderLeft = () => {
+  const closeScreen = () => {
     navigation.popToTop();
+  };
+
+  const handleHeaderLeft = () => {
+    closeScreen();
   };
 
   const handleHeaderRight = () => {
@@ -68,10 +72,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
 
       // Add a delay for a smooth UX while we wait for the bottom sheet to animate
       setTimeout(() => {
-        setIsConnecting(false);
-
-        // Consume the input value to clean the UI
-        setDappUri("");
+        closeScreen();
       }, PAIRING_SUCCESS_VISUALDELAY_MS);
     } catch (err) {
       // Add a delay for a smooth UX to prevent UI flickering when displaying the error
