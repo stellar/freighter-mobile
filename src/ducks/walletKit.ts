@@ -128,7 +128,7 @@ interface WalletKitState {
 /**
  * Zustand store for managing WalletKit state
  */
-export const useWalletKitStore = create<WalletKitState>((set) => ({
+export const useWalletKitStore = create<WalletKitState>((set, get) => ({
   event: noneEvent,
   activeSessions: {},
   setEvent: (event) => set({ event }),
@@ -146,8 +146,9 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
     publicKey: string;
     network: NETWORKS;
   }) => {
-    const { fetchActiveSessions } = useWalletKitStore.getState();
     await disconnectSession(topic);
+
+    const { fetchActiveSessions } = get();
     fetchActiveSessions(publicKey, network);
   },
   disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {
