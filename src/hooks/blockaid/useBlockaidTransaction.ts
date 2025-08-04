@@ -1,4 +1,5 @@
 import Blockaid from "@blockaid/client";
+import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCallback, useEffect, useState } from "react";
@@ -38,10 +39,15 @@ export const useBlockaidTransaction = ({
       const scanResult = await scanTransaction({ xdr, url, network });
 
       setScannedTransaction(scanResult);
+
+      // Set isLoading with delay to prevent UI from flashing
+      setTimeout(() => {
+        setIsLoading(false);
+      }, DEFAULT_BLOCKAID_SCAN_DELAY);
     } catch (err) {
       logger.error(err as string, "Error fetching scan transaction status");
+
       setError(err as string);
-    } finally {
       setIsLoading(false);
     }
   }, [xdr, url, network]);

@@ -8,6 +8,15 @@ import {
 } from "services/blockaid/constants";
 
 /**
+ * Security warning interface for UI display
+ */
+export interface SecurityWarning {
+  id: string;
+  title: string;
+  description: string;
+}
+
+/**
  * Security assessment result with type-safe level classification
  * Provides consistent interface across all scan types
  */
@@ -36,7 +45,8 @@ const createSecurityAssessment = (
   fallbackMessage?: string,
 ): SecurityAssessment => ({
   level,
-  isSuspicious: level !== SecurityLevel.SAFE,
+  isSuspicious:
+    level !== SecurityLevel.SAFE && level !== SecurityLevel.MALICIOUS,
   isMalicious: level === SecurityLevel.MALICIOUS,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
@@ -180,3 +190,64 @@ export const assessTransactionSecurity = (
 export const isBlockaidWarning = (resultType: string): boolean =>
   resultType === BLOCKAID_RESULT_TYPES.WARNING ||
   resultType === BLOCKAID_RESULT_TYPES.SPAM;
+
+/**
+ * Extracts security warnings from Blockaid scan results
+ *
+ * @param scanResult - The Blockaid scan result (asset or transaction)
+ * @returns Array of security warnings with id, title, and description
+ */
+export const extractSecurityWarnings = (
+  scanResult?:
+    | Blockaid.TokenScanResponse
+    | Blockaid.SiteScanResponse
+    | Blockaid.StellarTransactionScanResponse,
+): Array<SecurityWarning> => {
+  const warnings: Array<SecurityWarning> = [];
+
+  if (!scanResult) {
+    return warnings;
+  }
+
+  // Handle asset scan results
+  if ("features" in scanResult && scanResult.features) {
+    scanResult.features.forEach((feature) => {
+      warnings.push({
+        id: feature.feature_id,
+        title: feature.description,
+        description: t("blockaid.security.asset.warning"),
+      });
+    });
+  }
+
+  // Handle transaction scan results
+  if ("simulation" in scanResult) {
+    // Handle simulation errors
+    if (scanResult.simulation && "error" in scanResult.simulation) {
+      warnings.push({
+        id: "simulation-error",
+        title: scanResult.simulation.error,
+        description: t("blockaid.security.transaction.simulationFailed"),
+      });
+    }
+
+    // Handle validation descriptions - ONLY when result_type indicates warning/malicious
+    if (
+      scanResult.validation &&
+      "result_type" in scanResult.validation &&
+      "description" in scanResult.validation
+    ) {
+      const resultType = scanResult.validation.result_type;
+
+      // Only show validation warnings for Warning/Malicious result types
+      if (resultType === "Warning" || resultType === "Malicious") {
+        warnings.push({
+          id: `validation-${resultType.toLowerCase()}`,
+          title: scanResult.validation.description,
+          description: t("blockaid.security.transaction.warning"),
+        });
+      }
+    }
+  }
+  return warnings;
+};

@@ -34,7 +34,7 @@ export const scanAsset = async (
 
     const address = formatAddress(assetCode, assetIssuer);
 
-    const response = await freighterBackend.post<
+    const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
     >(`${BLOCKAID_ENDPOINTS.SCAN_ASSET}?address=${address}`);
 
@@ -66,7 +66,7 @@ export const scanSite = async (
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    const response = await freighterBackend.post<
+    const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.SiteScanResponse>
     >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${url}`);
 

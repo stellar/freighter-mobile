@@ -13,6 +13,8 @@ export const TOGGLE_ANIMATION_DURATION = 400;
 // This is used to prevent rows from highlighting when the user is scrolling
 export const DEFAULT_PRESS_DELAY = 100;
 
+export const DEFAULT_BLOCKAID_SCAN_DELAY = 300;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";

@@ -13,12 +13,14 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import {
   MANAGE_ASSETS_ROUTES,
   ManageAssetsStackParamList,
 } from "config/routes";
 import { FormattedSearchAssetRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBlockaidAsset } from "hooks/blockaid/useBlockaidAsset";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAssetLookup } from "hooks/useAssetLookup";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -27,10 +29,13 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageAssets } from "hooks/useManageAssets";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import { useScanAsset } from "hooks/useScanAsset";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
+import {
+  assessAssetSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type AddAssetScreenProps = NativeStackScreenProps<
   ManageAssetsStackParamList,
@@ -61,10 +66,41 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       balanceItems,
     });
 
-  const resetPageState = () => {
+  const { scannedAsset, isLoading } = useBlockaidAsset({
+    assetCode: selectedAsset?.assetCode ?? "",
+    assetIssuer: selectedAsset?.issuer,
+  });
+
+  const securityAssessment = useMemo(
+    () => assessAssetSecurity(scannedAsset),
+    [scannedAsset],
+  );
+  const isAssetMalicious = securityAssessment.isMalicious;
+  const isAssetSuspicious = securityAssessment.isSuspicious;
+
+  const securitySeverity = useMemo(() => {
+    if (isAssetMalicious) return "malicious";
+    if (isAssetSuspicious) return "suspicious";
+
+    return undefined;
+  }, [isAssetMalicious, isAssetSuspicious]);
+
+  const securityWarnings = useMemo(() => {
+    if (isAssetMalicious || isAssetSuspicious) {
+      const warnings = extractSecurityWarnings(scannedAsset);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [isAssetMalicious, isAssetSuspicious, scannedAsset]);
+
+  const resetPageState = useCallback(() => {
     handleRefresh();
     resetSearch();
-  };
+  }, [handleRefresh, resetSearch]);
 
   const { addAsset, removeAsset, isAddingAsset, isRemovingAsset } =
     useManageAssets({
@@ -73,34 +109,23 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       onSuccess: resetPageState,
     });
 
-  const { scanAsset, data: scanData } = useScanAsset();
-
   useRightHeaderButton({
     onPress: () => moreInfoBottomSheetModalRef.current?.present(),
   });
 
-  const handlePasteFromClipboard = () => {
+  const handlePasteFromClipboard = useCallback(() => {
     getClipboardText().then(handleSearch);
-  };
+  }, [getClipboardText, handleSearch]);
 
-  const handleAddAsset = async (asset: FormattedSearchAssetRecord) => {
+  const handleAddAsset = useCallback((asset: FormattedSearchAssetRecord) => {
     setSelectedAsset(asset);
 
-    // Scan the asset for security threats
-    try {
-      await scanAsset({
-        assetCode: asset.assetCode,
-        assetIssuer: asset.issuer,
-        network,
-      });
-    } catch (error) {
-      // Handle scan error silently
-    }
+    setTimeout(() => {
+      addAssetBottomSheetModalRef.current?.present();
+    }, DEFAULT_BLOCKAID_SCAN_DELAY);
+  }, []);
 
-    addAssetBottomSheetModalRef.current?.present();
-  };
-
-  const handleConfirmAssetAddition = async () => {
+  const handleConfirmAssetAddition = useCallback(async () => {
     if (!selectedAsset) {
       return;
     }
@@ -110,90 +135,35 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     await addAsset(selectedAsset);
 
     addAssetBottomSheetModalRef.current?.dismiss();
-  };
+  }, [selectedAsset, addAsset]);
 
-  const handleCancelAssetAddition = () => {
+  const handleCancelAssetAddition = useCallback(() => {
     if (selectedAsset) {
       analytics.trackAddTokenRejected(selectedAsset.assetCode);
     }
 
     addAssetBottomSheetModalRef.current?.dismiss();
-  };
+  }, [selectedAsset]);
 
-  const handleSecurityWarning = () => {
+  const handleSecurityWarning = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.present();
-  };
+  }, []);
 
-  const handleProceedAnyway = () => {
+  const handleProceedAnyway = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.dismiss();
+
     handleConfirmAssetAddition();
-  };
+  }, [handleConfirmAssetAddition]);
 
-  // Check if the selected asset is malicious based on scan results
-  const isAssetMalicious = () => {
-    if (!selectedAsset || !scanData || !scanData.data) {
-      return false;
-    }
-
-    const scanResult = scanData.data;
-
-    // Check if the scan result indicates malicious activity
-    const maliciousScore = scanResult.malicious_score;
-
-    // Convert string to number if needed
-    const score =
-      typeof maliciousScore === "string"
-        ? parseFloat(maliciousScore)
-        : maliciousScore;
-
-    if (typeof score === "number" && score > 0.7) {
-      return true;
-    }
-
-    // Check for specific attack types
-    const attackTypes = scanResult.attack_types;
-
-    if (attackTypes && Object.keys(attackTypes).length > 0) {
-      return true;
-    }
-
-    // Check result_type
-    const resultType = scanResult.result_type;
-
-    if (resultType === "Malicious") {
-      return true;
-    }
-
-    return false;
-  };
-
-  const isAssetSuspicious = () => {
-    if (!selectedAsset || !scanData || !scanData.data) {
-      return false;
-    }
-
-    const scanResult = scanData.data;
-
-    // Check if the scan result indicates suspicious activity
-    const maliciousScore = scanResult.malicious_score;
-    const score =
-      typeof maliciousScore === "string"
-        ? parseFloat(maliciousScore)
-        : maliciousScore;
-
-    // Suspicious if score is between 0.3 and 0.7
-    if (typeof score === "number" && score >= 0.3 && score <= 0.7) {
-      return true;
-    }
-
-    // Check result_type
-    const resultType = scanResult.result_type;
-    if (resultType === "Warning") {
-      return true;
-    }
-
-    return false;
-  };
+  const handleRemoveAsset = useCallback(
+    (asset: FormattedSearchAssetRecord) => {
+      removeAsset({
+        assetRecord: asset,
+        assetType: asset.assetType,
+      });
+    },
+    [removeAsset],
+  );
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
@@ -208,27 +178,24 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
         />
         <BottomSheet
           modalRef={addAssetBottomSheetModalRef}
-          handleCloseModal={() =>
-            addAssetBottomSheetModalRef.current?.dismiss()
-          }
-          bottomSheetModalProps={{
-            enablePanDownToClose: false,
+          handleCloseModal={() => {
+            addAssetBottomSheetModalRef.current?.dismiss();
           }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_ASSET_MANUALLY}
-          shouldCloseOnPressBackdrop={!isAddingAsset}
+          shouldCloseOnPressBackdrop={!isLoading && !!selectedAsset}
           customContent={
             <AddAssetBottomSheetContent
               asset={selectedAsset}
               account={account}
               onCancel={handleCancelAssetAddition}
               onAddAsset={
-                isAssetMalicious() || isAssetSuspicious()
+                isAssetMalicious || isAssetSuspicious
                   ? handleSecurityWarning
                   : handleConfirmAssetAddition
               }
               isAddingAsset={isAddingAsset}
-              isMalicious={isAssetMalicious()}
-              isSuspicious={isAssetSuspicious()}
+              isMalicious={isAssetMalicious}
+              isSuspicious={isAssetSuspicious}
             />
           }
         />
@@ -239,23 +206,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
           }
           customContent={
             <SecurityWarningBottomSheet
-              warnings={[
-                {
-                  id: "malicious-token",
-                  title: "This token is a scam",
-                  description: "The token has been flagged as malicious",
-                },
-                {
-                  id: "low-liquidity",
-                  title: "This token has low liquidity",
-                  description: "Trading this token may be risky",
-                },
-                {
-                  id: "malicious-site",
-                  title: "This site is a malicious app",
-                  description: "The source has been flagged as unsafe",
-                },
-              ]}
+              warnings={securityWarnings}
               onCancel={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
@@ -263,7 +214,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
               onClose={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
-              severity={isAssetMalicious() ? "malicious" : "suspicious"}
+              severity={securitySeverity}
             />
           }
         />
@@ -292,13 +243,9 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
                   key={`${asset.assetCode}:${asset.issuer}`}
                   asset={asset}
                   handleAddAsset={() => handleAddAsset(asset)}
-                  handleRemoveAsset={() =>
-                    removeAsset({
-                      assetRecord: asset,
-                      assetType: asset.assetType,
-                    })
-                  }
+                  handleRemoveAsset={() => handleRemoveAsset(asset)}
                   isRemovingAsset={isRemovingAsset}
+                  isScanningAsset={isLoading}
                 />
               ))
             ) : (
