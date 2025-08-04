@@ -1,3 +1,4 @@
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { App } from "components/sds/App";
@@ -5,6 +6,11 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { VISUAL_DELAY_MS } from "config/constants";
+import {
+  MAIN_TAB_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useWalletKitStore } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -13,7 +19,50 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-const ConnectedAppsScreen: React.FC = () => {
+type ConnectedAppsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  typeof ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN
+>;
+
+const EmptyState: React.FC<{
+  navigation: ConnectedAppsScreenProps["navigation"];
+}> = ({ navigation }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  const handleGoToDiscover = () => {
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_DISCOVERY }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  };
+
+  return (
+    <View className="w-full items-center bg-background-tertiary rounded-2xl px-4 py-6 gap-3">
+      <Icon.NotificationBox size={24} color={themeColors.foreground.primary} />
+
+      <Text md secondary medium textAlign="center">
+        {t("connectedApps.noConnectedDapps")}
+      </Text>
+
+      <Button lg secondary onPress={handleGoToDiscover}>
+        {t("connectedApps.goToDiscover")}
+      </Button>
+    </View>
+  );
+};
+
+const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -80,10 +129,7 @@ const ConnectedAppsScreen: React.FC = () => {
           {connectedDapps.length > 0 ? (
             <List items={connectedDapps} className="bg-background-tertiary" />
           ) : (
-            <Text sm secondary>
-              {t("connectedApps.noConnectedDapps")}
-              {t("connectedApps.goToDiscover")}
-            </Text>
+            <EmptyState navigation={navigation} />
           )}
         </View>
 
