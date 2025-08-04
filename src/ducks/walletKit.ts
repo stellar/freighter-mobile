@@ -3,6 +3,7 @@ import { SessionTypes } from "@walletconnect/types";
 import { NETWORKS } from "config/constants";
 import {
   disconnectAllSessions,
+  disconnectSession,
   getActiveSessions,
 } from "helpers/walletKitUtil";
 import Config from "react-native-config";
@@ -111,6 +112,12 @@ interface WalletKitState {
   activeSessions: ActiveSessions;
   /** Function to fetch active sessions */
   fetchActiveSessions: (publicKey: string, network: NETWORKS) => void;
+  /** Function to disconnect a specific session */
+  disconnectSession: (params: {
+    topic: string;
+    publicKey: string;
+    network: NETWORKS;
+  }) => Promise<void>;
   /** Function to disconnect all sessions */
   disconnectAllSessions: (
     publicKey?: string,
@@ -129,6 +136,19 @@ export const useWalletKitStore = create<WalletKitState>((set) => ({
   fetchActiveSessions: (publicKey: string, network: NETWORKS) => {
     const activeSessions = getActiveSessions(publicKey, network);
     set({ activeSessions });
+  },
+  disconnectSession: async ({
+    topic,
+    publicKey,
+    network,
+  }: {
+    topic: string;
+    publicKey: string;
+    network: NETWORKS;
+  }) => {
+    const { fetchActiveSessions } = useWalletKitStore.getState();
+    await disconnectSession(topic);
+    fetchActiveSessions(publicKey, network);
   },
   disconnectAllSessions: async (publicKey?: string, network?: NETWORKS) => {
     await disconnectAllSessions(publicKey, network);

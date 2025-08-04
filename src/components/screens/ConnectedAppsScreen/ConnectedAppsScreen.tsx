@@ -11,14 +11,15 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 const ConnectedAppsScreen: React.FC = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { activeSessions, disconnectAllSessions } = useWalletKitStore();
+  const { activeSessions, disconnectSession, disconnectAllSessions } =
+    useWalletKitStore();
 
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
@@ -30,6 +31,20 @@ const ConnectedAppsScreen: React.FC = () => {
     () => Object.keys(activeSessions).join(","),
     [activeSessions],
   );
+
+  const handleDisconnectSession = (topic: string) => {
+    disconnectSession({ topic, publicKey, network });
+  };
+
+  const handleDisconnectAllSessions = async () => {
+    setIsDisconnecting(true);
+    await disconnectAllSessions(publicKey, network);
+
+    // Add a small delay for smooth UX
+    setTimeout(() => {
+      setIsDisconnecting(false);
+    }, VISUAL_DELAY_MS);
+  };
 
   /* eslint-disable @typescript-eslint/no-unsafe-member-access */
   const connectedDapps = useMemo(
@@ -43,21 +58,19 @@ const ConnectedAppsScreen: React.FC = () => {
           />
         ),
         title: session.peer.metadata.name,
+        trailingContent: (
+          <TouchableOpacity
+            onPress={() => handleDisconnectSession(session.topic)}
+            className="w-10 h-10 items-end justify-center pr-1"
+          >
+            <Icon.MinusCircle size={18} color={themeColors.red["9"]} />
+          </TouchableOpacity>
+        ),
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeSessionsKey],
   );
   /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-
-  const handleDisconnectAllSessions = async () => {
-    setIsDisconnecting(true);
-    await disconnectAllSessions(publicKey, network);
-
-    // Add a small delay for smooth UX
-    setTimeout(() => {
-      setIsDisconnecting(false);
-    }, VISUAL_DELAY_MS);
-  };
 
   return (
     <BaseLayout insets={{ top: false }}>

@@ -378,6 +378,31 @@ export const getActiveSessions = (
 };
 
 /**
+ * Disconnects a specific Wallet Connect session by topic
+ * @param {string} topic - The session topic to disconnect
+ * @returns {Promise<void>} A promise that resolves when the session is disconnected
+ */
+export const disconnectSession = async (topic: string): Promise<void> => {
+  try {
+    await walletKit.disconnectSession({
+      topic,
+      reason: getSdkError("USER_DISCONNECTED"),
+    });
+
+    logger.debug(
+      "disconnectSession",
+      `Session disconnected successfully. topic: ${topic}`,
+    );
+  } catch (error) {
+    logger.error(
+      "disconnectSession",
+      `Failed to disconnect session. topic: ${topic}`,
+      error,
+    );
+  }
+};
+
+/**
  * Disconnects all active Wallet Connect sessions for a given public key and network
  * If no public key or network is provided, it will disconnect all existing sessions
  * @param {string} publicKey - The public key of the account to disconnect sessions for
