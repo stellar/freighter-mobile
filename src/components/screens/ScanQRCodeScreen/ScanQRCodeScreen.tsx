@@ -2,19 +2,20 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { logos } from "assets/logos";
 import { QRScanner } from "components/QRScanner";
-import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import CameraNavigationHeader from "components/layout/CameraNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View, Image } from "react-native";
+import { View, Image, TouchableOpacity } from "react-native";
 
 type ScanQRCodeScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -27,6 +28,8 @@ const PAIRING_ERROR_VISUALDELAY_MS = 500;
 const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { getClipboardText } = useClipboard();
+
   const [isConnecting, setIsConnecting] = useState(false);
   const [dappUri, setDappUri] = useState("");
   const [error, setError] = useState("");
@@ -56,6 +59,15 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
         showNavigationAsCloseButton: true,
       });
     }
+  };
+
+  const handleClearUri = () => {
+    setDappUri("");
+    setError("");
+  };
+
+  const handlePasteFromClipboard = () => {
+    getClipboardText().then(setDappUri);
   };
 
   const handleConnect = async (uri: string) => {
@@ -108,12 +120,6 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
 
       {/* URI Input Section */}
       <View className="flex-1 justify-end z-[100]">
-        {isConnecting && (
-          <View className="flex-1 items-center justify-end pb-16">
-            <Spinner size="large" />
-          </View>
-        )}
-
         <View className="bg-background-tertiary rounded-2xl py-4 px-5 gap-3">
           <View className="flex-row items-center">
             <View className="w-6 h-6 rounded-full overflow-hidden mr-2 justify-center items-center">
@@ -129,24 +135,39 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
           </View>
 
           <Input
-            editable={!isConnecting}
+            editable={false}
             placeholder={t("scanQRCodeScreen.inputPlaceholder")}
-            fieldSize="lg"
+            fieldSize="md"
             value={dappUri}
             onChangeText={setDappUri}
             error={error}
+            rightElement={
+              <TouchableOpacity className="p-3 mr-1" onPress={handleClearUri}>
+                <Icon.X size={16} color={themeColors.foreground.primary} />
+              </TouchableOpacity>
+            }
             endButton={{
-              content: t("scanQRCodeScreen.connect"),
-              onPress: () => handleOnRead(dappUri),
+              content: (
+                <Icon.Clipboard
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              onPress: handlePasteFromClipboard,
               disabled: isConnecting,
-              color: isConnecting
-                ? themeColors.text.secondary
-                : themeColors.text.primary,
-              backgroundColor: isConnecting
-                ? themeColors.background.secondary
-                : themeColors.background.primary,
+              backgroundColor: themeColors.background.secondary,
             }}
           />
+
+          <Button
+            isLoading={isConnecting}
+            disabled={isConnecting || !dappUri.trim()}
+            lg
+            tertiary
+            onPress={() => handleOnRead(dappUri)}
+          >
+            {t("scanQRCodeScreen.connect")}
+          </Button>
         </View>
       </View>
 

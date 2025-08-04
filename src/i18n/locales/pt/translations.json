@@ -557,11 +557,11 @@
   "scanQRCodeScreen": {
     "title": "Escaneie para Conectar",
     "scanWCQrCode": "Escaneie um código QR do WalletConnect",
-    "connectWithWalletConnect": "Conectar com WalletConnect",
-    "inputPlaceholder": "Insira o URI do WalletConnect",
+    "connectWithWalletConnect": "Ou cole um URI do WalletConnect",
+    "inputPlaceholder": "Cole um URI do WalletConnect",
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um código QR válido"
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
   "buyXLMScreen": {
     "title": "Adicionar XLM",
