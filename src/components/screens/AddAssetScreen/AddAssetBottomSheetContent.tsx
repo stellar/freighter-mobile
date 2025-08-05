@@ -24,6 +24,7 @@ type AddAssetBottomSheetContentProps = {
   account: ActiveAccount | null;
   onCancel: () => void;
   onAddAsset: () => void;
+  proceedAnywayAction?: () => void;
   isAddingAsset: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
@@ -34,6 +35,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
   account,
   onCancel,
   onAddAsset,
+  proceedAnywayAction,
   isAddingAsset,
   isMalicious = false,
   isSuspicious = false,
@@ -246,9 +248,9 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
           {isMalicious || isSuspicious ? (
             <TouchableOpacity
-              onPress={onAddAsset}
+              onPress={proceedAnywayAction}
               disabled={isAddingAsset}
-              className="w-full h-10 justify-center items-center rounded-full bg-transparent border-0"
+              className="w-full justify-center items-center"
             >
               {isAddingAsset ? (
                 <Spinner size="small" />

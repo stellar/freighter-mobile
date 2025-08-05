@@ -324,6 +324,7 @@
     "approveAnyway": "Aprovar mesmo assim",
     "securityWarning": {
       "doNotProceed": "Não prossiga",
+      "suspiciousRequest": "Solicitação suspeita",
       "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
       "cancel": "Cancelar",
       "connectAnyway": "Conectar mesmo assim",
@@ -715,6 +716,7 @@
     }
   },
   "blockaid": {
+    "brand": "Blockaid",
     "security": {
       "asset": {
         "malicious": "Este token foi marcado como malicioso",

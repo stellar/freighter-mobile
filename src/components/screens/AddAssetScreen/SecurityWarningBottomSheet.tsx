@@ -1,3 +1,5 @@
+import BlockaidLogo from "assets/logos/blockaid-logo.svg";
+import { List } from "components/List";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -5,20 +7,16 @@ import { BLOCKAID_FEEDBACK_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View, TouchableOpacity, Linking } from "react-native";
-
-export interface SecurityWarning {
-  id: string;
-  title: string;
-  description: string;
-}
+import { View, Linking } from "react-native";
+import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityWarning } from "services/blockaid/helper";
 
 interface SecurityWarningBottomSheetProps {
   warnings: SecurityWarning[];
   onCancel: () => void;
   onProceedAnyway: () => void;
   onClose: () => void;
-  severity?: "malicious" | "suspicious";
+  severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
 }
 
 const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
@@ -26,7 +24,7 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
   onCancel,
   onProceedAnyway,
   onClose,
-  severity = "malicious",
+  severity = SecurityLevel.MALICIOUS,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -35,118 +33,100 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
     Linking.openURL(BLOCKAID_FEEDBACK_URL);
   };
 
-  const isMalicious = severity === "malicious";
-  const alertColor = isMalicious
-    ? themeColors.status.error
-    : themeColors.status.warning;
-  const alertBackground = isMalicious
-    ? themeColors.red[3]
-    : themeColors.amber[3];
+  const isMalicious = severity === SecurityLevel.MALICIOUS;
+
+  const getProceedAnywayColor = () =>
+    isMalicious ? themeColors.status.error : themeColors.foreground.secondary;
+
+  const getHeaderIcon = () => {
+    const baseClasses =
+      "h-[40px] w-[40px] items-center justify-center rounded-[8px]";
+
+    if (isMalicious) {
+      return (
+        <View className={`${baseClasses} bg-red-3 border border-red-6`}>
+          <Icon.AlertOctagon themeColor="red" />
+        </View>
+      );
+    }
+
+    return (
+      <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
+        <Icon.AlertTriangle themeColor="amber" />
+      </View>
+    );
+  };
+
+  const getListItems = () =>
+    warnings.map((warning) => ({
+      title: warning.description,
+      icon: (
+        <Icon.XCircle size={16} themeColor={isMalicious ? "red" : "gray"} />
+      ),
+    }));
 
   return (
-    <View className="flex-1 bg-background-primary">
-      {/* Header */}
-      <View className="flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center">
-          <View
-            className="rounded-lg p-2 mr-3"
-            style={{ backgroundColor: alertBackground }}
-          >
-            <Icon.AlertOctagon
-              size={24}
-              color={isMalicious ? themeColors.status.error : alertColor}
-            />
-          </View>
+    <View className="flex-1 gap-[16px]">
+      <View className="flex-row justify-between items-center">
+        {getHeaderIcon()}
+        <View className="bg-background-tertiary rounded-full p-2 h-[32px] w-[32px] items-center justify-center">
+          <Icon.XClose onPress={onClose} size={20} themeColor="gray" />
         </View>
-        <TouchableOpacity
-          onPress={onClose}
-          className="w-8 h-8 rounded-full bg-background-tertiary items-center justify-center"
-        >
-          <Icon.X size={16} color={themeColors.foreground.primary} />
-        </TouchableOpacity>
       </View>
+      <Text xl primary>
+        {isMalicious
+          ? t("addAssetScreen.securityWarning.doNotProceed")
+          : t("addAssetScreen.securityWarning.suspiciousRequest")}
+      </Text>
+      <Text md secondary regular>
+        {t("addAssetScreen.securityWarning.unsafeTransaction")}
+      </Text>
 
-      {/* Title */}
-      <View className="mb-4">
-        <Text xl primary bold>
-          {t("addAssetScreen.securityWarning.doNotProceed")}
-        </Text>
-      </View>
-      <View className="mb-4">
-        <Text md secondary>
-          {t("addAssetScreen.securityWarning.unsafeTransaction")}
-        </Text>
-      </View>
-
-      {/* Warning Reasons */}
-      <View className="px-6 py-4 bg-background-tertiary rounded-xl mb-6">
-        {warnings.map((warning) => (
-          <View key={warning.id} className="flex-row items-center mb-3">
-            <View
-              className="w-5 h-5 rounded-full items-center justify-center mr-3"
-              style={{ borderWidth: 1, borderColor: alertColor }}
-            >
-              <Icon.X size={10} color={alertColor} />
-            </View>
-            <Text md primary>
-              {warning.title}
-            </Text>
-          </View>
-        ))}
-
-        {/* Separator */}
-        <View
-          className="h-px w-full my-2"
-          style={{ backgroundColor: themeColors.gray[6] }}
+      <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
+        <List
+          items={getListItems()}
+          hideDivider
+          compact
+          variant="transparent"
+          className="w-full"
         />
 
-        {/* Powered by Blockaid */}
+        <View className="w-full border border-border-primary" />
+
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
+          <View className="flex-row items-center gap-[6px]">
             <Text sm secondary>
               {t("addAssetScreen.securityWarning.poweredBy")}
             </Text>
-            <View className="ml-2">
-              <Text sm primary bold>
-                Blockaid
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={handleFeedback}>
-            <Text sm style={{ color: themeColors.lilac[11] }}>
-              {t("addAssetScreen.securityWarning.feedback")}
+            <BlockaidLogo />
+            <Text sm secondary>
+              {t("blockaid.brand")}
             </Text>
-          </TouchableOpacity>
+          </View>
+          <Text sm color={themeColors.lilac[11]} onPress={handleFeedback}>
+            {t("addAssetScreen.securityWarning.feedback")}
+          </Text>
         </View>
       </View>
 
-      {/* Action Buttons */}
-      <View className="px-6">
-        <View className="mb-4">
-          <Button
-            secondary={!isMalicious}
-            destructive={isMalicious}
-            lg
-            isFullWidth
-            onPress={onCancel}
-          >
-            {t("common.cancel")}
-          </Button>
-        </View>
-
-        <TouchableOpacity onPress={onProceedAnyway} className="items-center">
-          <Text
-            md
-            style={{
-              color: isMalicious
-                ? themeColors.status.error
-                : themeColors.foreground.secondary,
-              fontWeight: "bold",
-            }}
-          >
-            {t("addAssetScreen.securityWarning.connectAnyway")}
-          </Text>
-        </TouchableOpacity>
+      <View className="gap-[12px]">
+        <Button
+          xl
+          isFullWidth
+          onPress={onCancel}
+          variant={isMalicious ? "destructive" : "tertiary"}
+        >
+          {t("common.cancel")}
+        </Button>
+        <Text
+          md
+          bold
+          textAlign="center"
+          color={getProceedAnywayColor()}
+          onPress={onProceedAnyway}
+        >
+          {t("addAssetScreen.approveAnyway")}
+        </Text>
       </View>
     </View>
   );

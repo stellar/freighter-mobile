@@ -32,6 +32,7 @@ import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessAssetSecurity,
   extractSecurityWarnings,
@@ -79,8 +80,8 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
   const isAssetSuspicious = securityAssessment.isSuspicious;
 
   const securitySeverity = useMemo(() => {
-    if (isAssetMalicious) return "malicious";
-    if (isAssetSuspicious) return "suspicious";
+    if (isAssetMalicious) return SecurityLevel.MALICIOUS;
+    if (isAssetSuspicious) return SecurityLevel.SUSPICIOUS;
 
     return undefined;
   }, [isAssetMalicious, isAssetSuspicious]);
@@ -193,6 +194,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
                   ? handleSecurityWarning
                   : handleConfirmAssetAddition
               }
+              proceedAnywayAction={handleConfirmAssetAddition}
               isAddingAsset={isAddingAsset}
               isMalicious={isAssetMalicious}
               isSuspicious={isAssetSuspicious}

@@ -2385,7 +2385,8 @@ export interface IconProps {
     | "amber"
     | "pink"
     | "lilac"
-    | "green";
+    | "green"
+    | "gray";
   withBackground?: boolean;
   circleBackground?: string;
 }

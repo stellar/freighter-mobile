@@ -12,7 +12,6 @@ import {
  */
 export interface SecurityWarning {
   id: string;
-  title: string;
   description: string;
 }
 
@@ -214,8 +213,7 @@ export const extractSecurityWarnings = (
     scanResult.features.forEach((feature) => {
       warnings.push({
         id: feature.feature_id,
-        title: feature.description,
-        description: t("blockaid.security.asset.warning"),
+        description: feature.description,
       });
     });
   }
@@ -226,8 +224,7 @@ export const extractSecurityWarnings = (
     if (scanResult.simulation && "error" in scanResult.simulation) {
       warnings.push({
         id: "simulation-error",
-        title: scanResult.simulation.error,
-        description: t("blockaid.security.transaction.simulationFailed"),
+        description: scanResult.simulation.error,
       });
     }
 
@@ -243,8 +240,7 @@ export const extractSecurityWarnings = (
       if (resultType === "Warning" || resultType === "Malicious") {
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
-          title: scanResult.validation.description,
-          description: t("blockaid.security.transaction.warning"),
+          description: scanResult.validation.description,
         });
       }
     }

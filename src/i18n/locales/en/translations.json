@@ -355,6 +355,7 @@
     "approveAnyway": "Approve anyway",
     "securityWarning": {
       "doNotProceed": "Do not proceed",
+      "suspiciousRequest": "Suspicious request",
       "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
       "cancel": "Cancel",
       "connectAnyway": "Connect anyway",
@@ -727,6 +728,7 @@
     }
   },
   "blockaid": {
+    "brand": "Blockaid",
     "security": {
       "asset": {
         "malicious": "This token was flagged as malicious",
