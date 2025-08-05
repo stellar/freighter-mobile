@@ -33,14 +33,6 @@ import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
-import type {
-  ScanSiteParams,
-  ScanAssetParams,
-  ScanTransactionParams,
-  BlockAidScanSiteResult,
-  BlockAidScanAssetResult,
-  BlockAidScanTxResult,
-} from "types/blockaid";
 
 // Create dedicated API services for backend operations
 export const freighterBackend = createApiService({
@@ -740,65 +732,5 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
     );
 
     throw error;
-  }
-};
-
-// ==================== BLOCKAID ENDPOINTS ====================
-
-export const scanSiteBackend = async (
-  params: ScanSiteParams,
-): Promise<BlockAidScanSiteResult | null> => {
-  try {
-    const { data } = await freighterBackend.get<BlockAidScanSiteResult>(
-      `/scan-dapp?url=${encodeURIComponent(params.url)}`,
-    );
-
-    return data;
-  } catch (error) {
-    return null;
-  }
-};
-
-export const scanAssetBackend = async (
-  params: ScanAssetParams,
-): Promise<{ data: BlockAidScanAssetResult; error: null } | null> => {
-  try {
-    // Format asset address for Stellar
-    let address: string;
-    if (params.assetCode === "XLM" || !params.assetIssuer) {
-      address = "XLM-native";
-    } else {
-      address = `${params.assetCode}-${params.assetIssuer}`;
-    }
-
-    const response = await freighterBackend.get<{
-      data: BlockAidScanAssetResult;
-      error: null;
-    }>(`/scan-asset?address=${address}`);
-
-    return response.data;
-  } catch (error) {
-    return null;
-  }
-};
-
-export const scanTransactionBackend = async (
-  params: ScanTransactionParams,
-): Promise<BlockAidScanTxResult | null> => {
-  try {
-    const requestBody = {
-      url: encodeURIComponent(params.url || ""),
-      tx_xdr: params.xdr,
-      network: params.network,
-    };
-
-    const { data } = await freighterBackend.post<BlockAidScanTxResult>(
-      "/scan-tx",
-      requestBody,
-    );
-
-    return data;
-  } catch (error) {
-    return null;
   }
 };

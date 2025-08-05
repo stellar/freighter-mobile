@@ -56,7 +56,6 @@ const createSecurityAssessment = (
  * Asset Security Assessment
  *
  * Evaluates asset scan results using result_type for consistent security classification.
- * Matches extension behavior: any non-Benign result_type is suspicious.
  *
  * @param scanResult - The Blockaid asset scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -64,7 +63,6 @@ const createSecurityAssessment = (
 export const assessAssetSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
 ): SecurityAssessment => {
-  // Early return: no scan result or no result_type = safe (no message)
   if (!scanResult?.result_type) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
@@ -93,7 +91,6 @@ export const assessAssetSecurity = (
  * Site Security Assessment
  *
  * Evaluates site scan results using status + is_malicious for site-specific logic.
- * Matches extension behavior: miss = safe, hit with is_malicious = malicious, hit without = suspicious.
  *
  * @param scanResult - The Blockaid site scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -101,7 +98,6 @@ export const assessAssetSecurity = (
 export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
 ): SecurityAssessment => {
-  // Early return: no scan result = safe (no message)
   if (!scanResult) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
@@ -130,7 +126,6 @@ export const assessSiteSecurity = (
  * Transaction Security Assessment
  *
  * Evaluates transaction scan results using simulation + validation for transaction-specific logic.
- * Matches extension behavior: simulation errors = suspicious, validation result_type determines level.
  *
  * @param scanResult - The Blockaid transaction scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -138,7 +133,6 @@ export const assessSiteSecurity = (
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
 ): SecurityAssessment => {
-  // Early return: no scan result = safe (no message)
   if (!scanResult) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
@@ -220,7 +214,6 @@ export const extractSecurityWarnings = (
 
   // Handle transaction scan results
   if ("simulation" in scanResult) {
-    // Handle simulation errors
     if (scanResult.simulation && "error" in scanResult.simulation) {
       warnings.push({
         id: "simulation-error",
@@ -228,7 +221,6 @@ export const extractSecurityWarnings = (
       });
     }
 
-    // Handle validation descriptions - ONLY when result_type indicates warning/malicious
     if (
       scanResult.validation &&
       "result_type" in scanResult.validation &&
@@ -236,7 +228,6 @@ export const extractSecurityWarnings = (
     ) {
       const resultType = scanResult.validation.result_type;
 
-      // Only show validation warnings for Warning/Malicious result types
       if (resultType === "Warning" || resultType === "Malicious") {
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,

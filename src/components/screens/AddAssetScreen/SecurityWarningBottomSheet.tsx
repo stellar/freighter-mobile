@@ -30,7 +30,7 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
   const { themeColors } = useColors();
 
   const handleFeedback = () => {
-    Linking.openURL(BLOCKAID_FEEDBACK_URL);
+    Linking.openURL(BLOCKAID_FEEDBACK_URL); // TODO: update this to use the backend feedback instead
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
