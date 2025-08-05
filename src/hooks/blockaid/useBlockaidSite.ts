@@ -1,58 +1,25 @@
 import Blockaid from "@blockaid/client";
-import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
-import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { scanSite } from "services/blockaid/api";
 
-interface UseBlockaidSiteProps {
-  url: string;
-}
-
 interface UseBlockaidSiteResponse {
-  scannedSite: Blockaid.SiteScanResponse;
-  isLoading: boolean;
-  error: string | null;
+  scanSite: (url: string) => Promise<Blockaid.SiteScanResponse>;
 }
 
-export const useBlockaidSite = ({
-  url,
-}: UseBlockaidSiteProps): UseBlockaidSiteResponse => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const useBlockaidSite = (): UseBlockaidSiteResponse => {
   const { network } = useAuthenticationStore();
-  const [scannedSite, setScannedSite] = useState(
-    {} as Blockaid.SiteScanResponse,
+
+  const scanSiteFunction = useCallback(
+    async (url: string): Promise<Blockaid.SiteScanResponse> => {
+      if (!url) {
+        throw new Error("No URL provided for scanning");
+      }
+
+      return scanSite({ url, network });
+    },
+    [network],
   );
 
-  const fetchScanSiteStatus = useCallback(async () => {
-    if (!url) {
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const scanResult = await scanSite({ url, network });
-
-      setScannedSite(scanResult);
-
-      // Set isLoading with delay to prevent UI from flashing
-      setTimeout(() => {
-        setIsLoading(false);
-      }, DEFAULT_BLOCKAID_SCAN_DELAY);
-    } catch (err) {
-      logger.error(err as string, "Error fetching scan site status");
-
-      setError(err as string);
-      setIsLoading(false);
-    }
-  }, [url, network]);
-
-  useEffect(() => {
-    fetchScanSiteStatus();
-  }, [fetchScanSiteStatus]);
-
-  return { scannedSite, isLoading, error };
+  return { scanSite: scanSiteFunction };
 };

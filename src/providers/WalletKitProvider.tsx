@@ -1,7 +1,9 @@
+import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import SiteSecurityWarningBottomSheetContent from "components/screens/WalletKit/SiteSecurityWarningBottomSheetContent";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -20,14 +22,27 @@ import {
   rejectSessionRequest,
   rejectSessionProposal,
 } from "helpers/walletKitUtil";
+import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
 import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import { useToast } from "providers/ToastProvider";
-import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
+import {
+  assessSiteSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 /**
  * Props for the WalletKitProvider component
@@ -49,6 +64,7 @@ interface WalletKitProviderProps {
  * - Provides bottom sheet modals for user interactions
  * - Validates authentication status before processing requests
  * - Automatically rejects invalid or unauthorized requests
+ * - Scans dApp URLs using Blockaid before showing connection UI
  *
  * @component
  * @param {WalletKitProviderProps} props - The component props
@@ -69,6 +85,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     useWalletKitStore();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
+  const { scanSite } = useBlockaidSite();
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
@@ -77,9 +94,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     useState<WalletKitSessionProposal | null>(null);
   const [requestEvent, setRequestEvent] =
     useState<WalletKitSessionRequest | null>(null);
+  const [siteScanResult, setSiteScanResult] = useState<
+    Blockaid.SiteScanResponse | undefined
+  >(undefined);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   /**
    * Network details mapped from the current network configuration
@@ -112,16 +133,62 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   );
 
   /**
+   * Site security assessment based on scan result
+   * @type {SecurityAssessment}
+   */
+  const siteSecurityAssessment = useMemo(
+    () => assessSiteSecurity(siteScanResult),
+    [siteScanResult],
+  );
+
+  /**
+   * Security warnings extracted from scan result
+   * @type {SecurityWarning[]}
+   */
+  const securityWarnings = useMemo(() => {
+    if (
+      siteSecurityAssessment.isMalicious ||
+      siteSecurityAssessment.isSuspicious
+    ) {
+      const warnings = extractSecurityWarnings(siteScanResult);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [
+    siteSecurityAssessment.isMalicious,
+    siteSecurityAssessment.isSuspicious,
+    siteScanResult,
+  ]);
+
+  /**
+   * Security severity level for the bottom sheet
+   * @type {SecurityLevel | undefined}
+   */
+  const securitySeverity = useMemo(() => {
+    if (siteSecurityAssessment.isMalicious) return SecurityLevel.MALICIOUS;
+    if (siteSecurityAssessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
+
+    return undefined;
+  }, [siteSecurityAssessment.isMalicious, siteSecurityAssessment.isSuspicious]);
+
+  /**
    * Clears the dApp connection bottom sheet and resets connection state
    * @function handleClearDappConnection
    * @returns {void}
    */
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
+    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     setTimeout(() => {
       setIsConnecting(false);
       setProposalEvent(null);
+      setSiteScanResult(undefined);
+
       clearEvent();
     }, 200);
   };
@@ -210,15 +277,48 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
+   * Handles security warning action
+   * Opens the security warning bottom sheet with detailed information
+   * @function handleSecurityWarning
+   * @returns {void}
+   */
+  const presentSecurityWarningDetail = useCallback(() => {
+    siteSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
+
+  /**
+   * Handles proceeding anyway from security warning
+   * Closes the security warning bottom sheet and proceeds with connection
+   * @function handleProceedAnyway
+   * @returns {void}
+   */
+  const handleProceedAnyway = () => {
+    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    handleDappConnection();
+  };
+
+  /**
+   * Handles canceling from security warning
+   * Closes the security warning bottom sheet and cancels the connection
+   * @function handleCancelSecurityWarning
+   * @returns {void}
+   */
+  const handleCancelSecurityWarning = useCallback(() => {
+    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  /**
    * Effect that handles WalletKit events (session proposals and requests).
    * Processes incoming session proposals and requests, validates authentication status,
-   * and presents appropriate bottom sheet modals for user interaction.
+   * scans dApp URLs for security, and presents appropriate bottom sheet modals for user interaction.
    *
    * Handles:
-   * - Session proposals: Validates authentication, shows dApp connection bottom sheet
+   * - Session proposals: Validates authentication, scans dApp URL, shows dApp connection bottom sheet
    * - Session requests: Validates session exists and authentication, shows dApp transaction request bottom sheet
    * - Automatic rejection of invalid requests with appropriate error messages
    * - Authentication state validation before processing any requests
+   * - Blockaid security scanning before showing connection UI
    *
    * @dependencies activeSessions, event.type, authStatus
    */
@@ -259,8 +359,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       handleClearDappRequest();
+
       setProposalEvent(sessionProposal);
-      dappConnectionBottomSheetModalRef.current?.present();
+
+      const dappUrl = sessionProposal.params.proposer.metadata.url;
+
+      scanSite(dappUrl)
+        .then((scanResult) => {
+          setSiteScanResult(scanResult);
+        })
+        .catch(() => {
+          setSiteScanResult(undefined);
+        })
+        .finally(() => {
+          // Show the connection bottom sheet after scanning (regardless of result)
+          dappConnectionBottomSheetModalRef.current?.present();
+        });
     }
 
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
@@ -345,6 +459,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isConnecting={isConnecting}
             onConnection={handleDappConnection}
             onCancel={handleClearDappConnection}
+            isMalicious={siteSecurityAssessment.isMalicious}
+            isSuspicious={siteSecurityAssessment.isSuspicious}
+            securityWarningAction={presentSecurityWarningDetail}
           />
         }
       />
@@ -364,6 +481,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isSigning={isSigning}
             onConfirm={handleDappRequest}
             onCancel={handleClearDappRequest}
+          />
+        }
+      />
+
+      {/* Bottom sheet for site security warnings */}
+      <BottomSheet
+        modalRef={siteSecurityWarningBottomSheetModalRef}
+        handleCloseModal={handleCancelSecurityWarning}
+        customContent={
+          <SiteSecurityWarningBottomSheetContent
+            warnings={securityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleProceedAnyway}
+            onClose={handleCancelSecurityWarning}
+            severity={securitySeverity}
           />
         }
       />
