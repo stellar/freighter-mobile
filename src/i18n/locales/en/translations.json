@@ -348,48 +348,38 @@
     "onYourList": "On your list",
     "addAsset": "Add token",
     "approveTrustline": "Approve Trustline",
-    "disclaimer": "Allow token to be displayed and used with this wallet address",
+    "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
     "confirmTrust": "Only confirm if you trust this token",
     "maliciousAsset": "This token was flagged as malicious",
+    "suspiciousAsset": "This token was flagged as suspicious",
     "assetAddress": "Token Address",
     "approveAnyway": "Approve anyway",
-    "securityWarning": {
-      "doNotProceed": "Do not proceed",
-      "suspiciousRequest": "Suspicious request",
-      "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
-      "cancel": "Cancel",
-      "connectAnyway": "Connect anyway",
-      "poweredBy": "Powered by",
-      "feedback": "Feedback?",
-      "maliciousAsset": "This token is a scam",
-      "lowLiquidity": "This token has low liquidity",
-      "maliciousSite": "This site is a malicious app"
-    },
-    "addAssetScreen": {
-      "assetAddress": "Token Address",
-      "confirmTrust": "Only confirm if you trust this token",
-      "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
-      "maliciousAsset": "This token was flagged as malicious",
-      "suspiciousAsset": "This token was flagged as suspicious",
-      "approveTrustline": "Approve Trustline",
-      "addAsset": "Add Token",
-      "approveAnyway": "Approve anyway",
-      "addAssetButton": "Add Token"
-    },
     "toastSuccess": "{{assetCode}} successfully added as an asset",
     "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
-    "somethingWentWrong": "Something went wrong, please try again later",
-    "security": {
-      "notOnYourLists": "This asset is not on one of your lists",
-      "relativelyNewAsset": "This is a relatively new asset",
-      "assetIsScam": "This asset is a scam",
-      "suspiciousAsset": "This asset may be suspicious",
-      "lowLiquidity": "This asset has low liquidity",
-      "poweredByBlockaid": "Powered by",
-      "learnMore": "Learn more",
-      "addAnyway": "Add anyway"
-    }
+    "somethingWentWrong": "Something went wrong, please try again later"
+  },
+  "securityWarning": {
+    "doNotProceed": "Do not proceed",
+    "suspiciousRequest": "Suspicious request",
+    "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
+    "cancel": "Cancel",
+    "connectAnyway": "Connect anyway",
+    "poweredBy": "Powered by",
+    "feedback": "Feedback?",
+    "maliciousAsset": "This token is a scam",
+    "lowLiquidity": "This token has low liquidity",
+    "maliciousSite": "This site is a malicious app"
+  },
+  "security": {
+    "notOnYourLists": "This asset is not on one of your lists",
+    "relativelyNewAsset": "This is a relatively new asset",
+    "assetIsScam": "This asset is a scam",
+    "suspiciousAsset": "This asset may be suspicious",
+    "lowLiquidity": "This asset has low liquidity",
+    "poweredByBlockaid": "Powered by",
+    "learnMore": "Learn more",
+    "addAnyway": "Add anyway"
   },
   "manageAssetRightContent": {
     "copyAddress": "Copy address",

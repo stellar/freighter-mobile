@@ -75,11 +75,11 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
       </View>
       <Text xl primary>
         {isMalicious
-          ? t("addAssetScreen.securityWarning.doNotProceed")
-          : t("addAssetScreen.securityWarning.suspiciousRequest")}
+          ? t("securityWarning.doNotProceed")
+          : t("securityWarning.suspiciousRequest")}
       </Text>
       <Text md secondary regular>
-        {t("addAssetScreen.securityWarning.unsafeTransaction")}
+        {t("securityWarning.unsafeTransaction")}
       </Text>
 
       <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
@@ -96,7 +96,7 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[6px]">
             <Text sm secondary>
-              {t("addAssetScreen.securityWarning.poweredBy")}
+              {t("securityWarning.poweredBy")}
             </Text>
             <BlockaidLogo />
             <Text sm secondary>
@@ -104,7 +104,7 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
             </Text>
           </View>
           <Text sm color={themeColors.lilac[11]} onPress={handleFeedback}>
-            {t("addAssetScreen.securityWarning.feedback")}
+            {t("securityWarning.feedback")}
           </Text>
         </View>
       </View>

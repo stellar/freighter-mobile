@@ -56,14 +56,6 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       : NETWORK_NAMES.TESTNET;
   };
 
-  const getSecurityBannerBgColor = () => {
-    if (isMalicious) {
-      return "bg-red-3";
-    }
-
-    return "bg-amber-3";
-  };
-
   if (!asset) {
     return null;
   }
@@ -183,7 +175,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       {(isMalicious || isSuspicious) && (
         <TouchableOpacity
           onPress={onAddAsset}
-          className={`mt-4 w-full px-[16px] py-[12px] rounded-[16px] ${getSecurityBannerBgColor()}`}
+          className={`mt-4 w-full px-[16px] py-[12px] rounded-[16px] ${isMalicious ? "bg-red-3" : "bg-amber-3"}`}
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 gap-[8px]">
@@ -200,7 +192,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
               >
                 {isMalicious
                   ? t("addAssetScreen.maliciousAsset")
-                  : t("addAssetScreen.addAssetScreen.suspiciousAsset")}
+                  : t("addAssetScreen.suspiciousAsset")}
               </Text>
             </View>
             <Icon.ChevronRight
