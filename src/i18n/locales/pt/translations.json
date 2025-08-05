@@ -557,8 +557,8 @@
   "scanQRCodeScreen": {
     "title": "Escaneie para Conectar",
     "scanWCQrCode": "Escaneie um código QR do WalletConnect",
-    "connectWithWalletConnect": "Ou cole um URI do WalletConnect",
-    "inputPlaceholder": "Cole um URI do WalletConnect",
+    "connectWithWalletConnect": "Cole um URI do WalletConnect",
+    "inputPlaceholder": "URI do WalletConnect",
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
     "invalidUriError": "Por favor, insira um URI do WalletConnect válido"

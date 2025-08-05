@@ -109,8 +109,8 @@
   "scanQRCodeScreen": {
     "title": "Scan to Connect",
     "scanWCQrCode": "Scan a WalletConnect QR code",
-    "connectWithWalletConnect": "Or paste a WalletConnect URI",
-    "inputPlaceholder": "Paste WalletConnect URI",
+    "connectWithWalletConnect": "Paste a WalletConnect URI",
+    "inputPlaceholder": "WalletConnect URI",
     "connect": "Connect",
     "pairingError": "Failed to pair",
     "invalidUriError": "Please enter a valid QR Code URI"

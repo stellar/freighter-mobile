@@ -153,18 +153,23 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
             error={error}
             rightElement={
               <TouchableOpacity className="p-3 mr-1" onPress={handleClearUri}>
-                <Icon.X size={16} color={themeColors.foreground.primary} />
+                <Icon.X
+                  size={16}
+                  color={
+                    isConnecting
+                      ? themeColors.text.secondary
+                      : themeColors.text.primary
+                  }
+                />
               </TouchableOpacity>
             }
             endButton={{
-              content: (
-                <Icon.Clipboard
-                  size={16}
-                  color={themeColors.foreground.primary}
-                />
-              ),
+              content: t("common.paste"),
               onPress: handlePasteFromClipboard,
               disabled: isConnecting,
+              color: isConnecting
+                ? themeColors.text.secondary
+                : themeColors.text.primary,
               backgroundColor: themeColors.background.secondary,
             }}
           />
