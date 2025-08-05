@@ -141,7 +141,14 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
               onPress={handleDisconnectAllSessions}
               error
               icon={
-                <Icon.LinkBroken01 size={18} color={themeColors.red["8"]} />
+                <Icon.LinkBroken01
+                  size={18}
+                  color={
+                    isDisconnecting
+                      ? themeColors.text.secondary
+                      : themeColors.red["8"]
+                  }
+                />
               }
               iconPosition={IconPosition.LEFT}
               isLoading={isDisconnecting}

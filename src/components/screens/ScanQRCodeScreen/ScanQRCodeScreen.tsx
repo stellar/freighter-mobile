@@ -147,14 +147,13 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
           <Input
             editable={false}
             placeholder={t("scanQRCodeScreen.inputPlaceholder")}
-            fieldSize="md"
             value={dappUri}
             onChangeText={setDappUri}
             error={error}
             rightElement={
               <TouchableOpacity className="p-3 mr-1" onPress={handleClearUri}>
                 <Icon.X
-                  size={16}
+                  size={20}
                   color={
                     isConnecting
                       ? themeColors.text.secondary
