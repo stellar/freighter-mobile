@@ -4,6 +4,7 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
@@ -78,6 +79,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       <TouchableOpacity
         className="flex-row justify-between items-center flex-1"
         onPress={() => handleSelectAccount(account.publicKey)}
+        delayPressIn={DEFAULT_PRESS_DELAY}
       >
         <View className="flex-row items-center flex-1">
           <Avatar

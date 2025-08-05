@@ -10,6 +10,7 @@ import {
 } from "components/screens/HistoryScreen/helpers";
 import { mapHistoryItemData } from "components/screens/HistoryScreen/mappers";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PRESS_DELAY } from "config/constants";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { View, TouchableOpacity } from "react-native";
@@ -78,6 +79,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
       onPress={() => {
         handleTransactionDetails(historyItem.transactionDetails);
       }}
+      delayPressIn={DEFAULT_PRESS_DELAY}
       className="mb-4 flex-row justify-between items-center flex-0"
     >
       <View className="flex-row items-center flex-1">

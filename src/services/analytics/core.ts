@@ -127,10 +127,11 @@ export const setAnalyticsUserId = (userId: string | null): void => {
  * - effectiveType: Cellular quality (slow-2g, 2g, 3g, 4g) when on cellular
  */
 const buildCommonContext = (): Record<string, unknown> => {
-  const { network } = useAuthenticationStore.getState();
   const { connectionType, effectiveType } = useNetworkStore.getState();
+  const { network, account } = useAuthenticationStore.getState();
 
   const context: Record<string, unknown> = {
+    publicKey: account?.publicKey ?? "N/A",
     platform: Platform.OS,
     platformVersion: Platform.Version,
     network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)

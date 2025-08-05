@@ -1,5 +1,6 @@
 import { AssetIcon } from "components/AssetIcon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
@@ -91,7 +92,11 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
 
 const renderContent = (children: ReactNode, onPress?: () => void) => {
   if (onPress) {
-    return <TouchableOpacity onPress={onPress}>{children}</TouchableOpacity>;
+    return (
+      <TouchableOpacity onPress={onPress} delayPressIn={DEFAULT_PRESS_DELAY}>
+        {children}
+      </TouchableOpacity>
+    );
   }
 
   return children;

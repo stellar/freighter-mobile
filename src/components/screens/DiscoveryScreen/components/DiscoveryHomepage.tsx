@@ -1,7 +1,11 @@
 import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, BROWSER_CONSTANTS } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  BROWSER_CONSTANTS,
+  DEFAULT_PRESS_DELAY,
+} from "config/constants";
 import { DiscoverProtocol } from "config/types";
 import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
@@ -84,6 +88,7 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
           <TouchableOpacity
             className="mr-3 items-center"
             onPress={() => onItemPress(siteUrl)}
+            delayPressIn={DEFAULT_PRESS_DELAY}
           >
             <View
               className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"

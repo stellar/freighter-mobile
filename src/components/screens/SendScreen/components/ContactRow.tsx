@@ -1,6 +1,7 @@
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { truncateAddress } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -38,6 +39,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
     <TouchableOpacity
       className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
       onPress={onPress}
+      delayPressIn={DEFAULT_PRESS_DELAY}
       testID={testID}
     >
       <View className="flex-row items-center flex-1 mr-4">
