@@ -1,59 +1,31 @@
 import Blockaid from "@blockaid/client";
-import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
-import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { scanAsset } from "services/blockaid/api";
 
-interface UseBlockaidAssetProps {
-  assetCode: string;
-  assetIssuer?: string;
-}
-
 interface UseBlockaidAssetResponse {
-  scannedAsset: Blockaid.TokenScanResponse;
-  isLoading: boolean;
-  error: string | null;
+  scanAsset: (
+    assetCode: string,
+    assetIssuer?: string,
+  ) => Promise<Blockaid.TokenScanResponse>;
 }
 
-export const useBlockaidAsset = ({
-  assetCode,
-  assetIssuer,
-}: UseBlockaidAssetProps): UseBlockaidAssetResponse => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const useBlockaidAsset = (): UseBlockaidAssetResponse => {
   const { network } = useAuthenticationStore();
-  const [scannedAsset, setScannedAsset] = useState(
-    {} as Blockaid.TokenScanResponse,
+
+  const scanAssetFunction = useCallback(
+    async (
+      assetCode: string,
+      assetIssuer?: string,
+    ): Promise<Blockaid.TokenScanResponse> => {
+      if (!assetCode) {
+        throw new Error("No asset code provided for scanning");
+      }
+
+      return scanAsset({ assetCode, assetIssuer, network });
+    },
+    [network],
   );
 
-  const fetchScanAssetStatus = useCallback(async () => {
-    if (!assetCode) {
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const scanResult = await scanAsset({ assetCode, assetIssuer, network });
-
-      setScannedAsset(scanResult);
-
-      // Set isLoading with delay to prevent UI from flashing
-      setTimeout(() => {
-        setIsLoading(false);
-      }, DEFAULT_BLOCKAID_SCAN_DELAY);
-    } catch (err) {
-      logger.error(err as string, "Error fetching scan asset status");
-      setError(err as string);
-      setIsLoading(false);
-    }
-  }, [assetCode, assetIssuer, network]);
-
-  useEffect(() => {
-    fetchScanAssetStatus();
-  }, [fetchScanAssetStatus]);
-
-  return { scannedAsset, isLoading, error };
+  return { scanAsset: scanAssetFunction };
 };

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
@@ -50,6 +51,10 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
   const { getClipboardText } = useClipboard();
   const [selectedAsset, setSelectedAsset] =
     useState<FormattedSearchAssetRecord | null>(null);
+  const [scannedAsset, setScannedAsset] = useState<
+    Blockaid.TokenScanResponse | undefined
+  >(undefined);
+  const [isScanning, setIsScanning] = useState(false);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const addAssetBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -67,10 +72,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       balanceItems,
     });
 
-  const { scannedAsset, isLoading } = useBlockaidAsset({
-    assetCode: selectedAsset?.assetCode ?? "",
-    assetIssuer: selectedAsset?.issuer,
-  });
+  const { scanAsset } = useBlockaidAsset();
 
   const securityAssessment = useMemo(
     () => assessAssetSecurity(scannedAsset),
@@ -118,13 +120,29 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     getClipboardText().then(handleSearch);
   }, [getClipboardText, handleSearch]);
 
-  const handleAddAsset = useCallback((asset: FormattedSearchAssetRecord) => {
-    setSelectedAsset(asset);
+  const handleAddAsset = useCallback(
+    (asset: FormattedSearchAssetRecord) => {
+      setSelectedAsset(asset);
+      setIsScanning(true);
+      setScannedAsset(undefined);
 
-    setTimeout(() => {
-      addAssetBottomSheetModalRef.current?.present();
-    }, DEFAULT_BLOCKAID_SCAN_DELAY);
-  }, []);
+      scanAsset(asset.assetCode, asset.issuer)
+        .then((scanResult) => {
+          setScannedAsset(scanResult);
+        })
+        .catch(() => {
+          setScannedAsset(undefined);
+        })
+        .finally(() => {
+          setIsScanning(false);
+        });
+
+      setTimeout(() => {
+        addAssetBottomSheetModalRef.current?.present();
+      }, DEFAULT_BLOCKAID_SCAN_DELAY);
+    },
+    [scanAsset],
+  );
 
   const handleConfirmAssetAddition = useCallback(async () => {
     if (!selectedAsset) {
@@ -183,7 +201,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
             addAssetBottomSheetModalRef.current?.dismiss();
           }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_ASSET_MANUALLY}
-          shouldCloseOnPressBackdrop={!isLoading && !!selectedAsset}
+          shouldCloseOnPressBackdrop={!isScanning && !!selectedAsset}
           customContent={
             <AddAssetBottomSheetContent
               asset={selectedAsset}
@@ -247,7 +265,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
                   handleAddAsset={() => handleAddAsset(asset)}
                   handleRemoveAsset={() => handleRemoveAsset(asset)}
                   isRemovingAsset={isRemovingAsset}
-                  isScanningAsset={isLoading}
+                  isScanningAsset={isScanning}
                 />
               ))
             ) : (
