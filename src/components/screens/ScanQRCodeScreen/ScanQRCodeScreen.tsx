@@ -14,7 +14,7 @@ import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Image, TouchableOpacity } from "react-native";
 
 type ScanQRCodeScreenProps = NativeStackScreenProps<
@@ -34,15 +34,15 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
   const [dappUri, setDappUri] = useState("");
   const [error, setError] = useState("");
 
-  const closeScreen = () => {
+  const closeScreen = useCallback(() => {
     navigation.popToTop();
-  };
+  }, [navigation]);
 
-  const handleHeaderLeft = () => {
+  const handleHeaderLeft = useCallback(() => {
     closeScreen();
-  };
+  }, [closeScreen]);
 
-  const handleHeaderRight = () => {
+  const handleHeaderRight = useCallback(() => {
     const routes = navigation.getState()?.routes ?? [];
     const scanRouteIndex = routes.findIndex(
       (r) => r.name === ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
@@ -59,49 +59,59 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
         showNavigationAsCloseButton: true,
       });
     }
-  };
+  }, [navigation]);
 
-  const handleClearUri = () => {
+  const handleClearUri = useCallback(() => {
     setDappUri("");
     setError("");
-  };
+  }, []);
 
-  const handlePasteFromClipboard = () => {
+  const handlePasteFromClipboard = useCallback(() => {
     getClipboardText().then(setDappUri);
-  };
+  }, [getClipboardText]);
 
-  const handleConnect = async (uri: string) => {
-    if (!uri) {
-      setError(t("scanQRCodeScreen.invalidUriError"));
-      return;
-    }
+  const handleConnect = useCallback(
+    async (uri: string) => {
+      if (!uri) {
+        setError(t("scanQRCodeScreen.invalidUriError"));
+        return;
+      }
 
-    setIsConnecting(true);
-    setError("");
+      setIsConnecting(true);
+      setError("");
 
-    try {
-      await walletKit.pair({ uri });
+      try {
+        await walletKit.pair({ uri });
 
-      // Add a delay for a smooth UX while we wait for the bottom sheet to animate
-      setTimeout(() => {
-        closeScreen();
-      }, PAIRING_SUCCESS_VISUALDELAY_MS);
-    } catch (err) {
-      // Add a delay for a smooth UX to prevent UI flickering when displaying the error
-      setTimeout(() => {
-        setIsConnecting(false);
-        setError(
-          err instanceof Error
-            ? err.message
-            : t("scanQRCodeScreen.pairingError"),
-        );
-      }, PAIRING_ERROR_VISUALDELAY_MS);
-    }
-  };
+        // Add a delay for a smooth UX while we wait for the bottom sheet to animate
+        setTimeout(() => {
+          closeScreen();
+        }, PAIRING_SUCCESS_VISUALDELAY_MS);
+      } catch (err) {
+        // Add a delay for a smooth UX to prevent UI flickering when displaying the error
+        setTimeout(() => {
+          setIsConnecting(false);
+          setError(
+            err instanceof Error
+              ? err.message
+              : t("scanQRCodeScreen.pairingError"),
+          );
+        }, PAIRING_ERROR_VISUALDELAY_MS);
+      }
+    },
+    [t, closeScreen],
+  );
 
-  const handleOnRead = (uri: string) => {
-    handleConnect(uri);
-  };
+  const handleOnRead = useCallback(
+    (uri: string) => {
+      handleConnect(uri);
+    },
+    [handleConnect],
+  );
+
+  const handleConnectButtonPress = useCallback(() => {
+    handleOnRead(dappUri);
+  }, [handleOnRead, dappUri]);
 
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
@@ -164,7 +174,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
             disabled={isConnecting || !dappUri.trim()}
             lg
             tertiary
-            onPress={() => handleOnRead(dappUri)}
+            onPress={handleConnectButtonPress}
           >
             {t("scanQRCodeScreen.connect")}
           </Button>

@@ -1,7 +1,7 @@
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { Svg, Defs, Mask, Rect } from "react-native-svg";
 import {
@@ -9,10 +9,12 @@ import {
   useCameraDevice,
   useCodeScanner,
   useCameraPermission,
+  Code,
 } from "react-native-vision-camera";
 import { analytics } from "services/analytics";
 
 const MOUNTING_DELAY = 500;
+const SCAN_DEBOUNCE_MS = 1000; // Prevent multiple scans of the same code within 1 second
 
 const CUTOUT_TOP_OFFSET = "45%";
 const CUTOUT_SIZE = 232;
@@ -73,16 +75,42 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   const { themeColors } = useColors();
 
   const [hasMounted, setHasMounted] = useState(false);
+  const [processedCodes, setProcessedCodes] = useState<Set<string>>(new Set());
+  const lastScanTimeRef = useRef<number>(0);
+
+  const handleCodeScanned = useCallback(
+    (codes: Code[]) => {
+      if (codes.length === 0 || !codes[0].value) {
+        return;
+      }
+
+      const codeValue = codes[0].value;
+      const now = Date.now();
+
+      // Check if we've already processed this code
+      if (processedCodes.has(codeValue)) {
+        return;
+      }
+
+      // Check if we're scanning too frequently (debounce)
+      if (now - lastScanTimeRef.current < SCAN_DEBOUNCE_MS) {
+        return;
+      }
+
+      // Update last scan time and add to processed codes
+      lastScanTimeRef.current = now;
+      setProcessedCodes((prev) => new Set([...prev, codeValue]));
+
+      // Track analytics and call onRead
+      analytics.trackQRScanSuccess(context);
+      onRead(codeValue);
+    },
+    [processedCodes, context, onRead],
+  );
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr"],
-    onCodeScanned: (codes) => {
-      if (codes.length > 0 && codes[0].value) {
-        analytics.trackQRScanSuccess(context);
-
-        onRead(codes[0].value);
-      }
-    },
+    onCodeScanned: handleCodeScanned,
   });
 
   useEffect(() => {
