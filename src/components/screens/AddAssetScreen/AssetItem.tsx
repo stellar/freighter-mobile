@@ -14,6 +14,7 @@ type AssetItemProps = {
   handleAddAsset: () => void;
   handleRemoveAsset: () => void;
   isRemovingAsset: boolean;
+  isScanningAsset: boolean;
 };
 
 const AssetItem: React.FC<AssetItemProps> = ({
@@ -21,6 +22,7 @@ const AssetItem: React.FC<AssetItemProps> = ({
   handleAddAsset,
   handleRemoveAsset,
   isRemovingAsset,
+  isScanningAsset,
 }) => (
   <View className="mb-4 flex-row justify-between items-center flex-1">
     <View className="flex-row items-center flex-1">
@@ -52,7 +54,10 @@ const AssetItem: React.FC<AssetItemProps> = ({
         isRemovingAsset={isRemovingAsset}
       />
     ) : (
-      <AddAssetRightContent handleAddAsset={handleAddAsset} />
+      <AddAssetRightContent
+        handleAddAsset={handleAddAsset}
+        isScanningAsset={isScanningAsset}
+      />
     )}
   </View>
 );

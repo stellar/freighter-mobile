@@ -25,7 +25,7 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { calculateSpendableAmount } from "helpers/balances";
+import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -85,7 +85,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const navigateToSendScreen = () => {
     try {
-      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {});
     } catch (error) {
       navigation.popToTop();
     }
@@ -147,7 +147,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     const currentTokenAmount = BigNumber(tokenAmount);
 
-    // Check if amount exceeds available balance
+    if (!hasXLMForFees(balanceItems, transactionFee)) {
+      setAmountError(
+        t("transactionAmountScreen.errors.insufficientXlmForFees", {
+          fee: transactionFee,
+        }) as AmountError,
+      );
+      return;
+    }
+
     if (
       spendableBalance &&
       currentTokenAmount.isGreaterThan(spendableBalance)
@@ -156,7 +164,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     } else {
       setAmountError(null);
     }
-  }, [tokenAmount, spendableBalance]);
+  }, [tokenAmount, spendableBalance, balanceItems, transactionFee, t]);
 
   const menuActions = useMemo(
     () => [

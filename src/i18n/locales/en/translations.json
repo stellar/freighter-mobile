@@ -1,5 +1,6 @@
 {
   "wallet": "Wallet",
+  "network": "Network",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
@@ -316,7 +317,7 @@
   "manageAssetsScreen": {
     "title": "Manage assets",
     "hiddenTokens": "Hidden tokens",
-    "addAssetButton": "Add an asset",
+    "addTokenButton": "Add a token",
     "tokenAddressCopied": "Token address copied!",
     "moreInfo": {
       "title": "Manage Assets",
@@ -340,19 +341,47 @@
   },
   "addAssetScreen": {
     "title": "Add an asset",
-    "addAssetButton": "Add asset",
+    "addTokenButton": "Approve",
     "searchPlaceholder": "Search token name or address",
     "pasteFromClipboard": "Paste from clipboard",
     "tokenAddressCopied": "Token address copied!",
     "popular": "Popular",
     "native": "Native",
     "onYourList": "On your list",
-    "addAsset": "Add Asset",
-    "disclaimer": "Allow asset to be viewable from your wallet. Only add assets you recognize and trust.",
+    "addToken": "Add token",
+    "approveTrustline": "Approve Trustline",
+    "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
+    "confirmTrust": "Only confirm if you trust this token",
+    "maliciousAsset": "This token was flagged as malicious",
+    "suspiciousAsset": "This token was flagged as suspicious",
+    "assetAddress": "Token Address",
+    "approveAnyway": "Approve anyway",
     "toastSuccess": "{{assetCode}} successfully added as an asset",
     "toastError": "Error adding asset {{assetCode}}",
     "emptyState": "No assets found",
     "somethingWentWrong": "Something went wrong, please try again later"
+  },
+  "securityWarning": {
+    "doNotProceed": "Do not proceed",
+    "suspiciousRequest": "Suspicious request",
+    "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
+    "cancel": "Cancel",
+    "connectAnyway": "Connect anyway",
+    "poweredBy": "Powered by",
+    "feedback": "Feedback?",
+    "maliciousAsset": "This token is a scam",
+    "lowLiquidity": "This token has low liquidity",
+    "maliciousSite": "This site is a malicious app"
+  },
+  "security": {
+    "notOnYourLists": "This asset is not on one of your lists",
+    "relativelyNewAsset": "This is a relatively new asset",
+    "assetIsScam": "This asset is a scam",
+    "suspiciousAsset": "This asset may be suspicious",
+    "lowLiquidity": "This asset has low liquidity",
+    "poweredByBlockaid": "Powered by",
+    "learnMore": "Learn more",
+    "addAnyway": "Add anyway"
   },
   "manageAssetRightContent": {
     "copyAddress": "Copy address",
@@ -402,6 +431,7 @@
       "failedToSetupTransaction": "Failed to setup swap transaction",
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
+      "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these assets"
     }
   },
@@ -475,7 +505,10 @@
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Connection Request",
     "disclaimer": "Allow site to view your wallet address, balance, activity and request approval for transactions",
-    "connect": "Connect"
+    "connect": "Connect",
+    "connectAnyway": "Connect anyway",
+    "maliciousFlag": "This site was flagged as malicious",
+    "suspiciousFlag": "This site was flagged as suspicious"
   },
   "transactionMemoScreen": {
     "title": "Memo",
@@ -688,6 +721,26 @@
       "refresh": "🔄 Refresh",
       "clearEvents": "Clear Events",
       "simulateSessionExpiry": "⏰ Simulate Session Expiry"
+    }
+  },
+  "blockaid": {
+    "brand": "Blockaid",
+    "security": {
+      "asset": {
+        "malicious": "This token was flagged as malicious",
+        "suspicious": "This token was flagged as suspicious",
+        "warning": "This token was flagged as warning",
+        "spam": "This token was flagged as spam"
+      },
+      "site": {
+        "malicious": "This site was flagged as malicious",
+        "suspicious": "Unable to scan site for malicious behavior"
+      },
+      "transaction": {
+        "simulationFailed": "Transaction simulation failed",
+        "malicious": "This transaction was flagged as malicious",
+        "warning": "This transaction was flagged as warning"
+      }
     }
   }
 }

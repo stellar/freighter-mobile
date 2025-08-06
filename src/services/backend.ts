@@ -35,10 +35,10 @@ import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
-const freighterBackend = createApiService({
+export const freighterBackend = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_URL,
 });
-const freighterBackendV2 = createApiService({
+export const freighterBackendV2 = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 

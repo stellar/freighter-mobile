@@ -1,5 +1,6 @@
 {
   "wallet": "Carteira",
+  "network": "Rede",
   "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
@@ -38,8 +39,7 @@
       "addWallet": "Adicionar uma carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
-      "viewOnExplorer": "Ver no stellar.expert",
-      "myQRCode": "Meu QR code"
+      "viewOnExplorer": "Ver no stellar.expert"
     },
     "account": {
       "imported": "Importada"
@@ -60,6 +60,26 @@
     "feedback": "Compartilhar Feedback",
     "about": "Sobre",
     "security": "Segurança"
+  },
+  "preferences": {
+    "anonymousDataSharing": {
+      "title": "Compartilhamento de dados anônimos",
+      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
+    },
+    "permissionModal": {
+      "enable": {
+        "title": "Habilitar Analytics",
+        "description": "Para habilitar o compartilhamento de dados anônimos, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+      },
+      "disable": {
+        "title": "Desabilitar Analytics",
+        "description": "Para desabilitar o compartilhamento de dados anônimos, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+      },
+      "openSettings": "Abrir Configurações",
+      "notNow": "Agora não"
+    }
   },
   "shareFeedbackScreen": {
     "title": "Compartilhar Feedback",
@@ -142,9 +162,7 @@
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
     "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
-    "defaultActionButtonText": "Importar carteira",
-    "importSecretKey": "Importar uma chave secreta Stellar",
-    "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
+    "defaultActionButtonText": "Importar carteira"
   },
   "lockScreen": {
     "title": "Bem-vindo de volta",
@@ -276,7 +294,7 @@
   "manageAssetsScreen": {
     "title": "Gerenciar ativos",
     "hiddenTokens": "Tokens ocultos",
-    "addAssetButton": "Adicionar um ativo",
+    "addTokenButton": "Adicionar um token",
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Ativos",
@@ -300,19 +318,47 @@
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",
-    "addAssetButton": "Adicionar ativo",
+    "addTokenButton": "Aprovar",
     "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
     "native": "Nativo",
     "onYourList": "Na sua lista",
-    "addAsset": "Adicionar Ativo",
-    "disclaimer": "Permitir que o ativo seja visível na sua carteira. Adicione apenas ativos que você reconheça e confie.",
+    "addToken": "Adicionar token",
+    "approveTrustline": "Aprovar Trustline",
+    "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o ativo à sua conta.",
+    "confirmTrust": "Só confirme se você confia neste token",
+    "maliciousAsset": "Este token foi marcado como malicioso",
+    "suspiciousAsset": "Este token foi marcado como suspeito",
+    "assetAddress": "Endereço do Token",
+    "approveAnyway": "Aprovar mesmo assim",
     "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
     "toastError": "Erro ao adicionar ativo {{assetCode}}",
     "emptyState": "Nenhum ativo encontrado",
     "somethingWentWrong": "Algo deu errado, por favor tente novamente mais tarde"
+  },
+  "securityWarning": {
+    "doNotProceed": "Não prossiga",
+    "suspiciousRequest": "Solicitação suspeita",
+    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
+    "cancel": "Cancelar",
+    "connectAnyway": "Conectar mesmo assim",
+    "poweredBy": "Desenvolvido por",
+    "feedback": "Feedback?",
+    "maliciousAsset": "Este token é uma fraude",
+    "lowLiquidity": "Este token tem baixa liquidez",
+    "maliciousSite": "Este site é um aplicativo malicioso"
+  },
+  "security": {
+    "notOnYourLists": "Este ativo não está em uma das suas listas",
+    "relativelyNewAsset": "Este é um ativo relativamente novo",
+    "assetIsScam": "Este ativo é uma fraude",
+    "suspiciousAsset": "Este ativo pode ser suspeito",
+    "lowLiquidity": "Este ativo tem baixa liquidez",
+    "poweredByBlockaid": "Powered by",
+    "learnMore": "Saiba mais",
+    "addAnyway": "Adicionar mesmo assim"
   },
   "manageAssetRightContent": {
     "copyAddress": "Copiar endereço",
@@ -362,6 +408,7 @@
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
       "swapTransactionFailed": "Transação de troca falhou",
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
+      "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes ativos"
     }
   },
@@ -435,7 +482,10 @@
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Solicitação de conexão",
     "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "connectAnyway": "Conectar mesmo assim",
+    "maliciousFlag": "Este site foi marcado como malicioso",
+    "suspiciousFlag": "Este site foi marcado como suspeito"
   },
   "transactionMemoScreen": {
     "title": "Memo",
@@ -678,24 +728,24 @@
       "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
     }
   },
-  "preferences": {
-    "anonymousDataSharing": {
-      "title": "Compartilhamento de dados anônimos",
-      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
-    },
-    "permissionModal": {
-      "enable": {
-        "title": "Habilitar Analytics",
-        "description": "Para habilitar o compartilhamento de dados anônimos, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+  "blockaid": {
+    "brand": "Blockaid",
+    "security": {
+      "asset": {
+        "malicious": "Este token foi marcado como malicioso",
+        "suspicious": "Este token foi marcado como suspeito",
+        "warning": "Este token foi marcado como aviso",
+        "spam": "Este token foi marcado como spam"
       },
-      "disable": {
-        "title": "Desabilitar Analytics",
-        "description": "Para desabilitar o compartilhamento de dados anônimos, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+      "site": {
+        "malicious": "Este site foi marcado como malicioso",
+        "suspicious": "Este site não foi encontrado no banco de dados"
       },
-      "openSettings": "Abrir Configurações",
-      "notNow": "Agora não"
+      "transaction": {
+        "simulationFailed": "Falha na simulação da transação",
+        "malicious": "Esta transação foi marcada como maliciosa",
+        "warning": "Esta transação foi marcada como aviso"
+      }
     }
   }
 }

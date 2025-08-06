@@ -24,7 +24,11 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSpendableAmount, isAmountSpendable } from "helpers/balances";
+import {
+  calculateSpendableAmount,
+  isAmountSpendable,
+  hasXLMForFees,
+} from "helpers/balances";
 import { formatAssetAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -106,6 +110,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return;
     }
 
+    if (!hasXLMForFees(balanceItems, swapFee)) {
+      setAmountError(
+        t("swapScreen.errors.insufficientXlmForFees", {
+          fee: swapFee,
+        }),
+      );
+      return;
+    }
+
     if (
       !isAmountSpendable({
         amount: sourceAmount,
@@ -131,6 +144,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account?.subentryCount,
     swapFee,
     sourceBalance,
+    balanceItems,
   ]);
 
   useSwapPathFinding({
@@ -332,7 +346,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center py-[16px] max-xs:py-[12px] px-6">
+        <View className="flex-none items-center py-[16px] max-xs:py-[12px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -356,7 +370,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         )}
 
-        <View className="gap-3 mt-[16px] max-xs:mt-[8px]">
+        <View className="flex-none gap-3 mt-[16px] max-xs:mt-[8px]">
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
