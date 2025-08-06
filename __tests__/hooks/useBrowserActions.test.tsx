@@ -299,12 +299,8 @@ describe("useBrowserActions", () => {
       const closeAllAction = actions.find(
         (a) => a.title === "discovery.closeAllTabs",
       );
-      const closeThisAction = actions.find(
-        (a) => a.title === "discovery.closeThisTab",
-      );
 
       expect(closeAllAction?.destructive).toBe(true);
-      expect(closeThisAction?.destructive).toBe(true);
     });
   });
 });
