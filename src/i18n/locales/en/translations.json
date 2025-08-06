@@ -502,7 +502,10 @@
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Connection Request",
     "disclaimer": "Allow site to view your wallet address, balance, activity and request approval for transactions",
-    "connect": "Connect"
+    "connect": "Connect",
+    "connectAnyway": "Connect anyway",
+    "maliciousFlag": "This site was flagged as malicious",
+    "suspiciousFlag": "This site was flagged as suspicious"
   },
   "transactionMemoScreen": {
     "title": "Memo",
@@ -728,7 +731,7 @@
       },
       "site": {
         "malicious": "This site was flagged as malicious",
-        "suspicious": "This site was found in security database"
+        "suspicious": "Unable to scan site for malicious behavior"
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",

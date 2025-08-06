@@ -488,7 +488,10 @@
   "dappConnectionBottomSheetContent": {
     "connectionRequest": "Solicitação de conexão",
     "disclaimer": "Permita que o site visualize seu endereço da carteira, saldo, atividade e solicite aprovação para transações",
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "connectAnyway": "Conectar mesmo assim",
+    "maliciousFlag": "Este site foi marcado como malicioso",
+    "suspiciousFlag": "Este site foi marcado como suspeito"
   },
   "transactionMemoScreen": {
     "title": "Memo",
@@ -733,7 +736,7 @@
       },
       "site": {
         "malicious": "Este site foi marcado como malicioso",
-        "suspicious": "Este site foi encontrado no banco de dados de segurança"
+        "suspicious": "Este site não foi encontrado no banco de dados"
       },
       "transaction": {
         "simulationFailed": "Falha na simulação da transação",

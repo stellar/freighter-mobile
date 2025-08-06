@@ -91,6 +91,7 @@ export const assessAssetSecurity = (
  * Site Security Assessment
  *
  * Evaluates site scan results using status + is_malicious for site-specific logic.
+ * miss = suspicious (warning), hit with is_malicious = malicious (error), hit with is_malicious = false (safe).
  *
  * @param scanResult - The Blockaid site scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -102,12 +103,14 @@ export const assessSiteSecurity = (
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
 
-  // Site not found in database = safe (no message)
+  // Site not found in database = suspicious (warning)
   if (scanResult.status === "miss") {
-    return createSecurityAssessment(SecurityLevel.SAFE);
+    return createSecurityAssessment(
+      SecurityLevel.SUSPICIOUS,
+      SECURITY_MESSAGE_KEYS.SITE_SUSPICIOUS,
+    );
   }
 
-  // Site found in database
   if (scanResult.is_malicious) {
     return createSecurityAssessment(
       SecurityLevel.MALICIOUS,
@@ -115,11 +118,8 @@ export const assessSiteSecurity = (
     );
   }
 
-  // Site found but not explicitly malicious = suspicious
-  return createSecurityAssessment(
-    SecurityLevel.SUSPICIOUS,
-    SECURITY_MESSAGE_KEYS.SITE_SUSPICIOUS,
-  );
+  // Site found but not malicious = safe
+  return createSecurityAssessment(SecurityLevel.SAFE);
 };
 
 /**
@@ -186,9 +186,10 @@ export const isBlockaidWarning = (resultType: string): boolean =>
 
 /**
  * Extracts security warnings from Blockaid scan results
+ * Matches extension behavior: sites show simple labels, assets/transactions show detailed warnings
  *
- * @param scanResult - The Blockaid scan result (asset or transaction)
- * @returns Array of security warnings with id, title, and description
+ * @param scanResult - The Blockaid scan result (asset, site, or transaction)
+ * @returns Array of security warnings with id and description
  */
 export const extractSecurityWarnings = (
   scanResult?:
@@ -199,6 +200,29 @@ export const extractSecurityWarnings = (
   const warnings: Array<SecurityWarning> = [];
 
   if (!scanResult) {
+    return warnings;
+  }
+
+  // Handle site scan results
+  if ("status" in scanResult) {
+    if (scanResult.status === "miss") {
+      warnings.push({
+        id: "site-miss",
+        description: t("blockaid.security.site.suspicious"),
+      });
+
+      return warnings;
+    }
+
+    if (scanResult.status === "hit" && scanResult.is_malicious) {
+      warnings.push({
+        id: "site-malicious",
+        description: t("blockaid.security.site.malicious"),
+      });
+
+      return warnings;
+    }
+
     return warnings;
   }
 
@@ -236,5 +260,6 @@ export const extractSecurityWarnings = (
       }
     }
   }
+
   return warnings;
 };
