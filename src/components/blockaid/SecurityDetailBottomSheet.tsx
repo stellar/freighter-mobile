@@ -2,6 +2,7 @@ import BlockaidLogo from "assets/logos/blockaid-logo.svg";
 import { List } from "components/List";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { BLOCKAID_FEEDBACK_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -64,9 +65,6 @@ export const SecurityDetailBottomSheet: React.FC<
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
-
-  const getProceedAnywayColor = () =>
-    isMalicious ? themeColors.status.error : themeColors.foreground.secondary;
 
   const getHeaderIcon = () => {
     const baseClasses =
@@ -150,15 +148,11 @@ export const SecurityDetailBottomSheet: React.FC<
         >
           {t("common.cancel")}
         </Button>
-        <Text
-          md
-          bold
-          textAlign="center"
-          color={getProceedAnywayColor()}
+        <TextButton
+          text={proceedAnywayText}
           onPress={onProceedAnyway}
-        >
-          {proceedAnywayText}
-        </Text>
+          variant={isMalicious ? "error" : "secondary"}
+        />
       </View>
     </View>
   );
