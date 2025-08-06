@@ -66,6 +66,6 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>NSUserTrackingUsageDescription</key>
-		<string></string>
+	<string></string>
 </dict>
 </plist>
