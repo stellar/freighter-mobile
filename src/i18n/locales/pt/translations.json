@@ -1,8 +1,6 @@
 {
   "wallet": "Carteira",
   "network": "Rede",
-  "mainnet": "Mainnet",
-  "testnet": "Testnet",
   "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
@@ -301,7 +299,7 @@
   "manageAssetsScreen": {
     "title": "Gerenciar ativos",
     "hiddenTokens": "Tokens ocultos",
-    "addAssetButton": "Adicionar um ativo",
+    "addTokenButton": "Adicionar um token",
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Ativos",
@@ -325,14 +323,14 @@
   },
   "addAssetScreen": {
     "title": "Adicionar um ativo",
-    "addAssetButton": "Aprovar",
+    "addTokenButton": "Aprovar",
     "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
     "native": "Nativo",
     "onYourList": "Na sua lista",
-    "addAsset": "Adicionar token",
+    "addToken": "Adicionar token",
     "approveTrustline": "Aprovar Trustline",
     "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o ativo à sua conta.",
     "confirmTrust": "Só confirme se você confia neste token",

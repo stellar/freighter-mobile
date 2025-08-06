@@ -252,7 +252,10 @@ export const extractSecurityWarnings = (
     ) {
       const resultType = scanResult.validation.result_type;
 
-      if (resultType === "Warning" || resultType === "Malicious") {
+      if (
+        resultType === BLOCKAID_RESULT_TYPES.WARNING ||
+        resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
+      ) {
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
           description: scanResult.validation.description,

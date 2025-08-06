@@ -1,8 +1,6 @@
 {
   "wallet": "Wallet",
   "network": "Network",
-  "mainnet": "Mainnet",
-  "testnet": "Testnet",
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
@@ -315,7 +313,7 @@
   "manageAssetsScreen": {
     "title": "Manage assets",
     "hiddenTokens": "Hidden tokens",
-    "addAssetButton": "Add an asset",
+    "addTokenButton": "Add a token",
     "tokenAddressCopied": "Token address copied!",
     "moreInfo": {
       "title": "Manage Assets",
@@ -339,14 +337,14 @@
   },
   "addAssetScreen": {
     "title": "Add an asset",
-    "addAssetButton": "Approve",
+    "addTokenButton": "Approve",
     "searchPlaceholder": "Search token name or address",
     "pasteFromClipboard": "Paste from clipboard",
     "tokenAddressCopied": "Token address copied!",
     "popular": "Popular",
     "native": "Native",
     "onYourList": "On your list",
-    "addAsset": "Add token",
+    "addToken": "Add token",
     "approveTrustline": "Approve Trustline",
     "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
     "confirmTrust": "Only confirm if you trust this token",

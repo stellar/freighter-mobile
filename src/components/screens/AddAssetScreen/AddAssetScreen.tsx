@@ -4,12 +4,12 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddAssetBottomSheetContent from "components/screens/AddAssetScreen/AddAssetBottomSheetContent";
 import AssetItem from "components/screens/AddAssetScreen/AssetItem";
 import EmptyState from "components/screens/AddAssetScreen/EmptyState";
 import ErrorState from "components/screens/AddAssetScreen/ErrorState";
-import SecurityWarningBottomSheet from "components/screens/AddAssetScreen/SecurityWarningBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -225,7 +225,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
             securityWarningBottomSheetModalRef.current?.dismiss()
           }
           customContent={
-            <SecurityWarningBottomSheet
+            <SecurityDetailBottomSheet
               warnings={securityWarnings}
               onCancel={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
@@ -235,6 +235,7 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
               severity={securitySeverity}
+              proceedAnywayText={t("addAssetScreen.approveAnyway")}
             />
           }
         />

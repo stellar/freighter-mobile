@@ -1,19 +1,20 @@
 import { List } from "components/List";
-import Spinner from "components/Spinner";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionProposal } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
-import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useMemo } from "react";
+import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -63,6 +64,52 @@ const DappConnectionBottomSheetContent: React.FC<
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
 
+  const listItems = useMemo(() => {
+    if (!dappMetadata || !account) return [];
+
+    return [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("wallet"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+      {
+        icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
+        title: t("network"),
+        trailingContent: (
+          <Text md primary>
+            {network === NETWORKS.PUBLIC
+              ? NETWORK_NAMES.PUBLIC
+              : NETWORK_NAMES.TESTNET}
+          </Text>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+    ];
+  }, [
+    dappMetadata,
+    account,
+    themeColors.foreground.primary,
+    themeColors.text.secondary,
+    t,
+    network,
+  ]);
+
   if (!dappMetadata || !account) {
     return null;
   }
@@ -79,37 +126,6 @@ const DappConnectionBottomSheetContent: React.FC<
 
     onCancel();
   };
-
-  const listItems = [
-    {
-      icon: <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />,
-      title: t("wallet"),
-      trailingContent: (
-        <View className="flex-row items-center gap-2">
-          <Avatar
-            size="sm"
-            publicAddress={account?.publicKey ?? ""}
-            hasBorder={false}
-            hasBackground={false}
-          />
-          <Text md primary>
-            {account?.accountName}
-          </Text>
-        </View>
-      ),
-      titleColor: themeColors.text.secondary,
-    },
-    {
-      icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
-      title: t("network"),
-      trailingContent: (
-        <Text md primary>
-          {network === NETWORKS.PUBLIC ? t("mainnet") : t("testnet")}
-        </Text>
-      ),
-      titleColor: themeColors.text.secondary,
-    },
-  ];
 
   const renderButtons = () => {
     const cancelButton = (
@@ -134,25 +150,13 @@ const DappConnectionBottomSheetContent: React.FC<
       return (
         <>
           {cancelButton}
-          <TouchableOpacity
+          <TextButton
+            text={t("dappConnectionBottomSheetContent.connectAnyway")}
             onPress={onConnection}
+            isLoading={isConnecting}
             disabled={isConnecting}
-            className="w-full justify-center items-center"
-          >
-            {isConnecting ? (
-              <Spinner size="small" />
-            ) : (
-              <Text
-                md
-                semiBold
-                color={
-                  isMalicious ? themeColors.red[11] : themeColors.text.secondary
-                }
-              >
-                {t("dappConnectionBottomSheetContent.connectAnyway")}
-              </Text>
-            )}
-          </TouchableOpacity>
+            variant={isMalicious ? "error" : "secondary"}
+          />
         </>
       );
     }
@@ -206,34 +210,15 @@ const DappConnectionBottomSheetContent: React.FC<
       </View>
 
       {(isMalicious || isSuspicious) && (
-        <TouchableOpacity
+        <Banner
+          variant={isMalicious ? "error" : "warning"}
+          text={
+            isMalicious
+              ? t("dappConnectionBottomSheetContent.maliciousFlag")
+              : t("dappConnectionBottomSheetContent.suspiciousFlag")
+          }
           onPress={securityWarningAction}
-          className={`px-[16px] py-[12px] rounded-[16px] w-full ${isMalicious ? "bg-red-3" : "bg-amber-3"}`}
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1 gap-[8px]">
-              <Icon.AlertSquare
-                size={16}
-                themeColor={isMalicious ? "red" : "amber"}
-              />
-              <Text
-                sm
-                color={
-                  isMalicious ? themeColors.red[11] : themeColors.amber[11]
-                }
-              >
-                {isMalicious
-                  ? t("dappConnectionBottomSheetContent.maliciousFlag")
-                  : t("dappConnectionBottomSheetContent.suspiciousFlag")}
-              </Text>
-            </View>
-
-            <Icon.ChevronRight
-              size={16}
-              themeColor={isMalicious ? "red" : "amber"}
-            />
-          </View>
-        </TouchableOpacity>
+        />
       )}
 
       <View className="flex-row items-center px-[16px] py-[12px] bg-background-tertiary rounded-[16px] justify-center">

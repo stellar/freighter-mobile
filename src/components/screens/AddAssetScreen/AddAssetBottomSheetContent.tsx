@@ -1,10 +1,11 @@
 import { AssetIcon } from "components/AssetIcon";
 import { List } from "components/List";
-import Spinner from "components/Spinner";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import {
@@ -16,7 +17,7 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useMemo } from "react";
 import { View, TouchableOpacity } from "react-native";
 
 type AddAssetBottomSheetContentProps = {
@@ -45,82 +46,86 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
   const { network } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
 
-  const getDisplayText = () => {
-    if (!asset) return "";
-    if (isMalicious || isSuspicious) {
-      return truncateAddress(asset.issuer, 7, 0);
+  const listItems = useMemo(() => {
+    if (!asset) return [];
+
+    const items = [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("wallet"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+    ];
+
+    if (!isMalicious && !isSuspicious) {
+      items.push({
+        icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
+        title: t("network"),
+        trailingContent: (
+          <Text md primary>
+            {network === NETWORKS.PUBLIC
+              ? NETWORK_NAMES.PUBLIC
+              : NETWORK_NAMES.TESTNET}
+          </Text>
+        ),
+        titleColor: themeColors.text.secondary,
+      });
     }
 
-    return network === NETWORKS.PUBLIC
-      ? NETWORK_NAMES.PUBLIC
-      : NETWORK_NAMES.TESTNET;
-  };
+    if (isMalicious || isSuspicious) {
+      items.push({
+        icon: <Icon.Circle size={16} color={themeColors.foreground.primary} />,
+        title: t("addAssetScreen.assetAddress"),
+        trailingContent: (
+          <TouchableOpacity
+            onPress={() => {
+              copyToClipboard(asset.issuer);
+            }}
+            className="flex-row items-center gap-2"
+          >
+            <View className="p-1">
+              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            </View>
+            <Text md primary>
+              {truncateAddress(asset.issuer, 7, 0)}
+            </Text>
+          </TouchableOpacity>
+        ),
+        titleColor: themeColors.text.secondary,
+      });
+    }
+
+    return items;
+  }, [
+    asset,
+    account?.publicKey,
+    account?.accountName,
+    isMalicious,
+    isSuspicious,
+    network,
+    themeColors.foreground.primary,
+    themeColors.text.secondary,
+    t,
+    copyToClipboard,
+  ]);
 
   if (!asset) {
     return null;
-  }
-
-  const listItems = [
-    {
-      icon: <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />,
-      title: t("wallet"),
-      trailingContent: (
-        <View className="flex-row items-center gap-2">
-          <Avatar
-            size="sm"
-            publicAddress={account?.publicKey ?? ""}
-            hasBorder={false}
-            hasBackground={false}
-          />
-          <Text md primary>
-            {account?.accountName}
-          </Text>
-        </View>
-      ),
-      titleColor: themeColors.text.secondary,
-    },
-  ];
-
-  if (!isMalicious && !isSuspicious) {
-    listItems.push({
-      icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
-      title: t("network"),
-      trailingContent: (
-        <Text md primary>
-          {network === NETWORKS.PUBLIC ? t("mainnet") : t("testnet")}
-        </Text>
-      ),
-      titleColor: themeColors.text.secondary,
-    });
-  }
-
-  if (isMalicious || isSuspicious) {
-    listItems.push({
-      icon: <Icon.Circle size={16} color={themeColors.foreground.primary} />,
-      title: t("addAssetScreen.assetAddress"),
-      trailingContent: (
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => {
-              copyToClipboard(asset.issuer);
-            }}
-            className="p-1"
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              copyToClipboard(asset.issuer);
-            }}
-          >
-            <Text md primary>
-              {getDisplayText()}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ),
-      titleColor: themeColors.text.secondary,
-    });
   }
 
   return (
@@ -158,49 +163,23 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       <Badge
         variant="secondary"
         size="md"
-        icon={
-          !isMalicious && !isSuspicious ? (
-            <Icon.PlusCircle size={14} />
-          ) : (
-            <Icon.Link01 size={14} />
-          )
-        }
+        icon={<Icon.PlusCircle size={14} />}
         iconPosition={IconPosition.LEFT}
       >
-        {isMalicious || isSuspicious
-          ? t("addAssetScreen.approveTrustline")
-          : t("addAssetScreen.addAsset")}
+        {t("addAssetScreen.addToken")}
       </Badge>
 
       {(isMalicious || isSuspicious) && (
-        <TouchableOpacity
+        <Banner
+          variant={isMalicious ? "error" : "warning"}
+          text={
+            isMalicious
+              ? t("addAssetScreen.maliciousAsset")
+              : t("addAssetScreen.suspiciousAsset")
+          }
           onPress={onAddAsset}
-          className={`mt-4 w-full px-[16px] py-[12px] rounded-[16px] ${isMalicious ? "bg-red-3" : "bg-amber-3"}`}
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1 gap-[8px]">
-              <Icon.AlertSquare
-                size={16}
-                themeColor={isMalicious ? "red" : "amber"}
-              />
-              <Text
-                sm
-                textAlign="left"
-                color={
-                  isMalicious ? themeColors.red[11] : themeColors.amber[11]
-                }
-              >
-                {isMalicious
-                  ? t("addAssetScreen.maliciousAsset")
-                  : t("addAssetScreen.suspiciousAsset")}
-              </Text>
-            </View>
-            <Icon.ChevronRight
-              size={16}
-              themeColor={isMalicious ? "red" : "amber"}
-            />
-          </View>
-        </TouchableOpacity>
+          className="mt-4"
+        />
       )}
 
       <View className="px-[16px] py-[12px] mt-6 bg-background-tertiary rounded-[16px] justify-center">
@@ -239,27 +218,13 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         </View>
         <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
           {isMalicious || isSuspicious ? (
-            <TouchableOpacity
+            <TextButton
+              text={t("addAssetScreen.approveAnyway")}
               onPress={proceedAnywayAction}
+              isLoading={isAddingAsset}
               disabled={isAddingAsset}
-              className="w-full justify-center items-center"
-            >
-              {isAddingAsset ? (
-                <Spinner size="small" />
-              ) : (
-                <Text
-                  md
-                  semiBold
-                  color={
-                    isMalicious
-                      ? themeColors.red[11]
-                      : themeColors.text.secondary
-                  }
-                >
-                  {t("addAssetScreen.approveAnyway")}
-                </Text>
-              )}
-            </TouchableOpacity>
+              variant={isMalicious ? "error" : "secondary"}
+            />
           ) : (
             <Button
               tertiary
@@ -268,7 +233,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
               onPress={onAddAsset}
               isLoading={isAddingAsset}
             >
-              {t("addAssetScreen.addAssetButton")}
+              {t("addAssetScreen.addTokenButton")}
             </Button>
           )}
         </View>

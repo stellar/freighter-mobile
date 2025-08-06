@@ -1,9 +1,9 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
-import SiteSecurityWarningBottomSheetContent from "components/screens/WalletKit/SiteSecurityWarningBottomSheetContent";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -490,12 +490,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         modalRef={siteSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
         customContent={
-          <SiteSecurityWarningBottomSheetContent
+          <SecurityDetailBottomSheet
             warnings={securityWarnings}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
             severity={securitySeverity}
+            proceedAnywayText={t(
+              "dappConnectionBottomSheetContent.connectAnyway",
+            )}
           />
         }
       />

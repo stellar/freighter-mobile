@@ -11,20 +11,50 @@ import { View, Linking } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
-interface SecurityWarningBottomSheetProps {
+export interface SecurityDetailBottomSheetProps {
   warnings: SecurityWarning[];
   onCancel: () => void;
   onProceedAnyway: () => void;
   onClose: () => void;
   severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
+  /** The text to display for the "proceed anyway" button */
+  proceedAnywayText: string;
 }
 
-const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
+/**
+ * Reusable security detail bottom sheet component for displaying security warnings.
+ * Can be used for both asset security warnings and dApp connection warnings.
+ *
+ * @example
+ * // For Add Asset flow
+ * <SecurityDetailBottomSheet
+ *   warnings={warnings}
+ *   onCancel={handleCancel}
+ *   onProceedAnyway={handleProceed}
+ *   onClose={handleClose}
+ *   severity={SecurityLevel.MALICIOUS}
+ *   proceedAnywayText={t("addAssetScreen.approveAnyway")}
+ * />
+ *
+ * // For DApp Connection flow
+ * <SecurityDetailBottomSheet
+ *   warnings={warnings}
+ *   onCancel={handleCancel}
+ *   onProceedAnyway={handleProceed}
+ *   onClose={handleClose}
+ *   severity={SecurityLevel.SUSPICIOUS}
+ *   proceedAnywayText={t("dappConnectionBottomSheetContent.connectAnyway")}
+ * />
+ */
+export const SecurityDetailBottomSheet: React.FC<
+  SecurityDetailBottomSheetProps
+> = ({
   warnings,
   onCancel,
   onProceedAnyway,
   onClose,
   severity = SecurityLevel.MALICIOUS,
+  proceedAnywayText,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -60,8 +90,10 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
   const getListItems = () =>
     warnings.map((warning) => ({
       title: warning.description,
-      icon: (
-        <Icon.XCircle size={16} themeColor={isMalicious ? "red" : "gray"} />
+      icon: isMalicious ? (
+        <Icon.XCircle size={16} themeColor="red" />
+      ) : (
+        <Icon.MinusCircle size={16} themeColor="gray" />
       ),
     }));
 
@@ -125,11 +157,11 @@ const SecurityWarningBottomSheet: React.FC<SecurityWarningBottomSheetProps> = ({
           color={getProceedAnywayColor()}
           onPress={onProceedAnyway}
         >
-          {t("addAssetScreen.approveAnyway")}
+          {proceedAnywayText}
         </Text>
       </View>
     </View>
   );
 };
 
-export default SecurityWarningBottomSheet;
+export default SecurityDetailBottomSheet;
