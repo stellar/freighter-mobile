@@ -86,7 +86,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
           {/* NOTE: using png logo for now because it wasnt rendering the svg correctly */}
           <QRCode
             size={pxValue(210)}
-            logo={logos.freighter}
+            logo={logos.freighter2d}
             value={account?.publicKey ?? ""}
             quietZone={6}
             logoMargin={12}
