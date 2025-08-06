@@ -1,5 +1,5 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
+import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
@@ -60,7 +60,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
     <BaseLayout useSafeArea>
       <Container>
         <StyledIconContainer>
-          <FreighterLogo width={px(48)} height={px(48)} />
+          <FreighterLogo />
         </StyledIconContainer>
         <View>
           <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
