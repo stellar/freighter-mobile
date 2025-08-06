@@ -52,7 +52,9 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
       <View className="flex-1 justify-between">
-        <View className="items-center">{showLogo && <FreighterLogo />}</View>
+        <View className="items-center mt-10">
+          {showLogo && <FreighterLogo />}
+        </View>
         <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2 mt-4 mb-10">
           <Avatar size="xl" publicAddress={publicKey ?? ""} />
           <Display xs semiBold>

@@ -32,11 +32,12 @@ const StyledDisplay = styled(Display)`
 
 const StyledIconContainer = styled.View`
   align-items: center;
+  margin-top: ${px(40)};
 `;
 
 const StyledTermsText = styled(Text)`
   text-align: center;
-  padding-horizontal: ${px(32)};
+  padding-horizontal: ${px(14)};
 `;
 
 interface StyledProps {
