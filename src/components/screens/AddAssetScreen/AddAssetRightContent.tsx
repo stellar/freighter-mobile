@@ -6,10 +6,12 @@ import React from "react";
 
 type AddAssetRightContentProps = {
   handleAddAsset: () => void;
+  isScanningAsset: boolean;
 };
 
 const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
   handleAddAsset,
+  isScanningAsset,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -25,6 +27,8 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       }
       iconPosition={IconPosition.RIGHT}
       onPress={handleAddAsset}
+      disabled={isScanningAsset}
+      isLoading={isScanningAsset}
     >
       {t("common.add")}
     </Button>

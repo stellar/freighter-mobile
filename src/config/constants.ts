@@ -13,6 +13,8 @@ export const TOGGLE_ANIMATION_DURATION = 400;
 // This is used to prevent rows from highlighting when the user is scrolling
 export const DEFAULT_PRESS_DELAY = 100;
 
+export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
@@ -164,6 +166,7 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
 
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
+export const BLOCKAID_FEEDBACK_URL = "https://report.blockaid.io/";
 
 export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
   switch (network) {

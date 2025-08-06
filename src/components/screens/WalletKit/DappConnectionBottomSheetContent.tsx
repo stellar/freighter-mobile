@@ -1,16 +1,19 @@
+import { List } from "components/List";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { ActiveAccount } from "ducks/auth";
+import { NETWORKS, NETWORK_NAMES } from "config/constants";
+import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionProposal } from "ducks/walletKit";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
-import React from "react";
+import React, { useMemo } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -22,6 +25,8 @@ import { analytics } from "services/analytics";
  * @property {() => void} onCancel - Function to handle cancellation
  * @property {() => void} onConnection - Function to handle connection
  * @property {boolean} isConnecting - Whether a connection is currently being established
+ * @property {boolean} isMalicious - Whether the dApp is malicious
+ * @property {boolean} isSuspicious - Whether the dApp is suspicious
  */
 type DappConnectionBottomSheetContentProps = {
   proposalEvent: WalletKitSessionProposal | null;
@@ -29,6 +34,9 @@ type DappConnectionBottomSheetContentProps = {
   onCancel: () => void;
   onConnection: () => void;
   isConnecting: boolean;
+  isMalicious?: boolean;
+  isSuspicious?: boolean;
+  securityWarningAction?: () => void;
 };
 
 /**
@@ -41,11 +49,66 @@ type DappConnectionBottomSheetContentProps = {
  */
 const DappConnectionBottomSheetContent: React.FC<
   DappConnectionBottomSheetContentProps
-> = ({ proposalEvent, account, onCancel, onConnection, isConnecting }) => {
+> = ({
+  proposalEvent,
+  account,
+  onCancel,
+  onConnection,
+  isConnecting,
+  isMalicious,
+  isSuspicious,
+  securityWarningAction,
+}) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-
+  const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
+
+  const listItems = useMemo(() => {
+    if (!dappMetadata || !account) return [];
+
+    return [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("wallet"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+      {
+        icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
+        title: t("network"),
+        trailingContent: (
+          <Text md primary>
+            {network === NETWORKS.PUBLIC
+              ? NETWORK_NAMES.PUBLIC
+              : NETWORK_NAMES.TESTNET}
+          </Text>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+    ];
+  }, [
+    dappMetadata,
+    account,
+    themeColors.foreground.primary,
+    themeColors.text.secondary,
+    t,
+    network,
+  ]);
 
   if (!dappMetadata || !account) {
     return null;
@@ -60,82 +123,51 @@ const DappConnectionBottomSheetContent: React.FC<
         "user_rejected",
       );
     }
+
     onCancel();
   };
 
-  return (
-    <View className="flex-1 justify-center items-center mt-2">
-      <App
-        size="lg"
-        appName={dappMetadata.name}
-        favicon={dappMetadata.icons[0]}
-      />
-      <View className="mt-4" />
-      <Text lg primary medium style={{ textAlign: "center" }}>
-        {dappMetadata.name}
-      </Text>
-      <View className="mt-1" />
-      {dappDomain && (
-        <Text sm secondary>
-          {dappDomain}
-        </Text>
-      )}
-      <View className="mt-2" />
-      <Badge
-        variant="secondary"
-        size="md"
-        icon={<Icon.Link01 size={16} />}
-        iconPosition={IconPosition.LEFT}
+  const renderButtons = () => {
+    const cancelButton = (
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
       >
-        {t("dappConnectionBottomSheetContent.connectionRequest")}
-      </Badge>
-      <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
-        <Text md secondary style={{ textAlign: "center" }}>
-          {t("dappConnectionBottomSheetContent.disclaimer")}
-        </Text>
+        <Button
+          tertiary={isSuspicious}
+          destructive={isMalicious}
+          secondary={!isMalicious && !isSuspicious}
+          xl
+          isFullWidth
+          onPress={handleUserCancel}
+          disabled={isConnecting}
+        >
+          {t("common.cancel")}
+        </Button>
       </View>
-      <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
-        <View className="flex-row items-center">
-          <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginLeft: pxValue(8) }}
-          >
-            {t("wallet")}
-          </Text>
-        </View>
-        <View className="flex-row items-center">
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginRight: pxValue(8) }}
-          >
-            {account?.accountName}
-          </Text>
-          <Avatar
-            size="sm"
-            hasBorder={false}
-            publicAddress={account?.publicKey ?? ""}
-          />
-        </View>
-      </View>
-      <View className="flex-row justify-between w-full mt-6 gap-3">
-        <View className="flex-1">
-          <Button
-            secondary
-            lg
-            isFullWidth
-            onPress={handleUserCancel}
+    );
+
+    if (isMalicious || isSuspicious) {
+      return (
+        <>
+          {cancelButton}
+          <TextButton
+            text={t("dappConnectionBottomSheetContent.connectAnyway")}
+            onPress={onConnection}
+            isLoading={isConnecting}
             disabled={isConnecting}
-          >
-            {t("common.cancel")}
-          </Button>
-        </View>
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cancelButton}
         <View className="flex-1">
           <Button
             tertiary
-            lg
+            xl
             isFullWidth
             onPress={onConnection}
             isLoading={isConnecting}
@@ -143,6 +175,72 @@ const DappConnectionBottomSheetContent: React.FC<
             {t("dappConnectionBottomSheetContent.connect")}
           </Button>
         </View>
+      </>
+    );
+  };
+
+  return (
+    <View className="flex-1 justify-center items-center mt-2 gap-[16px]">
+      <View className="gap-[16px] justify-center items-center">
+        <App
+          size="lg"
+          appName={dappMetadata.name}
+          favicon={dappMetadata.icons[0]}
+        />
+
+        <View className="justify-center items-center">
+          <Text lg primary medium textAlign="center">
+            {dappMetadata.name}
+          </Text>
+          {dappDomain && (
+            <Text sm secondary>
+              {dappDomain}
+            </Text>
+          )}
+        </View>
+
+        <Badge
+          variant="secondary"
+          size="md"
+          icon={<Icon.Link01 size={14} />}
+          iconPosition={IconPosition.LEFT}
+        >
+          {t("dappConnectionBottomSheetContent.connectionRequest")}
+        </Badge>
+      </View>
+
+      {(isMalicious || isSuspicious) && (
+        <Banner
+          variant={isMalicious ? "error" : "warning"}
+          text={
+            isMalicious
+              ? t("dappConnectionBottomSheetContent.maliciousFlag")
+              : t("dappConnectionBottomSheetContent.suspiciousFlag")
+          }
+          onPress={securityWarningAction}
+        />
+      )}
+
+      <View className="flex-row items-center px-[16px] py-[12px] bg-background-tertiary rounded-[16px] justify-center">
+        <Text md secondary textAlign="center">
+          {t("dappConnectionBottomSheetContent.disclaimer")}
+        </Text>
+      </View>
+
+      <View className="w-full">
+        <List items={listItems} variant="secondary" />
+      </View>
+
+      {!isMalicious && !isSuspicious && (
+        <Text sm secondary textAlign="center">
+          {t("addAssetScreen.confirmTrust")}
+        </Text>
+      )}
+
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px]`}
+      >
+        {renderButtons()}
       </View>
     </View>
   );

@@ -70,7 +70,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
             navigation.navigate(MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN);
           }}
         >
-          {t("manageAssetsScreen.addAssetButton")}
+          {t("manageAssetsScreen.addTokenButton")}
         </Button>
       </View>
     </BaseLayout>

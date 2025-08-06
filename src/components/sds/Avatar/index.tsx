@@ -67,6 +67,8 @@ export interface AvatarBaseProps {
   testID?: string;
   /** Whether to show border */
   hasBorder?: boolean;
+  /** Whether to show background */
+  hasBackground?: boolean;
   /** Whether to show selected indicator */
   isSelected?: boolean;
 }
@@ -106,6 +108,7 @@ interface AvatarWrapperProps {
   size: AvatarSize;
   testID?: string;
   hasBorder?: boolean;
+  hasBackground?: boolean;
   isSelected?: boolean;
   children: React.ReactNode;
 }
@@ -114,6 +117,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
   size,
   testID,
   hasBorder = true,
+  hasBackground = true,
   isSelected = false,
   children,
 }) => {
@@ -132,7 +136,9 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
   const getContainerClasses = () =>
     `relative z-10 ${getSizeClasses()} rounded-full ${
       hasBorder ? "border border-border-primary" : ""
-    } ${isSelected ? "border-primary" : ""} bg-background-primary`;
+    } ${isSelected ? "border-primary" : ""} ${
+      hasBackground ? "bg-background-primary" : ""
+    }`;
 
   const getContentClasses = () =>
     "w-full h-full rounded-full overflow-hidden justify-center items-center";
@@ -195,6 +201,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   userName,
   testID,
   hasBorder = true,
+  hasBackground = true,
   isSelected = false,
 }) => {
   const { themeColors } = useColors();
@@ -240,6 +247,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         testID={testID}
         hasBorder={hasBorder}
         isSelected={isSelected}
+        hasBackground={hasBackground}
       >
         <View className="justify-center items-center">
           <Canvas
@@ -278,6 +286,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       testID={testID}
       hasBorder={hasBorder}
       isSelected={isSelected}
+      hasBackground={hasBackground}
     >
       <Icon.User01
         size={AVATAR_DIMENSIONS[size].iconSize}
@@ -292,6 +301,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       testID={testID}
       hasBorder={hasBorder}
       isSelected={isSelected}
+      hasBackground={hasBackground}
     >
       <Text className={`font-bold text-text-secondary ${getTextSizeClass()}`}>
         {initials}

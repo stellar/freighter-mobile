@@ -1,5 +1,7 @@
+import { Text } from "components/sds/Typography";
+import useColors from "hooks/useColors";
 import React from "react";
-import { View, Text } from "react-native";
+import { View } from "react-native";
 
 // Constants for variants and sizes
 export const BadgeVariants = {
@@ -48,6 +50,8 @@ export interface BadgeProps {
 
 /**
  * Badge component used to label, categorize items or show status with various styling options.
+ * Now uses Typography/Text component for consistent font handling and matches Figma design system.
+ * Optimized to use useColors() hook for theme-aware color management.
  *
  * @example
  * Basic usage:
@@ -109,23 +113,25 @@ export const Badge: React.FC<BadgeProps> = ({
   children,
   testID,
 }) => {
+  const { themeColors } = useColors();
+
   const getVariantClasses = () => {
     const baseClasses: Record<BadgeVariant, string> = {
-      primary: "bg-gray-1 border-gray-6 text-gray-12",
-      secondary: "bg-lilac-2 border-lilac-6 text-lilac-11",
-      tertiary: "bg-gray-3 border-gray-6 text-gray-11",
-      success: "bg-green-2 border-green-6 text-green-11",
-      warning: "bg-amber-2 border-amber-6 text-amber-11",
-      error: "bg-red-2 border-red-6 text-red-11",
+      primary: "bg-gray-1 border-gray-6",
+      secondary: "bg-lilac-2 border-lilac-6",
+      tertiary: "bg-gray-3 border-gray-6",
+      success: "bg-green-2 border-green-6",
+      warning: "bg-amber-2 border-amber-6",
+      error: "bg-red-2 border-red-6",
     };
 
     const outlinedClasses: Record<BadgeVariant, string> = {
-      primary: "bg-transparent border-gray-8 text-gray-12",
-      secondary: "bg-transparent border-lilac-8 text-lilac-11",
-      tertiary: "bg-transparent border-gray-8 text-gray-11",
-      success: "bg-transparent border-green-8 text-green-11",
-      warning: "bg-transparent border-amber-8 text-amber-11",
-      error: "bg-transparent border-red-8 text-red-11",
+      primary: "bg-transparent border-gray-8",
+      secondary: "bg-transparent border-lilac-8",
+      tertiary: "bg-transparent border-gray-8",
+      success: "bg-transparent border-green-8",
+      warning: "bg-transparent border-amber-8",
+      error: "bg-transparent border-red-8",
     };
 
     return isOutlined ? outlinedClasses[variant] : baseClasses[variant];
@@ -133,25 +139,12 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const getSizeClasses = () => {
     const classes: Record<BadgeSize, string> = {
-      sm: "px-1.5 py-0.5 text-xs",
-      md: "px-2 py-0.5 text-sm",
-      lg: "px-2.5 py-0.5 text-base",
+      sm: "px-1.5 py-0.5",
+      md: "px-2 py-0.5",
+      lg: "px-2.5 py-0.5",
     };
 
     return classes[size];
-  };
-
-  const getIconColor = () => {
-    const colors: Record<BadgeVariant, string> = {
-      primary: "text-gray-9",
-      secondary: "text-lilac-9",
-      tertiary: "text-gray-9",
-      success: "text-green-9",
-      warning: "text-amber-9",
-      error: "text-red-9",
-    };
-
-    return colors[variant];
   };
 
   const getDotColor = () => {
@@ -167,28 +160,32 @@ export const Badge: React.FC<BadgeProps> = ({
     return colors[variant];
   };
 
-  const getTextSizeClass = () => {
-    if (size === BadgeSizes.SMALL) return "text-xs";
-    if (size === BadgeSizes.MEDIUM) return "text-sm";
-    return "text-base";
+  const getTextColor = () => {
+    const colorMap: Record<BadgeVariant, string> = {
+      primary: themeColors.gray[12],
+      secondary: themeColors.lilac[11],
+      tertiary: themeColors.gray[11],
+      success: themeColors.green[11],
+      warning: themeColors.amber[11],
+      error: themeColors.red[11],
+    };
+
+    return colorMap[variant];
   };
 
-  const getTextColor = () => {
-    if (variant === BadgeVariants.PRIMARY) return "text-gray-12";
-    if (variant === BadgeVariants.SECONDARY) return "text-lilac-11";
-    if (variant === BadgeVariants.TERTIARY) return "text-gray-11";
-    return "text-gray-12";
+  const getTextSize = (): "xs" | "sm" | "md" => {
+    if (size === BadgeSizes.SMALL) return "xs";
+    if (size === BadgeSizes.MEDIUM) return "sm";
+    return "md";
   };
 
   const badgeClasses = `flex flex-row items-center border ${getVariantClasses()} ${getSizeClasses()} ${isSquare ? "rounded-md" : "rounded-full"}`;
-
-  const textClasses = `font-medium ${getTextSizeClass()} ${getTextColor()}`;
 
   const renderIcon = (position: IconPosition) => {
     if (!isStatus && icon && iconPosition === position) {
       return (
         <View
-          className={`mx-0.5 ${position === IconPosition.LEFT ? "mr-1" : "ml-1"} ${getIconColor()}`}
+          className={`mx-0.5 ${position === IconPosition.LEFT ? "mr-1" : "ml-1"}`}
         >
           {icon}
         </View>
@@ -204,7 +201,14 @@ export const Badge: React.FC<BadgeProps> = ({
         <View className={`w-1.5 h-1.5 rounded-full mr-1 ${getDotColor()}`} />
       )}
       {renderIcon(IconPosition.LEFT)}
-      <Text className={textClasses}>{children}</Text>
+      <Text
+        size={getTextSize()}
+        semiBold
+        color={getTextColor()}
+        textAlign="center"
+      >
+        {children}
+      </Text>
       {renderIcon(IconPosition.RIGHT)}
     </View>
   );
