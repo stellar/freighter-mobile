@@ -22,6 +22,8 @@ const CUTOUT_RADIUS = 32;
 const CUTOUT_BORDER_WIDTH = 6;
 const CUTOUT_TEXT_TOP_OFFSET = 33;
 
+const ABOVE_OVERLAY_Z_INDEX = 10;
+
 /**
  * Props for the QRScanner component
  * @interface QRScannerProps
@@ -195,7 +197,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         <View
           style={{
             position: "absolute",
-            zIndex: 10,
+            zIndex: ABOVE_OVERLAY_Z_INDEX,
             top: CUTOUT_TOP_OFFSET,
             left: "50%",
             width: CUTOUT_SIZE,
@@ -215,7 +217,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         <View
           style={{
             position: "absolute",
-            zIndex: 10,
+            zIndex: ABOVE_OVERLAY_Z_INDEX,
             top: CUTOUT_TOP_OFFSET,
             width: "100%",
             transform: [

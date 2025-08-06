@@ -112,7 +112,7 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
             onPress={() => handleDisconnectSession(session.topic)}
             className="w-10 h-10 items-end justify-center pr-1"
           >
-            <Icon.MinusCircle size={18} color={themeColors.red["9"]} />
+            <Icon.MinusCircle size={18} themeColor="red" />
           </TouchableOpacity>
         ),
       })),
@@ -127,7 +127,7 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
         {/* Connected Dapps Section */}
         <View className="mb-6">
           {connectedDapps.length > 0 ? (
-            <List items={connectedDapps} className="bg-background-tertiary" />
+            <List items={connectedDapps} variant="secondary" />
           ) : (
             <EmptyState navigation={navigation} />
           )}
