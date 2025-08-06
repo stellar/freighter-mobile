@@ -188,12 +188,12 @@
     "defaultTabTitle": "Nova Aba",
     "recent": "Recentes",
     "trending": "Em Alta",
+    "legalDisclaimer": "Ao se conectar a esses dapps, você reconhece que está interagindo com eles por sua própria conta e risco. Não podemos recuperar fundos. Nunca compartilhe sua frase de recuperação ou chave privada.",
     "oneTab": "1 Aba",
     "tabs": "{{count}} Abas",
     "urlBarPlaceholder": "Pesquisar ou digitar um site",
     "openInBrowser": "Abrir no Navegador",
     "share": "Compartilhar",
-    "home": "Início",
     "reload": "Recarregar",
     "closeAllTabs": "Fechar todas as abas",
     "closeThisTab": "Fechar esta aba"

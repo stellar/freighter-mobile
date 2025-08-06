@@ -223,6 +223,15 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               onScrollEnd={captureScreenshot}
             />
           )}
+
+          <View
+            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4"
+            style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
+          >
+            <Text xs secondary medium>
+              {t("discovery.legalDisclaimer")}
+            </Text>
+          </View>
         </View>
       </ViewShot>
     );
