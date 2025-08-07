@@ -132,7 +132,6 @@ export const useBrowserActions = (
             android: "close",
           }),
           onPress: handleCloseActiveTab,
-          destructive: true,
         },
       ];
 
@@ -167,21 +166,20 @@ export const useBrowserActions = (
         onPress: handleOpenInBrowser,
       },
       {
-        title: t("discovery.closeAllTabs"),
-        systemIcon: Platform.select({
-          ios: "xmark.circle.fill",
-          android: "close",
-        }),
-        onPress: handleCloseAllTabs,
-        destructive: true,
-      },
-      {
         title: t("discovery.closeThisTab"),
         systemIcon: Platform.select({
           ios: "xmark.circle",
           android: "close",
         }),
         onPress: handleCloseActiveTab,
+      },
+      {
+        title: t("discovery.closeAllTabs"),
+        systemIcon: Platform.select({
+          ios: "xmark.circle.fill",
+          android: "close",
+        }),
+        onPress: handleCloseAllTabs,
         destructive: true,
       },
     ];
