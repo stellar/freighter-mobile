@@ -66,6 +66,6 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>NSUserTrackingUsageDescription</key>
-		<string></string>
+	<string>Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
 </dict>
 </plist>
