@@ -226,6 +226,10 @@ export const useAssetIconsStore = create<AssetIconsState>()(
               return;
             }
 
+            if (!("token" in balance)) {
+              return;
+            }
+
             if (balance.token.type === "native") {
               return;
             }

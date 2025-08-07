@@ -1,11 +1,10 @@
-import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
+import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
@@ -53,8 +52,8 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
       <View className="flex-1 justify-between">
-        <View className="items-center">
-          {showLogo && <FreighterLogo width={px(48)} height={px(48)} />}
+        <View className="items-center mt-10">
+          {showLogo && <FreighterLogo />}
         </View>
         <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2 mt-4 mb-10">
           <Avatar size="xl" publicAddress={publicKey ?? ""} />

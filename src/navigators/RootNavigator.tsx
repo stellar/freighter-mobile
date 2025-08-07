@@ -4,8 +4,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
+import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
+import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {
@@ -119,6 +121,20 @@ export const RootNavigator = () => {
               headerTitle: t("accountQRCodeScreen.title"),
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
+            }}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
+            component={ScanQRCodeScreen}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
+            component={ConnectedAppsScreen}
+            options={{
+              headerTitle: t("connectedApps.title"),
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
           <RootStack.Screen

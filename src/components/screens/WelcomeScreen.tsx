@@ -1,5 +1,5 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
+import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
@@ -32,11 +32,12 @@ const StyledDisplay = styled(Display)`
 
 const StyledIconContainer = styled.View`
   align-items: center;
+  margin-top: ${px(40)};
 `;
 
 const StyledTermsText = styled(Text)`
   text-align: center;
-  padding-horizontal: ${px(32)};
+  padding-horizontal: ${px(14)};
 `;
 
 interface StyledProps {
@@ -60,7 +61,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
     <BaseLayout useSafeArea>
       <Container>
         <StyledIconContainer>
-          <FreighterLogo width={px(48)} height={px(48)} />
+          <FreighterLogo />
         </StyledIconContainer>
         <View>
           <StyledDisplay>{t("freighterWallet")}</StyledDisplay>

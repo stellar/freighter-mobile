@@ -77,7 +77,7 @@ const getExistingPricedBalances = (
     let tokenCode: string;
     let displayName: string;
 
-    if (isLiquidityPool(balance)) {
+    if (isLiquidityPool(balance) || !("token" in balance)) {
       // Handle liquidity pool balances
       tokenCode = getLPShareCode(balance);
       displayName = tokenCode;

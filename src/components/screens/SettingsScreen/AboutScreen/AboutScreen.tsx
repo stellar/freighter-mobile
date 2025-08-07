@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import FreighterLogo from "assets/logos/freighter-logo-dark.svg";
+import { FreighterLogo } from "components/FreighterLogo";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
@@ -11,7 +11,6 @@ import {
   STELLAR_FOUNDATION_PRIVACY_URL,
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { px } from "helpers/dimensions";
 import { getAppVersion } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -56,7 +55,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
     <BaseLayout insets={{ top: false }}>
       <View className="flex mt-4 bg-background-secondary rounded-[16px] gap-9 p-7">
         <View className="flex gap-4">
-          <FreighterLogo width={px(48)} height={px(48)} />
+          <FreighterLogo />
 
           <View className="flex gap-2">
             <Text md medium>

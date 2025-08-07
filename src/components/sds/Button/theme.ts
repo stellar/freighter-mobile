@@ -66,9 +66,9 @@ export const BUTTON_THEME = {
       border: PALETTE.light.gray["06"],
     } as ButtonColorConfig,
     error: {
-      background: PALETTE.light.red["01"],
-      text: PALETTE.light.red["11"],
-      border: PALETTE.light.red["06"],
+      background: PALETTE.dark.red["01"],
+      text: PALETTE.dark.red["11"],
+      border: PALETTE.dark.red["06"],
     } as ButtonColorConfig,
     destructive: {
       background: PALETTE.light.red["09"],

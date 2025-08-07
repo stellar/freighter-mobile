@@ -7,7 +7,6 @@ import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigge
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
-import { ConnectedAppsBottomSheet } from "components/screens/WalletKit/ConnectedAppsBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -18,6 +17,8 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   BUY_XLM_ROUTES,
+  SEND_PAYMENT_ROUTES,
+  SWAP_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -50,7 +51,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
   const { themeColors } = useColors();
-  const connectedAppsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
   const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -70,7 +70,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   useHomeHeaders({
     navigation,
     hasAssets,
-    connectedAppsBottomSheetModalRef,
   });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
@@ -129,11 +128,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleSendPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      params: { tokenId: undefined },
+    });
   };
 
   const handleSwapPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
+      screen: SWAP_ROUTES.SWAP_SCREEN,
+    });
   };
 
   return (
@@ -144,10 +148,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         onDismiss={() => {
           handleWelcomeBannerDismiss();
         }}
-      />
-      <ConnectedAppsBottomSheet
-        modalRef={connectedAppsBottomSheetModalRef}
-        onDismiss={() => connectedAppsBottomSheetModalRef.current?.dismiss()}
       />
       <ManageAccounts
         navigation={navigation}

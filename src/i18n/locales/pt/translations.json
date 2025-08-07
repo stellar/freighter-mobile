@@ -179,26 +179,21 @@
     "doThisLaterButtonText": "Fazer isso depois"
   },
   "connectedApps": {
-    "title": "Wallet Connect",
-    "inputPlaceholder": "Cole o QR Code",
-    "scanQRCode": "Escanear QR Code",
-    "connect": "Conectar",
-    "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um QR Code válido",
-    "disconnectAllSessions": "Desconectar de todos os aplicativos",
-    "connectedDapps": "Aplicativos Conectados",
-    "noConnectedDapps": "Você não está conectado a nenhum aplicativo"
+    "title": "Aplicativos Conectados",
+    "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "goToDiscover": "Ir para o Discover",
+    "disconnectAllSessions": "Desconectar todos"
   },
   "discovery": {
     "defaultTabTitle": "Nova Aba",
     "recent": "Recentes",
     "trending": "Em Alta",
+    "legalDisclaimer": "Ao se conectar a esses dapps, você reconhece que está interagindo com eles por sua própria conta e risco. Não podemos recuperar fundos. Nunca compartilhe sua frase de recuperação ou chave privada.",
     "oneTab": "1 Aba",
     "tabs": "{{count}} Abas",
     "urlBarPlaceholder": "Pesquisar ou digitar um site",
     "openInBrowser": "Abrir no Navegador",
     "share": "Compartilhar",
-    "home": "Início",
     "reload": "Recarregar",
     "closeAllTabs": "Fechar todas as abas",
     "closeThisTab": "Fechar esta aba"
@@ -608,6 +603,15 @@
       "title": "Receber XLM",
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
+  },
+  "scanQRCodeScreen": {
+    "title": "Escaneie para Conectar",
+    "scanWCQrCode": "Escaneie um código QR do WalletConnect",
+    "connectWithWalletConnect": "Cole um URI do WalletConnect",
+    "inputPlaceholder": "URI do WalletConnect",
+    "connect": "Conectar",
+    "pairingError": "Falha ao parear",
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
   "buyXLMScreen": {
     "title": "Adicionar XLM",

@@ -378,7 +378,12 @@ export const Input = React.forwardRef<TextInput, InputProps>(
                 $fieldSize={fieldSize}
               >
                 {typeof endButton.content === "string" ? (
-                  <Text md semiBold color={endButton.color}>
+                  <Text
+                    md
+                    semiBold
+                    color={endButton.color}
+                    isVerticallyCentered
+                  >
                     {endButton.content}
                   </Text>
                 ) : (

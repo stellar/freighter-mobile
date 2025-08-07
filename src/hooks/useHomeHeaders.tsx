@@ -1,4 +1,3 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import {
   BottomTabHeaderProps,
   BottomTabNavigationProp,
@@ -17,7 +16,7 @@ import {
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useLayoutEffect, useMemo } from "react";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 
 interface UseHomeHeadersProps {
   navigation: BottomTabNavigationProp<
@@ -25,13 +24,11 @@ interface UseHomeHeadersProps {
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
   hasAssets: boolean;
-  connectedAppsBottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
 }
 
 export const useHomeHeaders = ({
   navigation,
   hasAssets,
-  connectedAppsBottomSheetModalRef,
 }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -86,26 +83,38 @@ export const useHomeHeaders = ({
 
   const HeaderLeftComponent = useCallback(
     () => (
-      <ContextMenuButton
-        contextMenuProps={{
-          actions: menuActions,
-        }}
-      >
-        <Icon.DotsHorizontal color={themeColors.base[1]} />
-      </ContextMenuButton>
+      <View className="flex-row gap-4">
+        <ContextMenuButton
+          contextMenuProps={{
+            actions: menuActions,
+          }}
+        >
+          <Icon.DotsHorizontal color={themeColors.base[1]} />
+        </ContextMenuButton>
+
+        <CustomHeaderButton
+          position="left"
+          icon={Icon.NotificationBox}
+          onPress={() =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
+          }
+        />
+      </View>
     ),
-    [menuActions, themeColors],
+    [menuActions, themeColors, navigation],
   );
 
   const HeaderRightComponent = useCallback(
     () => (
       <CustomHeaderButton
         position="right"
-        icon={Icon.NotificationBox}
-        onPress={() => connectedAppsBottomSheetModalRef.current?.present()}
+        icon={Icon.Scan}
+        onPress={() =>
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN)
+        }
       />
     ),
-    [connectedAppsBottomSheetModalRef],
+    [navigation],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up

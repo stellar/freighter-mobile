@@ -40,6 +40,20 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       {},
     );
 
+    /**
+     * Clears WebView cache for a specific WebView instance without affecting cookies
+     * @param webViewInstance - The WebView instance to clear cache for
+     */
+    const clearWebViewCache = useCallback((webViewInstance: WebView | null) => {
+      if (!webViewInstance) return;
+
+      try {
+        webViewInstance.clearCache?.(false); // false = preserve cookies
+      } catch (error) {
+        logger.warn("WebViewContainer", "Failed to clear WebView cache", error);
+      }
+    }, []);
+
     // Show spinner when switching tabs
     useEffect(() => {
       if (!activeTabId) {
@@ -186,6 +200,12 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                         if (isActive) {
                           // eslint-disable-next-line no-param-reassign
                           webViewRef.current = ref;
+                        }
+
+                        // Clear WebView cache whenever a WebView is about to render
+                        // This ensures we always render from a fresh state but without affecting cookies
+                        if (ref) {
+                          clearWebViewCache(ref);
                         }
                       }}
                       source={{ uri: tab.url }}
