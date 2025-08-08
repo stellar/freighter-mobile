@@ -31,7 +31,7 @@ interface HistoryData {
 interface UseGetHistoryDataParams {
   publicKey: string;
   networkDetails: NetworkDetails;
-  isHideDustEnabled?: boolean;
+  isHideDustEnabled: boolean;
   tokenId?: string;
 }
 
@@ -114,7 +114,7 @@ function useGetHistoryData({
         history: createHistorySections(
           publicKey,
           rawHistory,
-          !!isHideDustEnabled,
+          isHideDustEnabled,
         ),
       });
     }
@@ -142,7 +142,7 @@ function useGetHistoryData({
       setRawHistory(history);
       const payload = {
         balances,
-        history: createHistorySections(publicKey, history, !!isHideDustEnabled),
+        history: createHistorySections(publicKey, history, isHideDustEnabled),
       };
 
       setHistoryData(payload);

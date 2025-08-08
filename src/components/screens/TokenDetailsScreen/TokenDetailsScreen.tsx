@@ -55,6 +55,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     publicKey: account?.publicKey ?? "",
     networkDetails,
     tokenId,
+    isHideDustEnabled: false, // hides only on history screen
   });
 
   useLayoutEffect(() => {
