@@ -1,3 +1,4 @@
+import round from "lodash/round";
 import { Dimensions } from "react-native";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 
@@ -52,7 +53,7 @@ const deviceScale = Math.min(deviceAspectRatio / DESIGN_ASPECT_RATIO, 1.2);
 export function pxValue(designValue: number): number {
   const designHeightPercentage =
     deviceScale * (designValue / DESIGN_HEIGHT) * 100;
-  return heightPercentageToDP(designHeightPercentage);
+  return round(heightPercentageToDP(designHeightPercentage), 2);
 }
 
 /**
