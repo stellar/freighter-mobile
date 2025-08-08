@@ -346,14 +346,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="flex-none items-center py-[16px] max-xs:py-[12px] px-6">
+        <View className="flex-none items-center py-[24px] max-xs:py-[16px px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
               medium
               adjustsFontSizeToFit
               numberOfLines={1}
-              minimumFontScale={0.8}
+              minimumFontScale={0.6}
             >
               {sourceAmount}{" "}
               <RNText style={{ color: themeColors.text.secondary }}>
@@ -370,7 +370,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         )}
 
-        <View className="flex-none gap-3 mt-[16px] max-xs:mt-[8px]">
+        <View className="flex-none gap-3 mt-[16px]">
           <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
@@ -415,8 +415,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="flex-1 items-center mt-[16px] max-xs:mt-[12px] gap-[20px] max-xs:gap-[16px]">
-          <View className="flex-row gap-[8px] max-xs:gap-[4px]">
+        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
+          <View className="flex-row gap-[8px]">
             <View className="flex-1">
               <Button secondary lg onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
@@ -438,10 +438,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               </Button>
             </View>
           </View>
-          <View className="w-full">
+          <View className="flex-1 justify-center">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="w-full mt-auto mb-8 max-xs:mb-6">
+          <View className="mb-4">
             <Button
               tertiary
               xl
