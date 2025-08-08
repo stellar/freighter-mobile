@@ -1,12 +1,14 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { useFocusEffect } from "@react-navigation/native";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { usePreferencesStore } from "ducks/preferences";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 type HistoryScreenProps = BottomTabScreenProps<
   MainTabStackParamList,
@@ -23,27 +25,31 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
     () => mapNetworkToNetworkDetails(network),
     [network],
   );
+  const { isHideDustEnabled } = usePreferencesStore();
   const { historyData, fetchData, status } = useGetHistoryData(
     account?.publicKey ?? "",
     networkDetails,
   );
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      if (!account?.publicKey) {
-        return;
-      }
+  useFocusEffect(
+    useCallback(() => {
+      const loadHistory = async () => {
+        if (!account?.publicKey) {
+          return;
+        }
 
-      await fetchData({
-        isRefresh: false,
-      });
-    };
+        await fetchData({
+          isRefresh: false,
+          isHideDustEnabled,
+        });
+      };
 
-    loadHistory();
-  }, [account?.publicKey, network]);
+      loadHistory();
+    }, [account?.publicKey, network, isHideDustEnabled]),
+  );
 
   const handleRefresh = useCallback(() => {
-    fetchData({ isRefresh: true });
+    fetchData({ isRefresh: true, isHideDustEnabled });
   }, [fetchData]);
 
   return (

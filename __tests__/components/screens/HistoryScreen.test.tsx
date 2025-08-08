@@ -4,6 +4,13 @@ import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SectionListProps } from "react-native";
 
+jest.mock("@react-navigation/native", () => ({
+  useFocusEffect: jest.fn((callback) => {
+    callback();
+    return () => {};
+  }),
+}));
+
 // Define a basic type for our test data
 interface OperationItem {
   id: string;

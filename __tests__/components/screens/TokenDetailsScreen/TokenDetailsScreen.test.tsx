@@ -120,7 +120,10 @@ describe("TokenDetailsScreen", () => {
     );
 
     await waitFor(() => {
-      expect(mockFetchData).toHaveBeenCalledWith({ isRefresh: false });
+      expect(mockFetchData).toHaveBeenCalledWith({
+        isRefresh: false,
+        isHideDustEnabled: true,
+      });
     });
   });
 });
