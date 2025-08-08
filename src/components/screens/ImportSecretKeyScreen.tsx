@@ -11,6 +11,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
@@ -110,7 +111,11 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               }
             />
             {validationError && (
-              <Text sm color={themeColors.status.error} className="mt-1">
+              <Text
+                sm
+                color={themeColors.status.error}
+                style={{ marginTop: pxValue(4) }}
+              >
                 {t("importSecretKeyScreen.invalidSecretKey")}
               </Text>
             )}
@@ -143,7 +148,9 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               }
             />
             <View className="mt-2">
-              <Text md>{t("importSecretKeyScreen.passwordNote")}</Text>
+              <Text md secondary>
+                {t("importSecretKeyScreen.passwordNote")}
+              </Text>
             </View>
           </View>
 
@@ -163,9 +170,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               </View>
             </Pressable>
             <View className="flex-1 ml-2 pt-5">
-              <Text sm className="leading-5 text-white">
-                {t("importSecretKeyScreen.responsibilityNote")}
-              </Text>
+              <Text sm>{t("importSecretKeyScreen.responsibilityNote")}</Text>
             </View>
           </View>
         </View>

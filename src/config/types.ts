@@ -354,3 +354,17 @@ export type DiscoverProtocol = {
   websiteUrl: string;
   tags: string[];
 };
+
+export interface MemoRequiredAccount {
+  address: string;
+  name: string;
+  domain: string | null;
+  tags: string[];
+}
+
+export interface MemoRequiredAccountsApiResponse {
+  _links: Record<string, { href: string }>;
+  _embedded: {
+    records: MemoRequiredAccount[];
+  };
+}

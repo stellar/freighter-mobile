@@ -278,7 +278,6 @@ export interface TextProps extends TypographyBaseProps {
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
   onPress?: () => void;
-  className?: string;
   textAlign?: "left" | "center" | "right";
 }
 
@@ -355,7 +354,6 @@ export const Text: React.FC<TextProps> = ({
   isVerticallyCentered = false,
   url,
   onPress,
-  className,
   textAlign,
   ...props
 }) => {
@@ -379,7 +377,6 @@ export const Text: React.FC<TextProps> = ({
       {...(url && { onPress: () => handleOnPressUrl() })}
       {...(!url && onPress && { onPress: () => onPress() })}
       {...props}
-      className={className}
     >
       {children}
     </StyledText>

@@ -40,7 +40,12 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     handleOpenSettings,
     permissionAction,
   } = useAnalyticsPermissions();
-  const { isHideDustEnabled, setIsHideDustEnabled } = usePreferencesStore();
+  const {
+    isHideDustEnabled,
+    setIsHideDustEnabled,
+    isMemoValidationEnabled,
+    setIsMemoValidationEnabled,
+  } = usePreferencesStore();
 
   const isScreenFocusedRef = useRef(false);
 
@@ -73,6 +78,19 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     [isHideDustEnabled, setIsHideDustEnabled],
   );
 
+  const renderMemoValidationToggle = useCallback(
+    () => (
+      <Toggle
+        id="memo-validation-toggle"
+        checked={isMemoValidationEnabled}
+        onChange={() => {
+          setIsMemoValidationEnabled(!isMemoValidationEnabled);
+        }}
+      />
+    ),
+    [isMemoValidationEnabled, setIsMemoValidationEnabled],
+  );
+
   const handleAnalyticsPermissionOpenSettings = useCallback(() => {
     handleOpenSettings();
   }, [handleOpenSettings]);
@@ -93,8 +111,21 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
         trailingContent: renderHideDustToggle(),
         testID: "hide-dust-item",
       },
+      {
+        title: t("preferences.memoValidation.title"),
+        titleColor: themeColors.text.primary,
+        description: t("preferences.memoValidation.description"),
+        trailingContent: renderMemoValidationToggle(),
+        testID: "memo-validation-item",
+      },
     ],
-    [t, themeColors.text.primary, renderAnalyticsToggle, renderHideDustToggle],
+    [
+      t,
+      themeColors.text.primary,
+      renderAnalyticsToggle,
+      renderHideDustToggle,
+      renderMemoValidationToggle,
+    ],
   );
 
   /**

@@ -2,6 +2,7 @@ import Modal from "components/Modal";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
@@ -56,15 +57,27 @@ const PermissionModal: React.FC<PermissionModalProps> = ({
             {renderActionIcon()}
           </View>
 
-          <Text primary lg medium className="text-center mb-2">
+          <Text
+            primary
+            lg
+            medium
+            textAlign="center"
+            style={{ marginBottom: pxValue(8) }}
+          >
             {t(`preferences.permissionModal.${action}.title`)}
           </Text>
 
-          <Text secondary md regular className="text-center mb-4">
+          <Text
+            secondary
+            md
+            regular
+            textAlign="center"
+            style={{ marginBottom: pxValue(16) }}
+          >
             {t(`preferences.permissionModal.${action}.description`)}
           </Text>
 
-          <Text secondary sm regular className="text-center">
+          <Text secondary sm regular textAlign="center">
             {t(`preferences.permissionModal.${action}.instruction`)}
           </Text>
 

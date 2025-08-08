@@ -199,6 +199,8 @@ export enum STORAGE_KEYS {
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   FACE_ID_ENABLED = "faceIdEnabled",
+  MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
+  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
 }
 
 /**
@@ -211,6 +213,10 @@ export enum STORAGE_KEYS {
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+}
+
+export enum TRANSACTION_WARNING {
+  memoRequired = "memo-required",
 }
 
 // Browser constants

@@ -2,6 +2,7 @@ import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -24,13 +25,47 @@ type SendReviewBottomSheetProps = {
   tokenAmount: string;
   onCancel?: () => void;
   onConfirm?: () => void;
+  /**
+   * Indicates if a required memo is missing from the transaction
+   * When true, shows a warning banner and may disable transaction confirmation
+   */
+  isRequiredMemoMissing?: boolean;
+  /**
+   * Indicates if memo validation is currently in progress
+   * Used to show loading states and prevent premature actions
+   */
+  isValidatingMemo?: boolean;
+  /**
+   * Callback function when the memo warning banner is pressed
+   * Typically opens a modal to explain why the memo is required
+   */
+  onBannerPress?: () => void;
 };
 
+/**
+ * SendReviewBottomSheet Component
+ *
+ * A bottom sheet modal that displays transaction review information before sending.
+ * Shows transaction details including amount, recipient, fee, timeout, and memo.
+ *
+ * Features:
+ * - Displays transaction summary with all relevant details
+ * - Shows memo validation warnings when required memos are missing
+ * - Provides copy functionality for transaction XDR
+ * - Handles loading states during transaction building
+ * - Integrates with memo validation flow
+ *
+ * @param {SendReviewBottomSheetProps} props - Component props
+ * @returns {JSX.Element} The rendered bottom sheet component
+ */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
   tokenAmount,
   onCancel,
   onConfirm,
+  isRequiredMemoMissing,
+  isValidatingMemo,
+  onBannerPress,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -40,7 +75,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
 
   const handleCopyXdr = () => {
@@ -60,7 +94,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     if (error) {
       return (
-        <Text md medium className="text-red-600">
+        <Text md medium color={themeColors.status.error}>
           {t("common.error", { errorMessage: error })}
         </Text>
       );
@@ -71,6 +105,92 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     }
 
     return t("common.none");
+  };
+
+  /**
+   * Renders the memo section title with appropriate icon and warning indicator
+   * Shows a loading spinner during transaction building
+   * Displays a warning triangle icon when a required memo is missing
+   *
+   * @returns {JSX.Element} The memo title with icon and optional warning
+   */
+  const renderMemoTitle = () => {
+    if (isBuilding) {
+      return (
+        <ActivityIndicator size="small" color={themeColors.text.secondary} />
+      );
+    }
+
+    return (
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.File02 size={16} color={themeColors.foreground.primary} />
+        <Text md medium secondary>
+          {t("transactionAmountScreen.details.memo")}
+        </Text>
+        {isRequiredMemoMissing && (
+          <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+        )}
+      </View>
+    );
+  };
+
+  /**
+   * Renders a warning banner when a required memo is missing
+   * Only shows when isRequiredMemoMissing is true
+   * Includes a call-to-action button to add the required memo
+   *
+   * @returns {JSX.Element | null} Warning banner or null if no warning needed
+   */
+  const renderMemoMissingWarning = () => {
+    if (!isRequiredMemoMissing) {
+      return null;
+    }
+
+    return (
+      <Banner
+        variant="error"
+        text={t("transactionAmountScreen.errors.memoMissing")}
+        onPress={onBannerPress}
+        className="w-full mt-[16px]"
+      />
+    );
+  };
+
+  /**
+   * Renders the confirm button with different states based on memo validation
+   * When a required memo is missing, shows "Add Memo" button
+   * When memo validation is in progress, shows "Add Memo" button (disabled)
+   * Otherwise shows the standard "Confirm" button for transaction submission
+   *
+   * @returns {JSX.Element} The appropriate button for the current state
+   */
+  const renderConfirmButton = () => {
+    if (isRequiredMemoMissing || isValidatingMemo) {
+      return (
+        <View className="flex-1">
+          <Button
+            onPress={onConfirm}
+            tertiary
+            xl
+            disabled={isBuilding || !transactionXDR || isValidatingMemo}
+          >
+            {t("common.addMemo")}
+          </Button>
+        </View>
+      );
+    }
+    return (
+      <View className="flex-1">
+        <Button
+          onPress={onConfirm}
+          tertiary
+          xl
+          disabled={isBuilding || !transactionXDR || !!error}
+        >
+          {t("common.confirm")}
+        </Button>
+      </View>
+    );
   };
 
   return (
@@ -115,7 +235,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
         </View>
       </View>
-      <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
+      {renderMemoMissingWarning()}
+      <View
+        className={`rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border ${
+          isRequiredMemoMissing ? "mt-[16px]" : "mt-[24px]"
+        }`}
+      >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
@@ -131,12 +256,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
         </View>
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.File02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.memo")}
-            </Text>
-          </View>
+          {renderMemoTitle()}
           <Text md medium secondary={!transactionMemo}>
             {transactionMemo || t("common.none")}
           </Text>
@@ -185,16 +305,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             {t("common.cancel")}
           </Button>
         </View>
-        <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            tertiary
-            xl
-            disabled={isBuilding || !transactionXDR || !!error}
-          >
-            {t("common.confirm")}
-          </Button>
-        </View>
+        {renderConfirmButton()}
       </View>
     </View>
   );
