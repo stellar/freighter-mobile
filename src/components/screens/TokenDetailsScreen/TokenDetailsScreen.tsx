@@ -14,6 +14,7 @@ import {
   SEND_PAYMENT_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { usePreferencesStore } from "ducks/preferences";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
@@ -38,6 +39,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
+  const { isHideDustEnabled } = usePreferencesStore();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -71,6 +73,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
       await fetchData({
         isRefresh: false,
+        isHideDustEnabled,
       });
     };
 
@@ -78,7 +81,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   }, [account?.publicKey, network, tokenId]);
 
   const handleRefresh = useCallback(() => {
-    fetchData({ isRefresh: true });
+    fetchData({ isRefresh: true, isHideDustEnabled });
   }, [fetchData]);
 
   const handleSwapPress = () => {

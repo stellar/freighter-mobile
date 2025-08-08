@@ -2,7 +2,6 @@ import { Horizon } from "@stellar/stellar-sdk";
 import { NetworkDetails } from "config/constants";
 import { BalanceMap, HookStatus } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { usePreferencesStore } from "ducks/preferences";
 import {
   getIsDustPayment,
   getIsPayment,
@@ -10,7 +9,7 @@ import {
   filterOperationsByAsset,
   getIsCreateClaimableBalanceSpam,
 } from "helpers/history";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getAccountHistory } from "services/backend";
 
 export type HistoryItemOperation = Horizon.ServerApi.OperationRecord & {
@@ -93,28 +92,16 @@ function useGetHistoryData(
   tokenId?: string,
 ) {
   const { fetchAccountBalances, getBalances } = useBalancesStore();
-  const { isHideDustEnabled } = usePreferencesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [historyData, setHistoryData] = useState<HistoryData | null>(null);
-  const [rawHistory, setRawHistory] = useState<
-    Horizon.ServerApi.OperationRecord[]
-  >([]);
 
-  useEffect(() => {
-    if (rawHistory.length) {
-      const balances = getBalances();
-      setHistoryData({
-        balances,
-        history: createHistorySections(
-          publicKey,
-          rawHistory,
-          isHideDustEnabled,
-        ),
-      });
-    }
-  }, [isHideDustEnabled, publicKey, rawHistory, getBalances]);
-
-  const fetchData = async ({ isRefresh = false }: { isRefresh?: boolean }) => {
+  const fetchData = async ({
+    isRefresh = false,
+    isHideDustEnabled = true,
+  }: {
+    isRefresh?: boolean;
+    isHideDustEnabled?: boolean;
+  }) => {
     setStatus(isRefresh ? HookStatus.REFRESHING : HookStatus.LOADING);
     try {
       await fetchAccountBalances({
@@ -133,7 +120,6 @@ function useGetHistoryData(
 
       const balances = getBalances();
 
-      setRawHistory(history);
       const payload = {
         balances,
         history: createHistorySections(publicKey, history, isHideDustEnabled),

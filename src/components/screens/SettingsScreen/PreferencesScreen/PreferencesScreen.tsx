@@ -61,7 +61,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   }, [isPermissionLoading, isTrackingEnabled, handleAnalyticsToggle]);
 
   const renderHideDustToggle = useCallback(
-    (): React.ReactNode => (
+    () => (
       <Toggle
         id="hide-dust-toggle"
         checked={isHideDustEnabled}
