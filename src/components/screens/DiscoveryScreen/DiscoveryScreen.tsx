@@ -194,11 +194,23 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const handleCloseSpecificTab = useCallback(
     (tabId: string) => {
       closeTab(tabId);
+
+      // If it was the last tab, we need to add a new one to display the homepage
       if (tabs.length === 1) {
-        handleNewTab();
+        if (showTabOverview) {
+          handleNewTabFromOverview();
+        } else {
+          handleNewTab();
+        }
       }
     },
-    [closeTab, tabs.length, handleNewTab],
+    [
+      closeTab,
+      tabs.length,
+      showTabOverview,
+      handleNewTab,
+      handleNewTabFromOverview,
+    ],
   );
 
   if (!activeTab) {

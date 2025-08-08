@@ -93,7 +93,6 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
                 logoUrl={tab.logoUrl}
                 screenshot={tab.screenshot}
                 isActive={isTabActive(tab.id)}
-                showCloseButton={tabs.length > 1}
                 onClose={() => onCloseTab(tab.id)}
               />
             </TouchableOpacity>
