@@ -4,7 +4,6 @@ import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { usePreferencesStore } from "ducks/preferences";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -20,16 +19,14 @@ type HistoryScreenProps = BottomTabScreenProps<
 const HistoryScreen: React.FC<HistoryScreenProps> = () => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { isHideDustEnabled } = usePreferencesStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
     [network],
   );
-  const { historyData, fetchData, status } = useGetHistoryData({
-    publicKey: account?.publicKey ?? "",
+  const { historyData, fetchData, status } = useGetHistoryData(
+    account?.publicKey ?? "",
     networkDetails,
-    isHideDustEnabled,
-  });
+  );
 
   useEffect(() => {
     const loadHistory = async () => {

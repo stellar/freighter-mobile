@@ -112,11 +112,7 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
 
     const { result } = renderHook(() =>
-      useGetHistoryData({
-        publicKey: mockPublicKey,
-        networkDetails: PUBLIC_NETWORK_DETAILS,
-        isHideDustEnabled: false,
-      }),
+      useGetHistoryData(mockPublicKey, PUBLIC_NETWORK_DETAILS),
     );
 
     await result.current.fetchData({ isRefresh: false });
@@ -211,11 +207,7 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
 
     const { result } = renderHook(() =>
-      useGetHistoryData({
-        publicKey: mockPublicKey,
-        networkDetails: PUBLIC_NETWORK_DETAILS,
-        isHideDustEnabled: true,
-      }),
+      useGetHistoryData(mockPublicKey, PUBLIC_NETWORK_DETAILS),
     );
 
     await result.current.fetchData({ isRefresh: false });

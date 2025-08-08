@@ -2,6 +2,7 @@ import { Horizon } from "@stellar/stellar-sdk";
 import { NetworkDetails } from "config/constants";
 import { BalanceMap, HookStatus } from "config/types";
 import { useBalancesStore } from "ducks/balances";
+import { usePreferencesStore } from "ducks/preferences";
 import {
   getIsDustPayment,
   getIsPayment,
@@ -26,13 +27,6 @@ export type HistorySection = {
 interface HistoryData {
   balances: BalanceMap;
   history: HistorySection[];
-}
-
-interface UseGetHistoryDataParams {
-  publicKey: string;
-  networkDetails: NetworkDetails;
-  isHideDustEnabled: boolean;
-  tokenId?: string;
 }
 
 const createHistorySections = (
@@ -93,13 +87,13 @@ const createHistorySections = (
     [] as HistorySection[],
   );
 
-function useGetHistoryData({
-  publicKey,
-  networkDetails,
-  isHideDustEnabled,
-  tokenId,
-}: UseGetHistoryDataParams) {
+function useGetHistoryData(
+  publicKey: string,
+  networkDetails: NetworkDetails,
+  tokenId?: string,
+) {
   const { fetchAccountBalances, getBalances } = useBalancesStore();
+  const { isHideDustEnabled } = usePreferencesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [historyData, setHistoryData] = useState<HistoryData | null>(null);
   const [rawHistory, setRawHistory] = useState<
