@@ -112,7 +112,11 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
 
     const { result } = renderHook(() =>
-      useGetHistoryData(mockPublicKey, PUBLIC_NETWORK_DETAILS),
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        isHideDustEnabled: false,
+      }),
     );
 
     await result.current.fetchData({ isRefresh: false });
@@ -137,6 +141,99 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
           expect(operation.type).toBe("payment");
         });
       });
+    }
+  });
+
+  it("should filter out dust payments when isHideDustEnabled is true", async () => {
+    const mockHistoryData: TestOperationRecord[] = [
+      {
+        amount: "0.0010000",
+        asset_code: "USDC",
+        asset_issuer:
+          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        asset_type: "native",
+        created_at: "2025-03-21T22:28:46Z",
+        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        id: "164007621169153",
+        paging_token: "164007621169153",
+        source_account:
+          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        to: mockPublicKey,
+        transaction_attr: {},
+        transaction_hash:
+          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
+        transaction_successful: true,
+        type: "payment",
+        type_i: 1,
+      } as TestOperationRecord,
+      {
+        amount: "0.0000001",
+        asset_code: "USDC",
+        asset_issuer:
+          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        asset_type: "native",
+        created_at: "2025-03-21T22:28:46Z",
+        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        id: "164007621169153",
+        paging_token: "164007621169153",
+        source_account:
+          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        to: mockPublicKey,
+        transaction_attr: {},
+        transaction_hash:
+          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
+        transaction_successful: true,
+        type: "payment",
+        type_i: 1,
+      } as TestOperationRecord,
+      {
+        amount: "0.1000001",
+        asset_code: "USDC",
+        asset_issuer:
+          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        asset_type: "native",
+        created_at: "2025-03-21T22:28:46Z",
+        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        id: "164007621169153",
+        paging_token: "164007621169153",
+        source_account:
+          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
+        to: mockPublicKey,
+        transaction_attr: {},
+        transaction_hash:
+          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
+        transaction_successful: true,
+        type: "payment",
+        type_i: 1,
+      } as TestOperationRecord,
+    ];
+
+    mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
+
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        isHideDustEnabled: true,
+      }),
+    );
+
+    await result.current.fetchData({ isRefresh: false });
+
+    await waitFor(() => {
+      expect(result.current.historyData).not.toBeNull();
+    });
+
+    const { historyData } = result.current;
+    expect(historyData).not.toBeNull();
+
+    if (historyData) {
+      const totalOperations = historyData.history.reduce(
+        (total, section) => total + section.operations.length,
+        0,
+      );
+
+      expect(totalOperations).toBe(1);
     }
   });
 });

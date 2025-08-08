@@ -51,11 +51,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     [network],
   );
 
-  const { historyData, fetchData, status } = useGetHistoryData(
-    account?.publicKey ?? "",
+  const { historyData, fetchData, status } = useGetHistoryData({
+    publicKey: account?.publicKey ?? "",
     networkDetails,
     tokenId,
-  );
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({

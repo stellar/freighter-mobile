@@ -9,7 +9,7 @@ import {
   filterOperationsByAsset,
   getIsCreateClaimableBalanceSpam,
 } from "helpers/history";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getAccountHistory } from "services/backend";
 
 export type HistoryItemOperation = Horizon.ServerApi.OperationRecord & {
@@ -28,9 +28,17 @@ interface HistoryData {
   history: HistorySection[];
 }
 
+interface UseGetHistoryDataParams {
+  publicKey: string;
+  networkDetails: NetworkDetails;
+  isHideDustEnabled?: boolean;
+  tokenId?: string;
+}
+
 const createHistorySections = (
   publicKey: string,
   operations: Horizon.ServerApi.OperationRecord[],
+  isHideDustEnabled: boolean,
 ) =>
   operations.reduce(
     (
@@ -43,6 +51,7 @@ const createHistorySections = (
         operation.type ===
           Horizon.HorizonApi.OperationResponseType.createAccount &&
         operation.account !== publicKey;
+
       const isDustPayment = getIsDustPayment(publicKey, operation);
 
       const parsedOperation = {
@@ -52,7 +61,7 @@ const createHistorySections = (
         isCreateExternalAccount,
       };
 
-      if (isDustPayment) {
+      if (isDustPayment && isHideDustEnabled) {
         return sections;
       }
 
@@ -84,15 +93,32 @@ const createHistorySections = (
     [] as HistorySection[],
   );
 
-function useGetHistoryData(
-  publicKey: string,
-  networkDetails: NetworkDetails,
-  tokenId?: string,
-) {
-  // TODO: Add dust filter
+function useGetHistoryData({
+  publicKey,
+  networkDetails,
+  isHideDustEnabled,
+  tokenId,
+}: UseGetHistoryDataParams) {
   const { fetchAccountBalances, getBalances } = useBalancesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [historyData, setHistoryData] = useState<HistoryData | null>(null);
+  const [rawHistory, setRawHistory] = useState<
+    Horizon.ServerApi.OperationRecord[]
+  >([]);
+
+  useEffect(() => {
+    if (rawHistory.length) {
+      const balances = getBalances();
+      setHistoryData({
+        balances,
+        history: createHistorySections(
+          publicKey,
+          rawHistory,
+          !!isHideDustEnabled,
+        ),
+      });
+    }
+  }, [isHideDustEnabled, publicKey, rawHistory, getBalances]);
 
   const fetchData = async ({ isRefresh = false }: { isRefresh?: boolean }) => {
     setStatus(isRefresh ? HookStatus.REFRESHING : HookStatus.LOADING);
@@ -113,9 +139,10 @@ function useGetHistoryData(
 
       const balances = getBalances();
 
+      setRawHistory(history);
       const payload = {
         balances,
-        history: createHistorySections(publicKey, history),
+        history: createHistorySections(publicKey, history, !!isHideDustEnabled),
       };
 
       setHistoryData(payload);
