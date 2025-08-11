@@ -82,6 +82,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
+  const addMemoFlowBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const onConfirmAddMemo = () => {
+    addMemoFlowBottomSheetModalRef.current?.dismiss();
+    reviewBottomSheetModalRef.current?.dismiss();
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
+  };
 
   const navigateToSendScreen = () => {
     try {
@@ -425,12 +432,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
+        useInsetsBottomPadding
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleTransactionConfirmation}
+            onConfirmAddMemo={onConfirmAddMemo}
           />
         }
       />

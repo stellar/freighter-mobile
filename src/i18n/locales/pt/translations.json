@@ -459,7 +459,9 @@
       "none": "Nenhum",
       "fee": "Taxa",
       "xdr": "XDR"
-    }
+    },
+    "memoMissing": "Esta transação requer um memo",
+    "addMemo": "Adicionar memo"
   },
   "addAnotherWalletScreen": {
     "title": "Adicionar outra carteira",

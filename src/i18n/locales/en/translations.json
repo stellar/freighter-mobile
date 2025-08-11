@@ -482,7 +482,15 @@
       "none": "None",
       "fee": "Fee",
       "xdr": "XDR"
-    }
+    },
+    "memoMissing": "This transaction requires a memo",
+    "addMemo": "Add memo"
+  },
+  "addMemoFlowBottomSheet": {
+    "title": "Memo is required",
+    "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
+    "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",
+    "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
     "title": "Add another wallet",

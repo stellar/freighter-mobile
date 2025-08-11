@@ -1,6 +1,8 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
+import AddMemoFlowBottomSheet from "components/screens/SendScreen/components/AddMemoFlowBottomSheet";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -16,12 +18,14 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React from "react";
+import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import React, { useRef } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
   selectedBalance?: PricedBalance;
   tokenAmount: string;
+  onConfirmAddMemo: () => void;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
@@ -31,6 +35,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   tokenAmount,
   onCancel,
   onConfirm,
+  onConfirmAddMemo,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -40,8 +45,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-
+  const addMemoFlowBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+  const { isValidatingMemo, isMemoRequiredMemoMissing } =
+    useValidateTransactionMemo();
+  const shouldShowMemoMissingWarning =
+    isMemoRequiredMemoMissing && !isValidatingMemo;
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -49,6 +58,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         notificationMessage: t("common.copied"),
       });
     }
+  };
+
+  const handleOpenAddMemoExplanationBottomSheet = () => {
+    addMemoFlowBottomSheetModalRef.current?.present();
   };
 
   const renderXdrContent = () => {
@@ -71,6 +84,81 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     }
 
     return t("common.none");
+  };
+
+  const renderMemoTitle = () => {
+    if (isBuilding) {
+      return (
+        <ActivityIndicator size="small" color={themeColors.text.secondary} />
+      );
+    }
+
+    return (
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.File02 size={16} color={themeColors.foreground.primary} />
+        <Text md medium secondary>
+          {t("transactionAmountScreen.details.memo")}
+        </Text>
+        <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+      </View>
+    );
+  };
+
+  const renderMemoMissingWarning = () => {
+    if (!shouldShowMemoMissingWarning) {
+      return null;
+    }
+
+    return (
+      <View className="mt-[16px] rounded-[16px] py-[12px] px-[24px] gap-[12px] bg-red-3">
+        <View className="flex-row items-center gap-[8px] justify-between">
+          <View className="flex-row items-center gap-[8px]">
+            <Icon.AlertSquare size={16} color={themeColors.status.error} />
+            <Text md color={themeColors.red[11]}>
+              {t("transactionAmountScreen.memoMissing")}
+            </Text>
+          </View>
+          <View>
+            <Icon.ChevronRight size={16} color={themeColors.red[11]} />
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderConfirmButton = () => {
+    if (isMemoRequiredMemoMissing) {
+      return (
+        <View className="flex-1">
+          <Button
+            onPress={handleOpenAddMemoExplanationBottomSheet}
+            tertiary
+            xl
+            disabled={isBuilding || !transactionXDR || isValidatingMemo}
+          >
+            {t("transactionAmountScreen.addMemo")}
+          </Button>
+        </View>
+      );
+    }
+    return (
+      <View className="flex-1">
+        <Button
+          onPress={onConfirm}
+          tertiary
+          xl
+          disabled={
+            isBuilding ||
+            !transactionXDR ||
+            !!error ||
+            isMemoRequiredMemoMissing ||
+            isValidatingMemo
+          }
+        >
+          {t("common.confirm")}
+        </Button>
+      </View>
+    );
   };
 
   return (
@@ -115,7 +203,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
         </View>
       </View>
-      <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
+      {renderMemoMissingWarning()}
+      <View
+        className={`rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border ${
+          shouldShowMemoMissingWarning ? "mt-[16px]" : "mt-[24px]"
+        }`}
+      >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-[8px]">
             <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
@@ -131,12 +224,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
         </View>
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.File02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.memo")}
-            </Text>
-          </View>
+          {renderMemoTitle()}
           <Text md medium secondary={!transactionMemo}>
             {transactionMemo || t("common.none")}
           </Text>
@@ -185,17 +273,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             {t("common.cancel")}
           </Button>
         </View>
-        <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            tertiary
-            xl
-            disabled={isBuilding || !transactionXDR || !!error}
-          >
-            {t("common.confirm")}
-          </Button>
-        </View>
+        {renderConfirmButton()}
       </View>
+      <AddMemoFlowBottomSheet
+        modalRef={addMemoFlowBottomSheetModalRef}
+        onAddMemo={onConfirmAddMemo}
+      />
     </View>
   );
 };
