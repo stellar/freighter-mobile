@@ -79,6 +79,10 @@
       },
       "openSettings": "Open Settings",
       "notNow": "Not now"
+    },
+    "hideDust": {
+      "title": "Hide small payments",
+      "description": "Hide payments smaller than 0.1 XLM"
     }
   },
   "shareFeedbackScreen": {
