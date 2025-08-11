@@ -326,8 +326,6 @@
     },
     "actions": {
       "copyAddress": "Copy address",
-      "hideAsset": "Hide asset",
-      "unhideAsset": "Unhide asset",
       "removeAsset": "Remove asset"
     },
     "removeAssetAlert": {

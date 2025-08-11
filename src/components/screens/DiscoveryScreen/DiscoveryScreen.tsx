@@ -197,6 +197,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
       // If it was the last tab, we need to add a new one to display the homepage
       if (tabs.length === 1) {
+        // Use correct transition animation depending if closing from tabs grid or browser
         if (showTabOverview) {
           handleNewTabFromOverview();
         } else {
