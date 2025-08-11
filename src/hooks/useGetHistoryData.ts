@@ -31,6 +31,7 @@ interface HistoryData {
 const createHistorySections = (
   publicKey: string,
   operations: Horizon.ServerApi.OperationRecord[],
+  isHideDustEnabled: boolean,
 ) =>
   operations.reduce(
     (
@@ -43,6 +44,7 @@ const createHistorySections = (
         operation.type ===
           Horizon.HorizonApi.OperationResponseType.createAccount &&
         operation.account !== publicKey;
+
       const isDustPayment = getIsDustPayment(publicKey, operation);
 
       const parsedOperation = {
@@ -52,7 +54,7 @@ const createHistorySections = (
         isCreateExternalAccount,
       };
 
-      if (isDustPayment) {
+      if (isDustPayment && isHideDustEnabled) {
         return sections;
       }
 
@@ -89,12 +91,17 @@ function useGetHistoryData(
   networkDetails: NetworkDetails,
   tokenId?: string,
 ) {
-  // TODO: Add dust filter
   const { fetchAccountBalances, getBalances } = useBalancesStore();
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [historyData, setHistoryData] = useState<HistoryData | null>(null);
 
-  const fetchData = async ({ isRefresh = false }: { isRefresh?: boolean }) => {
+  const fetchData = async ({
+    isRefresh = false,
+    isHideDustEnabled = true,
+  }: {
+    isRefresh?: boolean;
+    isHideDustEnabled?: boolean;
+  }) => {
     setStatus(isRefresh ? HookStatus.REFRESHING : HookStatus.LOADING);
     try {
       await fetchAccountBalances({
@@ -115,7 +122,7 @@ function useGetHistoryData(
 
       const payload = {
         balances,
-        history: createHistorySections(publicKey, history),
+        history: createHistorySections(publicKey, history, isHideDustEnabled),
       };
 
       setHistoryData(payload);

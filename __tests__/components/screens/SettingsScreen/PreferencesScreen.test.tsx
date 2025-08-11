@@ -69,6 +69,17 @@ describe("PreferencesScreen", () => {
       <PreferencesScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
+  it("renders the hide dust toggle correctly", () => {
+    const { getByTestId } = renderPreferencesScreen();
+    expect(getByTestId("hide-dust-item")).toBeTruthy();
+  });
+
+  it("shows hide dust toggle as enabled by default", () => {
+    const { getByTestId } = renderPreferencesScreen();
+    const toggle = getByTestId("toggle-hide-dust-toggle");
+    expect(toggle.props.accessibilityState.checked).toBe(true);
+  });
+
   it("renders the analytics toggle correctly", () => {
     const { getByTestId } = renderPreferencesScreen();
 
