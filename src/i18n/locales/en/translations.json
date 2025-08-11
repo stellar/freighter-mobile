@@ -83,6 +83,10 @@
     "hideDust": {
       "title": "Hide small payments",
       "description": "Hide payments smaller than 0.1 XLM"
+    },
+    "memoValidation": {
+      "title": "Verification with stellar.expert",
+      "description": "Validate addresses that require a memo"
     }
   },
   "shareFeedbackScreen": {
