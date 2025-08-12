@@ -231,7 +231,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       {
         title: transactionMemo
           ? t("transactionAmountScreen.menu.editMemo")
-          : t("transactionAmountScreen.menu.addMemo"),
+          : t("common.addMemo"),
         systemIcon: "text.page",
         onPress: () => {
           navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);

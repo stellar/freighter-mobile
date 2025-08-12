@@ -115,7 +115,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             xl
             disabled={isBuilding || !transactionXDR || isValidatingMemo}
           >
-            {t("transactionAmountScreen.addMemo")}
+            {t("common.addMemo")}
           </Button>
         </View>
       );

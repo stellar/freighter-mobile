@@ -66,7 +66,7 @@ const AddMemoExplanationBottomSheet = ({
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
           <Button onPress={onAddMemo} tertiary xl>
-            {t("transactionAmountScreen.addMemo")}
+            {t("common.addMemo")}
           </Button>
         </View>
       </View>

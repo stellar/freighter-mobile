@@ -95,10 +95,10 @@ const DappRequestBottomSheetContent: React.FC<
           <Button
             onPress={onConfirm}
             tertiary
-            xl
+            lg
             disabled={!xdr || isValidatingMemo}
           >
-            {t("transactionAmountScreen.addMemo")}
+            {t("common.addMemo")}
           </Button>
         </View>
       );

@@ -21,7 +21,8 @@
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
     "review": "Review",
-    "and": " and "
+    "and": " and ",
+    "addMemo": "Add memo"
   },
   "home": {
     "title": "Home",
@@ -477,7 +478,6 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo",
       "editMemo": "Edit memo"
     },
     "details": {
@@ -487,8 +487,7 @@
       "fee": "Fee",
       "xdr": "XDR"
     },
-    "memoMissing": "This transaction requires a memo",
-    "addMemo": "Add memo"
+    "memoMissing": "This transaction requires a memo"
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",
