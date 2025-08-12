@@ -1,5 +1,8 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
@@ -7,6 +10,7 @@ import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequ
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import {
@@ -25,6 +29,7 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
 import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import { useToast } from "providers/ToastProvider";
@@ -73,8 +78,26 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<
+        SendPaymentStackParamList,
+        typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
+      >
+    >();
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
+  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo();
+  const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const onCancelAddMemo = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+  };
+
+  const onConfirmAddMemo = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
+  };
 
   const publicKey = account?.publicKey || "";
 
@@ -479,8 +502,23 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             account={account}
             requestEvent={requestEvent}
             isSigning={isSigning}
-            onConfirm={handleDappRequest}
-            onCancel={handleClearDappRequest}
+            onCancelAddMemo={onCancelAddMemo}
+            isValidatingMemo={isValidatingMemo}
+            onConfirm={isMemoMissing ? onConfirmAddMemo : handleDappRequest}
+            onCancelRequest={handleClearDappRequest}
+            // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
+            isMemoMissing={isMemoMissing}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <AddMemoExplanationBottomSheet
+            modalRef={addMemoExplanationBottomSheetModalRef}
+            onAddMemo={onConfirmAddMemo}
           />
         }
       />

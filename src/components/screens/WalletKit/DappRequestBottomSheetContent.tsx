@@ -1,3 +1,7 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
+import BottomSheet from "components/BottomSheet";
+import { RequiredMemoMissingWarning } from "components/RequiredMemoMissingWarning";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
@@ -11,7 +15,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
-import React from "react";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 /**
@@ -26,9 +30,12 @@ import { TouchableOpacity, View } from "react-native";
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
-  onCancel: () => void;
+  onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;
+  isMemoMissing: boolean;
+  onCancelAddMemo: () => void;
+  isValidatingMemo: boolean;
 };
 
 /**
@@ -41,10 +48,20 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {
+> = ({
+  requestEvent,
+  account,
+  onCancelRequest,
+  onConfirm,
+  isSigning,
+  isMemoMissing,
+  onCancelAddMemo,
+  isValidatingMemo,
+}) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+  const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const dappMetadata = useDappMetadata(requestEvent);
 
@@ -69,6 +86,37 @@ const DappRequestBottomSheetContent: React.FC<
         itemName,
       }),
     });
+  };
+
+  const renderConfirmButton = () => {
+    if (isMemoMissing || isValidatingMemo) {
+      return (
+        <View className="flex-1">
+          <Button
+            onPress={onConfirm}
+            tertiary
+            xl
+            disabled={!xdr || isValidatingMemo}
+          >
+            {t("transactionAmountScreen.addMemo")}
+          </Button>
+        </View>
+      );
+    }
+
+    return (
+      <View className="flex-1">
+        <Button
+          tertiary
+          lg
+          isFullWidth
+          onPress={onConfirm}
+          isLoading={isSigning}
+        >
+          {t("dappRequestBottomSheetContent.confirm")}
+        </Button>
+      </View>
+    );
   };
 
   return (
@@ -120,6 +168,7 @@ const DappRequestBottomSheetContent: React.FC<
           </TouchableOpacity>
         </View>
       </View>
+      {isMemoMissing && <RequiredMemoMissingWarning />}
       <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
         <View className="flex-row items-center">
           <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
@@ -152,24 +201,24 @@ const DappRequestBottomSheetContent: React.FC<
             secondary
             lg
             isFullWidth
-            onPress={onCancel}
+            onPress={onCancelRequest}
             disabled={isSigning}
           >
             {t("dappRequestBottomSheetContent.cancel")}
           </Button>
         </View>
-        <View className="flex-1">
-          <Button
-            tertiary
-            lg
-            isFullWidth
-            onPress={onConfirm}
-            isLoading={isSigning}
-          >
-            {t("dappRequestBottomSheetContent.confirm")}
-          </Button>
-        </View>
+        {renderConfirmButton()}
       </View>
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <AddMemoExplanationBottomSheet
+            modalRef={addMemoExplanationBottomSheetModalRef}
+            onAddMemo={onConfirm}
+          />
+        }
+      />
     </View>
   );
 };

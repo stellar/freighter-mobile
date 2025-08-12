@@ -27,8 +27,7 @@ export const useValidateTransactionMemo = () => {
   );
 
   const shouldValidateMemo = isMemoValidationEnabled && isMainnet(network);
-  const [isMemoRequiredMemoMissing, setIsMemoRequiredMemoMissing] =
-    useState(shouldValidateMemo);
+  const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
 
   const checkMemoRequiredFromCache = useCallback(
     async (txXDR: string, networkType: string): Promise<boolean> => {
@@ -73,7 +72,7 @@ export const useValidateTransactionMemo = () => {
 
   useEffect(() => {
     if (transactionMemo) {
-      setIsMemoRequiredMemoMissing(false);
+      setIsMemoMissing(false);
       return;
     }
 
@@ -96,7 +95,7 @@ export const useValidateTransactionMemo = () => {
         );
 
         if (isMemoRequiredFromCache) {
-          setIsMemoRequiredMemoMissing(true);
+          setIsMemoMissing(true);
           return;
         }
 
@@ -105,9 +104,9 @@ export const useValidateTransactionMemo = () => {
           networkDetails.networkUrl,
         );
 
-        setIsMemoRequiredMemoMissing(isMemoRequiredFromSDK);
+        setIsMemoMissing(isMemoRequiredFromSDK);
       } catch (error) {
-        setIsMemoRequiredMemoMissing(true);
+        setIsMemoMissing(true);
       } finally {
         setIsValidatingMemo(false);
       }
@@ -124,5 +123,5 @@ export const useValidateTransactionMemo = () => {
     checkMemoRequiredFromStellarSDK,
   ]);
 
-  return { isMemoRequiredMemoMissing, isValidatingMemo };
+  return { isMemoMissing, isValidatingMemo };
 };

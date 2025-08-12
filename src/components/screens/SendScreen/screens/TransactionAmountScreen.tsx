@@ -2,12 +2,12 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
-  AddMemoExplanationBottomSheet,
   ContactRow,
   SendReviewBottomSheet,
 } from "components/screens/SendScreen/components";
@@ -87,8 +87,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isBuilding,
   } = useTransactionBuilderStore();
 
-  const { isValidatingMemo, isMemoRequiredMemoMissing } =
-    useValidateTransactionMemo();
+  const { isValidatingMemo, isMemoMissing } = useValidateTransactionMemo();
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -133,7 +132,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
-  const isRequiredMemoMissing = isMemoRequiredMemoMissing && !isValidatingMemo;
+  const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
   const {
     tokenAmount,
@@ -490,6 +489,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             }
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
+            isValidatingMemo={isValidatingMemo}
           />
         }
       />

@@ -1,6 +1,7 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
+import { RequiredMemoMissingWarning } from "components/RequiredMemoMissingWarning";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -16,7 +17,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import React from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
@@ -26,6 +26,7 @@ type SendReviewBottomSheetProps = {
   onCancel?: () => void;
   onConfirm?: () => void;
   isRequiredMemoMissing?: boolean;
+  isValidatingMemo?: boolean;
 };
 
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
@@ -34,6 +35,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   onCancel,
   onConfirm,
   isRequiredMemoMissing,
+  isValidatingMemo,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -44,8 +46,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
-  const { isValidatingMemo, isMemoRequiredMemoMissing } =
-    useValidateTransactionMemo();
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -102,25 +102,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       return null;
     }
 
-    return (
-      <View className="mt-[16px] rounded-[16px] py-[12px] px-[24px] gap-[12px] bg-red-3">
-        <View className="flex-row items-center gap-[8px] justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.AlertSquare size={16} color={themeColors.status.error} />
-            <Text md color={themeColors.red[11]}>
-              {t("transactionAmountScreen.memoMissing")}
-            </Text>
-          </View>
-          <View>
-            <Icon.ChevronRight size={16} color={themeColors.red[11]} />
-          </View>
-        </View>
-      </View>
-    );
+    return <RequiredMemoMissingWarning />;
   };
 
   const renderConfirmButton = () => {
-    if (isMemoRequiredMemoMissing || isValidatingMemo) {
+    if (isRequiredMemoMissing || isValidatingMemo) {
       return (
         <View className="flex-1">
           <Button
