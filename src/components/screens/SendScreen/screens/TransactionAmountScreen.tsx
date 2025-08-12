@@ -133,6 +133,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === selectedTokenId,
   );
 
+  const isRequiredMemoMissing = isMemoRequiredMemoMissing && !isValidatingMemo;
+
   const {
     tokenAmount,
     fiatAmount,
@@ -482,10 +484,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             tokenAmount={tokenAmount}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={
-              isMemoRequiredMemoMissing && !isValidatingMemo
+              isRequiredMemoMissing
                 ? onOpenAddMemoExplanationBottomSheet
                 : handleTransactionConfirmation
             }
+            // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
+            isRequiredMemoMissing={isRequiredMemoMissing}
           />
         }
       />

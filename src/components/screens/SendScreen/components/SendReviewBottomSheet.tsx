@@ -25,6 +25,7 @@ type SendReviewBottomSheetProps = {
   tokenAmount: string;
   onCancel?: () => void;
   onConfirm?: () => void;
+  isRequiredMemoMissing?: boolean;
 };
 
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
@@ -32,6 +33,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   tokenAmount,
   onCancel,
   onConfirm,
+  isRequiredMemoMissing,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -44,8 +46,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
   const { isValidatingMemo, isMemoRequiredMemoMissing } =
     useValidateTransactionMemo();
-  const shouldShowMemoMissingWarning =
-    isMemoRequiredMemoMissing && !isValidatingMemo;
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -90,7 +90,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         <Text md medium secondary>
           {t("transactionAmountScreen.details.memo")}
         </Text>
-        {shouldShowMemoMissingWarning && (
+        {isRequiredMemoMissing && (
           <Icon.AlertTriangle size={16} color={themeColors.status.error} />
         )}
       </View>
@@ -98,7 +98,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   };
 
   const renderMemoMissingWarning = () => {
-    if (!shouldShowMemoMissingWarning) {
+    if (!isRequiredMemoMissing) {
       return null;
     }
 
@@ -120,7 +120,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   };
 
   const renderConfirmButton = () => {
-    if (isMemoRequiredMemoMissing) {
+    if (isMemoRequiredMemoMissing || isValidatingMemo) {
       return (
         <View className="flex-1">
           <Button
@@ -140,13 +140,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           onPress={onConfirm}
           tertiary
           xl
-          disabled={
-            isBuilding ||
-            !transactionXDR ||
-            !!error ||
-            isMemoRequiredMemoMissing ||
-            isValidatingMemo
-          }
+          disabled={isBuilding || !transactionXDR || !!error}
         >
           {t("common.confirm")}
         </Button>
@@ -199,7 +193,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       {renderMemoMissingWarning()}
       <View
         className={`rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border ${
-          shouldShowMemoMissingWarning ? "mt-[16px]" : "mt-[24px]"
+          isRequiredMemoMissing ? "mt-[16px]" : "mt-[24px]"
         }`}
       >
         <View className="flex-row items-center justify-between">
