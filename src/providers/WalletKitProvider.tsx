@@ -195,7 +195,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
-
+      saveMemo("");
       clearEvent();
     }, 200);
   };
@@ -451,7 +451,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [activeSessions, event.type, authStatus, transactionMemo]);
 
   const onCancelAddMemo = () => {
+    console.log("onCancelAddMemo");
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    dappRequestBottomSheetModalRef.current?.present();
   };
 
   const onOpenAddMemoExplanationBottomSheet = () => {
@@ -459,6 +461,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   const onConfirmAddMemo = () => {
+    dappRequestBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   };
 

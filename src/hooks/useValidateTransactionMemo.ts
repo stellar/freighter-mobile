@@ -26,7 +26,10 @@ export const useValidateTransactionMemo = () => {
     [network],
   );
 
-  const shouldValidateMemo = isMemoValidationEnabled && isMainnet(network);
+  const shouldValidateMemo = useMemo(
+    () => isMemoValidationEnabled && isMainnet(network),
+    [isMemoValidationEnabled, network],
+  );
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
 
   const checkMemoRequiredFromCache = useCallback(
@@ -69,6 +72,12 @@ export const useValidateTransactionMemo = () => {
     },
     [network],
   );
+
+  useEffect(() => {
+    if (!transactionMemo) {
+      setIsMemoMissing(shouldValidateMemo);
+    }
+  }, [transactionMemo, shouldValidateMemo]);
 
   useEffect(() => {
     if (transactionMemo) {
