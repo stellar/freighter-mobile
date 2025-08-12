@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { TransactionBuilder } from "@stellar/stellar-sdk";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
@@ -23,7 +24,10 @@ import {
   rejectSessionProposal,
 } from "helpers/walletKitUtil";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
+import useTransactionBalanceListItems from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
+import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
 import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
@@ -41,6 +45,7 @@ import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessSiteSecurity,
+  assessTransactionSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
 
@@ -86,6 +91,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { showToast } = useToast();
   const { t } = useAppTranslation();
   const { scanSite } = useBlockaidSite();
+  const { scanTransaction } = useBlockaidTransaction();
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
@@ -96,6 +102,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     useState<WalletKitSessionRequest | null>(null);
   const [siteScanResult, setSiteScanResult] = useState<
     Blockaid.SiteScanResponse | undefined
+  >(undefined);
+  const [transactionScanResult, setTransactionScanResult] = useState<
+    Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -142,10 +151,23 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   );
 
   /**
+   * Transaction security assessment based on scan result
+   * @type {SecurityAssessment}
+   */
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(transactionScanResult),
+    [transactionScanResult],
+  );
+
+  const transactionBalanceListItems = useTransactionBalanceListItems(
+    transactionScanResult,
+  );
+
+  /**
    * Security warnings extracted from scan result
    * @type {SecurityWarning[]}
    */
-  const securityWarnings = useMemo(() => {
+  const siteSecurityWarnings = useMemo(() => {
     if (
       siteSecurityAssessment.isMalicious ||
       siteSecurityAssessment.isSuspicious
@@ -168,7 +190,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Security severity level for the bottom sheet
    * @type {SecurityLevel | undefined}
    */
-  const securitySeverity = useMemo(() => {
+  const siteSecuritySeverity = useMemo(() => {
     if (siteSecurityAssessment.isMalicious) return SecurityLevel.MALICIOUS;
     if (siteSecurityAssessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
 
@@ -362,9 +384,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       setProposalEvent(sessionProposal);
 
-      const dappUrl = sessionProposal.params.proposer.metadata.url;
+      const dappMetadata = getDappMetadataFromEvent(
+        sessionProposal,
+        activeSessions,
+      );
+      const dappDomain = dappMetadata?.url as string;
 
-      scanSite(dappUrl)
+      scanSite(dappDomain)
         .then((scanResult) => {
           setSiteScanResult(scanResult);
         })
@@ -437,7 +463,33 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       handleClearDappConnection();
       setRequestEvent(sessionRequest);
-      dappRequestBottomSheetModalRef.current?.present();
+
+      const dappMetadata = getDappMetadataFromEvent(
+        sessionRequest,
+        activeSessions,
+      );
+      const dappDomain = dappMetadata?.url as string;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const dappXDR = sessionRequest.params.request.params.xdr as string;
+
+      // const dappDomain = "https://blend.capital/";
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      // const dappXDR = "AAAAAgAAAAAFFiR6jieroloALNh43DoDye2makRSXE5C9NvmWTksNgABhqADcRjWAAAADQAAAAEAAAAAAAAAAAAAAABowb7eAAAAAQAAAAR0ZXN0AAAAAQAAAAAAAAABAAAAAG8AA/fcwyuD4aOECPqaDj9YZylgHFWI0/EXuK9av2pWAAAAAAAAAAAAD0JAAAAAAAAAAAA=";
+      // const dappXDR = "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";
+
+      scanTransaction(dappXDR, dappDomain)
+        .then((scanResult) => {
+          setTransactionScanResult(scanResult);
+          const transaction = TransactionBuilder.fromXDR(dappXDR, networkDetails.networkPassphrase);
+          logger.debug("transaction", JSON.stringify(transaction));
+        })
+        .catch(() => {
+          setTransactionScanResult(undefined);
+        })
+        .finally(() => {
+          // Show the transaction bottom sheet after scanning (regardless of result)
+          dappRequestBottomSheetModalRef.current?.present();
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessions, event.type, authStatus]);
@@ -481,6 +533,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isSigning={isSigning}
             onConfirm={handleDappRequest}
             onCancel={handleClearDappRequest}
+            isMalicious={transactionSecurityAssessment.isMalicious}
+            isSuspicious={transactionSecurityAssessment.isSuspicious}
+            transactionBalanceListItems={transactionBalanceListItems}
           />
         }
       />
@@ -491,11 +546,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
-            warnings={securityWarnings}
+            warnings={siteSecurityWarnings}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={securitySeverity}
+            severity={siteSecuritySeverity}
             proceedAnywayText={t(
               "dappConnectionBottomSheetContent.connectAnyway",
             )}

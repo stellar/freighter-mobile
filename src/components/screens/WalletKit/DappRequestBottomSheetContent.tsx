@@ -1,3 +1,4 @@
+import { List, ListItemProps } from "components/List";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
@@ -11,7 +12,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
-import React from "react";
+import React, { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 /**
@@ -22,6 +23,9 @@ import { TouchableOpacity, View } from "react-native";
  * @property {() => void} onCancel - Function to handle cancellation
  * @property {() => void} onConfirm - Function to handle confirmation
  * @property {boolean} isSigning - Whether a transaction is currently being signed
+ * @property {boolean} isMalicious - Whether the transaction is malicious
+ * @property {boolean} isSuspicious - Whether the transaction is suspicious
+ * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
  */
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
@@ -29,6 +33,9 @@ type DappRequestBottomSheetContentProps = {
   onCancel: () => void;
   onConfirm: () => void;
   isSigning: boolean;
+  isMalicious?: boolean;
+  isSuspicious?: boolean;
+  transactionBalanceListItems?: ListItemProps[];
 };
 
 /**
@@ -41,7 +48,7 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {
+> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -50,6 +57,31 @@ const DappRequestBottomSheetContent: React.FC<
 
   const sessionRequest = requestEvent?.params;
 
+  const accountDetailList = useMemo(() => 
+    [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("wallet"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+    ], 
+  [account, themeColors, t]);
+
   if (!dappMetadata || !account || !sessionRequest) {
     return null;
   }
@@ -57,7 +89,7 @@ const DappRequestBottomSheetContent: React.FC<
   const { request } = sessionRequest;
   const { params } = request;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const xdr = params?.xdr as string;
+  const xdr = params?.fee as string;
 
   const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
   const dAppName = dappMetadata.name;
@@ -72,27 +104,24 @@ const DappRequestBottomSheetContent: React.FC<
   };
 
   return (
-    <View className="flex-1 justify-center items-center mt-2">
-      <App size="lg" appName={dAppName} favicon={dAppFavicon} />
-      <View className="mt-4" />
-      <Text lg primary medium style={{ textAlign: "center" }}>
-        {dAppName}
-      </Text>
-      <View className="mt-1" />
-      {dAppDomain && (
-        <Text sm secondary>
-          {dAppDomain}
-        </Text>
-      )}
-      <View className="mt-2" />
-      <Badge
-        variant="secondary"
-        size="md"
-        icon={<Icon.Link01 size={16} />}
-        iconPosition={IconPosition.LEFT}
-      >
-        {t("dappRequestBottomSheetContent.transactionRequest")}
-      </Badge>
+    <View className="flex-1 justify-center mt-2 gap-[16px]">
+      <View className="flex-row items-center gap-[12px] w-full">
+        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
+        <View className="ml-2">
+          <Text md primary>
+            {t("dappRequestBottomSheetContent.confirmTransaction")}
+          </Text>
+          {dAppDomain && (
+            <Text sm secondary>
+              {dAppDomain}
+            </Text>
+          )}
+        </View>
+      </View>
+      <View className="gap-[12px]">
+        <List variant="secondary" items={transactionBalanceListItems || []} />
+        <List variant="secondary" items={accountDetailList} />
+      </View>
       <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
         <View className="flex-row items-center justify-between w-full">
           <View className="flex-row items-center flex-1">

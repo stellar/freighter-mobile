@@ -4,10 +4,11 @@ import { THEME } from "config/theme";
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
 
-interface ListItemProps {
+export interface ListItemProps {
   icon?: React.ReactNode;
   key?: string;
   title: string;
+  titleComponent?: React.ReactNode;
   titleColor?: string;
   description?: string;
   descriptionColor?: string;
@@ -69,12 +70,16 @@ export const List: React.FC<ListProps> = ({
             <View className={item.description ? "mt-1" : ""}>{item.icon}</View>
           )}
           <View className="flex-1">
-            <Text
-              {...getTextStyles(variant)}
-              color={item.titleColor || THEME.colors.text.primary}
-            >
-              {item.title}
-            </Text>
+            {item.titleComponent ? (
+              item.titleComponent
+            ) : (
+              <Text
+                {...getTextStyles(variant)}
+                color={item.titleColor || THEME.colors.text.primary}
+              >
+                {item.title}
+              </Text>
+            )}
             {item.description && (
               <View className="mt-4">
                 <Text

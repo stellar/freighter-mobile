@@ -1,4 +1,6 @@
 import Blockaid from "@blockaid/client";
+import BigNumber from "bignumber.js";
+import { logger } from "config/logger";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
@@ -6,6 +8,7 @@ import {
   SECURITY_LEVEL_MAP,
   SECURITY_MESSAGE_KEYS,
 } from "services/blockaid/constants";
+// Keep this helper UI-agnostic – no UI imports/hooks here
 
 /**
  * Security warning interface for UI display
@@ -137,6 +140,8 @@ export const assessTransactionSecurity = (
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
 
+  logger.debug("assessTransactionSecurity", JSON.stringify(scanResult));
+
   const { simulation, validation } = scanResult;
 
   // Check for simulation errors = suspicious
@@ -265,4 +270,82 @@ export const extractSecurityWarnings = (
   }
 
   return warnings;
+};
+
+// =============================================================================
+// Transaction balance changes (domain model)
+// =============================================================================
+
+export interface TransactionBalanceChange {
+  assetCode: string;
+  assetIssuer?: string;
+  isNative: boolean;
+  /** Raw amount from Blockaid (integer scaled by 1e7), not converted/formatted */
+  amount: BigNumber;
+  isCredit: boolean;
+}
+
+type AccountAssetDiff = {
+  asset: { type: "NATIVE" | "ASSET"; code: string; issuer?: string };
+  in?: { raw_value?: number | string | null } | null;
+  out?: { raw_value?: number | string | null } | null;
+};
+
+/**
+ * Extracts per-asset balance changes from a Blockaid transaction simulation.
+ * - Returns null when simulation is unavailable or failed ("unable to simulate")
+ * - Returns [] when there are no balance changes
+ * - Otherwise returns a list of signed deltas per asset
+ */
+export const getTransactionBalanceChanges = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+): TransactionBalanceChange[] | null => {
+  // Missing result or simulation error -> treat as "unable to simulate"
+  if (!scanResult || !scanResult.simulation || "error" in scanResult.simulation) {
+    return null;
+  }
+
+  // account_assets_diffs holds per-asset in/out raw deltas
+  type SimulationSummary = {
+    account_summary?: { account_assets_diffs?: AccountAssetDiff[] };
+  };
+
+  const sim = scanResult.simulation as unknown as SimulationSummary;
+  const diffs = sim.account_summary?.account_assets_diffs;
+
+  if (!Array.isArray(diffs) || diffs.length === 0) {
+    return [];
+  }
+
+  const changes: TransactionBalanceChange[] = diffs
+    .map((diff) => {
+      // In and out are mutually exclusive; presence determines sign
+      const inRaw = diff.in?.raw_value;
+      const outRaw = diff.out?.raw_value;
+
+      const hasIn = inRaw !== null && inRaw !== undefined;
+      const hasOut = outRaw !== null && outRaw !== undefined;
+
+      if (!hasIn && !hasOut) {
+        return undefined;
+      }
+
+      const rawValue = hasIn ? inRaw : outRaw;
+      const amount = new BigNumber(rawValue as number | string).dividedBy(1e7);
+      const isCredit = hasIn;
+      const isNative = diff.asset.type === "NATIVE";
+      const assetCode = diff.asset.code;
+      const assetIssuer = isNative ? undefined : diff.asset.issuer;
+
+      return {
+        assetCode,
+        assetIssuer,
+        isNative,
+        amount,
+        isCredit,
+      } as TransactionBalanceChange;
+    })
+    .filter(Boolean) as TransactionBalanceChange[];
+
+  return changes;
 };

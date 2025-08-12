@@ -574,6 +574,7 @@
   },
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Transaction Request",
+    "confirmTransaction": "Confirm transaction",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "xdrItem": "XDR",
@@ -739,7 +740,9 @@
       "transaction": {
         "simulationFailed": "Transaction simulation failed",
         "malicious": "This transaction was flagged as malicious",
-        "warning": "This transaction was flagged as warning"
+        "warning": "This transaction was flagged as warning",
+        "unableToSimulate": "Unable to simulate transaction",
+        "noBalanceChanges": "No balance changes detected"
       }
     }
   }
