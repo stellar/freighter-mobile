@@ -78,7 +78,7 @@ export enum NETWORK_URLS {
 
 // Keys should match NETWORKS keys
 export enum SOROBAN_RPC_URLS {
-  PUBLIC = "http://soroban-rpc-pubnet-prd.soroban-rpc-pubnet-prd.svc.cluster.local:8000",
+  PUBLIC = "http://stellar-rpc-pubnet-prd:8000",
   TESTNET = "https://soroban-testnet.stellar.org/",
   FUTURENET = "https://rpc-futurenet.stellar.org/",
 }

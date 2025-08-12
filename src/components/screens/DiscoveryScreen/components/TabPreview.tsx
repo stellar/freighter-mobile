@@ -19,21 +19,12 @@ interface TabPreviewProps {
   logoUrl?: string;
   screenshot?: string;
   isActive?: boolean;
-  showCloseButton?: boolean;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 // Memoize to avoid unnecessary expensive re-renders
 const TabPreview: React.FC<TabPreviewProps> = React.memo(
-  ({
-    title,
-    url,
-    logoUrl,
-    screenshot,
-    isActive = false,
-    showCloseButton = false,
-    onClose,
-  }) => {
+  ({ title, url, logoUrl, screenshot, isActive = false, onClose }) => {
     const { themeColors } = useColors();
 
     const domain = useMemo(() => getDomainFromUrl(url), [url]);
@@ -91,17 +82,15 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
         {renderPreviewContent}
 
         {/* Close button */}
-        {showCloseButton && (
-          <TouchableOpacity
-            onPress={onClose}
-            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
-          >
-            <Icon.X
-              size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
-              color={themeColors.base[1]}
-            />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={onClose}
+          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
+        >
+          <Icon.X
+            size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
+            color={themeColors.base[1]}
+          />
+        </TouchableOpacity>
       </View>
     );
   },
