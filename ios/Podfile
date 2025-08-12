@@ -7,6 +7,9 @@ def node_require(script)
     )", __dir__]).strip
 end
 
+# Disable location services in VisionCamera since we don't use GPS location tagging
+$VCEnableLocation = false
+
 node_require('react-native/scripts/react_native_pods.rb')
 node_require('react-native-permissions/scripts/setup.rb')
 

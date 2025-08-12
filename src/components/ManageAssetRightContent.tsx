@@ -4,7 +4,6 @@ import Modal from "components/Modal";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { logger } from "config/logger";
 import { formatAssetIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAssetActions } from "hooks/useAssetActions";
@@ -15,12 +14,10 @@ import { Platform, View } from "react-native";
 const icons = Platform.select({
   ios: {
     copyAddress: "doc.on.doc",
-    hideAsset: "eye.slash",
     removeAsset: "minus.circle",
   },
   android: {
     copyAddress: "baseline_format_paint",
-    hideAsset: "baseline_delete",
     removeAsset: "outline_circle",
   },
 });
@@ -66,17 +63,6 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               asset.id,
               "manageAssetRightContent.tokenAddressCopied",
             ),
-        },
-        {
-          title: t("manageAssetRightContent.hideAsset"),
-          systemIcon: icons!.hideAsset,
-          onPress: () =>
-            logger.debug(
-              "manageAssetRightContent",
-              "hideAsset Not implemented",
-            ),
-          // TODO: Implement hide asset
-          disabled: true,
         },
       ],
     },

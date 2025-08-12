@@ -307,8 +307,6 @@
     },
     "actions": {
       "copyAddress": "Copiar endereço",
-      "hideAsset": "Ocultar ativo",
-      "unhideAsset": "Mostrar ativo",
       "removeAsset": "Remover ativo"
     },
     "removeAssetAlert": {
