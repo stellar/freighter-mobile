@@ -578,7 +578,8 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "xdrItem": "XDR",
-    "itemCopied": "{{itemName}} copied to clipboard!"
+    "itemCopied": "{{itemName}} copied to clipboard!",
+    "transactionDetails": "Transaction details"
   },
   "qrScanner": {
     "cameraNotAvailable": "Camera not permitted\nor not available"
@@ -735,7 +736,8 @@
       },
       "site": {
         "malicious": "This site was flagged as malicious",
-        "suspicious": "Unable to scan site for malicious behavior"
+        "suspicious": "Unable to scan site for malicious behavior",
+        "confirmTrust": "Only confirm if you trust this site"
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",

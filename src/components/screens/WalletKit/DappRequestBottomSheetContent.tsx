@@ -1,13 +1,15 @@
 import { List, ListItemProps } from "components/List";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
-import { Badge } from "components/sds/Badge";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
+import { formatAssetAmount, stroopToXlm } from "helpers/formatAmount";
+import { useTransactionDetailsParser } from "hooks/blockaid/useTransactionDetailsParser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -52,17 +54,11 @@ const DappRequestBottomSheetContent: React.FC<
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
-
-  const dappMetadata = useDappMetadata(requestEvent);
-
-  const sessionRequest = requestEvent?.params;
-
+  const { transactionDetails } = useTransactionDetailsParser({ requestEvent });
   const accountDetailList = useMemo(() => 
     [
       {
-        icon: (
-          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
-        ),
+        icon: <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />,
         title: t("wallet"),
         trailingContent: (
           <View className="flex-row items-center gap-2">
@@ -79,8 +75,24 @@ const DappRequestBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
+      {
+        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
+        title: t("transactionAmountScreen.details.fee"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Text md primary>
+              {formatAssetAmount(String(transactionDetails?.fee) ?? "0", NATIVE_TOKEN_CODE)}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      }
     ], 
   [account, themeColors, t]);
+
+  const dappMetadata = useDappMetadata(requestEvent);
+
+  const sessionRequest = requestEvent?.params;
 
   if (!dappMetadata || !account || !sessionRequest) {
     return null;
@@ -89,7 +101,7 @@ const DappRequestBottomSheetContent: React.FC<
   const { request } = sessionRequest;
   const { params } = request;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const xdr = params?.fee as string;
+  const xdr = params?.xdr as string;
 
   const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
   const dAppName = dappMetadata.name;
@@ -121,65 +133,21 @@ const DappRequestBottomSheetContent: React.FC<
       <View className="gap-[12px]">
         <List variant="secondary" items={transactionBalanceListItems || []} />
         <List variant="secondary" items={accountDetailList} />
-      </View>
-      <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
-        <View className="flex-row items-center justify-between w-full">
-          <View className="flex-row items-center flex-1">
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary style={{ marginLeft: pxValue(8) }}>
-              {t("dappRequestBottomSheetContent.xdrItem")}
-            </Text>
-          </View>
-          <TouchableOpacity
-            className="flex-row items-center flex-1 ml-2"
-            onPress={() =>
-              handleCopy(xdr, t("dappRequestBottomSheetContent.xdrItem"))
-            }
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text
-              md
-              medium
-              primary
-              style={{ marginLeft: pxValue(8), flex: 1 }}
-              numberOfLines={1}
-            >
-              {xdr}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
-        <View className="flex-row items-center">
-          <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginLeft: pxValue(8) }}
-          >
-            {t("wallet")}
+        <TouchableOpacity className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px]" onPress={() => {}}>
+          <Icon.List size={16} themeColor="lilac" />
+          <Text color={themeColors.lilac[11]}>
+            {t("dappRequestBottomSheetContent.transactionDetails")}
           </Text>
-        </View>
-        <View className="flex-row items-center">
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginRight: pxValue(8) }}
-          >
-            {account?.accountName}
-          </Text>
-          <Avatar
-            size="sm"
-            hasBorder={false}
-            publicAddress={account?.publicKey ?? ""}
-          />
-        </View>
+        </TouchableOpacity>
       </View>
-      <View className="flex-row justify-between w-full mt-6 gap-3">
+      <View className="items-center">
+        <Text sm secondary>{t("blockaid.security.site.confirmTrust")}</Text>
+      </View>
+      <View className="flex-row justify-between w-full gap-3">
         <View className="flex-1">
           <Button
             secondary
-            lg
+            xl
             isFullWidth
             onPress={onCancel}
             disabled={isSigning}
@@ -190,7 +158,7 @@ const DappRequestBottomSheetContent: React.FC<
         <View className="flex-1">
           <Button
             tertiary
-            lg
+            xl
             isFullWidth
             onPress={onConfirm}
             isLoading={isSigning}
