@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
@@ -6,6 +7,7 @@ import BottomSheet from "components/BottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
+  AddMemoExplanationBottomSheet,
   ContactRow,
   SendReviewBottomSheet,
 } from "components/screens/SendScreen/components";
@@ -33,7 +35,14 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -78,16 +87,32 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isBuilding,
   } = useTransactionBuilderStore();
 
+  const { isValidatingMemo, isMemoRequiredMemoMissing } =
+    useValidateTransactionMemo();
+
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
-  const addMemoFlowBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [
+    hasOpenedAddMemoExplanationBottomSheet,
+    setHasOpenedAddMemoExplanationBottomSheet,
+  ] = useState(false);
 
   const onConfirmAddMemo = () => {
-    addMemoFlowBottomSheetModalRef.current?.dismiss();
     reviewBottomSheetModalRef.current?.dismiss();
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    setHasOpenedAddMemoExplanationBottomSheet(true);
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
+  };
+
+  const onCancelAddMemo = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+  };
+
+  const onOpenAddMemoExplanationBottomSheet = () => {
+    addMemoExplanationBottomSheetModalRef.current?.present();
   };
 
   const navigateToSendScreen = () => {
@@ -206,7 +231,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   useRightHeaderMenu({ actions: menuActions });
 
-  const handleOpenReview = async () => {
+  const handleOpenReview = useCallback(async () => {
     try {
       await buildTransaction({
         tokenAmount,
@@ -227,7 +252,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         error instanceof Error ? error.message : String(error),
       );
     }
-  };
+  }, [
+    tokenAmount,
+    selectedBalance,
+    recipientAddress,
+    transactionMemo,
+    transactionFee,
+    transactionTimeout,
+    network,
+    publicKey,
+    buildTransaction,
+  ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasOpenedAddMemoExplanationBottomSheet) {
+        handleOpenReview();
+        setHasOpenedAddMemoExplanationBottomSheet(false);
+      }
+    }, [hasOpenedAddMemoExplanationBottomSheet, handleOpenReview]),
+  );
 
   const handleTransactionConfirmation = () => {
     setIsProcessing(true);
@@ -432,14 +476,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
-        useInsetsBottomPadding
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
-            onConfirm={handleTransactionConfirmation}
-            onConfirmAddMemo={onConfirmAddMemo}
+            onConfirm={
+              isMemoRequiredMemoMissing && !isValidatingMemo
+                ? onOpenAddMemoExplanationBottomSheet
+                : handleTransactionConfirmation
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <AddMemoExplanationBottomSheet
+            modalRef={addMemoExplanationBottomSheetModalRef}
+            onAddMemo={onConfirmAddMemo}
           />
         }
       />

@@ -1,5 +1,4 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import BottomSheet from "components/BottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -8,27 +7,24 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
-type AddMemoFlowBottomSheetProps = {
+type AddMemoExplanationBottomSheetProps = {
   modalRef: React.RefObject<BottomSheetModal | null>;
   onAddMemo: () => void;
 };
 
-const AddMemoFlowBottomSheet = ({
+const AddMemoExplanationBottomSheet = ({
   modalRef,
   onAddMemo,
-}: AddMemoFlowBottomSheetProps) => {
+}: AddMemoExplanationBottomSheetProps) => {
   const { themeColors } = useColors();
 
-  const onCancel = () => {
-    modalRef.current?.dismiss();
-  };
   const onClose = () => {
     modalRef.current?.dismiss();
   };
 
   const { t } = useTranslation();
 
-  const renderBottomSheet = () => (
+  return (
     <View className="flex-1">
       <View className="relative flex-row items-center mb-8">
         <View className="bg-red-3 p-2 rounded-[8px]">
@@ -49,22 +45,22 @@ const AddMemoFlowBottomSheet = ({
       </View>
       <View>
         <Text xl medium primary textAlign="left">
-          {t("addMemoFlowBottomSheet.title")}
+          {t("addMemoExplanationBottomSheet.title")}
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
         <Text md medium secondary textAlign="left">
-          {t("addMemoFlowBottomSheet.description")}
+          {t("addMemoExplanationBottomSheet.description")}
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
         <Text md medium secondary textAlign="left">
-          {t("addMemoFlowBottomSheet.disabledWarning")}
+          {t("addMemoExplanationBottomSheet.disabledWarning")}
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
         <Text md medium secondary textAlign="left">
-          {t("addMemoFlowBottomSheet.checkMemoRequirements")}
+          {t("addMemoExplanationBottomSheet.checkMemoRequirements")}
         </Text>
       </View>
       <View className="mt-[24px] gap-[12px] flex-row">
@@ -76,15 +72,6 @@ const AddMemoFlowBottomSheet = ({
       </View>
     </View>
   );
-
-  return (
-    <BottomSheet
-      modalRef={modalRef}
-      handleCloseModal={onCancel}
-      useInsetsBottomPadding
-      customContent={renderBottomSheet()}
-    />
-  );
 };
 
-export default AddMemoFlowBottomSheet;
+export default AddMemoExplanationBottomSheet;

@@ -1,8 +1,6 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
-import AddMemoFlowBottomSheet from "components/screens/SendScreen/components/AddMemoFlowBottomSheet";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -19,13 +17,12 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
-import React, { useRef } from "react";
+import React from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
   selectedBalance?: PricedBalance;
   tokenAmount: string;
-  onConfirmAddMemo: () => void;
   onCancel?: () => void;
   onConfirm?: () => void;
 };
@@ -35,7 +32,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   tokenAmount,
   onCancel,
   onConfirm,
-  onConfirmAddMemo,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -45,7 +41,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-  const addMemoFlowBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
   const { isValidatingMemo, isMemoRequiredMemoMissing } =
     useValidateTransactionMemo();
@@ -58,10 +53,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         notificationMessage: t("common.copied"),
       });
     }
-  };
-
-  const handleOpenAddMemoExplanationBottomSheet = () => {
-    addMemoFlowBottomSheetModalRef.current?.present();
   };
 
   const renderXdrContent = () => {
@@ -99,7 +90,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         <Text md medium secondary>
           {t("transactionAmountScreen.details.memo")}
         </Text>
-        <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+        {shouldShowMemoMissingWarning && (
+          <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+        )}
       </View>
     );
   };
@@ -131,7 +124,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       return (
         <View className="flex-1">
           <Button
-            onPress={handleOpenAddMemoExplanationBottomSheet}
+            onPress={onConfirm}
             tertiary
             xl
             disabled={isBuilding || !transactionXDR || isValidatingMemo}
@@ -275,10 +268,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         </View>
         {renderConfirmButton()}
       </View>
-      <AddMemoFlowBottomSheet
-        modalRef={addMemoFlowBottomSheetModalRef}
-        onAddMemo={onConfirmAddMemo}
-      />
     </View>
   );
 };

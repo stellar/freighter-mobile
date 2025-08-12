@@ -486,7 +486,7 @@
     "memoMissing": "This transaction requires a memo",
     "addMemo": "Add memo"
   },
-  "addMemoFlowBottomSheet": {
+  "addMemoExplanationBottomSheet": {
     "title": "Memo is required",
     "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
     "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",

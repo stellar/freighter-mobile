@@ -76,6 +76,7 @@ export const useValidateTransactionMemo = () => {
       setIsMemoRequiredMemoMissing(false);
       return;
     }
+
     if (
       !network ||
       !transactionXDR ||
