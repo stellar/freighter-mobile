@@ -47,6 +47,7 @@ type BottomSheetProps = {
   bottomSheetModalProps?: Partial<BottomSheetModalProps>;
   bottomSheetViewProps?: Partial<BottomSheetViewProps>;
   shouldCloseOnPressBackdrop?: boolean;
+  onBackdropPress?: () => void;
   snapPoints?: string[];
   enablePanDownToClose?: boolean;
   enableContentPanningGesture?: boolean;
@@ -66,6 +67,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   bottomSheetModalProps,
   bottomSheetViewProps,
   shouldCloseOnPressBackdrop = true,
+  onBackdropPress,
   snapPoints,
   enablePanDownToClose = true,
   enableContentPanningGesture = true,
@@ -89,9 +91,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         pressBehavior={shouldCloseOnPressBackdrop ? "close" : "none"}
         appearsOnIndex={0}
         opacity={0.9}
+        onPress={onBackdropPress}
       />
     ),
-    [shouldCloseOnPressBackdrop],
+    [shouldCloseOnPressBackdrop, onBackdropPress],
   );
 
   const renderHandle = useCallback(
@@ -131,6 +134,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
+      keyboardBehavior="interactive"
       backgroundStyle={{
         backgroundColor: themeColors.background.primary,
       }}

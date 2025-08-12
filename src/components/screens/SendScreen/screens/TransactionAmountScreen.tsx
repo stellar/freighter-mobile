@@ -6,6 +6,7 @@ import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSh
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
+import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
@@ -77,6 +78,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionTimeout,
     recipientAddress,
     selectedTokenId,
+    saveMemo,
   } = useTransactionSettingsStore();
 
   const {
@@ -94,6 +96,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<AmountError | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [
     hasOpenedAddMemoExplanationBottomSheet,
     setHasOpenedAddMemoExplanationBottomSheet,
@@ -102,8 +105,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    setHasOpenedAddMemoExplanationBottomSheet(true);
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
+    transactionSettingsBottomSheetModalRef.current?.present();
   };
 
   const onCancelAddMemo = () => {
@@ -112,6 +114,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const onOpenAddMemoExplanationBottomSheet = () => {
     addMemoExplanationBottomSheetModalRef.current?.present();
+  };
+
+  const handleConfirmTransactionSettings = () => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+    reviewBottomSheetModalRef.current?.present();
+  };
+
+  const handleCancelTransactionSettings = () => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
   };
 
   const navigateToSendScreen = () => {
@@ -320,6 +331,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     };
 
     processTransaction();
+    saveMemo("");
   };
 
   const handleProcessingScreenClose = () => {
@@ -500,6 +512,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <AddMemoExplanationBottomSheet
             modalRef={addMemoExplanationBottomSheetModalRef}
             onAddMemo={onConfirmAddMemo}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSettingsBottomSheetModalRef}
+        handleCloseModal={() =>
+          transactionSettingsBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <TransactionSettingsBottomSheet
+            onCancel={handleCancelTransactionSettings}
+            onConfirm={handleConfirmTransactionSettings}
           />
         }
       />

@@ -1,3 +1,4 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
@@ -99,6 +100,24 @@ export const StyledTextInput = styled.TextInput<
     "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
   >
 >`
+  flex: 1;
+  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    getInputHeight($fieldSize)};
+  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    fs(INPUT_SIZES[$fieldSize].fontSize)};
+  color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
+    $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
+  font-family: ${Platform.select({
+    ios: "Inter-Variable",
+    android: "Inter-Regular",
+  })};
+  font-weight: ${Platform.select({
+    ios: "400",
+    android: "normal",
+  })};
+`;
+
+const StyledBottomSheetTextInput = styled(BottomSheetTextInput)`
   flex: 1;
   height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
     getInputHeight($fieldSize)};
@@ -263,6 +282,7 @@ interface InputProps {
     | "numeric"
     | "email-address"
     | "phone-pad";
+  isBottomSheetInput?: boolean;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -270,6 +290,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     {
       fieldSize = "lg",
       label,
+
       labelSuffix,
       isLabelUppercase,
       isError,
@@ -287,6 +308,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       editable = true,
       testID,
       autoCorrect = true,
+      isBottomSheetInput = false,
       ...props
     },
     ref,
@@ -315,6 +337,10 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       </TouchableOpacity>
     );
 
+    const StyledTextInputComponent = isBottomSheetInput
+      ? StyledBottomSheetTextInput
+      : StyledTextInput;
+
     return (
       <Container $fieldSize={fieldSize}>
         {label && (
@@ -340,7 +366,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             <SideElement marginSide="right">{leftElement}</SideElement>
           )}
 
-          <StyledTextInput
+          <StyledTextInputComponent
             ref={ref}
             testID={testID}
             placeholder={placeholder}

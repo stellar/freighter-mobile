@@ -459,6 +459,12 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
+  "transactionSettingsBottomSheet": {
+    "title": "Transaction Settings",
+    "feeTitle": "Transaction Fee",
+    "memoTitle": "Memo",
+    "timeoutTitle": "Transaction Timeout"
+  },
   "transactionAmountScreen": {
     "title": "Send",
     "percentageButtons": {

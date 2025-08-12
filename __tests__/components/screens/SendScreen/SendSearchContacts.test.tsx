@@ -20,6 +20,7 @@ jest.mock("react-native-gesture-handler", () => ({
 jest.mock("@gorhom/bottom-sheet", () => ({
   BottomSheetModalProvider: ({ children }: { children: ReactNode }) => children,
   BottomSheetModal: mockView,
+  BottomSheetTextInput: "input",
 }));
 
 // Mock stellar helpers
