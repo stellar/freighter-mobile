@@ -134,7 +134,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       enableOverDrag={false}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
-      keyboardBehavior="interactive"
       backgroundStyle={{
         backgroundColor: themeColors.background.primary,
       }}
@@ -142,7 +141,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       onChange={handleChange}
     >
       <BottomSheetView
-        className="flex-1 bg-background-primary pl-6 pr-6 pt-6 gap-6"
+        className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
         style={{
           paddingBottom: useInsetsBottomPadding
             ? insets.bottom + pxValue(DEFAULT_PADDING)

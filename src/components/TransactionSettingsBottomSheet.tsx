@@ -156,7 +156,7 @@ const TransactionSettingsBottomSheet: React.FC<
           error={memoError}
         />
 
-        <View className="mt-[64px] gap-[12px] flex-row">
+        <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
             <Button onPress={onCancel} secondary xl>
               {t("common.cancel")}
