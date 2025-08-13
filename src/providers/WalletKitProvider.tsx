@@ -471,6 +471,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   const onCancelTransactionSettings = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.dismiss();
     dappRequestBottomSheetModalRef.current?.present();
   };
@@ -515,11 +516,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isSigning={isSigning}
             onCancelAddMemo={onCancelAddMemo}
             isValidatingMemo={isValidatingMemo}
-            onConfirm={
-              isMemoMissing
-                ? onOpenAddMemoExplanationBottomSheet
-                : handleDappRequest
-            }
+            onBannerPress={onOpenAddMemoExplanationBottomSheet}
+            onConfirm={isMemoMissing ? onConfirmAddMemo : handleDappRequest}
             onCancelRequest={handleClearDappRequest}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isMemoMissing={isMemoMissing}
@@ -542,6 +540,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
         handleCloseModal={onCancelTransactionSettings}
+        onBackdropPress={onCancelTransactionSettings}
         customContent={
           <TransactionSettingsBottomSheet
             onCancel={onCancelTransactionSettings}

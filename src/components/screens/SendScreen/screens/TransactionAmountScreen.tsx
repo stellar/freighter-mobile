@@ -105,8 +105,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   ] = useState(false);
 
   const onConfirmAddMemo = () => {
-    reviewBottomSheetModalRef.current?.dismiss();
-    addMemoExplanationBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   };
 
@@ -124,6 +122,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleCancelTransactionSettings = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.dismiss();
   };
 
@@ -495,10 +494,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
+            onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={
               isRequiredMemoMissing
-                ? onOpenAddMemoExplanationBottomSheet
+                ? onConfirmAddMemo
                 : handleTransactionConfirmation
             }
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
