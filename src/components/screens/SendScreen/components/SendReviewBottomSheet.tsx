@@ -1,8 +1,8 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
 import { AssetIcon } from "components/AssetIcon";
-import { RequiredMemoMissingWarning } from "components/RequiredMemoMissingWarning";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -27,6 +27,7 @@ type SendReviewBottomSheetProps = {
   onConfirm?: () => void;
   isRequiredMemoMissing?: boolean;
   isValidatingMemo?: boolean;
+  onBannerPress?: () => void;
 };
 
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
@@ -36,6 +37,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   onConfirm,
   isRequiredMemoMissing,
   isValidatingMemo,
+  onBannerPress,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -102,7 +104,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       return null;
     }
 
-    return <RequiredMemoMissingWarning />;
+    return (
+      <Banner
+        variant="error"
+        text={t("transactionAmountScreen.memoMissing")}
+        onPress={onBannerPress}
+        className="w-full mt-[16px]"
+      />
+    );
   };
 
   const renderConfirmButton = () => {
