@@ -87,9 +87,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     submitTransaction,
     resetTransaction,
     isBuilding,
+    transactionXDR,
   } = useTransactionBuilderStore();
 
-  const { isValidatingMemo, isMemoMissing } = useValidateTransactionMemo();
+  const { isValidatingMemo, isMemoMissing } =
+    useValidateTransactionMemo(transactionXDR);
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);

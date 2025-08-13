@@ -5,7 +5,7 @@ import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React, { useState } from "react";
 import { Platform, TouchableOpacity, TextInput } from "react-native";
-import styled from "styled-components/native";
+import styled, { css } from "styled-components/native";
 
 // =============================================================================
 // Constants and types
@@ -94,18 +94,11 @@ const InputContainer = styled.View<
     px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
 `;
 
-export const StyledTextInput = styled.TextInput<
-  Pick<
-    StyledProps,
-    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
-  >
->`
+const commonInputStyles = css<Pick<StyledProps, "$fieldSize" | "$isDisabled">>`
   flex: 1;
-  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    getInputHeight($fieldSize)};
-  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    fs(INPUT_SIZES[$fieldSize].fontSize)};
-  color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
+  height: ${({ $fieldSize }) => getInputHeight($fieldSize)};
+  font-size: ${({ $fieldSize }) => fs(INPUT_SIZES[$fieldSize].fontSize)};
+  color: ${({ $isDisabled }) =>
     $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
   font-family: ${Platform.select({
     ios: "Inter-Variable",
@@ -117,22 +110,17 @@ export const StyledTextInput = styled.TextInput<
   })};
 `;
 
+export const StyledTextInput = styled.TextInput<
+  Pick<
+    StyledProps,
+    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
+  >
+>`
+  ${commonInputStyles}
+`;
+
 const StyledBottomSheetTextInput = styled(BottomSheetTextInput)`
-  flex: 1;
-  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    getInputHeight($fieldSize)};
-  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    fs(INPUT_SIZES[$fieldSize].fontSize)};
-  color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
-    $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
-  font-family: ${Platform.select({
-    ios: "Inter-Variable",
-    android: "Inter-Regular",
-  })};
-  font-weight: ${Platform.select({
-    ios: "400",
-    android: "normal",
-  })};
+  ${commonInputStyles}
 `;
 
 const SideElement = styled.View<{ marginSide: "left" | "right" }>`

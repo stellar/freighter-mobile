@@ -79,7 +79,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
-  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo();
+
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { transactionMemo, saveMemo } = useTransactionSettingsStore();
@@ -104,6 +104,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [siteScanResult, setSiteScanResult] = useState<
     Blockaid.SiteScanResponse | undefined
   >(undefined);
+
+  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(
+    (
+      requestEvent?.params.request.params as unknown as {
+        transaction: { xdr: string };
+      }
+    )?.transaction?.xdr ?? "",
+  );
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -195,7 +203,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
-      saveMemo("");
       clearEvent();
     }, 200);
   };
@@ -208,6 +215,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleClearDappRequest = () => {
     dappRequestBottomSheetModalRef.current?.dismiss();
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch
@@ -451,7 +460,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [activeSessions, event.type, authStatus, transactionMemo]);
 
   const onCancelAddMemo = () => {
-    console.log("onCancelAddMemo");
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
     dappRequestBottomSheetModalRef.current?.present();
   };
@@ -461,7 +469,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   const onConfirmAddMemo = () => {
-    dappRequestBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   };
 
@@ -471,8 +478,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   const onConfirmTransactionSettings = () => {
-    addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    transactionSettingsBottomSheetModalRef.current?.dismiss();
     dappRequestBottomSheetModalRef.current?.present();
   };
 
@@ -482,7 +487,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
-        enablePanDownToClose={false} // disabled due to missing custom onClose event on Sheet Handle -> when dragging down to close, event cannot be cleared consistently
         onBackdropPress={handleClearDappConnection}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         customContent={
@@ -504,6 +508,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
         onBackdropPress={handleClearDappRequest}
+        enablePanDownToClose={false} // disabled due to missing custom onClose event on Sheet Handle -> when dragging down to close, event cannot be cleared consistently
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         customContent={
           <DappRequestBottomSheetContent

@@ -461,10 +461,10 @@
     "title": "Sending"
   },
   "transactionSettingsBottomSheet": {
-    "title": "Transaction Settings",
-    "feeTitle": "Transaction Fee",
+    "title": "Transaction settings",
+    "feeTitle": "Transaction fee",
     "memoTitle": "Memo",
-    "timeoutTitle": "Transaction Timeout"
+    "timeoutTitle": "Transaction timeout"
   },
   "transactionAmountScreen": {
     "title": "Send",

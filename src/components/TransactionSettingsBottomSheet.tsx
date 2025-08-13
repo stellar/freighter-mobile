@@ -11,7 +11,7 @@ import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
 import React, { useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -75,10 +75,6 @@ const TransactionSettingsBottomSheet: React.FC<
             <Text sm secondary>
               {t("transactionSettingsBottomSheet.feeTitle")}
             </Text>
-            <TouchableOpacity onPress={() => {}}>
-              {/* disabled until info is added */}
-              {/* <Icon.InfoCircle color={themeColors.gray[8]} size={16} />  */}
-            </TouchableOpacity>
           </View>
           <View className="flex flex-row mt-[4px] items-center gap-2">
             <Input
@@ -115,10 +111,6 @@ const TransactionSettingsBottomSheet: React.FC<
           <Text sm secondary>
             {t("transactionSettingsBottomSheet.timeoutTitle")}
           </Text>
-          <TouchableOpacity onPress={() => {}}>
-            {/* disabled until info is added */}
-            {/* <Icon.InfoCircle color={themeColors.gray[8]} size={16} />  */}
-          </TouchableOpacity>
         </View>
         <Input
           isBottomSheetInput
@@ -146,10 +138,6 @@ const TransactionSettingsBottomSheet: React.FC<
           <Text sm secondary>
             {t("transactionSettingsBottomSheet.memoTitle")}
           </Text>
-          <TouchableOpacity onPress={() => {}}>
-            {/* disabled until info is added */}
-            {/* <Icon.InfoCircle color={themeColors.gray[8]} size={16} />  */}
-          </TouchableOpacity>
         </View>
         <Input
           isBottomSheetInput

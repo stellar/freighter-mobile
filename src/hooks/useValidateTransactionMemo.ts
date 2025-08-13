@@ -4,10 +4,10 @@ import {
   STORAGE_KEYS,
   TRANSACTION_WARNING,
 } from "config/constants";
+import { logger } from "config/logger";
 import { MemoRequiredAccountsApiResponse } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { cachedFetch } from "helpers/cachedFetch";
 import { isMainnet } from "helpers/networks";
@@ -15,9 +15,8 @@ import { getApiStellarExpertIsMemoRequiredListUrl } from "helpers/stellarExpert"
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { stellarSdkServer } from "services/stellar";
 
-export const useValidateTransactionMemo = () => {
+export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   const { network } = useAuthenticationStore();
-  const { transactionXDR } = useTransactionBuilderStore();
   const { isMemoValidationEnabled } = usePreferencesStore();
   const { transactionMemo } = useTransactionSettingsStore();
   const [isValidatingMemo, setIsValidatingMemo] = useState(false);
@@ -25,6 +24,8 @@ export const useValidateTransactionMemo = () => {
     () => mapNetworkToNetworkDetails(network),
     [network],
   );
+
+  const xdr = useMemo(() => incomingXdr, [incomingXdr]);
 
   const shouldValidateMemo = useMemo(
     () => isMemoValidationEnabled && isMainnet(network),
@@ -85,12 +86,7 @@ export const useValidateTransactionMemo = () => {
       return;
     }
 
-    if (
-      !network ||
-      !transactionXDR ||
-      !shouldValidateMemo ||
-      !networkDetails.networkUrl
-    ) {
+    if (!network || !xdr || !shouldValidateMemo || !networkDetails.networkUrl) {
       return;
     }
 
@@ -99,7 +95,7 @@ export const useValidateTransactionMemo = () => {
 
       try {
         const isMemoRequiredFromCache = await checkMemoRequiredFromCache(
-          transactionXDR,
+          xdr,
           network,
         );
 
@@ -109,13 +105,18 @@ export const useValidateTransactionMemo = () => {
         }
 
         const isMemoRequiredFromSDK = await checkMemoRequiredFromStellarSDK(
-          transactionXDR,
+          xdr,
           networkDetails.networkUrl,
         );
 
         setIsMemoMissing(isMemoRequiredFromSDK);
       } catch (error) {
-        setIsMemoMissing(true);
+        logger.error("Memo Validation", "Error validating memo", { error });
+        if (error instanceof Error && "accountId" in error) {
+          setIsMemoMissing(true);
+        } else {
+          setIsMemoMissing(false);
+        }
       } finally {
         setIsValidatingMemo(false);
       }
@@ -123,7 +124,7 @@ export const useValidateTransactionMemo = () => {
 
     checkIsMemoRequired();
   }, [
-    transactionXDR,
+    xdr,
     network,
     shouldValidateMemo,
     networkDetails.networkUrl,
