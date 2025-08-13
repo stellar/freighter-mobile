@@ -111,6 +111,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
         enablePanDownToClose={false}
+        enableDynamicSizing={false}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         customContent={
           <ManageAccountBottomSheet
