@@ -512,7 +512,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         handleCloseModal={onCancelAddMemo}
         customContent={
           <AddMemoExplanationBottomSheet
-            modalRef={addMemoExplanationBottomSheetModalRef}
+            onClose={onCancelAddMemo}
             onAddMemo={onConfirmAddMemo}
           />
         }

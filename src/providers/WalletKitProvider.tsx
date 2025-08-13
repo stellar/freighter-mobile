@@ -514,7 +514,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             account={account}
             requestEvent={requestEvent}
             isSigning={isSigning}
-            onCancelAddMemo={onCancelAddMemo}
             isValidatingMemo={isValidatingMemo}
             onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onConfirm={isMemoMissing ? onConfirmAddMemo : handleDappRequest}
@@ -531,7 +530,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         onBackdropPress={onCancelAddMemo}
         customContent={
           <AddMemoExplanationBottomSheet
-            modalRef={addMemoExplanationBottomSheetModalRef}
+            onClose={onCancelAddMemo}
             onAddMemo={onConfirmAddMemo}
           />
         }

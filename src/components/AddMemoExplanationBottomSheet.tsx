@@ -1,4 +1,3 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -8,19 +7,15 @@ import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
 type AddMemoExplanationBottomSheetProps = {
-  modalRef: React.RefObject<BottomSheetModal | null>;
   onAddMemo: () => void;
+  onClose: () => void;
 };
 
 const AddMemoExplanationBottomSheet = ({
-  modalRef,
   onAddMemo,
+  onClose,
 }: AddMemoExplanationBottomSheetProps) => {
   const { themeColors } = useColors();
-
-  const onClose = () => {
-    modalRef.current?.dismiss();
-  };
 
   const { t } = useTranslation();
 
