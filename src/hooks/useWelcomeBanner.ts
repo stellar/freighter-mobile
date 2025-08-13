@@ -26,7 +26,7 @@ export const useWelcomeBanner = ({
 
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(async () => {
-    if (!account?.publicKey || bannerPresented || isLoadingBalances) {
+    if (!account?.publicKey || isLoadingBalances) {
       return;
     }
 
@@ -44,11 +44,11 @@ export const useWelcomeBanner = ({
     } catch (error) {
       logger.error("Error checking welcome banner status:", String(error));
     }
-  }, [account?.publicKey, bannerPresented, isFunded, isLoadingBalances]);
+  }, [account?.publicKey, isFunded, isLoadingBalances]);
 
   useEffect(() => {
     checkWelcomeBannerStatus();
-  }, [checkWelcomeBannerStatus]);
+  }, [checkWelcomeBannerStatus, isFunded, isLoadingBalances]);
 
   const handleWelcomeBannerDismiss = async () => {
     try {
