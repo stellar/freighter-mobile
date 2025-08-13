@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface UseWelcomeBannerProps {
   account: ActiveAccount | null;
   isFunded: boolean;
+  isLoadingBalances: boolean;
 }
 
 interface UseWelcomeBannerReturn {
@@ -18,13 +19,14 @@ interface UseWelcomeBannerReturn {
 export const useWelcomeBanner = ({
   account,
   isFunded,
+  isLoadingBalances,
 }: UseWelcomeBannerProps): UseWelcomeBannerReturn => {
   const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [bannerPresented, setBannerPresented] = useState(false);
+  const [bannerPresented, setBannerPresented] = useState(true);
 
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(async () => {
-    if (!account?.publicKey || bannerPresented) {
+    if (!account?.publicKey || bannerPresented || isLoadingBalances) {
       return;
     }
 
@@ -36,16 +38,13 @@ export const useWelcomeBanner = ({
       // Only show banner for unfunded accounts that haven't seen it before
       if (!hasSeenWelcome && !isFunded) {
         // Set banner as presented immediately to prevent multiple presentations
-        setBannerPresented(true);
+        setBannerPresented(false);
         welcomeBannerBottomSheetModalRef.current?.present();
-      } else if (hasSeenWelcome) {
-        // If already seen, mark as presented to prevent future checks
-        setBannerPresented(true);
       }
     } catch (error) {
       logger.error("Error checking welcome banner status:", String(error));
     }
-  }, [account?.publicKey, bannerPresented, isFunded]);
+  }, [account?.publicKey, bannerPresented, isFunded, isLoadingBalances]);
 
   useEffect(() => {
     checkWelcomeBannerStatus();
@@ -63,6 +62,7 @@ export const useWelcomeBanner = ({
       logger.error("Error saving welcome banner status:", String(error));
     }
     welcomeBannerBottomSheetModalRef.current?.dismiss();
+    setBannerPresented(true);
   };
 
   return {
