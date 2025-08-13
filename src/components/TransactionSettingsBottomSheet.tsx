@@ -10,6 +10,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
+import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
+import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
 import React, { useState } from "react";
 import { View } from "react-native";
 
@@ -37,7 +39,9 @@ const TransactionSettingsBottomSheet: React.FC<
   const [localTimeout, setLocalTimeout] = useState(
     transactionTimeout.toString(),
   );
-  const { error } = useValidateMemo(localMemo);
+  const { error: memoError } = useValidateMemo(localMemo);
+  const { error: feeError } = useValidateTransactionFee(localFee);
+  const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
 
   const handleSetLocalFee = (value: string) => {
     const fee = Math.max(Number(value), Number(MIN_TRANSACTION_FEE));
@@ -45,7 +49,7 @@ const TransactionSettingsBottomSheet: React.FC<
   };
 
   const handleConfirm = () => {
-    if (error) return;
+    if (memoError || feeError || timeoutError) return;
     saveMemo(localMemo);
     saveTransactionTimeout(Number(localTimeout));
     saveTransactionFee(localFee);
@@ -87,7 +91,7 @@ const TransactionSettingsBottomSheet: React.FC<
               onChangeText={handleSetLocalFee}
               keyboardType="numeric"
               placeholder={MIN_TRANSACTION_FEE}
-              error={error}
+              error={feeError}
               rightElement={
                 <Text md secondary>
                   {NATIVE_TOKEN_CODE}
@@ -125,6 +129,7 @@ const TransactionSettingsBottomSheet: React.FC<
           value={localTimeout}
           onChangeText={setLocalTimeout}
           keyboardType="numeric"
+          error={timeoutError}
           rightElement={
             <Text md secondary>
               {t("transactionTimeoutScreen.seconds")}
@@ -148,17 +153,22 @@ const TransactionSettingsBottomSheet: React.FC<
           placeholder={t("transactionMemoScreen.placeholder")}
           value={localMemo}
           onChangeText={setLocalMemo}
-          error={error}
+          error={memoError}
         />
 
-        <View className="mt-[24px] gap-[12px] flex-row">
+        <View className="mt-[64px] gap-[12px] flex-row">
           <View className="flex-1">
             <Button onPress={onCancel} secondary xl>
               {t("common.cancel")}
             </Button>
           </View>
           <View className="flex-1">
-            <Button tertiary xl onPress={handleConfirm} disabled={!!error}>
+            <Button
+              tertiary
+              xl
+              onPress={handleConfirm}
+              disabled={!!memoError || !!feeError || !!timeoutError}
+            >
               {t("common.save")}
             </Button>
           </View>

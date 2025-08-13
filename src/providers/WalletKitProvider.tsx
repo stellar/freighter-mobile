@@ -215,8 +215,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleClearDappRequest = () => {
     dappRequestBottomSheetModalRef.current?.dismiss();
-    addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    transactionSettingsBottomSheetModalRef.current?.dismiss();
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch
