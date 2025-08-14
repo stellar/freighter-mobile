@@ -1,9 +1,9 @@
 import { TransactionBuilder } from "@stellar/stellar-sdk";
-import { mapNetworkToNetworkDetails, NATIVE_TOKEN_CODE } from "config/constants";
+import { mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { stroopToXlm, formatAssetAmount } from "helpers/formatAmount";
+import { stroopToXlm } from "helpers/formatAmount";
 
 interface TransactionDetailsParser {
   requestEvent: WalletKitSessionRequest | null;

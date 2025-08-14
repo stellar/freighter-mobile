@@ -577,6 +577,7 @@
     "confirmTransaction": "Confirm transaction",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "confirmAnyway": "Confirm anyway",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copied to clipboard!",
     "transactionDetails": "Transaction details"

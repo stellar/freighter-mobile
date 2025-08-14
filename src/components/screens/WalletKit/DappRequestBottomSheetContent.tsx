@@ -1,14 +1,15 @@
 import { List, ListItemProps } from "components/List";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { pxValue } from "helpers/dimensions";
-import { formatAssetAmount, stroopToXlm } from "helpers/formatAmount";
+import { formatAssetAmount } from "helpers/formatAmount";
 import { useTransactionDetailsParser } from "hooks/blockaid/useTransactionDetailsParser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -28,6 +29,7 @@ import { TouchableOpacity, View } from "react-native";
  * @property {boolean} isMalicious - Whether the transaction is malicious
  * @property {boolean} isSuspicious - Whether the transaction is suspicious
  * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
+ * @property {() => void} securityWarningAction - Function to handle security warning
  */
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
@@ -38,6 +40,7 @@ type DappRequestBottomSheetContentProps = {
   isMalicious?: boolean;
   isSuspicious?: boolean;
   transactionBalanceListItems?: ListItemProps[];
+  securityWarningAction?: () => void;
 };
 
 /**
@@ -50,7 +53,7 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems }) => {
+> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems, securityWarningAction }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -98,21 +101,60 @@ const DappRequestBottomSheetContent: React.FC<
     return null;
   }
 
-  const { request } = sessionRequest;
-  const { params } = request;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const xdr = params?.xdr as string;
-
   const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
   const dAppName = dappMetadata.name;
   const dAppFavicon = dappMetadata.icons[0];
 
-  const handleCopy = (item: string, itemName: string) => {
-    copyToClipboard(item, {
-      notificationMessage: t("dappRequestBottomSheetContent.itemCopied", {
-        itemName,
-      }),
-    });
+  const renderButtons = () => {
+    const cancelButton = (
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+      >
+        <Button
+          tertiary={isSuspicious}
+          destructive={isMalicious}
+          secondary={!isMalicious && !isSuspicious}
+          xl
+          isFullWidth
+          onPress={onCancel}
+          disabled={isSigning}
+        >
+          {t("common.cancel")}
+        </Button>
+      </View>
+    );
+
+    if (isMalicious || isSuspicious) {
+      return (
+        <>
+          {cancelButton}
+          <TextButton
+            text={t("dappRequestBottomSheetContent.confirmAnyway")}
+            onPress={onConfirm}
+            isLoading={isSigning}
+            disabled={isSigning}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cancelButton}
+        <View className="flex-1">
+          <Button
+            tertiary
+            xl
+            isFullWidth
+            onPress={onConfirm}
+            isLoading={isSigning}
+          >
+            {t("dappRequestBottomSheetContent.confirm")}
+          </Button>
+        </View>
+      </>
+    );
   };
 
   return (
@@ -130,6 +172,17 @@ const DappRequestBottomSheetContent: React.FC<
           )}
         </View>
       </View>
+      {(isMalicious || isSuspicious) && (
+        <Banner
+          variant={isMalicious ? "error" : "warning"}
+          text={
+            isMalicious
+              ? t("dappConnectionBottomSheetContent.maliciousFlag")
+              : t("dappConnectionBottomSheetContent.suspiciousFlag")
+          }
+          onPress={securityWarningAction}
+        />
+      )}
       <View className="gap-[12px]">
         <List variant="secondary" items={transactionBalanceListItems || []} />
         <List variant="secondary" items={accountDetailList} />
@@ -140,32 +193,17 @@ const DappRequestBottomSheetContent: React.FC<
           </Text>
         </TouchableOpacity>
       </View>
-      <View className="items-center">
-        <Text sm secondary>{t("blockaid.security.site.confirmTrust")}</Text>
-      </View>
-      <View className="flex-row justify-between w-full gap-3">
-        <View className="flex-1">
-          <Button
-            secondary
-            xl
-            isFullWidth
-            onPress={onCancel}
-            disabled={isSigning}
-          >
-            {t("dappRequestBottomSheetContent.cancel")}
-          </Button>
-        </View>
-        <View className="flex-1">
-          <Button
-            tertiary
-            xl
-            isFullWidth
-            onPress={onConfirm}
-            isLoading={isSigning}
-          >
-            {t("dappRequestBottomSheetContent.confirm")}
-          </Button>
-        </View>
+      
+      {!isMalicious && !isSuspicious && (
+        <Text sm secondary textAlign="center">
+          {t("blockaid.security.site.confirmTrust")}
+        </Text>
+      )}
+
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px]`}
+      >
+        {renderButtons()}
       </View>
     </View>
   );
