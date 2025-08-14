@@ -471,7 +471,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}
-            customTitle={t("swapScreen.swapScreenTokenListTitle")}
             title={t("swapScreen.swapTo")}
             onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}
             network={network}

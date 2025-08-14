@@ -3,6 +3,7 @@ import { BalancesList } from "components/BalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ContactRow } from "components/screens/SendScreen/components";
 import { Button } from "components/sds/Button";
+import { Text } from "components/sds/Typography";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -45,7 +46,11 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
             }
           />
         </View>
-        <View className="flex-1 mt-[32px]">
+        <View className="flex-1 mt-[24px]">
+          <View className="flex-row items-center mb-6">
+            <Text medium>{t("balancesList.title")}</Text>
+          </View>
+
           <BalancesList
             publicKey={publicKey ?? ""}
             network={network}

@@ -23,13 +23,6 @@ const ListWrapper = styled.View`
   flex: 1;
 `;
 
-const ListTitle = styled.View`
-  margin-bottom: ${px(24)};
-  flex-direction: row;
-  align-items: center;
-  gap: ${px(6)};
-`;
-
 const Spinner = styled.ActivityIndicator`
   margin-top: ${px(24)};
   width: 100%;
@@ -49,7 +42,6 @@ interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
   searchTerm?: string;
-  customTitle?: string;
   onTokenPress?: (tokenId: string) => void;
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
@@ -73,7 +65,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
   searchTerm,
-  customTitle,
   onTokenPress,
   disableNavigation = false,
   renderRightContent,
@@ -107,9 +98,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (error) {
     return (
       <ListWrapper>
-        <ListTitle>
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
       </ListWrapper>
     );
@@ -119,10 +107,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (noBalances && isLoading) {
     return (
       <ListWrapper>
-        <ListTitle>
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
-
         <Spinner
           testID="balances-list-spinner"
           size="large"
@@ -136,10 +120,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (noBalances && !isFunded) {
     return (
       <ListWrapper>
-        <ListTitle>
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
-
         <NotificationWrapper>
           <Notification
             variant="primary"
@@ -186,9 +166,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
 
   return (
     <ListWrapper>
-      <ListTitle>
-        <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-      </ListTitle>
       <FlatList
         testID="balances-list"
         showsVerticalScrollIndicator={false}

@@ -208,6 +208,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         style={{ width }}
       />
 
+      <View className="flex-row items-center mb-6">
+        <Text medium>{t("balancesList.title")}</Text>
+      </View>
+
       <BalancesList
         publicKey={account?.publicKey ?? ""}
         network={network}
