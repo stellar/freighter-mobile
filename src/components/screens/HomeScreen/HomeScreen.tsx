@@ -1,7 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { BalancesList } from "components/BalancesList";
 import { IconButton } from "components/IconButton";
+import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import { AnalyticsDebugBottomSheet } from "components/analytics/AnalyticsDebugBottomSheet";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -204,15 +204,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </View>
 
       <View
-        className="border-b mb-6 -ml-7 border-border-primary"
+        className="border-b mb-4 -ml-7 border-border-primary"
         style={{ width }}
       />
 
-      <View className="flex-row items-center mb-6">
-        <Text medium>{t("balancesList.title")}</Text>
-      </View>
-
-      <BalancesList
+      <TokensCollectiblesTabs
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}

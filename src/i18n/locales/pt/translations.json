@@ -292,6 +292,9 @@
       "fundAccountButton": "Adicionar XLM"
     }
   },
+  "collectiblesGrid": {
+    "title": "Colecionáveis"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
