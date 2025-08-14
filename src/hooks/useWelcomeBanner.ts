@@ -12,7 +12,6 @@ interface UseWelcomeBannerProps {
 
 interface UseWelcomeBannerReturn {
   welcomeBannerBottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
-  bannerPresented: boolean;
   handleWelcomeBannerDismiss: () => Promise<void>;
 }
 
@@ -22,7 +21,6 @@ export const useWelcomeBanner = ({
   isLoadingBalances,
 }: UseWelcomeBannerProps): UseWelcomeBannerReturn => {
   const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [bannerPresented, setBannerPresented] = useState(true);
   const [hasAccountSeenWelcome, setHasAccountSeenWelcome] = useState<
     boolean | undefined
   >(undefined);
@@ -46,10 +44,8 @@ export const useWelcomeBanner = ({
     }
 
     try {
-      // Only show banner for unfunded accounts that haven't seen it before
+      // Only show banner for unfunded accounts that haven't seen it before -> check for undefined->false to avoid showing banner on first load
       if (hasAccountSeenWelcome === false && !isFunded) {
-        // Set banner as presented immediately to prevent multiple presentations
-        setBannerPresented(false);
         welcomeBannerBottomSheetModalRef.current?.present();
       }
     } catch (error) {
@@ -73,12 +69,10 @@ export const useWelcomeBanner = ({
       logger.error("Error saving welcome banner status:", String(error));
     }
     welcomeBannerBottomSheetModalRef.current?.dismiss();
-    setBannerPresented(true);
   };
 
   return {
     welcomeBannerBottomSheetModalRef,
-    bannerPresented,
     handleWelcomeBannerDismiss,
   };
 };
