@@ -2,7 +2,6 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
-import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
@@ -81,7 +80,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { account, signTransaction } = useGetActiveAccount();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { transactionMemo, saveMemo } = useTransactionSettingsStore();
 
   const publicKey = account?.publicKey || "";
@@ -105,13 +103,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     Blockaid.SiteScanResponse | undefined
   >(undefined);
 
-  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(
-    (
-      requestEvent?.params.request.params as unknown as {
-        transaction: { xdr: string };
-      }
-    )?.transaction?.xdr ?? "",
+  const xdr = useMemo(
+    () =>
+      (requestEvent?.params.request.params as unknown as { xdr: string })
+        ?.xdr ?? "",
+    [requestEvent],
   );
+
+  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(xdr);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -466,27 +465,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   };
 
-  const onConfirmAddMemo = () => {
-    transactionSettingsBottomSheetModalRef.current?.present();
-  };
-
-  const onCancelTransactionSettings = () => {
-    addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    transactionSettingsBottomSheetModalRef.current?.dismiss();
-    dappRequestBottomSheetModalRef.current?.present();
-  };
-
-  const onConfirmTransactionSettings = () => {
-    dappRequestBottomSheetModalRef.current?.present();
-  };
-
   return (
     <View className="flex-1">
       {/* Bottom sheet for dApp connection requests */}
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
-        onBackdropPress={handleClearDappConnection}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         customContent={
           <DappConnectionBottomSheetContent
@@ -506,9 +490,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
-        onBackdropPress={handleClearDappRequest}
-        enablePanDownToClose={false} // disabled due to missing custom onClose event on Sheet Handle -> when dragging down to close, event cannot be cleared consistently
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
+        bottomSheetModalProps={{
+          onDismiss: handleClearDappRequest,
+        }}
         customContent={
           <DappRequestBottomSheetContent
             account={account}
@@ -516,9 +501,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isSigning={isSigning}
             isValidatingMemo={isValidatingMemo}
             onBannerPress={onOpenAddMemoExplanationBottomSheet}
-            onConfirm={isMemoMissing ? onConfirmAddMemo : handleDappRequest}
+            onConfirm={handleDappRequest}
             onCancelRequest={handleClearDappRequest}
-            // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isMemoMissing={isMemoMissing}
           />
         }
@@ -527,24 +511,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
         handleCloseModal={onCancelAddMemo}
-        onBackdropPress={onCancelAddMemo}
         customContent={
-          <AddMemoExplanationBottomSheet
-            onClose={onCancelAddMemo}
-            onAddMemo={onConfirmAddMemo}
-          />
-        }
-      />
-
-      <BottomSheet
-        modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={onCancelTransactionSettings}
-        onBackdropPress={onCancelTransactionSettings}
-        customContent={
-          <TransactionSettingsBottomSheet
-            onCancel={onCancelTransactionSettings}
-            onConfirm={onConfirmTransactionSettings}
-          />
+          <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
       />
 

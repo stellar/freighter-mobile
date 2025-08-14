@@ -105,6 +105,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   ] = useState(false);
 
   const onConfirmAddMemo = () => {
+    reviewBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   };
 
@@ -113,6 +114,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const onOpenAddMemoExplanationBottomSheet = () => {
+    reviewBottomSheetModalRef.current?.dismiss();
     addMemoExplanationBottomSheetModalRef.current?.present();
   };
 
@@ -513,7 +515,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <AddMemoExplanationBottomSheet
             onClose={onCancelAddMemo}
-            onAddMemo={onConfirmAddMemo}
+            onConfirm={onConfirmAddMemo}
           />
         }
       />

@@ -84,37 +84,6 @@ const DappRequestBottomSheetContent: React.FC<
     });
   };
 
-  const renderConfirmButton = () => {
-    if (isMemoMissing || isValidatingMemo) {
-      return (
-        <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            tertiary
-            lg
-            disabled={!xdr || isValidatingMemo}
-          >
-            {t("common.addMemo")}
-          </Button>
-        </View>
-      );
-    }
-
-    return (
-      <View className="flex-1">
-        <Button
-          tertiary
-          lg
-          isFullWidth
-          onPress={onConfirm}
-          isLoading={isSigning}
-        >
-          {t("dappRequestBottomSheetContent.confirm")}
-        </Button>
-      </View>
-    );
-  };
-
   return (
     <View className="flex-1 justify-center items-center mt-2">
       <App size="lg" appName={dAppName} favicon={dAppFavicon} />
@@ -210,7 +179,18 @@ const DappRequestBottomSheetContent: React.FC<
             {t("dappRequestBottomSheetContent.cancel")}
           </Button>
         </View>
-        {renderConfirmButton()}
+        <View className="flex-1">
+          <Button
+            tertiary
+            lg
+            isFullWidth
+            onPress={onConfirm}
+            isLoading={isSigning || isValidatingMemo}
+            disabled={isMemoMissing || isSigning || isValidatingMemo || !xdr}
+          >
+            {t("dappRequestBottomSheetContent.confirm")}
+          </Button>
+        </View>
       </View>
     </View>
   );
