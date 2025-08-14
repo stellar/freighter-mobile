@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import BigNumber from "bignumber.js";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import {
   TransactionDetails,
   TransactionType,
@@ -34,21 +34,21 @@ export const mapChangeTrustHistoryItem = ({
   themeColors,
 }: ChangeTrustHistoryItemData): HistoryItemData => {
   const {
-    asset_code: destAssetCode,
-    asset_type: assetType,
-    asset_issuer: assetIssuer,
+    asset_code: destTokenCode,
+    asset_type: tokenType,
+    asset_issuer: tokenIssuer,
     id,
   } = operation;
 
   const isRemovingTrustline = BigNumber(operation?.limit).eq(0);
 
   const IconComponent = (
-    <AssetIcon
+    <TokenIcon
       token={{
-        code: destAssetCode,
-        type: assetType,
+        code: destTokenCode,
+        type: tokenType,
         issuer: {
-          key: assetIssuer,
+          key: tokenIssuer,
         },
       }}
       size="lg"
@@ -56,8 +56,8 @@ export const mapChangeTrustHistoryItem = ({
   );
 
   const actionText = isRemovingTrustline
-    ? t("history.transactionHistory.removedTrustline")
-    : t("history.transactionHistory.addedTrustline");
+    ? t("history.transactionHistory.removedToken")
+    : t("history.transactionHistory.addedToken");
 
   const ActionIconComponent = isRemovingTrustline ? (
     <Icon.MinusCircle size={16} color={themeColors.foreground.primary} />
@@ -78,7 +78,7 @@ export const mapChangeTrustHistoryItem = ({
 
   return {
     transactionDetails,
-    rowText: destAssetCode || capitalize(assetType).replaceAll("_", " "),
+    rowText: destTokenCode || capitalize(tokenType).replaceAll("_", " "),
     actionText,
     dateText: date,
     IconComponent,

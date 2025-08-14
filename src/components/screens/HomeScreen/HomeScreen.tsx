@@ -60,7 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { formattedBalance, rawBalance } = useTotalBalance();
   const { balances, isFunded } = useBalancesStore();
 
-  const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
+  const hasTokens = useMemo(() => Object.keys(balances).length > 0, [balances]);
   const hasZeroBalance = useMemo(
     () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
     [rawBalance],
@@ -69,7 +69,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   // Set up navigation headers (hook handles navigation.setOptions internally)
   useHomeHeaders({
     navigation,
-    hasAssets,
+    hasTokens,
   });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
@@ -117,7 +117,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // The TokenDetailsScreen will handle fetching the actual symbol
       tokenSymbol = tokenId;
     } else {
-      // Classic asset format: CODE:ISSUER
+      // Classic token format: CODE:ISSUER
       [tokenSymbol] = tokenId.split(":");
     }
 

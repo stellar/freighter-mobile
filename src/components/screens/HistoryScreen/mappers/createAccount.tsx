@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import {
   TransactionDetails,
@@ -13,8 +13,8 @@ import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { AssetTypeWithCustomToken } from "config/types";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { TokenTypeWithCustomToken } from "config/types";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -50,9 +50,9 @@ export const mapCreateAccountHistoryItem = ({
       <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
     );
     const senderIcon = (
-      <AssetIcon
+      <TokenIcon
         token={{
-          type: AssetTypeWithCustomToken.NATIVE,
+          type: TokenTypeWithCustomToken.NATIVE,
           code: NATIVE_TOKEN_CODE,
         }}
         size="lg"
@@ -71,8 +71,8 @@ export const mapCreateAccountHistoryItem = ({
         to: account,
         from: funder,
         amount: startingBalance,
-        assetCode: NATIVE_TOKEN_CODE,
-        assetType: "native",
+        tokenCode: NATIVE_TOKEN_CODE,
+        tokenType: "native",
       },
     };
 
@@ -80,7 +80,7 @@ export const mapCreateAccountHistoryItem = ({
       transactionDetails,
       rowText: NATIVE_TOKEN_CODE,
       dateText: date,
-      amountText: `-${formatAssetAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
+      amountText: `-${formatTokenAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
       actionText: t("history.transactionHistory.sent"),
       ActionIconComponent: senderActionIcon,
       IconComponent: senderIcon,
@@ -90,7 +90,7 @@ export const mapCreateAccountHistoryItem = ({
   }
 
   // RECIPIENT's view: Show as "Account Funded"
-  const formattedAmount = `+${formatAssetAmount(
+  const formattedAmount = `+${formatTokenAmount(
     startingBalance,
     NATIVE_TOKEN_CODE,
   )}`;
@@ -143,7 +143,7 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
         </Text>
         <Text sm secondary numberOfLines={1}>
           {t("history.transactionDetails.startingBalance")}{" "}
-          {formatAssetAmount(
+          {formatTokenAmount(
             transactionDetails.createAccountDetails?.startingBalance ?? "",
             NATIVE_TOKEN_CODE,
           )}

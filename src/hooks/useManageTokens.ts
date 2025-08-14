@@ -7,13 +7,13 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import {
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
   CustomToken,
   CustomTokenStorage,
-  FormattedSearchAssetRecord,
+  FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount } from "ducks/auth";
-import { formatAssetIdentifier } from "helpers/balances";
+import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { ToastOptions, useToast } from "providers/ToastProvider";
 import { useState } from "react";
@@ -25,26 +25,26 @@ import {
 } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 
-interface UseManageAssetsProps {
+interface UseManageTokensProps {
   network: NETWORKS;
   account: ActiveAccount | null;
   onSuccess?: () => void;
 }
 
-interface UseManageAssetsReturn {
-  addAsset: (
-    asset: FormattedSearchAssetRecord,
+interface UseManageTokensReturn {
+  addToken: (
+    token: FormattedSearchTokenRecord,
     onComplete?: () => void,
   ) => Promise<void>;
-  removeAsset: (input: RemoveAssetParams) => Promise<void>;
-  isAddingAsset: boolean;
-  isRemovingAsset: boolean;
+  removeToken: (input: RemoveTokenParams) => Promise<void>;
+  isAddingToken: boolean;
+  isRemovingToken: boolean;
 }
 
-export interface RemoveAssetParams {
-  assetId?: string;
-  assetRecord?: FormattedSearchAssetRecord;
-  assetType?: AssetTypeWithCustomToken;
+export interface RemoveTokenParams {
+  tokenId?: string;
+  tokenRecord?: FormattedSearchTokenRecord;
+  tokenType?: TokenTypeWithCustomToken;
   onComplete?: () => void;
 }
 
@@ -83,54 +83,54 @@ const saveCustomTokenStorage = async (
   );
 };
 
-export const useManageAssets = ({
+export const useManageTokens = ({
   network,
   account,
   onSuccess,
-}: UseManageAssetsProps): UseManageAssetsReturn => {
+}: UseManageTokensProps): UseManageTokensReturn => {
   const { t } = useAppTranslation();
   const { showToast } = useToast();
-  const [isAddingAsset, setIsAddingAsset] = useState(false);
-  const [isRemovingAsset, setIsRemovingAsset] = useState(false);
+  const [isAddingToken, setIsAddingToken] = useState(false);
+  const [isRemovingToken, setIsRemovingToken] = useState(false);
 
   if (!account) {
     return {
-      addAsset: () => Promise.resolve(),
-      removeAsset: () => Promise.resolve(),
-      isAddingAsset: false,
-      isRemovingAsset: false,
+      addToken: () => Promise.resolve(),
+      removeToken: () => Promise.resolve(),
+      isAddingToken: false,
+      isRemovingToken: false,
     };
   }
 
   const { publicKey, privateKey } = account;
 
-  const addAsset = async (
-    asset: FormattedSearchAssetRecord,
+  const addToken = async (
+    token: FormattedSearchTokenRecord,
     onComplete?: () => void,
   ) => {
-    if (!asset) {
+    if (!token) {
       return;
     }
 
-    setIsAddingAsset(true);
+    setIsAddingToken(true);
 
-    const { assetCode, issuer } = asset;
+    const { tokenCode, issuer } = token;
 
     let toastOptions: ToastOptions = {
-      title: t("addAssetScreen.toastSuccess", {
-        assetCode,
+      title: t("addTokenScreen.toastSuccess", {
+        tokenCode,
       }),
       variant: "success",
     };
 
     try {
-      if (asset.assetType === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
+      if (token.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
         // Create new custom token entry
         const customToken: CustomToken = {
-          contractId: asset.issuer,
-          symbol: asset.assetCode,
-          name: asset.name ?? asset.assetCode,
-          decimals: asset.decimals ?? DEFAULT_DECIMALS,
+          contractId: token.issuer,
+          symbol: token.tokenCode,
+          name: token.name ?? token.tokenCode,
+          decimals: token.decimals ?? DEFAULT_DECIMALS,
         };
 
         // Get current storage
@@ -156,15 +156,15 @@ export const useManageAssets = ({
           setTimeout(resolve, VISUAL_DELAY_MS);
         });
       } else {
-        // Handle regular asset trustline
-        const addAssetTrustlineTx = await buildChangeTrustTx({
-          assetIdentifier: `${assetCode}:${issuer}`,
+        // Handle regular token trustline
+        const addTokenTrustlineTx = await buildChangeTrustTx({
+          tokenIdentifier: `${tokenCode}:${issuer}`,
           network,
           publicKey,
         });
 
         const signedTx = signTransaction({
-          tx: addAssetTrustlineTx,
+          tx: addTokenTrustlineTx,
           secretKey: privateKey,
           network,
         });
@@ -174,30 +174,30 @@ export const useManageAssets = ({
           tx: signedTx,
         });
       }
-      analytics.track(AnalyticsEvent.ADD_ASSET_SUCCESS, {
-        asset: `${assetCode}:${issuer}`,
+      analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
+        token: `${tokenCode}:${issuer}`,
       });
     } catch (error) {
-      analytics.track(AnalyticsEvent.ASSET_MANAGEMENT_FAIL, {
+      analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
         action: "add",
-        asset: `${assetCode}:${issuer}`,
+        token: `${tokenCode}:${issuer}`,
       });
 
       logger.error(
-        "useManageAssets.addAsset",
-        "Error adding asset trustline",
+        "useManageTokens.addToken",
+        "Error adding token trustline",
         error,
       );
 
       toastOptions = {
-        title: t("addAssetScreen.toastError", {
-          assetCode,
+        title: t("addTokenScreen.toastError", {
+          tokenCode,
         }),
         variant: "error",
       };
     } finally {
-      setIsAddingAsset(false);
+      setIsAddingToken(false);
       showToast(toastOptions);
 
       // Execute onComplete callback if provided
@@ -210,37 +210,37 @@ export const useManageAssets = ({
     }
   };
 
-  const removeAsset = async (input: RemoveAssetParams) => {
-    const { assetId, assetRecord, assetType, onComplete } = input;
+  const removeToken = async (input: RemoveTokenParams) => {
+    const { tokenId, tokenRecord, tokenType, onComplete } = input;
 
-    let assetCode: string;
-    let assetIssuer: string;
-    let assetIdentifier: string;
+    let tokenCode: string;
+    let tokenIssuer: string;
+    let tokenIdentifier: string;
 
-    if (assetId) {
-      const formattedAsset = formatAssetIdentifier(assetId);
-      assetCode = formattedAsset.assetCode;
-      assetIssuer = formattedAsset.issuer;
-      assetIdentifier = assetId;
-    } else if (assetRecord) {
-      assetCode = assetRecord.assetCode;
-      assetIssuer = assetRecord.issuer;
-      assetIdentifier = `${assetRecord.assetCode}:${assetRecord.issuer}`;
+    if (tokenId) {
+      const formattedToken = formatTokenIdentifier(tokenId);
+      tokenCode = formattedToken.tokenCode;
+      tokenIssuer = formattedToken.issuer;
+      tokenIdentifier = tokenId;
+    } else if (tokenRecord) {
+      tokenCode = tokenRecord.tokenCode;
+      tokenIssuer = tokenRecord.issuer;
+      tokenIdentifier = `${tokenRecord.tokenCode}:${tokenRecord.issuer}`;
     } else {
-      throw new Error("No asset ID or asset record provided");
+      throw new Error("No token ID or token record provided");
     }
 
-    setIsRemovingAsset(true);
+    setIsRemovingToken(true);
 
     let toastOptions: ToastOptions = {
-      title: t("manageAssetsScreen.removeAssetSuccess", {
-        assetCode,
+      title: t("manageTokensScreen.removeTokenSuccess", {
+        tokenCode,
       }),
       variant: "success",
     };
 
     try {
-      if (assetType === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
+      if (tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
         // Get current storage
         const storage = await getCustomTokenStorage();
 
@@ -253,7 +253,7 @@ export const useManageAssets = ({
         const tokens = storage[publicKey][network];
         const updatedTokens = tokens.filter(
           (token) =>
-            token.contractId !== assetIssuer || token.symbol !== assetCode,
+            token.contractId !== tokenIssuer || token.symbol !== tokenCode,
         );
 
         if (updatedTokens.length === 0) {
@@ -277,16 +277,16 @@ export const useManageAssets = ({
           setTimeout(resolve, VISUAL_DELAY_MS);
         });
       } else {
-        // Handle regular asset trustline removal
-        const removeAssetTrustlineTx = await buildChangeTrustTx({
-          assetIdentifier,
+        // Handle regular token trustline removal
+        const removeTokenTrustlineTx = await buildChangeTrustTx({
+          tokenIdentifier,
           network,
           publicKey,
           isRemove: true,
         });
 
         const signedTx = signTransaction({
-          tx: removeAssetTrustlineTx,
+          tx: removeTokenTrustlineTx,
           secretKey: privateKey,
           network,
         });
@@ -296,29 +296,29 @@ export const useManageAssets = ({
           tx: signedTx,
         });
       }
-      analytics.track(AnalyticsEvent.REMOVE_ASSET_SUCCESS, {
-        asset: assetIdentifier,
+      analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
+        token: tokenIdentifier,
       });
     } catch (error) {
-      analytics.track(AnalyticsEvent.ASSET_MANAGEMENT_FAIL, {
+      analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
         action: "remove",
-        asset: assetIdentifier,
+        token: tokenIdentifier,
       });
 
       logger.error(
-        "useManageAssets.removeAsset",
-        "Error removing asset",
+        "useManageTokens.removeToken",
+        "Error removing token",
         error,
       );
       toastOptions = {
-        title: t("manageAssetsScreen.removeAssetError", {
-          assetCode,
+        title: t("manageTokensScreen.removeTokenError", {
+          tokenCode,
         }),
         variant: "error",
       };
     } finally {
-      setIsRemovingAsset(false);
+      setIsRemovingToken(false);
       showToast(toastOptions);
 
       // Execute onComplete callback if provided
@@ -332,9 +332,9 @@ export const useManageAssets = ({
   };
 
   return {
-    addAsset,
-    removeAsset,
-    isAddingAsset,
-    isRemovingAsset,
+    addToken,
+    removeToken,
+    isAddingToken,
+    isRemovingToken,
   };
 };

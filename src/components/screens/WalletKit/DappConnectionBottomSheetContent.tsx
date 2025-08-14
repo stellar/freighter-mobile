@@ -233,7 +233,7 @@ const DappConnectionBottomSheetContent: React.FC<
 
       {!isMalicious && !isSuspicious && (
         <Text sm secondary textAlign="center">
-          {t("addAssetScreen.confirmTrust")}
+          {t("addTokenScreen.confirmTrust")}
         </Text>
       )}
 

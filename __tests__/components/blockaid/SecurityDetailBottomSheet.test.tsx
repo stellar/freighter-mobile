@@ -9,7 +9,7 @@ describe("SecurityDetailBottomSheet", () => {
   const mockWarnings: SecurityWarning[] = [
     {
       id: "warning-1",
-      description: "This asset appears to be malicious",
+      description: "This token appears to be malicious",
     },
     {
       id: "warning-2",
@@ -37,7 +37,7 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    expect(getByText("This asset appears to be malicious")).toBeTruthy();
+    expect(getByText("This token appears to be malicious")).toBeTruthy();
     expect(getByText("Domain verification failed")).toBeTruthy();
   });
 
@@ -49,7 +49,7 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    expect(getByText("This asset appears to be malicious")).toBeTruthy();
+    expect(getByText("This token appears to be malicious")).toBeTruthy();
     expect(getByText("Domain verification failed")).toBeTruthy();
   });
 
@@ -80,7 +80,7 @@ describe("SecurityDetailBottomSheet", () => {
 
     // For now, we'll test that the component renders correctly
     // The close button interaction can be tested in integration tests
-    expect(getByText("This asset appears to be malicious")).toBeTruthy();
+    expect(getByText("This token appears to be malicious")).toBeTruthy();
   });
 
   it("uses different proceed anyway text based on proceedAnywayText", () => {

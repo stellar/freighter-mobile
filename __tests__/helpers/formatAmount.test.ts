@@ -1,69 +1,69 @@
 import BigNumber from "bignumber.js";
 import {
-  formatAssetAmount,
+  formatTokenAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
 
 describe("formatAmount helpers", () => {
-  describe("formatAssetAmount", () => {
+  describe("formatTokenAmount", () => {
     it("should format number values correctly", () => {
-      expect(formatAssetAmount(1000)).toBe("1,000.00");
-      expect(formatAssetAmount(1234.56)).toBe("1,234.56");
-      expect(formatAssetAmount(0.12345)).toBe("0.12345");
+      expect(formatTokenAmount(1000)).toBe("1,000.00");
+      expect(formatTokenAmount(1234.56)).toBe("1,234.56");
+      expect(formatTokenAmount(0.12345)).toBe("0.12345");
     });
 
     it("should format string values correctly", () => {
-      expect(formatAssetAmount("1000")).toBe("1,000.00");
-      expect(formatAssetAmount("1234.56")).toBe("1,234.56");
-      expect(formatAssetAmount("0.12345")).toBe("0.12345");
+      expect(formatTokenAmount("1000")).toBe("1,000.00");
+      expect(formatTokenAmount("1234.56")).toBe("1,234.56");
+      expect(formatTokenAmount("0.12345")).toBe("0.12345");
     });
 
     it("should format BigNumber values correctly", () => {
-      expect(formatAssetAmount(new BigNumber(1000))).toBe("1,000.00");
-      expect(formatAssetAmount(new BigNumber("1234.56"))).toBe("1,234.56");
-      expect(formatAssetAmount(new BigNumber("0.12345"))).toBe("0.12345");
+      expect(formatTokenAmount(new BigNumber(1000))).toBe("1,000.00");
+      expect(formatTokenAmount(new BigNumber("1234.56"))).toBe("1,234.56");
+      expect(formatTokenAmount(new BigNumber("0.12345"))).toBe("0.12345");
     });
 
-    it("should include the asset code when provided", () => {
-      expect(formatAssetAmount(1000, "XLM")).toBe("1,000.00 XLM");
-      expect(formatAssetAmount("1234.56", "USDC")).toBe("1,234.56 USDC");
-      expect(formatAssetAmount(new BigNumber("0.12345"), "BTC")).toBe(
+    it("should include the token code when provided", () => {
+      expect(formatTokenAmount(1000, "XLM")).toBe("1,000.00 XLM");
+      expect(formatTokenAmount("1234.56", "USDC")).toBe("1,234.56 USDC");
+      expect(formatTokenAmount(new BigNumber("0.12345"), "BTC")).toBe(
         "0.12345 BTC",
       );
     });
 
     it("should handle very small numbers", () => {
-      expect(formatAssetAmount(0.000001)).toBe("0.000001");
-      expect(formatAssetAmount("0.000001")).toBe("0.000001");
-      expect(formatAssetAmount(new BigNumber("0.0000012345"))).toBe(
+      expect(formatTokenAmount(0.000001)).toBe("0.000001");
+      expect(formatTokenAmount("0.000001")).toBe("0.000001");
+      expect(formatTokenAmount(new BigNumber("0.0000012345"))).toBe(
         "0.0000012345",
       );
     });
 
     it("should handle very large numbers", () => {
-      expect(formatAssetAmount(1000000000)).toBe("1,000,000,000.00");
-      expect(formatAssetAmount("1000000000.12")).toBe("1,000,000,000.12");
-      expect(formatAssetAmount(new BigNumber("1000000000.123456"))).toBe(
+      expect(formatTokenAmount(1000000000)).toBe("1,000,000,000.00");
+      expect(formatTokenAmount("1000000000.12")).toBe("1,000,000,000.12");
+      expect(formatTokenAmount(new BigNumber("1000000000.123456"))).toBe(
         "1,000,000,000.123456",
       );
     });
 
     it("should handle zero values", () => {
-      expect(formatAssetAmount(0)).toBe("0.00");
-      expect(formatAssetAmount("0")).toBe("0.00");
-      expect(formatAssetAmount(new BigNumber(0))).toBe("0.00");
+      expect(formatTokenAmount(0)).toBe("0.00");
+      expect(formatTokenAmount("0")).toBe("0.00");
+      expect(formatTokenAmount(new BigNumber(0))).toBe("0.00");
     });
 
     it("should handle negative values", () => {
-      expect(formatAssetAmount(-1000)).toBe("-1,000.00");
-      expect(formatAssetAmount("-1234.56")).toBe("-1,234.56");
-      expect(formatAssetAmount(new BigNumber("-0.12345"))).toBe("-0.12345");
+      expect(formatTokenAmount(-1000)).toBe("-1,000.00");
+      expect(formatTokenAmount("-1234.56")).toBe("-1,234.56");
+      expect(formatTokenAmount(new BigNumber("-0.12345"))).toBe("-0.12345");
     });
 
     it("should handle objects with toString method", () => {
       const obj = { toString: () => "1234.56" };
-      expect(formatAssetAmount(obj)).toBe("1,234.56");
+      expect(formatTokenAmount(obj)).toBe("1,234.56");
     });
   });
 

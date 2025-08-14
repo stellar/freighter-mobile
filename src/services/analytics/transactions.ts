@@ -32,15 +32,15 @@ export const trackSendPaymentSuccess = (
   data: TransactionSuccessEvent,
 ): void => {
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
-    sourceAsset: data.sourceAsset,
+    sourceToken: data.sourceToken,
     transactionType: data.transactionType,
   });
 };
 
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
-    sourceAsset: data.sourceAsset,
-    destAsset: data.destAsset,
+    sourceToken: data.sourceToken,
+    destinationToken: data.destinationToken,
     allowedSlippage: data.allowedSlippage,
     isSwap: data.isSwap,
   });
@@ -60,15 +60,15 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 };
 
 // -----------------------------------------------------------------------------
-// ASSET MANAGEMENT ANALYTICS
+// TOKEN MANAGEMENT ANALYTICS
 // -----------------------------------------------------------------------------
 
-export const trackAddTokenConfirmed = (asset?: string): void => {
-  track(AnalyticsEvent.ADD_TOKEN_CONFIRMED, { asset });
+export const trackAddTokenConfirmed = (token?: string): void => {
+  track(AnalyticsEvent.ADD_TOKEN_CONFIRMED, { token });
 };
 
-export const trackAddTokenRejected = (asset?: string): void => {
-  track(AnalyticsEvent.ADD_TOKEN_REJECTED, { asset });
+export const trackAddTokenRejected = (token?: string): void => {
+  track(AnalyticsEvent.ADD_TOKEN_REJECTED, { token });
 };
 
 // -----------------------------------------------------------------------------

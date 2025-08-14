@@ -4,50 +4,50 @@ import Modal from "components/Modal";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { formatAssetIdentifier } from "helpers/balances";
+import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useAssetActions } from "hooks/useAssetActions";
 import useColors from "hooks/useColors";
+import { useTokenActions } from "hooks/useTokenActions";
 import React, { useState } from "react";
 import { Platform, View } from "react-native";
 
 const icons = Platform.select({
   ios: {
     copyAddress: "doc.on.doc",
-    removeAsset: "minus.circle",
+    removeToken: "minus.circle",
   },
   android: {
     copyAddress: "baseline_format_paint",
-    removeAsset: "outline_circle",
+    removeToken: "outline_circle",
   },
 });
 
-type ManageAssetRightContentProps = {
-  asset: {
+type ManageTokenRightContentProps = {
+  token: {
     isNative: boolean;
     id: string;
   };
-  handleRemoveAsset: (onComplete: () => void) => void;
-  isRemovingAsset: boolean;
+  handleRemoveToken: (onComplete: () => void) => void;
+  isRemovingToken: boolean;
 };
 
-const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
-  asset,
-  handleRemoveAsset,
-  isRemovingAsset,
+const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
+  token,
+  handleRemoveToken,
+  isRemovingToken,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { copyAssetAddress } = useAssetActions();
-  const { assetCode } = formatAssetIdentifier(asset.id);
+  const { copyTokenAddress } = useTokenActions();
+  const { tokenCode } = formatTokenIdentifier(token.id);
 
-  const showRemoveAssetAlert = () => {
+  const showRemoveTokenAlert = () => {
     setModalVisible(true);
   };
 
-  const handleRemoveAssetClick = () => {
-    handleRemoveAsset(() => setModalVisible(false));
+  const handleRemoveTokenClick = () => {
+    handleRemoveToken(() => setModalVisible(false));
     // The modal will be closed by the callback when removal is complete
     // No need to set modalVisible to false immediately
   };
@@ -56,22 +56,22 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
     {
       actions: [
         {
-          title: t("manageAssetRightContent.copyAddress"),
+          title: t("manageTokenRightContent.copyAddress"),
           systemIcon: icons!.copyAddress,
           onPress: () =>
-            copyAssetAddress(
-              asset.id,
-              "manageAssetRightContent.tokenAddressCopied",
+            copyTokenAddress(
+              token.id,
+              "manageTokenRightContent.tokenAddressCopied",
             ),
         },
       ],
     },
     {
       title: t("common.remove"),
-      systemIcon: icons!.removeAsset,
-      onPress: () => showRemoveAssetAlert(),
+      systemIcon: icons!.removeToken,
+      onPress: () => showRemoveTokenAlert(),
       destructive: true,
-      disabled: asset.isNative,
+      disabled: token.isNative,
     },
   ];
 
@@ -84,13 +84,13 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
       <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       <Modal visible={modalVisible} onClose={() => setModalVisible(false)}>
         <Text xl regular>
-          {t("manageAssetRightContent.removeAssetModal.title", {
-            assetCode,
+          {t("manageTokenRightContent.removeTokenModal.title", {
+            tokenCode,
           })}
         </Text>
         <View className="h-2" />
         <Text md regular secondary>
-          {t("manageAssetRightContent.removeAssetModal.message")}
+          {t("manageTokenRightContent.removeTokenModal.message")}
         </Text>
         <View className="h-8" />
         <View className="flex-row justify-between w-full gap-3">
@@ -100,7 +100,7 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               lg
               isFullWidth
               onPress={() => setModalVisible(false)}
-              disabled={isRemovingAsset}
+              disabled={isRemovingToken}
             >
               {t("common.cancel")}
             </Button>
@@ -110,8 +110,8 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
               lg
               destructive
               isFullWidth
-              onPress={handleRemoveAssetClick}
-              isLoading={isRemovingAsset}
+              onPress={handleRemoveTokenClick}
+              isLoading={isRemovingToken}
             >
               {t("common.remove")}
             </Button>
@@ -122,4 +122,4 @@ const ManageAssetRightContent: React.FC<ManageAssetRightContentProps> = ({
   );
 };
 
-export default ManageAssetRightContent;
+export default ManageTokenRightContent;

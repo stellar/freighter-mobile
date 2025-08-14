@@ -73,7 +73,7 @@ const getExistingPricedBalances = (
     // Get existing price data for this balance if available
     const existingPriceData = statePricedBalances[id];
 
-    // Determine the asset code based on balance type
+    // Determine the token code based on balance type
     let tokenCode: string;
     let displayName: string;
 
@@ -82,7 +82,7 @@ const getExistingPricedBalances = (
       tokenCode = getLPShareCode(balance);
       displayName = tokenCode;
     } else {
-      // Handle regular asset balances
+      // Handle regular token balances
       tokenCode = balance.token.code;
       displayName =
         balance.token.type === "native" ? "Stellar Lumens" : tokenCode;

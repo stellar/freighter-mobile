@@ -1,4 +1,4 @@
-import { AssetType, Horizon } from "@stellar/stellar-sdk";
+import { TokenType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
 
@@ -14,7 +14,7 @@ export type KeyPair = {
   privateKey: string;
 };
 
-export enum AssetTypeWithCustomToken {
+export enum TokenTypeWithCustomToken {
   CUSTOM_TOKEN = "custom_token",
   NATIVE = "native",
   CREDIT_ALPHANUM4 = "credit_alphanum4",
@@ -63,12 +63,12 @@ export type AuthStatus = (typeof AUTH_STATUS)[keyof typeof AUTH_STATUS];
  * Represents a native Stellar token (XLM)
  */
 export type NativeToken = {
-  type: AssetType.native;
+  type: TokenType.native;
   code: "XLM";
 };
 
 /**
- * Represents an asset issuer with their identifying information
+ * Represents a token issuer with their identifying information
  * @property {string} key - The public key of the issuer
  * @property {string} [name] - Optional display name of the issuer
  * @property {string} [url] - Optional website URL of the issuer
@@ -82,15 +82,15 @@ export type Issuer = {
 };
 
 /**
- * Represents a non-native Stellar asset with its properties
- * @property {string} code - The asset code (e.g., "USDC")
- * @property {Issuer} issuer - The asset issuer information
+ * Represents a non-native Stellar token with its properties
+ * @property {string} code - The token code (e.g., "USDC")
+ * @property {Issuer} issuer - The token issuer information
  */
-export type AssetToken = {
+export type NonNativeToken = {
   code: string;
   issuer: Issuer;
-  type?: AssetTypeWithCustomToken;
-  anchorAsset?: string;
+  type?: TokenTypeWithCustomToken;
+  anchorToken?: string;
   numAccounts?: BigNumber;
   amount?: BigNumber;
   bidCount?: BigNumber;
@@ -99,9 +99,9 @@ export type AssetToken = {
 };
 
 /**
- * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
+ * Union type representing a native XLM token, a non-native Stellar token, or a Soroban token
  */
-export type Token = AssetToken | NativeToken;
+export type Token = NonNativeToken | NativeToken;
 
 /**
  * Base balance type with total amount
@@ -125,11 +125,11 @@ export type NativeBalance = BaseBalance & {
   sellingLiabilities: string;
 
   // TODO: Handle blockaidData later once we add support for it
-  // blockaidData: BlockAidScanAssetResult;
+  // blockaidData: BlockAidScanTokenResult;
 };
 
 export type ClassicBalance = BaseBalance & {
-  token: AssetToken;
+  token: NonNativeToken;
   // this should be total - sellingLiabilities
   available: BigNumber;
   limit: BigNumber;
@@ -138,11 +138,11 @@ export type ClassicBalance = BaseBalance & {
   sponsor?: string;
 
   // TODO: Handle blockaidData later once we add support for it
-  // blockaidData: BlockAidScanAssetResult;
+  // blockaidData: BlockAidScanTokenResult;
 };
 
 export type SorobanBalance = BaseBalance & {
-  token: AssetToken;
+  token: NonNativeToken;
   // this should be equal to total
   available: BigNumber;
   contractId: string;
@@ -161,7 +161,7 @@ export type LiquidityPoolBalance = BaseBalance & {
 
 /**
  * Union type representing all possible balance types in the system
- * Includes native XLM, classic assets, Soroban tokens, and liquidity pools
+ * Includes native XLM, classic tokens, Soroban tokens, and liquidity pools
  */
 export type Balance =
   | NativeBalance
@@ -172,7 +172,7 @@ export type Balance =
 /**
  * Token identifier string format:
  * - "XLM" for native tokens
- * - "CODE:ISSUER" for other assets (e.g., "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+ * - "CODE:ISSUER" for other tokens (e.g., "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
  * - "LP_ID:lp" for liquidity pools (e.g., "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp")
  */
 export type TokenIdentifier = string;
@@ -235,7 +235,7 @@ export type PricedBalanceMap = {
   [tokenIdentifier: TokenIdentifier]: PricedBalance;
 };
 
-export interface SearchAssetResponse {
+export interface SearchTokenResponse {
   _links: {
     self: {
       href: string;
@@ -287,13 +287,13 @@ export interface GetTokenDetailsParams {
   shouldFetchBalance?: boolean;
 }
 
-export type FormattedSearchAssetRecord = {
-  assetCode: string;
+export type FormattedSearchTokenRecord = {
+  tokenCode: string;
   domain: string;
   hasTrustline: boolean;
   issuer: string;
   isNative: boolean;
-  assetType?: AssetTypeWithCustomToken;
+  tokenType?: TokenTypeWithCustomToken;
   name?: string;
   decimals?: number;
 };

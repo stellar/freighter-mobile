@@ -6,7 +6,7 @@ import {
   getIsDustPayment,
   getIsPayment,
   getIsSwap,
-  filterOperationsByAsset,
+  filterOperationsByToken,
   getIsCreateClaimableBalanceSpam,
 } from "helpers/history";
 import { useState } from "react";
@@ -115,7 +115,7 @@ function useGetHistoryData(
       });
 
       if (tokenId) {
-        history = filterOperationsByAsset(history, tokenId, networkDetails);
+        history = filterOperationsByToken(history, tokenId, networkDetails);
       }
 
       const balances = getBalances();

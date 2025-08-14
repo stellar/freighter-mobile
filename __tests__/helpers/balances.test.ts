@@ -1,7 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import {
   ClassicBalance,
-  AssetToken,
+  NonNativeToken,
   Balance,
   LiquidityPoolBalance,
   NativeBalance,
@@ -32,14 +32,14 @@ describe("balances helpers", () => {
     sellingLiabilities: "0",
   };
 
-  const assetBalance: ClassicBalance = {
+  const tokenBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {
         key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       },
       type: "credit_alphanum4",
-    } as AssetToken,
+    } as NonNativeToken,
     total: new BigNumber("200"),
     available: new BigNumber("200"),
     limit: new BigNumber("1000"),
@@ -67,7 +67,7 @@ describe("balances helpers", () => {
   const balances = {
     native: nativeBalance,
     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-      assetBalance,
+      tokenBalance,
     "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp":
       liquidityPoolBalance,
   };
@@ -107,7 +107,7 @@ describe("balances helpers", () => {
       expect(result).toBe("");
     });
 
-    it("should substitute 'XLM' for native asset code", () => {
+    it("should substitute 'XLM' for native token code", () => {
       const lpWithNative = {
         ...liquidityPoolBalance,
         reserves: [
@@ -133,8 +133,8 @@ describe("balances helpers", () => {
       expect(isLiquidityPool(nativeBalance as Balance)).toBe(false);
     });
 
-    it("should return false for asset token balances", () => {
-      expect(isLiquidityPool(assetBalance as Balance)).toBe(false);
+    it("should return false for non-native token balances", () => {
+      expect(isLiquidityPool(tokenBalance as Balance)).toBe(false);
     });
 
     it("should check for required properties", () => {
@@ -161,8 +161,8 @@ describe("balances helpers", () => {
       expect(getTokenIdentifier(nativeBalance as Balance)).toBe("XLM");
     });
 
-    it("should return CODE:ISSUER for asset token balances", () => {
-      expect(getTokenIdentifier(assetBalance as Balance)).toBe(
+    it("should return CODE:ISSUER for non-native token balances", () => {
+      expect(getTokenIdentifier(tokenBalance as Balance)).toBe(
         "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       );
     });
@@ -173,7 +173,7 @@ describe("balances helpers", () => {
 
     it("should work directly with token objects", () => {
       expect(getTokenIdentifier(nativeBalance.token)).toBe("XLM");
-      expect(getTokenIdentifier(assetBalance.token)).toBe(
+      expect(getTokenIdentifier(tokenBalance.token)).toBe(
         "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       );
     });
@@ -249,10 +249,10 @@ describe("balances helpers", () => {
       expect(priceData?.percentagePriceChange24h?.toString()).toBe("0.02");
     });
 
-    it("should return price data for asset token", () => {
+    it("should return price data for non-native token", () => {
       const priceData = getTokenPriceFromBalance({
         prices,
-        balance: assetBalance as Balance,
+        balance: tokenBalance as Balance,
       });
       expect(priceData).toBeDefined();
       expect(priceData?.currentPrice?.toString()).toBe("1");
@@ -268,19 +268,19 @@ describe("balances helpers", () => {
     });
 
     it("should return null for tokens without price data", () => {
-      const unknownAsset = {
+      const unknownToken = {
         token: {
           code: "UNKNOWN",
           issuer: { key: "GABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGH" },
           type: "credit_alphanum4" as const,
-        } as AssetToken,
+        } as NonNativeToken,
         total: new BigNumber("100"),
         available: new BigNumber("100"),
         limit: new BigNumber("1000"), // Required for AssetBalance
       };
       const priceData = getTokenPriceFromBalance({
         prices,
-        balance: unknownAsset as Balance,
+        balance: unknownToken as Balance,
       });
       expect(priceData).toBeNull();
     });
@@ -343,7 +343,7 @@ describe("balances helpers", () => {
       expect(spendable.toString()).toBe("0");
     });
 
-    it("should calculate spendable amount for non-native assets correctly", () => {
+    it("should calculate spendable amount for non-native tokens correctly", () => {
       const usdcBalance: ClassicBalance = {
         token: {
           code: "USDC",
@@ -351,7 +351,7 @@ describe("balances helpers", () => {
             key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
           },
           type: "credit_alphanum4",
-        } as AssetToken,
+        } as NonNativeToken,
         total: new BigNumber("1000"),
         available: new BigNumber("950"),
         limit: new BigNumber("10000"),
@@ -359,7 +359,7 @@ describe("balances helpers", () => {
         sellingLiabilities: "50",
       };
 
-      // For non-native assets, use available balance (no fee subtraction since fees are paid in XLM)
+      // For non-native tokens, use available balance (no fee subtraction since fees are paid in XLM)
       // spendable = 950 (available balance)
       const spendable = calculateSpendableAmount({
         balance: usdcBalance,

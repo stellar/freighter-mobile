@@ -1,5 +1,5 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import {
   formatConversionRate,
   getTokenFromBalance,
@@ -16,7 +16,7 @@ import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -163,10 +163,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
         <View className="gap-[16px]">
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={sourceToken} />
+            <TokenIcon token={sourceToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(
+                {formatTokenAmount(
                   pathResult?.sourceAmount || sourceAmount,
                   sourceTokenSymbol,
                 )}
@@ -185,10 +185,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
 
           <View className="w-full flex-row items-center gap-4">
-            <AssetIcon token={destinationToken} />
+            <TokenIcon token={destinationToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatAssetAmount(destinationAmount, destinationTokenSymbol)}
+                {formatTokenAmount(destinationAmount, destinationTokenSymbol)}
               </Text>
               <Text md medium secondary>
                 {destinationTokenFiatAmount}
@@ -223,7 +223,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
           <Text md medium>
             {stableMinimumReceived
-              ? formatAssetAmount(stableMinimumReceived, destinationTokenSymbol)
+              ? formatTokenAmount(stableMinimumReceived, destinationTokenSymbol)
               : "--"}
           </Text>
         </View>
@@ -250,7 +250,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(swapFee, NATIVE_TOKEN_CODE)}
+              {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>
