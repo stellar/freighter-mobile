@@ -56,7 +56,7 @@ export const List: React.FC<ListProps> = ({
 }) => (
   <View className={`${getContainerStyles(variant)} ${className}`}>
     {items.map((item, index) => (
-      <React.Fragment key={item.key || item.title}>
+      <React.Fragment key={item.key || item.title || `list-item-${index}`}>
         <TouchableOpacity
           disabled={!item.onPress}
           onPress={item.onPress}

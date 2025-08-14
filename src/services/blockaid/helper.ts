@@ -319,7 +319,6 @@ export const getTransactionBalanceChanges = (
 
   const changes: TransactionBalanceChange[] = diffs
     .map((diff) => {
-      // In and out are mutually exclusive; presence determines sign
       const inRaw = diff.in?.raw_value;
       const outRaw = diff.out?.raw_value;
 

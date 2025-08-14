@@ -30,6 +30,7 @@ import { TouchableOpacity, View } from "react-native";
  * @property {boolean} isSuspicious - Whether the transaction is suspicious
  * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
  * @property {() => void} securityWarningAction - Function to handle security warning
+ * @property {() => void} onTransactionDetail - Function to handle transaction detail
  */
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
@@ -41,6 +42,8 @@ type DappRequestBottomSheetContentProps = {
   isSuspicious?: boolean;
   transactionBalanceListItems?: ListItemProps[];
   securityWarningAction?: () => void;
+  onTransactionDetail?: () => void;
+  transactionDetails: any;
 };
 
 /**
@@ -53,11 +56,9 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems, securityWarningAction }) => {
+> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems, securityWarningAction, onTransactionDetail, transactionDetails }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { copyToClipboard } = useClipboard();
-  const { transactionDetails } = useTransactionDetailsParser({ requestEvent });
   const accountDetailList = useMemo(() => 
     [
       {
@@ -186,7 +187,7 @@ const DappRequestBottomSheetContent: React.FC<
       <View className="gap-[12px]">
         <List variant="secondary" items={transactionBalanceListItems || []} />
         <List variant="secondary" items={accountDetailList} />
-        <TouchableOpacity className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px]" onPress={() => {}}>
+        <TouchableOpacity className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px]" onPress={onTransactionDetail}>
           <Icon.List size={16} themeColor="lilac" />
           <Text color={themeColors.lilac[11]}>
             {t("dappRequestBottomSheetContent.transactionDetails")}
