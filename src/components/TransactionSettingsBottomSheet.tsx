@@ -43,11 +43,6 @@ const TransactionSettingsBottomSheet: React.FC<
   const { error: feeError } = useValidateTransactionFee(localFee);
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
 
-  const handleSetLocalFee = (value: string) => {
-    const fee = Math.max(Number(value), Number(MIN_TRANSACTION_FEE));
-    setLocalFee(fee.toString());
-  };
-
   const handleConfirm = () => {
     if (memoError || feeError || timeoutError) return;
     saveMemo(localMemo);
@@ -88,7 +83,7 @@ const TransactionSettingsBottomSheet: React.FC<
               leftElement={
                 <Icon.Route size={16} color={themeColors.foreground.primary} />
               }
-              onChangeText={handleSetLocalFee}
+              onChangeText={setLocalFee}
               keyboardType="numeric"
               placeholder={MIN_TRANSACTION_FEE}
               error={feeError}
