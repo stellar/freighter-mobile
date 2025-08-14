@@ -47,7 +47,6 @@ const SelectTokenBottomSheet: React.FC<SelectTokenBottomSheetProps> = ({
       <View className="flex-1">
         <TokenSelectionContent
           onTokenPress={onTokenSelect}
-          showTitleIcon={false}
           customTitle={customTitle}
           renderRightContent={renderTokenContextMenu}
         />

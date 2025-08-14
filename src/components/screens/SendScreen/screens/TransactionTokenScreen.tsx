@@ -49,7 +49,6 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
           <BalancesList
             publicKey={publicKey ?? ""}
             network={network}
-            showTitleIcon
             onTokenPress={handleTokenPress}
           />
         </View>

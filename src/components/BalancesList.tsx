@@ -2,7 +2,6 @@ import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalanceRow } from "components/BalanceRow";
 import { FriendbotButton } from "components/FriendbotButton";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
@@ -51,7 +50,6 @@ interface BalancesListProps {
   network: NETWORKS;
   searchTerm?: string;
   customTitle?: string;
-  showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
@@ -76,7 +74,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   network,
   searchTerm,
   customTitle,
-  showTitleIcon = false,
   onTokenPress,
   disableNavigation = false,
   renderRightContent,
@@ -111,9 +108,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
           <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
@@ -126,9 +120,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
           <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
@@ -146,9 +137,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
           <Text medium>{customTitle ?? t("balancesList.title")}</Text>
         </ListTitle>
 
@@ -199,9 +187,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   return (
     <ListWrapper>
       <ListTitle>
-        {showTitleIcon && (
-          <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-        )}
         <Text medium>{customTitle ?? t("balancesList.title")}</Text>
       </ListTitle>
       <FlatList

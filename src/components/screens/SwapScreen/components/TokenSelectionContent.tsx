@@ -15,14 +15,12 @@ import { View } from "react-native";
 
 interface TokenSelectionContentProps {
   onTokenPress: (tokenId: string, tokenSymbol: string) => void;
-  showTitleIcon?: boolean;
   customTitle?: string;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
 }
 
 const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   onTokenPress,
-  showTitleIcon = false,
   customTitle,
   renderRightContent,
 }) => {
@@ -86,9 +84,8 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
       <BalancesList
         publicKey={publicKey}
         network={network}
-        searchTerm={filteringTerm}
         onTokenPress={handleTokenPress}
-        showTitleIcon={showTitleIcon}
+        searchTerm={filteringTerm}
         customTitle={customTitle}
         disableNavigation
         renderRightContent={renderRightContent}
