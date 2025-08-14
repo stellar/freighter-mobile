@@ -3,7 +3,7 @@ import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useState, memo, useCallback, useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 export enum TabType {
@@ -29,85 +29,100 @@ interface TokensCollectiblesTabsProps {
  * @param {TokensCollectiblesTabsProps} props - Component props
  * @returns {JSX.Element} The tab component with content
  */
-export const TokensCollectiblesTabs: React.FC<TokensCollectiblesTabsProps> = ({
-  defaultTab = TabType.TOKENS,
-  onTabChange,
-  publicKey,
-  network,
-  onTokenPress,
-  onCollectiblePress,
-}) => {
-  const { t } = useAppTranslation();
-  const { themeColors } = useColors();
+export const TokensCollectiblesTabs: React.FC<TokensCollectiblesTabsProps> =
+  memo(
+    ({
+      defaultTab = TabType.TOKENS,
+      onTabChange,
+      publicKey,
+      network,
+      onTokenPress,
+      onCollectiblePress,
+    }) => {
+      const { t } = useAppTranslation();
+      const { themeColors } = useColors();
 
-  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+      const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-    onTabChange?.(tab);
-  };
+      const handleTabChange = useCallback(
+        (tab: TabType) => {
+          setActiveTab(tab);
+          onTabChange?.(tab);
+        },
+        [onTabChange],
+      );
 
-  const renderTokensContent = () => (
-    <BalancesList
-      publicKey={publicKey}
-      network={network}
-      onTokenPress={onTokenPress}
-    />
+      const renderTokensContent = useMemo(
+        () => (
+          <BalancesList
+            publicKey={publicKey}
+            network={network}
+            onTokenPress={onTokenPress}
+          />
+        ),
+        [publicKey, network, onTokenPress],
+      );
+
+      const renderCollectiblesContent = useMemo(
+        () => (
+          // TODO: Implement CollectiblesGrid component
+          <View className="flex-1 items-center">
+            <Text md secondary onPress={() => onCollectiblePress?.("")}>
+              Collectibles coming soon
+            </Text>
+          </View>
+        ),
+        [onCollectiblePress],
+      );
+
+      const renderContent = useMemo(() => {
+        if (activeTab === TabType.TOKENS) {
+          return renderTokensContent;
+        }
+
+        return renderCollectiblesContent;
+      }, [activeTab, renderTokensContent, renderCollectiblesContent]);
+
+      return (
+        <View className="flex-1">
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity
+              className="p-2"
+              onPress={() => handleTabChange(TabType.TOKENS)}
+            >
+              <Text
+                medium
+                color={
+                  activeTab === TabType.TOKENS
+                    ? themeColors.text.primary
+                    : themeColors.text.secondary
+                }
+              >
+                {t("balancesList.title")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="p-2"
+              onPress={() => handleTabChange(TabType.COLLECTIBLES)}
+            >
+              <Text
+                medium
+                color={
+                  activeTab === TabType.COLLECTIBLES
+                    ? themeColors.text.primary
+                    : themeColors.text.secondary
+                }
+              >
+                {t("collectiblesGrid.title")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {renderContent}
+        </View>
+      );
+    },
   );
 
-  const renderCollectiblesContent = () => (
-    // TODO: Implement CollectiblesGrid component
-    <View className="flex-1 items-center">
-      <Text md secondary onPress={() => onCollectiblePress?.("")}>
-        Collectibles coming soon
-      </Text>
-    </View>
-  );
-  const renderContent = () => {
-    if (activeTab === TabType.TOKENS) {
-      return renderTokensContent();
-    }
-
-    return renderCollectiblesContent();
-  };
-
-  return (
-    <View className="flex-1">
-      <View className="flex-row items-center mb-4">
-        <TouchableOpacity
-          className="p-2"
-          onPress={() => handleTabChange(TabType.TOKENS)}
-        >
-          <Text
-            medium
-            color={
-              activeTab === TabType.TOKENS
-                ? themeColors.text.primary
-                : themeColors.text.secondary
-            }
-          >
-            {t("balancesList.title")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="p-2"
-          onPress={() => handleTabChange(TabType.COLLECTIBLES)}
-        >
-          <Text
-            medium
-            color={
-              activeTab === TabType.COLLECTIBLES
-                ? themeColors.text.primary
-                : themeColors.text.secondary
-            }
-          >
-            {t("collectiblesGrid.title")}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {renderContent()}
-    </View>
-  );
-};
+TokensCollectiblesTabs.displayName = "TokensCollectiblesTabs";
