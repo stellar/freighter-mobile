@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +16,9 @@ interface UseWelcomeBannerReturn {
   handleWelcomeBannerDismiss: () => Promise<void>;
 }
 
+const getWelcomeBannerShownKey = (publicKey: string) =>
+  `${STORAGE_KEYS.WELCOME_BANNER_SHOWN_PREFIX}${publicKey}`;
+
 export const useWelcomeBanner = ({
   account,
   isFunded,
@@ -29,7 +33,7 @@ export const useWelcomeBanner = ({
     const checkWelcomeBannerStatus = async () => {
       if (account?.publicKey) {
         const hasSeenWelcome = await AsyncStorage.getItem(
-          `welcomeBanner_shown_${account.publicKey}`,
+          getWelcomeBannerShownKey(account.publicKey),
         );
         setHasAccountSeenWelcome(hasSeenWelcome === "true");
       }
@@ -61,7 +65,7 @@ export const useWelcomeBanner = ({
     try {
       if (account?.publicKey) {
         await AsyncStorage.setItem(
-          `welcomeBanner_shown_${account.publicKey}`,
+          getWelcomeBannerShownKey(account.publicKey),
           "true",
         );
       }
