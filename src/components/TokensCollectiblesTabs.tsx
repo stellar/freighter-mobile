@@ -1,7 +1,8 @@
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
 import { Text } from "components/sds/Typography";
-import { NETWORKS } from "config/constants";
+import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useCallback, useMemo } from "react";
@@ -85,7 +86,16 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     const renderCollectiblesContent = useMemo(
-      () => <CollectiblesGrid onCollectiblePress={onCollectiblePress} />,
+      () => (
+        // This is a workaround to avoid the default padding from being applied to the collectibles grid
+        // and the collectibles grid being cut off.
+        <View
+          className="flex-1"
+          style={{ marginHorizontal: -pxValue(DEFAULT_PADDING) }}
+        >
+          <CollectiblesGrid onCollectiblePress={onCollectiblePress} />
+        </View>
+      ),
       [onCollectiblePress],
     );
 
@@ -98,7 +108,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     }, [activeTab, renderTokensContent, renderCollectiblesContent]);
 
     return (
-      <View className="flex-1">
+      <View
+        className="flex-1"
+        style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+      >
         <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
             className="py-2"

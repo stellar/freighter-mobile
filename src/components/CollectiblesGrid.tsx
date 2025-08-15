@@ -2,8 +2,9 @@ import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PRESS_DELAY } from "config/constants";
+import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
 import { Collectible, Collection } from "ducks/collectibles";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
@@ -81,7 +82,10 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: Collection }) => (
         <View className="mb-6">
-          <View className="flex-row items-center gap-2 mb-3">
+          <View
+            className="flex-row items-center gap-2 mb-3"
+            style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+          >
             <Icon.Grid01 size={20} color={themeColors.text.secondary} />
             <Text medium secondary style={{ flex: 1 }}>
               {item.collectionName}
@@ -96,6 +100,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             keyExtractor={(collectible) => collectible.tokenId}
             horizontal
             showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: pxValue(DEFAULT_PADDING),
+            }}
           />
         </View>
       ),

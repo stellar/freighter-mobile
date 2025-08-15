@@ -127,7 +127,8 @@ const dummyCollectibles: Collectible[] = [
     collectionName: "Soroban Domains",
     tokenId: "102510",
     name: "charles.xlm",
-    image: "https://sorobandomains.org/img/logo.png",
+    image:
+      "https://nftcalendar.io/storage/uploads/events/2025/7/Hdqv6YNVErVCmYlwobFVYfS5BiH19ferUgQova7Z.webp",
     description: "Charles' Soroban username",
     externalUrl: "https://app.sorobandomains.org/domains/charles.xlm",
     traits: [
@@ -142,7 +143,8 @@ const dummyCollectibles: Collectible[] = [
     collectionName: "Soroban Domains",
     tokenId: "102589",
     name: "cassio.xlm",
-    image: "https://sorobandomains.org/img/logo.png",
+    image:
+      "https://nftcalendar.io/storage/uploads/events/2025/7/MkaASwOL8VA3I5B2iIfCcNGT29vGBp4YZIJgmjzq.jpg",
     description: "Cassio's Soroban username",
     externalUrl: "https://app.sorobandomains.org/domains/cassio.xlm",
     traits: [
