@@ -22,9 +22,10 @@ import {
   CustomToken,
 } from "config/types";
 import { isSacContract } from "helpers/balances";
+import { formatTokenAmount } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
-  formatTokenAmount,
+  formatTokenAmount as formatSorobanTokenAmount,
   getBalanceByKey,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -157,7 +158,7 @@ const processSorobanMint = async ({
             })
           : `${t("history.transactionHistory.minted")} ${code}`;
 
-        const formattedTokenAmount = formatTokenAmount(
+        const formattedTokenAmount = formatSorobanTokenAmount(
           new BigNumber(sorobanAttributes.amount),
           token.decimals,
         );
@@ -267,7 +268,7 @@ const processSorobanMint = async ({
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
 
-    const formattedTokenAmount = formatTokenAmount(
+    const formattedTokenAmount = formatSorobanTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       Number(decimals),
     );
@@ -358,7 +359,7 @@ const processSorobanTransfer = async ({
     const { symbol, decimals, name } = tokenDetailsResponse;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
-    const formattedTokenAmount = formatTokenAmount(
+    const formattedTokenAmount = formatSorobanTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       decimals,
     );
@@ -587,7 +588,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
   transactionDetails: TransactionDetails;
 }> = ({ transactionDetails }) => {
   const { themeColors } = useColors();
-  const tokenAmount = formatTokenAmount(
+  const tokenAmount = formatSorobanTokenAmount(
     new BigNumber(
       transactionDetails.contractDetails?.transferDetails?.amount ?? "",
     ),

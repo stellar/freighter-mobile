@@ -15,6 +15,7 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
   NonNativeToken,
+  Token,
 } from "config/types";
 
 interface GetTokenPriceFromBalanceParams {
@@ -100,9 +101,7 @@ export const getLPShareCode = (balance: Balance) => {
  *   console.log(token.code);
  * }
  */
-export const isLiquidityPool = (
-  balanceOrToken: Balance | NonNativeToken,
-): boolean => {
+export const isLiquidityPool = (balanceOrToken: Balance | Token): boolean => {
   // Liquidity pool balance
   if ("liquidityPoolId" in balanceOrToken && "reserves" in balanceOrToken) {
     return true;
