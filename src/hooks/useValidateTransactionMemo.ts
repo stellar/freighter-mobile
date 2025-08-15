@@ -70,12 +70,8 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     ): Promise<boolean> => {
       const server = stellarSdkServer(networkDetails.networkUrl);
 
-      try {
-        await server.checkMemoRequired(transaction);
-        return false;
-      } catch (error) {
-        return true;
-      }
+      await server.checkMemoRequired(transaction);
+      return false;
     },
     [networkDetails.networkUrl],
   );
@@ -125,9 +121,10 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
       } catch (error) {
         logger.error("Memo Validation", "Error validating memo", { error });
         if (error instanceof Error && "accountId" in error) {
-          throw error;
+          setIsMemoMissing(true);
+        } else {
+          setIsMemoMissing(false);
         }
-        setIsMemoMissing(false);
       } finally {
         setIsValidatingMemo(false);
       }
