@@ -1,14 +1,14 @@
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
-import { debug } from "helpers/debug";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useCallback, useMemo } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Platform, TouchableOpacity, View } from "react-native";
 
 /**
  * Available tab types for the TokensCollectiblesTabs component
@@ -26,6 +26,8 @@ export enum TabType {
 interface Props {
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
+  /** Whether to show the collectibles settings button */
+  showCollectiblesSettings?: boolean;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
   /** The public key of the wallet to display data for */
@@ -50,7 +52,7 @@ interface Props {
  * - Memoized content rendering for performance
  * - Dynamic tab styling based on active state
  * - Callback support for tab changes and item interactions
- * - Collectibles settings button (visible only when Collectibles tab is active)
+ * - Collectibles settings context menu with "Add manually" option
  * - Smart padding management for different content types
  *
  * @param {Props} props - Component props
@@ -59,6 +61,7 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
+    showCollectiblesSettings = false,
     onTabChange,
     publicKey,
     network,
@@ -83,13 +86,21 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     /**
-     * Handles the press event for the collectibles settings button
-     * Currently logs debug information for development purposes
-     * TODO: Implement actual collectibles settings functionality
+     * Context menu actions for collectibles settings
      */
-    const handleCollectiblesSettingsPress = useCallback(() => {
-      debug("TokensCollectiblesTabs", "collectibles settings pressed");
-    }, []);
+    const collectiblesMenuActions: MenuItem[] = useMemo(
+      () => [
+        {
+          title: t("collectiblesGrid.addManually"),
+          systemIcon: Platform.select({
+            ios: "plus.rectangle.on.rectangle",
+            android: "add_box",
+          }),
+          disabled: true,
+        },
+      ],
+      [t],
+    );
 
     /**
      * Renders the tokens/balances list content
@@ -177,13 +188,17 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           {/* Collectibles settings button - only visible when Collectibles tab is active */}
-          {activeTab === TabType.COLLECTIBLES && (
-            <TouchableOpacity
-              className="py-2 pl-4"
-              onPress={handleCollectiblesSettingsPress}
+          {activeTab === TabType.COLLECTIBLES && showCollectiblesSettings && (
+            <ContextMenuButton
+              contextMenuProps={{ actions: collectiblesMenuActions }}
+              side="bottom"
+              align="end"
+              sideOffset={8}
             >
-              <Icon.Sliders01 size={20} color={themeColors.text.secondary} />
-            </TouchableOpacity>
+              <View className="-mr-2">
+                <Icon.Sliders01 size={20} color={themeColors.text.secondary} />
+              </View>
+            </ContextMenuButton>
           )}
         </View>
 

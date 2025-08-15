@@ -318,7 +318,8 @@
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
-    "empty": "No collectibles found"
+    "empty": "No collectibles found",
+    "addManually": "Add manually"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"

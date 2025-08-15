@@ -206,6 +206,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="w-full border-b mb-4 border-border-primary" />
 
       <TokensCollectiblesTabs
+        showCollectiblesSettings
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}
