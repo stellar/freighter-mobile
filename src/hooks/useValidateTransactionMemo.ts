@@ -58,7 +58,7 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
    * Only validates on mainnet when the feature is enabled in preferences
    */
   const shouldValidateMemo = useMemo(
-    () => isMemoValidationEnabled && isMainnet(network),
+    () => !!(isMemoValidationEnabled && isMainnet(network)),
     [isMemoValidationEnabled, network],
   );
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
