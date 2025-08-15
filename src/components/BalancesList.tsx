@@ -24,6 +24,12 @@ const ListWrapper = styled.View`
   flex: 1;
 `;
 
+const SpinnerWrapper = styled(ListWrapper)`
+  align-items: center;
+  justify-content: center;
+  margin-bottom: ${px(55)};
+`;
+
 const Spinner = styled.ActivityIndicator`
   margin-top: ${px(24)};
   width: 100%;
@@ -107,13 +113,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   // If no balances and still loading, show the spinner
   if (noBalances && isLoading) {
     return (
-      <ListWrapper>
+      <SpinnerWrapper>
         <Spinner
           testID="balances-list-spinner"
           size="large"
           color={THEME.colors.secondary}
         />
-      </ListWrapper>
+      </SpinnerWrapper>
     );
   }
 

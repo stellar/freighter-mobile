@@ -131,7 +131,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
       if (isLoading) {
         return (
-          <View className="flex-1 pt-4">
+          <View className="flex-1 items-center justify-center mb-10">
             <Spinner
               testID="collectibles-grid-spinner"
               size="large"
