@@ -390,7 +390,7 @@ export const buildPaymentTransaction = async (
     transactionBuilder.addOperation(
       Operation.payment({
         destination: recipientAddress,
-        token,
+        asset: token,
         amount,
       }),
     );
