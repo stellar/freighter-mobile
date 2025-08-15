@@ -198,6 +198,7 @@ export enum STORAGE_KEYS {
   CUSTOM_TOKEN_LIST = "customTokenList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
+  FACE_ID_ENABLED = "faceIdEnabled",
 }
 
 /**
@@ -239,4 +240,16 @@ export const BROWSER_CONSTANTS = {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
   ANDROID_USER_AGENT:
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
+} as const;
+
+// Face ID Configuration Constants
+export const FACE_ID_CONFIG = {
+  // Storage key for Face ID preference
+  STORAGE_KEY: STORAGE_KEYS.FACE_ID_ENABLED,
+  // Default Face ID state
+  DEFAULT_ENABLED: false,
+  // Minimum iOS version that supports Face ID (iOS 11+)
+  MIN_IOS_VERSION: 11,
+  // Minimum Android API level that supports biometric authentication (API 23+)
+  MIN_ANDROID_API_LEVEL: 23,
 } as const;

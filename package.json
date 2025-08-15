@@ -82,6 +82,7 @@
     "react-freeze": "^1.0.4",
     "react-i18next": "^15.4.1",
     "react-native": "0.78.0",
+    "react-native-biometrics": "^3.0.1",
     "react-native-bootsplash": "^6.3.3",
     "react-native-config": "^1.5.5",
     "react-native-crypto": "^2.2.1",

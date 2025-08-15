@@ -98,6 +98,32 @@ export type AssetToken = {
   spread?: BigNumber;
 };
 
+// Face ID Types
+export type BiometricType = "FaceID" | "TouchID" | "Biometrics" | "None";
+
+export type FaceIdStatus = {
+  isEnabled: boolean;
+  isSupported: boolean;
+  biometricType: BiometricType;
+  isAvailable: boolean;
+  error?: string;
+};
+
+export type FaceIdConfig = {
+  isEnabled: boolean;
+  biometricType: BiometricType;
+  isSupported: boolean;
+  isAvailable: boolean;
+  error?: string;
+  isLoading: boolean;
+};
+
+export type FaceIdAuthenticationResult = {
+  success: boolean;
+  error?: string;
+  biometricType?: BiometricType;
+};
+
 /**
  * Union type representing a native XLM token, a non-native Stellar asset, or a Soroban token
  */
