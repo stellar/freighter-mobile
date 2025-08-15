@@ -1,10 +1,11 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React, { useState } from "react";
 import { Platform, TouchableOpacity, TextInput } from "react-native";
-import styled from "styled-components/native";
+import styled, { css } from "styled-components/native";
 
 // =============================================================================
 // Constants and types
@@ -93,18 +94,11 @@ const InputContainer = styled.View<
     px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
 `;
 
-export const StyledTextInput = styled.TextInput<
-  Pick<
-    StyledProps,
-    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
-  >
->`
+const commonInputStyles = css<Pick<StyledProps, "$fieldSize" | "$isDisabled">>`
   flex: 1;
-  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    getInputHeight($fieldSize)};
-  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    fs(INPUT_SIZES[$fieldSize].fontSize)};
-  color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
+  height: ${({ $fieldSize }) => getInputHeight($fieldSize)};
+  font-size: ${({ $fieldSize }) => fs(INPUT_SIZES[$fieldSize].fontSize)};
+  color: ${({ $isDisabled }) =>
     $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
   font-family: ${Platform.select({
     ios: "Inter-Variable",
@@ -114,6 +108,19 @@ export const StyledTextInput = styled.TextInput<
     ios: "400",
     android: "normal",
   })};
+`;
+
+export const StyledTextInput = styled.TextInput<
+  Pick<
+    StyledProps,
+    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
+  >
+>`
+  ${commonInputStyles}
+`;
+
+const StyledBottomSheetTextInput = styled(BottomSheetTextInput)`
+  ${commonInputStyles}
 `;
 
 const SideElement = styled.View<{ marginSide: "left" | "right" }>`
@@ -263,6 +270,7 @@ interface InputProps {
     | "numeric"
     | "email-address"
     | "phone-pad";
+  isBottomSheetInput?: boolean;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -270,6 +278,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     {
       fieldSize = "lg",
       label,
+
       labelSuffix,
       isLabelUppercase,
       isError,
@@ -287,6 +296,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       editable = true,
       testID,
       autoCorrect = true,
+      isBottomSheetInput = false,
       ...props
     },
     ref,
@@ -315,6 +325,10 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       </TouchableOpacity>
     );
 
+    const StyledTextInputComponent = isBottomSheetInput
+      ? StyledBottomSheetTextInput
+      : StyledTextInput;
+
     return (
       <Container $fieldSize={fieldSize}>
         {label && (
@@ -340,7 +354,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             <SideElement marginSide="right">{leftElement}</SideElement>
           )}
 
-          <StyledTextInput
+          <StyledTextInputComponent
             ref={ref}
             testID={testID}
             placeholder={placeholder}

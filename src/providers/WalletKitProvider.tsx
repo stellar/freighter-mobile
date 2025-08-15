@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
@@ -25,6 +26,7 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
 import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import { useToast } from "providers/ToastProvider";
@@ -76,6 +78,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
 
+  const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
   const publicKey = account?.publicKey || "";
 
   const initialized = useWalletKitInitialize();
@@ -89,7 +93,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
-
   const [proposalEvent, setProposalEvent] =
     useState<WalletKitSessionProposal | null>(null);
   const [requestEvent, setRequestEvent] =
@@ -97,6 +100,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [siteScanResult, setSiteScanResult] = useState<
     Blockaid.SiteScanResponse | undefined
   >(undefined);
+
+  const xdr = useMemo(
+    () =>
+      (requestEvent?.params.request.params as unknown as { xdr: string })
+        ?.xdr ?? "",
+    [requestEvent],
+  );
+
+  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(xdr);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -188,7 +200,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
-
       clearEvent();
     }, 200);
   };
@@ -322,6 +333,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    *
    * @dependencies activeSessions, event.type, authStatus
    */
+
   useEffect(() => {
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
       const sessionProposal = event as WalletKitSessionProposal;
@@ -435,12 +447,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
-      handleClearDappConnection();
       setRequestEvent(sessionRequest);
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessions, event.type, authStatus]);
+
+  const onCancelAddMemo = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    dappRequestBottomSheetModalRef.current?.present();
+  };
+
+  const onOpenAddMemoExplanationBottomSheet = () => {
+    addMemoExplanationBottomSheetModalRef.current?.present();
+  };
 
   return (
     <View className="flex-1">
@@ -448,9 +468,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
-        bottomSheetModalProps={{
-          onDismiss: handleClearDappConnection,
-        }}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         customContent={
           <DappConnectionBottomSheetContent
@@ -470,18 +487,29 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
+        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
         }}
-        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         customContent={
           <DappRequestBottomSheetContent
             account={account}
             requestEvent={requestEvent}
             isSigning={isSigning}
+            isValidatingMemo={isValidatingMemo}
+            onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onConfirm={handleDappRequest}
-            onCancel={handleClearDappRequest}
+            onCancelRequest={handleClearDappRequest}
+            isMemoMissing={isMemoMissing}
           />
+        }
+      />
+
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
       />
 

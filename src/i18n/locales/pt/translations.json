@@ -21,7 +21,8 @@
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
-    "and": " e "
+    "and": " e ",
+    "addMemo": "Adicionar memo"
   },
   "home": {
     "title": "Início",
@@ -83,6 +84,10 @@
     "hideDust": {
       "title": "Ocultar pagamentos pequenos",
       "description": "Ocultar pagamentos menores que 0,1 XLM"
+    },
+    "memoValidation": {
+      "title": "Verificação com stellar.expert",
+      "description": "Validar endereços que requerem um memo"
     }
   },
   "shareFeedbackScreen": {
@@ -438,6 +443,12 @@
   "transactionTokenScreen": {
     "title": "Enviando"
   },
+  "transactionSettingsBottomSheet": {
+    "title": "Configurações da transação",
+    "feeTitle": "Taxa da transação",
+    "memoTitle": "Memo",
+    "timeoutTitle": "Tempo limite da transação"
+  },
   "transactionAmountScreen": {
     "title": "Enviar",
     "percentageButtons": {
@@ -459,7 +470,15 @@
       "none": "Nenhum",
       "fee": "Taxa",
       "xdr": "XDR"
-    }
+    },
+    "memoMissing": "Esta transação requer um memo",
+    "addMemo": "Adicionar memo"
+  },
+  "addMemoExplanationBottomSheet": {
+    "title": "Memo é obrigatório",
+    "description": "Uma conta de destino requer o uso do campo memo que não está presente na transação que você está prestes a assinar.",
+    "disabledWarning": "O Freighter desabilitou automaticamente a opção de assinar esta transação.",
+    "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
     "title": "Adicionar outra carteira",
