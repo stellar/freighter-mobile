@@ -1,65 +1,65 @@
 import { logos } from "assets/logos";
-import SorobanAssetIcon from "assets/logos/icon-soroban.svg";
-import { Asset, AssetSize } from "components/sds/Asset";
+import SorobanTokenIcon from "assets/logos/icon-soroban.svg";
+import { Token as TokenComponent, TokenSize } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
-import { AssetTypeWithCustomToken, Balance, Token } from "config/types";
-import { useAssetIconsStore } from "ducks/assetIcons";
+import { TokenTypeWithCustomToken, Balance, Token } from "config/types";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * Props for the AssetIcon component
+ * Props for the TokenIcon component
  * @property {Token | Balance} token - The token or balance to display an icon for
- * @property {AssetSize} [size="lg"] - Size variant for the icon ("sm" | "md" | "lg")
+ * @property {Size} [size="lg"] - Size variant for the icon ("sm" | "md" | "lg")
  * @property {string} [backgroundColor] - Optional custom background color for the icon
  */
-interface AssetIconProps {
+interface TokenIconProps {
   /** The token to display */
   token: Token | Balance;
   /** Optional size variant (defaults to "lg") */
-  size?: AssetSize;
+  size?: TokenSize;
   /** Optional custom background color */
   backgroundColor?: string;
 }
 
 /**
- * AssetIcon Component
+ * TokenIcon Component
  *
- * A wrapper around the SDS Asset component that handles token-specific icon display.
+ * A wrapper around the SDS Token component that handles token-specific icon display.
  * Provides consistent icon rendering for different token types in the Stellar ecosystem.
  *
  * Features:
  * - For native XLM tokens, displays the Stellar logo
  * - For liquidity pool tokens, displays "LP" text
- * - For other tokens, fetches and displays their icon from the asset icons store
+ * - For other tokens, fetches and displays their icon from the token icons store
  * - Falls back to token initials if no image is available
  *
  * @example
  * // Native XLM token
- * <AssetIcon token={{ type: "native", code: "XLM" }} />
+ * <TokenIcon token={{ type: "native", code: "XLM" }} />
  *
- * // Custom asset with background
- * <AssetIcon
+ * // Custom token with background
+ * <TokenIcon
  *   token={{ code: "USDC", issuer: { key: "..." } }}
  *   backgroundColor="#f0f0f0"
  * />
  *
- * @param {AssetIconProps} props - Component props
- * @returns {JSX.Element} The rendered asset icon
+ * @param {TokenIconProps} props - Component props
+ * @returns {JSX.Element} The rendered token icon
  */
-export const AssetIcon: React.FC<AssetIconProps> = ({
+export const TokenIcon: React.FC<TokenIconProps> = ({
   token: tokenProp,
   size = "lg",
   backgroundColor,
 }) => {
-  const icons = useAssetIconsStore((state) => state.icons);
+  const icons = useTokenIconsStore((state) => state.icons);
   const { t } = useTranslation();
 
   // Liquidity pool: show "LP" text
   if (isLiquidityPool(tokenProp)) {
     return (
-      <Asset
+      <TokenComponent
         variant="single"
         size={size}
         sourceOne={{
@@ -82,7 +82,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   if ("contractId" in tokenProp) {
     token = {
       ...tokenProp,
-      type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+      type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
       code: tokenProp.symbol,
       issuer: {
         key: tokenProp.contractId,
@@ -95,9 +95,9 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
   }
 
   // Native XLM: show Stellar logo
-  if (token.type === AssetTypeWithCustomToken.NATIVE) {
+  if (token.type === TokenTypeWithCustomToken.NATIVE) {
     return (
-      <Asset
+      <TokenComponent
         variant="single"
         size={size}
         sourceOne={{
@@ -109,8 +109,8 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
     );
   }
 
-  // Soroban custom tokens: show icon if available, otherwise SorobanAssetIcon
-  if (token.type === AssetTypeWithCustomToken.CUSTOM_TOKEN) {
+  // Soroban custom tokens: show icon if available, otherwise SorobanTokenIcon
+  if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
     const tokenIdentifier = getTokenIdentifier(token);
     const icon = icons[tokenIdentifier];
     const imageUrl = icon?.imageUrl || "";
@@ -118,7 +118,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
     // If we have a specific icon, use it
     if (imageUrl) {
       return (
-        <Asset
+        <TokenComponent
           variant="single"
           size={size}
           sourceOne={{
@@ -130,21 +130,21 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
       );
     }
 
-    // Fallback: show SorobanAssetIcon for Soroban custom tokens
+    // Fallback: show SorobanTokenIcon for Soroban custom tokens
     return (
-      <Asset
+      <TokenComponent
         variant="single"
         size={size}
         sourceOne={{
           altText: t("tokenIconAlt", { code: token.code }),
           backgroundColor,
-          renderContent: () => <SorobanAssetIcon />,
+          renderContent: () => <SorobanTokenIcon />,
         }}
       />
     );
   }
 
-  // Classic assets (and SACs): show icon if available, otherwise show token initials
+  // Classic tokens (and SACs): show icon if available, otherwise show token initials
   const tokenIdentifier = getTokenIdentifier(token);
   const icon = icons[tokenIdentifier];
   const imageUrl = icon?.imageUrl || "";
@@ -159,7 +159,7 @@ export const AssetIcon: React.FC<AssetIconProps> = ({
     : undefined;
 
   return (
-    <Asset
+    <TokenComponent
       variant="single"
       size={size}
       sourceOne={{

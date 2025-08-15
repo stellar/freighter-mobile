@@ -1,7 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
 interface FormatConversionRateParams {
@@ -23,7 +23,7 @@ interface GetContractAddressParams {
 
 /**
  * Formats conversion rate for display with proper symbols
- * Uses formatAssetAmount for consistent 7-decimal formatting following extension rules
+ * Uses formatTokenAmount for consistent 7-decimal formatting following extension rules
  */
 export const formatConversionRate = ({
   rate,
@@ -40,7 +40,7 @@ export const formatConversionRate = ({
   }
 
   const roundedRate = rateBN.toFixed(DEFAULT_DECIMALS);
-  const formattedRate = formatAssetAmount(roundedRate);
+  const formattedRate = formatTokenAmount(roundedRate);
 
   return `1 ${sourceSymbol} ≈ ${formattedRate} ${destinationSymbol}`;
 };
@@ -60,7 +60,7 @@ export const calculateMinimumReceived = ({
     BigNumber(allowedSlippage).dividedBy(100),
   );
 
-  return formatAssetAmount(
+  return formatTokenAmount(
     destinationAmountBN
       .multipliedBy(slippageMultiplier)
       .toFixed(DEFAULT_DECIMALS),
@@ -69,7 +69,7 @@ export const calculateMinimumReceived = ({
 
 /**
  * Gets contract address from different balance types
- * For native XLM, returns the network-specific Stellar Asset Contract address
+ * For native XLM, returns the network-specific Stellar Token Contract address
  */
 export const getContractAddress = ({
   balance,

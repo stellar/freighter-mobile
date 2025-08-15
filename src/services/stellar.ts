@@ -1,5 +1,5 @@
 import {
-  Asset,
+  Asset as SdkToken,
   FeeBumpTransaction,
   Horizon,
   Keypair,
@@ -18,7 +18,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { NetworkCongestion } from "config/types";
-import { formatAssetIdentifier } from "helpers/balances";
+import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
 
@@ -36,12 +36,12 @@ export interface TransactionDetail {
   memo?: string;
   fee: string;
   swapDetails?: {
-    sourceAssetCode: string;
-    sourceAssetIssuer: string;
-    destinationAssetCode: string;
-    destinationAssetIssuer: string;
-    sourceAssetType: string;
-    destinationAssetType: string;
+    sourceTokenCode: string;
+    sourceTokenIssuer: string;
+    destinationTokenCode: string;
+    destinationTokenIssuer: string;
+    sourceTokenType: string;
+    destinationTokenType: string;
     sourceAmount: string;
     destinationAmount: string;
   };
@@ -50,8 +50,8 @@ export interface TransactionDetail {
 export type BuildChangeTrustTxParams = {
   network: NETWORKS;
   publicKey: string;
-  // composed by assetCode:assetIssuer
-  assetIdentifier: string;
+  // composed by tokenCode:tokenIssuer
+  tokenIdentifier: string;
   isRemove?: boolean;
 };
 
@@ -166,8 +166,8 @@ export const getNetworkFees = async (server: Horizon.Server) => {
 };
 
 export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
-  const { network, publicKey, assetIdentifier, isRemove = false } = input;
-  const { assetCode, issuer } = formatAssetIdentifier(assetIdentifier);
+  const { network, publicKey, tokenIdentifier, isRemove = false } = input;
+  const { tokenCode, issuer } = formatTokenIdentifier(tokenIdentifier);
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
 
   const server = stellarSdkServer(networkUrl);
@@ -182,7 +182,7 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   txBuilder
     .addOperation(
       Operation.changeTrust({
-        asset: new Asset(assetCode, issuer),
+        asset: new SdkToken(tokenCode, issuer),
         // Setting the limit to 0 will remove the trustline.
         ...(isRemove && { limit: "0" }),
       }),
@@ -268,14 +268,14 @@ export const getTransactionDetails = async (
       };
 
       swapDetails = {
-        sourceAssetIssuer: operation.source_asset_issuer || "",
-        destinationAssetIssuer: operation.asset_issuer || "",
-        sourceAssetCode: operation.source_asset_code || NATIVE_TOKEN_CODE,
-        destinationAssetCode: operation.asset_code || NATIVE_TOKEN_CODE,
+        sourceTokenIssuer: operation.source_asset_issuer || "",
+        destinationTokenIssuer: operation.asset_issuer || "",
+        sourceTokenCode: operation.source_asset_code || NATIVE_TOKEN_CODE,
+        destinationTokenCode: operation.asset_code || NATIVE_TOKEN_CODE,
         sourceAmount: operation.source_amount || "",
         destinationAmount: operation.amount || "",
-        sourceAssetType: operation.source_asset_type || "native",
-        destinationAssetType: operation.asset_type || "native",
+        sourceTokenType: operation.source_asset_type || "native",
+        destinationTokenType: operation.asset_type || "native",
       };
     }
 

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import BigNumber from "bignumber.js";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import { createOperationString } from "components/screens/HistoryScreen/helpers";
 import {
@@ -17,15 +17,15 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import {
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
   BalanceMap,
   CustomToken,
 } from "config/types";
 import { isSacContract } from "helpers/balances";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
-  formatTokenAmount,
+  formatTokenAmount as formatSorobanTokenAmount,
   getBalanceByKey,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -92,7 +92,7 @@ const processSorobanMint = async ({
   const { id } = operation;
   const isReceiving = sorobanAttributes.to === publicKey;
 
-  const assetBalance = getBalanceByKey(
+  const tokenBalance = getBalanceByKey(
     sorobanAttributes.contractId,
     Object.values(accountBalances),
     networkDetails,
@@ -118,7 +118,7 @@ const processSorobanMint = async ({
   };
 
   // If user doesn't have this token in their balances yet
-  if (!assetBalance) {
+  if (!tokenBalance) {
     try {
       const tokenDetailsResponse = await getTokenDetails({
         contractId: sorobanAttributes.contractId,
@@ -158,29 +158,29 @@ const processSorobanMint = async ({
             })
           : `${t("history.transactionHistory.minted")} ${code}`;
 
-        const formattedTokenAmount = formatTokenAmount(
+        const formattedTokenAmount = formatSorobanTokenAmount(
           new BigNumber(sorobanAttributes.amount),
           token.decimals,
         );
 
-        const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
+        const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenAmount(
           formattedTokenAmount,
           code,
         )}`;
 
         historyItemData.amountText = formattedAmount;
         historyItemData.IconComponent = isNative ? (
-          <AssetIcon
+          <TokenIcon
             token={{
-              type: AssetTypeWithCustomToken.NATIVE,
+              type: TokenTypeWithCustomToken.NATIVE,
               code: NATIVE_TOKEN_CODE,
             }}
             size="lg"
           />
         ) : (
-          <AssetIcon
+          <TokenIcon
             token={{
-              type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+              type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
               code: token.symbol,
               issuer: {
                 key: sorobanAttributes.contractId,
@@ -192,27 +192,27 @@ const processSorobanMint = async ({
 
         // Check if it's a SAC and show appropriate text
         let displayName;
-        let assetIconToken;
+        let tokenIconDetails;
 
         if (isNative) {
           displayName = NATIVE_TOKEN_CODE;
-          assetIconToken = {
+          tokenIconDetails = {
             code: NATIVE_TOKEN_CODE,
             issuer: { key: "" },
-            type: AssetTypeWithCustomToken.NATIVE,
+            type: TokenTypeWithCustomToken.NATIVE,
           };
         } else if (token.name && isSacContract(token.name)) {
           displayName = token.symbol; // Show only symbol for SACs
-          assetIconToken = {
+          tokenIconDetails = {
             code: token.symbol,
             issuer: { key: token.name.split(":")[1] },
-            // No type for SACs (classic asset)
+            // No type for SACs (classic token)
             type: undefined,
           };
         } else {
           displayName = token.name ?? token.symbol; // Show name for Custom Tokens
-          assetIconToken = {
-            type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+          tokenIconDetails = {
+            type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
             code: token.symbol,
             issuer: {
               key: sorobanAttributes.contractId,
@@ -222,7 +222,7 @@ const processSorobanMint = async ({
 
         historyItemData.rowText = displayName;
         historyItemData.IconComponent = (
-          <AssetIcon token={assetIconToken} size="lg" />
+          <TokenIcon token={tokenIconDetails} size="lg" />
         );
 
         const transactionDetails: TransactionDetails = {
@@ -264,16 +264,16 @@ const processSorobanMint = async ({
     }
   } else {
     // User already has this token in their balances
-    const { decimals, symbol } = assetBalance as CustomToken;
+    const { decimals, symbol } = tokenBalance as CustomToken;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
 
-    const formattedTokenAmount = formatTokenAmount(
+    const formattedTokenAmount = formatSorobanTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       Number(decimals),
     );
 
-    const formattedAmount = `${isReceiving ? "+" : ""}${formatAssetAmount(
+    const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenAmount(
       formattedTokenAmount,
       code,
     )}`;
@@ -359,7 +359,7 @@ const processSorobanTransfer = async ({
     const { symbol, decimals, name } = tokenDetailsResponse;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
-    const formattedTokenAmount = formatTokenAmount(
+    const formattedTokenAmount = formatSorobanTokenAmount(
       new BigNumber(sorobanAttributes.amount),
       decimals,
     );
@@ -369,31 +369,31 @@ const processSorobanTransfer = async ({
       sorobanAttributes.from !== publicKey;
 
     const paymentDifference = isRecipient ? "+" : "-";
-    const formattedAmount = `${paymentDifference}${formatAssetAmount(
+    const formattedAmount = `${paymentDifference}${formatTokenAmount(
       formattedTokenAmount,
       code,
     )}`;
 
     let displayName = code;
-    let assetIconToken;
+    let tokenIconDetails;
     if (isNative) {
       displayName = NATIVE_TOKEN_CODE;
-      assetIconToken = {
+      tokenIconDetails = {
         code: NATIVE_TOKEN_CODE,
         issuer: { key: "" },
-        type: AssetTypeWithCustomToken.NATIVE,
+        type: TokenTypeWithCustomToken.NATIVE,
       };
     } else if (name && isSacContract(name)) {
       displayName = code;
-      assetIconToken = {
+      tokenIconDetails = {
         code,
         issuer: { key: name.split(":")[1] },
         type: undefined,
       };
     } else {
       displayName = name ?? code;
-      assetIconToken = {
-        type: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+      tokenIconDetails = {
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
         code,
         issuer: { key: sorobanAttributes.contractId },
       };
@@ -401,7 +401,7 @@ const processSorobanTransfer = async ({
 
     historyItemData.amountText = formattedAmount;
     historyItemData.IconComponent = (
-      <AssetIcon token={assetIconToken} size="lg" />
+      <TokenIcon token={tokenIconDetails} size="lg" />
     );
     historyItemData.ActionIconComponent = isRecipient ? (
       <Icon.ArrowCircleDown size={16} color={themeColors.foreground.primary} />
@@ -588,7 +588,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
   transactionDetails: TransactionDetails;
 }> = ({ transactionDetails }) => {
   const { themeColors } = useColors();
-  const tokenAmount = formatTokenAmount(
+  const tokenAmount = formatSorobanTokenAmount(
     new BigNumber(
       transactionDetails.contractDetails?.transferDetails?.amount ?? "",
     ),
@@ -603,7 +603,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatAssetAmount(tokenAmount, contractSymbol)}
+            {formatTokenAmount(tokenAmount, contractSymbol)}
           </Text>
         </View>
         {transactionDetails.IconComponent}

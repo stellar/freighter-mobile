@@ -1,14 +1,13 @@
-import { AssetType } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NETWORK_URLS } from "config/constants";
 import {
-  AssetToken,
-  AssetTypeWithCustomToken,
+  NonNativeToken,
+  TokenTypeWithCustomToken,
   BalanceMap,
   ClassicBalance,
   NativeBalance,
 } from "config/types";
-import { useAssetIconsStore } from "ducks/assetIcons";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
 
 // Mock the getIconUrlFromIssuer helper
@@ -16,7 +15,7 @@ jest.mock("helpers/getIconUrlFromIssuer", () => ({
   getIconUrlFromIssuer: jest.fn(),
 }));
 
-describe("assetIcons store", () => {
+describe("tokenIcons store", () => {
   const mockGetIconUrlFromIssuer = getIconUrlFromIssuer as jest.MockedFunction<
     typeof getIconUrlFromIssuer
   >;
@@ -24,19 +23,19 @@ describe("assetIcons store", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the store before each test
-    useAssetIconsStore.setState({
+    useTokenIconsStore.setState({
       icons: {},
       lastRefreshed: null,
     });
   });
 
   describe("fetchIconUrl", () => {
-    const mockAsset: AssetToken = {
+    const mockToken: NonNativeToken = {
       code: "USDC",
       issuer: {
         key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       },
-      type: AssetTypeWithCustomToken.CREDIT_ALPHANUM12,
+      type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
     };
 
     it("should return cached icon if available", async () => {
@@ -45,15 +44,15 @@ describe("assetIcons store", () => {
         networkUrl: NETWORK_URLS.PUBLIC,
       };
 
-      useAssetIconsStore.setState({
+      useTokenIconsStore.setState({
         icons: {
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
             cachedIcon,
         },
       });
 
-      const result = await useAssetIconsStore.getState().fetchIconUrl({
-        asset: mockAsset,
+      const result = await useTokenIconsStore.getState().fetchIconUrl({
+        token: mockToken,
         networkUrl: NETWORK_URLS.PUBLIC,
       });
 
@@ -61,12 +60,12 @@ describe("assetIcons store", () => {
       expect(mockGetIconUrlFromIssuer).not.toHaveBeenCalled();
     });
 
-    it("should fetch and cache new icon for non-native asset", async () => {
+    it("should fetch and cache new icon for non-native token", async () => {
       const mockIconUrl = "https://example.com/icon.png";
       mockGetIconUrlFromIssuer.mockResolvedValue(mockIconUrl);
 
-      const result = await useAssetIconsStore.getState().fetchIconUrl({
-        asset: mockAsset,
+      const result = await useTokenIconsStore.getState().fetchIconUrl({
+        token: mockToken,
         networkUrl: NETWORK_URLS.PUBLIC,
       });
 
@@ -75,8 +74,8 @@ describe("assetIcons store", () => {
         networkUrl: NETWORK_URLS.PUBLIC,
       });
       expect(mockGetIconUrlFromIssuer).toHaveBeenCalledWith({
-        assetCode: mockAsset.code,
-        issuerKey: mockAsset.issuer.key,
+        tokenCode: mockToken.code,
+        issuerKey: mockToken.issuer.key,
         networkUrl: NETWORK_URLS.PUBLIC,
       });
     });
@@ -84,8 +83,8 @@ describe("assetIcons store", () => {
     it("should handle errors gracefully", async () => {
       mockGetIconUrlFromIssuer.mockRejectedValue(new Error("Failed to fetch"));
 
-      const result = await useAssetIconsStore.getState().fetchIconUrl({
-        asset: mockAsset,
+      const result = await useTokenIconsStore.getState().fetchIconUrl({
+        token: mockToken,
         networkUrl: NETWORK_URLS.PUBLIC,
       });
 
@@ -104,7 +103,7 @@ describe("assetIcons store", () => {
           issuer: {
             key: "native",
           },
-          type: "native" as const,
+          type: TokenTypeWithCustomToken.NATIVE,
         },
         total: new BigNumber("100"),
         available: new BigNumber("100"),
@@ -118,7 +117,7 @@ describe("assetIcons store", () => {
           issuer: {
             key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
           },
-          type: "credit_alphanum4" as AssetType,
+          type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
         },
         total: new BigNumber("200"),
         available: new BigNumber("200"),
@@ -128,18 +127,18 @@ describe("assetIcons store", () => {
       } as ClassicBalance,
     };
 
-    it("should fetch icons for all non-native assets", async () => {
+    it("should fetch icons for all non-native tokens", async () => {
       const mockIconUrl = "https://example.com/icon.png";
       mockGetIconUrlFromIssuer.mockResolvedValue(mockIconUrl);
 
-      await useAssetIconsStore.getState().fetchBalancesIcons({
+      await useTokenIconsStore.getState().fetchBalancesIcons({
         balances: mockBalances,
         networkUrl: NETWORK_URLS.PUBLIC,
       });
 
       expect(mockGetIconUrlFromIssuer).toHaveBeenCalledTimes(1);
       expect(mockGetIconUrlFromIssuer).toHaveBeenCalledWith({
-        assetCode: "USDC",
+        tokenCode: "USDC",
         issuerKey: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         networkUrl: NETWORK_URLS.PUBLIC,
       });
@@ -148,17 +147,17 @@ describe("assetIcons store", () => {
 
   describe("refreshIcons", () => {
     it("should set lastRefreshed if not set", () => {
-      useAssetIconsStore.getState().refreshIcons();
-      expect(useAssetIconsStore.getState().lastRefreshed).toBeTruthy();
+      useTokenIconsStore.getState().refreshIcons();
+      expect(useTokenIconsStore.getState().lastRefreshed).toBeTruthy();
     });
 
     it("should not refresh if last refresh was less than 24 hours ago", () => {
       const now = Date.now();
-      useAssetIconsStore.setState({
+      useTokenIconsStore.setState({
         lastRefreshed: now - 12 * 60 * 60 * 1000, // 12 hours ago
       });
 
-      useAssetIconsStore.getState().refreshIcons();
+      useTokenIconsStore.getState().refreshIcons();
       expect(mockGetIconUrlFromIssuer).not.toHaveBeenCalled();
     });
 
@@ -166,7 +165,7 @@ describe("assetIcons store", () => {
       const mockIconUrl = "https://example.com/icon.png";
       mockGetIconUrlFromIssuer.mockResolvedValue(mockIconUrl);
 
-      useAssetIconsStore.setState({
+      useTokenIconsStore.setState({
         lastRefreshed: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
         icons: {
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
@@ -176,7 +175,7 @@ describe("assetIcons store", () => {
         },
       });
 
-      useAssetIconsStore.getState().refreshIcons();
+      useTokenIconsStore.getState().refreshIcons();
 
       // Wait for the async operations to complete
       await new Promise((resolve) => {
@@ -184,7 +183,7 @@ describe("assetIcons store", () => {
       });
 
       expect(mockGetIconUrlFromIssuer).toHaveBeenCalled();
-      expect(useAssetIconsStore.getState().lastRefreshed).toBeTruthy();
+      expect(useTokenIconsStore.getState().lastRefreshed).toBeTruthy();
     });
   });
 });

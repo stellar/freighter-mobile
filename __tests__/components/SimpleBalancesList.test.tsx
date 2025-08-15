@@ -74,8 +74,8 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveAsset={() => {}}
-        isRemovingAsset={false}
+        handleRemoveToken={() => {}}
+        isRemovingToken={false}
       />,
     );
 
@@ -88,8 +88,8 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveAsset={() => {}}
-        isRemovingAsset={false}
+        handleRemoveToken={() => {}}
+        isRemovingToken={false}
       />,
     );
 
@@ -102,8 +102,8 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveAsset={() => {}}
-        isRemovingAsset={false}
+        handleRemoveToken={() => {}}
+        isRemovingToken={false}
       />,
     );
 
@@ -119,8 +119,8 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveAsset={() => {}}
-        isRemovingAsset={false}
+        handleRemoveToken={() => {}}
+        isRemovingToken={false}
       />,
     );
 

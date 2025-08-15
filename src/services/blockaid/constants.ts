@@ -1,5 +1,5 @@
 export const BLOCKAID_ENDPOINTS = {
-  SCAN_ASSET: "/scan-asset",
+  SCAN_TOKEN: "/scan-asset",
   SCAN_SITE: "/scan-dapp",
   SCAN_TRANSACTION: "/scan-tx",
 } as const;
@@ -12,7 +12,7 @@ export const BLOCKAID_RESULT_TYPES = {
 } as const;
 
 export const BLOCKAID_ERROR_MESSAGES = {
-  ASSET_SCAN_FAILED: "Failed to scan asset",
+  TOKEN_SCAN_FAILED: "Failed to scan token",
   SITE_SCAN_FAILED: "Failed to scan site",
   TRANSACTION_SCAN_FAILED: "Failed to scan transaction",
   NETWORK_NOT_SUPPORTED: "Scanning is not supported on this network",
@@ -44,10 +44,10 @@ export const SECURITY_LEVEL_MAP = {
  * All user-facing security messages should use these keys
  */
 export const SECURITY_MESSAGE_KEYS = {
-  ASSET_MALICIOUS: "blockaid.security.asset.malicious",
-  ASSET_SUSPICIOUS: "blockaid.security.asset.suspicious",
-  ASSET_WARNING: "blockaid.security.asset.warning",
-  ASSET_SPAM: "blockaid.security.asset.spam",
+  TOKEN_MALICIOUS: "blockaid.security.token.malicious",
+  TOKEN_SUSPICIOUS: "blockaid.security.token.suspicious",
+  TOKEN_WARNING: "blockaid.security.token.warning",
+  TOKEN_SPAM: "blockaid.security.token.spam",
   SITE_MALICIOUS: "blockaid.security.site.malicious",
   SITE_SUSPICIOUS: "blockaid.security.site.suspicious",
   TRANSACTION_SIMULATION_FAILED:

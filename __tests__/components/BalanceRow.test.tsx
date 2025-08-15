@@ -14,7 +14,7 @@ jest.mock("helpers/balances", () => ({
 
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
-  formatAssetAmount: jest.fn((amount) => amount.toString()),
+  formatTokenAmount: jest.fn((amount) => amount.toString()),
   formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";

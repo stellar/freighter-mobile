@@ -1,5 +1,5 @@
-import { AssetIcon } from "components/AssetIcon";
 import { List } from "components/List";
+import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
 import { Banner } from "components/sds/Banner";
@@ -9,8 +9,8 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import {
-  AssetTypeWithCustomToken,
-  FormattedSearchAssetRecord,
+  TokenTypeWithCustomToken,
+  FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
@@ -20,24 +20,24 @@ import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { View, TouchableOpacity } from "react-native";
 
-type AddAssetBottomSheetContentProps = {
-  asset: FormattedSearchAssetRecord | null;
+type AddTokenBottomSheetContentProps = {
+  token: FormattedSearchTokenRecord | null;
   account: ActiveAccount | null;
   onCancel: () => void;
-  onAddAsset: () => void;
+  onAddToken: () => void;
   proceedAnywayAction?: () => void;
-  isAddingAsset: boolean;
+  isAddingToken: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
 };
 
-const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
-  asset,
+const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
+  token,
   account,
   onCancel,
-  onAddAsset,
+  onAddToken,
   proceedAnywayAction,
-  isAddingAsset,
+  isAddingToken,
   isMalicious = false,
   isSuspicious = false,
 }) => {
@@ -47,7 +47,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
   const { copyToClipboard } = useClipboard();
 
   const listItems = useMemo(() => {
-    if (!asset) return [];
+    if (!token) return [];
 
     const items = [
       {
@@ -90,11 +90,11 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
     if (isMalicious || isSuspicious) {
       items.push({
         icon: <Icon.Circle size={16} color={themeColors.foreground.primary} />,
-        title: t("addAssetScreen.assetAddress"),
+        title: t("addTokenScreen.tokenAddress"),
         trailingContent: (
           <TouchableOpacity
             onPress={() => {
-              copyToClipboard(asset.issuer);
+              copyToClipboard(token.issuer);
             }}
             className="flex-row items-center gap-2"
           >
@@ -102,7 +102,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
               <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             </View>
             <Text md primary>
-              {truncateAddress(asset.issuer, 7, 0)}
+              {truncateAddress(token.issuer, 7, 0)}
             </Text>
           </TouchableOpacity>
         ),
@@ -112,7 +112,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
 
     return items;
   }, [
-    asset,
+    token,
     account?.publicKey,
     account?.accountName,
     isMalicious,
@@ -124,19 +124,19 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
     copyToClipboard,
   ]);
 
-  if (!asset) {
+  if (!token) {
     return null;
   }
 
   return (
     <View className="flex-1 justify-center items-center mt-8">
       <View>
-        <AssetIcon
+        <TokenIcon
           token={{
-            type: asset.assetType as AssetTypeWithCustomToken,
-            code: asset.assetCode,
+            type: token.tokenType as TokenTypeWithCustomToken,
+            code: token.tokenCode,
             issuer: {
-              key: asset.issuer,
+              key: token.issuer,
             },
           }}
         />
@@ -149,13 +149,13 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
 
       <View className="mt-4" />
       <Text lg primary>
-        {asset.assetCode}
+        {token.tokenCode}
       </Text>
 
       <View className="mt-1" />
-      {asset.domain && (
+      {token.domain && (
         <Text sm secondary>
-          {asset.domain}
+          {token.domain}
         </Text>
       )}
 
@@ -166,7 +166,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         icon={<Icon.PlusCircle size={14} />}
         iconPosition={IconPosition.LEFT}
       >
-        {t("addAssetScreen.addToken")}
+        {t("addTokenScreen.addToken")}
       </Badge>
 
       {(isMalicious || isSuspicious) && (
@@ -174,17 +174,17 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
           variant={isMalicious ? "error" : "warning"}
           text={
             isMalicious
-              ? t("addAssetScreen.maliciousAsset")
-              : t("addAssetScreen.suspiciousAsset")
+              ? t("addTokenScreen.maliciousToken")
+              : t("addTokenScreen.suspiciousToken")
           }
-          onPress={onAddAsset}
+          onPress={onAddToken}
           className="mt-4"
         />
       )}
 
       <View className="px-[16px] py-[12px] mt-6 bg-background-tertiary rounded-[16px] justify-center">
         <Text md secondary regular textAlign="center">
-          {t("addAssetScreen.disclaimer")}
+          {t("addTokenScreen.disclaimer")}
         </Text>
       </View>
 
@@ -195,7 +195,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
       {!isMalicious && !isSuspicious && (
         <View className="mt-4 px-6">
           <Text sm secondary textAlign="center">
-            {t("addAssetScreen.confirmTrust")}
+            {t("addTokenScreen.confirmTrust")}
           </Text>
         </View>
       )}
@@ -211,7 +211,7 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
             xl
             isFullWidth
             onPress={onCancel}
-            disabled={isAddingAsset}
+            disabled={isAddingToken}
           >
             {t("common.cancel")}
           </Button>
@@ -219,10 +219,10 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
         <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
           {isMalicious || isSuspicious ? (
             <TextButton
-              text={t("addAssetScreen.approveAnyway")}
+              text={t("addTokenScreen.approveAnyway")}
               onPress={proceedAnywayAction}
-              isLoading={isAddingAsset}
-              disabled={isAddingAsset}
+              isLoading={isAddingToken}
+              disabled={isAddingToken}
               variant={isMalicious ? "error" : "secondary"}
             />
           ) : (
@@ -230,10 +230,10 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
               tertiary
               xl
               isFullWidth
-              onPress={onAddAsset}
-              isLoading={isAddingAsset}
+              onPress={onAddToken}
+              isLoading={isAddingToken}
             >
-              {t("addAssetScreen.addTokenButton")}
+              {t("addTokenScreen.addTokenButton")}
             </Button>
           )}
         </View>
@@ -242,4 +242,4 @@ const AddAssetBottomSheetContent: React.FC<AddAssetBottomSheetContentProps> = ({
   );
 };
 
-export default AddAssetBottomSheetContent;
+export default AddTokenBottomSheetContent;

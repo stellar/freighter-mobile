@@ -1,6 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -11,7 +11,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTransactionDate } from "helpers/date";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -141,7 +141,7 @@ const TransactionDetailsBottomSheet: React.FC<
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
-        {selectedBalance && <AssetIcon token={selectedBalance} size="lg" />}
+        {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
         <View>
           <Text md medium primary>
             {t("transactionDetailsBottomSheet.sent", {
@@ -161,7 +161,7 @@ const TransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(transactionAmount, selectedBalance?.tokenCode)}
+              {formatTokenAmount(transactionAmount, selectedBalance?.tokenCode)}
             </Text>
             <Text md medium secondary>
               {selectedBalance?.currentPrice
@@ -173,7 +173,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 : "--"}
             </Text>
           </View>
-          {selectedBalance && <AssetIcon token={selectedBalance} size="lg" />}
+          {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
         </View>
 
         <View>
@@ -230,7 +230,7 @@ const TransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
+              {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>

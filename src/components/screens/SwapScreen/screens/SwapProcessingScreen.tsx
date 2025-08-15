@@ -1,8 +1,8 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
-import { AssetIcon } from "components/AssetIcon";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
+import { TokenIcon } from "components/TokenIcon";
 import { BaseLayout } from "components/layout/BaseLayout";
 import SwapTransactionDetailsBottomSheet from "components/screens/SwapScreen/components/SwapTransactionDetailsBottomSheet";
 import { SwapStatus } from "components/screens/SwapScreen/helpers";
@@ -10,10 +10,10 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { logger } from "config/logger";
-import { AssetToken, NativeToken } from "config/types";
+import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, {
@@ -29,9 +29,9 @@ import { getTransactionDetails, TransactionDetail } from "services/stellar";
 export interface SwapProcessingScreenProps {
   onClose?: () => void;
   sourceAmount: string;
-  sourceToken: AssetToken | NativeToken;
+  sourceToken: NonNativeToken | NativeToken;
   destinationAmount: string;
-  destinationToken: AssetToken | NativeToken;
+  destinationToken: NonNativeToken | NativeToken;
 }
 
 const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
@@ -185,18 +185,18 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-tertiary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
-                <AssetIcon token={displayData.sourceToken} size="lg" />
+                <TokenIcon token={displayData.sourceToken} size="lg" />
                 <Icon.ChevronRightDouble
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <AssetIcon token={displayData.destinationToken} size="lg" />
+                <TokenIcon token={displayData.destinationToken} size="lg" />
               </View>
 
               <View className="items-center">
                 <View className="flex-column flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatAssetAmount(
+                    {formatTokenAmount(
                       displayData.sourceAmount,
                       displayData.sourceToken.code,
                     )}
@@ -206,7 +206,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
                   </Text>
                   {shouldShowDestinationAmount ? (
                     <Text xl medium primary>
-                      {formatAssetAmount(
+                      {formatTokenAmount(
                         displayData.destinationAmount,
                         displayData.destinationToken.code,
                       )}

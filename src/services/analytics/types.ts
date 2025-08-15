@@ -23,15 +23,15 @@ export interface SignedTransactionEvent {
 }
 
 export interface TransactionSuccessEvent {
-  sourceAsset: string;
-  destAsset?: string;
+  sourceToken: string;
+  destToken?: string;
   allowedSlippage?: string;
   transactionType?: "payment" | "pathPayment" | "swap" | "sorobanToken";
 }
 
 export interface SwapSuccessEvent {
-  sourceAsset: string;
-  destAsset: string;
+  sourceToken: string;
+  destToken: string;
   allowedSlippage?: string;
   isSwap: true;
 }

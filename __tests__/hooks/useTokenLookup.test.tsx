@@ -3,17 +3,17 @@ import { renderHook, act } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
 import {
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
   HookStatus,
   PricedBalance,
 } from "config/types";
-import { useAssetLookup } from "hooks/useAssetLookup";
+import { useTokenLookup } from "hooks/useTokenLookup";
 
 // Mock helpers
 jest.mock("helpers/balances", () => ({
-  formatAssetIdentifier: (assetId: string) => {
-    const [assetCode, issuer] = assetId.split(":");
-    return { assetCode, issuer };
+  formatTokenIdentifier: (tokenId: string) => {
+    const [tokenCode, issuer] = tokenId.split(":");
+    return { tokenCode, issuer };
   },
 }));
 
@@ -35,7 +35,7 @@ jest.mock("services/backend", () => ({
       contractId === "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4"
     ) {
       return Promise.resolve({
-        assetCode: "TOKEN",
+        tokenCode: "TOKEN",
         issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
         domain: "soroban.stellar.org",
       });
@@ -45,7 +45,7 @@ jest.mock("services/backend", () => ({
 }));
 
 jest.mock("services/stellarExpert", () => ({
-  searchAsset: (searchTerm: string) => {
+  searchToken: (searchTerm: string) => {
     // Return mock data based on the search term
     if (searchTerm === "USDC") {
       return Promise.resolve({
@@ -99,7 +99,7 @@ const flushPromises = () =>
     setTimeout(resolve, 500);
   });
 
-describe("useAssetLookup", () => {
+describe("useTokenLookup", () => {
   const mockNetwork = NETWORKS.TESTNET;
   const mockPublicKey =
     "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP";
@@ -133,7 +133,7 @@ describe("useAssetLookup", () => {
       sellingLiabilities: "0",
       token: {
         code: "USDC",
-        type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
         issuer: {
           key: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
         },
@@ -149,7 +149,7 @@ describe("useAssetLookup", () => {
 
   it("should initialize with default values", () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -163,7 +163,7 @@ describe("useAssetLookup", () => {
 
   it("should reset search state when resetSearch is called", async () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -187,9 +187,9 @@ describe("useAssetLookup", () => {
     expect(result.current.status).toBe(HookStatus.IDLE);
   });
 
-  it("should search for assets and update results", async () => {
+  it("should search for tokens and update results", async () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -209,7 +209,7 @@ describe("useAssetLookup", () => {
 
   it("should handle error when search fails", async () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -225,12 +225,12 @@ describe("useAssetLookup", () => {
     expect(result.current.searchTerm).toBe("error");
   });
 
-  it("should search for contract assets", async () => {
+  it("should search for contract tokens", async () => {
     const contractId =
       "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
 
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -248,7 +248,7 @@ describe("useAssetLookup", () => {
 
   it("should do nothing if search term is the same as current term", async () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,
@@ -277,7 +277,7 @@ describe("useAssetLookup", () => {
 
   it("should clear results when empty search term is provided", () => {
     const { result } = renderHook(() =>
-      useAssetLookup({
+      useTokenLookup({
         network: mockNetwork,
         publicKey: mockPublicKey,
         balanceItems: mockBalanceItems,

@@ -1,5 +1,5 @@
 import {
-  Asset,
+  Asset as SdkToken,
   Contract,
   Memo,
   Operation,
@@ -160,21 +160,21 @@ export const validateSwapTransactionParams = (params: {
     return t("transaction.errors.insufficientBalanceForSwap");
   }
 
-  // Validate different assets
+  // Validate different tokens
   if (sourceBalance.id === destinationBalance.id) {
-    return t("transaction.errors.cannotSwapSameAsset");
+    return t("transaction.errors.cannotSwapSameToken");
   }
 
   return null;
 };
 
 /**
- * Gets the appropriate asset for payment
+ * Gets the appropriate token for payment
  */
-export const getAssetForPayment = (balance: PricedBalance): Asset => {
+export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
   // For native XLM tokens
   if (balance.tokenCode === NATIVE_TOKEN_CODE || isNativeBalance(balance)) {
-    return Asset.native();
+    return SdkToken.native();
   }
 
   // For non-native tokens and non-liquidity pools
@@ -188,11 +188,11 @@ export const getAssetForPayment = (balance: PricedBalance): Asset => {
       balance.token.issuer &&
       "key" in balance.token.issuer
     ) {
-      return new Asset(balance.token.code, balance.token.issuer.key);
+      return new SdkToken(balance.token.code, balance.token.issuer.key);
     }
   }
 
-  throw new Error("Unsupported asset type for payment");
+  throw new Error("Unsupported token type for payment");
 };
 
 /**
@@ -212,7 +212,7 @@ interface IBuildSorobanTransferOperation {
   sourceAccount: string;
   destinationAddress: string;
   amount: string;
-  asset: Asset;
+  token: SdkToken;
   transactionBuilder: TransactionBuilder;
   network: NETWORKS;
 }
@@ -227,13 +227,13 @@ export const buildSorobanTransferOperation = (
     sourceAccount,
     destinationAddress,
     amount,
-    asset,
+    token,
     transactionBuilder,
     network,
   } = params;
 
   try {
-    const contractId = asset.isNative()
+    const contractId = token.isNative()
       ? getContractIdForNativeToken(network)
       : destinationAddress;
 
@@ -328,8 +328,8 @@ export const buildPaymentTransaction = async (
     const isToContractAddress = isContractId(recipientAddress);
 
     if (isToContractAddress) {
-      const asset = getAssetForPayment(selectedBalance);
-      const contractId = asset.isNative()
+      const token = getTokenForPayment(selectedBalance);
+      const contractId = token.isNative()
         ? getContractIdForNativeToken(network)
         : recipientAddress;
 
@@ -345,7 +345,7 @@ export const buildPaymentTransaction = async (
         sourceAccount: senderAddress,
         destinationAddress: recipientAddress,
         amount: amountInBaseUnits,
-        asset,
+        token,
         transactionBuilder,
         network,
       });
@@ -355,10 +355,10 @@ export const buildPaymentTransaction = async (
       return { tx: transaction, xdr: transaction.toXDR(), contractId };
     }
 
-    const asset = getAssetForPayment(selectedBalance);
+    const token = getTokenForPayment(selectedBalance);
 
     // Check if destination is funded, but only for XLM transfers
-    if (asset.isNative()) {
+    if (token.isNative()) {
       try {
         await server.loadAccount(recipientAddress);
       } catch (e) {
@@ -390,7 +390,7 @@ export const buildPaymentTransaction = async (
     transactionBuilder.addOperation(
       Operation.payment({
         destination: recipientAddress,
-        asset,
+        asset: token,
         amount,
       }),
     );
@@ -454,26 +454,26 @@ export const buildSwapTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    const sourceAsset = getAssetForPayment(sourceBalance);
-    const destAsset = getAssetForPayment(destinationBalance);
-    const pathAssets = path.map((pathItem) => {
+    const sourceToken = getTokenForPayment(sourceBalance);
+    const destToken = getTokenForPayment(destinationBalance);
+    const pathTokens = path.map((pathItem) => {
       if (pathItem === "native") {
-        return Asset.native();
+        return SdkToken.native();
       }
 
       const [code, issuer] = pathItem.split(":");
 
-      return new Asset(code, issuer);
+      return new SdkToken(code, issuer);
     });
 
     txBuilder.addOperation(
       Operation.pathPaymentStrictSend({
-        sendAsset: sourceAsset,
+        sendAsset: sourceToken,
         sendAmount: sourceAmount,
         destination: senderAddress,
-        destAsset,
+        destAsset: destToken,
         destMin: destinationAmountMin,
-        path: pathAssets,
+        path: pathTokens,
       }),
     );
 

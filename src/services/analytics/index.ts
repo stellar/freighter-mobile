@@ -55,7 +55,7 @@ export interface AnalyticsInstance {
   readonly trackQRScanSuccess: typeof trackQRScanSuccess;
   readonly trackQRScanError: typeof trackQRScanError;
 
-  // Asset management analytics
+  // Token management analytics
   readonly trackAddTokenConfirmed: typeof trackAddTokenConfirmed;
   readonly trackAddTokenRejected: typeof trackAddTokenRejected;
 

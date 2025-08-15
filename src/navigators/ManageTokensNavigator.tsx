@@ -2,44 +2,44 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
-import AddAssetScreen from "components/screens/AddAssetScreen";
-import ManageAssetsScreen from "components/screens/ManageAssetsScreen";
+import AddTokenScreen from "components/screens/AddTokenScreen";
+import ManageTokensScreen from "components/screens/ManageTokensScreen";
 import Icon from "components/sds/Icon";
 import {
-  MANAGE_ASSETS_ROUTES,
-  ManageAssetsStackParamList,
+  MANAGE_TOKENS_ROUTES,
+  ManageTokensStackParamList,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
-const ManageAssetsStack =
-  createNativeStackNavigator<ManageAssetsStackParamList>();
+const ManageTokensStack =
+  createNativeStackNavigator<ManageTokensStackParamList>();
 
-export const ManageAssetsStackNavigator = () => {
+export const ManageTokensStackNavigator = () => {
   const { t } = useAppTranslation();
 
   return (
-    <ManageAssetsStack.Navigator
+    <ManageTokensStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
       }}
     >
-      <ManageAssetsStack.Screen
-        name={MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN}
-        component={ManageAssetsScreen}
+      <ManageTokensStack.Screen
+        name={MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN}
+        component={ManageTokensScreen}
         options={{
-          headerTitle: t("manageAssetsScreen.title"),
+          headerTitle: t("manageTokensScreen.title"),
           headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
-      <ManageAssetsStack.Screen
-        name={MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN}
-        component={AddAssetScreen}
+      <ManageTokensStack.Screen
+        name={MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN}
+        component={AddTokenScreen}
         options={{
-          headerTitle: t("addAssetScreen.title"),
+          headerTitle: t("addTokenScreen.title"),
           headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
-    </ManageAssetsStack.Navigator>
+    </ManageTokensStack.Navigator>
   );
 };

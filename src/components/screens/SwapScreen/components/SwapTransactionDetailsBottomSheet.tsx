@@ -1,5 +1,5 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import {
   calculateMinimumReceived,
   formatConversionRate,
@@ -10,13 +10,13 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
-import { AssetToken, NativeToken } from "config/types";
+import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -30,9 +30,9 @@ import { TransactionDetail } from "services/stellar";
 
 type SwapTransactionDetailsBottomSheetProps = {
   sourceAmount: string;
-  sourceToken: AssetToken | NativeToken;
+  sourceToken: NonNativeToken | NativeToken;
   destinationAmount: string;
-  destinationToken: AssetToken | NativeToken;
+  destinationToken: NonNativeToken | NativeToken;
   transactionDetails?: TransactionDetail | null;
 };
 
@@ -153,7 +153,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
-        <AssetIcon token={sourceToken} size="lg" />
+        <TokenIcon token={sourceToken} size="lg" />
         <View>
           <Text md medium primary>
             {t("swapTransactionDetails.swapped")}
@@ -171,13 +171,13 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(actualSourceAmount, sourceToken.code)}
+              {formatTokenAmount(actualSourceAmount, sourceToken.code)}
             </Text>
             <Text md medium secondary>
               {sourceTokenFiatAmount}
             </Text>
           </View>
-          <AssetIcon token={sourceToken} size="lg" />
+          <TokenIcon token={sourceToken} size="lg" />
         </View>
 
         <View>
@@ -192,7 +192,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatAssetAmount(
+              {formatTokenAmount(
                 actualDestinationAmount,
                 destinationToken.code,
               )}
@@ -201,7 +201,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {destinationTokenFiatAmount}
             </Text>
           </View>
-          <AssetIcon token={destinationToken} size="lg" />
+          <TokenIcon token={destinationToken} size="lg" />
         </View>
       </View>
 
@@ -242,7 +242,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             </Text>
           </View>
           <Text md medium>
-            {formatAssetAmount(displayMinimumReceived, destinationToken.code)}
+            {formatTokenAmount(displayMinimumReceived, destinationToken.code)}
           </Text>
         </View>
 
@@ -256,7 +256,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(swapFee, NATIVE_TOKEN_CODE)}
+              {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>

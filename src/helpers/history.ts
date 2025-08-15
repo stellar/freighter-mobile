@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
-import { Horizon, Asset } from "@stellar/stellar-sdk";
+import { Horizon, Asset as SdkToken } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import {
@@ -74,13 +74,13 @@ export const getIsSupportedSorobanOp = (
 };
 
 /**
- * Extracts asset code and issuer from a tokenId
+ * Extracts token code and issuer from a tokenId
  * tokenId format:
  * - "native" for XLM
- * - "CODE:ISSUER" for classic assets
+ * - "CODE:ISSUER" for classic tokens
  * - Contract address for Soroban tokens
  */
-export const getAssetFromTokenId = (tokenId: string) => {
+export const getTokenFromTokenId = (tokenId: string) => {
   if (tokenId === "native") {
     return { code: "XLM", issuer: undefined, contractId: undefined };
   }
@@ -89,23 +89,23 @@ export const getAssetFromTokenId = (tokenId: string) => {
     return { code: undefined, issuer: undefined, contractId: tokenId };
   }
 
-  // Classic asset format: CODE:ISSUER
+  // Classic token format: CODE:ISSUER
   const [code, issuer] = tokenId.split(":");
 
   return { code, issuer, contractId: undefined };
 };
 
 /**
- * Checks if an operation involves a specific asset (classic or Soroban)
+ * Checks if an operation involves a specific token (classic or Soroban)
  */
-export const operationInvolvesAsset = (
+export const operationInvolvesToken = (
   operation: Horizon.ServerApi.OperationRecord,
-  targetAsset: { code?: string; issuer?: string; contractId?: string },
+  targetToken: { code?: string; issuer?: string; contractId?: string },
   networkDetails: NetworkDetails,
 ): boolean => {
   // Handle Soroban token operations
   if (
-    targetAsset.contractId &&
+    targetToken.contractId &&
     getIsSupportedSorobanOp(operation, networkDetails)
   ) {
     const attrs = getAttrsFromSorobanHorizonOp(operation, networkDetails);
@@ -113,14 +113,14 @@ export const operationInvolvesAsset = (
     if (attrs && typeof attrs === "object" && "contractId" in attrs) {
       const typedAttrs = attrs as { contractId: string };
 
-      return typedAttrs.contractId === targetAsset.contractId;
+      return typedAttrs.contractId === targetToken.contractId;
     }
 
     return false;
   }
 
   // Handle native XLM operations (both classic and Soroban)
-  if (targetAsset.code === NATIVE_TOKEN_CODE && !targetAsset.contractId) {
+  if (targetToken.code === NATIVE_TOKEN_CODE && !targetToken.contractId) {
     // Check for classic payment operations
     if (getIsPayment(operation.type)) {
       if ("asset_type" in operation && operation.asset_type === "native") {
@@ -153,36 +153,36 @@ export const operationInvolvesAsset = (
   }
 
   // Handle classic asset operations (both classic payments and Soroban SAC operations)
-  if (!targetAsset.contractId && targetAsset.code && targetAsset.issuer) {
-    const targetCode = targetAsset.code;
-    const targetIssuer = targetAsset.issuer;
+  if (!targetToken.contractId && targetToken.code && targetToken.issuer) {
+    const targetCode = targetToken.code;
+    const targetIssuer = targetToken.issuer;
 
     // Check for classic payment operations
     if (getIsPayment(operation.type)) {
       if ("asset_type" in operation) {
-        const opAssetCode =
+        const opTokenCode =
           "asset_code" in operation ? operation.asset_code : undefined;
         const opAssetIssuer =
           "asset_issuer" in operation ? operation.asset_issuer : undefined;
 
-        if (opAssetCode === targetCode && opAssetIssuer === targetIssuer) {
+        if (opTokenCode === targetCode && opAssetIssuer === targetIssuer) {
           return true;
         }
       }
 
       if ("source_asset_type" in operation) {
-        const sourceAssetCode =
+        const sourceTokenCode =
           "source_asset_code" in operation
             ? operation.source_asset_code
             : undefined;
-        const sourceAssetIssuer =
+        const sourceTokenIssuer =
           "source_asset_issuer" in operation
             ? operation.source_asset_issuer
             : undefined;
 
         if (
-          sourceAssetCode === targetCode &&
-          sourceAssetIssuer === targetIssuer
+          sourceTokenCode === targetCode &&
+          sourceTokenIssuer === targetIssuer
         ) {
           return true;
         }
@@ -195,10 +195,10 @@ export const operationInvolvesAsset = (
       if (attrs && typeof attrs === "object" && "contractId" in attrs) {
         const typedAttrs = attrs as { contractId: string };
 
-        // For classic assets, we need to check if the contract ID matches the SAC address for this asset
-        // The SAC address is deterministic based on the asset code and issuer
+        // For classic tokens, we need to check if the contract ID matches the SAC address for this token
+        // The SAC address is deterministic based on the token code and issuer
         try {
-          const asset = new Asset(targetCode, targetIssuer);
+          const asset = new SdkToken(targetCode, targetIssuer);
           const sacAddress = asset.contractId(networkDetails.networkPassphrase);
 
           return typedAttrs.contractId === sacAddress;
@@ -214,16 +214,16 @@ export const operationInvolvesAsset = (
 };
 
 /**
- * Filters operations to only include those involving a specific asset (classic or Soroban)
+ * Filters operations to only include those involving a specific token (classic or Soroban)
  */
-export const filterOperationsByAsset = (
+export const filterOperationsByToken = (
   operations: Horizon.ServerApi.OperationRecord[],
   tokenId: string,
   networkDetails: NetworkDetails,
 ): Horizon.ServerApi.OperationRecord[] => {
-  const targetAsset = getAssetFromTokenId(tokenId);
+  const targetToken = getTokenFromTokenId(tokenId);
 
   return operations.filter((operation) =>
-    operationInvolvesAsset(operation, targetAsset, networkDetails),
+    operationInvolvesToken(operation, targetToken, networkDetails),
   );
 };

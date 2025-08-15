@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NETWORK_URLS } from "config/constants";
-import { AssetToken, BalanceMap } from "config/types";
+import {
+  NonNativeToken,
+  BalanceMap,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
@@ -8,7 +12,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 /**
- * Represents an asset icon with its source URL and network context
+ * Represents a token icon with its source URL and network context
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
  */
@@ -18,26 +22,26 @@ interface Icon {
 }
 
 /**
- * State and actions for managing asset icons
+ * State and actions for managing token icons
  * @property {Record<string, Icon>} icons - Cached icon data mapped by token identifier
  * @property {number | null} lastRefreshed - Timestamp of the last icon refresh operation
  */
-interface AssetIconsState {
+interface TokenIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
   /**
-   * Fetches an icon URL for a given asset
+   * Fetches an icon URL for a given token
    * @param {Object} params - Function parameters
-   * @param {AssetToken} params.asset - The asset to fetch the icon for
+   * @param {NonNativeToken} params.token - The token to fetch the icon for
    * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
    * @returns {Promise<Icon>} The fetched icon data
    */
   fetchIconUrl: (params: {
-    asset: AssetToken;
+    token: NonNativeToken;
     networkUrl: NETWORK_URLS;
   }) => Promise<Icon>;
   /**
-   * Fetches icons for all assets in a balance map
+   * Fetches icons for all tokens in a balance map
    * @param {Object} params - Function parameters
    * @param {BalanceMap} params.balances - Map of balances to fetch icons for
    * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
@@ -81,11 +85,11 @@ const processIconBatches = async (params: {
   startTime: number;
   set: (
     partial:
-      | AssetIconsState
-      | Partial<AssetIconsState>
+      | TokenIconsState
+      | Partial<TokenIconsState>
       | ((
-          state: AssetIconsState,
-        ) => AssetIconsState | Partial<AssetIconsState>),
+          state: TokenIconsState,
+        ) => TokenIconsState | Partial<TokenIconsState>),
   ) => void;
 }) => {
   const { entries, batchIndex, updatedIcons, startTime, set } = params;
@@ -96,11 +100,11 @@ const processIconBatches = async (params: {
   await Promise.all(
     batch.map(async ([cacheKey, icon]) => {
       try {
-        // Parse the cache key to get asset details
-        const [assetCode, issuerKey] = cacheKey.split(":");
+        // Parse the cache key to get token details
+        const [tokenCode, issuerKey] = cacheKey.split(":");
 
         const imageUrl = await getIconUrlFromIssuer({
-          assetCode,
+          tokenCode,
           issuerKey,
           networkUrl: icon.networkUrl,
         });
@@ -143,9 +147,9 @@ const processIconBatches = async (params: {
 };
 
 /**
- * Asset Icons Store
+ * Token Icons Store
  *
- * Manages and caches asset icon URLs using Zustand with persistence.
+ * Manages and caches token icon URLs using Zustand with persistence.
  *
  * Features:
  * - Caches icons to avoid unnecessary API calls
@@ -155,24 +159,24 @@ const processIconBatches = async (params: {
  * - Handles network errors gracefully
  *
  * @example
- * // Fetch icon for a specific asset
- * const { fetchIconUrl } = useAssetIconsStore();
+ * // Fetch icon for a specific token
+ * const { fetchIconUrl } = useTokenIconsStore();
  * const icon = await fetchIconUrl({
- *   asset: myAsset,
+ *   token: myToken,
  *   networkUrl: NETWORK_URLS.PUBLIC
  * });
  *
  * // Access cached icons
- * const { icons } = useAssetIconsStore();
+ * const { icons } = useTokenIconsStore();
  * const cachedIcon = icons[tokenIdentifier];
  */
-export const useAssetIconsStore = create<AssetIconsState>()(
+export const useTokenIconsStore = create<TokenIconsState>()(
   persist(
     (set, get) => ({
       icons: {},
       lastRefreshed: null,
-      fetchIconUrl: async ({ asset, networkUrl }) => {
-        const cacheKey = getTokenIdentifier(asset);
+      fetchIconUrl: async ({ token, networkUrl }) => {
+        const cacheKey = getTokenIdentifier(token);
         const cachedIcon = get().icons[cacheKey];
 
         // Return cached icon if available
@@ -183,8 +187,8 @@ export const useAssetIconsStore = create<AssetIconsState>()(
         try {
           // Fetch icon URL if not cached
           const imageUrl = await getIconUrlFromIssuer({
-            assetCode: asset.code,
-            issuerKey: asset.issuer.key,
+            tokenCode: token.code,
+            issuerKey: token.issuer.key,
             networkUrl,
           });
 
@@ -194,7 +198,7 @@ export const useAssetIconsStore = create<AssetIconsState>()(
           };
 
           debug(
-            "AssetIconsStore",
+            "TokenIconsStore",
             `Icon fetched for ${cacheKey}`,
             imageUrl ? "Icon found" : "No icon available",
             icon,
@@ -222,7 +226,7 @@ export const useAssetIconsStore = create<AssetIconsState>()(
           Object.entries(balances).map(async ([id, balance]) => {
             // Skip liquidity pools
             if (isLiquidityPool(balance)) {
-              debug("AssetIconsStore", `Skipping LP token ${id}`);
+              debug("TokenIconsStore", `Skipping LP token ${id}`);
               return;
             }
 
@@ -230,14 +234,14 @@ export const useAssetIconsStore = create<AssetIconsState>()(
               return;
             }
 
-            if (balance.token.type === "native") {
+            if (balance.token.type === TokenTypeWithCustomToken.NATIVE) {
               return;
             }
 
             // Fetching icon will save it to the cache automatically
             // so that we don't need to return anything
             await get().fetchIconUrl({
-              asset: balance.token,
+              token: balance.token,
               networkUrl,
             });
           }),
@@ -264,7 +268,7 @@ export const useAssetIconsStore = create<AssetIconsState>()(
 
         const iconCount = Object.keys(icons).length;
         debug(
-          "AssetIconsStore",
+          "TokenIconsStore",
           `Starting icon refresh for ${iconCount} cached icons`,
         );
 
@@ -282,7 +286,7 @@ export const useAssetIconsStore = create<AssetIconsState>()(
       },
     }),
     {
-      name: "asset-icons-storage",
+      name: "token-icons-storage",
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

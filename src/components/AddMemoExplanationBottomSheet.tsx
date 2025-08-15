@@ -7,12 +7,12 @@ import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
 type AddMemoExplanationBottomSheetProps = {
-  onAddMemo: () => void;
+  onConfirm?: () => void;
   onClose: () => void;
 };
 
 const AddMemoExplanationBottomSheet = ({
-  onAddMemo,
+  onConfirm,
   onClose,
 }: AddMemoExplanationBottomSheetProps) => {
   const { themeColors } = useColors();
@@ -58,13 +58,15 @@ const AddMemoExplanationBottomSheet = ({
           {t("addMemoExplanationBottomSheet.checkMemoRequirements")}
         </Text>
       </View>
-      <View className="mt-[24px] gap-[12px] flex-row">
-        <View className="flex-1">
-          <Button onPress={onAddMemo} tertiary xl>
-            {t("common.addMemo")}
-          </Button>
+      {onConfirm && (
+        <View className="mt-[24px] gap-[12px] flex-row">
+          <View className="flex-1">
+            <Button onPress={onConfirm} tertiary xl>
+              {t("common.addMemo")}
+            </Button>
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 };

@@ -10,8 +10,8 @@ import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { px, pxValue } from "helpers/dimensions";
-import { useFetchAssetIcons } from "hooks/useFetchAssetIcons";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
+import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import React, { useEffect, useMemo } from "react";
@@ -76,7 +76,7 @@ export const TabNavigator = () => {
   });
 
   // Fetch icons whenever balances are updated
-  useFetchAssetIcons(networkDetails.networkUrl);
+  useFetchTokenIcons(networkDetails.networkUrl);
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({

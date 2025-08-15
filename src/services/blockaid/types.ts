@@ -18,9 +18,9 @@ export type BlockaidApiResponse<T> =
   | BlockaidApiResponseSuccess<T>
   | BlockaidApiResponseError;
 
-export interface ScanAssetParams {
-  assetCode: string;
-  assetIssuer?: string;
+export interface ScanTokenParams {
+  tokenCode: string;
+  tokenIssuer?: string;
   network: NETWORKS;
 }
 

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
-import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
+import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 
 // Helper to create mock balance data
@@ -17,7 +17,7 @@ const createMockPricedBalance = (
   fiatTotal: new BigNumber(total).multipliedBy(new BigNumber(price)),
   displayName: "Test Token",
   token: {
-    type: AssetTypeWithCustomToken.CREDIT_ALPHANUM4,
+    type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     code: "TEST",
     issuer: {
       key: "TEST_ISSUER",

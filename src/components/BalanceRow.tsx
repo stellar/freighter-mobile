@@ -1,4 +1,4 @@
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { THEME } from "config/theme";
@@ -6,7 +6,7 @@ import { PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
-  formatAssetAmount,
+  formatTokenAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -31,7 +31,7 @@ const LeftSection = styled.View`
   margin-right: ${px(16)};
 `;
 
-const AssetTextContainer = styled.View`
+const TokenTextContainer = styled.View`
   flex-direction: column;
   margin-left: ${px(16)};
   flex: 1;
@@ -113,16 +113,16 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   renderContent(
     <BalanceRowContainer isSingleRow={isSingleRow}>
       <LeftSection>
-        <AssetIcon token={balance} />
-        <AssetTextContainer>
+        <TokenIcon token={balance} />
+        <TokenTextContainer>
           <Text medium numberOfLines={1}>
             {balance.displayName}
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatAssetAmount(balance.total, balance.tokenCode)}
+              formatTokenAmount(balance.total, balance.tokenCode)}
           </Text>
-        </AssetTextContainer>
+        </TokenTextContainer>
       </LeftSection>
       {rightContent ? (
         <RightSection width={rightSectionWidth || 115}>

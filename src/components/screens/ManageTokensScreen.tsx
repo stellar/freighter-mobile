@@ -6,24 +6,24 @@ import { SimpleBalancesList } from "components/SimpleBalancesList";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import {
-  MANAGE_ASSETS_ROUTES,
-  ManageAssetsStackParamList,
+  MANAGE_TOKENS_ROUTES,
+  ManageTokensStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useManageAssets } from "hooks/useManageAssets";
+import { useManageTokens } from "hooks/useManageTokens";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useRef } from "react";
 import { View } from "react-native";
 
-type ManageAssetsScreenProps = NativeStackScreenProps<
-  ManageAssetsStackParamList,
-  typeof MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN
+type ManageTokensScreenProps = NativeStackScreenProps<
+  ManageTokensStackParamList,
+  typeof MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN
 >;
 
-const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
+const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
   navigation,
 }) => {
   const { account } = useGetActiveAccount();
@@ -36,7 +36,7 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     shouldPoll: false,
   });
 
-  const { removeAsset, isRemovingAsset } = useManageAssets({
+  const { removeToken, isRemovingToken } = useManageTokens({
     network,
     account,
     onSuccess: handleRefresh,
@@ -50,16 +50,16 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between pt-5">
         <BottomSheet
-          title={t("manageAssetsScreen.moreInfo.title")}
-          description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+          title={t("manageTokensScreen.moreInfo.title")}
+          description={`${t("manageTokensScreen.moreInfo.block1")}\n\n${t("manageTokensScreen.moreInfo.block2")}`}
           modalRef={bottomSheetModalRef}
           handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         />
         <SimpleBalancesList
           publicKey={account?.publicKey ?? ""}
           network={network}
-          handleRemoveAsset={removeAsset}
-          isRemovingAsset={isRemovingAsset}
+          handleRemoveToken={removeToken}
+          isRemovingToken={isRemovingToken}
         />
         <View className="h-4" />
         <Button
@@ -67,13 +67,13 @@ const ManageAssetsScreen: React.FC<ManageAssetsScreenProps> = ({
           lg
           testID="default-action-button"
           onPress={() => {
-            navigation.navigate(MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN);
+            navigation.navigate(MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN);
           }}
         >
-          {t("manageAssetsScreen.addTokenButton")}
+          {t("manageTokensScreen.addTokenButton")}
         </Button>
       </View>
     </BaseLayout>
   );
 };
-export default ManageAssetsScreen;
+export default ManageTokensScreen;

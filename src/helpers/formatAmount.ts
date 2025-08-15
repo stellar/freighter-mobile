@@ -27,21 +27,21 @@ const convertToBigNumber = (
 };
 
 /**
- * Formats a numeric value as a human-readable asset amount with optional asset code
+ * Formats a numeric value as a human-readable token amount with optional token code
  *
  * This function formats numbers with thousand separators and appropriate decimal places
- * for displaying asset amounts in the UI.
+ * for displaying token amounts in the UI.
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format
- * @param {string} [code] - Optional asset code to append to the formatted amount
- * @returns {string} Formatted asset amount string with optional asset code
+ * @param {string} [code] - Optional token code to append to the formatted amount
+ * @returns {string} Formatted token amount string with optional token code
  *
  * @example
- * formatAssetAmount(1234.56); // Returns "1,234.56"
- * formatAssetAmount("1234.56789"); // Returns "1,234.56789"
- * formatAssetAmount(1234.56, "XLM"); // Returns "1,234.56 XLM"
+ * formatTokenAmount(1234.56); // Returns "1,234.56"
+ * formatTokenAmount("1234.56789"); // Returns "1,234.56789"
+ * formatTokenAmount(1234.56, "XLM"); // Returns "1,234.56 XLM"
  */
-export const formatAssetAmount = (
+export const formatTokenAmount = (
   amount: string | number | { toString: () => string },
   code?: string,
 ) => {
@@ -56,7 +56,7 @@ export const formatAssetAmount = (
   // Format the number and remove unnecessary trailing zeros
   const formattedAmount = formatter.format(bnAmount.toNumber());
 
-  // Return the formatted amount with the asset code if provided
+  // Return the formatted amount with the token code if provided
   return code ? `${formattedAmount} ${code}` : formattedAmount;
 };
 

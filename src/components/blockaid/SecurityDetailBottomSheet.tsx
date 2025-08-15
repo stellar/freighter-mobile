@@ -24,17 +24,17 @@ export interface SecurityDetailBottomSheetProps {
 
 /**
  * Reusable security detail bottom sheet component for displaying security warnings.
- * Can be used for both asset security warnings and dApp connection warnings.
+ * Can be used for both token security warnings and dApp connection warnings.
  *
  * @example
- * // For Add Asset flow
+ * // For Add Token flow
  * <SecurityDetailBottomSheet
  *   warnings={warnings}
  *   onCancel={handleCancel}
  *   onProceedAnyway={handleProceed}
  *   onClose={handleClose}
  *   severity={SecurityLevel.MALICIOUS}
- *   proceedAnywayText={t("addAssetScreen.approveAnyway")}
+ *   proceedAnywayText={t("addTokenScreen.approveAnyway")}
  * />
  *
  * // For DApp Connection flow

@@ -4,14 +4,14 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 
-type AddAssetRightContentProps = {
-  handleAddAsset: () => void;
-  isScanningAsset: boolean;
+type AddTokenRightContentProps = {
+  handleAddToken: () => void;
+  isScanningToken: boolean;
 };
 
-const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
-  handleAddAsset,
-  isScanningAsset,
+const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
+  handleAddToken,
+  isScanningToken,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -21,18 +21,18 @@ const AddAssetRightContent: React.FC<AddAssetRightContentProps> = ({
       secondary
       squared
       lg
-      testID="add-asset-button"
+      testID="add-token-button"
       icon={
         <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />
       }
       iconPosition={IconPosition.RIGHT}
-      onPress={handleAddAsset}
-      disabled={isScanningAsset}
-      isLoading={isScanningAsset}
+      onPress={handleAddToken}
+      disabled={isScanningToken}
+      isLoading={isScanningToken}
     >
       {t("common.add")}
     </Button>
   );
 };
 
-export default AddAssetRightContent;
+export default AddTokenRightContent;

@@ -53,14 +53,14 @@ const createSecurityAssessment = (
 });
 
 /**
- * Asset Security Assessment
+ * Token Security Assessment
  *
- * Evaluates asset scan results using result_type for consistent security classification.
+ * Evaluates token scan results using result_type for consistent security classification.
  *
- * @param scanResult - The Blockaid asset scan result
+ * @param scanResult - The Blockaid token scan result
  * @returns SecurityAssessment with type-safe level and localized details
  */
-export const assessAssetSecurity = (
+export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
 ): SecurityAssessment => {
   if (!scanResult?.result_type) {
@@ -73,13 +73,13 @@ export const assessAssetSecurity = (
     case SecurityLevel.MALICIOUS:
       return createSecurityAssessment(
         level,
-        SECURITY_MESSAGE_KEYS.ASSET_MALICIOUS,
+        SECURITY_MESSAGE_KEYS.TOKEN_MALICIOUS,
       );
 
     case SecurityLevel.SUSPICIOUS:
       return createSecurityAssessment(
         level,
-        SECURITY_MESSAGE_KEYS.ASSET_SUSPICIOUS,
+        SECURITY_MESSAGE_KEYS.TOKEN_SUSPICIOUS,
       );
 
     default:
@@ -186,9 +186,9 @@ export const isBlockaidWarning = (resultType: string): boolean =>
 
 /**
  * Extracts security warnings from Blockaid scan results
- * Matches extension behavior: sites show simple labels, assets/transactions show detailed warnings
+ * Matches extension behavior: sites show simple labels, tokens/transactions show detailed warnings
  *
- * @param scanResult - The Blockaid scan result (asset, site, or transaction)
+ * @param scanResult - The Blockaid scan result (token, site, or transaction)
  * @returns Array of security warnings with id and description
  */
 export const extractSecurityWarnings = (
@@ -226,7 +226,7 @@ export const extractSecurityWarnings = (
     return warnings;
   }
 
-  // Handle asset scan results
+  // Handle token scan results
   if ("features" in scanResult && scanResult.features) {
     scanResult.features.forEach((feature) => {
       warnings.push({

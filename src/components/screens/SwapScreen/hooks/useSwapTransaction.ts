@@ -8,7 +8,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { PricedBalance, NativeToken, AssetToken } from "config/types";
+import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -36,8 +36,8 @@ interface UseSwapTransactionResult {
   executeSwap: () => Promise<void>;
   setupSwapTransaction: () => Promise<void>;
   handleProcessingScreenClose: () => void;
-  sourceToken: NativeToken | AssetToken;
-  destinationToken: NativeToken | AssetToken;
+  sourceToken: NativeToken | NonNativeToken;
+  destinationToken: NativeToken | NonNativeToken;
 }
 
 export const useSwapTransaction = ({
@@ -100,11 +100,11 @@ export const useSwapTransaction = ({
 
     // Validate required data before proceeding
     if (!sourceBalance?.tokenCode) {
-      throw new Error("Source asset is required for swap transaction");
+      throw new Error("Source token is required for swap transaction");
     }
 
     if (!destinationBalance?.tokenCode) {
-      throw new Error("Destination asset is required for swap transaction");
+      throw new Error("Destination token is required for swap transaction");
     }
 
     setIsProcessing(true);
@@ -126,8 +126,8 @@ export const useSwapTransaction = ({
       }
 
       analytics.trackSwapSuccess({
-        sourceAsset: sourceBalance.tokenCode,
-        destAsset: destinationBalance.tokenCode,
+        sourceToken: sourceBalance.tokenCode,
+        destToken: destinationBalance.tokenCode,
         allowedSlippage: swapSlippage?.toString(),
         isSwap: true,
       });

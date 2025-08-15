@@ -19,7 +19,11 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   const { network } = useAuthenticationStore();
   const { isMemoValidationEnabled } = usePreferencesStore();
   const { transactionMemo } = useTransactionSettingsStore();
+  const [localMemo, setLocalMemo] = useState<string>(transactionMemo ?? "");
   const [isValidatingMemo, setIsValidatingMemo] = useState(false);
+  const [localTransaction, setLocalTransaction] = useState<ReturnType<
+    typeof TransactionBuilder.fromXDR
+  > | null>(null);
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
     [network],
@@ -34,7 +38,9 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
 
   const checkMemoRequiredFromCache = useCallback(
-    async (txXDR: string, networkType: string): Promise<boolean> => {
+    async (
+      transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+    ): Promise<boolean> => {
       const response = await cachedFetch<MemoRequiredAccountsApiResponse>(
         getApiStellarExpertIsMemoRequiredListUrl(),
         STORAGE_KEYS.MEMO_REQUIRED_ACCOUNTS,
@@ -42,7 +48,6 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
 
       // eslint-disable-next-line no-underscore-dangle
       const memoRequiredAccounts = response._embedded.records || [];
-      const transaction = TransactionBuilder.fromXDR(txXDR, networkType);
 
       const destination = transaction.operations.find(
         (operation) => "destination" in operation,
@@ -60,9 +65,10 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   );
 
   const checkMemoRequiredFromStellarSDK = useCallback(
-    async (txXDR: string, networkUrl: string): Promise<boolean> => {
-      const server = stellarSdkServer(networkUrl);
-      const transaction = TransactionBuilder.fromXDR(txXDR, network);
+    async (
+      transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+    ): Promise<boolean> => {
+      const server = stellarSdkServer(networkDetails.networkUrl);
 
       try {
         await server.checkMemoRequired(transaction);
@@ -71,22 +77,32 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
         return true;
       }
     },
-    [network],
+    [networkDetails.networkUrl],
   );
 
   useEffect(() => {
-    if (!transactionMemo) {
-      setIsMemoMissing(shouldValidateMemo);
-    }
-  }, [transactionMemo, shouldValidateMemo]);
-
-  useEffect(() => {
-    if (transactionMemo) {
-      setIsMemoMissing(false);
+    if (!xdr || !network || !shouldValidateMemo) {
       return;
     }
 
-    if (!network || !xdr || !shouldValidateMemo || !networkDetails.networkUrl) {
+    const transaction = TransactionBuilder.fromXDR(xdr, network);
+    const memo =
+      "memo" in transaction && transaction.memo.value
+        ? String(transaction.memo.value).trim()
+        : (transactionMemo ?? "");
+
+    setLocalMemo(memo);
+    setLocalTransaction(transaction);
+    setIsMemoMissing(shouldValidateMemo && !memo);
+  }, [xdr, shouldValidateMemo, network, transactionMemo]);
+
+  useEffect(() => {
+    if (!localTransaction) {
+      return;
+    }
+
+    if (localMemo) {
+      setIsMemoMissing(false);
       return;
     }
 
@@ -94,20 +110,16 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
       setIsValidatingMemo(true);
 
       try {
-        const isMemoRequiredFromCache = await checkMemoRequiredFromCache(
-          xdr,
-          network,
-        );
+        const isMemoRequiredFromCache =
+          await checkMemoRequiredFromCache(localTransaction);
 
         if (isMemoRequiredFromCache) {
           setIsMemoMissing(true);
           return;
         }
 
-        const isMemoRequiredFromSDK = await checkMemoRequiredFromStellarSDK(
-          xdr,
-          networkDetails.networkUrl,
-        );
+        const isMemoRequiredFromSDK =
+          await checkMemoRequiredFromStellarSDK(localTransaction);
 
         setIsMemoMissing(isMemoRequiredFromSDK);
       } catch (error) {
@@ -124,13 +136,14 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
 
     checkIsMemoRequired();
   }, [
-    xdr,
-    network,
+    localMemo,
+    localTransaction,
     shouldValidateMemo,
-    networkDetails.networkUrl,
-    transactionMemo,
     checkMemoRequiredFromCache,
     checkMemoRequiredFromStellarSDK,
+    networkDetails.networkUrl,
+    network,
+    xdr,
   ]);
 
   return { isMemoMissing, isValidatingMemo };

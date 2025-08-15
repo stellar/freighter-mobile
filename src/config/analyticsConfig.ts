@@ -45,13 +45,13 @@ export enum AnalyticsEvent {
   VIEW_SECURITY = "loaded screen: security",
   VIEW_SHOW_RECOVERY_PHRASE = "loaded screen: show recovery phrase",
   VIEW_MANAGE_CONNECTED_APPS = "loaded screen: manage connected apps",
-  VIEW_MANAGE_ASSETS = "loaded screen: manage assets",
-  VIEW_ADD_ASSET = "loaded screen: add asset",
+  VIEW_MANAGE_TOKENS = "loaded screen: manage assets",
+  VIEW_ADD_TOKEN = "loaded screen: add asset",
   VIEW_MANAGE_WALLETS = "loaded screen: manage wallets",
   VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
   VIEW_BUY_XLM = "loaded screen: add fund",
-  VIEW_SEARCH_ASSET = "loaded screen: search asset",
-  VIEW_ADD_ASSET_MANUALLY = "loaded screen: add asset manually",
+  VIEW_SEARCH_TOKEN = "loaded screen: search asset",
+  VIEW_ADD_TOKEN_MANUALLY = "loaded screen: add asset manually",
 
   // User Action Events (Manual tracking)
   CREATE_PASSWORD_SUCCESS = "account creator: create password: success",
@@ -89,14 +89,14 @@ export enum AnalyticsEvent {
   SIGN_TRANSACTION_FAIL = "sign transaction: rejected",
   SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "sign transaction: memo required error",
 
-  // Asset Management Events
-  ADD_ASSET_SUCCESS = "manage asset: add asset",
-  ADD_UNSAFE_ASSET_SUCCESS = "manage asset: add unsafe asset",
-  REMOVE_ASSET_SUCCESS = "manage asset: remove asset",
-  ASSET_MANAGEMENT_FAIL = "manage asset: error",
+  // Token Management Events
+  ADD_TOKEN_SUCCESS = "manage asset: add asset",
+  ADD_UNSAFE_TOKEN_SUCCESS = "manage asset: add unsafe asset",
+  REMOVE_TOKEN_SUCCESS = "manage asset: remove asset",
+  TOKEN_MANAGEMENT_FAIL = "manage asset: error",
   ADD_TOKEN_CONFIRMED = "add token: confirmed",
   ADD_TOKEN_REJECTED = "add token: rejected",
-  MANAGE_ASSET_LISTS_MODIFY = "manage asset list: modify asset list",
+  MANAGE_TOKEN_LISTS_MODIFY = "manage asset list: modify asset list",
 
   // Trustline Error Events
   TRUSTLINE_INSUFFICIENT_BALANCE_FAIL = "trustline removal error: asset has balance",
@@ -126,7 +126,7 @@ export enum AnalyticsEvent {
   QR_SCAN_ERROR = "mobile: qr scan error",
 
   // Blockaid Events
-  BLOCKAID_ASSET_SCAN = "blockaid: scanned asset",
+  BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
 }

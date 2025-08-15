@@ -152,8 +152,8 @@ const HistoryList: React.FC<HistoryListProps> = ({
     <BaseLayout insets={insets}>
       <BottomSheet
         modalRef={transactionDetailsBottomSheetModalRef}
-        title={t("manageAssetsScreen.moreInfo.title")}
-        description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+        title={t("manageTokensScreen.moreInfo.title")}
+        description={`${t("manageTokensScreen.moreInfo.block1")}\n\n${t("manageTokensScreen.moreInfo.block2")}`}
         handleCloseModal={() =>
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }

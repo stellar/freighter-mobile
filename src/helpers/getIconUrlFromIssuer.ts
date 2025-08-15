@@ -3,12 +3,12 @@ import { NETWORK_URLS } from "config/constants";
 import { debug } from "helpers/debug";
 
 /**
- * Retrieves an icon URL for a Stellar asset based on its issuer information.
+ * Retrieves an icon URL for a Stellar token based on its issuer information.
  *
- * This function follows a multi-step process to find an asset's icon URL:
+ * This function follows a multi-step process to find a token's icon URL:
  * 1. Queries Horizon to get the issuer account information, including home domain
  * 2. Retrieves the stellar.toml file from the issuer's home domain
- * 3. Searches the toml file's CURRENCIES section for matching asset code and issuer
+ * 3. Searches the toml file's CURRENCIES section for matching token code and issuer
  * 4. Returns the image URL if found, or empty string if any step fails
  *
  * The process requires multiple network requests:
@@ -17,8 +17,8 @@ import { debug } from "helpers/debug";
  * - Later, one to fetch the actual image (handled by the caller)
  *
  * @param {Object} params - Parameters for icon URL retrieval
- * @param {string} params.issuerKey - The public key of the asset issuer
- * @param {string} params.assetCode - The code of the asset (e.g., "USDC", "BTC")
+ * @param {string} params.issuerKey - The public key of the token issuer
+ * @param {string} params.tokenCode - The code of the token (e.g., "USDC", "BTC")
  * @param {string} params.networkUrl - Network URL which is used to fetch the icon
  * @returns {Promise<string>} A promise that resolves to the icon URL if found, or empty string otherwise
  *
@@ -26,18 +26,18 @@ import { debug } from "helpers/debug";
  * // Get icon URL for USDC on testnet
  * const iconUrl = await getIconUrlFromIssuer({
  *   issuerKey: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
- *   assetCode: "USDC",
+ *   tokenCode: "USDC",
  *   networkUrl: "https://horizon-testnet.stellar.org"
  * });
  */
 
 export const getIconUrlFromIssuer = async ({
   issuerKey,
-  assetCode,
+  tokenCode,
   networkUrl,
 }: {
   issuerKey: string;
-  assetCode: string;
+  tokenCode: string;
   networkUrl: NETWORK_URLS;
 }): Promise<string> => {
   if (!StrKey.isValidEd25519PublicKey(issuerKey)) {
@@ -58,7 +58,7 @@ export const getIconUrlFromIssuer = async ({
       " params: ",
       {
         issuerKey,
-        assetCode,
+        tokenCode,
         networkUrl,
       },
     );
@@ -89,7 +89,7 @@ export const getIconUrlFromIssuer = async ({
 
   const currency = toml.CURRENCIES.find(
     ({ code, issuer, image }) =>
-      code === assetCode && issuer === issuerKey && !!image,
+      code === tokenCode && issuer === issuerKey && !!image,
   );
 
   return currency?.image || "";

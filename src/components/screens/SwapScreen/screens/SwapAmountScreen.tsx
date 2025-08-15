@@ -29,7 +29,7 @@ import {
   isAmountSpendable,
   hasXLMForFees,
 } from "helpers/balances";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -320,7 +320,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (pathResult) {
       return (
         <Text md medium>
-          {formatAssetAmount(destinationAmount)}
+          {formatTokenAmount(destinationAmount)}
         </Text>
       );
     }
@@ -406,7 +406,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                   <View className="flex-col">
                     <Text>{t("swapScreen.receive")}</Text>
                     <Text sm secondary>
-                      {t("swapScreen.chooseAsset")}
+                      {t("swapScreen.chooseToken")}
                     </Text>
                   </View>
                 </View>
@@ -451,7 +451,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             >
               {destinationBalance
                 ? t("common.review")
-                : t("swapScreen.selectAsset")}
+                : t("swapScreen.selectToken")}
             </Button>
           </View>
         </View>
@@ -467,7 +467,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         enableContentPanningGesture={false}
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
-        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_ASSET}
+        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_TOKEN}
         customContent={
           <SelectTokenBottomSheet
             onTokenSelect={handleDestinationTokenSelect}

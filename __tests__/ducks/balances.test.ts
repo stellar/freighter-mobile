@@ -5,7 +5,7 @@ import {
   NativeBalance,
   ClassicBalance,
   TokenPricesMap,
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
@@ -72,13 +72,13 @@ describe("balances duck", () => {
     sellingLiabilities: "0",
   };
 
-  const mockAssetBalance: ClassicBalance = {
+  const mockTokenBalance: ClassicBalance = {
     token: {
       code: "USDC",
       issuer: {
         key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       },
-      type: "credit_alphanum4" as AssetTypeWithCustomToken,
+      type: "credit_alphanum4" as TokenTypeWithCustomToken,
     },
     total: new BigNumber("200"),
     available: new BigNumber("200"),
@@ -90,7 +90,7 @@ describe("balances duck", () => {
   const mockBalances = {
     XLM: mockNativeBalance,
     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-      mockAssetBalance,
+      mockTokenBalance,
   };
 
   const mockPrices = {

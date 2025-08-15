@@ -29,7 +29,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -105,6 +105,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   ] = useState(false);
 
   const onConfirmAddMemo = () => {
+    reviewBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   };
 
@@ -113,6 +114,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const onOpenAddMemoExplanationBottomSheet = () => {
+    reviewBottomSheetModalRef.current?.dismiss();
     addMemoExplanationBottomSheetModalRef.current?.present();
   };
 
@@ -309,7 +311,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         if (success) {
           analytics.trackSendPaymentSuccess({
-            sourceAsset: selectedBalance?.tokenCode || "unknown",
+            sourceToken: selectedBalance?.tokenCode || "unknown",
           });
         } else {
           analytics.trackTransactionError({
@@ -405,7 +407,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
-                  ? formatAssetAmount(tokenAmount, selectedBalance?.tokenCode)
+                  ? formatTokenAmount(tokenAmount, selectedBalance?.tokenCode)
                   : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity
@@ -513,7 +515,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <AddMemoExplanationBottomSheet
             onClose={onCancelAddMemo}
-            onAddMemo={onConfirmAddMemo}
+            onConfirm={onConfirmAddMemo}
           />
         }
       />

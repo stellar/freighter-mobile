@@ -1,20 +1,20 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
-import { AssetIcon } from "components/AssetIcon";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsBottomSheet from "components/TransactionDetailsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
+import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -36,7 +36,7 @@ export interface TransactionProcessingScreenProps {
   onClose?: () => void;
   transactionAmount: string;
   selectedBalance:
-    | (PricedBalance & { id: string; assetType: AssetTypeWithCustomToken })
+    | (PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken })
     | undefined;
 }
 
@@ -171,7 +171,7 @@ const TransactionProcessingScreen: React.FC<
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
                 {selectedBalance && (
-                  <AssetIcon token={selectedBalance} size="lg" />
+                  <TokenIcon token={selectedBalance} size="lg" />
                 )}
                 <Icon.ChevronRightDouble
                   size={16}
@@ -183,7 +183,7 @@ const TransactionProcessingScreen: React.FC<
               <View className="items-center">
                 <View className="flex-row flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatAssetAmount(
+                    {formatTokenAmount(
                       transactionAmount,
                       selectedBalance?.tokenCode,
                     )}
