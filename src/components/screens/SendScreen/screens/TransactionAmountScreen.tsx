@@ -1,5 +1,4 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
@@ -99,10 +98,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [amountError, setAmountError] = useState<AmountError | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [
-    hasOpenedAddMemoExplanationBottomSheet,
-    setHasOpenedAddMemoExplanationBottomSheet,
-  ] = useState(false);
 
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -278,15 +273,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     publicKey,
     buildTransaction,
   ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (hasOpenedAddMemoExplanationBottomSheet) {
-        handleOpenReview();
-        setHasOpenedAddMemoExplanationBottomSheet(false);
-      }
-    }, [hasOpenedAddMemoExplanationBottomSheet, handleOpenReview]),
-  );
 
   const handleTransactionConfirmation = () => {
     setIsProcessing(true);
@@ -527,9 +513,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </View>
             }
             texts={[
-              t("addMemoExplanationBottomSheet.description"),
-              t("addMemoExplanationBottomSheet.disabledWarning"),
-              t("addMemoExplanationBottomSheet.checkMemoRequirements"),
+              {
+                key: "description",
+                value: t("addMemoExplanationBottomSheet.description"),
+              },
+              {
+                key: "disabledWarning",
+                value: t("addMemoExplanationBottomSheet.disabledWarning"),
+              },
+              {
+                key: "checkMemoRequirements",
+                value: t("addMemoExplanationBottomSheet.checkMemoRequirements"),
+              },
             ]}
           />
         }

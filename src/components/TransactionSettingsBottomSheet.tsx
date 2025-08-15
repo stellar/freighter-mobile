@@ -18,11 +18,43 @@ import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeo
 import React, { useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
+/**
+ * Props for the TransactionSettingsBottomSheet component
+ * @interface TransactionSettingsBottomSheetProps
+ * @property {() => void} onCancel - Callback function when settings are cancelled
+ * @property {() => void} onConfirm - Callback function when settings are confirmed
+ */
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
   onConfirm: () => void;
 };
 
+/**
+ * TransactionSettingsBottomSheet Component
+ *
+ * A bottom sheet modal that allows users to configure transaction settings including:
+ * - Transaction fee (with network congestion indicator)
+ * - Transaction timeout
+ * - Transaction memo
+ *
+ * Each setting includes validation and informational tooltips. The component
+ * manages local state for each setting and only saves to the global store
+ * when the user confirms the changes.
+ *
+ * @param {TransactionSettingsBottomSheetProps} props - Component props
+ * @returns {JSX.Element} The rendered bottom sheet component
+ *
+ * @example
+ * ```tsx
+ * <TransactionSettingsBottomSheet
+ *   onCancel={() => setShowSettings(false)}
+ *   onConfirm={() => {
+ *     // Settings saved, proceed with transaction
+ *     setShowSettings(false);
+ *   }}
+ * />
+ * ```
+ */
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
 > = ({ onCancel, onConfirm }) => {
@@ -50,6 +82,10 @@ const TransactionSettingsBottomSheet: React.FC<
   const { error: feeError } = useValidateTransactionFee(localFee);
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
 
+  /**
+   * Handles confirmation of transaction settings
+   * Validates all inputs and saves to global store if valid
+   */
   const handleConfirm = () => {
     if (memoError || feeError || timeoutError) return;
     saveMemo(localMemo);
@@ -58,6 +94,12 @@ const TransactionSettingsBottomSheet: React.FC<
     onConfirm();
   };
 
+  /**
+   * Converts network congestion level to localized string
+   *
+   * @param {NetworkCongestion} congestion - The network congestion level
+   * @returns {string} Localized string representation of congestion level
+   */
   const getLocalizedCongestionLevel = (
     congestion: NetworkCongestion,
   ): string => {
@@ -73,6 +115,10 @@ const TransactionSettingsBottomSheet: React.FC<
     }
   };
 
+  /**
+   * Configuration for information bottom sheets
+   * Each setting has its own info modal with icon, title, and content
+   */
   const bottomSheetsConfig = [
     {
       IconComponent: Icon.File02,
@@ -80,6 +126,16 @@ const TransactionSettingsBottomSheet: React.FC<
       modalRef: memoInfoBottomSheetModalRef,
       title: t("transactionSettingsBottomSheet.memoInfo.title"),
       onClose: () => memoInfoBottomSheetModalRef.current?.dismiss(),
+      texts: [
+        {
+          key: "description",
+          value: t("transactionSettingsBottomSheet.memoInfo.description"),
+        },
+        {
+          key: "additionalInfo",
+          value: t("transactionSettingsBottomSheet.memoInfo.additionalInfo"),
+        },
+      ],
     },
     {
       IconComponent: Icon.Route,
@@ -87,6 +143,16 @@ const TransactionSettingsBottomSheet: React.FC<
       modalRef: feeInfoBottomSheetModalRef,
       title: t("transactionSettingsBottomSheet.feeInfo.title"),
       onClose: () => feeInfoBottomSheetModalRef.current?.dismiss(),
+      texts: [
+        {
+          key: "description",
+          value: t("transactionSettingsBottomSheet.feeInfo.description"),
+        },
+        {
+          key: "additionalInfo",
+          value: t("transactionSettingsBottomSheet.feeInfo.additionalInfo"),
+        },
+      ],
     },
     {
       IconComponent: Icon.ClockRefresh,
@@ -94,6 +160,16 @@ const TransactionSettingsBottomSheet: React.FC<
       modalRef: timeoutInfoBottomSheetModalRef,
       title: t("transactionSettingsBottomSheet.timeoutInfo.title"),
       onClose: () => timeoutInfoBottomSheetModalRef.current?.dismiss(),
+      texts: [
+        {
+          key: "description",
+          value: t("transactionSettingsBottomSheet.timeoutInfo.description"),
+        },
+        {
+          key: "additionalInfo",
+          value: t("transactionSettingsBottomSheet.timeoutInfo.additionalInfo"),
+        },
+      ],
     },
   ];
 
@@ -216,8 +292,9 @@ const TransactionSettingsBottomSheet: React.FC<
         </View>
       </View>
       {bottomSheetsConfig.map(
-        ({ IconComponent, modalRef, onClose, title, key }) => (
+        ({ IconComponent, modalRef, onClose, title, key, texts }) => (
           <BottomSheet
+            key={key}
             modalRef={modalRef}
             handleCloseModal={onClose}
             customContent={
@@ -229,10 +306,7 @@ const TransactionSettingsBottomSheet: React.FC<
                     <IconComponent color={themeColors.lilac[9]} size={28} />
                   </View>
                 }
-                texts={[
-                  t(`transactionSettingsBottomSheet.${key}.description`),
-                  t(`transactionSettingsBottomSheet.${key}.additionalInfo`),
-                ]}
+                texts={texts}
               />
             }
           />
