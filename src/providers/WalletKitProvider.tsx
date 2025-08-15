@@ -5,6 +5,7 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -25,6 +26,7 @@ import {
 } from "helpers/walletKitUtil";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
@@ -77,6 +79,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
+  const { themeColors } = useColors();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -519,6 +522,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         handleCloseModal={onCancelAddMemo}
         customContent={
           <InformationBottomSheet
+            headerElement={
+              <View className="bg-red-3 p-2 rounded-[8px]">
+                <Icon.InfoOctagon
+                  color={themeColors.status.error}
+                  size={28}
+                  withBackground
+                />
+              </View>
+            }
             onClose={onCancelAddMemo}
             title={t("addMemoExplanationBottomSheet.title")}
             texts={[
