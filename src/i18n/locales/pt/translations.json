@@ -293,7 +293,9 @@
     }
   },
   "collectiblesGrid": {
-    "title": "Colecionáveis"
+    "title": "Colecionáveis",
+    "error": "Erro ao carregar colecionáveis",
+    "empty": "Nenhum colecionável encontrado"
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"

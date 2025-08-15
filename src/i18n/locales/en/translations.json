@@ -316,7 +316,9 @@
     }
   },
   "collectiblesGrid": {
-    "title": "Collectibles"
+    "title": "Collectibles",
+    "error": "Error loading collectibles",
+    "empty": "No collectibles found"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"

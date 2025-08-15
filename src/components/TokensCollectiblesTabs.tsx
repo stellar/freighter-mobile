@@ -1,4 +1,5 @@
 import { BalancesList } from "components/BalancesList";
+import { CollectiblesGrid } from "components/CollectiblesGrid";
 import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -26,7 +27,7 @@ interface Props {
  * A reusable tab component for switching between Tokens and Collectibles views.
  * Used in HomeScreen and TransactionTokenScreen.
  *
- * @param {TokensCollectiblesTabsProps} props - Component props
+ * @param {Props} props - Component props
  * @returns {JSX.Element} The tab component with content
  */
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
@@ -63,14 +64,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     const renderCollectiblesContent = useMemo(
-      () => (
-        // TODO: Implement CollectiblesGrid component
-        <View className="flex-1 items-center">
-          <Text md secondary onPress={() => onCollectiblePress?.("")}>
-            Collectibles coming soon
-          </Text>
-        </View>
-      ),
+      () => <CollectiblesGrid onCollectiblePress={onCollectiblePress} />,
       [onCollectiblePress],
     );
 
@@ -84,9 +78,9 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
     return (
       <View className="flex-1">
-        <View className="flex-row items-center mb-4">
+        <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
-            className="p-2"
+            className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
           >
             <Text
@@ -102,7 +96,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="p-2"
+            className="py-2"
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
           >
             <Text
