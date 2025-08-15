@@ -33,7 +33,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   BUY_XLM_STACK: "BuyXLMStack",
   SEND_PAYMENT_STACK: "SendPaymentStack",
   SWAP_STACK: "SwapStack",
-  MANAGE_TOKENS_STACK: "ManageTokensStack",
+  MANAGE_TOKENS_STACK: "ManageAssetsStack",
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -63,8 +63,8 @@ export const MAIN_TAB_ROUTES = {
 } as const;
 
 export const MANAGE_TOKENS_ROUTES = {
-  MANAGE_TOKENS_SCREEN: "ManageTokensScreen",
-  ADD_TOKEN_SCREEN: "AddTokenScreen",
+  MANAGE_TOKENS_SCREEN: "ManageAssetsScreen",
+  ADD_TOKEN_SCREEN: "AddAssetScreen",
 } as const;
 
 export const SETTINGS_ROUTES = {

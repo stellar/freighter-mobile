@@ -18,7 +18,7 @@ export enum AnalyticsEvent {
   VIEW_HOME = "loaded screen: account",
   VIEW_HISTORY = "loaded screen: account history",
   VIEW_DISCOVERY = "loaded screen: discover",
-  VIEW_TOKEN_DETAILS = "loaded screen: token detail",
+  VIEW_TOKEN_DETAILS = "loaded screen: asset detail",
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
   VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
@@ -45,13 +45,13 @@ export enum AnalyticsEvent {
   VIEW_SECURITY = "loaded screen: security",
   VIEW_SHOW_RECOVERY_PHRASE = "loaded screen: show recovery phrase",
   VIEW_MANAGE_CONNECTED_APPS = "loaded screen: manage connected apps",
-  VIEW_MANAGE_TOKENS = "loaded screen: manage tokens",
-  VIEW_ADD_TOKEN = "loaded screen: add token",
+  VIEW_MANAGE_TOKENS = "loaded screen: manage assets",
+  VIEW_ADD_TOKEN = "loaded screen: add asset",
   VIEW_MANAGE_WALLETS = "loaded screen: manage wallets",
   VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
   VIEW_BUY_XLM = "loaded screen: add fund",
-  VIEW_SEARCH_TOKEN = "loaded screen: search token",
-  VIEW_ADD_TOKEN_MANUALLY = "loaded screen: add token manually",
+  VIEW_SEARCH_TOKEN = "loaded screen: search asset",
+  VIEW_ADD_TOKEN_MANUALLY = "loaded screen: add asset manually",
 
   // User Action Events (Manual tracking)
   CREATE_PASSWORD_SUCCESS = "account creator: create password: success",
@@ -90,18 +90,18 @@ export enum AnalyticsEvent {
   SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "sign transaction: memo required error",
 
   // Token Management Events
-  ADD_TOKEN_SUCCESS = "manage token: add token",
-  ADD_UNSAFE_TOKEN_SUCCESS = "manage token: add unsafe token",
-  REMOVE_TOKEN_SUCCESS = "manage token: remove token",
-  TOKEN_MANAGEMENT_FAIL = "manage token: error",
+  ADD_TOKEN_SUCCESS = "manage asset: add asset",
+  ADD_UNSAFE_TOKEN_SUCCESS = "manage asset: add unsafe asset",
+  REMOVE_TOKEN_SUCCESS = "manage asset: remove asset",
+  TOKEN_MANAGEMENT_FAIL = "manage asset: error",
   ADD_TOKEN_CONFIRMED = "add token: confirmed",
   ADD_TOKEN_REJECTED = "add token: rejected",
-  MANAGE_TOKEN_LISTS_MODIFY = "manage token list: modify token list",
+  MANAGE_TOKEN_LISTS_MODIFY = "manage asset list: modify asset list",
 
   // Trustline Error Events
-  TRUSTLINE_INSUFFICIENT_BALANCE_FAIL = "trustline removal error: token has balance",
-  TRUSTLINE_HAS_LIABILITIES_FAIL = "trustline removal error: token has buying liabilties",
-  TRUSTLINE_LOW_RESERVE_FAIL = "trustline removal error: token has low reserve",
+  TRUSTLINE_INSUFFICIENT_BALANCE_FAIL = "trustline removal error: asset has balance",
+  TRUSTLINE_HAS_LIABILITIES_FAIL = "trustline removal error: asset has buying liabilties",
+  TRUSTLINE_LOW_RESERVE_FAIL = "trustline removal error: asset has low reserve",
 
   // Account Management Events
   ACCOUNT_SCREEN_ADD_ACCOUNT = "account screen: created new account",
@@ -126,7 +126,7 @@ export enum AnalyticsEvent {
   QR_SCAN_ERROR = "mobile: qr scan error",
 
   // Blockaid Events
-  BLOCKAID_TOKEN_SCAN = "blockaid: scanned token",
+  BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
 }

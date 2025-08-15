@@ -1,4 +1,4 @@
-import { TokenType, Horizon } from "@stellar/stellar-sdk";
+import { AssetType as TokenType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
 

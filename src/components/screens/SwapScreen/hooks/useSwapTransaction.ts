@@ -127,7 +127,7 @@ export const useSwapTransaction = ({
 
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
-        destinationToken: destinationBalance.tokenCode,
+        destToken: destinationBalance.tokenCode,
         allowedSlippage: swapSlippage?.toString(),
         isSwap: true,
       });

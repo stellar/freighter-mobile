@@ -175,13 +175,13 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
-        token: `${tokenCode}:${issuer}`,
+        asset: `${tokenCode}:${issuer}`,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
         action: "add",
-        token: `${tokenCode}:${issuer}`,
+        asset: `${tokenCode}:${issuer}`,
       });
 
       logger.error(
@@ -297,13 +297,13 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
-        token: tokenIdentifier,
+        asset: tokenIdentifier,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
         action: "remove",
-        token: tokenIdentifier,
+        asset: tokenIdentifier,
       });
 
       logger.error(

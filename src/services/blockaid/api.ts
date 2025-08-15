@@ -46,7 +46,7 @@ export const scanToken = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
       response: scanResult,
-      tokenCode,
+      assetCode: tokenCode,
       network,
     });
 
