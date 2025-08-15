@@ -1,3 +1,4 @@
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
 import Icon from "components/sds/Icon";
@@ -78,6 +79,7 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
             justifyContent: "space-between",
             marginBottom: pxValue(14),
           }}
+          ListFooterComponent={DefaultListFooter}
           contentContainerStyle={{ padding: pxValue(DEFAULT_PADDING) }}
           keyExtractor={(tab) => tab.id}
           renderItem={({ item: tab }) => (

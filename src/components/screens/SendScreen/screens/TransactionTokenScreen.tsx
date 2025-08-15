@@ -33,7 +33,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   };
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <View className="flex-1">
         <View className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary">
           <ContactRow
