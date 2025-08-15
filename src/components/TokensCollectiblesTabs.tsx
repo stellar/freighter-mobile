@@ -26,6 +26,8 @@ export enum TabType {
 interface Props {
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
+  /** Whether to hide the collectibles tab */
+  hideCollectibles?: boolean;
   /** Whether to show the collectibles settings button */
   showCollectiblesSettings?: boolean;
   /** Callback function triggered when tab changes */
@@ -61,6 +63,7 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
+    hideCollectibles = false,
     showCollectiblesSettings = false,
     onTabChange,
     publicKey,
@@ -142,12 +145,18 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
      * Returns either the tokens content or collectibles content accordingly
      */
     const renderContent = useMemo(() => {
-      if (activeTab === TabType.TOKENS) {
+      // If collectibles are hidden, we should render tokens content only
+      if (hideCollectibles || activeTab === TabType.TOKENS) {
         return renderTokensContent;
       }
 
       return renderCollectiblesContent;
-    }, [activeTab, renderTokensContent, renderCollectiblesContent]);
+    }, [
+      hideCollectibles,
+      activeTab,
+      renderTokensContent,
+      renderCollectiblesContent,
+    ]);
 
     return (
       <View
@@ -171,21 +180,23 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            className="flex-1 py-2"
-            onPress={() => handleTabChange(TabType.COLLECTIBLES)}
-          >
-            <Text
-              medium
-              color={
-                activeTab === TabType.COLLECTIBLES
-                  ? themeColors.text.primary
-                  : themeColors.text.secondary
-              }
+          {!hideCollectibles && (
+            <TouchableOpacity
+              className="flex-1 py-2"
+              onPress={() => handleTabChange(TabType.COLLECTIBLES)}
             >
-              {t("collectiblesGrid.title")}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                medium
+                color={
+                  activeTab === TabType.COLLECTIBLES
+                    ? themeColors.text.primary
+                    : themeColors.text.secondary
+                }
+              >
+                {t("collectiblesGrid.title")}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Collectibles settings button - only visible when Collectibles tab is active */}
           {activeTab === TabType.COLLECTIBLES && showCollectiblesSettings && (
