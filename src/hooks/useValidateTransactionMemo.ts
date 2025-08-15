@@ -125,10 +125,9 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
       } catch (error) {
         logger.error("Memo Validation", "Error validating memo", { error });
         if (error instanceof Error && "accountId" in error) {
-          setIsMemoMissing(true);
-        } else {
-          setIsMemoMissing(false);
+          throw error;
         }
+        setIsMemoMissing(false);
       } finally {
         setIsValidatingMemo(false);
       }
