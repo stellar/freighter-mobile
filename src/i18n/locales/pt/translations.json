@@ -300,7 +300,7 @@
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
-    "empty": "Nenhum colecionável encontrado",
+    "empty": "Nenhum colecionável ainda",
     "addManually": "Adicionar manualmente"
   },
   "friendbotButton": {

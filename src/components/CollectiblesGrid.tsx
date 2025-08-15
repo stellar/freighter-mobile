@@ -152,8 +152,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       }
 
       return (
-        <View className="flex-1 pt-4">
-          <Text md secondary>
+        <View className="flex-row items-center justify-center pt-5 gap-2">
+          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
+          <Text md medium secondary>
             {t("collectiblesGrid.empty")}
           </Text>
         </View>
@@ -163,6 +164,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       isLoading,
       error,
       t,
+      themeColors.text.secondary,
       themeColors.secondary,
       renderCollection,
       handleRefresh,
