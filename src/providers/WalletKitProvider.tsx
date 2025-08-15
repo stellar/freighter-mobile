@@ -10,7 +10,6 @@ import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   useWalletKitStore,
   WalletKitSessionProposal,
@@ -80,7 +79,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { account, signTransaction } = useGetActiveAccount();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { transactionMemo, saveMemo } = useTransactionSettingsStore();
 
   const publicKey = account?.publicKey || "";
 
@@ -227,7 +225,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     setTimeout(() => {
       setIsSigning(false);
       setRequestEvent(null);
-      saveMemo("");
       clearEvent();
     }, 200);
   };
@@ -454,7 +451,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessions, event.type, authStatus, transactionMemo]);
+  }, [activeSessions, event.type, authStatus]);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();

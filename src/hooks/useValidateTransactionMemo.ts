@@ -88,7 +88,7 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     const transaction = TransactionBuilder.fromXDR(xdr, network);
     const memo =
       "memo" in transaction && transaction.memo.value
-        ? String(transaction.memo.value).trim()
+        ? String(transaction.memo.value)
         : (transactionMemo ?? "");
 
     setLocalMemo(memo);
