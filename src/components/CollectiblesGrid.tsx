@@ -64,18 +64,26 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
         <TouchableOpacity
-          className="w-[165px] h-[165px] rounded-2xl overflow-hidden mr-6"
+          className="w-[165px] h-[165px] rounded-2xl overflow-hidden items-center justify-center mr-6 bg-background-tertiary"
           delayPressIn={DEFAULT_PRESS_DELAY}
           onPress={() => onCollectiblePress?.(item.tokenId)}
         >
-          <Image
-            source={{ uri: item.image }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+          {/* Placeholder icon for when the image is not loaded */}
+          <View className="absolute z-1">
+            <Icon.Image01 size={45} color={themeColors.text.secondary} />
+          </View>
+
+          {/* NFT image */}
+          <View className="absolute z-10 w-full h-full">
+            <Image
+              source={{ uri: item.image }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          </View>
         </TouchableOpacity>
       ),
-      [onCollectiblePress],
+      [onCollectiblePress, themeColors.text.secondary],
     );
 
     const renderCollection = useCallback(
