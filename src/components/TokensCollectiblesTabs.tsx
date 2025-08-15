@@ -1,7 +1,9 @@
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import { debug } from "helpers/debug";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -48,6 +50,8 @@ interface Props {
  * - Memoized content rendering for performance
  * - Dynamic tab styling based on active state
  * - Callback support for tab changes and item interactions
+ * - Collectibles settings button (visible only when Collectibles tab is active)
+ * - Smart padding management for different content types
  *
  * @param {Props} props - Component props
  * @returns {JSX.Element} The tab component with content
@@ -66,6 +70,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
+    /**
+     * Handles tab switching and triggers the optional onTabChange callback
+     * @param {TabType} tab - The tab type to switch to
+     */
     const handleTabChange = useCallback(
       (tab: TabType) => {
         setActiveTab(tab);
@@ -74,6 +82,19 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       [onTabChange],
     );
 
+    /**
+     * Handles the press event for the collectibles settings button
+     * Currently logs debug information for development purposes
+     * TODO: Implement actual collectibles settings functionality
+     */
+    const handleCollectiblesSettingsPress = useCallback(() => {
+      debug("TokensCollectiblesTabs", "collectibles settings pressed");
+    }, []);
+
+    /**
+     * Renders the tokens/balances list content
+     * Displays the BalancesList component with the provided props
+     */
     const renderTokensContent = useMemo(
       () => (
         <BalancesList
@@ -85,10 +106,16 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       [publicKey, network, onTokenPress],
     );
 
+    /**
+     * Renders the collectibles content with custom padding management
+     *
+     * Note: This component uses a padding workaround to ensure the collectibles grid
+     * extends to the full screen width while maintaining proper spacing for other content.
+     * The negative horizontal margin counteracts the parent container's padding,
+     * allowing the CollectiblesGrid to render edge-to-edge as intended.
+     */
     const renderCollectiblesContent = useMemo(
       () => (
-        // This is a workaround to avoid the default padding from being applied to the collectibles grid
-        // and the collectibles grid being cut off.
         <View
           className="flex-1"
           style={{ marginHorizontal: -pxValue(DEFAULT_PADDING) }}
@@ -99,6 +126,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       [onCollectiblePress],
     );
 
+    /**
+     * Determines which content to render based on the currently active tab
+     * Returns either the tokens content or collectibles content accordingly
+     */
     const renderContent = useMemo(() => {
       if (activeTab === TabType.TOKENS) {
         return renderTokensContent;
@@ -130,7 +161,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="py-2"
+            className="flex-1 py-2"
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
           >
             <Text
@@ -144,6 +175,16 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
               {t("collectiblesGrid.title")}
             </Text>
           </TouchableOpacity>
+
+          {/* Collectibles settings button - only visible when Collectibles tab is active */}
+          {activeTab === TabType.COLLECTIBLES && (
+            <TouchableOpacity
+              className="py-2 pl-4"
+              onPress={handleCollectiblesSettingsPress}
+            >
+              <Icon.Sliders01 size={20} color={themeColors.text.secondary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {renderContent}
