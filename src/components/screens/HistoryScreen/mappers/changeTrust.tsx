@@ -56,8 +56,8 @@ export const mapChangeTrustHistoryItem = ({
   );
 
   const actionText = isRemovingTrustline
-    ? t("history.transactionHistory.removedToken")
-    : t("history.transactionHistory.addedToken");
+    ? t("history.transactionHistory.removedTrustline")
+    : t("history.transactionHistory.addedTrustline");
 
   const ActionIconComponent = isRemovingTrustline ? (
     <Icon.MinusCircle size={16} color={themeColors.foreground.primary} />
