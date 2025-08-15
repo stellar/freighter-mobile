@@ -115,7 +115,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           <FlatList
             data={collections}
             renderItem={renderCollection}
-            keyExtractor={(collection) => collection.collectionName}
+            keyExtractor={(collection) => collection.collectionAddress}
             showsVerticalScrollIndicator={false}
             ListFooterComponent={DefaultListFooter}
             refreshControl={
