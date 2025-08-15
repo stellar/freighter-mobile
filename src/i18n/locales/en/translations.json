@@ -464,7 +464,22 @@
     "title": "Transaction settings",
     "feeTitle": "Transaction fee",
     "memoTitle": "Memo",
-    "timeoutTitle": "Transaction timeout"
+    "timeoutTitle": "Transaction timeout",
+    "memoInfo": {
+      "title": "Memo",
+      "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
+      "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+    },
+    "timeoutInfo": {
+      "title": "Transaction timeout",
+      "description": "Transactions on the Stellar network have a set time limit for processing.",
+      "additionalInfo": "If the transaction is not confirmed before this time, it will expire and need to be submitted again."
+    },
+    "feeInfo": {
+      "title": "Transaction fee",
+      "description": "Every transaction on the Stellar network includes a small fee to help keep the network secure.",
+      "additionalInfo": "You can choose to increase this fee if you want your transaction to be prioritized and processed faster by the network."
+    }
   },
   "transactionAmountScreen": {
     "title": "Send",

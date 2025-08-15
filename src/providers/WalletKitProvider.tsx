@@ -1,7 +1,7 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
+import AddMemoExplanationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";

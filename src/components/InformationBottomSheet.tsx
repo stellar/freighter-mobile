@@ -6,15 +6,21 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
-type AddMemoExplanationBottomSheetProps = {
+type InformationBottomSheetProps = {
   onConfirm?: () => void;
   onClose: () => void;
+  title: string;
+  headerElement?: React.ReactNode;
+  texts: string[];
 };
 
-const AddMemoExplanationBottomSheet = ({
+const InformationBottomSheet = ({
   onConfirm,
   onClose,
-}: AddMemoExplanationBottomSheetProps) => {
+  title,
+  headerElement,
+  texts,
+}: InformationBottomSheetProps) => {
   const { themeColors } = useColors();
 
   const { t } = useTranslation();
@@ -22,13 +28,7 @@ const AddMemoExplanationBottomSheet = ({
   return (
     <View className="flex-1">
       <View className="relative flex-row items-center mb-8">
-        <View className="bg-red-3 p-2 rounded-[8px]">
-          <Icon.InfoOctagon
-            color={themeColors.status.error}
-            size={28}
-            withBackground
-          />
-        </View>
+        {headerElement}
         <TouchableOpacity onPress={onClose} className="absolute right-0">
           <Icon.X
             color={themeColors.foreground.secondary}
@@ -40,24 +40,16 @@ const AddMemoExplanationBottomSheet = ({
       </View>
       <View>
         <Text xl medium primary textAlign="left">
-          {t("addMemoExplanationBottomSheet.title")}
+          {title}
         </Text>
       </View>
-      <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
-          {t("addMemoExplanationBottomSheet.description")}
-        </Text>
-      </View>
-      <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
-          {t("addMemoExplanationBottomSheet.disabledWarning")}
-        </Text>
-      </View>
-      <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
-          {t("addMemoExplanationBottomSheet.checkMemoRequirements")}
-        </Text>
-      </View>
+      {texts.map((text) => (
+        <View className="mt-[24px] pr-8" key={text}>
+          <Text md medium secondary textAlign="left">
+            {text}
+          </Text>
+        </View>
+      ))}
       {onConfirm && (
         <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
@@ -71,4 +63,4 @@ const AddMemoExplanationBottomSheet = ({
   );
 };
 
-export default AddMemoExplanationBottomSheet;
+export default InformationBottomSheet;
