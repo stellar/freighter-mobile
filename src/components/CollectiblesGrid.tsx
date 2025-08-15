@@ -16,7 +16,11 @@ import {
   RefreshControl,
 } from "react-native";
 
+/**
+ * Props for the CollectiblesGrid component
+ */
 interface CollectiblesGridProps {
+  /** Callback function triggered when a collectible item is pressed */
   onCollectiblePress?: (collectibleId: string) => void;
 }
 
@@ -29,8 +33,15 @@ interface CollectiblesGridProps {
  * - Displays collection names with item counts
  * - Shows collectible images in a horizontal scrollable grid
  * - Handles loading and empty states
+ * - Pull-to-refresh functionality
+ * - Responsive grid layout with proper spacing
+ * - Memoized rendering for performance optimization
+ *
+ * The component automatically fetches collectibles data on mount and provides
+ * a refresh mechanism for users to update the data manually.
  *
  * @param {CollectiblesGridProps} props - Component props
+ * @param {Function} [props.onCollectiblePress] - Callback function when a collectible is pressed
  * @returns {JSX.Element} The collectibles grid component
  */
 export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(

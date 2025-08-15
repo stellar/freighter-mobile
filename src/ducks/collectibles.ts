@@ -1,33 +1,64 @@
 import { create } from "zustand";
 
+/**
+ * Represents a trait/attribute of a collectible NFT
+ */
 export interface CollectibleTrait {
+  /** The name of the trait (e.g., "Color", "Rarity") */
   name: string;
+  /** The value of the trait (e.g., "Blue", "Legendary") */
   value: string | number;
 }
 
+/**
+ * Represents a single collectible NFT item
+ */
 export interface Collectible {
+  /** Unique identifier for the collection this collectible belongs to */
   collectionAddress: string;
+  /** Human-readable name of the collection */
   collectionName: string;
+  /** Unique identifier for this specific collectible within the collection */
   tokenId: string;
+  /** Human-readable name of the collectible */
   name: string;
+  /** URL to the collectible's image */
   image: string;
+  /** Detailed description of the collectible */
   description: string;
+  /** External URL for more information about the collectible */
   externalUrl: string;
+  /** Array of traits/attributes that define this collectible */
   traits: CollectibleTrait[];
 }
 
+/**
+ * Represents a collection of collectibles grouped by collection address
+ */
 export interface Collection {
+  /** Unique identifier for the collection */
   collectionAddress: string;
+  /** Human-readable name of the collection */
   collectionName: string;
+  /** Array of collectibles belonging to this collection */
   items: Collectible[];
+  /** Total count of collectibles in this collection */
   count: number;
 }
 
+/**
+ * State interface for the collectibles Zustand store
+ */
 interface CollectiblesState {
+  /** Array of all collectibles */
   collectibles: Collectible[];
+  /** Loading state indicator */
   isLoading: boolean;
+  /** Error message if fetch fails */
   error: string | null;
+  /** Function to fetch collectibles from API */
   fetchCollectibles: () => Promise<void>;
+  /** Function to clear any error state */
   clearError: () => void;
 }
 
@@ -143,11 +174,28 @@ const dummyCollectibles: Collectible[] = [
   },
 ];
 
+/**
+ * Zustand store for managing collectibles state
+ *
+ * Provides state management for:
+ * - Collectibles data
+ * - Loading states
+ * - Error handling
+ * - Data fetching operations
+ */
 export const useCollectiblesStore = create<CollectiblesState>((set) => ({
   collectibles: [],
   isLoading: false,
   error: null,
 
+  /**
+   * Fetches collectibles from the API
+   *
+   * Currently uses dummy data for development/testing.
+   * TODO: Replace with actual API call to fetch real collectibles data.
+   *
+   * @returns {Promise<void>} Promise that resolves when fetch completes
+   */
   fetchCollectibles: async () => {
     set({ isLoading: true, error: null });
 
@@ -173,6 +221,9 @@ export const useCollectiblesStore = create<CollectiblesState>((set) => ({
     }
   },
 
+  /**
+   * Clears any error state from the store
+   */
   clearError: () => {
     set({ error: null });
   },
