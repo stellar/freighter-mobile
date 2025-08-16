@@ -132,6 +132,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         },
       ];
 
+      // Reverse the array for iOS to match Android behavior
       return isIOS ? actions.reverse() : actions;
     }, [t, hasTokens, navigation]);
 
@@ -150,6 +151,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         },
       ];
 
+      // Reverse the array for iOS to match Android behavior
       return isIOS ? actions.reverse() : actions;
     }, [t]);
 
