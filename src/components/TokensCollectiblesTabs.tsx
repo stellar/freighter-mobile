@@ -1,4 +1,4 @@
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NavigationProp } from "@react-navigation/native";
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
@@ -32,7 +32,7 @@ export enum TabType {
  */
 interface Props {
   /** The navigation object */
-  navigation: NativeStackNavigationProp<RootStackParamList>;
+  navigation: NavigationProp<RootStackParamList>;
   /** Does the wallet have tokens? */
   hasTokens: boolean;
   /** The default active tab when the component mounts */

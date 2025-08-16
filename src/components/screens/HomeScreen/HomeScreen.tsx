@@ -65,10 +65,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   );
 
   // Set up navigation headers (hook handles navigation.setOptions internally)
-  useHomeHeaders({
-    navigation,
-    hasTokens,
-  });
+  useHomeHeaders({ navigation });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
     useWelcomeBanner({

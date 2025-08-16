@@ -12,7 +12,6 @@ import {
   MainTabStackParamList,
   RootStackParamList,
   MAIN_TAB_ROUTES,
-  MANAGE_ASSETS_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -24,13 +23,9 @@ interface UseHomeHeadersProps {
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
-  hasTokens: boolean;
 }
 
-export const useHomeHeaders = ({
-  navigation,
-  hasTokens,
-}: UseHomeHeadersProps) => {
+export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -45,21 +40,6 @@ export const useHomeHeaders = ({
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
       },
-      ...(hasTokens
-        ? [
-            {
-              title: t("home.actions.manageAssets"),
-              systemIcon: Platform.select({
-                ios: "pencil",
-                android: "edit",
-              }),
-              onPress: () =>
-                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
-                  screen: MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN,
-                }),
-            },
-          ]
-        : []),
       {
         title: t("home.actions.myQRCode"),
         systemIcon: Platform.select({
@@ -72,7 +52,7 @@ export const useHomeHeaders = ({
           }),
       },
     ],
-    [t, navigation, hasTokens],
+    [t, navigation],
   );
 
   // Memoize the header components outside of the useLayoutEffect to improve
