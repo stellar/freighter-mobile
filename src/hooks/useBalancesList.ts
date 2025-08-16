@@ -46,21 +46,21 @@ export const useBalancesList = ({
   const noBalances = Object.keys(pricedBalances).length === 0;
 
   // Initial data fetch
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        await fetchAccountBalances({
-          publicKey,
-          network,
-        });
-      } finally {
-        setHasAttemptedInitialLoad(true);
-        setIsMounting(false);
-      }
-    };
-
-    fetchInitialData();
+  const fetchInitialData = useCallback(async () => {
+    try {
+      await fetchAccountBalances({
+        publicKey,
+        network,
+      });
+    } finally {
+      setHasAttemptedInitialLoad(true);
+      setIsMounting(false);
+    }
   }, [fetchAccountBalances, publicKey, network]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   // Handle polling
   useEffect(() => {
@@ -145,13 +145,26 @@ export const useBalancesList = ({
   const shouldShowError =
     !isMounting && hasAttemptedInitialLoad && balancesError;
 
-  return {
-    balanceItems,
-    isLoading: isBalancesLoading || isMounting,
-    error: shouldShowError ? balancesError : null,
-    noBalances,
-    isRefreshing,
-    isFunded,
-    handleRefresh,
-  };
+  return useMemo(
+    () => ({
+      balanceItems,
+      isLoading: isBalancesLoading || isMounting,
+      error: shouldShowError ? balancesError : null,
+      noBalances,
+      isRefreshing,
+      isFunded,
+      handleRefresh,
+    }),
+    [
+      balanceItems,
+      isBalancesLoading,
+      isMounting,
+      shouldShowError,
+      balancesError,
+      noBalances,
+      isRefreshing,
+      isFunded,
+      handleRefresh,
+    ],
+  );
 };

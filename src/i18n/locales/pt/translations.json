@@ -295,13 +295,15 @@
       "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
       "learnMore": "Saiba mais",
       "fundAccountButton": "Adicionar XLM"
-    }
+    },
+    "menuAddToken": "Adicionar um token",
+    "menuManageTokens": "Gerenciar tokens"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
-    "addManually": "Adicionar manualmente"
+    "menuAddManually": "Adicionar manualmente"
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
