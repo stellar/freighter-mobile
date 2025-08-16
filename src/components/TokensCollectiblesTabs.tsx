@@ -4,6 +4,7 @@ import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -24,12 +25,14 @@ export enum TabType {
  * Props for the TokensCollectiblesTabs component
  */
 interface Props {
+  /** Does the wallet have tokens? */
+  hasTokens: boolean;
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
   /** Whether to hide the collectibles tab */
   hideCollectibles?: boolean;
-  /** Whether to show the collectibles settings button */
-  showCollectiblesSettings?: boolean;
+  /** Whether to show the settings menu button */
+  showSettingsMenu?: boolean;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
   /** The public key of the wallet to display data for */
@@ -62,9 +65,10 @@ interface Props {
  */
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
+    hasTokens,
     defaultTab = TabType.TOKENS,
     hideCollectibles = false,
-    showCollectiblesSettings = false,
+    showSettingsMenu = false,
     onTabChange,
     publicKey,
     network,
@@ -89,21 +93,48 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     /**
+     * Context menu actions for tokens settings
+     */
+    const tokensMenuActions: MenuItem[] = useMemo(() => {
+      const actions = [
+        {
+          title: t("balancesList.menuAddToken"),
+          systemIcon: Platform.select({
+            ios: "plus.circle",
+            android: "add_circle",
+          }),
+          disabled: !hasTokens,
+        },
+        {
+          title: t("balancesList.menuManageTokens"),
+          systemIcon: Platform.select({
+            ios: "pencil",
+            android: "edit",
+          }),
+          disabled: !hasTokens,
+        },
+      ];
+
+      return isIOS ? actions.reverse() : actions;
+    }, [t, hasTokens]);
+
+    /**
      * Context menu actions for collectibles settings
      */
-    const collectiblesMenuActions: MenuItem[] = useMemo(
-      () => [
+    const collectiblesMenuActions: MenuItem[] = useMemo(() => {
+      const actions = [
         {
-          title: t("collectiblesGrid.addManually"),
+          title: t("collectiblesGrid.menuAddManually"),
           systemIcon: Platform.select({
             ios: "plus.rectangle.on.rectangle",
             android: "add_box",
           }),
           disabled: true,
         },
-      ],
-      [t],
-    );
+      ];
+
+      return isIOS ? actions.reverse() : actions;
+    }, [t]);
 
     /**
      * Renders the tokens/balances list content
@@ -199,9 +230,14 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           )}
 
           {/* Collectibles settings button - only visible when Collectibles tab is active */}
-          {activeTab === TabType.COLLECTIBLES && showCollectiblesSettings && (
+          {showSettingsMenu && (
             <ContextMenuButton
-              contextMenuProps={{ actions: collectiblesMenuActions }}
+              contextMenuProps={{
+                actions:
+                  activeTab === TabType.TOKENS
+                    ? tokensMenuActions
+                    : collectiblesMenuActions,
+              }}
               side="bottom"
               align="end"
               sideOffset={8}

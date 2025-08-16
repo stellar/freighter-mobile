@@ -23,12 +23,12 @@ interface UseHomeHeadersProps {
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
-  hasAssets: boolean;
+  hasTokens: boolean;
 }
 
 export const useHomeHeaders = ({
   navigation,
-  hasAssets,
+  hasTokens,
 }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -44,7 +44,7 @@ export const useHomeHeaders = ({
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
       },
-      ...(hasAssets
+      ...(hasTokens
         ? [
             {
               title: t("home.actions.manageAssets"),
@@ -69,7 +69,7 @@ export const useHomeHeaders = ({
           }),
       },
     ],
-    [t, navigation, hasAssets],
+    [t, navigation, hasTokens],
   );
 
   // Memoize the header components outside of the useLayoutEffect to improve
