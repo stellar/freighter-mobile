@@ -1,9 +1,15 @@
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import {
+  MANAGE_ASSETS_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -25,6 +31,8 @@ export enum TabType {
  * Props for the TokensCollectiblesTabs component
  */
 interface Props {
+  /** The navigation object */
+  navigation: NativeStackNavigationProp<RootStackParamList>;
   /** Does the wallet have tokens? */
   hasTokens: boolean;
   /** The default active tab when the component mounts */
@@ -65,6 +73,7 @@ interface Props {
  */
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
+    navigation,
     hasTokens,
     defaultTab = TabType.TOKENS,
     hideCollectibles = false,
@@ -98,25 +107,33 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     const tokensMenuActions: MenuItem[] = useMemo(() => {
       const actions = [
         {
-          title: t("balancesList.menuAddToken"),
-          systemIcon: Platform.select({
-            ios: "plus.circle",
-            android: "add_circle",
-          }),
-          disabled: !hasTokens,
-        },
-        {
           title: t("balancesList.menuManageTokens"),
           systemIcon: Platform.select({
             ios: "pencil",
             android: "edit",
           }),
           disabled: !hasTokens,
+          onPress: () =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
+              screen: MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN,
+            }),
+        },
+        {
+          title: t("balancesList.menuAddToken"),
+          systemIcon: Platform.select({
+            ios: "plus.circle",
+            android: "add_circle",
+          }),
+          disabled: !hasTokens,
+          onPress: () =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
+              screen: MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN,
+            }),
         },
       ];
 
       return isIOS ? actions.reverse() : actions;
-    }, [t, hasTokens]);
+    }, [t, hasTokens, navigation]);
 
     /**
      * Context menu actions for collectibles settings

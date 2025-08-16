@@ -12,6 +12,7 @@ import {
   MainTabStackParamList,
   RootStackParamList,
   MAIN_TAB_ROUTES,
+  MANAGE_ASSETS_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -50,10 +51,12 @@ export const useHomeHeaders = ({
               title: t("home.actions.manageAssets"),
               systemIcon: Platform.select({
                 ios: "pencil",
-                android: "baseline_delete",
+                android: "edit",
               }),
               onPress: () =>
-                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
+                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
+                  screen: MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN,
+                }),
             },
           ]
         : []),
@@ -61,7 +64,7 @@ export const useHomeHeaders = ({
         title: t("home.actions.myQRCode"),
         systemIcon: Platform.select({
           ios: "qrcode",
-          android: "outline_circle",
+          android: "qr_code_scanner",
         }),
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
