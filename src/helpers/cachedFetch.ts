@@ -14,7 +14,7 @@ export const cachedFetch = async <T>(
   const time = date.getTime();
   const sevenDaysAgo = time - 7 * 24 * 60 * 60 * 1000;
 
-  let directoryLookup = (await dataStorage.getItem(storageKey)) || "{}";
+  let directoryLookup = await dataStorage.getItem(storageKey);
 
   if (typeof directoryLookup === "string") {
     try {
@@ -27,7 +27,7 @@ export const cachedFetch = async <T>(
     }
   }
 
-  if (cachedDate < sevenDaysAgo) {
+  if (cachedDate < sevenDaysAgo || !directoryLookup) {
     try {
       const res = await fetch(url, options);
       directoryLookup = await res.json();
