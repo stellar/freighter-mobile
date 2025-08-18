@@ -91,7 +91,7 @@ export const addressToString = (address: xdr.ScAddress) => {
   if (address.switch().name === "scAddressTypeAccount") {
     return StrKey.encodeEd25519PublicKey(address.accountId().ed25519());
   }
-  return StrKey.encodeContract(address.contractId());
+  return StrKey.encodeContract(address.contractId() as unknown as Buffer);
 };
 
 export const getArgsForTokenInvocation = (
@@ -135,7 +135,7 @@ export const getTokenInvocationArgs = (
   }
 
   const contractId = StrKey.encodeContract(
-    invokedContract.contractAddress().contractId(),
+    invokedContract.contractAddress().contractId() as unknown as Buffer,
   );
   const fnName = invokedContract.functionName().toString();
   const args = invokedContract.args();

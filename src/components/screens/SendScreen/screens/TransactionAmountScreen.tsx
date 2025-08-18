@@ -14,6 +14,7 @@ import {
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
@@ -45,10 +46,6 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
-
-enum AmountError {
-  TOO_HIGH = "amount too high",
-}
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -95,7 +92,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [amountError, setAmountError] = useState<AmountError | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -193,7 +190,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       setAmountError(
         t("transactionAmountScreen.errors.insufficientXlmForFees", {
           fee: transactionFee,
-        }) as AmountError,
+        }),
       );
       return;
     }
@@ -202,7 +199,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       spendableBalance &&
       currentTokenAmount.isGreaterThan(spendableBalance)
     ) {
-      setAmountError(AmountError.TOO_HIGH);
+      setAmountError(t("transactionAmountScreen.errors.amountTooHigh"));
     } else {
       setAmountError(null);
     }
@@ -407,6 +404,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </TouchableOpacity>
             </View>
           </View>
+          {amountError && (
+            <Notification variant="error" message={amountError} />
+          )}
           <View className="rounded-[12px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-secondary">
             {selectedBalance && (
               <BalanceRow

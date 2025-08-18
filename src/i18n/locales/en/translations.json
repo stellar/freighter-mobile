@@ -510,7 +510,11 @@
       "fee": "Fee",
       "xdr": "XDR"
     },
-    "memoMissing": "This transaction requires a memo"
+    "errors": {
+      "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
+      "amountTooHigh": "The amount entered is greater than the available balance",
+      "memoMissing": "This transaction requires a memo"
+    }
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",

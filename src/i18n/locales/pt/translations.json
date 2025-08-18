@@ -488,8 +488,11 @@
       "fee": "Taxa",
       "xdr": "XDR"
     },
-    "memoMissing": "Esta transação requer um memo",
-    "addMemo": "Adicionar memo"
+    "errors": {
+      "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
+      "amountTooHigh": "O valor digitado é maior que o saldo disponível",
+      "memoMissing": "Esta transação requer um memo"
+    }
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",

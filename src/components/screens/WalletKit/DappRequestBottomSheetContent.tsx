@@ -136,7 +136,7 @@ const DappRequestBottomSheetContent: React.FC<
       {isMemoMissing && (
         <Banner
           variant="error"
-          text={t("transactionAmountScreen.memoMissing")}
+          text={t("transactionAmountScreen.errors.memoMissing")}
           onPress={onBannerPress}
           className="mt-4 w-full mt-[16px]"
         />
