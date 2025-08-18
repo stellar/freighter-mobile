@@ -318,13 +318,15 @@
       "message": "To start using this account, fund it with at least 1 XLM.",
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
-    }
+    },
+    "menuAddToken": "Add a token",
+    "menuManageTokens": "Manage tokens"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
-    "addManually": "Add manually"
+    "menuAddManually": "Add manually"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
@@ -342,12 +344,6 @@
     "actions": {
       "copyAddress": "Copy address",
       "removeAsset": "Remove asset"
-    },
-    "removeAssetAlert": {
-      "title": "Remove asset",
-      "message": "Are you sure you want to remove this asset?",
-      "cancel": "Cancel",
-      "remove": "Remove"
     },
     "removeAssetError": "Error removing asset {{assetCode}}",
     "removeAssetSuccess": "{{assetCode}} successfully removed"
@@ -403,7 +399,7 @@
     "tokenAddressCopied": "Token address copied!",
     "removeAssetModal": {
       "title": "Remove {{assetCode}}?",
-      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later."
+      "message": "Are you sure you want to remove this asset? Once you remove an asset, you will have to add it again later."
     }
   },
   "sendPaymentScreen": {

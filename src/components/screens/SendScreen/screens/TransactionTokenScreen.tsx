@@ -55,6 +55,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
         <View className="flex-1 mt-[16px]">
           <TokensCollectiblesTabs
             hideCollectibles
+            showTokensSettings={false}
             publicKey={publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}

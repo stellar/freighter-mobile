@@ -61,17 +61,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     isFunded,
     isLoading: isLoadingBalances,
   } = useBalancesStore();
-  const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
+
+  const hasTokens = useMemo(() => Object.keys(balances).length > 0, [balances]);
   const hasZeroBalance = useMemo(
     () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
     [rawBalance],
   );
 
   // Set up navigation headers (hook handles navigation.setOptions internally)
-  useHomeHeaders({
-    navigation,
-    hasAssets,
-  });
+  useHomeHeaders({ navigation });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
     useWelcomeBanner({
@@ -210,7 +208,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="w-full border-b mb-4 border-border-primary" />
 
       <TokensCollectiblesTabs
-        showCollectiblesSettings
+        showTokensSettings={hasTokens}
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}
