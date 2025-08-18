@@ -15,6 +15,28 @@ import { getApiStellarExpertIsMemoRequiredListUrl } from "helpers/stellarExpert"
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { stellarSdkServer } from "services/stellar";
 
+/**
+ * Hook to validate transaction memos for addresses that require them
+ *
+ * This hook checks if a transaction destination address requires a memo by:
+ * 1. Checking a cached list of memo-required addresses from StellarExpert API
+ * 2. Falling back to Stellar SDK's checkMemoRequired method
+ * 3. Only validating on mainnet when memo validation is enabled in preferences
+ *
+ * @param {string | null | undefined} incomingXdr - The transaction XDR string to validate
+ * @returns {Object} Validation state and results
+ * @returns {boolean} returns.isMemoMissing - Whether a required memo is missing
+ * @returns {boolean} returns.isValidatingMemo - Whether validation is currently in progress
+ *
+ * @example
+ * ```tsx
+ * const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(transactionXDR);
+ *
+ * if (isMemoMissing && !isValidatingMemo) {
+ *   // Show warning that memo is required
+ * }
+ * ```
+ */
 export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   const { network } = useAuthenticationStore();
   const { isMemoValidationEnabled } = usePreferencesStore();
@@ -31,12 +53,22 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
 
   const xdr = useMemo(() => incomingXdr, [incomingXdr]);
 
+  /**
+   * Determines if memo validation should be performed
+   * Only validates on mainnet when the feature is enabled in preferences
+   */
   const shouldValidateMemo = useMemo(
-    () => isMemoValidationEnabled && isMainnet(network),
+    () => !!(isMemoValidationEnabled && isMainnet(network)),
     [isMemoValidationEnabled, network],
   );
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
 
+  /**
+   * Checks if a memo is required by querying cached memo-required accounts
+   *
+   * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+   * @returns {Promise<boolean>} True if a memo is required, false otherwise
+   */
   const checkMemoRequiredFromCache = useCallback(
     async (
       transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
@@ -64,22 +96,29 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     [],
   );
 
+  /**
+   * Checks if a memo is required using Stellar SDK's built-in validation
+   * This is a fallback method when cache validation fails
+   *
+   * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+   * @returns {Promise<boolean>} True if a memo is required, false otherwise
+   */
   const checkMemoRequiredFromStellarSDK = useCallback(
     async (
       transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
     ): Promise<boolean> => {
       const server = stellarSdkServer(networkDetails.networkUrl);
 
-      try {
-        await server.checkMemoRequired(transaction);
-        return false;
-      } catch (error) {
-        return true;
-      }
+      await server.checkMemoRequired(transaction);
+      return false;
     },
     [networkDetails.networkUrl],
   );
 
+  /**
+   * Effect to parse XDR and set initial memo validation state
+   * Runs when XDR, network, or validation settings change
+   */
   useEffect(() => {
     if (!xdr || !network || !shouldValidateMemo) {
       return;
@@ -88,7 +127,7 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     const transaction = TransactionBuilder.fromXDR(xdr, network);
     const memo =
       "memo" in transaction && transaction.memo.value
-        ? String(transaction.memo.value).trim()
+        ? String(transaction.memo.value)
         : (transactionMemo ?? "");
 
     setLocalMemo(memo);
@@ -96,6 +135,10 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     setIsMemoMissing(shouldValidateMemo && !memo);
   }, [xdr, shouldValidateMemo, network, transactionMemo]);
 
+  /**
+   * Effect to perform memo requirement validation
+   * Checks both cache and SDK methods to determine if memo is required
+   */
   useEffect(() => {
     if (!localTransaction) {
       return;

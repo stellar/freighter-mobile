@@ -297,6 +297,12 @@
       "fundAccountButton": "Adicionar XLM"
     }
   },
+  "collectiblesGrid": {
+    "title": "Colecionáveis",
+    "error": "Erro ao carregar colecionáveis",
+    "empty": "Nenhum colecionável ainda",
+    "addManually": "Adicionar manualmente"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
@@ -441,7 +447,22 @@
     "title": "Configurações da transação",
     "feeTitle": "Taxa da transação",
     "memoTitle": "Memo",
-    "timeoutTitle": "Tempo limite da transação"
+    "timeoutTitle": "Tempo limite da transação",
+    "memoInfo": {
+      "title": "Memo",
+      "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
+      "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido."
+    },
+    "timeoutInfo": {
+      "title": "Tempo limite da transação",
+      "description": "As transações na rede Stellar têm um tempo limite para serem processadas.",
+      "additionalInfo": "Se a transação não for confirmada antes desse tempo, ela expirará e precisará ser enviada novamente."
+    },
+    "feeInfo": {
+      "title": "Taxa da transação",
+      "description": "Todas as transações na rede Stellar incluem uma pequena taxa para ajudar a manter a rede segura.",
+      "additionalInfo": "Você pode escolher aumentar essa taxa se quiser que sua transação seja priorizada e processada mais rapidamente pela rede."
+    }
   },
   "transactionAmountScreen": {
     "title": "Enviar",

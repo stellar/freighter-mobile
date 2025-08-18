@@ -131,8 +131,9 @@ describe("Avatar", () => {
       expect(avatar.props.className).toContain("border-border-primary");
 
       const initials = getByText("JD");
-      expect(initials.props.className).toContain("font-bold");
-      expect(initials.props.className).toContain("text-text-secondary");
+      expect(initials.props.style).toEqual(
+        expect.objectContaining({ fontWeight: "700", color: "#a0a0a0" }),
+      );
     });
 
     it("renders default icon when no publicAddress or userName provided", () => {

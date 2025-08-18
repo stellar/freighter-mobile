@@ -122,6 +122,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ navigation }) => {
         )}
         headerRight={() => (
           <CustomHeaderButton
+            position="right"
             icon={Icon.QrCode01}
             onPress={handleHeaderRight}
           />
