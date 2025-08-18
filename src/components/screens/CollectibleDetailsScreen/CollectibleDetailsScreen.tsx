@@ -21,15 +21,39 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
 /**
  * CollectibleDetailsScreen Component
  *
- * Displays detailed information about a specific collectible NFT including:
- * - Large collectible image
- * - Basic information (Name, Collection, Token ID)
- * - Description
- * - Traits/attributes
- * - Action buttons (View in browser, Send)
+ * A detailed view screen that displays comprehensive information about a specific NFT collectible.
+ * This screen is navigated to when users tap on a collectible item from the CollectiblesGrid.
+ *
+ * Features:
+ * - Large collectible image display (354x354) with fallback placeholder
+ * - Basic metadata information (Name, Collection, Token ID) in a structured list
+ * - Detailed description section
+ * - Collectible traits/attributes displayed in a 2-column grid layout
+ * - Conditional "View in Browser" button for external URLs
+ * - Responsive layout with proper spacing and typography
+ * - Error handling for missing collectibles
  *
  * @param {CollectibleDetailsScreenProps} props - Component props
- * @returns {JSX.Element} The collectible details screen
+ * @param {Object} props.route - Navigation route object containing collectible parameters
+ * @param {Object} props.route.params - Route parameters
+ * @param {string} props.route.params.collectionAddress - The collection address of the collectible
+ * @param {string} props.route.params.tokenId - The unique token ID of the collectible
+ * @param {Object} props.navigation - Navigation object for header configuration
+ *
+ * @returns {JSX.Element} The collectible details screen component
+ *
+ * @example
+ * ```tsx
+ * <CollectibleDetailsScreen
+ *   route={{
+ *     params: {
+ *       collectionAddress: "collection123",
+ *       tokenId: "token456"
+ *     }
+ *   }}
+ *   navigation={navigation}
+ * />
+ * ```
  */
 export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
   React.memo(({ route, navigation }) => {
@@ -40,13 +64,20 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
-    // Get the collectible data
+    /**
+     * Retrieves the collectible data based on collection address and token ID.
+     * Memoized to prevent unnecessary re-fetching on re-renders.
+     */
     const collectible = useMemo(
       () => getCollectible({ collectionAddress, tokenId }),
       [getCollectible, collectionAddress, tokenId],
     );
 
-    // Prepare list items for basic information
+    /**
+     * Prepares the list items for displaying basic collectible information.
+     * Each item contains a title, title color, and trailing content (value).
+     * Memoized to prevent unnecessary recreation of the array on re-renders.
+     */
     const basicInfoItems = useMemo(
       () => [
         {
@@ -89,15 +120,22 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       ],
     );
 
-    // TODO: add settings right header button
-    // Set the header title to the collectible name
+    /**
+     * Sets the navigation header title to the collectible name.
+     * Falls back to a default title if the collectible name is not available.
+     */
     useLayoutEffect(() => {
       navigation.setOptions({
         headerTitle: collectible?.name || t("collectibleDetails.title"),
       });
     }, [navigation, collectible?.name, t]);
 
-    // Handle opening the external URL
+    /**
+     * Handles opening the collectible's external URL in the device's default browser.
+     * Includes error logging for debugging purposes.
+     *
+     * @param {string} url - The external URL to open
+     */
     const handleViewInBrowser = useCallback(async (url: string) => {
       try {
         await Linking.openURL(url);
