@@ -318,13 +318,15 @@
       "message": "To start using this account, fund it with at least 1 XLM.",
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
-    }
+    },
+    "menuAddToken": "Add a token",
+    "menuManageTokens": "Manage tokens"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
-    "addManually": "Add manually"
+    "menuAddManually": "Add manually"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"

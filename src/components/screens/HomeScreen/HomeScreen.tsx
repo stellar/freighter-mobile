@@ -68,10 +68,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   );
 
   // Set up navigation headers (hook handles navigation.setOptions internally)
-  useHomeHeaders({
-    navigation,
-    hasTokens,
-  });
+  useHomeHeaders({ navigation });
 
   const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
     useWelcomeBanner({
@@ -210,7 +207,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="w-full border-b mb-4 border-border-primary" />
 
       <TokensCollectiblesTabs
-        showCollectiblesSettings
+        showTokensSettings={hasTokens}
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}

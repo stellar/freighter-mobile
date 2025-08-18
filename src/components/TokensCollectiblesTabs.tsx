@@ -1,9 +1,16 @@
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import {
+  MANAGE_TOKENS_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
+import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -28,7 +35,9 @@ interface Props {
   defaultTab?: TabType;
   /** Whether to hide the collectibles tab */
   hideCollectibles?: boolean;
-  /** Whether to show the collectibles settings button */
+  /** Whether to show the settings menu button for tokens tab */
+  showTokensSettings?: boolean;
+  /** Whether to show the settings menu button for collectibles tab */
   showCollectiblesSettings?: boolean;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
@@ -64,13 +73,15 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
     hideCollectibles = false,
-    showCollectiblesSettings = false,
+    showTokensSettings = true,
+    showCollectiblesSettings = true,
     onTabChange,
     publicKey,
     network,
     onTokenPress,
     onCollectiblePress,
   }) => {
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
@@ -89,21 +100,56 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     /**
+     * Context menu actions for tokens settings
+     */
+    const tokensMenuActions: MenuItem[] = useMemo(() => {
+      const actions = [
+        {
+          title: t("balancesList.menuManageTokens"),
+          systemIcon: Platform.select({
+            ios: "pencil",
+            android: "edit",
+          }),
+          onPress: () =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+              screen: MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN,
+            }),
+        },
+        {
+          title: t("balancesList.menuAddToken"),
+          systemIcon: Platform.select({
+            ios: "plus.circle",
+            android: "add_circle",
+          }),
+          onPress: () =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+              screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
+            }),
+        },
+      ];
+
+      // Reverse the array for iOS to match Android behavior
+      return isIOS ? actions.reverse() : actions;
+    }, [t, navigation]);
+
+    /**
      * Context menu actions for collectibles settings
      */
-    const collectiblesMenuActions: MenuItem[] = useMemo(
-      () => [
+    const collectiblesMenuActions: MenuItem[] = useMemo(() => {
+      const actions = [
         {
-          title: t("collectiblesGrid.addManually"),
+          title: t("collectiblesGrid.menuAddManually"),
           systemIcon: Platform.select({
             ios: "plus.rectangle.on.rectangle",
             android: "add_box",
           }),
           disabled: true,
         },
-      ],
-      [t],
-    );
+      ];
+
+      // Reverse the array for iOS to match Android behavior
+      return isIOS ? actions.reverse() : actions;
+    }, [t]);
 
     /**
      * Renders the tokens/balances list content
@@ -158,6 +204,16 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       renderCollectiblesContent,
     ]);
 
+    /**
+     * Determines whether to show the settings menu button based on active tab
+     */
+    const showSettingsMenu = useMemo(() => {
+      if (activeTab === TabType.TOKENS) {
+        return showTokensSettings;
+      }
+      return showCollectiblesSettings;
+    }, [activeTab, showTokensSettings, showCollectiblesSettings]);
+
     return (
       <View
         className="flex-1"
@@ -165,6 +221,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       >
         <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
+            disabled={hideCollectibles}
             className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
           >
@@ -198,10 +255,14 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             </TouchableOpacity>
           )}
 
-          {/* Collectibles settings button - only visible when Collectibles tab is active */}
-          {activeTab === TabType.COLLECTIBLES && showCollectiblesSettings && (
+          {showSettingsMenu && (
             <ContextMenuButton
-              contextMenuProps={{ actions: collectiblesMenuActions }}
+              contextMenuProps={{
+                actions:
+                  activeTab === TabType.TOKENS
+                    ? tokensMenuActions
+                    : collectiblesMenuActions,
+              }}
               side="bottom"
               align="end"
               sideOffset={8}
