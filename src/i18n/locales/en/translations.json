@@ -328,6 +328,17 @@
     "empty": "No collectibles yet",
     "menuAddManually": "Add manually"
   },
+  "collectibleDetails": {
+    "title": "Collectible Details",
+    "notFound": "Collectible not found",
+    "name": "Name",
+    "collection": "Collection",
+    "tokenId": "Token ID",
+    "description": "Description",
+    "traits": "Collectible Traits",
+    "view": "View",
+    "send": "Send"
+  },
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },

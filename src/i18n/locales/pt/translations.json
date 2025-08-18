@@ -305,6 +305,17 @@
     "empty": "Nenhum colecionável ainda",
     "menuAddManually": "Adicionar manualmente"
   },
+  "collectibleDetails": {
+    "title": "Detalhes do Colecionável",
+    "notFound": "Colecionável não encontrado",
+    "name": "Nome",
+    "collection": "Coleção",
+    "tokenId": "ID do Token",
+    "description": "Descrição",
+    "traits": "Características do Colecionável",
+    "view": "Visualizar",
+    "send": "Enviar"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },

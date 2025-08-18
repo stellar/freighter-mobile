@@ -45,6 +45,7 @@ type HomeScreenProps = BottomTabScreenProps<
 /**
  * Home screen component displaying account information and balances
  */
+// TODO: memoize Home functions
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { account } = useGetActiveAccount();
   const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
@@ -124,6 +125,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
       tokenId,
       tokenSymbol,
+    });
+  };
+
+  const handleCollectiblePress = ({
+    collectionAddress,
+    tokenId,
+  }: {
+    collectionAddress: string;
+    tokenId: string;
+  }) => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN, {
+      collectionAddress,
+      tokenId,
     });
   };
 
@@ -212,6 +226,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}
+        onCollectiblePress={handleCollectiblePress}
       />
 
       {/* Analytics Debug - Development Only */}
