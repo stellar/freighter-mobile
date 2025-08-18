@@ -1363,10 +1363,10 @@
   resolved "https://registry.yarnpkg.com/@fnando/eslint-plugin-consistent-import/-/eslint-plugin-consistent-import-0.1.1.tgz#5c1a2e1976dac7502ba0b054ac814db169deff46"
   integrity sha512-f8Drr+hncrU/S+SEUiljCCzW6wUhe5wtAbiP+2ukLfmNfhFIHiug6odL0ILecPcg+RUhEm8iU89t1rpBSYeTfA==
 
-"@gorhom/bottom-sheet@^5.1.2":
-  version "5.1.2"
-  resolved "https://registry.yarnpkg.com/@gorhom/bottom-sheet/-/bottom-sheet-5.1.2.tgz#509992983ce2905d5899d1c7cab1cd3950c8c238"
-  integrity sha512-5np8oL2krqAsVKLRE4YmtkZkyZeFiitoki72bEpVhZb8SRTNuAEeSbP3noq5srKpcRsboCr7uI+xmMyrWUd9kw==
+"@gorhom/bottom-sheet@^5.1.8":
+  version "5.1.8"
+  resolved "https://registry.yarnpkg.com/@gorhom/bottom-sheet/-/bottom-sheet-5.1.8.tgz#65547917f5b1dae5a1291dabd4ea8bfee09feba4"
+  integrity sha512-QuYIVjn3K9bW20n5bgOSjvxBYoWG4YQXiLGOheEAMgISuoT6sMcA270ViSkkb0fenPxcIOwzCnFNuxmr739T9A==
   dependencies:
     "@gorhom/portal" "1.0.14"
     invariant "^2.2.4"

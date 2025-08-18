@@ -1,9 +1,11 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -24,7 +26,9 @@ import {
 } from "helpers/walletKitUtil";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import { useWalletKitEventsManager } from "hooks/useWalletKitEventsManager";
 import { useWalletKitInitialize } from "hooks/useWalletKitInitialize";
 import { useToast } from "providers/ToastProvider";
@@ -75,6 +79,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
+  const { themeColors } = useColors();
+
+  const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const publicKey = account?.publicKey || "";
 
@@ -89,7 +96,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
-
   const [proposalEvent, setProposalEvent] =
     useState<WalletKitSessionProposal | null>(null);
   const [requestEvent, setRequestEvent] =
@@ -97,6 +103,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [siteScanResult, setSiteScanResult] = useState<
     Blockaid.SiteScanResponse | undefined
   >(undefined);
+
+  const xdr = useMemo(
+    () =>
+      (requestEvent?.params.request.params as unknown as { xdr: string })
+        ?.xdr ?? "",
+    [requestEvent],
+  );
+
+  /**
+   * Validates transaction memo requirements for incoming dApp transaction requests
+   * Uses the useValidateTransactionMemo hook to check if the transaction
+   * destination requires a memo and if one is currently missing
+   */
+  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(xdr);
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -188,7 +208,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
-
       clearEvent();
     }, 200);
   };
@@ -322,6 +341,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    *
    * @dependencies activeSessions, event.type, authStatus
    */
+
   useEffect(() => {
     if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
       const sessionProposal = event as WalletKitSessionProposal;
@@ -435,12 +455,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
-      handleClearDappConnection();
       setRequestEvent(sessionRequest);
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessions, event.type, authStatus]);
+
+  const onCancelAddMemo = () => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    dappRequestBottomSheetModalRef.current?.present();
+  };
+
+  /**
+   * Opens the memo explanation bottom sheet for dApp transaction requests
+   * This is shown when a transaction requires a memo but none is provided
+   */
+  const onOpenAddMemoExplanationBottomSheet = () => {
+    addMemoExplanationBottomSheetModalRef.current?.present();
+  };
 
   return (
     <View className="flex-1">
@@ -448,9 +480,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
-        bottomSheetModalProps={{
-          onDismiss: handleClearDappConnection,
-        }}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         customContent={
           <DappConnectionBottomSheetContent
@@ -470,17 +499,54 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
+        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
         }}
-        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         customContent={
           <DappRequestBottomSheetContent
             account={account}
             requestEvent={requestEvent}
             isSigning={isSigning}
+            isValidatingMemo={isValidatingMemo}
+            onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onConfirm={handleDappRequest}
-            onCancel={handleClearDappRequest}
+            onCancelRequest={handleClearDappRequest}
+            isMemoMissing={isMemoMissing}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <InformationBottomSheet
+            headerElement={
+              <View className="bg-red-3 p-2 rounded-[8px]">
+                <Icon.InfoOctagon
+                  color={themeColors.status.error}
+                  size={28}
+                  withBackground
+                />
+              </View>
+            }
+            onClose={onCancelAddMemo}
+            title={t("addMemoExplanationBottomSheet.title")}
+            texts={[
+              {
+                key: "description",
+                value: t("addMemoExplanationBottomSheet.description"),
+              },
+              {
+                key: "disabledWarning",
+                value: t("addMemoExplanationBottomSheet.disabledWarning"),
+              },
+              {
+                key: "checkMemoRequirements",
+                value: t("addMemoExplanationBottomSheet.checkMemoRequirements"),
+              },
+            ]}
           />
         }
       />

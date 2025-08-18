@@ -1,7 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { BalancesList } from "components/BalancesList";
 import { IconButton } from "components/IconButton";
+import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import { AnalyticsDebugBottomSheet } from "components/analytics/AnalyticsDebugBottomSheet";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -31,10 +31,8 @@ import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
-
-const { width } = Dimensions.get("window");
 
 /**
  * Top section of the home screen containing account info and actions
@@ -141,7 +139,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <BaseLayout insets={{ bottom: false, top: false }}>
+    <BaseLayout
+      insets={{ bottom: false, top: false, left: false, right: false }}
+    >
       <WelcomeBannerBottomSheet
         modalRef={welcomeBannerBottomSheetModalRef}
         onAddXLM={navigateToBuyXLM}
@@ -203,12 +203,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       </View>
 
-      <View
-        className="border-b mb-6 -ml-7 border-border-primary"
-        style={{ width }}
-      />
+      <View className="w-full border-b mb-4 border-border-primary" />
 
-      <BalancesList
+      <TokensCollectiblesTabs
+        showCollectiblesSettings
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
@@ -180,7 +181,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
         ListHeaderComponent={ListHeaderComponent}
-        ListFooterComponent={<View className="h-10" />}
+        ListFooterComponent={DefaultListFooter}
         className={className}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center px-2 gap-4">

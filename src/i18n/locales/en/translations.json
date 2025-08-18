@@ -21,7 +21,8 @@
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
     "review": "Review",
-    "and": " and "
+    "and": " and ",
+    "addMemo": "Add memo"
   },
   "home": {
     "title": "Home",
@@ -83,6 +84,10 @@
     "hideDust": {
       "title": "Hide small payments",
       "description": "Hide payments smaller than 0.1 XLM"
+    },
+    "memoValidation": {
+      "title": "Verification with stellar.expert",
+      "description": "Validate addresses that require a memo"
     }
   },
   "shareFeedbackScreen": {
@@ -315,6 +320,12 @@
       "fundAccountButton": "Add XLM"
     }
   },
+  "collectiblesGrid": {
+    "title": "Collectibles",
+    "error": "Error loading collectibles",
+    "empty": "No collectibles yet",
+    "addManually": "Add manually"
+  },
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },
@@ -455,6 +466,27 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
+  "transactionSettingsBottomSheet": {
+    "title": "Transaction settings",
+    "feeTitle": "Transaction fee",
+    "memoTitle": "Memo",
+    "timeoutTitle": "Transaction timeout",
+    "memoInfo": {
+      "title": "Memo",
+      "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
+      "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+    },
+    "timeoutInfo": {
+      "title": "Transaction timeout",
+      "description": "Transactions on the Stellar network have a set time limit for processing.",
+      "additionalInfo": "If the transaction is not confirmed before this time, it will expire and need to be submitted again."
+    },
+    "feeInfo": {
+      "title": "Transaction fee",
+      "description": "Every transaction on the Stellar network includes a small fee to help keep the network secure.",
+      "additionalInfo": "You can choose to increase this fee if you want your transaction to be prioritized and processed faster by the network."
+    }
+  },
   "transactionAmountScreen": {
     "title": "Send",
     "percentageButtons": {
@@ -467,7 +499,6 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo",
       "editMemo": "Edit memo"
     },
     "details": {
@@ -479,8 +510,15 @@
     },
     "errors": {
       "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
-      "amountTooHigh": "The amount entered is greater than the available balance"
+      "amountTooHigh": "The amount entered is greater than the available balance",
+      "memoMissing": "This transaction requires a memo"
     }
+  },
+  "addMemoExplanationBottomSheet": {
+    "title": "Memo is required",
+    "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
+    "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",
+    "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
     "title": "Add another wallet",

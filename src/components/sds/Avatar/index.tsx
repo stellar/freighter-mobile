@@ -205,16 +205,6 @@ export const Avatar: React.FC<AvatarProps> = ({
   isSelected = false,
 }) => {
   const { themeColors } = useColors();
-  const getTextSizeClass = () => {
-    const classes: Record<AvatarSize, string> = {
-      sm: "text-xs",
-      md: "text-base",
-      lg: "text-lg",
-      xl: "text-xl",
-    };
-
-    return classes[size];
-  };
 
   // Get initials from username
   const getInitials = (name: string): string => {
@@ -303,7 +293,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       isSelected={isSelected}
       hasBackground={hasBackground}
     >
-      <Text className={`font-bold text-text-secondary ${getTextSizeClass()}`}>
+      <Text bold secondary size={size}>
         {initials}
       </Text>
     </AvatarWrapper>
