@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/stellar/freighter-mobile)
+
 ## Quick Start Dev Environment Setup
 
 This guide will help you set up your development environment for Freighter
