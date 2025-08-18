@@ -56,8 +56,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { copyToClipboard } = useClipboard();
 
   const { formattedBalance, rawBalance } = useTotalBalance();
-  const { balances, isFunded } = useBalancesStore();
-
+  const {
+    balances,
+    isFunded,
+    isLoading: isLoadingBalances,
+  } = useBalancesStore();
   const hasAssets = useMemo(() => Object.keys(balances).length > 0, [balances]);
   const hasZeroBalance = useMemo(
     () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
@@ -74,6 +77,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     useWelcomeBanner({
       account,
       isFunded,
+      isLoadingBalances,
     });
 
   // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics

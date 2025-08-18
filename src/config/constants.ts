@@ -199,6 +199,7 @@ export enum STORAGE_KEYS {
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
+  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
 }
 
 /**
