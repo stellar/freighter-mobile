@@ -453,6 +453,9 @@
       "none": "Nenhum",
       "fee": "Taxa",
       "xdr": "XDR"
+    },
+    "errors": {
+      "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação."
     }
   },
   "addAnotherWalletScreen": {
