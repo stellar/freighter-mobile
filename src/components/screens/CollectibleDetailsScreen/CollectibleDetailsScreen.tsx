@@ -205,7 +205,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           </View>
 
           {/* Collectible Traits */}
-          <View className="mb-6 bg-background-tertiary rounded-2xl p-4">
+          <View className="mb-6 bg-background-tertiary rounded-2xl px-4 pt-4 pb-1">
             <View className="mb-3">
               <Text md medium secondary>
                 {t("collectibleDetails.traits")}
