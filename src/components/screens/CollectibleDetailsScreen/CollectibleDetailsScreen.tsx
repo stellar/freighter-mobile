@@ -110,17 +110,14 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       }
     }, []);
 
-    // TODO: review this
     // If collectible is not found, show error state
     if (!collectible) {
       return (
         <BaseLayout insets={{ top: false }}>
           <View className="flex-1 items-center justify-center p-4">
-            <View className="mb-3">
-              <Text lg medium>
-                {t("collectibleDetails.notFound")}
-              </Text>
-            </View>
+            <Text lg medium secondary>
+              {t("collectibleDetails.notFound")}
+            </Text>
           </View>
         </BaseLayout>
       );
