@@ -204,8 +204,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       <TokensCollectiblesTabs
         navigation={navigation}
-        hasTokens={hasTokens}
-        showSettingsMenu
+        showTokensSettings={hasTokens}
         publicKey={account?.publicKey ?? ""}
         network={network}
         onTokenPress={handleTokenPress}

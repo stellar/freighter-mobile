@@ -33,14 +33,14 @@ export enum TabType {
 interface Props {
   /** The navigation object */
   navigation: NavigationProp<RootStackParamList>;
-  /** Does the wallet have tokens? */
-  hasTokens: boolean;
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
   /** Whether to hide the collectibles tab */
   hideCollectibles?: boolean;
-  /** Whether to show the settings menu button */
-  showSettingsMenu?: boolean;
+  /** Whether to show the settings menu button for tokens tab */
+  showTokensSettings?: boolean;
+  /** Whether to show the settings menu button for collectibles tab */
+  showCollectiblesSettings?: boolean;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
   /** The public key of the wallet to display data for */
@@ -74,10 +74,10 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     navigation,
-    hasTokens,
     defaultTab = TabType.TOKENS,
     hideCollectibles = false,
-    showSettingsMenu = false,
+    showTokensSettings = true,
+    showCollectiblesSettings = true,
     onTabChange,
     publicKey,
     network,
@@ -112,7 +112,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             ios: "pencil",
             android: "edit",
           }),
-          disabled: !hasTokens,
           onPress: () =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
               screen: MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN,
@@ -124,7 +123,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             ios: "plus.circle",
             android: "add_circle",
           }),
-          disabled: !hasTokens,
           onPress: () =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
               screen: MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN,
@@ -134,7 +132,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
       // Reverse the array for iOS to match Android behavior
       return isIOS ? actions.reverse() : actions;
-    }, [t, hasTokens, navigation]);
+    }, [t, navigation]);
 
     /**
      * Context menu actions for collectibles settings
@@ -208,6 +206,16 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       renderCollectiblesContent,
     ]);
 
+    /**
+     * Determines whether to show the settings menu button based on active tab
+     */
+    const showSettingsMenu = useMemo(() => {
+      if (activeTab === TabType.TOKENS) {
+        return showTokensSettings;
+      }
+      return showCollectiblesSettings;
+    }, [activeTab, showTokensSettings, showCollectiblesSettings]);
+
     return (
       <View
         className="flex-1"
@@ -215,6 +223,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       >
         <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
+            disabled={hideCollectibles}
             className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
           >
@@ -248,7 +257,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             </TouchableOpacity>
           )}
 
-          {/* Collectibles settings button - only visible when Collectibles tab is active */}
           {showSettingsMenu && (
             <ContextMenuButton
               contextMenuProps={{
