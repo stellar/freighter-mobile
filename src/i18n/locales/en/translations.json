@@ -21,7 +21,8 @@
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
     "review": "Review",
-    "and": " and "
+    "and": " and ",
+    "addMemo": "Add memo"
   },
   "home": {
     "title": "Home",
@@ -83,6 +84,10 @@
     "hideDust": {
       "title": "Hide small payments",
       "description": "Hide payments smaller than 0.1 XLM"
+    },
+    "memoValidation": {
+      "title": "Verification with stellar.expert",
+      "description": "Validate addresses that require a memo"
     }
   },
   "shareFeedbackScreen": {
@@ -455,6 +460,12 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
+  "transactionSettingsBottomSheet": {
+    "title": "Transaction settings",
+    "feeTitle": "Transaction fee",
+    "memoTitle": "Memo",
+    "timeoutTitle": "Transaction timeout"
+  },
   "transactionAmountScreen": {
     "title": "Send",
     "percentageButtons": {
@@ -467,7 +478,6 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo",
       "editMemo": "Edit memo"
     },
     "details": {
@@ -476,7 +486,14 @@
       "none": "None",
       "fee": "Fee",
       "xdr": "XDR"
-    }
+    },
+    "memoMissing": "This transaction requires a memo"
+  },
+  "addMemoExplanationBottomSheet": {
+    "title": "Memo is required",
+    "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
+    "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",
+    "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
     "title": "Add another wallet",

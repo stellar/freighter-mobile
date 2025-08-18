@@ -1,6 +1,7 @@
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -26,9 +27,12 @@ import { TouchableOpacity, View } from "react-native";
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
-  onCancel: () => void;
+  onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;
+  isMemoMissing: boolean;
+  isValidatingMemo: boolean;
+  onBannerPress: () => void;
 };
 
 /**
@@ -41,7 +45,16 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning }) => {
+> = ({
+  requestEvent,
+  account,
+  onCancelRequest,
+  onConfirm,
+  isSigning,
+  isMemoMissing,
+  isValidatingMemo,
+  onBannerPress,
+}) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -69,6 +82,37 @@ const DappRequestBottomSheetContent: React.FC<
         itemName,
       }),
     });
+  };
+
+  const renderConfirmButton = () => {
+    if (isMemoMissing || isValidatingMemo) {
+      return (
+        <View className="flex-1">
+          <Button
+            onPress={onConfirm}
+            tertiary
+            lg
+            disabled={!xdr || isValidatingMemo}
+          >
+            {t("common.addMemo")}
+          </Button>
+        </View>
+      );
+    }
+
+    return (
+      <View className="flex-1">
+        <Button
+          tertiary
+          lg
+          isFullWidth
+          onPress={onConfirm}
+          isLoading={isSigning}
+        >
+          {t("dappRequestBottomSheetContent.confirm")}
+        </Button>
+      </View>
+    );
   };
 
   return (
@@ -120,6 +164,14 @@ const DappRequestBottomSheetContent: React.FC<
           </TouchableOpacity>
         </View>
       </View>
+      {isMemoMissing && (
+        <Banner
+          variant="error"
+          text={t("transactionAmountScreen.memoMissing")}
+          onPress={onBannerPress}
+          className="mt-4 w-full mt-[16px]"
+        />
+      )}
       <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
         <View className="flex-row items-center">
           <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
@@ -152,23 +204,13 @@ const DappRequestBottomSheetContent: React.FC<
             secondary
             lg
             isFullWidth
-            onPress={onCancel}
+            onPress={onCancelRequest}
             disabled={isSigning}
           >
             {t("dappRequestBottomSheetContent.cancel")}
           </Button>
         </View>
-        <View className="flex-1">
-          <Button
-            tertiary
-            lg
-            isFullWidth
-            onPress={onConfirm}
-            isLoading={isSigning}
-          >
-            {t("dappRequestBottomSheetContent.confirm")}
-          </Button>
-        </View>
+        {renderConfirmButton()}
       </View>
     </View>
   );
