@@ -203,7 +203,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="w-full border-b mb-4 border-border-primary" />
 
       <TokensCollectiblesTabs
-        navigation={navigation}
         showTokensSettings={hasTokens}
         publicKey={account?.publicKey ?? ""}
         network={network}

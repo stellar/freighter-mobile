@@ -1,4 +1,4 @@
-import { NavigationProp } from "@react-navigation/native";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
@@ -31,8 +31,6 @@ export enum TabType {
  * Props for the TokensCollectiblesTabs component
  */
 interface Props {
-  /** The navigation object */
-  navigation: NavigationProp<RootStackParamList>;
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
   /** Whether to hide the collectibles tab */
@@ -73,7 +71,6 @@ interface Props {
  */
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
-    navigation,
     defaultTab = TabType.TOKENS,
     hideCollectibles = false,
     showTokensSettings = true,
@@ -84,6 +81,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     onTokenPress,
     onCollectiblePress,
   }) => {
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
