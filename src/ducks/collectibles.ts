@@ -142,8 +142,8 @@ const dummyCollectibles: Collectible[] = [
     collectionName: "Soroban Domains",
     tokenId: "102589",
     name: "cassio.xlm",
-    // image:
-    //   "https://nftcalendar.io/storage/uploads/events/2025/7/MkaASwOL8VA3I5B2iIfCcNGT29vGBp4YZIJgmjzq.jpg",
+    image:
+      "https://nftcalendar.io/storage/uploads/events/2025/7/MkaASwOL8VA3I5B2iIfCcNGT29vGBp4YZIJgmjzq.jpg",
     description: "Cassio's Soroban username",
     externalUrl: "https://app.sorobandomains.org/domains/cassio.xlm",
     traits: [
