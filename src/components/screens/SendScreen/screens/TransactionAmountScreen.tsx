@@ -1,10 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
-import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -99,10 +98,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [amountError, setAmountError] = useState<AmountError | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [
-    hasOpenedAddMemoExplanationBottomSheet,
-    setHasOpenedAddMemoExplanationBottomSheet,
-  ] = useState(false);
 
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -278,15 +273,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     publicKey,
     buildTransaction,
   ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (hasOpenedAddMemoExplanationBottomSheet) {
-        handleOpenReview();
-        setHasOpenedAddMemoExplanationBottomSheet(false);
-      }
-    }, [hasOpenedAddMemoExplanationBottomSheet, handleOpenReview]),
-  );
 
   const handleTransactionConfirmation = () => {
     setIsProcessing(true);
@@ -513,9 +499,33 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={addMemoExplanationBottomSheetModalRef}
         handleCloseModal={onCancelAddMemo}
         customContent={
-          <AddMemoExplanationBottomSheet
+          <InformationBottomSheet
+            title={t("addMemoExplanationBottomSheet.title")}
             onClose={onCancelAddMemo}
             onConfirm={onConfirmAddMemo}
+            headerElement={
+              <View className="bg-red-3 p-2 rounded-[8px]">
+                <Icon.InfoOctagon
+                  color={themeColors.status.error}
+                  size={28}
+                  withBackground
+                />
+              </View>
+            }
+            texts={[
+              {
+                key: "description",
+                value: t("addMemoExplanationBottomSheet.description"),
+              },
+              {
+                key: "disabledWarning",
+                value: t("addMemoExplanationBottomSheet.disabledWarning"),
+              },
+              {
+                key: "checkMemoRequirements",
+                value: t("addMemoExplanationBottomSheet.checkMemoRequirements"),
+              },
+            ]}
           />
         }
       />
