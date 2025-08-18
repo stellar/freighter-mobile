@@ -322,12 +322,6 @@
       "copyAddress": "Copiar endereço",
       "removeAsset": "Remover ativo"
     },
-    "removeAssetAlert": {
-      "title": "Remover ativo",
-      "message": "Tem certeza que deseja remover este ativo?",
-      "cancel": "Cancelar",
-      "remove": "Remover"
-    },
     "removeAssetError": "Erro ao remover ativo {{assetCode}}",
     "removeAssetSuccess": "{{assetCode}} removido com sucesso"
   },
@@ -382,7 +376,7 @@
     "tokenAddressCopied": "Endereço do token copiado!",
     "removeAssetModal": {
       "title": "Remover {{assetCode}}?",
-      "message": "Tem certeza que deseja remover este ativo?\nDepois de remover um ativo, você terá que adicioná-lo novamente mais tarde."
+      "message": "Tem certeza que deseja remover este ativo? Depois de remover um ativo, você terá que adicioná-lo novamente mais tarde."
     }
   },
   "sendPaymentScreen": {
