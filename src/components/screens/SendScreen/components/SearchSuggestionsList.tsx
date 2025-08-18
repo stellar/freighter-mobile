@@ -1,3 +1,4 @@
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -56,6 +57,7 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
           />
         )}
         keyExtractor={(item) => item.id}
+        ListFooterComponent={DefaultListFooter}
       />
     </View>
   );

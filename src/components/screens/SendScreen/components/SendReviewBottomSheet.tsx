@@ -25,11 +25,39 @@ type SendReviewBottomSheetProps = {
   tokenAmount: string;
   onCancel?: () => void;
   onConfirm?: () => void;
+  /**
+   * Indicates if a required memo is missing from the transaction
+   * When true, shows a warning banner and may disable transaction confirmation
+   */
   isRequiredMemoMissing?: boolean;
+  /**
+   * Indicates if memo validation is currently in progress
+   * Used to show loading states and prevent premature actions
+   */
   isValidatingMemo?: boolean;
+  /**
+   * Callback function when the memo warning banner is pressed
+   * Typically opens a modal to explain why the memo is required
+   */
   onBannerPress?: () => void;
 };
 
+/**
+ * SendReviewBottomSheet Component
+ *
+ * A bottom sheet modal that displays transaction review information before sending.
+ * Shows transaction details including amount, recipient, fee, timeout, and memo.
+ *
+ * Features:
+ * - Displays transaction summary with all relevant details
+ * - Shows memo validation warnings when required memos are missing
+ * - Provides copy functionality for transaction XDR
+ * - Handles loading states during transaction building
+ * - Integrates with memo validation flow
+ *
+ * @param {SendReviewBottomSheetProps} props - Component props
+ * @returns {JSX.Element} The rendered bottom sheet component
+ */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
   tokenAmount,
@@ -66,7 +94,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     if (error) {
       return (
-        <Text md medium className="text-red-600">
+        <Text md medium color={themeColors.status.error}>
           {t("common.error", { errorMessage: error })}
         </Text>
       );
@@ -79,6 +107,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     return t("common.none");
   };
 
+  /**
+   * Renders the memo section title with appropriate icon and warning indicator
+   * Shows a loading spinner during transaction building
+   * Displays a warning triangle icon when a required memo is missing
+   *
+   * @returns {JSX.Element} The memo title with icon and optional warning
+   */
   const renderMemoTitle = () => {
     if (isBuilding) {
       return (
@@ -99,6 +134,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   };
 
+  /**
+   * Renders a warning banner when a required memo is missing
+   * Only shows when isRequiredMemoMissing is true
+   * Includes a call-to-action button to add the required memo
+   *
+   * @returns {JSX.Element | null} Warning banner or null if no warning needed
+   */
   const renderMemoMissingWarning = () => {
     if (!isRequiredMemoMissing) {
       return null;
@@ -114,6 +156,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   };
 
+  /**
+   * Renders the confirm button with different states based on memo validation
+   * When a required memo is missing, shows "Add Memo" button
+   * When memo validation is in progress, shows "Add Memo" button (disabled)
+   * Otherwise shows the standard "Confirm" button for transaction submission
+   *
+   * @returns {JSX.Element} The appropriate button for the current state
+   */
   const renderConfirmButton = () => {
     if (isRequiredMemoMissing || isValidatingMemo) {
       return (
