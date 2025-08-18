@@ -320,6 +320,12 @@
       "fundAccountButton": "Add XLM"
     }
   },
+  "collectiblesGrid": {
+    "title": "Collectibles",
+    "error": "Error loading collectibles",
+    "empty": "No collectibles yet",
+    "addManually": "Add manually"
+  },
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },

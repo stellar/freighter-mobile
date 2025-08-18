@@ -297,6 +297,12 @@
       "fundAccountButton": "Adicionar XLM"
     }
   },
+  "collectiblesGrid": {
+    "title": "Colecionáveis",
+    "error": "Erro ao carregar colecionáveis",
+    "empty": "Nenhum colecionável ainda",
+    "addManually": "Adicionar manualmente"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
