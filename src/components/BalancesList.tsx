@@ -190,7 +190,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing || isLoading}
+            refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor={THEME.colors.secondary}
           />

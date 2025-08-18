@@ -23,13 +23,9 @@ interface UseHomeHeadersProps {
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
-  hasAssets: boolean;
 }
 
-export const useHomeHeaders = ({
-  navigation,
-  hasAssets,
-}: UseHomeHeadersProps) => {
+export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -44,24 +40,11 @@ export const useHomeHeaders = ({
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
       },
-      ...(hasAssets
-        ? [
-            {
-              title: t("home.actions.manageAssets"),
-              systemIcon: Platform.select({
-                ios: "pencil",
-                android: "baseline_delete",
-              }),
-              onPress: () =>
-                navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK),
-            },
-          ]
-        : []),
       {
         title: t("home.actions.myQRCode"),
         systemIcon: Platform.select({
           ios: "qrcode",
-          android: "outline_circle",
+          android: "qr_code_scanner",
         }),
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
@@ -69,7 +52,7 @@ export const useHomeHeaders = ({
           }),
       },
     ],
-    [t, navigation, hasAssets],
+    [t, navigation],
   );
 
   // Memoize the header components outside of the useLayoutEffect to improve
