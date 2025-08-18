@@ -38,6 +38,7 @@ export const useWelcomeBanner = ({
 
   useEffect(() => {
     const checkWelcomeBannerStatus = async () => {
+      setHasAccountSeenWelcome(undefined);
       if (welcomeBannerShownKey) {
         const hasSeenWelcome = await AsyncStorage.getItem(
           welcomeBannerShownKey,
@@ -73,6 +74,7 @@ export const useWelcomeBanner = ({
       if (welcomeBannerShownKey) {
         await AsyncStorage.setItem(welcomeBannerShownKey, "true");
       }
+      setHasAccountSeenWelcome(true);
     } catch (error) {
       logger.error("Error saving welcome banner status:", String(error));
     }

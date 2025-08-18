@@ -149,7 +149,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     return (
       <Banner
         variant="error"
-        text={t("transactionAmountScreen.memoMissing")}
+        text={t("transactionAmountScreen.errors.memoMissing")}
         onPress={onBannerPress}
         className="w-full mt-[16px]"
       />
