@@ -81,13 +81,14 @@ export const useSignTransactionDetails = ({
   const summary = buildSummary({ transaction, xdr });
   const authEntries = buildAuthEntries(transaction);
 
-  // const trustlineChanges = transaction.operations.filter(
-  //   (op) => op.type === "changeTrust",
-  // );
+  const trustlineChanges = transaction.operations.filter(
+    (op) => op.type === "changeTrust",
+  );
 
   return {
     summary,
     authEntries,
     operations: transaction.operations,
+    hasTrustlineChanges: trustlineChanges.length > 0,
   };
 };

@@ -53,8 +53,12 @@ const SignTransactionDetailsBottomSheet = ({
           }}
         >
           <SignTransactionSummary summary={data.summary} />
-          <SignTransactionAuthorizations authEntries={data.authEntries} />
-          <SignTransactionOperationDetails operations={data.operations} />
+          {data.authEntries.length > 0 && (
+            <SignTransactionAuthorizations authEntries={data.authEntries} />
+          )}
+          {data.operations.length > 0 && (
+            <SignTransactionOperationDetails operations={data.operations} />
+          )}
         </BottomSheetScrollView>
       </BottomSheetAdaptiveContainer>
     </View>

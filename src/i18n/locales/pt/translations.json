@@ -22,6 +22,9 @@
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
     "and": " e ",
+    "asset": "Ativo",
+    "hash": "Hash",
+    "salt": "Salt",
     "addMemo": "Adicionar memo"
   },
   "home": {
@@ -110,12 +113,7 @@
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
-    "networkSettings": "Configurações de Rede",
-    "unfundedAccount": {
-      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
-      "learnMore": "Saiba mais",
-      "fundAccountButton": "Adicionar XLM"
-    }
+    "networkSettings": "Configurações de Rede"
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",
@@ -472,7 +470,6 @@
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",
-      "addMemo": "Adicionar memo",
       "editMemo": "Editar memo"
     },
     "details": {
@@ -592,10 +589,13 @@
   },
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Solicitação de transação",
+    "confirmTransaction": "Confirmar transação",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
+    "confirmAnyway": "Confirmar mesmo assim",
     "xdrItem": "XDR",
-    "itemCopied": "{{itemName}} copiado para a área de transferência!"
+    "itemCopied": "{{itemName}} copiado para a área de transferência!",
+    "transactionDetails": "Detalhes da transação"
   },
   "qrScanner": {
     "cameraNotAvailable": "Câmera não disponível\nou não permitida"
@@ -780,13 +780,105 @@
       },
       "site": {
         "malicious": "Este site foi marcado como malicioso",
-        "suspicious": "Este site não foi encontrado no banco de dados"
+        "suspicious": "Este site não foi encontrado no banco de dados",
+        "confirmTrust": "Só confirme se você confia neste site"
       },
       "transaction": {
         "simulationFailed": "Falha na simulação da transação",
         "malicious": "Esta transação foi marcada como maliciosa",
-        "warning": "Esta transação foi marcada como aviso"
+        "warning": "Esta transação foi marcada como aviso",
+        "unableToSimulate": "Não foi possível simular a transação",
+        "noBalanceChanges": "Nenhuma mudança de saldo detectada"
       }
+    }
+  },
+  "signTransactionDetails": {
+    "title": "Detalhes da Transação",
+    "summary": {
+      "operationsCount": "Operações",
+      "fee": "Taxas",
+      "sequence": "Sequência #",
+      "memo": "Memo",
+      "xdr": "XDR"
+    },
+    "authorizations": {
+      "title": "Autorizações",
+      "invoke": "Invocar",
+      "contractCreation": "Criação de contrato",
+      "contractId": "ID do Contrato",
+      "functionName": "Nome da função",
+      "parameters": "Parâmetros",
+      "contractAddress": "Endereço do contrato"
+    },
+    "operations": {
+      "destination": "Destino",
+      "startingBalance": "Saldo inicial",
+      "assetCode": "Código do ativo",
+      "amount": "Valor",
+      "sendMax": "Enviar máximo",
+      "destinationAsset": "Ativo de destino",
+      "destinationAmount": "Valor de destino",
+      "path": "Caminho",
+      "issuer": "Emissor",
+      "sendAmount": "Valor enviado",
+      "destinationMinimum": "Mínimo de destino",
+      "buying": "Comprando",
+      "selling": "Vendendo",
+      "price": "Preço",
+      "offerId": "ID da oferta",
+      "buyAmount": "Quantidade de compra",
+      "signer": "Assinante",
+      "signerWeight": "Peso do assinante",
+      "inflationDestination": "Destino da inflação",
+      "homeDomain": "Domínio principal",
+      "highThreshold": "Limite alto",
+      "mediumThreshold": "Limite médio",
+      "lowThreshold": "Limite baixo",
+      "masterWeight": "Peso mestre",
+      "setFlags": "Definir flags",
+      "clearFlags": "Limpar flags",
+      "assetA": "Ativo A",
+      "assetB": "Ativo B",
+      "fee": "Taxa",
+      "type": "Tipo",
+      "limit": "Limite",
+      "trustor": "Trustor",
+      "authorize": "Autorizar",
+      "name": "Nome",
+      "value": "Valor",
+      "bumpTo": "Elevar para",
+      "predicate": "Predicado",
+      "balanceId": "ID do saldo",
+      "sponsoredId": "ID patrocinado",
+      "from": "De",
+      "flags": {
+        "authorized": "Autorizado",
+        "authorizedToMaintainLiabilities": "Autorizado a manter responsabilidades",
+        "clawbackEnabled": "Clawback habilitado"
+      },
+      "liquidityPoolId": "ID do pool de liquidez",
+      "maxAmountA": "Quantidade máx A",
+      "maxAmountB": "Quantidade máx B",
+      "maxPrice": "Preço máx",
+      "minPrice": "Preço mín",
+      "minAmountA": "Quantidade mín A",
+      "minAmountB": "Quantidade mín B",
+      "extendTo": "Estender para",
+      "functionName": "Nome da função",
+      "createContract": "Criar contrato",
+      "uploadContractWasm": "Carregar WASM do contrato",
+      "signerKey": "Chave do assinante",
+      "signerSha256Hash": "Hash SHA256 do assinante",
+      "preAuthTransaction": "Transação pré-autorizada",
+      "signedPayload": "Payload assinado",
+      "account": "Conta",
+      "seller": "Vendedor",
+      "wasm": "WASM",
+      "parameters": "Parâmetros",
+      "source": "Origem",
+      "executableType": "Tipo de executável",
+      "accountId": "ID da conta",
+      "salt": "Salt"
     }
   }
 }

@@ -1,4 +1,6 @@
-import { List, ListItemProps } from "components/List";
+import Blockaid from "@blockaid/client";
+import { AssetIcon } from "components/AssetIcon";
+import { List } from "components/List";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { App } from "components/sds/App";
@@ -9,9 +11,11 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatAssetAmount } from "helpers/formatAmount";
+import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
@@ -43,7 +47,7 @@ interface DappRequestBottomSheetContentProps {
   isSigning: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
-  transactionBalanceListItems?: ListItemProps[];
+  transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;
   signTransactionDetails?: SignTransactionDetailsInterface | null;
   isMemoMissing?: boolean;
@@ -69,7 +73,7 @@ const DappRequestBottomSheetContent: React.FC<
   isSigning,
   isMalicious,
   isSuspicious,
-  transactionBalanceListItems,
+  transactionScanResult,
   securityWarningAction,
   signTransactionDetails,
   isMemoMissing,
@@ -78,6 +82,14 @@ const DappRequestBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const transactionBalanceListItems = useTransactionBalanceListItems(
+    transactionScanResult,
+  );
+
+  logger.info(
+    "transactionBalanceListItems",
+    JSON.stringify(signTransactionDetails),
+  );
 
   const accountDetailList = useMemo(
     () => [
@@ -120,23 +132,38 @@ const DappRequestBottomSheetContent: React.FC<
     [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
   );
 
-  // const changeTrustTokenList = useMemo(() => {
-  //   if (!changeTrustOp) return [] as ListItemProps[];
-  //   const token = { code: changeTrustOp.assetCode, issuer: { key: changeTrustOp.issuer } } as never;
-  //   return [
-  //     {
-  //       icon: <AssetIcon token={token} size="sm" />,
-  //       title: changeTrustOp.assetCode,
-  //       trailingContent: (
-  //         <View className="flex-row items-center gap-1">
-  //           <Icon.PlusCircle size={14} themeColor="lilac" />
-  //           <Text md color={themeColors.lilac[11]}>Add Token</Text>
-  //         </View>
-  //       ),
-  //       titleColor: themeColors.text.secondary,
-  //     },
-  //   ];
-  // }, [changeTrustOp, themeColors.lilac, themeColors.text.secondary]);
+  const changeTrustTokenList = useMemo(() => {
+    const changeTrustOp = signTransactionDetails?.operations.find(
+      (op) => op.type === "changeTrust",
+    ) as
+      | { type: "changeTrust"; line?: { code?: string; issuer?: string } }
+      | undefined;
+
+    const assetCode = changeTrustOp?.line?.code;
+    const issuerKey = changeTrustOp?.line?.issuer;
+
+    if (!assetCode || !issuerKey) {
+      return [] as { key?: string; icon: React.ReactNode; title: string }[];
+    }
+
+    const token = { code: assetCode, issuer: { key: issuerKey } } as never;
+
+    return [
+      {
+        key: `${assetCode}:${issuerKey}`,
+        icon: <AssetIcon token={token} size="sm" />,
+        title: assetCode,
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Icon.PlusCircle size={16} themeColor="lilac" />
+            <Text color={themeColors.lilac[11]}>
+              {t("addAssetScreen.addToken")}
+            </Text>
+          </View>
+        ),
+      },
+    ];
+  }, [signTransactionDetails?.operations, themeColors.lilac, t]);
 
   const dappMetadata = useDappMetadata(requestEvent);
 
@@ -237,7 +264,11 @@ const DappRequestBottomSheetContent: React.FC<
         />
       )}
       <View className="gap-[12px]">
-        <List variant="secondary" items={transactionBalanceListItems || []} />
+        {changeTrustTokenList.length > 0 ? (
+          <List variant="secondary" items={changeTrustTokenList} />
+        ) : (
+          <List variant="secondary" items={transactionBalanceListItems} />
+        )}
         <List variant="secondary" items={accountDetailList} />
         {signTransactionDetails && (
           <SignTransactionDetails data={signTransactionDetails} />

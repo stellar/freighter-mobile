@@ -22,4 +22,5 @@ export interface SignTransactionDetailsInterface {
   summary: SignTransactionSummaryInterface;
   authEntries: xdr.SorobanAuthorizedInvocation[];
   operations: Operation[];
+  hasTrustlineChanges: boolean;
 }

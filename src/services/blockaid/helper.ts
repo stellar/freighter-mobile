@@ -1,6 +1,5 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
-import { logger } from "config/logger";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
@@ -140,8 +139,6 @@ export const assessTransactionSecurity = (
   if (!scanResult) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
-
-  logger.debug("assessTransactionSecurity", JSON.stringify(scanResult));
 
   const { simulation, validation } = scanResult;
 

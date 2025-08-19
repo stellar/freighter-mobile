@@ -29,6 +29,10 @@ export const useTransactionBalanceListItems = (
   const { t } = useAppTranslation();
 
   return useMemo(() => {
+    if (!scanResult) {
+      return [];
+    }
+
     const balanceUpdates = getTransactionBalanceChanges(scanResult);
 
     // Unable to simulate

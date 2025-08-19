@@ -27,7 +27,6 @@ import {
 } from "helpers/walletKitUtil";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
-import useTransactionBalanceListItems from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
@@ -183,19 +182,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     [transactionScanResult],
   );
 
-  const transactionBalanceListItems = useTransactionBalanceListItems(
-    transactionScanResult,
-  );
-
-  const requestXdr = useMemo(
-    () =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      (requestEvent?.params?.request?.params as unknown as { xdr?: string })
-        ?.xdr || "",
-    [requestEvent],
-  );
-
-  const signTransactionDetails = useSignTransactionDetails({ xdr: requestXdr });
+  const signTransactionDetails = useSignTransactionDetails({ xdr });
 
   /**
    * Security warnings extracted from scan result
@@ -576,10 +563,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       );
 
       const dappDomain = dappMetadata?.url as string;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const requestXdr = sessionRequest.params.request.params.xdr as string;
 
       scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
-          logger.info("scanTransaction", String(scanResult));
           setTransactionScanResult(scanResult);
         })
         .catch(() => {
@@ -645,7 +633,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancelRequest={handleClearDappRequest}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
-            transactionBalanceListItems={transactionBalanceListItems}
+            transactionScanResult={transactionScanResult}
             securityWarningAction={() =>
               presentSecurityWarningDetail("transaction")
             }

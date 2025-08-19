@@ -1,5 +1,6 @@
 import { Address, Operation, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
+import Spinner from "components/Spinner";
 import {
   KeyValueList,
   KeyValueSigner,
@@ -17,6 +18,7 @@ import {
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   OPERATION_TYPES,
+  VISUAL_DELAY_MS,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -25,7 +27,7 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { scanAsset } from "services/blockaid/api";
 
@@ -1093,9 +1095,24 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
 
 const Operations = ({ operations }: OperationsProps) => {
   const { t } = useAppTranslation();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // small delay to avoid rendering broken content before the content is ready
+    const timer = setTimeout(() => setIsReady(true), VISUAL_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isReady) {
+    return (
+      <View className="items-center py-[16px]">
+        <Spinner size="small" />
+      </View>
+    );
+  }
 
   return (
-    <View className="Operations">
+    <View>
       {operations.map((operation, index: number) => {
         const operationIndex = index + 1;
         const { source, type } = operation;
