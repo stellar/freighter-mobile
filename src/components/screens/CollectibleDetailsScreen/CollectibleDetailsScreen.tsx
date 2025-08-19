@@ -12,7 +12,13 @@ import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
-import { Image, Linking, ScrollView, View } from "react-native";
+import {
+  Image,
+  Linking,
+  ScrollView,
+  View,
+} from "react-native";
+import Spinner from "components/Spinner";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -34,6 +40,7 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * - Right header context menu with collectible actions (handled by useCollectibleDetailsHeader)
  * - Responsive layout with proper spacing and typography
  * - Error handling for missing collectibles
+ * - Loading state with centered spinner
  *
  * @param {CollectibleDetailsScreenProps} props - Component props
  * @param {Object} props.route - Navigation route object containing collectible parameters
@@ -62,7 +69,8 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     const { collectionAddress, tokenId } = route.params;
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const { getCollectible } = useCollectibles();
+    const { getCollectible, isLoading: isCollectiblesLoading } =
+      useCollectibles();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -149,6 +157,20 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
         );
       }
     }, []);
+
+    // Show loading spinner when collectibles are being fetched
+    if (isCollectiblesLoading) {
+      return (
+        <BaseLayout insets={{ top: false }}>
+          <View className="flex-1 items-center justify-center p-4">
+            <Spinner
+              size="large"
+              color={themeColors.secondary}
+            />
+          </View>
+        </BaseLayout>
+      );
+    }
 
     // If collectible is not found, show error state
     if (!collectible) {

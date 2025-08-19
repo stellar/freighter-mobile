@@ -2,6 +2,7 @@ import { useNavigation } from "@react-navigation/native";
 import Icon from "components/sds/Icon";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
@@ -42,6 +43,7 @@ export const useCollectibleDetailsHeader = ({
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
+  const { fetchCollectibles } = useCollectiblesStore();
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -55,20 +57,11 @@ export const useCollectibleDetailsHeader = ({
 
   /**
    * Handles refreshing metadata for the collectible.
-   * Currently a placeholder for future implementation.
+   * Calls fetchCollectibles to refresh collectible data from the API.
    */
   const handleRefreshMetadata = useCallback(async () => {
     try {
-      // TODO: Implement metadata refresh logic
-      // This could involve re-fetching from the blockchain or API
-      logger.info(
-        "useCollectibleDetailsHeader",
-        "Refreshing metadata for collectible",
-        {
-          collectionAddress,
-          tokenId,
-        },
-      );
+      await fetchCollectibles();
     } catch (error) {
       logger.error(
         "useCollectibleDetailsHeader",
@@ -76,7 +69,7 @@ export const useCollectibleDetailsHeader = ({
         error,
       );
     }
-  }, [collectionAddress, tokenId]);
+  }, [fetchCollectibles]);
 
   /**
    * Handles saving the collectible image to the device's photo library.
@@ -128,7 +121,6 @@ export const useCollectibleDetailsHeader = ({
   const handleReportAsSpam = useCallback(async () => {
     try {
       // TODO: Implement spam reporting logic
-      // This could involve opening a form or sending data to a moderation service
       logger.info(
         "useCollectibleDetailsHeader",
         "Reporting collectible as spam",
@@ -160,7 +152,7 @@ export const useCollectibleDetailsHeader = ({
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
-          saveToPhotos: "download",   // Download icon (Material)
+          saveToPhotos: "download", // Download icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
           reportAsSpam: "outlined_flag", // Flag icon (Material)
         },
