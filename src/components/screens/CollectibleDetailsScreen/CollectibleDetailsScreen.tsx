@@ -8,9 +8,10 @@ import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
-import React, { useMemo, useLayoutEffect, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Image, Linking, ScrollView, View } from "react-native";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
@@ -30,6 +31,7 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * - Detailed description section
  * - Collectible traits/attributes displayed in a 2-column grid layout
  * - Conditional "View in Browser" button for external URLs
+ * - Right header context menu with collectible actions (handled by useCollectibleDetailsHeader)
  * - Responsive layout with proper spacing and typography
  * - Error handling for missing collectibles
  *
@@ -56,7 +58,7 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * ```
  */
 export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
-  React.memo(({ route, navigation }) => {
+  React.memo(({ route }) => {
     const { collectionAddress, tokenId } = route.params;
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -72,6 +74,16 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       () => getCollectible({ collectionAddress, tokenId }),
       [getCollectible, collectionAddress, tokenId],
     );
+
+    /**
+     * Sets up the header configuration including title and context menu.
+     * This hook handles all header-related logic.
+     */
+    useCollectibleDetailsHeader({
+      collectionAddress,
+      tokenId,
+      collectibleName: collectible?.name,
+    });
 
     /**
      * Prepares the list items for displaying basic collectible information.
@@ -119,16 +131,6 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
         collectible?.tokenId,
       ],
     );
-
-    /**
-     * Sets the navigation header title to the collectible name.
-     * Falls back to a default title if the collectible name is not available.
-     */
-    useLayoutEffect(() => {
-      navigation.setOptions({
-        headerTitle: collectible?.name || t("collectibleDetails.title"),
-      });
-    }, [navigation, collectible?.name, t]);
 
     /**
      * Handles opening the collectible's external URL in the device's default browser.
