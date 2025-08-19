@@ -1,5 +1,4 @@
 import {
-  BOTTOM_SHEET_CONTENT_BOTTOM_PADDING,
   BOTTOM_SHEET_CONTENT_GAP,
   BOTTOM_SHEET_CONTENT_TOP_PADDING,
   BOTTOM_SHEET_MAX_HEIGHT_RATIO,
@@ -24,7 +23,7 @@ const BottomSheetAdaptiveContainer: React.FC<
   children,
   sheetMaxHeightRatio = BOTTOM_SHEET_MAX_HEIGHT_RATIO,
   topPaddingPx = BOTTOM_SHEET_CONTENT_TOP_PADDING,
-  bottomPaddingPx = BOTTOM_SHEET_CONTENT_BOTTOM_PADDING,
+  bottomPaddingPx = 0,
   contentGapPx = BOTTOM_SHEET_CONTENT_GAP,
 }) => {
   const [headerHeight, setHeaderHeight] = useState(0);
