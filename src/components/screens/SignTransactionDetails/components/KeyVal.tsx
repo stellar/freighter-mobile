@@ -39,7 +39,12 @@ export const KeyValueList = ({
       <Text>{operationKey}</Text>
     </View>
     <View className="h-[1px] bg-background-tertiary" />
-    <Text>{operationValue}</Text>
+    {typeof operationValue === "string" ||
+    typeof operationValue === "number" ? (
+      <Text>{operationValue}</Text>
+    ) : (
+      operationValue
+    )}
   </View>
 );
 
@@ -48,6 +53,7 @@ interface KeyValueInvokeHostFnArgsProps {
   contractId?: string;
   fnName?: string;
   showHeader?: boolean;
+  variant?: "secondary" | "tertiary";
 }
 
 export const KeyValueInvokeHostFnArgs = ({
@@ -55,6 +61,7 @@ export const KeyValueInvokeHostFnArgs = ({
   contractId,
   fnName,
   showHeader = true,
+  variant = "secondary",
 }: KeyValueInvokeHostFnArgsProps) => {
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -91,7 +98,9 @@ export const KeyValueInvokeHostFnArgs = ({
     }
 
     return (
-      <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
+      <View
+        className={`bg-background-${variant} rounded-[16px] p-[16px] gap-[12px]`}
+      >
         {showHeader && (
           <>
             <View className="flex-row items-center gap-[8px]">

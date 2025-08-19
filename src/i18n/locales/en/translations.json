@@ -875,7 +875,10 @@
       "seller": "Seller",
       "wasm": "WASM",
       "parameters": "Parameters",
-      "source": "Source"
+      "source": "Source",
+      "executableType": "Executable Type",
+      "accountId": "Account ID",
+      "salt": "Salt"
     }
   }
 }

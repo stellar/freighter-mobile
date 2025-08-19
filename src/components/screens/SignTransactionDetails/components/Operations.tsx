@@ -1,7 +1,7 @@
 import { Address, Operation, xdr } from "@stellar/stellar-sdk";
+import { List, ListItemProps } from "components/List";
 import {
   KeyValueList,
-  KeyValueLine,
   KeyValueSigner,
   KeyValueWithPublicKey,
   PathList,
@@ -10,6 +10,7 @@ import {
   KeyValueSignerKeyOptions,
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
+import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -18,10 +19,12 @@ import {
   OPERATION_TYPES,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { scanAsset } from "services/blockaid/api";
@@ -39,6 +42,8 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
   const { type } = operation;
+  const { copyToClipboard } = useClipboard();
+  const { themeColors } = useColors();
 
   const authorizationMap: AuthorizationMap = {
     "1": "Authorization Required",
@@ -95,191 +100,231 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
     case "createAccount": {
       const { startingBalance, destination } = operation;
 
-      return (
-        <>
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.destination")}
-            operationValue={destination}
-          />
-          <KeyValueList
-            operationKey={t(
-              "signTransactionDetails.operations.startingBalance",
-            )}
-            operationValue={formatAssetAmount(
-              startingBalance,
-              NATIVE_TOKEN_CODE,
-            )}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.destination"),
+          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.startingBalance"),
+          trailingContent: (
+            <Text>{formatAssetAmount(startingBalance, NATIVE_TOKEN_CODE)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "payment": {
       const { destination, asset, amount } = operation;
 
-      return (
-        <>
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.destination")}
-            operationValue={destination}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={asset.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.destination"),
+          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{asset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "pathPaymentStrictReceive": {
       const { sendAsset, sendMax, destination, destAsset, destAmount, path } =
         operation;
 
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{sendAsset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.sendMax"),
+          trailingContent: (
+            <Text>{formatAssetAmount(sendMax, sendAsset.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destination"),
+          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destinationAsset"),
+          trailingContent: <Text>{destAsset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destinationAmount"),
+          trailingContent: (
+            <Text>{formatAssetAmount(destAmount, destAsset.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
       return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={sendAsset.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.sendMax")}
-            operationValue={sendMax}
-          />
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.destination")}
-            operationValue={destination}
-          />
-          <KeyValueWithPublicKey
-            operationKey={t(
-              "signTransactionDetails.operations.destinationAsset",
-            )}
-            operationValue={destAsset.code}
-          />
-          <KeyValueList
-            operationKey={t(
-              "signTransactionDetails.operations.destinationAmount",
-            )}
-            operationValue={destAmount}
-          />
+        <View className="gap-[12px]">
+          <List variant="secondary" items={items} />
           <PathList paths={path} />
-        </>
+        </View>
       );
     }
     case "pathPaymentStrictSend": {
       const { sendAsset, sendAmount, destination, destAsset, destMin, path } =
         operation;
 
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{sendAsset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.sendAmount"),
+          trailingContent: (
+            <Text>{formatAssetAmount(sendAmount, sendAsset.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destination"),
+          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destinationAsset"),
+          trailingContent: <Text>{destAsset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.destinationMinimum"),
+          trailingContent: (
+            <Text>{formatAssetAmount(destMin, destAsset.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
       return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={sendAsset.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.sendAmount")}
-            operationValue={sendAmount}
-          />
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.destination")}
-            operationValue={destination}
-          />
-          <KeyValueWithPublicKey
-            operationKey={t(
-              "signTransactionDetails.operations.destinationAsset",
-            )}
-            operationValue={destAsset.code}
-          />
-          <KeyValueList
-            operationKey={t(
-              "signTransactionDetails.operations.destinationMinimum",
-            )}
-            operationValue={destMin}
-          />
+        <View className="gap-[12px]">
+          <List variant="secondary" items={items} />
           <PathList paths={path} />
-        </>
+        </View>
       );
     }
     case "createPassiveSellOffer": {
       const { selling, buying, amount, price } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.buying")}
-            operationValue={buying.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.selling")}
-            operationValue={selling.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.price")}
-            operationValue={price}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: (
+            <Text>{formatAssetAmount(amount, buying.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.selling"),
+          trailingContent: <Text>{selling.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.price"),
+          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "manageSellOffer": {
       const { offerId, selling, buying, price, amount } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.offerId")}
-            operationValue={offerId}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.selling")}
-            operationValue={selling.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.buying")}
-            operationValue={buying.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.price")}
-            operationValue={price}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.selling"),
+          trailingContent: <Text>{selling.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: (
+            <Text>{formatAssetAmount(amount, buying.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.price"),
+          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "manageBuyOffer": {
       const { selling, buying, buyAmount, price, offerId } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.offerId")}
-            operationValue={offerId}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.buying")}
-            operationValue={buying.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.buyAmount")}
-            operationValue={buyAmount}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.selling")}
-            operationValue={selling.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.price")}
-            operationValue={price}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buyAmount"),
+          trailingContent: (
+            <Text>{formatAssetAmount(buyAmount, buying.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.selling"),
+          trailingContent: <Text>{selling.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.price"),
+          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "setOptions": {
       const {
@@ -294,325 +339,480 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         signer,
       } = operation;
 
-      return (
-        <>
-          {signer && <KeyValueSigner signer={signer} />}
-          {inflationDest && (
-            <KeyValueWithPublicKey
-              operationKey={t(
-                "signTransactionDetails.operations.inflationDestination",
-              )}
-              operationValue={inflationDest}
-            />
-          )}
-          {homeDomain && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.homeDomain")}
-              operationValue={homeDomain}
-            />
-          )}
-          {highThreshold && (
-            <KeyValueList
-              operationKey={t(
-                "signTransactionDetails.operations.highThreshold",
-              )}
-              operationValue={highThreshold?.toString()}
-            />
-          )}
-          {medThreshold && (
-            <KeyValueList
-              operationKey={t(
-                "signTransactionDetails.operations.mediumThreshold",
-              )}
-              operationValue={medThreshold?.toString()}
-            />
-          )}
-          {lowThreshold && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.lowThreshold")}
-              operationValue={lowThreshold?.toString()}
-            />
-          )}
-          {masterWeight && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.masterWeight")}
-              operationValue={masterWeight?.toString()}
-            />
-          )}
-          {setFlags && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.setFlags")}
-              operationValue={authorizationMap[setFlags?.toString()]}
-            />
-          )}
-          {clearFlags && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.clearFlags")}
-              operationValue={authorizationMap[clearFlags.toString()]}
-            />
-          )}
-        </>
-      );
+      const items: ListItemProps[] = [];
+
+      if (signer) {
+        items.push({
+          title: t("signTransactionDetails.operations.signer"),
+          trailingContent: (
+            <View>
+              <KeyValueSigner signer={signer} />
+            </View>
+          ),
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (inflationDest) {
+        items.push({
+          title: t("signTransactionDetails.operations.inflationDestination"),
+          trailingContent: <Avatar publicAddress={inflationDest} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (homeDomain) {
+        items.push({
+          title: t("signTransactionDetails.operations.homeDomain"),
+          trailingContent: <Text>{homeDomain}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (highThreshold) {
+        items.push({
+          title: t("signTransactionDetails.operations.highThreshold"),
+          trailingContent: <Text>{highThreshold.toString()}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (medThreshold) {
+        items.push({
+          title: t("signTransactionDetails.operations.mediumThreshold"),
+          trailingContent: <Text>{medThreshold.toString()}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (lowThreshold) {
+        items.push({
+          title: t("signTransactionDetails.operations.lowThreshold"),
+          trailingContent: <Text>{lowThreshold.toString()}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (masterWeight) {
+        items.push({
+          title: t("signTransactionDetails.operations.masterWeight"),
+          trailingContent: <Text>{masterWeight.toString()}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (setFlags) {
+        items.push({
+          title: t("signTransactionDetails.operations.setFlags"),
+          trailingContent: <Text>{authorizationMap[setFlags.toString()]}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (clearFlags) {
+        items.push({
+          title: t("signTransactionDetails.operations.clearFlags"),
+          trailingContent: (
+            <Text>{authorizationMap[clearFlags.toString()]}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      return <List variant="secondary" items={items} />;
     }
     case "changeTrust": {
       const { limit, line } = operation;
 
-      return (
-        <>
-          <KeyValueLine line={line} />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.type")}
-            operationValue={type}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.limit")}
-            operationValue={limit}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [];
+      if ("assetA" in line) {
+        items.push(
+          {
+            title: t("signTransactionDetails.operations.assetA"),
+            trailingContent: <Text>{line.assetA.getCode()}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.assetB"),
+            trailingContent: <Text>{line.assetB.getCode()}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.fee"),
+            trailingContent: <Text>{line.fee}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+        );
+      } else {
+        items.push({
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{line.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      items.push({
+        title: t("signTransactionDetails.operations.type"),
+        trailingContent: <Text>{type}</Text>,
+        titleColor: themeColors.text.secondary,
+      });
+      items.push({
+        title: t("signTransactionDetails.operations.limit"),
+        trailingContent: <Text>{limit}</Text>,
+        titleColor: themeColors.text.secondary,
+      });
+
+      return <List variant="secondary" items={items} />;
     }
     case "allowTrust": {
       const { trustor, assetCode, authorize } = operation;
 
-      return (
-        <>
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.trustor")}
-            operationValue={trustor}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={assetCode}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.authorize")}
-            operationValue={authorize}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.trustor"),
+          trailingContent: <Avatar publicAddress={trustor} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{assetCode}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.authorize"),
+          trailingContent: <Text>{String(authorize)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "accountMerge": {
       const { destination } = operation;
 
-      return (
-        <KeyValueWithPublicKey
-          operationKey={t("signTransactionDetails.operations.destination")}
-          operationValue={destination}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.destination"),
+          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "manageData": {
       const { name, value } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.name")}
-            operationValue={name}
-          />
-          {value && (
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.value")}
-              operationValue={value?.toString()}
-            />
-          )}
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.name"),
+          trailingContent: <Text>{name}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      if (value) {
+        items.push({
+          title: t("signTransactionDetails.operations.value"),
+          trailingContent: <Text>{value.toString()}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      return <List variant="secondary" items={items} />;
     }
     case "bumpSequence": {
       const { bumpTo } = operation;
 
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.bumpTo")}
-          operationValue={bumpTo}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.bumpTo"),
+          trailingContent: <Text>{bumpTo}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "createClaimableBalance": {
       const { asset, amount, claimants } = operation;
 
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{asset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
       return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={asset.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
+        <View className="gap-[12px]">
+          <List variant="secondary" items={items} />
           <KeyValueClaimants claimants={claimants} />
-        </>
+        </View>
       );
     }
     case "claimClaimableBalance": {
       const { balanceId } = operation;
 
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.balanceId")}
-          operationValue={truncateAddress(balanceId)}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.balanceId"),
+          trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "beginSponsoringFutureReserves": {
       const { sponsoredId } = operation;
 
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.sponsoredId")}
-          operationValue={truncateAddress(sponsoredId)}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.sponsoredId"),
+          trailingContent: <Text>{truncateAddress(sponsoredId)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "endSponsoringFutureReserves": {
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.type")}
-          operationValue={type}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.type"),
+          trailingContent: <Text>{type}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "clawback": {
       const { asset, amount, from } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={asset.code}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.from")}
-            operationValue={from}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{asset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.from"),
+          trailingContent: <Avatar publicAddress={from} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "clawbackClaimableBalance": {
       const { balanceId } = operation;
 
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.balanceId")}
-          operationValue={truncateAddress(balanceId)}
-        />
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.balanceId"),
+          trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "setTrustLineFlags": {
       const { trustor, asset, flags } = operation;
 
-      return (
-        <>
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.trustor")}
-            operationValue={trustor}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.assetCode")}
-            operationValue={asset.code}
-          />
-          {flags.authorized && (
-            <KeyValueList
-              operationKey={t(
-                "signTransactionDetails.operations.flags.authorized",
-              )}
-              operationValue={flags.authorized}
-            />
-          )}
-          {flags.authorizedToMaintainLiabilities && (
-            <KeyValueList
-              operationKey={t(
-                "signTransactionDetails.operations.flags.authorizedToMaintainLiabilities",
-              )}
-              operationValue={flags.authorizedToMaintainLiabilities}
-            />
-          )}
-          {flags.clawbackEnabled && (
-            <KeyValueList
-              operationKey={t(
-                "signTransactionDetails.operations.flags.clawbackEnabled",
-              )}
-              operationValue={flags.clawbackEnabled}
-            />
-          )}
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.trustor"),
+          trailingContent: <Avatar publicAddress={trustor} size="sm" />,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.assetCode"),
+          trailingContent: <Text>{asset.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      if (flags.authorized) {
+        items.push({
+          title: t("signTransactionDetails.operations.flags.authorized"),
+          trailingContent: <Text>{String(flags.authorized)}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (flags.authorizedToMaintainLiabilities) {
+        items.push({
+          title: t(
+            "signTransactionDetails.operations.flags.authorizedToMaintainLiabilities",
+          ),
+          trailingContent: (
+            <Text>{String(flags.authorizedToMaintainLiabilities)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      if (flags.clawbackEnabled) {
+        items.push({
+          title: t("signTransactionDetails.operations.flags.clawbackEnabled"),
+          trailingContent: <Text>{String(flags.clawbackEnabled)}</Text>,
+          titleColor: themeColors.text.secondary,
+        });
+      }
+
+      return <List variant="secondary" items={items} />;
     }
     case "liquidityPoolDeposit": {
       const { liquidityPoolId, maxAmountA, maxAmountB, maxPrice, minPrice } =
         operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t(
-              "signTransactionDetails.operations.liquidityPoolId",
-            )}
-            operationValue={truncateAddress(liquidityPoolId)}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.maxAmountA")}
-            operationValue={maxAmountA}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.maxAmountB")}
-            operationValue={maxAmountB}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.maxPrice")}
-            operationValue={maxPrice}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.minPrice")}
-            operationValue={minPrice}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.liquidityPoolId"),
+          trailingContent: <Text>{truncateAddress(liquidityPoolId)}</Text>,
+        },
+        {
+          title: t("signTransactionDetails.operations.maxAmountA"),
+          trailingContent: <Text>{maxAmountA}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.maxAmountB"),
+          trailingContent: <Text>{maxAmountB}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.maxPrice"),
+          trailingContent: <Text>{maxPrice}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.minPrice"),
+          trailingContent: <Text>{minPrice}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "liquidityPoolWithdraw": {
       const { liquidityPoolId, amount, minAmountA, minAmountB } = operation;
 
-      return (
-        <>
-          <KeyValueList
-            operationKey={t(
-              "signTransactionDetails.operations.liquidityPoolId",
-            )}
-            operationValue={truncateAddress(liquidityPoolId)}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.minAmountA")}
-            operationValue={minAmountA}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.minAmountB")}
-            operationValue={minAmountB}
-          />
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.amount")}
-            operationValue={amount}
-          />
-        </>
-      );
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.liquidityPoolId"),
+          trailingContent: <Text>{truncateAddress(liquidityPoolId)}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.minAmountA"),
+          trailingContent: <Text>{minAmountA}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.minAmountB"),
+          trailingContent: <Text>{minAmountB}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.amount"),
+          trailingContent: <Text>{amount}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+
+      return <List variant="secondary" items={items} />;
     }
     case "extendFootprintTtl": {
       const { extendTo } = operation;
+      const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.extendTo"),
+          trailingContent: <Text>{extendTo}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+      ];
 
-      return (
-        <KeyValueList
-          operationKey={t("signTransactionDetails.operations.extendTo")}
-          operationValue={extendTo}
-        />
-      );
+      return <List variant="secondary" items={items} />;
     }
     case "invokeHostFunction": {
-      return <KeyValueInvokeHostFn operation={operation} />;
+      const { func } = operation;
+      switch (func.switch()) {
+        case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
+          const invocation = func.invokeContract();
+          const contractId = Address.fromScAddress(
+            invocation.contractAddress(),
+          ).toString();
+          const functionName = invocation.functionName().toString();
+
+          const items: ListItemProps[] = [
+            {
+              title: t("signTransactionDetails.operations.type"),
+              trailingContent: (
+                <Text>{t("signTransactionDetails.authorizations.invoke")}</Text>
+              ),
+              titleColor: themeColors.text.secondary,
+            },
+            {
+              title: t("signTransactionDetails.authorizations.contractId"),
+              trailingContent: (
+                <View className="flex-row items-center gap-[8px]">
+                  <Icon.Copy01
+                    size={16}
+                    themeColor="gray"
+                    onPress={() => copyToClipboard(contractId)}
+                  />
+                  <Text>{truncateAddress(contractId, 10, 0)}</Text>
+                </View>
+              ),
+              titleColor: themeColors.text.secondary,
+            },
+            {
+              title: t("signTransactionDetails.operations.functionName"),
+              trailingContent: <Text>{functionName}</Text>,
+              titleColor: themeColors.text.secondary,
+            },
+          ];
+
+          return <List variant="secondary" items={items} />;
+        }
+        case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
+          const items: ListItemProps[] = [
+            {
+              title: t("signTransactionDetails.operations.type"),
+              trailingContent: (
+                <Text>
+                  {t("signTransactionDetails.operations.uploadContractWasm")}
+                </Text>
+              ),
+              titleColor: themeColors.text.secondary,
+            },
+          ];
+
+          return <List variant="secondary" items={items} />;
+        }
+        case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
+        case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+          // Fall back to existing detailed component for complex create contract rendering
+          return <KeyValueInvokeHostFn operation={operation} />;
+        }
+        default:
+          return <View />;
+      }
     }
     case "restoreFootprint":
     case "inflation":
@@ -625,98 +825,127 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         const { account, asset } =
           operation as unknown as Operation.RevokeTrustlineSponsorship;
 
-        return (
-          <>
-            <KeyValueWithPublicKey
-              operationKey={t("signTransactionDetails.operations.account")}
-              operationValue={account}
-            />
-            {"liquidityPoolId" in asset && (
-              <KeyValueList
-                operationKey={t(
-                  "signTransactionDetails.operations.liquidityPoolId",
-                )}
-                operationValue={truncateAddress(asset.liquidityPoolId)}
-              />
-            )}
-            {"code" in asset && (
-              <KeyValueList
-                operationKey={t("signTransactionDetails.operations.assetCode")}
-                operationValue={asset.code}
-              />
-            )}
-          </>
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.account"),
+            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        if ("liquidityPoolId" in asset) {
+          items.push({
+            title: t("signTransactionDetails.operations.liquidityPoolId"),
+            trailingContent: (
+              <Text>{truncateAddress(asset.liquidityPoolId, 10, 0)}</Text>
+            ),
+            titleColor: themeColors.text.secondary,
+          });
+        }
+
+        if ("code" in asset) {
+          items.push({
+            title: t("signTransactionDetails.operations.assetCode"),
+            trailingContent: <Text>{asset.code}</Text>,
+            titleColor: themeColors.text.secondary,
+          });
+        }
+
+        return <List variant="secondary" items={items} />;
       }
+
       if (parsedType === "revokeAccountSponsorship") {
         const { account } =
           operation as unknown as Operation.RevokeAccountSponsorship;
 
-        return (
-          <KeyValueWithPublicKey
-            operationKey={t("signTransactionDetails.operations.account")}
-            operationValue={account}
-          />
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.account"),
+            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        return <List variant="secondary" items={items} />;
       }
+
       if (parsedType === "revokeOfferSponsorship") {
         const { seller, offerId } =
           operation as unknown as Operation.RevokeOfferSponsorship;
 
-        return (
-          <>
-            <KeyValueWithPublicKey
-              operationKey={t("signTransactionDetails.operations.seller")}
-              operationValue={seller}
-            />
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.offerId")}
-              operationValue={offerId}
-            />
-          </>
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.seller"),
+            trailingContent: <Avatar publicAddress={seller} size="sm" />,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.offerId"),
+            trailingContent: <Text>{offerId}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        return <List variant="secondary" items={items} />;
       }
+
       if (parsedType === "revokeDataSponsorship") {
         const { account, name } =
           operation as unknown as Operation.RevokeDataSponsorship;
 
-        return (
-          <>
-            <KeyValueWithPublicKey
-              operationKey={t("signTransactionDetails.operations.account")}
-              operationValue={account}
-            />
-            <KeyValueList
-              operationKey={t("signTransactionDetails.operations.name")}
-              operationValue={name}
-            />
-          </>
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.account"),
+            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.name"),
+            trailingContent: <Text>{name}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        return <List variant="secondary" items={items} />;
       }
+
       if (parsedType === "revokeClaimableBalanceSponsorship") {
         const { balanceId } =
           operation as unknown as Operation.RevokeClaimableBalanceSponsorship;
 
-        return (
-          <KeyValueList
-            operationKey={t("signTransactionDetails.operations.balanceId")}
-            operationValue={truncateAddress(balanceId)}
-          />
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.balanceId"),
+            trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        return <List variant="secondary" items={items} />;
       }
+
       if (parsedType === "revokeSignerSponsorship") {
         const { account, signer } =
           operation as unknown as Operation.RevokeSignerSponsorship;
 
-        return (
-          <>
-            <KeyValueSignerKeyOptions signer={signer} />
-            <KeyValueWithPublicKey
-              operationKey={t("signTransactionDetails.operations.account")}
-              operationValue={account}
-            />
-          </>
-        );
+        const items: ListItemProps[] = [
+          {
+            title: t("signTransactionDetails.operations.signer"),
+            trailingContent: (
+              <View>
+                <KeyValueSignerKeyOptions signer={signer} />
+              </View>
+            ),
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.account"),
+            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            titleColor: themeColors.text.secondary,
+          },
+        ];
+
+        return <List variant="secondary" items={items} />;
       }
 
       return <View />;
@@ -791,18 +1020,31 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
               if (addressType.name === "scAddressTypeAccount") {
                 return (
                   createV2Args && (
-                    <KeyValueInvokeHostFnArgs args={createV2Args} />
+                    <KeyValueInvokeHostFnArgs
+                      args={createV2Args}
+                      variant="tertiary"
+                    />
                   )
                 );
               }
               return (
-                createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />
+                createV2Args && (
+                  <KeyValueInvokeHostFnArgs
+                    args={createV2Args}
+                    variant="tertiary"
+                  />
+                )
               );
             }
 
             // contractIdPreimageFromAsset
             return (
-              createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />
+              createV2Args && (
+                <KeyValueInvokeHostFnArgs
+                  args={createV2Args}
+                  variant="tertiary"
+                />
+              )
             );
           }
 
@@ -820,6 +1062,7 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
                 contractId={contractId}
                 fnName={functionName}
                 showHeader={false}
+                variant="tertiary"
               />
             );
           }
@@ -858,16 +1101,12 @@ const Operations = ({ operations }: OperationsProps) => {
         const { source, type } = operation;
 
         return (
-          <View
-            className="Operations--wrapper"
-            key={operationIndex}
-            data-testid="OperationsWrapper"
-          >
-            <View className="Operations--header">
+          <View className="flex-1 gap-[12px]" key={operationIndex}>
+            <View className="flex-row items-center gap-[8px]">
               <Icon.Cube02 size={16} themeColor="gray" />
-              <Text>{OPERATION_TYPES[type] || type}</Text>
+              <Text secondary>{OPERATION_TYPES[type] || type}</Text>
             </View>
-            <View className="Operations--item">
+            <View>
               {source && (
                 <KeyValueWithPublicKey
                   operationKey={t("signTransactionDetails.operations.source")}
@@ -878,13 +1117,13 @@ const Operations = ({ operations }: OperationsProps) => {
             </View>
             {type === "invokeHostFunction" && (
               <>
-                <View className="Operations--header">
+                <View className="flex-row items-center gap-[8px]">
                   <Icon.BracketsEllipses size={16} themeColor="gray" />
-                  <Text>
+                  <Text secondary>
                     {t("signTransactionDetails.operations.parameters")}
                   </Text>
                 </View>
-                <View className="Operations--item">
+                <View>
                   <RenderOperationArgsByType operation={operation} />
                 </View>
               </>
