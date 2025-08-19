@@ -6,7 +6,6 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect } from "react";
 
 type SwapScreenProps = NativeStackScreenProps<
@@ -15,7 +14,6 @@ type SwapScreenProps = NativeStackScreenProps<
 >;
 
 const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
-  const { t } = useAppTranslation();
   const { resetSwap } = useSwapStore();
   const { resetToDefaults } = useSwapSettingsStore();
   const { resetTransaction } = useTransactionBuilderStore();
@@ -36,10 +34,7 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <TokenSelectionContent
-        onTokenPress={handleTokenPress}
-        customTitle={t("swapScreen.swapScreenTokenListTitle")}
-      />
+      <TokenSelectionContent onTokenPress={handleTokenPress} />
     </BaseLayout>
   );
 };

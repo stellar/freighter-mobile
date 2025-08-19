@@ -49,6 +49,7 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
         }
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
+        enablePanDownToClose={false}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
         snapPoints={["90%"]}
         customContent={

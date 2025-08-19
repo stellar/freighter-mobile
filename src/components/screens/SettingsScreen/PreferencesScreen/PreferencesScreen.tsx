@@ -6,6 +6,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import PermissionModal from "components/screens/SettingsScreen/PreferencesScreen/PermissionModal";
 import { Toggle } from "components/sds/Toggle";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
+import { usePreferencesStore } from "ducks/preferences";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -39,6 +40,12 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     handleOpenSettings,
     permissionAction,
   } = useAnalyticsPermissions();
+  const {
+    isHideDustEnabled,
+    setIsHideDustEnabled,
+    isMemoValidationEnabled,
+    setIsMemoValidationEnabled,
+  } = usePreferencesStore();
 
   const isScreenFocusedRef = useRef(false);
 
@@ -58,6 +65,32 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     );
   }, [isPermissionLoading, isTrackingEnabled, handleAnalyticsToggle]);
 
+  const renderHideDustToggle = useCallback(
+    () => (
+      <Toggle
+        id="hide-dust-toggle"
+        checked={isHideDustEnabled}
+        onChange={() => {
+          setIsHideDustEnabled(!isHideDustEnabled);
+        }}
+      />
+    ),
+    [isHideDustEnabled, setIsHideDustEnabled],
+  );
+
+  const renderMemoValidationToggle = useCallback(
+    () => (
+      <Toggle
+        id="memo-validation-toggle"
+        checked={isMemoValidationEnabled}
+        onChange={() => {
+          setIsMemoValidationEnabled(!isMemoValidationEnabled);
+        }}
+      />
+    ),
+    [isMemoValidationEnabled, setIsMemoValidationEnabled],
+  );
+
   const handleAnalyticsPermissionOpenSettings = useCallback(() => {
     handleOpenSettings();
   }, [handleOpenSettings]);
@@ -71,8 +104,28 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
         trailingContent: renderAnalyticsToggle(),
         testID: "anonymous-data-sharing-item",
       },
+      {
+        title: t("preferences.hideDust.title"),
+        titleColor: themeColors.text.primary,
+        description: t("preferences.hideDust.description"),
+        trailingContent: renderHideDustToggle(),
+        testID: "hide-dust-item",
+      },
+      {
+        title: t("preferences.memoValidation.title"),
+        titleColor: themeColors.text.primary,
+        description: t("preferences.memoValidation.description"),
+        trailingContent: renderMemoValidationToggle(),
+        testID: "memo-validation-item",
+      },
     ],
-    [t, themeColors.text.primary, renderAnalyticsToggle],
+    [
+      t,
+      themeColors.text.primary,
+      renderAnalyticsToggle,
+      renderHideDustToggle,
+      renderMemoValidationToggle,
+    ],
   );
 
   /**

@@ -23,7 +23,7 @@ import { View } from "react-native";
  * @interface DappRequestBottomSheetContentProps
  * @property {WalletKitSessionRequest | null} requestEvent - The session request event
  * @property {ActiveAccount | null} account - The active account
- * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onCancelRequest - Function to handle cancellation
  * @property {() => void} onConfirm - Function to handle confirmation
  * @property {boolean} isSigning - Whether a transaction is currently being signed
  * @property {boolean} isMalicious - Whether the transaction is malicious
@@ -31,11 +31,14 @@ import { View } from "react-native";
  * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
  * @property {() => void} securityWarningAction - Function to handle security warning
  * @property {SignTransactionDetailsInterface} signTransactionDetails - The sign transaction details
+ * @property {boolean} isMemoMissing - Whether a required memo is missing
+ * @property {boolean} isValidatingMemo - Whether memo validation is in progress
+ * @property {() => void} onBannerPress - Function to handle memo warning banner press
  */
-type DappRequestBottomSheetContentProps = {
+interface DappRequestBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
-  onCancel: () => void;
+  onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;
   isMalicious?: boolean;
@@ -43,7 +46,10 @@ type DappRequestBottomSheetContentProps = {
   transactionBalanceListItems?: ListItemProps[];
   securityWarningAction?: () => void;
   signTransactionDetails?: SignTransactionDetailsInterface | null;
-};
+  isMemoMissing?: boolean;
+  isValidatingMemo?: boolean;
+  onBannerPress?: () => void;
+}
 
 /**
  * Bottom sheet content component for displaying and handling dApp transaction requests.
@@ -58,7 +64,7 @@ const DappRequestBottomSheetContent: React.FC<
 > = ({
   requestEvent,
   account,
-  onCancel,
+  onCancelRequest,
   onConfirm,
   isSigning,
   isMalicious,
@@ -66,6 +72,9 @@ const DappRequestBottomSheetContent: React.FC<
   transactionBalanceListItems,
   securityWarningAction,
   signTransactionDetails,
+  isMemoMissing,
+  isValidatingMemo,
+  onBannerPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -152,7 +161,7 @@ const DappRequestBottomSheetContent: React.FC<
           secondary={!isMalicious && !isSuspicious}
           xl
           isFullWidth
-          onPress={onCancel}
+          onPress={onCancelRequest}
           disabled={isSigning}
         >
           {t("common.cancel")}
@@ -184,7 +193,8 @@ const DappRequestBottomSheetContent: React.FC<
             xl
             isFullWidth
             onPress={onConfirm}
-            isLoading={isSigning}
+            isLoading={isSigning || !!isValidatingMemo}
+            disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
           >
             {t("dappRequestBottomSheetContent.confirm")}
           </Button>
@@ -208,6 +218,13 @@ const DappRequestBottomSheetContent: React.FC<
           )}
         </View>
       </View>
+      {isMemoMissing && (
+        <Banner
+          variant="error"
+          text={t("transactionAmountScreen.errors.memoMissing")}
+          onPress={onBannerPress}
+        />
+      )}
       {(isMalicious || isSuspicious) && (
         <Banner
           variant={isMalicious ? "error" : "warning"}

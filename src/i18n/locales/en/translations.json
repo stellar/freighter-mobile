@@ -24,7 +24,8 @@
     "and": " and ",
     "asset": "Asset",
     "hash": "Hash",
-    "salt": "Salt"
+    "salt": "Salt",
+    "addMemo": "Add memo"
   },
   "home": {
     "title": "Home",
@@ -82,6 +83,14 @@
       },
       "openSettings": "Open Settings",
       "notNow": "Not now"
+    },
+    "hideDust": {
+      "title": "Hide small payments",
+      "description": "Hide payments smaller than 0.1 XLM"
+    },
+    "memoValidation": {
+      "title": "Verification with stellar.expert",
+      "description": "Validate addresses that require a memo"
     }
   },
   "shareFeedbackScreen": {
@@ -312,7 +321,15 @@
       "message": "To start using this account, fund it with at least 1 XLM.",
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
-    }
+    },
+    "menuAddToken": "Add a token",
+    "menuManageTokens": "Manage tokens"
+  },
+  "collectiblesGrid": {
+    "title": "Collectibles",
+    "error": "Error loading collectibles",
+    "empty": "No collectibles yet",
+    "menuAddManually": "Add manually"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
@@ -329,15 +346,7 @@
     },
     "actions": {
       "copyAddress": "Copy address",
-      "hideAsset": "Hide asset",
-      "unhideAsset": "Unhide asset",
       "removeAsset": "Remove asset"
-    },
-    "removeAssetAlert": {
-      "title": "Remove asset",
-      "message": "Are you sure you want to remove this asset?",
-      "cancel": "Cancel",
-      "remove": "Remove"
     },
     "removeAssetError": "Error removing asset {{assetCode}}",
     "removeAssetSuccess": "{{assetCode}} successfully removed"
@@ -393,7 +402,7 @@
     "tokenAddressCopied": "Token address copied!",
     "removeAssetModal": {
       "title": "Remove {{assetCode}}?",
-      "message": "Are you sure you want to remove this asset?\nOnce you remove an asset, you will have to add it again later."
+      "message": "Are you sure you want to remove this asset? Once you remove an asset, you will have to add it again later."
     }
   },
   "sendPaymentScreen": {
@@ -456,6 +465,27 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
+  "transactionSettingsBottomSheet": {
+    "title": "Transaction settings",
+    "feeTitle": "Transaction fee",
+    "memoTitle": "Memo",
+    "timeoutTitle": "Transaction timeout",
+    "memoInfo": {
+      "title": "Memo",
+      "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
+      "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+    },
+    "timeoutInfo": {
+      "title": "Transaction timeout",
+      "description": "Transactions on the Stellar network have a set time limit for processing.",
+      "additionalInfo": "If the transaction is not confirmed before this time, it will expire and need to be submitted again."
+    },
+    "feeInfo": {
+      "title": "Transaction fee",
+      "description": "Every transaction on the Stellar network includes a small fee to help keep the network secure.",
+      "additionalInfo": "You can choose to increase this fee if you want your transaction to be prioritized and processed faster by the network."
+    }
+  },
   "transactionAmountScreen": {
     "title": "Send",
     "percentageButtons": {
@@ -468,7 +498,6 @@
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
-      "addMemo": "Add memo",
       "editMemo": "Edit memo"
     },
     "details": {
@@ -477,7 +506,18 @@
       "none": "None",
       "fee": "Fee",
       "xdr": "XDR"
+    },
+    "errors": {
+      "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
+      "amountTooHigh": "The amount entered is greater than the available balance",
+      "memoMissing": "This transaction requires a memo"
     }
+  },
+  "addMemoExplanationBottomSheet": {
+    "title": "Memo is required",
+    "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
+    "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",
+    "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
     "title": "Add another wallet",

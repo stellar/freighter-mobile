@@ -2,7 +2,6 @@ import { renderHook } from "@testing-library/react-hooks";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
-import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import { Share, Linking, Platform } from "react-native";
@@ -18,7 +17,7 @@ jest.mock("helpers/browser", () => ({
   })),
 }));
 jest.mock("helpers/device", () => ({
-  isIOS: jest.fn(),
+  isIOS: false,
 }));
 jest.mock("hooks/useAppTranslation");
 jest.mock("react-native", () => ({
@@ -40,7 +39,7 @@ const mockUseBrowserTabsStore = useBrowserTabsStore as jest.MockedFunction<
 const mockIsHomepageUrl = isHomepageUrl as jest.MockedFunction<
   typeof isHomepageUrl
 >;
-const mockIsIOS = isIOS as jest.MockedFunction<typeof isIOS>;
+
 const mockUseAppTranslation = useAppTranslation as jest.MockedFunction<
   typeof useAppTranslation
 >;
@@ -80,7 +79,7 @@ describe("useBrowserActions", () => {
       t: jest.fn((key: string) => key),
     } as any);
     mockIsHomepageUrl.mockReturnValue(false);
-    mockIsIOS.mockReturnValue(false);
+
     (Platform.select as any).mockImplementation(
       (obj: any) => obj.android || obj.ios || obj.default,
     );
@@ -237,7 +236,7 @@ describe("useBrowserActions", () => {
 
   describe("handleOpenInBrowser", () => {
     it("should call Linking.openURL with tab URL", async () => {
-      mockLinking.openURL.mockResolvedValue();
+      mockLinking.openURL.mockResolvedValue(true);
 
       const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
 

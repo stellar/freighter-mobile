@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
+  Address,
   Asset,
   Claimant,
   LiquidityPoolAsset,
@@ -485,7 +486,7 @@ export const KeyValueInvokeHostFn = ({
             );
           }
 
-          const contractId = StrKey.encodeContract(address.contractId());
+          const contractId = Address.fromScAddress(address).toString();
 
           return (
             <>
@@ -627,10 +628,9 @@ export const KeyValueInvokeHostFn = ({
 
       case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
         const invocation = hostfn.invokeContract();
-        const contractId = StrKey.encodeContract(
-          invocation.contractAddress().contractId(),
-        );
-
+        const contractId = Address.fromScAddress(
+          invocation.contractAddress(),
+        ).toString();
         const functionName = invocation.functionName().toString();
 
         return (

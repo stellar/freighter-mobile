@@ -78,7 +78,7 @@ export enum NETWORK_URLS {
 
 // Keys should match NETWORKS keys
 export enum SOROBAN_RPC_URLS {
-  PUBLIC = "http://soroban-rpc-pubnet-prd.soroban-rpc-pubnet-prd.svc.cluster.local:8000",
+  PUBLIC = "http://stellar-rpc-pubnet-prd:8000",
   TESTNET = "https://soroban-testnet.stellar.org/",
   FUTURENET = "https://rpc-futurenet.stellar.org/",
 }
@@ -208,6 +208,8 @@ export enum STORAGE_KEYS {
   CUSTOM_TOKEN_LIST = "customTokenList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
+  MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
+  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
 }
 
 /**
@@ -220,6 +222,10 @@ export enum STORAGE_KEYS {
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+}
+
+export enum TRANSACTION_WARNING {
+  memoRequired = "memo-required",
 }
 
 // Browser constants

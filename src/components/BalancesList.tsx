@@ -1,8 +1,8 @@
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalanceRow } from "components/BalanceRow";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { FriendbotButton } from "components/FriendbotButton";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
@@ -17,18 +17,17 @@ import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { ReactNode } from "react";
-import { FlatList, Linking, RefreshControl, View } from "react-native";
+import { FlatList, Linking, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
   flex: 1;
 `;
 
-const ListTitle = styled.View`
-  margin-bottom: ${px(24)};
-  flex-direction: row;
+const SpinnerWrapper = styled(ListWrapper)`
   align-items: center;
-  gap: ${px(6)};
+  justify-content: center;
+  margin-bottom: ${px(55)};
 `;
 
 const Spinner = styled.ActivityIndicator`
@@ -50,8 +49,6 @@ interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
   searchTerm?: string;
-  customTitle?: string;
-  showTitleIcon?: boolean;
   onTokenPress?: (tokenId: string) => void;
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
@@ -75,8 +72,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   publicKey,
   network,
   searchTerm,
-  customTitle,
-  showTitleIcon = false,
   onTokenPress,
   disableNavigation = false,
   renderRightContent,
@@ -110,12 +105,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (error) {
     return (
       <ListWrapper>
-        <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
         <Text md>{t("balancesList.error")}</Text>
       </ListWrapper>
     );
@@ -124,20 +113,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   // If no balances and still loading, show the spinner
   if (noBalances && isLoading) {
     return (
-      <ListWrapper>
-        <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
-
+      <SpinnerWrapper>
         <Spinner
           testID="balances-list-spinner"
           size="large"
           color={THEME.colors.secondary}
         />
-      </ListWrapper>
+      </SpinnerWrapper>
     );
   }
 
@@ -145,13 +127,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (noBalances && !isFunded) {
     return (
       <ListWrapper>
-        <ListTitle>
-          {showTitleIcon && (
-            <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-          )}
-          <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-        </ListTitle>
-
         <NotificationWrapper>
           <Notification
             variant="primary"
@@ -198,16 +173,10 @@ export const BalancesList: React.FC<BalancesListProps> = ({
 
   return (
     <ListWrapper>
-      <ListTitle>
-        {showTitleIcon && (
-          <Icon.Coins03 size={16} color={THEME.colors.text.primary} />
-        )}
-        <Text medium>{customTitle ?? t("balancesList.title")}</Text>
-      </ListTitle>
       <FlatList
         testID="balances-list"
         showsVerticalScrollIndicator={false}
-        ListFooterComponent={<View className="h-10" />}
+        ListFooterComponent={DefaultListFooter}
         data={balanceItems}
         renderItem={({ item }) => (
           <BalanceRow
@@ -221,7 +190,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing || isLoading}
+            refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor={THEME.colors.secondary}
           />

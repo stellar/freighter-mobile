@@ -1,4 +1,4 @@
-import { Operation, StrKey, xdr } from "@stellar/stellar-sdk";
+import { Address, Operation, xdr } from "@stellar/stellar-sdk";
 import {
   KeyValueList,
   KeyValueLine,
@@ -808,9 +808,9 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
 
           case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
             const invocation = func.invokeContract();
-            const contractId = StrKey.encodeContract(
-              invocation.contractAddress().contractId(),
-            );
+            const contractId = Address.fromScAddress(
+              invocation.contractAddress(),
+            ).toString();
             const functionName = invocation.functionName().toString();
             const args = invocation.args();
 

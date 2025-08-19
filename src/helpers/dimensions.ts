@@ -52,7 +52,7 @@ const deviceScale = Math.min(deviceAspectRatio / DESIGN_ASPECT_RATIO, 1.2);
 export function pxValue(designValue: number): number {
   const designHeightPercentage =
     deviceScale * (designValue / DESIGN_HEIGHT) * 100;
-  return heightPercentageToDP(designHeightPercentage);
+  return Number(heightPercentageToDP(designHeightPercentage).toFixed(2));
 }
 
 /**
