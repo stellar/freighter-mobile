@@ -8,6 +8,7 @@ import {
   SECURITY_LEVEL_MAP,
   SECURITY_MESSAGE_KEYS,
 } from "services/blockaid/constants";
+
 // Keep this helper UI-agnostic – no UI imports/hooks here
 
 /**
@@ -273,6 +274,59 @@ export const extractSecurityWarnings = (
 };
 
 // =============================================================================
+// Transaction validation flagged entities (addresses)
+// =============================================================================
+
+export interface ValidationFlaggedEntity {
+  address: string;
+  severity: "malicious" | "suspicious";
+  classification?: string;
+}
+
+/**
+ * Extracts any Stellar account addresses mentioned in the Blockaid validation.description
+ * and classifies them as malicious or suspicious based on the result_type.
+ *
+ * Example description:
+ * "Gaining account GBXQAA7X3TBSXA7BUOCAR6U2BY7VQZZJMAOFLCGT6EL3RL22X5VFNSV6 is classified as custom_malicious"
+ */
+export const extractFlaggedEntitiesFromTransaction = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+): ValidationFlaggedEntity[] => {
+  if (!scanResult || !scanResult.validation) {
+    return [];
+  }
+
+  const validation = scanResult.validation as unknown as {
+    description?: string;
+    result_type?: string;
+    classification?: string;
+  };
+
+  const description = validation.description || "";
+  if (!description) {
+    return [];
+  }
+
+  const resultType = (validation.result_type || "").toUpperCase();
+  const severity: ValidationFlaggedEntity["severity"] =
+    resultType === BLOCKAID_RESULT_TYPES.MALICIOUS ? "malicious" : "suspicious";
+
+  // Match Stellar account public keys (G... 56 chars base32)
+  const ADDRESS_REGEX = /G[A-Z2-7]{55}/g;
+  const matches = description.match(ADDRESS_REGEX) || [];
+
+  // Deduplicate addresses
+  const unique = Array.from(new Set(matches));
+
+  return unique.map((address) => ({
+    address,
+    severity,
+    classification: validation.classification,
+  }));
+};
+
+// =============================================================================
 // Transaction balance changes (domain model)
 // =============================================================================
 
@@ -301,7 +355,11 @@ export const getTransactionBalanceChanges = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
 ): TransactionBalanceChange[] | null => {
   // Missing result or simulation error -> treat as "unable to simulate"
-  if (!scanResult || !scanResult.simulation || "error" in scanResult.simulation) {
+  if (
+    !scanResult ||
+    !scanResult.simulation ||
+    "error" in scanResult.simulation
+  ) {
     return null;
   }
 

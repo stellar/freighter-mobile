@@ -1,4 +1,6 @@
 import { List, ListItemProps } from "components/List";
+import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
@@ -10,13 +12,11 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatAssetAmount } from "helpers/formatAmount";
-import { useTransactionDetailsParser } from "hooks/blockaid/useTransactionDetailsParser";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React, { useMemo } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 /**
  * Props for the DappRequestBottomSheetContent component
@@ -30,7 +30,7 @@ import { TouchableOpacity, View } from "react-native";
  * @property {boolean} isSuspicious - Whether the transaction is suspicious
  * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
  * @property {() => void} securityWarningAction - Function to handle security warning
- * @property {() => void} onTransactionDetail - Function to handle transaction detail
+ * @property {SignTransactionDetailsInterface} signTransactionDetails - The sign transaction details
  */
 type DappRequestBottomSheetContentProps = {
   requestEvent: WalletKitSessionRequest | null;
@@ -42,8 +42,7 @@ type DappRequestBottomSheetContentProps = {
   isSuspicious?: boolean;
   transactionBalanceListItems?: ListItemProps[];
   securityWarningAction?: () => void;
-  onTransactionDetail?: () => void;
-  transactionDetails: any;
+  signTransactionDetails?: SignTransactionDetailsInterface | null;
 };
 
 /**
@@ -56,13 +55,27 @@ type DappRequestBottomSheetContentProps = {
  */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
-> = ({ requestEvent, account, onCancel, onConfirm, isSigning, isMalicious, isSuspicious, transactionBalanceListItems, securityWarningAction, onTransactionDetail, transactionDetails }) => {
+> = ({
+  requestEvent,
+  account,
+  onCancel,
+  onConfirm,
+  isSigning,
+  isMalicious,
+  isSuspicious,
+  transactionBalanceListItems,
+  securityWarningAction,
+  signTransactionDetails,
+}) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const accountDetailList = useMemo(() => 
-    [
+
+  const accountDetailList = useMemo(
+    () => [
       {
-        icon: <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />,
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
         title: t("wallet"),
         trailingContent: (
           <View className="flex-row items-center gap-2">
@@ -85,14 +98,36 @@ const DappRequestBottomSheetContent: React.FC<
         trailingContent: (
           <View className="flex-row items-center gap-2">
             <Text md primary>
-              {formatAssetAmount(String(transactionDetails?.fee) ?? "0", NATIVE_TOKEN_CODE)}
+              {formatAssetAmount(
+                String(signTransactionDetails?.summary.feeXlm ?? "0"),
+                NATIVE_TOKEN_CODE,
+              )}
             </Text>
           </View>
         ),
         titleColor: themeColors.text.secondary,
-      }
-    ], 
-  [account, themeColors, t]);
+      },
+    ],
+    [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
+  );
+
+  // const changeTrustTokenList = useMemo(() => {
+  //   if (!changeTrustOp) return [] as ListItemProps[];
+  //   const token = { code: changeTrustOp.assetCode, issuer: { key: changeTrustOp.issuer } } as never;
+  //   return [
+  //     {
+  //       icon: <AssetIcon token={token} size="sm" />,
+  //       title: changeTrustOp.assetCode,
+  //       trailingContent: (
+  //         <View className="flex-row items-center gap-1">
+  //           <Icon.PlusCircle size={14} themeColor="lilac" />
+  //           <Text md color={themeColors.lilac[11]}>Add Token</Text>
+  //         </View>
+  //       ),
+  //       titleColor: themeColors.text.secondary,
+  //     },
+  //   ];
+  // }, [changeTrustOp, themeColors.lilac, themeColors.text.secondary]);
 
   const dappMetadata = useDappMetadata(requestEvent);
 
@@ -187,14 +222,11 @@ const DappRequestBottomSheetContent: React.FC<
       <View className="gap-[12px]">
         <List variant="secondary" items={transactionBalanceListItems || []} />
         <List variant="secondary" items={accountDetailList} />
-        <TouchableOpacity className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px]" onPress={onTransactionDetail}>
-          <Icon.List size={16} themeColor="lilac" />
-          <Text color={themeColors.lilac[11]}>
-            {t("dappRequestBottomSheetContent.transactionDetails")}
-          </Text>
-        </TouchableOpacity>
+        {signTransactionDetails && (
+          <SignTransactionDetails data={signTransactionDetails} />
+        )}
       </View>
-      
+
       {!isMalicious && !isSuspicious && (
         <Text sm secondary textAlign="center">
           {t("blockaid.security.site.confirmTrust")}

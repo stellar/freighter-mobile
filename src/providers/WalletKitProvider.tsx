@@ -1,8 +1,8 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { TransactionBuilder } from "@stellar/stellar-sdk";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
+import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -48,6 +48,7 @@ import {
   assessTransactionSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+import type { SecurityWarning } from "services/blockaid/helper";
 
 /**
  * Props for the WalletKitProvider component
@@ -110,6 +111,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [securityWarningContext, setSecurityWarningContext] = useState<
+    "site" | "transaction"
+  >("site");
 
   /**
    * Network details mapped from the current network configuration
@@ -163,6 +167,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     transactionScanResult,
   );
 
+  const requestXdr = useMemo(
+    () =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      (requestEvent?.params?.request?.params as unknown as { xdr?: string })
+        ?.xdr || "",
+    [requestEvent],
+  );
+
+  const signTransactionDetails = useSignTransactionDetails({ xdr: requestXdr });
+
   /**
    * Security warnings extracted from scan result
    * @type {SecurityWarning[]}
@@ -186,6 +200,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     siteScanResult,
   ]);
 
+  const transactionSecurityWarnings = useMemo(() => {
+    if (
+      transactionSecurityAssessment.isMalicious ||
+      transactionSecurityAssessment.isSuspicious
+    ) {
+      const warnings = extractSecurityWarnings(transactionScanResult);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    transactionScanResult,
+  ]);
+
   /**
    * Security severity level for the bottom sheet
    * @type {SecurityLevel | undefined}
@@ -197,6 +230,45 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     return undefined;
   }, [siteSecurityAssessment.isMalicious, siteSecurityAssessment.isSuspicious]);
 
+  const transactionSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious)
+      return SecurityLevel.MALICIOUS;
+    if (transactionSecurityAssessment.isSuspicious)
+      return SecurityLevel.SUSPICIOUS;
+
+    return undefined;
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+  ]);
+
+  // =============================================================================
+  // Security warning helpers (context-aware)
+  // =============================================================================
+  const getWarnings = useCallback(
+    (): SecurityWarning[] =>
+      securityWarningContext === "site"
+        ? siteSecurityWarnings
+        : transactionSecurityWarnings,
+    [securityWarningContext, siteSecurityWarnings, transactionSecurityWarnings],
+  );
+
+  const getSeverity = useCallback(
+    (): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined =>
+      securityWarningContext === "site"
+        ? siteSecuritySeverity
+        : transactionSecuritySeverity,
+    [securityWarningContext, siteSecuritySeverity, transactionSecuritySeverity],
+  );
+
+  const getProceedAnywayText = useCallback(
+    (): string =>
+      securityWarningContext === "site"
+        ? t("dappConnectionBottomSheetContent.connectAnyway")
+        : t("dappRequestBottomSheetContent.confirmAnyway"),
+    [securityWarningContext, t],
+  );
+
   /**
    * Clears the dApp connection bottom sheet and resets connection state
    * @function handleClearDappConnection
@@ -205,11 +277,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    // Also ensure other sheets are closed to avoid any leftovers
+    dappRequestBottomSheetModalRef.current?.dismiss();
 
     setTimeout(() => {
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
+      setSecurityWarningContext("site");
 
       clearEvent();
     }, 200);
@@ -223,6 +298,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleClearDappRequest = () => {
     dappRequestBottomSheetModalRef.current?.dismiss();
+    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch
@@ -236,6 +312,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     setTimeout(() => {
       setIsSigning(false);
       setRequestEvent(null);
+      setTransactionScanResult(undefined);
+      setSecurityWarningContext("site");
       clearEvent();
     }, 200);
   };
@@ -304,20 +382,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @function handleSecurityWarning
    * @returns {void}
    */
-  const presentSecurityWarningDetail = useCallback(() => {
-    siteSecurityWarningBottomSheetModalRef.current?.present();
-  }, []);
+  const presentSecurityWarningDetail = useCallback(
+    (context: "site" | "transaction") => {
+      setSecurityWarningContext(context);
+
+      siteSecurityWarningBottomSheetModalRef.current?.present();
+    },
+    [],
+  );
 
   /**
-   * Handles proceeding anyway from security warning
-   * Closes the security warning bottom sheet and proceeds with connection
-   * @function handleProceedAnyway
-   * @returns {void}
+   * Handles proceeding anyway from security warning (context-aware)
    */
-  const handleProceedAnyway = () => {
+  const handleProceedAnyway = (): void => {
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleDappConnection();
+    if (securityWarningContext === "site") {
+      handleDappConnection();
+
+      return;
+    }
+
+    handleDappRequest();
   };
 
   /**
@@ -328,6 +414,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleCancelSecurityWarning = useCallback(() => {
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    setSecurityWarningContext("site");
   }, []);
 
   /**
@@ -398,7 +486,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           setSiteScanResult(undefined);
         })
         .finally(() => {
-          // Show the connection bottom sheet after scanning (regardless of result)
           dappConnectionBottomSheetModalRef.current?.present();
         });
     }
@@ -468,26 +555,18 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         sessionRequest,
         activeSessions,
       );
+
       const dappDomain = dappMetadata?.url as string;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const dappXDR = sessionRequest.params.request.params.xdr as string;
 
-      // const dappDomain = "https://blend.capital/";
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      // const dappXDR = "AAAAAgAAAAAFFiR6jieroloALNh43DoDye2makRSXE5C9NvmWTksNgABhqADcRjWAAAADQAAAAEAAAAAAAAAAAAAAABowb7eAAAAAQAAAAR0ZXN0AAAAAQAAAAAAAAABAAAAAG8AA/fcwyuD4aOECPqaDj9YZylgHFWI0/EXuK9av2pWAAAAAAAAAAAAD0JAAAAAAAAAAAA=";
-      // const dappXDR = "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";
-
-      scanTransaction(dappXDR, dappDomain)
+      scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
+          logger.info("scanTransaction", String(scanResult));
           setTransactionScanResult(scanResult);
-          const transaction = TransactionBuilder.fromXDR(dappXDR, networkDetails.networkPassphrase);
-          logger.debug("transaction", JSON.stringify(transaction));
         })
         .catch(() => {
           setTransactionScanResult(undefined);
         })
         .finally(() => {
-          // Show the transaction bottom sheet after scanning (regardless of result)
           dappRequestBottomSheetModalRef.current?.present();
         });
     }
@@ -513,7 +592,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancel={handleClearDappConnection}
             isMalicious={siteSecurityAssessment.isMalicious}
             isSuspicious={siteSecurityAssessment.isSuspicious}
-            securityWarningAction={presentSecurityWarningDetail}
+            securityWarningAction={() => presentSecurityWarningDetail("site")}
           />
         }
       />
@@ -536,24 +615,26 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
             transactionBalanceListItems={transactionBalanceListItems}
+            securityWarningAction={() =>
+              presentSecurityWarningDetail("transaction")
+            }
+            signTransactionDetails={signTransactionDetails}
           />
         }
       />
 
-      {/* Bottom sheet for site security warnings */}
+      {/* generic Bottom sheet for security warnings - site and transaction */}
       <BottomSheet
         modalRef={siteSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
-            warnings={siteSecurityWarnings}
+            warnings={getWarnings()}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={siteSecuritySeverity}
-            proceedAnywayText={t(
-              "dappConnectionBottomSheetContent.connectAnyway",
-            )}
+            severity={getSeverity()}
+            proceedAnywayText={getProceedAnywayText()}
           />
         }
       />

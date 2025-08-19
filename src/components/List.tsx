@@ -7,7 +7,7 @@ import { View, TouchableOpacity } from "react-native";
 export interface ListItemProps {
   icon?: React.ReactNode;
   key?: string;
-  title: string;
+  title?: string;
   titleComponent?: React.ReactNode;
   titleColor?: string;
   description?: string;

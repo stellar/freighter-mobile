@@ -42,6 +42,43 @@ export const freighterBackendV2 = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export const getContractSpecs = async ({
+  contractId,
+  networkDetails,
+}: {
+  contractId: string;
+  networkDetails: NetworkDetails;
+}): Promise<Record<string, any>> => {
+  try {
+    const response = await freighterBackend.get<{ data: Record<string, any> }>(
+      `/contract-spec/${contractId}`,
+      {
+        params: {
+          network: networkDetails.network,
+        },
+      },
+    );
+
+    const payload = response.data;
+
+    if (!payload || !payload.data) {
+      throw new Error("Invalid response from backend");
+    }
+
+    return payload.data;
+  } catch (error) {
+    logger.error(
+      "backendApi.getContractSpecs",
+      "Error fetching contract spec",
+      error,
+    );
+
+    throw error;
+  }
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /**
  * Response type for account balance fetching
  * @typedef {Object} FetchBalancesResponse

@@ -35,7 +35,7 @@ export const useTransactionBalanceListItems = (
     if (balanceUpdates === null) {
       return [
         {
-          icon: <Icon.Cube01 size={12} themeColor="gray" />,
+          icon: <Icon.Cube01 size={14} themeColor="gray" />,
           title: t("blockaid.security.transaction.unableToSimulate"),
           titleColor: themeColors.text.secondary,
         },
@@ -46,7 +46,7 @@ export const useTransactionBalanceListItems = (
     if (balanceUpdates.length === 0) {
       return [
         {
-          icon: <Icon.Cube01 size={12} themeColor="gray" />,
+          icon: <Icon.Cube01 size={14} themeColor="gray" />,
           title: t("blockaid.security.transaction.noBalanceChanges"),
           titleColor: themeColors.text.secondary,
         },
@@ -94,16 +94,16 @@ export const useTransactionBalanceListItems = (
               {assetCode}
             </Text>
             {hasFiat && fiatValue && (
-              <Text secondary>
-                {formatFiatAmount(fiatValue)}
-              </Text>
+              <Text secondary>{formatFiatAmount(fiatValue)}</Text>
             )}
           </View>
         ),
         trailingContent: (
           <Text
             md
-            color={isCredit ? themeColors.status.success : themeColors.status.error}
+            color={
+              isCredit ? themeColors.status.success : themeColors.status.error
+            }
           >
             {formattedAmount}
           </Text>
@@ -111,9 +111,14 @@ export const useTransactionBalanceListItems = (
         titleColor: themeColors.text.primary,
       } as ListItemProps;
     });
-  }, [scanResult, t, themeColors.status.error, themeColors.status.success, themeColors.text.primary, themeColors.text.secondary]);
+  }, [
+    scanResult,
+    t,
+    themeColors.status.error,
+    themeColors.status.success,
+    themeColors.text.primary,
+    themeColors.text.secondary,
+  ]);
 };
 
 export default useTransactionBalanceListItems;
-
-

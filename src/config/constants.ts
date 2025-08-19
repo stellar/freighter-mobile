@@ -155,6 +155,16 @@ export enum OPERATION_TYPES {
   restoreFootprint = "Restore Footprint",
 }
 
+export enum CLAIM_PREDICATES {
+  claimPredicateUnconditional = "Unconditional",
+  claimPredicateConditional = "Conditional",
+  claimPredicateAnd = "And",
+  claimPredicateOr = "Or",
+  claimPredicateNot = "Not",
+  claimPredicateBeforeRelativeTime = "Before Relative Time",
+  claimPredicateBeforeAbsoluteTime = "Before Absolute Time",
+}
+
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
 export const MIN_TRANSACTION_TIMEOUT = 1;
 export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14.5;

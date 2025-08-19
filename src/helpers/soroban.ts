@@ -13,6 +13,8 @@ import {
   xdr,
   scValToNative,
   Asset,
+  walkInvocationTree,
+  Address,
 } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
@@ -268,4 +270,230 @@ export const formatTokenAmount = (amount: BigNumber, decimals: number) => {
   }
 
   return formatted;
+};
+
+export interface FnArgsInvoke {
+  type: "invoke";
+  fnName: string;
+  contractId: string;
+  args: xdr.ScVal[];
+}
+
+export interface FnArgsCreateWasm {
+  type: "wasm";
+  salt: string;
+  hash: string;
+  address: string;
+  args?: xdr.ScVal[];
+}
+
+export interface FnArgsCreateSac {
+  type: "sac";
+  asset: string;
+  args?: xdr.ScVal[];
+}
+
+export type InvocationArgs = FnArgsInvoke | FnArgsCreateWasm | FnArgsCreateSac;
+
+const isInvocationArg = (
+  invocation: InvocationArgs | undefined,
+): invocation is InvocationArgs => !!invocation;
+
+export const getInvocationArgs = (
+  invocation: xdr.SorobanAuthorizedInvocation,
+): InvocationArgs | undefined => {
+  const fn = invocation.function();
+
+  switch (fn.switch().value) {
+    // sorobanAuthorizedFunctionTypeContractFn
+    case 0: {
+      const invocationItem = fn.contractFn();
+      const contractId = StrKey.encodeContract(
+        invocationItem.contractAddress().contractId(),
+      );
+      const fnName = invocationItem.functionName().toString();
+      const args = invocationItem.args();
+      return { fnName, contractId, args, type: "invoke" };
+    }
+
+    // sorobanAuthorizedFunctionTypeCreateContractV2HostFn
+    // sorobanAuthorizedFunctionTypeCreateContractHostFn
+    case 2:
+    case 1: {
+      const invocationItem =
+        fn.switch().value === 2
+          ? fn.createContractV2HostFn()
+          : fn.createContractHostFn();
+      const [exec, preimage] = [
+        invocationItem.executable(),
+        invocationItem.contractIdPreimage(),
+      ];
+
+      switch (exec.switch().value) {
+        // contractExecutableWasm
+        case 0: {
+          const details = preimage.fromAddress();
+
+          const contractDetails = {
+            type: "wasm",
+            salt: details.salt().toString("hex"),
+            hash: exec.wasmHash().toString("hex"),
+            address: Address.fromScAddress(details.address()).toString(),
+          } as FnArgsCreateWasm;
+
+          if (fn.switch().value === 2) {
+            contractDetails.args = (
+              invocationItem as xdr.CreateContractArgsV2
+            ).constructorArgs();
+          }
+
+          return contractDetails;
+        }
+
+        // contractExecutableStellarAsset
+        case 1: {
+          const sacDetails = {
+            type: "sac",
+            asset: Asset.fromOperation(preimage.fromAsset()).toString(),
+          } as FnArgsCreateSac;
+
+          if (fn.switch().value === 2) {
+            sacDetails.args = (
+              invocationItem as xdr.CreateContractArgsV2
+            ).constructorArgs();
+          }
+
+          return sacDetails;
+        }
+
+        default:
+          throw new Error(`unknown creation type: ${JSON.stringify(exec)}`);
+      }
+    }
+
+    default: {
+      return undefined;
+    }
+  }
+};
+
+export const getInvocationDetails = (
+  invocation: xdr.SorobanAuthorizedInvocation,
+): InvocationArgs[] => {
+  const invocations = [] as InvocationArgs[];
+
+  walkInvocationTree(invocation, (inv) => {
+    const args = getInvocationArgs(inv);
+    if (args) {
+      invocations.push(args);
+    }
+
+    return null;
+  });
+
+  return invocations.filter(isInvocationArg);
+};
+
+export const scValByType = (scVal: xdr.ScVal): any => {
+  switch (scVal.switch()) {
+    case xdr.ScValType.scvAddress(): {
+      const address = scVal.address();
+      const addressType = address.switch();
+      if (addressType.name === "scAddressTypeAccount") {
+        return StrKey.encodeEd25519PublicKey(address.accountId().ed25519());
+      }
+      return StrKey.encodeContract(address.contractId());
+    }
+
+    case xdr.ScValType.scvBool(): {
+      return scVal.b();
+    }
+
+    case xdr.ScValType.scvBytes(): {
+      return scVal
+        .bytes()
+        .toJSON()
+        .data.map((d) => d.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    case xdr.ScValType.scvContractInstance(): {
+      const instance = scVal.instance();
+      return instance.executable().wasmHash()?.toString();
+    }
+
+    case xdr.ScValType.scvError(): {
+      const error = scVal.error();
+      return error.value();
+    }
+
+    case xdr.ScValType.scvTimepoint():
+    case xdr.ScValType.scvDuration():
+    case xdr.ScValType.scvI128():
+    case xdr.ScValType.scvI256():
+    case xdr.ScValType.scvI32():
+    case xdr.ScValType.scvI64():
+    case xdr.ScValType.scvU128():
+    case xdr.ScValType.scvU256():
+    case xdr.ScValType.scvU32():
+    case xdr.ScValType.scvU64(): {
+      return scValToNative(scVal).toString();
+    }
+
+    case xdr.ScValType.scvLedgerKeyNonce():
+    case xdr.ScValType.scvLedgerKeyContractInstance(): {
+      if (scVal.switch().name === "scvLedgerKeyNonce") {
+        const val = scVal.nonceKey().nonce();
+        return val.toString();
+      }
+      return scVal.value();
+    }
+
+    case xdr.ScValType.scvVec():
+    case xdr.ScValType.scvMap(): {
+      return JSON.stringify(
+        scValToNative(scVal),
+        (_, val) => (typeof val === "bigint" ? val.toString() : val),
+        2,
+      );
+    }
+
+    case xdr.ScValType.scvString():
+    case xdr.ScValType.scvSymbol(): {
+      const native = scValToNative(scVal);
+      if (native.constructor === "Uint8Array") {
+        return native.toString();
+      }
+      return native;
+    }
+
+    case xdr.ScValType.scvVoid(): {
+      return null;
+    }
+
+    default:
+      return null;
+  }
+};
+
+export const getCreateContractArgs = (hostFunction: xdr.HostFunction) => {
+  if (
+    hostFunction.switch() !==
+    xdr.HostFunctionType.hostFunctionTypeCreateContractV2()
+  ) {
+    const args = hostFunction.createContract();
+
+    return {
+      contractIdPreimage: args.contractIdPreimage(),
+      executable: args.executable(),
+    };
+  }
+
+  const argsV2 = hostFunction.createContractV2();
+
+  return {
+    contractIdPreimage: argsV2.contractIdPreimage(),
+    executable: argsV2.executable(),
+    constructorArgs: argsV2.constructorArgs(),
+  };
 };
