@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
+import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -12,13 +13,7 @@ import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
-import {
-  Image,
-  Linking,
-  ScrollView,
-  View,
-} from "react-native";
-import Spinner from "components/Spinner";
+import { Image, Linking, ScrollView, View } from "react-native";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -89,7 +84,6 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
      */
     useCollectibleDetailsHeader({
       collectionAddress,
-      tokenId,
       collectibleName: collectible?.name,
     });
 
@@ -163,10 +157,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       return (
         <BaseLayout insets={{ top: false }}>
           <View className="flex-1 items-center justify-center p-4">
-            <Spinner
-              size="large"
-              color={themeColors.secondary}
-            />
+            <Spinner size="large" color={themeColors.secondary} />
           </View>
         </BaseLayout>
       );

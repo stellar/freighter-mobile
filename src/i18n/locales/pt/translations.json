@@ -315,9 +315,7 @@
     "traits": "Características do Colecionável",
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
-    "saveToPhotos": "Salvar nas fotos",
-    "viewOnStellarExpert": "Ver no stellar.expert",
-    "reportAsSpam": "Reportar como spam"
+    "viewOnStellarExpert": "Ver no stellar.expert"
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"

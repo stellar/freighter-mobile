@@ -15,29 +15,25 @@ import { Linking, Platform } from "react-native";
  * This hook handles:
  * - Setting the header title to the collectible name
  * - Setting up the right header context menu with collectible actions
- * - All menu action handlers (refresh metadata, save to photos, view on stellar.expert, report as spam)
+ * - All menu action handlers (refresh metadata, view on stellar.expert, etc.)
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.collectionAddress - The collection address of the collectible
- * @param {string} params.tokenId - The unique token ID of the collectible
  * @param {string} params.collectibleName - The name of the collectible for the header title
  *
  * @example
  * ```tsx
  * const { handleViewInBrowser } = useCollectibleDetailsHeader({
  *   collectionAddress: "collection123",
- *   tokenId: "token456",
  *   collectibleName: "My NFT"
  * });
  * ```
  */
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
-  tokenId,
   collectibleName,
 }: {
   collectionAddress: string;
-  tokenId: string;
   collectibleName?: string;
 }) => {
   const navigation = useNavigation();
@@ -72,31 +68,6 @@ export const useCollectibleDetailsHeader = ({
   }, [fetchCollectibles]);
 
   /**
-   * Handles saving the collectible image to the device's photo library.
-   * Currently a placeholder for future implementation.
-   */
-  const handleSaveToPhotos = useCallback(async () => {
-    try {
-      // TODO: Implement save to photos functionality
-      // This would require additional permissions and native modules
-      logger.info(
-        "useCollectibleDetailsHeader",
-        "Saving collectible image to photos",
-        {
-          collectionAddress,
-          tokenId,
-        },
-      );
-    } catch (error) {
-      logger.error(
-        "useCollectibleDetailsHeader",
-        "Failed to save to photos:",
-        error,
-      );
-    }
-  }, [collectionAddress, tokenId]);
-
-  /**
    * Handles opening the collectible on stellar.expert explorer.
    * Constructs the appropriate URL based on the current network.
    */
@@ -115,30 +86,6 @@ export const useCollectibleDetailsHeader = ({
   }, [network, collectionAddress]);
 
   /**
-   * Handles reporting the collectible as spam.
-   * Currently a placeholder for future implementation.
-   */
-  const handleReportAsSpam = useCallback(async () => {
-    try {
-      // TODO: Implement spam reporting logic
-      logger.info(
-        "useCollectibleDetailsHeader",
-        "Reporting collectible as spam",
-        {
-          collectionAddress,
-          tokenId,
-        },
-      );
-    } catch (error) {
-      logger.error(
-        "useCollectibleDetailsHeader",
-        "Failed to report as spam:",
-        error,
-      );
-    }
-  }, [collectionAddress, tokenId]);
-
-  /**
    * Platform-specific system icons for the context menu actions.
    */
   const systemIcons = useMemo(
@@ -146,15 +93,11 @@ export const useCollectibleDetailsHeader = ({
       Platform.select({
         ios: {
           refreshMetadata: "arrow.clockwise", // Circular arrow for refresh
-          saveToPhotos: "square.and.arrow.down", // Download/save icon
           viewOnStellarExpert: "link", // Link/chain icon
-          reportAsSpam: "flag", // Flag icon for reporting as spam
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
-          saveToPhotos: "download", // Download icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
-          reportAsSpam: "outlined_flag", // Flag icon (Material)
         },
       }),
     [],
@@ -172,30 +115,12 @@ export const useCollectibleDetailsHeader = ({
         onPress: handleRefreshMetadata,
       },
       {
-        title: t("collectibleDetails.saveToPhotos"),
-        systemIcon: systemIcons?.saveToPhotos,
-        onPress: handleSaveToPhotos,
-      },
-      {
         title: t("collectibleDetails.viewOnStellarExpert"),
         systemIcon: systemIcons?.viewOnStellarExpert,
         onPress: handleViewOnStellarExpert,
       },
-      {
-        title: t("collectibleDetails.reportAsSpam"),
-        systemIcon: systemIcons?.reportAsSpam,
-        onPress: handleReportAsSpam,
-        destructive: true,
-      },
     ],
-    [
-      t,
-      systemIcons,
-      handleRefreshMetadata,
-      handleSaveToPhotos,
-      handleViewOnStellarExpert,
-      handleReportAsSpam,
-    ],
+    [t, systemIcons, handleRefreshMetadata, handleViewOnStellarExpert],
   );
 
   // Set up the right header menu
@@ -207,8 +132,6 @@ export const useCollectibleDetailsHeader = ({
   // Return any handlers that might be needed by the component
   return {
     handleRefreshMetadata,
-    handleSaveToPhotos,
     handleViewOnStellarExpert,
-    handleReportAsSpam,
   };
 };
