@@ -179,7 +179,9 @@
     "description": "Digite a senha para desbloquear o Freighter",
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
-    "forgotPasswordButtonText": "Esqueci minha senha"
+    "forgotPasswordButtonText": "Esqueci minha senha",
+    "useFaceId": "Usar Face ID ao invés",
+    "enterPassword": "Usar senha ao invés"
   },
   "onboarding": {
     "continue": "Continuar",

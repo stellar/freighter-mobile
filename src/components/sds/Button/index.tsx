@@ -12,6 +12,7 @@ export const ButtonVariants = {
   TERTIARY: "tertiary",
   DESTRUCTIVE: "destructive",
   ERROR: "error",
+  MINIMAL: "minimal",
 } as const;
 
 export const ButtonSizes = {
@@ -33,6 +34,7 @@ type VariantProps = {
   tertiary?: boolean;
   destructive?: boolean;
   error?: boolean;
+  minimal?: boolean;
 };
 
 type SizeProps = {
@@ -133,6 +135,7 @@ const getVariant = (
   if (props.tertiary) return ButtonVariants.TERTIARY;
   if (props.destructive) return ButtonVariants.DESTRUCTIVE;
   if (props.error) return ButtonVariants.ERROR;
+  if (props.minimal) return ButtonVariants.MINIMAL;
   return defaultVariant;
 };
 

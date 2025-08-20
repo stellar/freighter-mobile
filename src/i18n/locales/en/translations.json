@@ -202,7 +202,9 @@
     "description": "Enter password to unlock Freighter",
     "passwordInputPlaceholder": "Type your password",
     "unlockButtonText": "Unlock",
-    "forgotPasswordButtonText": "Forgot password"
+    "forgotPasswordButtonText": "Forgot password",
+    "useFaceId": "Use Face ID instead",
+    "enterPassword": "Use password instead"
   },
   "onboarding": {
     "continue": "Continue",
