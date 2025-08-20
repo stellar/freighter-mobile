@@ -12,6 +12,7 @@ import {
 } from "config/routes";
 import { Account } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useState } from "react";
@@ -26,6 +27,8 @@ interface ManageAccountsProps {
   activeAccount: ActiveAccount | null;
   bottomSheetRef: React.RefObject<BottomSheetModal | null>;
 }
+
+const SNAP_VALUE_PERCENT = 80;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   navigation,
@@ -107,7 +110,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   return (
     <>
       <BottomSheet
-        snapPoints={["80%"]}
+        snapPoints={[toPercent(SNAP_VALUE_PERCENT)]}
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
         enablePanDownToClose={false}

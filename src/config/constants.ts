@@ -37,6 +37,12 @@ export const VISUAL_DELAY_MS = 500;
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
+// Bottom sheet layout defaults
+export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
+export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
+export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
+export const BOTTOM_SHEET_CONTENT_GAP = 16;
+
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://www.freighter.app";
 export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";

@@ -4,6 +4,9 @@ import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock
 import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
 import mockGestureHandler from "react-native-gesture-handler/jestSetup";
 
+// Polyfill TextEncoder for Node.js environment
+global.TextEncoder = require("util").TextEncoder;
+
 // Create a direct mock for the specific functions from react-native-responsive-screen
 // This ensures these functions are defined before any module imports them
 global.heightPercentageToDP = jest.fn((height) => height);
@@ -22,6 +25,7 @@ jest.mock("helpers/dimensions", () => ({
   fsValue: (value) => value,
   fs: (value) => `${value}px`,
   deviceAspectRatio: 0.5,
+  toPercent: (percentNumber) => `${percentNumber}%`,
   calculateEdgeSpacing: (baseSpacing, options) => {
     const { multiplier = 1, toNumber = false } = options || {};
     const scaledValue = baseSpacing * multiplier;
