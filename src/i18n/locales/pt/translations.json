@@ -22,7 +22,8 @@
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
     "and": " e ",
-    "addMemo": "Adicionar memo"
+    "addMemo": "Adicionar memo",
+    "yes": "Sim"
   },
   "home": {
     "title": "Início",
@@ -692,7 +693,18 @@
   },
   "securityScreen": {
     "title": "Segurança",
-    "showRecoveryPhrase": "Mostrar frase de recuperação"
+    "showRecoveryPhrase": "Mostrar frase de recuperação",
+    "faceId": {
+      "title": "Autenticação Face ID",
+      "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Face ID",
+      "alert": {
+        "disable": {
+          "title": "Desabilitar Face ID?",
+          "message": "Tem certeza que deseja desabilitar Face ID?"
+        }
+      }
+    }
   },
   "showRecoveryPhraseScreen": {
     "title": "Mostrar Frase de Recuperação",

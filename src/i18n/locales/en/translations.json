@@ -22,7 +22,8 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
-    "addMemo": "Add memo"
+    "addMemo": "Add memo",
+    "yes": "Yes"
   },
   "home": {
     "title": "Home",
@@ -686,7 +687,18 @@
   },
   "securityScreen": {
     "title": "Security",
-    "showRecoveryPhrase": "Show recovery phrase"
+    "showRecoveryPhrase": "Show recovery phrase",
+    "faceId": {
+      "title": "Face ID authentication",
+      "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Face ID",
+      "alert": {
+        "disable": {
+          "title": "Disable Face ID?",
+          "message": "Are you sure you want to disable Face ID?"
+        }
+      }
+    }
   },
   "showRecoveryPhraseScreen": {
     "title": "Show Recovery Phrase",

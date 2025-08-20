@@ -7,11 +7,14 @@ interface PreferencesState {
   setIsHideDustEnabled: (isHideDustEnabled: boolean) => void;
   isMemoValidationEnabled: boolean;
   setIsMemoValidationEnabled: (isMemoValidationEnabled: boolean) => void;
+  isFaceIdEnabled: boolean;
+  setIsFaceIdEnabled: (isFaceIdEnabled: boolean) => void;
 }
 
 const INITIAL_PREFERENCES_STATE = {
   isHideDustEnabled: true,
   isMemoValidationEnabled: true,
+  isFaceIdEnabled: true,
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -22,6 +25,8 @@ export const usePreferencesStore = create<PreferencesState>()(
         set({ isHideDustEnabled }),
       setIsMemoValidationEnabled: (isMemoValidationEnabled: boolean) =>
         set({ isMemoValidationEnabled }),
+      setIsFaceIdEnabled: (isFaceIdEnabled: boolean) =>
+        set({ isFaceIdEnabled }),
     }),
     {
       name: "preferences-storage",

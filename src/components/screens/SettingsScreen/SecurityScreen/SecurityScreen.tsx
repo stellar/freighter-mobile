@@ -5,6 +5,7 @@ import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useFaceId } from "hooks/useFaceId";
 import React from "react";
 import { View } from "react-native";
 
@@ -16,7 +17,7 @@ type SecurityScreenProps = NativeStackScreenProps<
 const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-
+  const { isFaceIdAvailable } = useFaceId();
   const listItems = [
     {
       icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
@@ -30,6 +31,19 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       testID: "show-recovery-phrase-button",
     },
   ];
+  if (isFaceIdAvailable) {
+    listItems.push({
+      icon: <Icon.FaceId color={themeColors.foreground.primary} />,
+      title: t("securityScreen.faceId.title"),
+      titleColor: themeColors.text.primary,
+      onPress: () =>
+        navigation.navigate(SETTINGS_ROUTES.FACE_ID_SETTINGS_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
+      ),
+      testID: "face-id-settings-button",
+    });
+  }
 
   return (
     <BaseLayout insets={{ top: false }}>

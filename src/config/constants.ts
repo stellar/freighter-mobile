@@ -247,15 +247,3 @@ export const BROWSER_CONSTANTS = {
   ANDROID_USER_AGENT:
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
 } as const;
-
-// Face ID Configuration Constants
-export const FACE_ID_CONFIG = {
-  // Storage key for Face ID preference
-  STORAGE_KEY: STORAGE_KEYS.FACE_ID_ENABLED,
-  // Default Face ID state
-  DEFAULT_ENABLED: false,
-  // Minimum iOS version that supports Face ID (iOS 11+)
-  MIN_IOS_VERSION: 11,
-  // Minimum Android API level that supports biometric authentication (API 23+)
-  MIN_ANDROID_API_LEVEL: 23,
-} as const;

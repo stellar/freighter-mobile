@@ -78,6 +78,7 @@ export const SETTINGS_ROUTES = {
   SECURITY_SCREEN: "SecurityScreen",
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
+  FACE_ID_SETTINGS_SCREEN: "FaceIdSettingsScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -204,6 +205,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
     recoveryPhrase: string;
   };
+  [SETTINGS_ROUTES.FACE_ID_SETTINGS_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {
