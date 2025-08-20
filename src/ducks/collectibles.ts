@@ -85,7 +85,8 @@ const dummyCollectibles: Collectible[] = [
     ],
   },
   {
-    collectionAddress: "CCCStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "2",
     name: "pepethebot.xlm",
@@ -104,7 +105,8 @@ const dummyCollectibles: Collectible[] = [
     ],
   },
   {
-    collectionAddress: "CCCStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "3",
     name: "princepepe.xlm",
