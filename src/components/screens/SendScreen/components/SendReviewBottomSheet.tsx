@@ -1,6 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -11,7 +11,7 @@ import { PricedBalance } from "config/types";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -202,10 +202,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         <View className="gap-[16px]">
           {selectedBalance && !isLiquidityPool(selectedBalance) && (
             <View className="w-full flex-row items-center gap-4">
-              <AssetIcon token={selectedBalance} />
+              <TokenIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
-                  {formatAssetAmount(tokenAmount, selectedBalance.tokenCode)}
+                  {formatTokenAmount(tokenAmount, selectedBalance.tokenCode)}
                 </Text>
                 <Text md medium secondary>
                   {selectedBalance.currentPrice
@@ -271,7 +271,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           <View className="flex-row items-center gap-[4px]">
             <StellarLogo width={16} height={16} />
             <Text md medium>
-              {formatAssetAmount(transactionFee, NATIVE_TOKEN_CODE)}
+              {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
           </View>
         </View>

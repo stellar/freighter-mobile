@@ -33,7 +33,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   BUY_XLM_STACK: "BuyXLMStack",
   SEND_PAYMENT_STACK: "SendPaymentStack",
   SWAP_STACK: "SwapStack",
-  MANAGE_ASSETS_STACK: "ManageAssetsStack",
+  MANAGE_TOKENS_STACK: "ManageAssetsStack",
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -63,9 +63,9 @@ export const MAIN_TAB_ROUTES = {
   TAB_DISCOVERY: "Discovery",
 } as const;
 
-export const MANAGE_ASSETS_ROUTES = {
-  MANAGE_ASSETS_SCREEN: "ManageAssetsScreen",
-  ADD_ASSET_SCREEN: "AddAssetScreen",
+export const MANAGE_TOKENS_ROUTES = {
+  MANAGE_TOKENS_SCREEN: "ManageAssetsScreen",
+  ADD_TOKEN_SCREEN: "AddAssetScreen",
 } as const;
 
 export const SETTINGS_ROUTES = {
@@ -121,7 +121,7 @@ export const ALL_ROUTES_OBJECT = [
   ROOT_NAVIGATOR_ROUTES,
   AUTH_STACK_ROUTES,
   MAIN_TAB_ROUTES,
-  MANAGE_ASSETS_ROUTES,
+  MANAGE_TOKENS_ROUTES,
   SETTINGS_ROUTES,
   MANAGE_WALLETS_ROUTES,
   BUY_XLM_ROUTES,
@@ -132,7 +132,7 @@ export const ALL_ROUTES_OBJECT = [
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK]: NavigatorScreenParams<ManageAssetsStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK]: NavigatorScreenParams<ManageTokensStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
@@ -185,9 +185,9 @@ export type MainTabStackParamList = {
   [MAIN_TAB_ROUTES.TAB_DISCOVERY]: undefined;
 };
 
-export type ManageAssetsStackParamList = {
-  [MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN]: undefined;
-  [MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN]: undefined;
+export type ManageTokensStackParamList = {
+  [MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN]: undefined;
+  [MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN]: undefined;
 };
 
 export type SettingsStackParamList = {

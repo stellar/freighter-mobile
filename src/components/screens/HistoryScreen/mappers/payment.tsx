@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import BigNumber from "bignumber.js";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import {
   TransactionDetails,
@@ -14,8 +14,8 @@ import { Avatar, AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { AssetTypeWithCustomToken } from "config/types";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { TokenTypeWithCustomToken } from "config/types";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -45,27 +45,27 @@ export const mapPaymentHistoryItem = ({
   const {
     id,
     amount,
-    asset_code: destAssetCode = NATIVE_TOKEN_CODE,
-    asset_type: assetType = "native",
-    asset_issuer: assetIssuer = "",
+    asset_code: destTokenCode = NATIVE_TOKEN_CODE,
+    asset_type: tokenType = "native",
+    asset_issuer: tokenIssuer = "",
     to,
     from,
   } = operation;
 
   const isRecipient = to === publicKey && from !== publicKey;
   const paymentDifference = isRecipient ? "+" : "-";
-  const formattedAmount = `${paymentDifference}${formatAssetAmount(
+  const formattedAmount = `${paymentDifference}${formatTokenAmount(
     new BigNumber(amount).toString(),
-    destAssetCode,
+    destTokenCode,
   )}`;
 
   const IconComponent = (
-    <AssetIcon
+    <TokenIcon
       token={{
-        code: destAssetCode,
-        type: assetType,
+        code: destTokenCode,
+        type: tokenType,
         issuer: {
-          key: assetIssuer,
+          key: tokenIssuer,
         },
       }}
       size="lg"
@@ -78,7 +78,7 @@ export const mapPaymentHistoryItem = ({
     <Icon.ArrowCircleUp size={16} color={themeColors.foreground.primary} />
   );
 
-  const transactionTitle = `${isRecipient ? t("history.transactionHistory.received") : t("history.transactionHistory.sent")} ${destAssetCode}`;
+  const transactionTitle = `${isRecipient ? t("history.transactionHistory.received") : t("history.transactionHistory.sent")} ${destTokenCode}`;
 
   const transactionDetails: TransactionDetails = {
     operation,
@@ -90,9 +90,9 @@ export const mapPaymentHistoryItem = ({
     ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
     paymentDetails: {
-      assetCode: destAssetCode,
-      assetIssuer: assetIssuer || "",
-      assetType,
+      tokenCode: destTokenCode,
+      tokenIssuer: tokenIssuer || "",
+      tokenType,
       amount,
       from,
       to,
@@ -101,7 +101,7 @@ export const mapPaymentHistoryItem = ({
 
   return {
     transactionDetails,
-    rowText: destAssetCode,
+    rowText: destTokenCode,
     actionText: isRecipient
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent"),
@@ -127,20 +127,20 @@ export const PaymentTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatAssetAmount(
+            {formatTokenAmount(
               transactionDetails.paymentDetails?.amount ?? "",
-              transactionDetails.paymentDetails?.assetCode ?? "",
+              transactionDetails.paymentDetails?.tokenCode ?? "",
             )}
           </Text>
         </View>
-        <AssetIcon
+        <TokenIcon
           token={{
-            code: transactionDetails.paymentDetails?.assetCode ?? "",
+            code: transactionDetails.paymentDetails?.tokenCode ?? "",
             issuer: {
-              key: transactionDetails.paymentDetails?.assetIssuer ?? "",
+              key: transactionDetails.paymentDetails?.tokenIssuer ?? "",
             },
             type: transactionDetails.paymentDetails
-              ?.assetType as AssetTypeWithCustomToken,
+              ?.tokenType as TokenTypeWithCustomToken,
           }}
         />
       </View>

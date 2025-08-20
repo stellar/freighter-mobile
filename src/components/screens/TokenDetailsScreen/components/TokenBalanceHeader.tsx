@@ -1,11 +1,11 @@
 /* eslint-disable react/no-unstable-nested-components */
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import {
-  formatAssetAmount,
+  formatTokenAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -131,7 +131,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   const renderBalanceInfo = () => (
     <Display xs medium>
-      {formatAssetAmount(tokenBalance.total, tokenBalance.tokenCode)}
+      {formatTokenAmount(tokenBalance.total, tokenBalance.tokenCode)}
     </Display>
   );
 
@@ -139,7 +139,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     const baseRows = [
       {
         label: t("tokenDetailsScreen.balance"),
-        value: formatAssetAmount(tokenBalance.total, tokenBalance.tokenCode),
+        value: formatTokenAmount(tokenBalance.total, tokenBalance.tokenCode),
         isNativeToken: tokenId === "native" || tokenId === NATIVE_TOKEN_CODE,
       },
     ];
@@ -171,7 +171,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   return (
     <View className="gap-8">
       <View className="gap-6">
-        <AssetIcon token={tokenBalance} />
+        <TokenIcon token={tokenBalance} />
         <View className="gap-2">
           <Text md medium secondary>
             {name}

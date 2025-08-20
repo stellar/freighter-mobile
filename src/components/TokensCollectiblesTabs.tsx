@@ -6,7 +6,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import {
-  MANAGE_ASSETS_ROUTES,
+  MANAGE_TOKENS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
@@ -117,8 +117,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             android: "edit",
           }),
           onPress: () =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
-              screen: MANAGE_ASSETS_ROUTES.MANAGE_ASSETS_SCREEN,
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+              screen: MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN,
             }),
         },
         {
@@ -128,8 +128,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             android: "add_circle",
           }),
           onPress: () =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK, {
-              screen: MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN,
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+              screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
             }),
         },
       ];

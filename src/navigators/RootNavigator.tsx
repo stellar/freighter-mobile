@@ -12,13 +12,13 @@ import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {
-  ManageAssetsStackParamList,
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SettingsStackParamList,
   SendPaymentStackParamList,
   BuyXLMStackParamList,
+  ManageTokensStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -27,7 +27,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import {
   AuthNavigator,
   BuyXLMStackNavigator,
-  ManageAssetsStackNavigator,
+  ManageTokensStackNavigator,
   ManageWalletsStackNavigator,
   SendPaymentStackNavigator,
   SettingsStackNavigator,
@@ -39,7 +39,7 @@ import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
-    ManageAssetsStackParamList &
+    ManageTokensStackParamList &
     SettingsStackParamList &
     ManageWalletsStackParamList &
     SendPaymentStackParamList &
@@ -96,8 +96,8 @@ export const RootNavigator = () => {
             component={TabNavigator}
           />
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK}
-            component={ManageAssetsStackNavigator}
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
+            component={ManageTokensStackNavigator}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}

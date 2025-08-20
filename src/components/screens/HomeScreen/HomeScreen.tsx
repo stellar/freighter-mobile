@@ -125,7 +125,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           // The TokenDetailsScreen will handle fetching the actual symbol
           tokenSymbol = tokenId;
         } else {
-          // Classic asset format: CODE:ISSUER
+          // Classic token format: CODE:ISSUER
           [tokenSymbol] = tokenId.split(":");
         }
 

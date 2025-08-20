@@ -19,7 +19,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
-import { formatAssetAmount, stroopToXlm } from "helpers/formatAmount";
+import { formatTokenAmount, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -57,7 +57,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         )
       : "0";
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
-  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceAssetCode} ≈ ${formatAssetAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationAssetCode ?? "")}`;
+  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
 
   return (
     <View className="flex-1 justify-center gap-6">
@@ -153,7 +153,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           </View>
           <Text md primary numberOfLines={1}>
-            {formatAssetAmount(fee, NATIVE_TOKEN_CODE)}
+            {formatTokenAmount(fee, NATIVE_TOKEN_CODE)}
           </Text>
         </View>
       </View>

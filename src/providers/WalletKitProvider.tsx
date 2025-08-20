@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -11,6 +12,7 @@ import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   useWalletKitStore,
   WalletKitSessionProposal,
@@ -82,6 +84,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { themeColors } = useColors();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const { transactionMemo, saveMemo } = useTransactionSettingsStore();
 
   const publicKey = account?.publicKey || "";
 
@@ -233,6 +237,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     setTimeout(() => {
       setIsSigning(false);
       setRequestEvent(null);
+      saveMemo("");
       clearEvent();
     }, 200);
   };
@@ -459,7 +464,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       dappRequestBottomSheetModalRef.current?.present();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessions, event.type, authStatus]);
+  }, [activeSessions, event.type, authStatus, transactionMemo]);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -548,6 +553,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               },
             ]}
           />
+        }
+      />
+
+      <BottomSheet
+        modalRef={addMemoExplanationBottomSheetModalRef}
+        handleCloseModal={onCancelAddMemo}
+        customContent={
+          <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
       />
 
