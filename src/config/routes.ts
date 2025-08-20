@@ -41,6 +41,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
+  COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -146,6 +147,10 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
+  };
+  [ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN]: {
+    collectionAddress: string;
+    tokenId: string;
   };
 };
 

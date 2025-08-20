@@ -48,7 +48,13 @@ interface Props {
   /** Callback function when a token is pressed */
   onTokenPress?: (tokenId: string) => void;
   /** Callback function when a collectible is pressed */
-  onCollectiblePress?: (collectibleId: string) => void;
+  onCollectiblePress?: ({
+    collectionAddress,
+    tokenId,
+  }: {
+    collectionAddress: string;
+    tokenId: string;
+  }) => void;
 }
 
 /**

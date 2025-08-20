@@ -45,184 +45,219 @@ type HomeScreenProps = BottomTabScreenProps<
 /**
  * Home screen component displaying account information and balances
  */
-export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { account } = useGetActiveAccount();
-  const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
-  const { themeColors } = useColors();
-  const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
-  const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
+export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
+  ({ navigation }) => {
+    const { account } = useGetActiveAccount();
+    const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
+    const { themeColors } = useColors();
+    const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
+    const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
 
-  const { t } = useAppTranslation();
-  const { copyToClipboard } = useClipboard();
+    const { t } = useAppTranslation();
+    const { copyToClipboard } = useClipboard();
 
-  const { formattedBalance, rawBalance } = useTotalBalance();
-  const {
-    balances,
-    isFunded,
-    isLoading: isLoadingBalances,
-  } = useBalancesStore();
-  const hasTokens = useMemo(() => Object.keys(balances).length > 0, [balances]);
-  const hasZeroBalance = useMemo(
-    () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
-    [rawBalance],
-  );
-
-  // Set up navigation headers (hook handles navigation.setOptions internally)
-  useHomeHeaders({ navigation });
-
-  const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
-    useWelcomeBanner({
-      account,
+    const { formattedBalance, rawBalance } = useTotalBalance();
+    const {
+      balances,
       isFunded,
-      isLoadingBalances,
-    });
+      isLoading: isLoadingBalances,
+    } = useBalancesStore();
 
-  // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
-  // when the user navigates to this screen. No need for additional tracking here.
+    const hasTokens = useMemo(
+      () => Object.keys(balances).length > 0,
+      [balances],
+    );
+    const hasZeroBalance = useMemo(
+      () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
+      [rawBalance],
+    );
 
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      await getAllAccounts();
-    };
+    // Set up navigation headers (hook handles navigation.setOptions internally)
+    useHomeHeaders({ navigation });
 
-    fetchAccounts();
-  }, [getAllAccounts]);
+    const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
+      useWelcomeBanner({
+        account,
+        isFunded,
+        isLoadingBalances,
+      });
 
-  const navigateToBuyXLM = useCallback(() => {
-    // Navigation analytics already tracked by useNavigationAnalytics
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-      screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
-      params: { isUnfunded: !isFunded },
-    });
-  }, [navigation, isFunded]);
+    // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
+    // when the user navigates to this screen. No need for additional tracking here.
 
-  const handleCopyAddress = (publicKey?: string) => {
-    if (!publicKey) return;
+    useEffect(() => {
+      const fetchAccounts = async () => {
+        await getAllAccounts();
+      };
 
-    analytics.trackCopyPublicKey();
+      fetchAccounts();
+    }, [getAllAccounts]);
 
-    copyToClipboard(publicKey, {
-      notificationMessage: t("accountAddressCopied"),
-    });
-  };
+    const navigateToBuyXLM = useCallback(() => {
+      // Navigation analytics already tracked by useNavigationAnalytics
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+        screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+        params: { isUnfunded: !isFunded },
+      });
+    }, [navigation, isFunded]);
 
-  const handleTokenPress = (tokenId: string) => {
-    let tokenSymbol: string;
+    const handleCopyAddress = useCallback(
+      (publicKey?: string) => {
+        if (!publicKey) return;
 
-    if (tokenId === "native") {
-      tokenSymbol = NATIVE_TOKEN_CODE;
-    } else if (isContractId(tokenId)) {
-      // For Soroban contracts, pass the contract ID as symbol initially
-      // The TokenDetailsScreen will handle fetching the actual symbol
-      tokenSymbol = tokenId;
-    } else {
-      // Classic token format: CODE:ISSUER
-      [tokenSymbol] = tokenId.split(":");
-    }
+        analytics.trackCopyPublicKey();
 
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
-      tokenId,
-      tokenSymbol,
-    });
-  };
+        copyToClipboard(publicKey, {
+          notificationMessage: t("accountAddressCopied"),
+        });
+      },
+      [copyToClipboard, t],
+    );
 
-  const handleSendPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
-      params: { tokenId: undefined },
-    });
-  };
+    const handleTokenPress = useCallback(
+      (tokenId: string) => {
+        let tokenSymbol: string;
 
-  const handleSwapPress = () => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
-      screen: SWAP_ROUTES.SWAP_SCREEN,
-    });
-  };
+        if (tokenId === "native") {
+          tokenSymbol = NATIVE_TOKEN_CODE;
+        } else if (isContractId(tokenId)) {
+          // For Soroban contracts, pass the contract ID as symbol initially
+          // The TokenDetailsScreen will handle fetching the actual symbol
+          tokenSymbol = tokenId;
+        } else {
+          // Classic token format: CODE:ISSUER
+          [tokenSymbol] = tokenId.split(":");
+        }
 
-  return (
-    <BaseLayout
-      insets={{ bottom: false, top: false, left: false, right: false }}
-    >
-      <WelcomeBannerBottomSheet
-        modalRef={welcomeBannerBottomSheetModalRef}
-        onAddXLM={navigateToBuyXLM}
-        onDismiss={() => {
-          handleWelcomeBannerDismiss();
-        }}
-      />
-      <ManageAccounts
-        navigation={navigation}
-        accounts={allAccounts}
-        activeAccount={account}
-        bottomSheetRef={manageAccountsBottomSheetRef}
-      />
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+          tokenId,
+          tokenSymbol,
+        });
+      },
+      [navigation],
+    );
 
-      <View className="pt-8 w-full items-center">
-        <View className="flex-col gap-3 items-center">
-          <TouchableOpacity
-            onPress={() => {
-              manageAccountsBottomSheetRef.current?.present();
-            }}
-          >
-            <View className="flex-row items-center gap-2">
-              <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
-              <Text>{account?.accountName ?? t("home.title")}</Text>
-              <Icon.ChevronDown
-                size={16}
-                color={themeColors.foreground.primary}
-              />
-            </View>
-          </TouchableOpacity>
-          <Display lg medium>
-            {formattedBalance}
-          </Display>
+    const handleCollectiblePress = useCallback(
+      ({
+        collectionAddress,
+        tokenId,
+      }: {
+        collectionAddress: string;
+        tokenId: string;
+      }) => {
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN, {
+          collectionAddress,
+          tokenId,
+        });
+      },
+      [navigation],
+    );
+
+    const handleSendPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+        screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+        params: { tokenId: undefined },
+      });
+    }, [navigation]);
+
+    const handleSwapPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
+        screen: SWAP_ROUTES.SWAP_SCREEN,
+      });
+    }, [navigation]);
+
+    const handleManageAccountsPress = useCallback(() => {
+      manageAccountsBottomSheetRef.current?.present();
+    }, []);
+
+    const handleAnalyticsDebugPress = useCallback(() => {
+      analyticsDebugBottomSheetRef.current?.present();
+    }, []);
+
+    const handleAnalyticsDebugDismiss = useCallback(() => {
+      analyticsDebugBottomSheetRef.current?.dismiss();
+    }, []);
+
+    return (
+      <BaseLayout
+        insets={{ bottom: false, top: false, left: false, right: false }}
+      >
+        <WelcomeBannerBottomSheet
+          modalRef={welcomeBannerBottomSheetModalRef}
+          onAddXLM={navigateToBuyXLM}
+          onDismiss={handleWelcomeBannerDismiss}
+        />
+        <ManageAccounts
+          navigation={navigation}
+          accounts={allAccounts}
+          activeAccount={account}
+          bottomSheetRef={manageAccountsBottomSheetRef}
+        />
+
+        <View className="pt-8 w-full items-center">
+          <View className="flex-col gap-3 items-center">
+            <TouchableOpacity onPress={handleManageAccountsPress}>
+              <View className="flex-row items-center gap-2">
+                <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+                <Text>{account?.accountName ?? t("home.title")}</Text>
+                <Icon.ChevronDown
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              </View>
+            </TouchableOpacity>
+            <Display lg medium>
+              {formattedBalance}
+            </Display>
+          </View>
+
+          <View className="flex-row gap-6 items-center justify-center my-8">
+            <IconButton
+              Icon={Icon.Plus}
+              title={t("home.buy")}
+              onPress={navigateToBuyXLM}
+            />
+            <IconButton
+              Icon={Icon.ArrowUp}
+              title={t("home.send")}
+              disabled={hasZeroBalance}
+              onPress={handleSendPress}
+            />
+            <IconButton
+              Icon={Icon.RefreshCw02}
+              title={t("home.swap")}
+              disabled={hasZeroBalance}
+              onPress={handleSwapPress}
+            />
+            <IconButton
+              Icon={Icon.Copy01}
+              title={t("home.copy")}
+              onPress={() => handleCopyAddress(account?.publicKey)}
+            />
+          </View>
         </View>
 
-        <View className="flex-row gap-6 items-center justify-center my-8">
-          <IconButton
-            Icon={Icon.Plus}
-            title={t("home.buy")}
-            onPress={navigateToBuyXLM}
-          />
-          <IconButton
-            Icon={Icon.ArrowUp}
-            title={t("home.send")}
-            disabled={hasZeroBalance}
-            onPress={handleSendPress}
-          />
-          <IconButton
-            Icon={Icon.RefreshCw02}
-            title={t("home.swap")}
-            disabled={hasZeroBalance}
-            onPress={handleSwapPress}
-          />
-          <IconButton
-            Icon={Icon.Copy01}
-            title={t("home.copy")}
-            onPress={() => handleCopyAddress(account?.publicKey)}
-          />
-        </View>
-      </View>
+        <View className="w-full border-b mb-4 border-border-primary" />
 
-      <View className="w-full border-b mb-4 border-border-primary" />
+        <TokensCollectiblesTabs
+          showTokensSettings={hasTokens}
+          publicKey={account?.publicKey ?? ""}
+          network={network}
+          onTokenPress={handleTokenPress}
+          onCollectiblePress={handleCollectiblePress}
+        />
 
-      <TokensCollectiblesTabs
-        showTokensSettings={hasTokens}
-        publicKey={account?.publicKey ?? ""}
-        network={network}
-        onTokenPress={handleTokenPress}
-      />
+        {/* Analytics Debug - Development Only */}
+        <AnalyticsDebugBottomSheet
+          modalRef={analyticsDebugBottomSheetRef}
+          onDismiss={handleAnalyticsDebugDismiss}
+        />
+        <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
+      </BaseLayout>
+    );
+  },
+);
 
-      {/* Analytics Debug - Development Only */}
-      <AnalyticsDebugBottomSheet
-        modalRef={analyticsDebugBottomSheetRef}
-        onDismiss={() => analyticsDebugBottomSheetRef.current?.dismiss()}
-      />
-      <AnalyticsDebugTrigger
-        onPress={() => analyticsDebugBottomSheetRef.current?.present()}
-      />
-    </BaseLayout>
-  );
-};
+HomeScreen.displayName = "HomeScreen";
 
 export default HomeScreen;

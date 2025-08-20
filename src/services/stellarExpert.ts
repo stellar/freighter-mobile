@@ -28,7 +28,7 @@ export const searchToken = async (token: string, network: NETWORKS) => {
 
     if (!response.data || !response.data._embedded) {
       logger.error(
-        "stellarExpertApi.searchAsset",
+        "stellarExpertApi.searchToken",
         "Invalid response from stellarExpert",
         response.data,
       );

@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface UseWelcomeBannerProps {
   account: ActiveAccount | null;
@@ -13,7 +13,7 @@ interface UseWelcomeBannerProps {
 
 interface UseWelcomeBannerReturn {
   welcomeBannerBottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
-  handleWelcomeBannerDismiss: () => Promise<void>;
+  handleWelcomeBannerDismiss: () => void;
 }
 
 const getWelcomeBannerShownKey = (publicKey: string) =>
@@ -29,18 +29,25 @@ export const useWelcomeBanner = ({
     boolean | undefined
   >(undefined);
 
+  // Memoize the storage key to avoid recreating it on every render
+  const welcomeBannerShownKey = useMemo(
+    () =>
+      account?.publicKey ? getWelcomeBannerShownKey(account.publicKey) : null,
+    [account?.publicKey],
+  );
+
   useEffect(() => {
     const checkWelcomeBannerStatus = async () => {
       setHasAccountSeenWelcome(undefined);
-      if (account?.publicKey) {
+      if (welcomeBannerShownKey) {
         const hasSeenWelcome = await AsyncStorage.getItem(
-          getWelcomeBannerShownKey(account.publicKey),
+          welcomeBannerShownKey,
         );
         setHasAccountSeenWelcome(hasSeenWelcome === "true");
       }
     };
     checkWelcomeBannerStatus();
-  }, [account?.publicKey]);
+  }, [welcomeBannerShownKey]);
 
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(() => {
@@ -62,23 +69,26 @@ export const useWelcomeBanner = ({
     checkWelcomeBannerStatus();
   }, [checkWelcomeBannerStatus, isFunded, isLoadingBalances]);
 
-  const handleWelcomeBannerDismiss = async () => {
+  const handleWelcomeBannerDismiss = useCallback(async () => {
     try {
-      if (account?.publicKey) {
-        await AsyncStorage.setItem(
-          getWelcomeBannerShownKey(account.publicKey),
-          "true",
-        );
-        setHasAccountSeenWelcome(true);
+      if (welcomeBannerShownKey) {
+        await AsyncStorage.setItem(welcomeBannerShownKey, "true");
       }
+      setHasAccountSeenWelcome(true);
     } catch (error) {
       logger.error("Error saving welcome banner status:", String(error));
     }
     welcomeBannerBottomSheetModalRef.current?.dismiss();
-  };
+  }, [welcomeBannerShownKey]);
 
-  return {
-    welcomeBannerBottomSheetModalRef,
-    handleWelcomeBannerDismiss,
-  };
+  // Memoize the return object to prevent unnecessary re-renders
+  const returnValue = useMemo(
+    () => ({
+      welcomeBannerBottomSheetModalRef,
+      handleWelcomeBannerDismiss,
+    }),
+    [handleWelcomeBannerDismiss],
+  );
+
+  return returnValue;
 };

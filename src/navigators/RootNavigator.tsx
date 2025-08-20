@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
+import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
@@ -144,6 +145,15 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
             component={TokenDetailsScreen}
+            options={{
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+            }}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
+            component={CollectibleDetailsScreen}
             options={{
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,
