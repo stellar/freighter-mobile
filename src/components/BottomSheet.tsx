@@ -19,7 +19,7 @@ import { track } from "services/analytics/core";
 import type { AnalyticsProps } from "services/analytics/types";
 
 const Icons = {
-  Assets: {
+  Tokens: {
     icon: "Coins01",
     color: "mint",
   },

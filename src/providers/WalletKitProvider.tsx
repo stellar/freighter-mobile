@@ -1,17 +1,17 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
-import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
-import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   useWalletKitStore,
   WalletKitSessionProposal,
@@ -28,7 +28,6 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -84,9 +83,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
-  const { themeColors } = useColors();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const { transactionMemo, saveMemo } = useTransactionSettingsStore();
 
   const publicKey = account?.publicKey || "";
 
@@ -320,6 +320,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setRequestEvent(null);
       setTransactionScanResult(undefined);
       setSecurityWarningContext("site");
+      saveMemo("");
       clearEvent();
     }, 200);
   };
@@ -578,7 +579,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessions, event.type, authStatus]);
+  }, [activeSessions, event.type, authStatus, transactionMemo]);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -647,33 +648,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         modalRef={addMemoExplanationBottomSheetModalRef}
         handleCloseModal={onCancelAddMemo}
         customContent={
-          <InformationBottomSheet
-            headerElement={
-              <View className="bg-red-3 p-2 rounded-[8px]">
-                <Icon.InfoOctagon
-                  color={themeColors.status.error}
-                  size={28}
-                  withBackground
-                />
-              </View>
-            }
-            onClose={onCancelAddMemo}
-            title={t("addMemoExplanationBottomSheet.title")}
-            texts={[
-              {
-                key: "description",
-                value: t("addMemoExplanationBottomSheet.description"),
-              },
-              {
-                key: "disabledWarning",
-                value: t("addMemoExplanationBottomSheet.disabledWarning"),
-              },
-              {
-                key: "checkMemoRequirements",
-                value: t("addMemoExplanationBottomSheet.checkMemoRequirements"),
-              },
-            ]}
-          />
+          <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
       />
 

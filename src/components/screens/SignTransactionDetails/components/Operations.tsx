@@ -22,7 +22,7 @@ import {
   VISUAL_DELAY_MS,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -30,7 +30,7 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import { scanAsset } from "services/blockaid/api";
+import { scanToken } from "services/blockaid/api";
 
 interface OperationsProps {
   operations: Operation[];
@@ -59,14 +59,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
   };
 
   useEffect(() => {
-    const scanOperationAssets = async () => {
-      let sourceAsset;
-      let destinationAsset;
+    const scanOperationTokens = async () => {
+      let sourceToken;
+      let destinationToken;
 
       if (type === "payment") {
         const { asset } = operation;
 
-        sourceAsset = asset;
+        sourceToken = asset;
       }
 
       if (
@@ -75,28 +75,28 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       ) {
         const { sendAsset, destAsset } = operation;
 
-        sourceAsset = sendAsset;
-        destinationAsset = destAsset;
+        sourceToken = sendAsset;
+        destinationToken = destAsset;
       }
 
-      if (sourceAsset) {
-        await scanAsset({
-          assetCode: sourceAsset.code,
-          assetIssuer: sourceAsset.issuer,
+      if (sourceToken) {
+        await scanToken({
+          tokenCode: sourceToken.code,
+          tokenIssuer: sourceToken.issuer,
           network: networkDetails.network,
         });
       }
 
-      if (destinationAsset) {
-        await scanAsset({
-          assetCode: destinationAsset.code,
-          assetIssuer: destinationAsset.issuer,
+      if (destinationToken) {
+        await scanToken({
+          tokenCode: destinationToken.code,
+          tokenIssuer: destinationToken.issuer,
           network: networkDetails.network,
         });
       }
     };
 
-    scanOperationAssets();
+    scanOperationTokens();
   }, [type, networkDetails.network, operation]);
 
   switch (type) {
@@ -112,7 +112,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.startingBalance"),
           trailingContent: (
-            <Text>{formatAssetAmount(startingBalance, NATIVE_TOKEN_CODE)}</Text>
+            <Text>{formatTokenAmount(startingBalance, NATIVE_TOKEN_CODE)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -130,13 +130,13 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -149,14 +149,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.sendMax"),
           trailingContent: (
-            <Text>{formatAssetAmount(sendMax, sendAsset.code)}</Text>
+            <Text>{formatTokenAmount(sendMax, sendAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -166,14 +166,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.destinationAsset"),
+          title: t("signTransactionDetails.operations.destinationToken"),
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.destinationAmount"),
           trailingContent: (
-            <Text>{formatAssetAmount(destAmount, destAsset.code)}</Text>
+            <Text>{formatTokenAmount(destAmount, destAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -192,14 +192,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.sendAmount"),
           trailingContent: (
-            <Text>{formatAssetAmount(sendAmount, sendAsset.code)}</Text>
+            <Text>{formatTokenAmount(sendAmount, sendAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -209,14 +209,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.destinationAsset"),
+          title: t("signTransactionDetails.operations.destinationToken"),
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.destinationMinimum"),
           trailingContent: (
-            <Text>{formatAssetAmount(destMin, destAsset.code)}</Text>
+            <Text>{formatTokenAmount(destMin, destAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -241,7 +241,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatAssetAmount(amount, buying.code)}</Text>
+            <Text>{formatTokenAmount(amount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -281,7 +281,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatAssetAmount(amount, buying.code)}</Text>
+            <Text>{formatTokenAmount(amount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -311,7 +311,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.buyAmount"),
           trailingContent: (
-            <Text>{formatAssetAmount(buyAmount, buying.code)}</Text>
+            <Text>{formatTokenAmount(buyAmount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -431,12 +431,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       if ("assetA" in line) {
         items.push(
           {
-            title: t("signTransactionDetails.operations.assetA"),
+            title: t("signTransactionDetails.operations.tokenA"),
             trailingContent: <Text>{line.assetA.getCode()}</Text>,
             titleColor: themeColors.text.secondary,
           },
           {
-            title: t("signTransactionDetails.operations.assetB"),
+            title: t("signTransactionDetails.operations.tokenB"),
             trailingContent: <Text>{line.assetB.getCode()}</Text>,
             titleColor: themeColors.text.secondary,
           },
@@ -448,7 +448,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         );
       } else {
         items.push({
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{line.code}</Text>,
           titleColor: themeColors.text.secondary,
         });
@@ -477,7 +477,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{assetCode}</Text>,
           titleColor: themeColors.text.secondary,
         },
@@ -542,13 +542,13 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -602,13 +602,13 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatAssetAmount(amount, asset.code)}</Text>,
+          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
@@ -643,7 +643,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.assetCode"),
+          title: t("signTransactionDetails.operations.tokenCode"),
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
@@ -848,7 +848,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
         if ("code" in asset) {
           items.push({
-            title: t("signTransactionDetails.operations.assetCode"),
+            title: t("signTransactionDetails.operations.tokenCode"),
             trailingContent: <Text>{asset.code}</Text>,
             titleColor: themeColors.text.secondary,
           });
@@ -963,14 +963,14 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
   const { type } = operation;
 
   useEffect(() => {
-    const scanOperationAssets = async () => {
-      let sourceAsset;
-      let destinationAsset;
+    const scanOperationTokens = async () => {
+      let sourceToken;
+      let destinationToken;
 
       if (type === "payment") {
         const { asset } = operation;
 
-        sourceAsset = asset;
+        sourceToken = asset;
       }
 
       if (
@@ -979,28 +979,28 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
       ) {
         const { sendAsset, destAsset } = operation;
 
-        sourceAsset = sendAsset;
-        destinationAsset = destAsset;
+        sourceToken = sendAsset;
+        destinationToken = destAsset;
       }
 
-      if (sourceAsset) {
-        await scanAsset({
-          assetCode: sourceAsset.code,
-          assetIssuer: sourceAsset.issuer,
+      if (sourceToken) {
+        await scanToken({
+          tokenCode: sourceToken.code,
+          tokenIssuer: sourceToken.issuer,
           network: networkDetails.network,
         });
       }
 
-      if (destinationAsset) {
-        await scanAsset({
-          assetCode: destinationAsset.code,
-          assetIssuer: destinationAsset.issuer,
+      if (destinationToken) {
+        await scanToken({
+          tokenCode: destinationToken.code,
+          tokenIssuer: destinationToken.issuer,
           network: networkDetails.network,
         });
       }
     };
 
-    scanOperationAssets();
+    scanOperationTokens();
   }, [type, networkDetails.network, operation]);
 
   switch (type) {

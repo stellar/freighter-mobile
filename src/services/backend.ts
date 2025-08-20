@@ -19,16 +19,16 @@ import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
   BalanceMap,
-  FormattedSearchAssetRecord,
+  FormattedSearchTokenRecord,
   GetTokenDetailsParams,
   DiscoverProtocol,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
-import { getAssetType } from "helpers/balances";
+import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import Config from "react-native-config";
@@ -82,7 +82,7 @@ export const getContractSpecs = async ({
 /**
  * Response type for account balance fetching
  * @typedef {Object} FetchBalancesResponse
- * @property {BalanceMap} [balances] - Map of account balances by asset
+ * @property {BalanceMap} [balances] - Map of account balances by token
  * @property {boolean} [isFunded] - Whether the account is funded
  * @property {number} [subentryCount] - Number of subentries on the account
  * @property {Object} [error] - Error information from horizon/soroban
@@ -229,10 +229,10 @@ export const fetchTokenPrices = async ({
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
-    const asset = getAssetType(tokenId);
+    const token = getTokenType(tokenId);
     return (
-      asset !== AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
-      asset !== AssetTypeWithCustomToken.CUSTOM_TOKEN
+      token !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
+      token !== TokenTypeWithCustomToken.CUSTOM_TOKEN
     );
   });
 
@@ -522,7 +522,7 @@ export const getAccountHistory = async ({
  * @param {string} contractId - The contract ID to look up
  * @param {NETWORKS} network - The network to query
  * @param {string} [publicKey] - Optional public key for token details
- * @returns {Promise<FormattedSearchAssetRecord | null>} Promise resolving to formatted asset record or null
+ * @returns {Promise<FormattedSearchTokenRecord | null>} Promise resolving to formatted asset record or null
  *
  * @description
  * Comprehensive contract lookup that handles multiple contract types:
@@ -535,7 +535,7 @@ export const getAccountHistory = async ({
  *
  * @example
  * ```ts
- * const assetRecord = await handleContractLookup(
+ * const tokenRecord = await handleContractLookup(
  *   "contract123",
  *   NETWORKS.PUBLIC,
  *   "GABC..."
@@ -546,17 +546,17 @@ export const handleContractLookup = async (
   contractId: string,
   network: NETWORKS,
   publicKey?: string,
-): Promise<FormattedSearchAssetRecord | null> => {
+): Promise<FormattedSearchTokenRecord | null> => {
   const nativeContractDetails = getNativeContractDetails(network);
 
   if (nativeContractDetails.contract === contractId) {
     return {
-      assetCode: nativeContractDetails.code,
+      tokenCode: nativeContractDetails.code,
       domain: nativeContractDetails.domain,
       hasTrustline: true,
       issuer: nativeContractDetails.issuer,
       isNative: true,
-      assetType: AssetTypeWithCustomToken.NATIVE,
+      tokenType: TokenTypeWithCustomToken.NATIVE,
     };
   }
 
@@ -577,14 +577,14 @@ export const handleContractLookup = async (
     : contractId;
 
   return {
-    assetCode: tokenDetails.symbol,
+    tokenCode: tokenDetails.symbol,
     domain: "Stellar Network",
     hasTrustline: false,
     issuer,
     isNative: false,
-    assetType: isSacContract
-      ? getAssetType(contractId)
-      : AssetTypeWithCustomToken.CUSTOM_TOKEN,
+    tokenType: isSacContract
+      ? getTokenType(contractId)
+      : TokenTypeWithCustomToken.CUSTOM_TOKEN,
     decimals: tokenDetails.decimals,
     name: tokenDetails.name,
   };

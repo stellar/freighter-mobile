@@ -1,6 +1,6 @@
 import Blockaid from "@blockaid/client";
-import { AssetIcon } from "components/AssetIcon";
 import { List } from "components/List";
+import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { App } from "components/sds/App";
@@ -13,7 +13,7 @@ import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -113,7 +113,7 @@ const DappRequestBottomSheetContent: React.FC<
         trailingContent: (
           <View className="flex-row items-center gap-2">
             <Text md primary>
-              {formatAssetAmount(
+              {formatTokenAmount(
                 String(signTransactionDetails?.summary.feeXlm ?? "0"),
                 NATIVE_TOKEN_CODE,
               )}
@@ -145,13 +145,13 @@ const DappRequestBottomSheetContent: React.FC<
     return [
       {
         key: `${assetCode}:${issuerKey}`,
-        icon: <AssetIcon token={token} size="sm" />,
+        icon: <TokenIcon token={token} size="sm" />,
         title: assetCode,
         trailingContent: (
           <View className="flex-row items-center gap-2">
             <Icon.PlusCircle size={16} themeColor="lilac" />
             <Text color={themeColors.lilac[11]}>
-              {t("addAssetScreen.addToken")}
+              {t("addTokenScreen.addToken")}
             </Text>
           </View>
         ),

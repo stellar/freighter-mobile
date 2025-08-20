@@ -1,5 +1,5 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
-// Export all logo assets from this file for easy importing
+// Export all logo token image assets from this file for easy importing
 import blockaidLogo from "./blockaid-logo.svg";
 import freighterLogo2d from "./freighter-logo-2d.png";
 import freighterLogo from "./freighter-logo.png";

@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { SearchAssetResponse } from "config/types";
+import { SearchTokenResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
 import { createApiService } from "services/apiFactory";
 
@@ -13,22 +13,22 @@ const stellarExpertApiPublic = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.PUBLIC),
 });
 
-export const searchAsset = async (asset: string, network: NETWORKS) => {
+export const searchToken = async (token: string, network: NETWORKS) => {
   const stellarExpertApi =
     network === NETWORKS.TESTNET
       ? stellarExpertApiTestnet
       : stellarExpertApiPublic;
 
   try {
-    const response = await stellarExpertApi.get<SearchAssetResponse>("/asset", {
+    const response = await stellarExpertApi.get<SearchTokenResponse>("/asset", {
       params: {
-        search: asset,
+        search: token,
       },
     });
 
     if (!response.data || !response.data._embedded) {
       logger.error(
-        "stellarExpertApi.searchAsset",
+        "stellarExpertApi.searchToken",
         "Invalid response from stellarExpert",
         response.data,
       );
@@ -38,7 +38,7 @@ export const searchAsset = async (asset: string, network: NETWORKS) => {
 
     return response.data;
   } catch (error) {
-    logger.error("stellarExpert", "Error searching asset", error);
+    logger.error("stellarExpert", "Error searching token", error);
     return null;
   }
 };

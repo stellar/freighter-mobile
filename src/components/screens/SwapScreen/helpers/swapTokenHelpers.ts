@@ -1,19 +1,19 @@
 import { BigNumber } from "bignumber.js";
 import {
   NativeToken,
-  AssetToken,
+  NonNativeToken,
   PricedBalance,
   TokenPricesMap,
 } from "config/types";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
 
 interface FindBalanceForTokenParams {
-  token: AssetToken | NativeToken;
+  token: NonNativeToken | NativeToken;
   balanceItems: PricedBalance[];
 }
 
 interface CalculateTokenFiatAmountParams {
-  token: AssetToken | NativeToken;
+  token: NonNativeToken | NativeToken;
   amount: string | BigNumber;
   balanceItems: PricedBalance[];
   prices?: TokenPricesMap;
@@ -24,7 +24,7 @@ interface CalculateTokenFiatAmountParams {
  */
 export const getTokenFromBalance = (
   balance: PricedBalance | undefined,
-): NativeToken | AssetToken => {
+): NativeToken | NonNativeToken => {
   if (balance && "token" in balance) {
     return balance.token;
   }
@@ -39,11 +39,11 @@ export const getTokenFromBalance = (
  * This is more robust than simple ID matching as it tries multiple approaches
  */
 export const findBalanceForToken = ({
-  token,
+  token: incomingToken,
   balanceItems,
 }: FindBalanceForTokenParams): PricedBalance | undefined => {
   // Strategy 1: Use getTokenIdentifier for exact matching
-  const tokenIdentifier = getTokenIdentifier(token);
+  const tokenIdentifier = getTokenIdentifier(incomingToken);
   if (tokenIdentifier) {
     const exactMatch = balanceItems.find((item) => {
       const itemIdentifier = getTokenIdentifier(item);
@@ -52,8 +52,8 @@ export const findBalanceForToken = ({
     if (exactMatch) return exactMatch;
   }
 
-  // Strategy 2: Match by token code for native assets
-  if (token.type === "native") {
+  // Strategy 2: Match by token code for native tokens
+  if (incomingToken.type === "native") {
     const nativeMatch = balanceItems.find((item) => {
       if ("token" in item && item.token.type === "native") {
         return true;
@@ -63,28 +63,27 @@ export const findBalanceForToken = ({
     if (nativeMatch) return nativeMatch;
   }
 
-  // Strategy 3: Match by code and issuer for asset tokens
-  if (token.type !== "native") {
-    const assetToken = token;
-    const assetMatch = balanceItems.find((item) => {
+  // Strategy 3: Match by code and issuer for tokens
+  if (incomingToken.type !== "native") {
+    const token = incomingToken;
+    const tokenMatch = balanceItems.find((item) => {
       if ("token" in item && item.token.type !== "native") {
         const itemToken = item.token;
         return (
-          itemToken.code === assetToken.code &&
-          itemToken.issuer === assetToken.issuer
+          itemToken.code === token.code && itemToken.issuer === token.issuer
         );
       }
       return false;
     });
-    if (assetMatch) return assetMatch;
+    if (tokenMatch) return tokenMatch;
   }
 
   // Strategy 4: Fallback to code-only matching (less reliable)
   const codeMatch = balanceItems.find((item) => {
     if ("token" in item) {
-      return item.token.code === token.code;
+      return item.token.code === incomingToken.code;
     }
-    return item.tokenCode === token.code;
+    return item.tokenCode === incomingToken.code;
   });
 
   return codeMatch;
@@ -95,7 +94,7 @@ export const findBalanceForToken = ({
  * This provides robust price calculation with fallbacks
  */
 export const calculateTokenFiatAmount = ({
-  token,
+  token: incomingToken,
   amount,
   balanceItems,
   prices,
@@ -107,7 +106,7 @@ export const calculateTokenFiatAmount = ({
   }
 
   // Strategy 1: Get price from balance item (most common and reliable)
-  const balance = findBalanceForToken({ token, balanceItems });
+  const balance = findBalanceForToken({ token: incomingToken, balanceItems });
   if (balance?.currentPrice) {
     return amountBN.multipliedBy(balance.currentPrice).toString();
   }
@@ -122,7 +121,7 @@ export const calculateTokenFiatAmount = ({
 
   // Strategy 3: Direct lookup in prices map using token identifier
   if (prices) {
-    const tokenIdentifier = getTokenIdentifier(token);
+    const tokenIdentifier = getTokenIdentifier(incomingToken);
     if (tokenIdentifier && prices[tokenIdentifier]?.currentPrice) {
       return amountBN
         .multipliedBy(prices[tokenIdentifier].currentPrice)

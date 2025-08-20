@@ -12,7 +12,7 @@ import {
   Horizon,
   xdr,
   scValToNative,
-  Asset,
+  Asset as SdkToken,
   walkInvocationTree,
   Address,
 } from "@stellar/stellar-sdk";
@@ -195,11 +195,11 @@ export const getAttrsFromSorobanHorizonOp = (
   return getTokenInvocationArgs(invokeHostFn);
 };
 
-export const getAssetSacAddress = (
+export const getTokenSacAddress = (
   canonicalName: string,
   networkPassphrase: string,
 ) =>
-  new Asset(...(canonicalName.split(":") as [string, string])).contractId(
+  new SdkToken(...(canonicalName.split(":") as [string, string])).contractId(
     networkPassphrase,
   );
 
@@ -221,7 +221,7 @@ export const getBalanceByKey = (
       if ("token" in balance && balance.token.code === NATIVE_TOKEN_CODE) {
         canonicalName = "native";
         const matchesSac =
-          Asset.native().contractId(networkDetails.networkPassphrase) ===
+          SdkToken.native().contractId(networkDetails.networkPassphrase) ===
           contractId;
         return matchesSac;
       }
@@ -232,11 +232,10 @@ export const getBalanceByKey = (
         "issuer" in balance.token &&
         !isContractId(balance.token.issuer.key)
       ) {
-        const assetToken = balance.token;
-        canonicalName = assetToken.issuer.key
-          ? `${assetToken.code}:${assetToken.issuer.key}`
-          : assetToken.code;
-        const sacAddress = getAssetSacAddress(
+        canonicalName = balance.token.issuer.key
+          ? `${balance.token.code}:${balance.token.issuer.key}`
+          : balance.token.code;
+        const sacAddress = getTokenSacAddress(
           canonicalName,
           networkDetails.networkPassphrase,
         );
@@ -354,7 +353,7 @@ export const getInvocationArgs = (
         case 1: {
           const sacDetails = {
             type: "sac",
-            asset: Asset.fromOperation(preimage.fromAsset()).toString(),
+            asset: SdkToken.fromOperation(preimage.fromAsset()).toString(),
           } as FnArgsCreateSac;
 
           if (fn.switch().value === 2) {

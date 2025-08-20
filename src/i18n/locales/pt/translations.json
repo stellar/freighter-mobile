@@ -35,7 +35,7 @@
     "copy": "Copiar",
     "actions": {
       "settings": "Configurações",
-      "manageAssets": "Gerenciar ativos",
+      "manageTokens": "Gerenciar tokens",
       "myQRCode": "Meu QR code"
     },
     "manageAccount": {
@@ -221,8 +221,8 @@
       "removedTrustline": "Trustline removida",
       "received": "Recebido",
       "sent": "Enviado",
-      "swapTwoAssets": "{{srcAssetCode}} por {{destAssetCode}}",
-      "swappedTwoAssets": "Trocado {{srcAssetCode}} por {{destAssetCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} por {{destTokenCode}}",
+      "swappedTwoTokens": "Trocado {{srcTokenCode}} por {{destTokenCode}}",
       "swapped": "Trocado",
       "transactionFailed": "Transação falhou",
       "failed": "Falhou",
@@ -303,28 +303,45 @@
     "empty": "Nenhum colecionável ainda",
     "menuAddManually": "Adicionar manualmente"
   },
+  "collectibleDetails": {
+    "title": "Detalhes do Colecionável",
+    "notFound": "Colecionável não encontrado",
+    "name": "Nome",
+    "collection": "Coleção",
+    "tokenId": "ID do Token",
+    "description": "Descrição",
+    "traits": "Características do Colecionável",
+    "view": "Visualizar",
+    "send": "Enviar"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
-  "manageAssetsScreen": {
-    "title": "Gerenciar ativos",
+  "manageTokensScreen": {
+    "title": "Gerenciar tokens",
     "hiddenTokens": "Tokens ocultos",
     "addTokenButton": "Adicionar um token",
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
-      "title": "Gerenciar Ativos",
-      "block1": "Quando você gerencia ativos na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
-      "block2": "Isso envolve configurar trustlines, que permitem que os usuários mantenham e negociem seus ativos, e configurar flags para controlar o acesso e o uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus ativos com segurança, mantendo a conformidade e a flexibilidade."
+      "title": "Gerenciar Tokens",
+      "block1": "Quando você gerencia tokens na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
+      "block2": "Isso envolve configurar trustlines, que permitem que os usuários mantenham e negociem seus tokens, e configurar flags para controlar o acesso e o uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus tokens com segurança, mantendo a conformidade e a flexibilidade."
     },
     "actions": {
       "copyAddress": "Copiar endereço",
-      "removeAsset": "Remover ativo"
+      "removeToken": "Remover token"
     },
-    "removeAssetError": "Erro ao remover ativo {{assetCode}}",
-    "removeAssetSuccess": "{{assetCode}} removido com sucesso"
+    "removeTokenAlert": {
+      "title": "Remover token",
+      "message": "Tem certeza que deseja remover este token?",
+      "cancel": "Cancelar",
+      "remove": "Remover"
+    },
+    "removeTokenError": "Erro ao remover token {{tokenCode}}",
+    "removeTokenSuccess": "{{tokenCode}} removido com sucesso"
   },
-  "addAssetScreen": {
-    "title": "Adicionar um ativo",
+  "addTokenScreen": {
+    "title": "Adicionar um token",
     "addTokenButton": "Aprovar",
     "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
@@ -334,15 +351,15 @@
     "onYourList": "Na sua lista",
     "addToken": "Adicionar token",
     "approveTrustline": "Aprovar Trustline",
-    "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o ativo à sua conta.",
+    "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o token à sua conta.",
     "confirmTrust": "Só confirme se você confia neste token",
-    "maliciousAsset": "Este token foi marcado como malicioso",
-    "suspiciousAsset": "Este token foi marcado como suspeito",
-    "assetAddress": "Endereço do Token",
+    "maliciousToken": "Este token foi marcado como malicioso",
+    "suspiciousToken": "Este token foi marcado como suspeito",
+    "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
-    "toastSuccess": "{{assetCode}} adicionado com sucesso como um ativo",
-    "toastError": "Erro ao adicionar ativo {{assetCode}}",
-    "emptyState": "Nenhum ativo encontrado",
+    "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
+    "toastError": "Erro ao adicionar token {{tokenCode}}",
+    "emptyState": "Nenhum token encontrado",
     "somethingWentWrong": "Algo deu errado, por favor tente novamente mais tarde"
   },
   "securityWarning": {
@@ -353,28 +370,28 @@
     "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",
     "feedback": "Feedback?",
-    "maliciousAsset": "Este token é uma fraude",
+    "maliciousToken": "Este token é uma fraude",
     "lowLiquidity": "Este token tem baixa liquidez",
     "maliciousSite": "Este site é um aplicativo malicioso"
   },
   "security": {
-    "notOnYourLists": "Este ativo não está em uma das suas listas",
-    "relativelyNewAsset": "Este é um ativo relativamente novo",
-    "assetIsScam": "Este ativo é uma fraude",
-    "suspiciousAsset": "Este ativo pode ser suspeito",
-    "lowLiquidity": "Este ativo tem baixa liquidez",
+    "notOnYourLists": "Este token não está em uma das suas listas",
+    "relativelyNewToken": "Este é um token relativamente novo",
+    "tokenIsScam": "Este token é uma fraude",
+    "suspiciousToken": "Este token pode ser suspeito",
+    "lowLiquidity": "Este token tem baixa liquidez",
     "poweredByBlockaid": "Powered by",
     "learnMore": "Saiba mais",
     "addAnyway": "Adicionar mesmo assim"
   },
-  "manageAssetRightContent": {
+  "manageTokenRightContent": {
     "copyAddress": "Copiar endereço",
-    "hideAsset": "Ocultar ativo",
-    "unhideAsset": "Mostrar ativo",
+    "hideToken": "Ocultar token",
+    "unhideToken": "Mostrar token",
     "tokenAddressCopied": "Endereço do token copiado!",
-    "removeAssetModal": {
-      "title": "Remover {{assetCode}}?",
-      "message": "Tem certeza que deseja remover este ativo? Depois de remover um ativo, você terá que adicioná-lo novamente mais tarde."
+    "removeTokenModal": {
+      "title": "Remover {{tokenCode}}?",
+      "message": "Tem certeza que deseja remover este token?\nDepois de remover um token, você terá que adicioná-lo novamente mais tarde."
     }
   },
   "sendPaymentScreen": {
@@ -392,8 +409,8 @@
     "searchTokenInputPlaceholder": "Pesquisar nome ou endereço do token",
     "setMax": "Definir máximo",
     "receive": "Receber",
-    "chooseAsset": "Escolher ativo",
-    "selectAsset": "Selecionar um ativo",
+    "chooseToken": "Escolher token",
+    "selectToken": "Selecionar um token",
     "swapScreenTokenListTitle": "Seus tokens",
     "copyContractAddress": "Copiar endereço do contrato",
     "viewOnStellarExpert": "Ver no stellar.expert",
@@ -416,7 +433,7 @@
       "swapTransactionFailed": "Transação de troca falhou",
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
-      "noPathFound": "Nenhum caminho encontrado entre estes ativos"
+      "noPathFound": "Nenhum caminho encontrado entre estes tokens"
     }
   },
   "swapProcessingScreen": {
@@ -712,7 +729,7 @@
       "timeoutRequired": "O tempo limite deve ser maior que 0",
       "insufficientBalance": "Saldo insuficiente",
       "insufficientBalanceForSwap": "Saldo insuficiente para troca",
-      "cannotSwapSameAsset": "Não é possível trocar pelo mesmo ativo",
+      "cannotSwapSameToken": "Não é possível trocar pelo mesmo token",
       "invalidRecipientAddress": "Endereço do destinatário inválido",
       "cannotSendToSelf": "Não é possível enviar para você mesmo",
       "publicKeyRequired": "Chave pública é obrigatória",
@@ -772,7 +789,7 @@
   "blockaid": {
     "brand": "Blockaid",
     "security": {
-      "asset": {
+      "token": {
         "malicious": "Este token foi marcado como malicioso",
         "suspicious": "Este token foi marcado como suspeito",
         "warning": "Este token foi marcado como aviso",
@@ -813,10 +830,10 @@
     "operations": {
       "destination": "Destino",
       "startingBalance": "Saldo inicial",
-      "assetCode": "Código do ativo",
+      "tokenCode": "Código do token",
       "amount": "Valor",
       "sendMax": "Enviar máximo",
-      "destinationAsset": "Ativo de destino",
+      "destinationToken": "Token de destino",
       "destinationAmount": "Valor de destino",
       "path": "Caminho",
       "issuer": "Emissor",
@@ -837,8 +854,8 @@
       "masterWeight": "Peso mestre",
       "setFlags": "Definir flags",
       "clearFlags": "Limpar flags",
-      "assetA": "Ativo A",
-      "assetB": "Ativo B",
+      "tokenA": "Token A",
+      "tokenB": "Token B",
       "fee": "Taxa",
       "type": "Tipo",
       "limit": "Limite",

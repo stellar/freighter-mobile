@@ -42,7 +42,7 @@ describe("getIconUrlFromIssuer", () => {
   // Test constants
   const validIssuerKey =
     "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
-  const assetCode = "USDC";
+  const tokenCode = "USDC";
   const testNetworkDetails: NetworkDetails = {
     network: NETWORKS.TESTNET,
     networkName: NETWORK_NAMES.TESTNET,
@@ -63,7 +63,7 @@ describe("getIconUrlFromIssuer", () => {
     (StellarToml.Resolver.resolve as jest.Mock).mockResolvedValue({
       CURRENCIES: [
         {
-          code: assetCode,
+          code: tokenCode,
           issuer: validIssuerKey,
           image: imageUrl,
         },
@@ -73,7 +73,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -92,7 +92,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: "invalid-key",
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -110,7 +110,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -129,7 +129,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -152,7 +152,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -173,7 +173,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -189,7 +189,7 @@ describe("getIconUrlFromIssuer", () => {
     (StellarToml.Resolver.resolve as jest.Mock).mockResolvedValue({
       CURRENCIES: [
         {
-          code: "DIFFERENT_ASSET",
+          code: "DIFFERENT_TOKEN",
           issuer: validIssuerKey,
           image: imageUrl,
         },
@@ -199,7 +199,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -214,7 +214,7 @@ describe("getIconUrlFromIssuer", () => {
     (StellarToml.Resolver.resolve as jest.Mock).mockResolvedValue({
       CURRENCIES: [
         {
-          code: assetCode,
+          code: tokenCode,
           issuer: validIssuerKey,
           image: undefined,
         },
@@ -224,7 +224,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 
@@ -244,7 +244,7 @@ describe("getIconUrlFromIssuer", () => {
           image: "https://example.com/usd.png",
         },
         {
-          code: assetCode,
+          code: tokenCode,
           issuer: validIssuerKey,
           image: imageUrl,
         },
@@ -259,7 +259,7 @@ describe("getIconUrlFromIssuer", () => {
     // Act
     const result = await getIconUrlFromIssuer({
       issuerKey: validIssuerKey,
-      assetCode,
+      tokenCode,
       networkUrl: testNetworkDetails.networkUrl,
     });
 

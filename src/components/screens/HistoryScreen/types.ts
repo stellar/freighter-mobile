@@ -25,20 +25,20 @@ export interface CreateAccountDetailsType {
 }
 
 export interface SwapDetailsType {
-  sourceAssetCode: string;
-  sourceAssetIssuer: string;
-  destinationAssetCode: string;
-  destinationAssetIssuer: string;
-  sourceAssetType: string;
-  destinationAssetType: string;
+  sourceTokenCode: string;
+  sourceTokenIssuer: string;
+  destinationTokenCode: string;
+  destinationTokenIssuer: string;
+  sourceTokenType: string;
+  destinationTokenType: string;
   sourceAmount: string;
   destinationAmount: string;
 }
 
 export interface PaymentDetailsType {
-  assetCode: string;
-  assetIssuer?: string;
-  assetType: string;
+  tokenCode: string;
+  tokenIssuer?: string;
+  tokenType: string;
   amount: string;
   from: string;
   to: string;

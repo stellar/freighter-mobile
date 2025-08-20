@@ -3,7 +3,7 @@
 /* eslint-disable react/no-array-index-key */
 import {
   Address,
-  Asset,
+  Asset as SdkToken,
   Claimant,
   LiquidityPoolAsset,
   Operation,
@@ -157,7 +157,7 @@ export const KeyValueWithPublicKey = ({
 );
 
 interface PathListProps {
-  paths: Asset[];
+  paths: SdkToken[];
 }
 
 export const PathList = ({ paths }: PathListProps) => (
@@ -173,7 +173,7 @@ export const PathList = ({ paths }: PathListProps) => (
         <Text>#{index + 1}</Text>
 
         <KeyValueList
-          operationKey={t("signTransactionDetails.operations.assetCode")}
+          operationKey={t("signTransactionDetails.operations.tokenCode")}
           operationValue={code}
         />
 
@@ -245,7 +245,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 };
 
 interface KeyValueLineProps {
-  line: Asset | LiquidityPoolAsset;
+  line: SdkToken | LiquidityPoolAsset;
 }
 
 export const KeyValueLine = ({ line }: KeyValueLineProps) => {
@@ -253,11 +253,11 @@ export const KeyValueLine = ({ line }: KeyValueLineProps) => {
     return (
       <View>
         <KeyValueList
-          operationKey={t("signTransactionDetails.operations.assetA")}
+          operationKey={t("signTransactionDetails.operations.tokenA")}
           operationValue={line.assetA.getCode()}
         />
         <KeyValueList
-          operationKey={t("signTransactionDetails.operations.assetB")}
+          operationKey={t("signTransactionDetails.operations.tokenB")}
           operationValue={line.assetB.getCode()}
         />
         <KeyValueList
@@ -270,7 +270,7 @@ export const KeyValueLine = ({ line }: KeyValueLineProps) => {
 
   return (
     <KeyValueList
-      operationKey={t("signTransactionDetails.operations.assetCode")}
+      operationKey={t("signTransactionDetails.operations.tokenCode")}
       operationValue={line.code}
     />
   );
@@ -578,7 +578,7 @@ export const KeyValueInvokeHostFn = ({
               <>
                 <KeyValueList
                   operationKey={t(
-                    "signTransactionDetails.operations.assetCode",
+                    "signTransactionDetails.operations.tokenCode",
                   )}
                   operationValue={(preimageValue as xdr.AlphaNum12)
                     .assetCode()

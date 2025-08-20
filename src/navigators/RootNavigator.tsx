@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
+import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
@@ -11,13 +12,13 @@ import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {
-  ManageAssetsStackParamList,
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SettingsStackParamList,
   SendPaymentStackParamList,
   BuyXLMStackParamList,
+  ManageTokensStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -26,7 +27,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import {
   AuthNavigator,
   BuyXLMStackNavigator,
-  ManageAssetsStackNavigator,
+  ManageTokensStackNavigator,
   ManageWalletsStackNavigator,
   SendPaymentStackNavigator,
   SettingsStackNavigator,
@@ -38,7 +39,7 @@ import RNBootSplash from "react-native-bootsplash";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
-    ManageAssetsStackParamList &
+    ManageTokensStackParamList &
     SettingsStackParamList &
     ManageWalletsStackParamList &
     SendPaymentStackParamList &
@@ -95,8 +96,8 @@ export const RootNavigator = () => {
             component={TabNavigator}
           />
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_ASSETS_STACK}
-            component={ManageAssetsStackNavigator}
+            name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
+            component={ManageTokensStackNavigator}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
@@ -144,6 +145,15 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
             component={TokenDetailsScreen}
+            options={{
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+            }}
+          />
+          <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
+            component={CollectibleDetailsScreen}
             options={{
               headerShown: true,
               header: (props) => <CustomNavigationHeader {...props} />,

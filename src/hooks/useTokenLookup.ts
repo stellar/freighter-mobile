@@ -2,18 +2,18 @@
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import {
   PricedBalance,
-  SearchAssetResponse,
-  FormattedSearchAssetRecord,
+  SearchTokenResponse,
+  FormattedSearchTokenRecord,
   HookStatus,
 } from "config/types";
-import { formatAssetIdentifier, getAssetType } from "helpers/balances";
+import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
 import useDebounce from "hooks/useDebounce";
 import { useState } from "react";
 import { handleContractLookup } from "services/backend";
-import { searchAsset } from "services/stellarExpert";
+import { searchToken } from "services/stellarExpert";
 
-interface UseAssetLookupProps {
+interface UseTokenLookupProps {
   network: NETWORKS;
   publicKey?: string;
   balanceItems: (PricedBalance & {
@@ -21,14 +21,14 @@ interface UseAssetLookupProps {
   })[];
 }
 
-export const useAssetLookup = ({
+export const useTokenLookup = ({
   network,
   publicKey,
   balanceItems,
-}: UseAssetLookupProps) => {
+}: UseTokenLookupProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<
-    FormattedSearchAssetRecord[]
+    FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
 
@@ -36,14 +36,14 @@ export const useAssetLookup = ({
     currentBalances: (PricedBalance & {
       id: string;
     })[],
-    assetCode: string,
+    tokenCode: string,
     issuer: string,
   ) => {
     const balance = currentBalances.find((currentBalance) => {
-      const formattedCurrentBalance = formatAssetIdentifier(currentBalance.id);
+      const formattedCurrentBalance = formatTokenIdentifier(currentBalance.id);
 
       return (
-        formattedCurrentBalance.assetCode === assetCode &&
+        formattedCurrentBalance.tokenCode === tokenCode &&
         formattedCurrentBalance.issuer === issuer
       );
     });
@@ -51,40 +51,40 @@ export const useAssetLookup = ({
     return !!balance;
   };
 
-  const formatSearchAssetRecords = (
+  const formatSearchTokenRecords = (
     records:
-      | SearchAssetResponse["_embedded"]["records"]
-      | FormattedSearchAssetRecord[],
+      | SearchTokenResponse["_embedded"]["records"]
+      | FormattedSearchTokenRecord[],
     currentBalances: (PricedBalance & {
       id: string;
     })[],
-  ): FormattedSearchAssetRecord[] =>
+  ): FormattedSearchTokenRecord[] =>
     records
       .map((record) => {
         // Came from freighter-backend
-        if ("assetCode" in record) {
+        if ("tokenCode" in record) {
           return {
             ...record,
             hasTrustline: checkHasTrustline(
               currentBalances,
-              record.assetCode,
+              record.tokenCode,
               record.issuer,
             ),
           };
         }
 
         const formattedTokenRecord = record.asset.split("-");
-        const assetCode = formattedTokenRecord[0];
+        const tokenCode = formattedTokenRecord[0];
         const issuer = formattedTokenRecord[1] ?? "";
 
         // Came from stellarExpert
         return {
-          assetCode,
+          tokenCode,
           domain: record.domain ?? "",
-          hasTrustline: checkHasTrustline(currentBalances, assetCode, issuer),
+          hasTrustline: checkHasTrustline(currentBalances, tokenCode, issuer),
           issuer,
           isNative: record.asset === NATIVE_TOKEN_CODE,
-          assetType: getAssetType(`${assetCode}:${issuer}`),
+          tokenType: getTokenType(`${tokenCode}:${issuer}`),
         };
       })
       .sort((a) => {
@@ -119,7 +119,7 @@ export const useAssetLookup = ({
 
         resJson = lookupResult ? [lookupResult] : [];
       } else {
-        const response = await searchAsset(searchTerm, network);
+        const response = await searchToken(searchTerm, network);
 
         resJson = response && response._embedded && response._embedded.records;
       }
@@ -129,7 +129,7 @@ export const useAssetLookup = ({
         return;
       }
 
-      const formattedRecords = formatSearchAssetRecords(resJson, balanceItems);
+      const formattedRecords = formatSearchTokenRecords(resJson, balanceItems);
 
       setSearchResults(formattedRecords);
       setStatus(HookStatus.SUCCESS);

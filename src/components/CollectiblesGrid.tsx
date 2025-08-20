@@ -22,7 +22,13 @@ import {
  */
 interface CollectiblesGridProps {
   /** Callback function triggered when a collectible item is pressed */
-  onCollectiblePress?: (collectibleId: string) => void;
+  onCollectiblePress?: ({
+    collectionAddress,
+    tokenId,
+  }: {
+    collectionAddress: string;
+    tokenId: string;
+  }) => void;
 }
 
 /**
@@ -66,7 +72,12 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         <TouchableOpacity
           className="w-[165px] h-[165px] rounded-2xl overflow-hidden items-center justify-center mr-6 bg-background-tertiary"
           delayPressIn={DEFAULT_PRESS_DELAY}
-          onPress={() => onCollectiblePress?.(item.tokenId)}
+          onPress={() =>
+            onCollectiblePress?.({
+              collectionAddress: item.collectionAddress,
+              tokenId: item.tokenId,
+            })
+          }
         >
           {/* Placeholder icon for when the image is not loaded */}
           <View className="absolute z-1">

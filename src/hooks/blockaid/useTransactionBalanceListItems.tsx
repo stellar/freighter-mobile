@@ -1,12 +1,12 @@
 import Blockaid from "@blockaid/client";
-import { AssetIcon } from "components/AssetIcon";
 import { ListItemProps } from "components/List";
+import { TokenIcon } from "components/TokenIcon";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { AssetTypeWithCustomToken, TokenIdentifier } from "config/types";
+import { TokenTypeWithCustomToken, TokenIdentifier } from "config/types";
 import { usePricesStore } from "ducks/prices";
-import { formatAssetAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
@@ -20,7 +20,7 @@ import { getTransactionBalanceChanges } from "services/blockaid/helper";
  * Scenarios handled:
  * - No result or simulation error → single row "Unable to simulate transaction"
  * - No diffs → single row "No balance changes detected"
- * - Otherwise, render one row per asset with signed amount (red for debit, green for credit)
+ * - Otherwise, render one row per token with signed amount (red for debit, green for credit)
  */
 export const useTransactionBalanceListItems = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
@@ -73,29 +73,35 @@ export const useTransactionBalanceListItems = (
 
     // Render changes
     return balanceUpdates.map((change) => {
-      const { assetCode, assetIssuer, isNative, amount, isCredit } = change;
+      const {
+        assetCode: tokenCode,
+        assetIssuer: tokenIssuer,
+        isNative,
+        amount,
+        isCredit,
+      } = change;
       const sign = isCredit ? "+" : "-";
-      const formattedAmount = `${sign}${formatAssetAmount(amount, assetCode)}`;
+      const formattedAmount = `${sign}${formatTokenAmount(amount, tokenCode)}`;
 
       const tokenId: TokenIdentifier = isNative
         ? NATIVE_TOKEN_CODE
-        : `${assetCode}:${assetIssuer ?? ""}`;
+        : `${tokenCode}:${tokenIssuer ?? ""}`;
       const price = usePricesStore.getState().prices[tokenId]?.currentPrice;
       const hasFiat = !!price;
       const fiatValue = hasFiat ? price.multipliedBy(amount.abs()) : null;
 
       const token = isNative
-        ? { type: AssetTypeWithCustomToken.NATIVE, code: NATIVE_TOKEN_CODE }
-        : { code: assetCode, issuer: { key: assetIssuer ?? "" } };
+        ? { type: TokenTypeWithCustomToken.NATIVE, code: NATIVE_TOKEN_CODE }
+        : { code: tokenCode, issuer: { key: tokenIssuer ?? "" } };
 
       return {
-        key: `${assetCode}:${assetIssuer ?? "native"}`,
-        icon: <AssetIcon token={token as never} size="sm" />,
-        title: assetCode,
+        key: `${tokenCode}:${tokenIssuer ?? "native"}`,
+        icon: <TokenIcon token={token as never} size="sm" />,
+        title: tokenCode,
         titleComponent: (
           <View className="flex-row items-center gap-[8px]">
             <Text md primary>
-              {assetCode}
+              {tokenCode}
             </Text>
             {hasFiat && fiatValue && (
               <Text secondary>{formatFiatAmount(fiatValue)}</Text>

@@ -1,8 +1,8 @@
 import { BalanceRow } from "components/BalanceRow";
-import ManageAssetRightContent from "components/ManageAssetRightContent";
+import ManageTokenRightContent from "components/ManageTokenRightContent";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesList } from "hooks/useBalancesList";
-import { RemoveAssetParams } from "hooks/useManageAssets";
+import { RemoveTokenParams } from "hooks/useManageTokens";
 import React from "react";
 import { ScrollView } from "react-native";
 
@@ -10,8 +10,8 @@ interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   rightSectionWidth?: number;
-  handleRemoveAsset: (input: RemoveAssetParams) => void;
-  isRemovingAsset: boolean;
+  handleRemoveToken: (input: RemoveTokenParams) => void;
+  isRemovingToken: boolean;
 }
 
 /**
@@ -33,8 +33,8 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   publicKey,
   network,
   rightSectionWidth,
-  handleRemoveAsset,
-  isRemovingAsset,
+  handleRemoveToken,
+  isRemovingToken,
 }) => {
   const { balanceItems } = useBalancesList({
     publicKey,
@@ -57,19 +57,19 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
           key={item.id}
           balance={item}
           rightContent={
-            <ManageAssetRightContent
-              asset={{
+            <ManageTokenRightContent
+              token={{
                 id: item.id,
                 isNative: item.id === NATIVE_TOKEN_CODE,
               }}
-              handleRemoveAsset={(onComplete) =>
-                handleRemoveAsset({
-                  assetId: item.id,
-                  assetType: item.assetType,
+              handleRemoveToken={(onComplete) =>
+                handleRemoveToken({
+                  tokenId: item.id,
+                  tokenType: item.tokenType,
                   onComplete,
                 })
               }
-              isRemovingAsset={isRemovingAsset}
+              isRemovingToken={isRemovingToken}
             />
           }
           rightSectionWidth={rightSectionWidth}

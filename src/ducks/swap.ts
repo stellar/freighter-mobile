@@ -4,7 +4,7 @@ import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { t } from "i18next";
-import { getAssetForPayment } from "services/transactionService";
+import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
 
 export interface SwapPathResult {
@@ -15,7 +15,7 @@ export interface SwapPathResult {
   conversionRate: string;
 }
 
-interface HorizonPathAsset {
+interface HorizonPathToken {
   asset_type: string;
   asset_code?: string;
   asset_issuer?: string;
@@ -80,7 +80,7 @@ const computeDestMinWithSlippage = (
 
 /**
  * Finds the best swap path using Horizon's strict send paths endpoint
- * This is for classic asset swaps using Stellar's built-in DEX
+ * This is for classic token swaps using Stellar's built-in DEX
  */
 const findClassicSwapPath = async (params: {
   sourceBalance: PricedBalance;
@@ -94,11 +94,11 @@ const findClassicSwapPath = async (params: {
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = new Horizon.Server(networkDetails.networkUrl);
 
-    const sourceAsset = getAssetForPayment(sourceBalance);
-    const destAsset = getAssetForPayment(destinationBalance);
+    const sourceToken = getTokenForPayment(sourceBalance);
+    const destToken = getTokenForPayment(destinationBalance);
 
     const pathsResult = await server
-      .strictSendPaths(sourceAsset, sourceAmount, [destAsset])
+      .strictSendPaths(sourceToken, sourceAmount, [destToken])
       .limit(1)
       .call();
 
@@ -108,11 +108,11 @@ const findClassicSwapPath = async (params: {
 
     const bestPath = pathsResult.records[0];
 
-    const path: string[] = bestPath.path.map((asset: HorizonPathAsset) => {
-      if (asset.asset_type === "native") {
+    const path: string[] = bestPath.path.map((token: HorizonPathToken) => {
+      if (token.asset_type === "native") {
         return "native";
       }
-      return `${asset.asset_code}:${asset.asset_issuer}`;
+      return `${token.asset_code}:${token.asset_issuer}`;
     });
 
     const sourceAmountBN = new BigNumber(sourceAmount);

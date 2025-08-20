@@ -1,4 +1,4 @@
-import { Asset, StrKey } from "@stellar/stellar-sdk";
+import { Asset as SdkToken, StrKey } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
@@ -8,13 +8,13 @@ import {
 import {
   Balance,
   NativeToken,
-  AssetToken,
   TokenIdentifier,
   TokenPrice,
   TokenPricesMap,
   PricedBalanceMap,
   PricedBalance,
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
+  NonNativeToken,
   Token,
 } from "config/types";
 
@@ -39,9 +39,9 @@ interface IsAmountSpendableParams {
 /**
  * Gets the human-readable share code for a liquidity pool balance
  *
- * This function extracts the asset codes from both reserves in a liquidity pool
+ * This function extracts the token codes from both reserves in a liquidity pool
  * and formats them as a readable string (e.g., "XLM / USDC"). It handles the case
- * where one or both assets might be the native XLM asset.
+ * where one or both tokens might be the native XLM token.
  *
  * @param {Balance} balance - The balance object to extract share code from
  * @returns {string} Formatted share code string (e.g., "XLM / USDC") or empty string if not applicable
@@ -56,17 +56,17 @@ export const getLPShareCode = (balance: Balance) => {
     return "";
   }
 
-  let assetA = reserves[0].asset.split(":")[0];
-  let assetB = reserves[1].asset.split(":")[0];
+  let tokenA = reserves[0].asset.split(":")[0];
+  let tokenB = reserves[1].asset.split(":")[0];
 
-  if (assetA === Asset.native().toString()) {
-    assetA = Asset.native().code;
+  if (tokenA === SdkToken.native().toString()) {
+    tokenA = SdkToken.native().code;
   }
-  if (assetB === Asset.native().toString()) {
-    assetB = Asset.native().code;
+  if (tokenB === SdkToken.native().toString()) {
+    tokenB = SdkToken.native().code;
   }
 
-  return `${assetA} / ${assetB}`;
+  return `${tokenA} / ${tokenB}`;
 };
 
 /**
@@ -88,7 +88,7 @@ export const getLPShareCode = (balance: Balance) => {
  *   // It's a liquidity pool, access LP-specific properties
  *   console.log(balance.liquidityPoolId);
  * } else {
- *   // It's a regular asset balance
+ *   // It's a regular token balance
  *   console.log(balance.token.code);
  * }
  *
@@ -110,7 +110,7 @@ export const isLiquidityPool = (balanceOrToken: Balance | Token): boolean => {
   // Liquidity pool "token" (not a balance)
   if (
     "type" in balanceOrToken &&
-    balanceOrToken.type === AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+    balanceOrToken.type === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
   ) {
     return true;
   }
@@ -126,10 +126,10 @@ export const isLiquidityPool = (balanceOrToken: Balance | Token): boolean => {
  * and raw Token objects.
  *
  * For native XLM tokens, returns "XLM"
- * For other assets, returns "CODE:ISSUER_KEY"
+ * For other tokens, returns "CODE:ISSUER_KEY"
  * For liquidity pools or unknown types, returns empty string
  *
- * @param {Balance | NativeToken | AssetToken} item - The balance or token to identify
+ * @param {Balance | NativeToken | NonNativeToken} item - The balance or token to identify
  * @returns {TokenIdentifier} The token identifier string or empty string for liquidity pools/unknown types
  *
  * @example
@@ -140,7 +140,7 @@ export const isLiquidityPool = (balanceOrToken: Balance | Token): boolean => {
  * const tokenId = getTokenIdentifier(balance.token); // "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
  */
 export const getTokenIdentifier = (
-  item: Balance | NativeToken | AssetToken,
+  item: Balance | NativeToken | NonNativeToken,
 ): TokenIdentifier => {
   // Handle liquidity pools - they don't have token identifiers
   if (isLiquidityPool(item as Balance)) {
@@ -160,7 +160,7 @@ export const getTokenIdentifier = (
     return NATIVE_TOKEN_CODE;
   }
 
-  // Asset token with issuer
+  // Token with issuer
   if ("code" in token && "issuer" in token) {
     return `${token.code}:${token.issuer.key}`;
   }
@@ -286,60 +286,60 @@ export const sortBalances = (balances: PricedBalanceMap): PricedBalanceMap => {
   return Object.fromEntries(sortedEntries);
 };
 
-export const formatAssetIdentifier = (assetIdentifier: string) => {
-  const formattedAssetIdentifier = assetIdentifier.split(":");
+export const formatTokenIdentifier = (tokenIdentifier: string) => {
+  const formattedTokenIdentifier = tokenIdentifier.split(":");
 
-  if (formattedAssetIdentifier.length === 1) {
+  if (formattedTokenIdentifier.length === 1) {
     return {
-      assetCode: formattedAssetIdentifier[0],
+      tokenCode: formattedTokenIdentifier[0],
       issuer: "",
     };
   }
 
   return {
-    assetCode: formattedAssetIdentifier[0],
-    issuer: formattedAssetIdentifier[1],
+    tokenCode: formattedTokenIdentifier[0],
+    issuer: formattedTokenIdentifier[1],
   };
 };
 
 /**
- * Determines the asset type based on the asset identifier
+ * Determines the token type based on the token identifier
  *
- * This function takes an asset identifier (e.g., "XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
- * and returns the corresponding asset type from the Stellar SDK.
+ * This function takes a token identifier (e.g., "XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+ * and returns the corresponding token type from the Stellar SDK.
  *
- * @param {string} assetIdentifier - The asset identifier to determine the type of
- * @returns {AssetType} The corresponding asset type from the Stellar SDK
+ * @param {string} tokenIdentifier - The token identifier to determine the type of
+ * @returns {TokenTypeWithCustomToken} The corresponding token type from the Stellar SDK
  *
  * @example
- * // Get asset type for an asset identifier
- * const assetType = getAssetType("USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
- * // assetType will be "credit_alphanum4"
+ * // Get token type for a token identifier
+ * const tokenType = getTokenType("USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
+ * // tokenType will be "credit_alphanum4"
  */
-export const getAssetType = (
-  assetIdentifier: string,
-): AssetTypeWithCustomToken => {
-  if (assetIdentifier === NATIVE_TOKEN_CODE) {
-    return AssetTypeWithCustomToken.NATIVE;
+export const getTokenType = (
+  tokenIdentifier: string,
+): TokenTypeWithCustomToken => {
+  if (tokenIdentifier === NATIVE_TOKEN_CODE) {
+    return TokenTypeWithCustomToken.NATIVE;
   }
 
-  if (assetIdentifier.includes(":")) {
-    const { assetCode, issuer } = formatAssetIdentifier(assetIdentifier);
+  if (tokenIdentifier.includes(":")) {
+    const { tokenCode, issuer } = formatTokenIdentifier(tokenIdentifier);
 
     if (issuer.startsWith("C")) {
-      return AssetTypeWithCustomToken.CUSTOM_TOKEN;
+      return TokenTypeWithCustomToken.CUSTOM_TOKEN;
     }
 
-    if (assetCode.length <= 4) {
-      return AssetTypeWithCustomToken.CREDIT_ALPHANUM4;
+    if (tokenCode.length <= 4) {
+      return TokenTypeWithCustomToken.CREDIT_ALPHANUM4;
     }
 
-    if (assetCode.length >= 5 && assetCode.length <= 12) {
-      return AssetTypeWithCustomToken.CREDIT_ALPHANUM12;
+    if (tokenCode.length >= 5 && tokenCode.length <= 12) {
+      return TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
     }
   }
 
-  return AssetTypeWithCustomToken.LIQUIDITY_POOL_SHARES;
+  return TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES;
 };
 
 export const isPublicKeyValid = (publicKey: string) =>
@@ -356,7 +356,7 @@ export const isPublicKeyValid = (publicKey: string) =>
  * // Calculate spendable XLM amount (subtracts fee and minimum balance)
  * const spendable = calculateSpendableAmount({ balance: xlmBalance, subentryCount: 5, transactionFee: "0.00001" });
  *
- * // Calculate spendable amount for other assets (no fee subtraction)
+ * // Calculate spendable amount for other tokens (no fee subtraction)
  * const spendable = calculateSpendableAmount({ balance: usdcBalance });
  */
 export const calculateSpendableAmount = ({
@@ -373,7 +373,7 @@ export const calculateSpendableAmount = ({
     return totalBalance;
   }
 
-  // For non-native assets, return available balance or total balance
+  // For non-native tokens, return available balance or total balance
   if ("token" in balance && balance.token.type !== "native") {
     // Use available balance if present
     const availableBalance =
@@ -471,7 +471,7 @@ export function isSacContract(name: string): boolean {
   if (!code || !issuer) return false;
   try {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const asset = new Asset(code, issuer);
+    const token = new SdkToken(code, issuer);
     return true;
   } catch {
     return false;
@@ -482,9 +482,9 @@ export function isSacContract(name: string): boolean {
  * Validates if the user has enough XLM for transaction fees
  *
  * This function checks if the user has sufficient XLM balance to pay for transaction fees.
- * All Stellar transactions require XLM fees, regardless of what assets are being transferred.
+ * All Stellar transactions require XLM fees, regardless of what tokens are being transferred.
  *
- * @param {Array<PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }>} balanceItems - Array of user's balances
+ * @param {Array<PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken }>} balanceItems - Array of user's balances
  * @param {string} transactionFee - The transaction fee in XLM (default: MIN_TRANSACTION_FEE)
  * @returns {boolean} True if user has enough XLM for fees, false otherwise
  *
@@ -494,7 +494,7 @@ export function isSacContract(name: string): boolean {
  */
 export const hasXLMForFees = (
   balanceItems: Array<
-    PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }
+    PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken }
   >,
   transactionFee: string = MIN_TRANSACTION_FEE,
 ): boolean => {
