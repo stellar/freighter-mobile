@@ -1,3 +1,4 @@
+/* eslint-disable react/no-array-index-key */
 import { xdr } from "@stellar/stellar-sdk";
 import {
   KeyValueInvokeHostFnArgs,
@@ -39,14 +40,14 @@ const SignTransactionAuthorizations = ({
   const getAuthEntryKey = (detail: InvocationArgs) => {
     switch (detail.type) {
       case "invoke": {
-        return detail.fnName;
+        return `${detail.type}-${detail.contractId}-${detail.fnName}`;
       }
       case "sac":
-        return detail.asset;
+        return `${detail.type}-${detail.asset}`;
       case "wasm":
-        return detail.hash;
+        return `${detail.type}-${detail.hash}`;
       default:
-        return null;
+        return `unknown-${JSON.stringify(detail)}`;
     }
   };
 
@@ -167,9 +168,9 @@ const SignTransactionAuthorizations = ({
 
     return (
       <View className="gap-[12px]">
-        {invocationDetails.map((detail) => (
+        {invocationDetails.map((detail, detailIndex) => (
           <View
-            key={getAuthEntryKey(detail)}
+            key={`${getAuthEntryKey(detail)}-${detailIndex}`}
             className="py-[12px] px-[16px] bg-background-tertiary rounded-[16px] gap-[12px]"
           >
             {/* Header */}
@@ -198,8 +199,8 @@ const SignTransactionAuthorizations = ({
           {t("signTransactionDetails.authorizations.title")}
         </Text>
       </View>
-      {authEntries.map((authEntry) => (
-        <View key={authEntry.toXDR("raw").toString()}>
+      {authEntries.map((authEntry, index) => (
+        <View key={`auth-entry-${index}-${authEntry.toXDR("raw").toString()}`}>
           {renderAuthEntry(authEntry)}
         </View>
       ))}
