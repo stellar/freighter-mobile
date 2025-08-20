@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable react/no-array-index-key */
 import {
   Address,
   Asset,
@@ -112,19 +113,27 @@ export const KeyValueInvokeHostFnArgs = ({
             <View className="h-[1px] bg-background-tertiary" />
           </>
         )}
-        {args.map((arg, index) => (
-          <View key={arg.toXDR().toString()} className="gap-[8px]">
-            <View className="flex-row items-center gap-[4px]">
-              <Text secondary>{argNames[index] && argNames[index]}</Text>
-              <Icon.Copy01
-                size={14}
-                themeColor="gray"
-                onPress={() => copyToClipboard(scValByType(arg) as string)}
-              />
+        {args.map((arg, index) => {
+          const xdrString = arg.toXDR().toString();
+          const contextKey = `${contractId || "no-contract"}-${fnName || "no-fn"}`;
+
+          return (
+            <View
+              key={`arg-${contextKey}-${index}-${xdrString}`}
+              className="gap-[8px]"
+            >
+              <View className="flex-row items-center gap-[4px]">
+                <Text secondary>{argNames[index] && argNames[index]}</Text>
+                <Icon.Copy01
+                  size={14}
+                  themeColor="gray"
+                  onPress={() => copyToClipboard(scValByType(arg) as string)}
+                />
+              </View>
+              <Text>{scValByType(arg)}</Text>
             </View>
-            <Text>{scValByType(arg)}</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
     );
   };

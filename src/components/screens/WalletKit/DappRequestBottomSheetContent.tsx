@@ -11,7 +11,6 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatAssetAmount } from "helpers/formatAmount";
@@ -84,11 +83,6 @@ const DappRequestBottomSheetContent: React.FC<
   const { t } = useAppTranslation();
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
-  );
-
-  logger.info(
-    "transactionBalanceListItems",
-    JSON.stringify(signTransactionDetails),
   );
 
   const accountDetailList = useMemo(

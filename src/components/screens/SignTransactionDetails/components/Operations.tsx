@@ -1,3 +1,4 @@
+/* eslint-disable react/no-array-index-key */
 import { Address, Operation, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
@@ -1114,11 +1115,12 @@ const Operations = ({ operations }: OperationsProps) => {
   return (
     <View>
       {operations.map((operation, index: number) => {
-        const operationIndex = index + 1;
         const { source, type } = operation;
-
         return (
-          <View className="flex-1 gap-[12px]" key={operationIndex}>
+          <View
+            className="flex-1 gap-[12px]"
+            key={`operation-${index}-${type}-${source || "no-source"}`}
+          >
             <View className="flex-row items-center gap-[8px]">
               <Icon.Cube02 size={16} themeColor="gray" />
               <Text secondary>{OPERATION_TYPES[type] || type}</Text>
