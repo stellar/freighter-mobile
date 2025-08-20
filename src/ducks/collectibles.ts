@@ -66,7 +66,8 @@ interface CollectiblesState {
 const dummyCollectibles: Collectible[] = [
   // Stellar Frogs Collection
   {
-    collectionAddress: "CCCStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "1",
     name: "welcomingfrog.xlm",
