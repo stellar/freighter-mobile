@@ -16,7 +16,7 @@ import { useMemo } from "react";
  * @returns {boolean} returns.isLoading - Loading state indicator
  * @returns {string|null} returns.error - Error message if any
  * @returns {Function} returns.getCollectionByCollectionAddress - Function to find collection by address
- * @returns {Function} returns.getCollectibleByTokenId - Function to find collectible by token ID
+ * @returns {Function} returns.getCollectible - Function to find collectible by collection address and token ID
  * @returns {Function} returns.fetchCollectibles - Function to fetch collectibles data
  * @returns {Function} returns.clearError - Function to clear error state
  */
@@ -66,7 +66,7 @@ export const useCollectibles = () => {
    * @param {string} collectionAddress - The collection address to search for
    * @returns {Collection|undefined} The found collection or undefined if not found
    */
-  const getCollectionByCollectionAddress = useMemo(
+  const getCollection = useMemo(
     () => (collectionAddress: string) =>
       groupedCollections.find(
         (collection) => collection.collectionAddress === collectionAddress,
@@ -75,14 +75,27 @@ export const useCollectibles = () => {
   );
 
   /**
-   * Utility function to find a specific collectible by its token ID
+   * Utility function to find a specific collectible by its collection address and token ID
    *
-   * @param {string} tokenId - The token ID to search for
+   * @param {Object} params - The parameters object
+   * @param {string} params.collectionAddress - The collection address to search for
+   * @param {string} params.tokenId - The token ID to search for
    * @returns {Collectible|undefined} The found collectible or undefined if not found
    */
-  const getCollectibleByTokenId = useMemo(
-    () => (tokenId: string) =>
-      collectibles.find((collectible) => collectible.tokenId === tokenId),
+  const getCollectible = useMemo(
+    () =>
+      ({
+        collectionAddress,
+        tokenId,
+      }: {
+        collectionAddress: string;
+        tokenId: string;
+      }) =>
+        collectibles.find(
+          (collectible) =>
+            collectible.collectionAddress === collectionAddress &&
+            collectible.tokenId === tokenId,
+        ),
     [collectibles],
   );
 
@@ -96,8 +109,8 @@ export const useCollectibles = () => {
     error,
 
     // Utility functions
-    getCollectionByCollectionAddress,
-    getCollectibleByTokenId,
+    getCollection,
+    getCollectible,
 
     // Actions
     fetchCollectibles,

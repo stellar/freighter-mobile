@@ -1,9 +1,9 @@
 import { render } from "@testing-library/react-native";
-import { Asset } from "components/sds/Asset";
+import { Token } from "components/sds/Token";
 import React from "react";
 
 /**
- * Tests for the Asset component
+ * Tests for the Token component
  *
  * These tests verify:
  * - Rendering of all variants (single, swap, pair, platform)
@@ -13,36 +13,36 @@ import React from "react";
  * - Handling of local and remote image sources
  * - Accessibility label application
  */
-describe("Asset", () => {
+describe("Token", () => {
   const mockSourceOne = {
-    image: "https://example.com/asset1.png",
-    altText: "Asset 1",
+    image: "https://example.com/token1.png",
+    altText: "Token 1",
   };
 
   const mockSourceTwo = {
-    image: "https://example.com/asset2.png",
-    altText: "Asset 2",
+    image: "https://example.com/token2.png",
+    altText: "Token 2",
     backgroundColor: "#FF0000",
   };
 
-  it("renders single asset correctly", () => {
+  it("renders single token correctly", () => {
     const { getByLabelText } = render(
-      <Asset variant="single" size="md" sourceOne={mockSourceOne} />,
+      <Token variant="single" size="md" sourceOne={mockSourceOne} />,
     );
 
-    const image = getByLabelText("Asset 1");
+    const image = getByLabelText("Token 1");
     expect(image).toBeTruthy();
     expect(image.props.source).toEqual({
-      uri: "https://example.com/asset1.png",
+      uri: "https://example.com/token1.png",
     });
   });
 
   it("uses 'lg' as the default size when not specified", () => {
     const { getByLabelText } = render(
-      <Asset variant="single" sourceOne={mockSourceOne} />,
+      <Token variant="single" sourceOne={mockSourceOne} />,
     );
 
-    const image = getByLabelText("Asset 1");
+    const image = getByLabelText("Token 1");
     expect(image).toBeTruthy();
     // Testing that the component renders successfully with the default size
     // (We can't easily test the exact styling in this test environment)
@@ -50,7 +50,7 @@ describe("Asset", () => {
 
   it("renders swap variant correctly", () => {
     const { getByLabelText } = render(
-      <Asset
+      <Token
         variant="swap"
         size="md"
         sourceOne={mockSourceOne}
@@ -58,22 +58,22 @@ describe("Asset", () => {
       />,
     );
 
-    const image1 = getByLabelText("Asset 1");
-    const image2 = getByLabelText("Asset 2");
+    const image1 = getByLabelText("Token 1");
+    const image2 = getByLabelText("Token 2");
 
     expect(image1).toBeTruthy();
     expect(image2).toBeTruthy();
     expect(image1.props.source).toEqual({
-      uri: "https://example.com/asset1.png",
+      uri: "https://example.com/token1.png",
     });
     expect(image2.props.source).toEqual({
-      uri: "https://example.com/asset2.png",
+      uri: "https://example.com/token2.png",
     });
   });
 
   it("renders pair variant correctly", () => {
     const { getByLabelText } = render(
-      <Asset
+      <Token
         variant="pair"
         size="md"
         sourceOne={mockSourceOne}
@@ -81,8 +81,8 @@ describe("Asset", () => {
       />,
     );
 
-    const image1 = getByLabelText("Asset 1");
-    const image2 = getByLabelText("Asset 2");
+    const image1 = getByLabelText("Token 1");
+    const image2 = getByLabelText("Token 2");
 
     expect(image1).toBeTruthy();
     expect(image2).toBeTruthy();
@@ -90,7 +90,7 @@ describe("Asset", () => {
 
   it("renders platform variant correctly", () => {
     const { getByLabelText } = render(
-      <Asset
+      <Token
         variant="platform"
         size="md"
         sourceOne={mockSourceOne}
@@ -98,8 +98,8 @@ describe("Asset", () => {
       />,
     );
 
-    const image1 = getByLabelText("Asset 1");
-    const image2 = getByLabelText("Asset 2");
+    const image1 = getByLabelText("Token 1");
+    const image2 = getByLabelText("Token 2");
 
     expect(image1).toBeTruthy();
     expect(image2).toBeTruthy();
@@ -110,10 +110,10 @@ describe("Asset", () => {
 
     sizes.forEach((size) => {
       const { getByLabelText, unmount } = render(
-        <Asset variant="single" size={size} sourceOne={mockSourceOne} />,
+        <Token variant="single" size={size} sourceOne={mockSourceOne} />,
       );
 
-      const image = getByLabelText("Asset 1");
+      const image = getByLabelText("Token 1");
       expect(image).toBeTruthy();
 
       unmount();
@@ -122,7 +122,7 @@ describe("Asset", () => {
 
   it("applies custom background color", () => {
     const { getByLabelText } = render(
-      <Asset
+      <Token
         variant="single"
         size="md"
         sourceOne={{
@@ -132,7 +132,7 @@ describe("Asset", () => {
       />,
     );
 
-    const image = getByLabelText("Asset 1");
+    const image = getByLabelText("Token 1");
     expect(image).toBeTruthy();
   });
 
@@ -141,26 +141,26 @@ describe("Asset", () => {
     const localImage = { uri: "test" }; // Simplified mock of an imported image
 
     const { getByLabelText } = render(
-      <Asset
+      <Token
         variant="single"
         size="md"
         sourceOne={{
           image: localImage, // Test with "imported" image
-          altText: "Local Asset",
+          altText: "Local Token",
         }}
       />,
     );
 
-    const image = getByLabelText("Local Asset");
+    const image = getByLabelText("Local Token");
     expect(image.props.source).toBe(localImage); // Should pass the object directly
   });
 
   it("applies accessibility props correctly", () => {
     const { getByLabelText } = render(
-      <Asset variant="single" size="md" sourceOne={mockSourceOne} />,
+      <Token variant="single" size="md" sourceOne={mockSourceOne} />,
     );
 
-    const image = getByLabelText("Asset 1");
-    expect(image.props.accessibilityLabel).toBe("Asset 1");
+    const image = getByLabelText("Token 1");
+    expect(image.props.accessibilityLabel).toBe("Token 1");
   });
 });

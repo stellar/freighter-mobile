@@ -1,12 +1,12 @@
 import { DEFAULT_DEBOUNCE_DELAY, NETWORKS } from "config/constants";
-import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
+import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import useDebounce from "hooks/useDebounce";
 import { useEffect } from "react";
 
 type BalanceItem = PricedBalance & {
   id: string;
-  assetType: AssetTypeWithCustomToken;
+  tokenType: TokenTypeWithCustomToken;
 };
 
 interface UseSwapPathFindingParams {

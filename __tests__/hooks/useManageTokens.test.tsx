@@ -1,11 +1,11 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { DEFAULT_DECIMALS, NETWORKS, STORAGE_KEYS } from "config/constants";
 import {
-  AssetTypeWithCustomToken,
+  TokenTypeWithCustomToken,
   CustomTokenStorage,
-  FormattedSearchAssetRecord,
+  FormattedSearchTokenRecord,
 } from "config/types";
-import { useManageAssets } from "hooks/useManageAssets";
+import { useManageTokens } from "hooks/useManageTokens";
 import {
   BuildChangeTrustTxParams,
   SignTxParams,
@@ -28,17 +28,17 @@ jest.mock("providers/ToastProvider", () => ({
 
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: Record<string, string>) => {
-    if (key === "addAssetScreen.toastSuccess") {
-      return `Added ${params?.assetCode} successfully`;
+    if (key === "addTokenScreen.toastSuccess") {
+      return `Added ${params?.tokenCode} successfully`;
     }
-    if (key === "addAssetScreen.toastError") {
-      return `Failed to add ${params?.assetCode}`;
+    if (key === "addTokenScreen.toastError") {
+      return `Failed to add ${params?.tokenCode}`;
     }
-    if (key === "manageAssetsScreen.removeAssetSuccess") {
-      return `Removed ${params?.assetCode} successfully`;
+    if (key === "manageTokensScreen.removeTokenSuccess") {
+      return `Removed ${params?.tokenCode} successfully`;
     }
-    if (key === "manageAssetsScreen.removeAssetError") {
-      return `Failed to remove ${params?.assetCode}`;
+    if (key === "manageTokensScreen.removeTokenError") {
+      return `Failed to remove ${params?.tokenCode}`;
     }
     return key;
   },
@@ -56,9 +56,9 @@ jest.mock("services/stellar", () => ({
 }));
 
 jest.mock("helpers/balances", () => ({
-  formatAssetIdentifier: (assetId: string) => {
-    const [assetCode, issuer] = assetId.split(":");
-    return { assetCode, issuer };
+  formatTokenIdentifier: (tokenId: string) => {
+    const [tokenCode, issuer] = tokenId.split(":");
+    return { tokenCode, issuer };
   },
 }));
 
@@ -85,7 +85,7 @@ jest.mock("services/storage/storageFactory", () => ({
   },
 }));
 
-describe("useManageAssets", () => {
+describe("useManageTokens", () => {
   const mockPublicKey =
     "GDKSXV3LBWH45YUCBWNYMYP3EBHFGECGNS5F7KHKE4OT7WOJCAPVB3K4";
   const mockPrivateKey =
@@ -100,20 +100,20 @@ describe("useManageAssets", () => {
   const mockNetwork = NETWORKS.TESTNET;
   const mockOnSuccess = jest.fn();
   const mockOnComplete = jest.fn();
-  const mockAsset: FormattedSearchAssetRecord = {
-    assetCode: "TEST",
+  const mockToken: FormattedSearchTokenRecord = {
+    tokenCode: "TEST",
     issuer: "GACWIA2XGDFWWN3WKPX63JTK4S2J5NDPNOIVYMZY6RVTS7LWF2VHZLV3",
     domain: "test.com",
     hasTrustline: false,
     isNative: false,
   };
-  const mockCustomAsset: FormattedSearchAssetRecord = {
-    assetCode: "CUSTOM",
+  const mockCustomToken: FormattedSearchTokenRecord = {
+    tokenCode: "CUSTOM",
     issuer: "GACWIA2XGDFWWN3WKPX63JTK4S2J5NDPNOIVYMZY6RVTS7LWF2VHZLV3",
     domain: "custom.com",
     hasTrustline: false,
     isNative: false,
-    assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+    tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
     decimals: 6,
     name: "Custom Token",
   };
@@ -131,10 +131,10 @@ describe("useManageAssets", () => {
     jest.clearAllTimers();
   });
 
-  describe("addAsset", () => {
-    it("should successfully add an asset trustline", async () => {
+  describe("addToken", () => {
+    it("should successfully add an token", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -142,11 +142,11 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.addAsset(mockAsset);
+        await result.current.addToken(mockToken);
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalledWith({
-        assetIdentifier: `${mockAsset.assetCode}:${mockAsset.issuer}`,
+        tokenIdentifier: `${mockToken.tokenCode}:${mockToken.issuer}`,
         network: mockNetwork,
         publicKey: mockPublicKey,
       });
@@ -161,15 +161,15 @@ describe("useManageAssets", () => {
       });
       expect(mockOnSuccess).toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith({
-        title: `Added ${mockAsset.assetCode} successfully`,
+        title: `Added ${mockToken.tokenCode} successfully`,
         variant: "success",
       });
-      expect(result.current.isAddingAsset).toBe(false);
+      expect(result.current.isAddingToken).toBe(false);
     });
 
-    it("should successfully add an asset trustline and call onComplete", async () => {
+    it("should successfully add an token trustline and call onComplete", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -177,7 +177,7 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.addAsset(mockAsset, mockOnComplete);
+        await result.current.addToken(mockToken, mockOnComplete);
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalled();
@@ -189,7 +189,7 @@ describe("useManageAssets", () => {
 
     it("should successfully add a custom token", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -197,7 +197,7 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.addAsset(mockCustomAsset);
+        await result.current.addToken(mockCustomToken);
       });
 
       // Custom token should not use trustlines
@@ -215,27 +215,27 @@ describe("useManageAssets", () => {
       expect(storageData[mockPublicKey][mockNetwork]).toBeDefined();
       expect(storageData[mockPublicKey][mockNetwork].length).toBe(1);
       expect(storageData[mockPublicKey][mockNetwork][0]).toEqual({
-        contractId: mockCustomAsset.issuer,
-        symbol: mockCustomAsset.assetCode,
-        decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
-        name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
+        contractId: mockCustomToken.issuer,
+        symbol: mockCustomToken.tokenCode,
+        decimals: mockCustomToken.decimals ?? DEFAULT_DECIMALS,
+        name: mockCustomToken.name ?? mockCustomToken.tokenCode,
       });
 
       expect(mockOnSuccess).toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith({
-        title: `Added ${mockCustomAsset.assetCode} successfully`,
+        title: `Added ${mockCustomToken.tokenCode} successfully`,
         variant: "success",
       });
-      expect(result.current.isAddingAsset).toBe(false);
+      expect(result.current.isAddingToken).toBe(false);
     });
 
-    it("should handle errors when adding an asset trustline", async () => {
+    it("should handle errors when adding an token trustline", async () => {
       mockBuildChangeTrustTx.mockImplementationOnce(() =>
         Promise.reject(new Error("Network error")),
       );
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -244,7 +244,7 @@ describe("useManageAssets", () => {
 
       await act(async () => {
         try {
-          await result.current.addAsset(mockAsset);
+          await result.current.addToken(mockToken);
         } catch (error) {
           // Error is expected
         }
@@ -257,15 +257,15 @@ describe("useManageAssets", () => {
       expect(mockSignTransaction).not.toHaveBeenCalled();
       expect(mockSubmitTx).not.toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith({
-        title: `Failed to add ${mockAsset.assetCode}`,
+        title: `Failed to add ${mockToken.tokenCode}`,
         variant: "error",
       });
-      expect(result.current.isAddingAsset).toBe(false);
+      expect(result.current.isAddingToken).toBe(false);
     });
 
-    it("should do nothing if asset is null", async () => {
+    it("should do nothing if token is null", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -273,8 +273,8 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.addAsset(
-          null as unknown as FormattedSearchAssetRecord,
+        await result.current.addToken(
+          null as unknown as FormattedSearchTokenRecord,
         );
       });
 
@@ -286,13 +286,13 @@ describe("useManageAssets", () => {
     });
   });
 
-  describe("removeAsset", () => {
-    it("should successfully remove an asset trustline using string assetId", async () => {
-      const mockAssetId =
+  describe("removeToken", () => {
+    it("should successfully remove an token trustline using string tokenId", async () => {
+      const mockTokenId =
         "TEST:GACWIA2XGDFWWN3WKPX63JTK4S2J5NDPNOIVYMZY6RVTS7LWF2VHZLV3";
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -300,11 +300,11 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({ assetId: mockAssetId });
+        await result.current.removeToken({ tokenId: mockTokenId });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalledWith({
-        assetIdentifier: mockAssetId,
+        tokenIdentifier: mockTokenId,
         network: mockNetwork,
         publicKey: mockPublicKey,
         isRemove: true,
@@ -323,12 +323,12 @@ describe("useManageAssets", () => {
         title: "Removed TEST successfully",
         variant: "success",
       });
-      expect(result.current.isRemovingAsset).toBe(false);
+      expect(result.current.isRemovingToken).toBe(false);
     });
 
-    it("should successfully remove an asset trustline using FormattedSearchAssetRecord", async () => {
+    it("should successfully remove an token trustline using FormattedSearchtokenRecord", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -336,11 +336,11 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({ assetRecord: mockAsset });
+        await result.current.removeToken({ tokenRecord: mockToken });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalledWith({
-        assetIdentifier: `${mockAsset.assetCode}:${mockAsset.issuer}`,
+        tokenIdentifier: `${mockToken.tokenCode}:${mockToken.issuer}`,
         network: mockNetwork,
         publicKey: mockPublicKey,
         isRemove: true,
@@ -359,12 +359,12 @@ describe("useManageAssets", () => {
         title: "Removed TEST successfully",
         variant: "success",
       });
-      expect(result.current.isRemovingAsset).toBe(false);
+      expect(result.current.isRemovingToken).toBe(false);
     });
 
-    it("should successfully remove an asset trustline and call onComplete", async () => {
+    it("should successfully remove an token trustline and call onComplete", async () => {
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -372,8 +372,8 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({
-          assetRecord: mockAsset,
+        await result.current.removeToken({
+          tokenRecord: mockToken,
           onComplete: mockOnComplete,
         });
       });
@@ -391,10 +391,10 @@ describe("useManageAssets", () => {
         [mockPublicKey]: {
           [mockNetwork]: [
             {
-              contractId: mockCustomAsset.issuer,
-              symbol: mockCustomAsset.assetCode,
-              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
-              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
+              contractId: mockCustomToken.issuer,
+              symbol: mockCustomToken.tokenCode,
+              decimals: mockCustomToken.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomToken.name ?? mockCustomToken.tokenCode,
             },
           ],
         },
@@ -418,7 +418,7 @@ describe("useManageAssets", () => {
       });
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -426,9 +426,9 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({
-          assetRecord: mockCustomAsset,
-          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        await result.current.removeToken({
+          tokenRecord: mockCustomToken,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
         });
       });
 
@@ -450,10 +450,10 @@ describe("useManageAssets", () => {
 
       expect(mockOnSuccess).toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith({
-        title: `Removed ${mockCustomAsset.assetCode} successfully`,
+        title: `Removed ${mockCustomToken.tokenCode} successfully`,
         variant: "success",
       });
-      expect(result.current.isRemovingAsset).toBe(false);
+      expect(result.current.isRemovingToken).toBe(false);
     });
 
     it("should handle cleanup when removing the last custom token for a network", async () => {
@@ -462,10 +462,10 @@ describe("useManageAssets", () => {
         [mockPublicKey]: {
           [mockNetwork]: [
             {
-              contractId: mockCustomAsset.issuer,
-              symbol: mockCustomAsset.assetCode,
-              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
-              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
+              contractId: mockCustomToken.issuer,
+              symbol: mockCustomToken.tokenCode,
+              decimals: mockCustomToken.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomToken.name ?? mockCustomToken.tokenCode,
             },
           ],
         },
@@ -489,7 +489,7 @@ describe("useManageAssets", () => {
       });
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -497,9 +497,9 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({
-          assetRecord: mockCustomAsset,
-          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        await result.current.removeToken({
+          tokenRecord: mockCustomToken,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
         });
       });
 
@@ -519,10 +519,10 @@ describe("useManageAssets", () => {
         [mockPublicKey]: {
           [mockNetwork]: [
             {
-              contractId: mockCustomAsset.issuer,
-              symbol: mockCustomAsset.assetCode,
-              decimals: mockCustomAsset.decimals ?? DEFAULT_DECIMALS,
-              name: mockCustomAsset.name ?? mockCustomAsset.assetCode,
+              contractId: mockCustomToken.issuer,
+              symbol: mockCustomToken.tokenCode,
+              decimals: mockCustomToken.decimals ?? DEFAULT_DECIMALS,
+              name: mockCustomToken.name ?? mockCustomToken.tokenCode,
             },
           ],
         },
@@ -531,7 +531,7 @@ describe("useManageAssets", () => {
         JSON.stringify(initialStorage);
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -539,9 +539,9 @@ describe("useManageAssets", () => {
       );
 
       await act(async () => {
-        await result.current.removeAsset({
-          assetRecord: mockCustomAsset,
-          assetType: AssetTypeWithCustomToken.CUSTOM_TOKEN,
+        await result.current.removeToken({
+          tokenRecord: mockCustomToken,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
         });
       });
 
@@ -552,13 +552,13 @@ describe("useManageAssets", () => {
       expect(storageData[mockPublicKey]).toBeUndefined();
     });
 
-    it("should handle errors when removing an asset trustline", async () => {
+    it("should handle errors when removing an token trustline", async () => {
       mockBuildChangeTrustTx.mockImplementationOnce(() =>
         Promise.reject(new Error("Network error")),
       );
 
       const { result } = renderHook(() =>
-        useManageAssets({
+        useManageTokens({
           network: mockNetwork,
           account: mockAccount,
           onSuccess: mockOnSuccess,
@@ -567,7 +567,7 @@ describe("useManageAssets", () => {
 
       await act(async () => {
         try {
-          await result.current.removeAsset({ assetRecord: mockAsset });
+          await result.current.removeToken({ tokenRecord: mockToken });
         } catch (error) {
           // Error is expected
         }
@@ -583,7 +583,7 @@ describe("useManageAssets", () => {
         title: "Failed to remove TEST",
         variant: "error",
       });
-      expect(result.current.isRemovingAsset).toBe(false);
+      expect(result.current.isRemovingToken).toBe(false);
     });
   });
 });

@@ -9,34 +9,34 @@ import {
 } from "services/blockaid/constants";
 import {
   BlockaidApiResponse,
-  ScanAssetParams,
+  ScanTokenParams,
   ScanSiteParams,
   ScanTransactionParams,
 } from "services/blockaid/types";
 
-const formatAddress = (assetCode: string, assetIssuer?: string): string => {
-  if (assetIssuer) {
-    return `${assetCode}-${assetIssuer}`;
+const formatAddress = (tokenCode: string, tokenIssuer?: string): string => {
+  if (tokenIssuer) {
+    return `${tokenCode}-${tokenIssuer}`;
   }
 
-  return assetCode;
+  return tokenCode;
 };
 
-export const scanAsset = async (
-  params: ScanAssetParams,
+export const scanToken = async (
+  params: ScanTokenParams,
 ): Promise<Blockaid.TokenScanResponse> => {
-  const { assetCode, assetIssuer, network } = params;
+  const { tokenCode, tokenIssuer, network } = params;
 
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    const address = formatAddress(assetCode, assetIssuer);
+    const address = formatAddress(tokenCode, tokenIssuer);
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_ASSET}?address=${address}`);
+    >(`${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${address}`);
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -44,15 +44,15 @@ export const scanAsset = async (
 
     const scanResult = response.data.data as Blockaid.TokenScanResponse;
 
-    analytics.track(AnalyticsEvent.BLOCKAID_ASSET_SCAN, {
+    analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
       response: scanResult,
-      assetCode,
+      assetCode: tokenCode,
       network,
     });
 
     return scanResult;
   } catch (error) {
-    throw new Error(BLOCKAID_ERROR_MESSAGES.ASSET_SCAN_FAILED);
+    throw new Error(BLOCKAID_ERROR_MESSAGES.TOKEN_SCAN_FAILED);
   }
 };
 

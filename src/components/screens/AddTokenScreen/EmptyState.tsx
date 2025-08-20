@@ -3,16 +3,16 @@ import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
 
-const ErrorState: React.FC = () => {
+const EmptyState: React.FC = () => {
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-1 items-center">
+    <View className="flex-1 justify-center items-center">
       <Text sm secondary>
-        {t("addAssetScreen.somethingWentWrong")}
+        {t("addTokenScreen.emptyState")}
       </Text>
     </View>
   );
 };
 
-export default ErrorState;
+export default EmptyState;

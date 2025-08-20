@@ -21,6 +21,6 @@ export enum SwapStatus {
  * Swap button action enum
  */
 export enum SwapButtonAction {
-  SELECT_ASSET = "selectAsset",
+  SELECT_TOKEN = "selectToken",
   REVIEW = "review",
 }

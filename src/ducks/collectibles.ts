@@ -129,13 +129,12 @@ const dummyCollectibles: Collectible[] = [
     name: "charles.xlm",
     image:
       "https://nftcalendar.io/storage/uploads/events/2025/7/Hdqv6YNVErVCmYlwobFVYfS5BiH19ferUgQova7Z.webp",
-    description: "Charles' Soroban username",
+    description: "The protocol to register your Soroban username",
     externalUrl: "https://app.sorobandomains.org/domains/charles.xlm",
     traits: [
       { name: "Name", value: "charles" },
       { name: "Length", value: 7 },
       { name: "Character", value: "Alphanumeric" },
-      { name: "Type", value: "Domain" },
     ],
   },
   {

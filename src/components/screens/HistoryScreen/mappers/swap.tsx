@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { logos } from "assets/logos";
-import { AssetIcon } from "components/AssetIcon";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
 import {
   TransactionDetails,
@@ -10,12 +10,12 @@ import {
   TransactionStatus,
   HistoryItemData,
 } from "components/screens/HistoryScreen/types";
-import { Asset } from "components/sds/Asset";
 import Icon from "components/sds/Icon";
+import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORK_URLS } from "config/constants";
-import { AssetTypeWithCustomToken } from "config/types";
-import { formatAssetAmount } from "helpers/formatAmount";
+import { TokenTypeWithCustomToken } from "config/types";
+import { formatTokenAmount } from "helpers/formatAmount";
 import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -45,32 +45,32 @@ export const mapSwapHistoryItem = async ({
   const {
     id,
     amount,
-    asset_code: destAssetCode,
-    asset_issuer: assetIssuer,
-    source_asset_code: sourceAssetCode,
-    source_asset_issuer: sourceAssetIssuer,
+    asset_code: destTokenCode,
+    asset_issuer: tokenIssuer,
+    source_asset_code: sourceTokenCode,
+    source_asset_issuer: sourceTokenIssuer,
   } = operation;
 
-  const srcAssetCode = sourceAssetCode || NATIVE_TOKEN_CODE;
-  const destAssetCodeFinal = destAssetCode || NATIVE_TOKEN_CODE;
-  const formattedAmount = `+${formatAssetAmount(amount, destAssetCodeFinal)}`;
+  const srcTokenCode = sourceTokenCode || NATIVE_TOKEN_CODE;
+  const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
+  const formattedAmount = `+${formatTokenAmount(amount, destTokenCodeFinal)}`;
 
   // Get token icons
   const destIcon =
-    destAssetCodeFinal === NATIVE_TOKEN_CODE
+    destTokenCodeFinal === NATIVE_TOKEN_CODE
       ? logos.stellar
       : await getIconUrlFromIssuer({
-          issuerKey: assetIssuer || "",
-          assetCode: destAssetCodeFinal || "",
+          issuerKey: tokenIssuer || "",
+          tokenCode: destTokenCodeFinal || "",
           networkUrl,
         });
 
   const sourceIcon =
-    srcAssetCode === NATIVE_TOKEN_CODE
+    srcTokenCode === NATIVE_TOKEN_CODE
       ? logos.stellar
       : await getIconUrlFromIssuer({
-          issuerKey: sourceAssetIssuer || "",
-          assetCode: srcAssetCode || "",
+          issuerKey: sourceTokenIssuer || "",
+          tokenCode: srcTokenCode || "",
           networkUrl,
         });
 
@@ -79,7 +79,7 @@ export const mapSwapHistoryItem = async ({
   );
 
   const IconComponent = (
-    <Asset
+    <Token
       size="lg"
       variant="swap"
       sourceOne={{
@@ -88,7 +88,7 @@ export const mapSwapHistoryItem = async ({
         renderContent: !sourceIcon
           ? () => (
               <Text xs secondary semiBold>
-                {srcAssetCode.substring(0, 2)}
+                {srcTokenCode.substring(0, 2)}
               </Text>
             )
           : undefined,
@@ -99,7 +99,7 @@ export const mapSwapHistoryItem = async ({
         renderContent: !destIcon
           ? () => (
               <Text xs secondary semiBold>
-                {destAssetCodeFinal.substring(0, 2)}
+                {destTokenCodeFinal.substring(0, 2)}
               </Text>
             )
           : undefined,
@@ -109,9 +109,9 @@ export const mapSwapHistoryItem = async ({
 
   const transactionDetails: TransactionDetails = {
     operation,
-    transactionTitle: t("history.transactionHistory.swappedTwoAssets", {
-      srcAssetCode,
-      destAssetCode: destAssetCodeFinal,
+    transactionTitle: t("history.transactionHistory.swappedTwoTokens", {
+      srcTokenCode,
+      destTokenCode: destTokenCodeFinal,
     }),
     transactionType: TransactionType.SWAP,
     status: TransactionStatus.SUCCESS,
@@ -120,22 +120,22 @@ export const mapSwapHistoryItem = async ({
     fee,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
     swapDetails: {
-      sourceAssetIssuer: operation.source_asset_issuer || "",
-      destinationAssetIssuer: operation.asset_issuer || "",
-      sourceAssetCode: srcAssetCode || "",
-      destinationAssetCode: destAssetCodeFinal || "",
+      sourceTokenIssuer: operation.source_asset_issuer || "",
+      destinationTokenIssuer: operation.asset_issuer || "",
+      sourceTokenCode: srcTokenCode || "",
+      destinationTokenCode: destTokenCodeFinal || "",
       sourceAmount: operation.source_amount || "",
       destinationAmount: operation.amount || "",
-      sourceAssetType: operation.source_asset_type || "",
-      destinationAssetType: operation.asset_type || "",
+      sourceTokenType: operation.source_asset_type || "",
+      destinationTokenType: operation.asset_type || "",
     },
   };
 
   return {
     transactionDetails,
-    rowText: t("history.transactionHistory.swapTwoAssets", {
-      srcAssetCode,
-      destAssetCode: destAssetCodeFinal,
+    rowText: t("history.transactionHistory.swapTwoTokens", {
+      srcTokenCode,
+      destTokenCode: destTokenCodeFinal,
     }),
     actionText: t("history.transactionHistory.swapped"),
     dateText: date,
@@ -160,20 +160,20 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatAssetAmount(
+            {formatTokenAmount(
               transactionDetails.swapDetails?.sourceAmount ?? "",
-              transactionDetails.swapDetails?.sourceAssetCode ?? "",
+              transactionDetails.swapDetails?.sourceTokenCode ?? "",
             )}
           </Text>
         </View>
-        <AssetIcon
+        <TokenIcon
           token={{
-            code: transactionDetails.swapDetails?.sourceAssetCode ?? "",
+            code: transactionDetails.swapDetails?.sourceTokenCode ?? "",
             issuer: {
-              key: transactionDetails.swapDetails?.sourceAssetIssuer ?? "",
+              key: transactionDetails.swapDetails?.sourceTokenIssuer ?? "",
             },
             type: transactionDetails.swapDetails
-              ?.sourceAssetType as AssetTypeWithCustomToken,
+              ?.sourceTokenType as TokenTypeWithCustomToken,
           }}
         />
       </View>
@@ -188,20 +188,20 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatAssetAmount(
+            {formatTokenAmount(
               transactionDetails.swapDetails?.destinationAmount ?? "",
-              transactionDetails.swapDetails?.destinationAssetCode ?? "",
+              transactionDetails.swapDetails?.destinationTokenCode ?? "",
             )}
           </Text>
         </View>
-        <AssetIcon
+        <TokenIcon
           token={{
-            code: transactionDetails.swapDetails?.destinationAssetCode ?? "",
+            code: transactionDetails.swapDetails?.destinationTokenCode ?? "",
             issuer: {
-              key: transactionDetails.swapDetails?.destinationAssetIssuer ?? "",
+              key: transactionDetails.swapDetails?.destinationTokenIssuer ?? "",
             },
             type: transactionDetails.swapDetails
-              ?.destinationAssetType as AssetTypeWithCustomToken,
+              ?.destinationTokenType as TokenTypeWithCustomToken,
           }}
         />
       </View>

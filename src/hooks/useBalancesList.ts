@@ -1,12 +1,12 @@
 import { NETWORKS } from "config/constants";
-import { AssetTypeWithCustomToken, PricedBalance } from "config/types";
+import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useBalancesStore } from "ducks/balances";
-import { getAssetType } from "helpers/balances";
+import { getTokenType } from "helpers/balances";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UseBalancesListResult {
   balanceItems: Array<
-    PricedBalance & { id: string; assetType: AssetTypeWithCustomToken }
+    PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken }
   >;
   isLoading: boolean;
   error: string | null;
@@ -97,7 +97,7 @@ export const useBalancesList = ({
 
   // Utility: check if a balance item matches the current search term
   const matchesSearchTerm = (
-    item: PricedBalance & { id: string; assetType: AssetTypeWithCustomToken },
+    item: PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken },
     term: string,
   ): boolean => {
     if (!term) {
@@ -126,15 +126,15 @@ export const useBalancesList = ({
     () =>
       Object.entries(pricedBalances)
         .map(([id, balance]) => {
-          const assetType = getAssetType(id);
+          const tokenType = getTokenType(id);
 
           return {
             id,
-            assetType,
+            tokenType,
             ...balance,
           } as PricedBalance & {
             id: string;
-            assetType: AssetTypeWithCustomToken;
+            tokenType: TokenTypeWithCustomToken;
           };
         })
         .filter((item) => matchesSearchTerm(item, searchTerm ?? "")),

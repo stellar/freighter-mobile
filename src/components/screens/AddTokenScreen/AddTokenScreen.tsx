@@ -6,57 +6,57 @@ import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
-import AddAssetBottomSheetContent from "components/screens/AddAssetScreen/AddAssetBottomSheetContent";
-import AssetItem from "components/screens/AddAssetScreen/AssetItem";
-import EmptyState from "components/screens/AddAssetScreen/EmptyState";
-import ErrorState from "components/screens/AddAssetScreen/ErrorState";
+import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
+import EmptyState from "components/screens/AddTokenScreen/EmptyState";
+import ErrorState from "components/screens/AddTokenScreen/ErrorState";
+import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import {
-  MANAGE_ASSETS_ROUTES,
-  ManageAssetsStackParamList,
+  MANAGE_TOKENS_ROUTES,
+  ManageTokensStackParamList,
 } from "config/routes";
-import { FormattedSearchAssetRecord, HookStatus } from "config/types";
+import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useBlockaidAsset } from "hooks/blockaid/useBlockaidAsset";
+import { useBlockaidToken } from "hooks/blockaid/useBlockaidToken";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useAssetLookup } from "hooks/useAssetLookup";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useManageAssets } from "hooks/useManageAssets";
+import { useManageTokens } from "hooks/useManageTokens";
 import { useRightHeaderButton } from "hooks/useRightHeader";
+import { useTokenLookup } from "hooks/useTokenLookup";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
-  assessAssetSecurity,
+  assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
 
-type AddAssetScreenProps = NativeStackScreenProps<
-  ManageAssetsStackParamList,
-  typeof MANAGE_ASSETS_ROUTES.ADD_ASSET_SCREEN
+type AddTokenScreenProps = NativeStackScreenProps<
+  ManageTokensStackParamList,
+  typeof MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN
 >;
 
-const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
+const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
-  const [selectedAsset, setSelectedAsset] =
-    useState<FormattedSearchAssetRecord | null>(null);
-  const [scannedAsset, setScannedAsset] = useState<
+  const [selectedToken, setSelectedToken] =
+    useState<FormattedSearchTokenRecord | null>(null);
+  const [scannedToken, setScannedToken] = useState<
     Blockaid.TokenScanResponse | undefined
   >(undefined);
   const [isScanning, setIsScanning] = useState(false);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const addAssetBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const addTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -66,31 +66,31 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
   const { themeColors } = useColors();
 
   const { searchTerm, searchResults, status, handleSearch, resetSearch } =
-    useAssetLookup({
+    useTokenLookup({
       network,
       publicKey: account?.publicKey,
       balanceItems,
     });
 
-  const { scanAsset } = useBlockaidAsset();
+  const { scanToken } = useBlockaidToken();
 
   const securityAssessment = useMemo(
-    () => assessAssetSecurity(scannedAsset),
-    [scannedAsset],
+    () => assessTokenSecurity(scannedToken),
+    [scannedToken],
   );
-  const isAssetMalicious = securityAssessment.isMalicious;
-  const isAssetSuspicious = securityAssessment.isSuspicious;
+  const isTokenMalicious = securityAssessment.isMalicious;
+  const isTokenSuspicious = securityAssessment.isSuspicious;
 
   const securitySeverity = useMemo(() => {
-    if (isAssetMalicious) return SecurityLevel.MALICIOUS;
-    if (isAssetSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (isTokenMalicious) return SecurityLevel.MALICIOUS;
+    if (isTokenSuspicious) return SecurityLevel.SUSPICIOUS;
 
     return undefined;
-  }, [isAssetMalicious, isAssetSuspicious]);
+  }, [isTokenMalicious, isTokenSuspicious]);
 
   const securityWarnings = useMemo(() => {
-    if (isAssetMalicious || isAssetSuspicious) {
-      const warnings = extractSecurityWarnings(scannedAsset);
+    if (isTokenMalicious || isTokenSuspicious) {
+      const warnings = extractSecurityWarnings(scannedToken);
 
       if (Array.isArray(warnings) && warnings.length > 0) {
         return warnings;
@@ -98,15 +98,15 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     }
 
     return [];
-  }, [isAssetMalicious, isAssetSuspicious, scannedAsset]);
+  }, [isTokenMalicious, isTokenSuspicious, scannedToken]);
 
   const resetPageState = useCallback(() => {
     handleRefresh();
     resetSearch();
   }, [handleRefresh, resetSearch]);
 
-  const { addAsset, removeAsset, isAddingAsset, isRemovingAsset } =
-    useManageAssets({
+  const { addToken, removeToken, isAddingToken, isRemovingToken } =
+    useManageTokens({
       network,
       account,
       onSuccess: resetPageState,
@@ -120,49 +120,49 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
     getClipboardText().then(handleSearch);
   }, [getClipboardText, handleSearch]);
 
-  const handleAddAsset = useCallback(
-    (asset: FormattedSearchAssetRecord) => {
-      setSelectedAsset(asset);
+  const handleAddToken = useCallback(
+    (token: FormattedSearchTokenRecord) => {
+      setSelectedToken(token);
       setIsScanning(true);
-      setScannedAsset(undefined);
+      setScannedToken(undefined);
 
-      scanAsset(asset.assetCode, asset.issuer)
+      scanToken(token.tokenCode, token.issuer)
         .then((scanResult) => {
-          setScannedAsset(scanResult);
+          setScannedToken(scanResult);
         })
         .catch(() => {
-          setScannedAsset(undefined);
+          setScannedToken(undefined);
         })
         .finally(() => {
           setIsScanning(false);
         });
 
       setTimeout(() => {
-        addAssetBottomSheetModalRef.current?.present();
+        addTokenBottomSheetModalRef.current?.present();
       }, DEFAULT_BLOCKAID_SCAN_DELAY);
     },
-    [scanAsset],
+    [scanToken],
   );
 
-  const handleConfirmAssetAddition = useCallback(async () => {
-    if (!selectedAsset) {
+  const handleConfirmTokenAddition = useCallback(async () => {
+    if (!selectedToken) {
       return;
     }
 
-    analytics.trackAddTokenConfirmed(selectedAsset.assetCode);
+    analytics.trackAddTokenConfirmed(selectedToken.tokenCode);
 
-    await addAsset(selectedAsset);
+    await addToken(selectedToken);
 
-    addAssetBottomSheetModalRef.current?.dismiss();
-  }, [selectedAsset, addAsset]);
+    addTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedToken, addToken]);
 
-  const handleCancelAssetAddition = useCallback(() => {
-    if (selectedAsset) {
-      analytics.trackAddTokenRejected(selectedAsset.assetCode);
+  const handleCancelTokenAddition = useCallback(() => {
+    if (selectedToken) {
+      analytics.trackAddTokenRejected(selectedToken.tokenCode);
     }
 
-    addAssetBottomSheetModalRef.current?.dismiss();
-  }, [selectedAsset]);
+    addTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedToken]);
 
   const handleSecurityWarning = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.present();
@@ -171,17 +171,17 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
   const handleProceedAnyway = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleConfirmAssetAddition();
-  }, [handleConfirmAssetAddition]);
+    handleConfirmTokenAddition();
+  }, [handleConfirmTokenAddition]);
 
-  const handleRemoveAsset = useCallback(
-    (asset: FormattedSearchAssetRecord) => {
-      removeAsset({
-        assetRecord: asset,
-        assetType: asset.assetType,
+  const handleRemoveToken = useCallback(
+    (token: FormattedSearchTokenRecord) => {
+      removeToken({
+        tokenRecord: token,
+        tokenType: token.tokenType,
       });
     },
-    [removeAsset],
+    [removeToken],
   );
 
   return (
@@ -189,33 +189,33 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
       <View className="flex-1 justify-between">
         <BottomSheet
           modalRef={moreInfoBottomSheetModalRef}
-          title={t("manageAssetsScreen.moreInfo.title")}
-          description={`${t("manageAssetsScreen.moreInfo.block1")}\n\n${t("manageAssetsScreen.moreInfo.block2")}`}
+          title={t("manageTokensScreen.moreInfo.title")}
+          description={`${t("manageTokensScreen.moreInfo.block1")}\n\n${t("manageTokensScreen.moreInfo.block2")}`}
           handleCloseModal={() =>
             moreInfoBottomSheetModalRef.current?.dismiss()
           }
         />
         <BottomSheet
-          modalRef={addAssetBottomSheetModalRef}
+          modalRef={addTokenBottomSheetModalRef}
           handleCloseModal={() => {
-            addAssetBottomSheetModalRef.current?.dismiss();
+            addTokenBottomSheetModalRef.current?.dismiss();
           }}
-          analyticsEvent={AnalyticsEvent.VIEW_ADD_ASSET_MANUALLY}
-          shouldCloseOnPressBackdrop={!isScanning && !!selectedAsset}
+          analyticsEvent={AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY}
+          shouldCloseOnPressBackdrop={!isScanning && !!selectedToken}
           customContent={
-            <AddAssetBottomSheetContent
-              asset={selectedAsset}
+            <AddTokenBottomSheetContent
+              token={selectedToken}
               account={account}
-              onCancel={handleCancelAssetAddition}
-              onAddAsset={
-                isAssetMalicious || isAssetSuspicious
+              onCancel={handleCancelTokenAddition}
+              onAddToken={
+                isTokenMalicious || isTokenSuspicious
                   ? handleSecurityWarning
-                  : handleConfirmAssetAddition
+                  : handleConfirmTokenAddition
               }
-              proceedAnywayAction={handleConfirmAssetAddition}
-              isAddingAsset={isAddingAsset}
-              isMalicious={isAssetMalicious}
-              isSuspicious={isAssetSuspicious}
+              proceedAnywayAction={handleConfirmTokenAddition}
+              isAddingToken={isAddingToken}
+              isMalicious={isTokenMalicious}
+              isSuspicious={isTokenSuspicious}
             />
           }
         />
@@ -235,12 +235,12 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
               severity={securitySeverity}
-              proceedAnywayText={t("addAssetScreen.approveAnyway")}
+              proceedAnywayText={t("addTokenScreen.approveAnyway")}
             />
           }
         />
         <Input
-          placeholder={t("addAssetScreen.searchPlaceholder")}
+          placeholder={t("addTokenScreen.searchPlaceholder")}
           value={searchTerm}
           onChangeText={handleSearch}
           fieldSize="lg"
@@ -259,14 +259,14 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
             alwaysBounceVertical={false}
           >
             {searchResults.length > 0 ? (
-              searchResults.map((asset) => (
-                <AssetItem
-                  key={`${asset.assetCode}:${asset.issuer}`}
-                  asset={asset}
-                  handleAddAsset={() => handleAddAsset(asset)}
-                  handleRemoveAsset={() => handleRemoveAsset(asset)}
-                  isRemovingAsset={isRemovingAsset}
-                  isScanningAsset={isScanning}
+              searchResults.map((token) => (
+                <TokenItem
+                  key={`${token.tokenCode}:${token.issuer}`}
+                  token={token}
+                  handleAddToken={() => handleAddToken(token)}
+                  handleRemoveToken={() => handleRemoveToken(token)}
+                  isRemovingToken={isRemovingToken}
+                  isScanningToken={isScanning}
                 />
               ))
             ) : (
@@ -285,11 +285,11 @@ const AddAssetScreen: React.FC<AddAssetScreenProps> = () => {
             <Icon.Clipboard size={16} color={themeColors.foreground.primary} />
           }
         >
-          {t("addAssetScreen.pasteFromClipboard")}
+          {t("addTokenScreen.pasteFromClipboard")}
         </Button>
       </View>
     </BaseLayout>
   );
 };
 
-export default AddAssetScreen;
+export default AddTokenScreen;

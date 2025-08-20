@@ -32,7 +32,7 @@
     "copy": "Copy",
     "actions": {
       "settings": "Settings",
-      "manageAssets": "Manage assets",
+      "manageTokens": "Manage tokens",
       "myQRCode": "My QR code"
     },
     "manageAccount": {
@@ -246,8 +246,8 @@
       "removedTrustline": "Removed trustline",
       "received": "Received",
       "sent": "Sent",
-      "swapTwoAssets": "{{srcAssetCode}} for {{destAssetCode}}",
-      "swappedTwoAssets": "Swapped {{srcAssetCode}} for {{destAssetCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} for {{destTokenCode}}",
+      "swappedTwoTokens": "Swapped {{srcTokenCode}} for {{destTokenCode}}",
       "swapped": "Swapped",
       "transactionFailed": "Transaction failed",
       "failed": "Failed",
@@ -328,28 +328,45 @@
     "empty": "No collectibles yet",
     "menuAddManually": "Add manually"
   },
+  "collectibleDetails": {
+    "title": "Collectible Details",
+    "notFound": "Collectible not found",
+    "name": "Name",
+    "collection": "Collection",
+    "tokenId": "Token ID",
+    "description": "Description",
+    "traits": "Collectible Traits",
+    "view": "View",
+    "send": "Send"
+  },
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },
-  "manageAssetsScreen": {
-    "title": "Manage assets",
+  "manageTokensScreen": {
+    "title": "Manage tokens",
     "hiddenTokens": "Hidden tokens",
     "addTokenButton": "Add a token",
     "tokenAddressCopied": "Token address copied!",
     "moreInfo": {
-      "title": "Manage Assets",
-      "block1": "When you manage assets on the Stellar blockchain, you're creating and controlling digital representations of value, such as currencies or tokens.",
-      "block2": "This involves setting up trustlines, which allow users to hold and trade your assets, and configuring flags to control access and usage. By leveraging these features, you can securely issue, distribute, and manage your assets while maintaining compliance and flexibility."
+      "title": "Manage Tokens",
+      "block1": "When you manage tokens on the Stellar blockchain, you're creating and controlling digital representations of value, such as currencies or tokens.",
+      "block2": "This involves setting up token approvals, which allow users to hold and trade your tokens, and configuring flags to control access and usage. By leveraging these features, you can securely issue, distribute, and manage your tokens while maintaining compliance and flexibility."
     },
     "actions": {
       "copyAddress": "Copy address",
-      "removeAsset": "Remove asset"
+      "removeToken": "Remove token"
     },
-    "removeAssetError": "Error removing asset {{assetCode}}",
-    "removeAssetSuccess": "{{assetCode}} successfully removed"
+    "removeTokenAlert": {
+      "title": "Remove token",
+      "message": "Are you sure you want to remove this token?",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    },
+    "removeTokenError": "Error removing token {{tokenCode}}",
+    "removeTokenSuccess": "{{tokenCode}} successfully removed"
   },
-  "addAssetScreen": {
-    "title": "Add an asset",
+  "addTokenScreen": {
+    "title": "Add a token",
     "addTokenButton": "Approve",
     "searchPlaceholder": "Search token name or address",
     "pasteFromClipboard": "Paste from clipboard",
@@ -361,13 +378,13 @@
     "approveTrustline": "Approve Trustline",
     "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
     "confirmTrust": "Only confirm if you trust this token",
-    "maliciousAsset": "This token was flagged as malicious",
-    "suspiciousAsset": "This token was flagged as suspicious",
-    "assetAddress": "Token Address",
+    "maliciousToken": "This token was flagged as malicious",
+    "suspiciousToken": "This token was flagged as suspicious",
+    "tokenAddress": "Token Address",
     "approveAnyway": "Approve anyway",
-    "toastSuccess": "{{assetCode}} successfully added as an asset",
-    "toastError": "Error adding asset {{assetCode}}",
-    "emptyState": "No assets found",
+    "toastSuccess": "{{tokenCode}} successfully added as a token",
+    "toastError": "Error adding token {{tokenCode}}",
+    "emptyState": "No tokens found",
     "somethingWentWrong": "Something went wrong, please try again later"
   },
   "securityWarning": {
@@ -378,28 +395,28 @@
     "connectAnyway": "Connect anyway",
     "poweredBy": "Powered by",
     "feedback": "Feedback?",
-    "maliciousAsset": "This token is a scam",
+    "maliciousToken": "This token is a scam",
     "lowLiquidity": "This token has low liquidity",
     "maliciousSite": "This site is a malicious app"
   },
   "security": {
-    "notOnYourLists": "This asset is not on one of your lists",
-    "relativelyNewAsset": "This is a relatively new asset",
-    "assetIsScam": "This asset is a scam",
-    "suspiciousAsset": "This asset may be suspicious",
-    "lowLiquidity": "This asset has low liquidity",
+    "notOnYourLists": "This token is not on one of your lists",
+    "relativelyNewToken": "This is a relatively new token",
+    "tokenIsScam": "This token is a scam",
+    "suspiciousToken": "This token may be suspicious",
+    "lowLiquidity": "This token has low liquidity",
     "poweredByBlockaid": "Powered by",
     "learnMore": "Learn more",
     "addAnyway": "Add anyway"
   },
-  "manageAssetRightContent": {
+  "manageTokenRightContent": {
     "copyAddress": "Copy address",
-    "hideAsset": "Hide asset",
-    "unhideAsset": "Unhide asset",
+    "hideToken": "Hide token",
+    "unhideToken": "Unhide token",
     "tokenAddressCopied": "Token address copied!",
-    "removeAssetModal": {
-      "title": "Remove {{assetCode}}?",
-      "message": "Are you sure you want to remove this asset? Once you remove an asset, you will have to add it again later."
+    "removeTokenModal": {
+      "title": "Remove {{tokenCode}}?",
+      "message": "Are you sure you want to remove this token?\nOnce you remove a token, you will have to add it again later."
     }
   },
   "sendPaymentScreen": {
@@ -417,8 +434,8 @@
     "searchTokenInputPlaceholder": "Search token name or address",
     "setMax": "Set max",
     "receive": "Receive",
-    "chooseAsset": "Choose asset",
-    "selectAsset": "Select an asset",
+    "chooseToken": "Choose token",
+    "selectToken": "Select a token",
     "swapScreenTokenListTitle": "Your tokens",
     "copyContractAddress": "Copy contract address",
     "viewOnStellarExpert": "View on stellar.expert",
@@ -441,7 +458,7 @@
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
-      "noPathFound": "No path found between these assets"
+      "noPathFound": "No path found between these tokens"
     }
   },
   "swapProcessingScreen": {
@@ -706,7 +723,7 @@
       "timeoutRequired": "Timeout must be greater than 0",
       "insufficientBalance": "Insufficient balance",
       "insufficientBalanceForSwap": "Insufficient balance for swap",
-      "cannotSwapSameAsset": "Cannot swap to the same asset",
+      "cannotSwapSameToken": "Cannot swap to the same token",
       "invalidRecipientAddress": "Invalid recipient address",
       "cannotSendToSelf": "Cannot send to yourself",
       "publicKeyRequired": "Public key is required",
@@ -766,7 +783,7 @@
   "blockaid": {
     "brand": "Blockaid",
     "security": {
-      "asset": {
+      "token": {
         "malicious": "This token was flagged as malicious",
         "suspicious": "This token was flagged as suspicious",
         "warning": "This token was flagged as warning",
