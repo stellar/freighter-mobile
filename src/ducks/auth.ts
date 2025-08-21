@@ -37,6 +37,7 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
+import { DevSettings } from "react-native";
 import { analytics } from "services/analytics";
 import { getAccount } from "services/stellar";
 import {
@@ -159,6 +160,7 @@ interface AuthState {
   isLoadingAccount: boolean;
   accountError: string | null;
   navigationRef: NavigationContainerRef<RootStackParamList> | null;
+  hasSeenFaceIdOnboarding: boolean;
 }
 
 /**
@@ -217,12 +219,14 @@ interface ImportSecretKeyParams {
  * @property {Function} navigateToLockScreen - Navigates to the lock screen
  * @property {Function} createAccount - Creates a new account
  * @property {Function} getKeyFromKeyManager - Gets the key from the key manager
+ * @property {Function} setHasSeenFaceIdOnboarding - Sets the has seen face id onboarding flag (true if face id is not available as well)
+ * @property {Function} devResetAppAuth - Resets the app auth state to the initial state
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => void;
+  signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
-  importWallet: (params: ImportWalletParams) => void;
+  importWallet: (params: ImportWalletParams) => Promise<boolean>;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   getAuthStatus: () => Promise<AuthStatus>;
   renameAccount: (params: RenameAccountParams) => Promise<void>;
@@ -236,7 +240,7 @@ interface AuthActions {
   refreshActiveAccount: () => Promise<ActiveAccount | null>;
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
-
+  setHasSeenFaceIdOnboarding: (hasSeenFaceIdOnboarding: boolean) => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
   getKeyFromKeyManager: (
     password: string,
@@ -244,6 +248,7 @@ interface AuthActions {
   ) => Promise<Key>;
 
   clearError: () => void;
+  devResetAppAuth: () => void;
 }
 
 /**
@@ -271,6 +276,7 @@ const initialState: Omit<AuthState, "network"> = {
   isLoadingAccount: false,
   accountError: null,
   navigationRef: null,
+  hasSeenFaceIdOnboarding: false,
 };
 
 /**
@@ -1478,37 +1484,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *
      * @param {SignUpParams} params - The signup parameters
      */
-    signUp: (params) => {
+    signUp: async (params) => {
       set((state) => ({ ...state, isLoading: true, error: null }));
+      try {
+        await signUp(params);
+        set({
+          ...initialState,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+          isLoading: false,
+        });
+        // Fetch active account after successful signup
+        get().fetchActiveAccount();
 
-      // Use a setTimeout to allow UI updates to propagate
-      setTimeout(() => {
-        signUp(params)
-          .then(() => {
-            set({
-              ...initialState,
-              authStatus: AUTH_STATUS.AUTHENTICATED,
-              isLoading: false,
-            });
-
-            // Fetch active account after successful signup
-            get().fetchActiveAccount();
-          })
-          .catch((error) => {
-            logger.error(
-              "useAuthenticationStore.signUp",
-              "Sign up failed",
-              error,
-            );
-            set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToSignUp"),
-              isLoading: false,
-            });
-          });
-      }, 0);
+        return true;
+      } catch (error) {
+        logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToSignUp"),
+          isLoading: false,
+        });
+        return false;
+      }
     },
 
     /**
@@ -1579,40 +1578,48 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
     },
 
     /**
+     * Sets the has seen face id onboarding flag
+     *
+     * @param {boolean} hasSeenFaceIdOnboarding - The has seen face id onboarding flag
+     */
+    setHasSeenFaceIdOnboarding: (hasSeenFaceIdOnboarding: boolean) => {
+      set({ hasSeenFaceIdOnboarding });
+    },
+
+    /**
      * Imports a wallet with the provided credentials
      *
      * @param {ImportWalletParams} params - The wallet import parameters
      */
-    importWallet: (params) => {
-      set((state) => ({ ...state, isLoading: true, error: null }));
+    importWallet: async (params): Promise<boolean> => {
+      set({ isLoading: true, error: null });
 
-      setTimeout(() => {
-        importWallet(params)
-          .then(() => {
-            set({
-              ...initialState,
-              authStatus: AUTH_STATUS.AUTHENTICATED,
-              isLoading: false,
-            });
+      try {
+        await importWallet(params);
+        set({
+          ...initialState,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+          isLoading: false,
+        });
 
-            // Fetch active account after successful wallet import
-            get().fetchActiveAccount();
-          })
-          .catch((error) => {
-            logger.error(
-              "useAuthenticationStore.importWallet",
-              "Import wallet failed",
-              error,
-            );
-            set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToImportWallet"),
-              isLoading: false,
-            });
-          });
-      }, 0);
+        // Fetch active account after successful wallet import
+        get().fetchActiveAccount();
+        return true;
+      } catch (error) {
+        logger.error(
+          "useAuthenticationStore.importWallet",
+          "Import wallet failed",
+          error,
+        );
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToImportWallet"),
+          isLoading: false,
+        });
+        return false;
+      }
     },
 
     /**
@@ -1835,6 +1842,17 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         });
         throw error;
       }
+    },
+
+    devResetAppAuth: () => {
+      if (!__DEV__) {
+        return;
+      }
+
+      set({ ...initialState });
+      dataStorage.clear();
+      get().logout();
+      DevSettings.reload();
     },
   };
 });

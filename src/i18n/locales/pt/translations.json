@@ -168,6 +168,13 @@
     "errorText": "Palavra incorreta, tente novamente",
     "defaultActionButtonText": "Continuar"
   },
+  "faceIdOnboardingScreen": {
+    "title": "Habilitar Face ID",
+    "description": "Adicione outro nível de segurança ao exigir Face ID para desbloquear sua carteira ou aprovar transações.",
+    "promptTitle": "Habilitar Face ID?",
+    "promptDescription": "Use Face ID para fazer login e aprovar transações de forma segura.",
+    "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+  },
   "importWalletScreen": {
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
@@ -777,6 +784,7 @@
   },
   "analytics": {
     "debug": {
+      "resetApp": "Reiniciar Estado da Aplicação",
       "title": "📊 Debug Analytics",
       "status": "Status",
       "enabled": "✅ Habilitado",

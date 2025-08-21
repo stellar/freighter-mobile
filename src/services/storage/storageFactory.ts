@@ -6,6 +6,7 @@ export interface PersistentStorage {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   remove: (keys: string | string[]) => Promise<void>;
+  clear: () => Promise<void>;
 }
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.

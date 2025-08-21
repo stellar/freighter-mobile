@@ -23,7 +23,7 @@ const CustomContent: React.FC<{
   const [debugInfo, setDebugInfo] = useState(analytics.getAnalyticsDebugInfo());
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { logout } = useAuthenticationStore();
+  const { logout, devResetAppAuth } = useAuthenticationStore();
 
   const handleRefresh = () => {
     setDebugInfo(analytics.getAnalyticsDebugInfo());
@@ -41,6 +41,11 @@ const CustomContent: React.FC<{
     // Simulate session expiry by doing a partial logout
     // This keeps accounts but clears sensitive data, forcing re-authentication
     logout(false); // false = don't wipe all data, just expire session
+  };
+
+  const handleResetApp = () => {
+    devResetAppAuth();
+    onDismiss();
   };
 
   return (
@@ -63,6 +68,9 @@ const CustomContent: React.FC<{
           <Text lg medium>
             {t("analytics.debug.status")}
           </Text>
+          <Button secondary sm onPress={handleResetApp} isFullWidth>
+            {t("analytics.debug.resetApp")}
+          </Button>
           <View className="flex-row gap-4">
             <View className="flex-1 p-3 rounded-lg bg-background-secondary">
               <Text

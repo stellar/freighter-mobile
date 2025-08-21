@@ -33,6 +33,9 @@ const FaceIdSettingsScreen: React.FC<FaceIdSettingsScreenProps> = () => {
     const checkFaceIdMatch = async () => {
       setShouldVerifyFaceId(false);
       const result = await verifyFaceId();
+      // check if signature key is available
+      // if available, use it to verify the face id
+      // if not available, allow user to enable it and generate a new signature key
       if (result.success) {
         setIsFaceIdEnabled(false);
       }

@@ -6,19 +6,25 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  RootStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+} from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import { useFaceId } from "hooks/useFaceId";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
 type RecoveryPhraseScreenProps = NativeStackScreenProps<
-  AuthStackParamList,
+  AuthStackParamList & RootStackParamList,
   typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
 >;
 
@@ -84,6 +90,15 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
+  const { isFaceIdAvailable } = useFaceId();
+
+  const handleNavigateToMainTabStack = useCallback(() => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+  }, [navigation]);
+
+  const handleNavigateToFaceIdOnboardingScreen = useCallback(() => {
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
+  }, [navigation]);
 
   useEffect(() => {
     clearError?.();
@@ -103,16 +118,33 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     skipModalRef.current?.present();
   };
 
-  const handleConfirmSkip = () => {
-    signUp({
+  const confirmSkip = useCallback(async () => {
+    const success = await signUp({
       password,
       mnemonicPhrase: recoveryPhrase,
     });
 
+    if (success && !isFaceIdAvailable) {
+      handleNavigateToMainTabStack();
+    } else if (success) {
+      handleNavigateToFaceIdOnboardingScreen();
+    }
+
     analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
 
     skipModalRef.current?.dismiss();
-  };
+  }, [
+    signUp,
+    password,
+    recoveryPhrase,
+    isFaceIdAvailable,
+    handleNavigateToMainTabStack,
+    handleNavigateToFaceIdOnboardingScreen,
+  ]);
+
+  const handleConfirmSkip = useCallback(() => {
+    confirmSkip();
+  }, [confirmSkip]);
 
   const handleCopy = useCallback(() => {
     if (!recoveryPhrase) return;

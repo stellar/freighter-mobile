@@ -23,7 +23,10 @@
     "review": "Review",
     "and": " and ",
     "addMemo": "Add memo",
-    "yes": "Yes"
+    "yes": "Yes",
+    "allow": "Allow",
+    "skip": "Skip",
+    "enable": "Enable"
   },
   "home": {
     "title": "Home",
@@ -190,6 +193,13 @@
     "inputPlaceholder": "Type the correct word",
     "errorText": "Word is incorrect, try again",
     "defaultActionButtonText": "Continue"
+  },
+  "faceIdOnboardingScreen": {
+    "title": "Enable Face ID",
+    "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
+    "promptTitle": "Enable Face ID?",
+    "promptDescription": "Use Face ID to securely log in and approve transactions.",
+    "footerNoteText": "You can change this later in Settings."
   },
   "importWalletScreen": {
     "title": "Import Wallet",
@@ -771,6 +781,7 @@
   },
   "analytics": {
     "debug": {
+      "resetApp": "Reset App State",
       "title": "📊 Analytics Debug",
       "status": "Status",
       "enabled": "✅ Enabled",

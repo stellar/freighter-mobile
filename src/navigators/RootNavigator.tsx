@@ -6,6 +6,7 @@ import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
+import { FaceIdOnboardingScreen } from "components/screens/FaceIdOnboardingScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
@@ -92,6 +93,10 @@ export const RootNavigator = () => {
       {authStatus === AUTH_STATUS.AUTHENTICATED ? (
         <RootStack.Group>
           <RootStack.Screen
+            name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
+            component={AuthNavigator}
+          />
+          <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
             component={TabNavigator}
           />
@@ -172,6 +177,14 @@ export const RootNavigator = () => {
           component={AuthNavigator}
         />
       )}
+      <RootStack.Screen
+        name={ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN}
+        component={FaceIdOnboardingScreen}
+        options={{
+          headerShown: true,
+          header: (props) => <CustomNavigationHeader {...props} />,
+        }}
+      />
     </RootStack.Navigator>
   );
 };

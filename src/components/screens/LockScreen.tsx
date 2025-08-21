@@ -3,11 +3,13 @@ import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { useFaceId } from "hooks/useFaceId";
 import React, { useCallback, useEffect, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<
   RootStackParamList,
-  typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
+  | typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
+  | typeof ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN
 >;
 
 export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
@@ -18,12 +20,24 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     authStatus,
     logout,
     clearError,
+    hasSeenFaceIdOnboarding,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const { isFaceIdAvailable } = useFaceId();
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
-    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    const shouldGoToFaceIdOnboarding =
+      isFaceIdAvailable && !hasSeenFaceIdOnboarding;
+
+    if (shouldGoToFaceIdOnboarding) {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
+    }
+
+    if (
+      authStatus === AUTH_STATUS.AUTHENTICATED &&
+      !shouldGoToFaceIdOnboarding
+    ) {
       // Add a small delay to ensure state is settled before navigation
       const navigationTimeout = setTimeout(() => {
         navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
@@ -34,7 +48,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
       };
     }
     return undefined;
-  }, [authStatus, navigation]);
+  }, [authStatus, navigation, hasSeenFaceIdOnboarding, isFaceIdAvailable]);
 
   useEffect(() => {
     const fetchActiveAccountPublicKey = async () => {
