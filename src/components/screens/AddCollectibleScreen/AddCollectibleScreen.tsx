@@ -37,21 +37,20 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     (address: string) => {
       if (!address.trim()) {
         setCollectionAddressError("");
-        return false;
+        return;
       }
 
       if (address.includes(" ")) {
         setCollectionAddressError(t("addCollectibleScreen.addressNoSpaces"));
-        return false;
+        return;
       }
 
       if (!isContractId(address.trim())) {
         setCollectionAddressError(t("addCollectibleScreen.invalidAddress"));
-        return false;
+        return;
       }
 
       setCollectionAddressError("");
-      return true;
     },
     [t],
   );
@@ -60,16 +59,15 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     (id: string) => {
       if (!id.trim()) {
         setTokenIdError("");
-        return false;
+        return;
       }
 
       if (id.includes(" ")) {
         setTokenIdError(t("addCollectibleScreen.tokenIdNoSpaces"));
-        return false;
+        return;
       }
 
       setTokenIdError("");
-      return true;
     },
     [t],
   );
