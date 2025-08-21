@@ -66,7 +66,8 @@ interface CollectiblesState {
 const dummyCollectibles: Collectible[] = [
   // Stellar Frogs Collection
   {
-    collectionAddress: "GGGStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "1",
     name: "welcomingfrog.xlm",
@@ -84,7 +85,8 @@ const dummyCollectibles: Collectible[] = [
     ],
   },
   {
-    collectionAddress: "GGGStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "2",
     name: "pepethebot.xlm",
@@ -103,7 +105,8 @@ const dummyCollectibles: Collectible[] = [
     ],
   },
   {
-    collectionAddress: "GGGStellarFrogsCollection",
+    collectionAddress:
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
     tokenId: "3",
     name: "princepepe.xlm",
@@ -123,7 +126,7 @@ const dummyCollectibles: Collectible[] = [
   },
   // Soroban Domains Collection
   {
-    collectionAddress: "GGGSorobanDomainsCollection",
+    collectionAddress: "CCCSorobanDomainsCollection",
     collectionName: "Soroban Domains",
     tokenId: "102510",
     name: "charles.xlm",
@@ -138,7 +141,7 @@ const dummyCollectibles: Collectible[] = [
     ],
   },
   {
-    collectionAddress: "GGGSorobanDomainsCollection",
+    collectionAddress: "CCCSorobanDomainsCollection",
     collectionName: "Soroban Domains",
     tokenId: "102589",
     name: "cassio.xlm",
@@ -155,7 +158,7 @@ const dummyCollectibles: Collectible[] = [
   },
   // Future Monkeys Collection
   {
-    collectionAddress: "GGGFutureMonkeysCollection",
+    collectionAddress: "CCCFutureMonkeysCollection",
     collectionName: "Future Monkeys",
     tokenId: "111",
     name: "blueauramonkey.xlm",

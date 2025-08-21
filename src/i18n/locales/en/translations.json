@@ -340,7 +340,8 @@
     "description": "Description",
     "traits": "Collectible Traits",
     "view": "View",
-    "send": "Send"
+    "refreshMetadata": "Refresh metadata",
+    "viewOnStellarExpert": "View on stellar.expert"
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
