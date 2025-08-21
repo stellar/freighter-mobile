@@ -314,7 +314,8 @@
     "description": "Descrição",
     "traits": "Características do Colecionável",
     "view": "Visualizar",
-    "send": "Enviar"
+    "refreshMetadata": "Atualizar metadados",
+    "viewOnStellarExpert": "Ver no stellar.expert"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",

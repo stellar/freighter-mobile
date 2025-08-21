@@ -337,7 +337,8 @@
     "description": "Description",
     "traits": "Collectible Traits",
     "view": "View",
-    "send": "Send"
+    "refreshMetadata": "Refresh metadata",
+    "viewOnStellarExpert": "View on stellar.expert"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",

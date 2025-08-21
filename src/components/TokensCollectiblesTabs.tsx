@@ -246,7 +246,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
           {!hideCollectibles && (
             <TouchableOpacity
-              className="flex-1 py-2"
+              className="py-2"
               onPress={() => handleTabChange(TabType.COLLECTIBLES)}
             >
               <Text
@@ -261,6 +261,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
               </Text>
             </TouchableOpacity>
           )}
+
+          <View className="flex-1" />
 
           {showSettingsMenu && (
             <ContextMenuButton
