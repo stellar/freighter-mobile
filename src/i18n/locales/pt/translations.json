@@ -316,6 +316,19 @@
     "view": "Visualizar",
     "send": "Enviar"
   },
+  "addCollectibleScreen": {
+    "title": "Adicionar Colecionável",
+    "collectionAddress": "Endereço da coleção",
+    "tokenId": "ID do Token",
+    "addToWallet": "Adicionar à carteira",
+    "enterDetails": "Inserir detalhes",
+    "invalidAddress": "Endereço inválido",
+    "invalidTokenId": "ID do token inválido",
+    "tokenIdNoSpaces": "O ID do token não pode conter espaços",
+    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
+    "toastSuccess": "Colecionável adicionado com sucesso à carteira",
+    "toastError": "Erro ao adicionar colecionável"
+  },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
   },
