@@ -1,17 +1,26 @@
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
+import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useState, useCallback, useRef } from "react";
-import { View, TextInput, Alert } from "react-native";
+import { View, TextInput } from "react-native";
 
-export const AddCollectibleScreen: React.FC = () => {
+type AddCollectibleScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  typeof ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN
+>;
+
+export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
   const { themeColors } = useColors();
@@ -123,7 +132,7 @@ export const AddCollectibleScreen: React.FC = () => {
 
   const handleButtonPress = useCallback(() => {
     if (isFormValid) {
-      Alert.alert("Confirmation Test", "Collectible added");
+      navigation.goBack();
       return;
     }
 
@@ -139,6 +148,7 @@ export const AddCollectibleScreen: React.FC = () => {
     tokenId,
     collectionAddressError,
     tokenIdError,
+    navigation,
   ]);
 
   const buttonTitle = isFormValid
