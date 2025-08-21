@@ -1012,35 +1012,8 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
           case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
           case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
             const createContractArgs = getCreateContractArgs(func);
-            const preimage = createContractArgs.contractIdPreimage;
             const createV2Args = createContractArgs.constructorArgs;
 
-            if (preimage.switch().name === "contractIdPreimageFromAddress") {
-              const preimageFromAddress = preimage.fromAddress();
-              const address = preimageFromAddress.address();
-              const addressType = address.switch();
-
-              if (addressType.name === "scAddressTypeAccount") {
-                return (
-                  createV2Args && (
-                    <KeyValueInvokeHostFnArgs
-                      args={createV2Args}
-                      variant="tertiary"
-                    />
-                  )
-                );
-              }
-              return (
-                createV2Args && (
-                  <KeyValueInvokeHostFnArgs
-                    args={createV2Args}
-                    variant="tertiary"
-                  />
-                )
-              );
-            }
-
-            // contractIdPreimageFromAsset
             return (
               createV2Args && (
                 <KeyValueInvokeHostFnArgs
