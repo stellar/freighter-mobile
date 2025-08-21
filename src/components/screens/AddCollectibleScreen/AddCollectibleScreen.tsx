@@ -3,6 +3,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -30,6 +31,11 @@ export const AddCollectibleScreen: React.FC = () => {
         return false;
       }
 
+      if (address.includes(" ")) {
+        setCollectionAddressError(t("addCollectibleScreen.addressNoSpaces"));
+        return false;
+      }
+
       if (!isContractId(address.trim())) {
         setCollectionAddressError(t("addCollectibleScreen.invalidAddress"));
         return false;
@@ -48,7 +54,6 @@ export const AddCollectibleScreen: React.FC = () => {
         return false;
       }
 
-      // Check if input contains spaces
       if (id.includes(" ")) {
         setTokenIdError(t("addCollectibleScreen.tokenIdNoSpaces"));
         return false;
@@ -84,9 +89,12 @@ export const AddCollectibleScreen: React.FC = () => {
           validateCollectionAddress(text);
         }
       })
-      .catch(() => {
-        // Failed to get clipboard content
-        // TODO: log error
+      .catch((error) => {
+        logger.error(
+          "handlePasteCollectionAddress",
+          "Failed to get clipboard content",
+          error,
+        );
       });
   }, [validateCollectionAddress, getClipboardText]);
 
@@ -98,9 +106,12 @@ export const AddCollectibleScreen: React.FC = () => {
           validateTokenId(text);
         }
       })
-      .catch(() => {
-        // Failed to get clipboard content
-        // TODO: log error
+      .catch((error) => {
+        logger.error(
+          "handlePasteTokenId",
+          "Failed to get clipboard content",
+          error,
+        );
       });
   }, [validateTokenId, getClipboardText]);
 
@@ -112,10 +123,6 @@ export const AddCollectibleScreen: React.FC = () => {
 
   const handleButtonPress = useCallback(() => {
     if (isFormValid) {
-      // TODO: fake a "add collectible" loading state
-      // TODO: fake a "add collectible" success state
-      // TODO: fake a "add collectible" error state
-      // TODO: Implement add collectible logic
       Alert.alert(t("common.done"), t("addCollectibleScreen.toastSuccess"));
       return;
     }
@@ -141,7 +148,7 @@ export const AddCollectibleScreen: React.FC = () => {
 
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
-      <View className="mb-6">
+      <View className="mb-3">
         <Input
           ref={collectionAddressRef}
           placeholder={t("addCollectibleScreen.collectionAddress")}
@@ -150,7 +157,7 @@ export const AddCollectibleScreen: React.FC = () => {
           error={collectionAddressError}
           endButton={{
             content: (
-              <Icon.Clipboard size={20} color={themeColors.text.secondary} />
+              <Icon.Clipboard size={18} color={themeColors.text.secondary} />
             ),
             onPress: handlePasteCollectionAddress,
           }}
@@ -166,7 +173,7 @@ export const AddCollectibleScreen: React.FC = () => {
           error={tokenIdError}
           endButton={{
             content: (
-              <Icon.Clipboard size={20} color={themeColors.text.secondary} />
+              <Icon.Clipboard size={18} color={themeColors.text.secondary} />
             ),
             onPress: handlePasteTokenId,
           }}
