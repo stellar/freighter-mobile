@@ -123,7 +123,7 @@ export const AddCollectibleScreen: React.FC = () => {
 
   const handleButtonPress = useCallback(() => {
     if (isFormValid) {
-      Alert.alert(t("common.done"), t("addCollectibleScreen.toastSuccess"));
+      Alert.alert("Confirmation Test", "Collectible added");
       return;
     }
 
@@ -139,7 +139,6 @@ export const AddCollectibleScreen: React.FC = () => {
     tokenId,
     collectionAddressError,
     tokenIdError,
-    t,
   ]);
 
   const buttonTitle = isFormValid

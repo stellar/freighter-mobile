@@ -327,9 +327,7 @@
     "addressNoSpaces": "Endereço não pode conter espaços",
     "invalidTokenId": "ID do token inválido",
     "tokenIdNoSpaces": "O ID do token não pode conter espaços",
-    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
-    "toastSuccess": "Colecionável adicionado com sucesso à carteira",
-    "toastError": "Erro ao adicionar colecionável"
+    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui."
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"

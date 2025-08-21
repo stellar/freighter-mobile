@@ -350,9 +350,7 @@
     "addressNoSpaces": "Address cannot contain spaces",
     "invalidTokenId": "Invalid token ID",
     "tokenIdNoSpaces": "Token ID cannot contain spaces",
-    "description": "If a collectible is missing from your wallet, you can manually add it here.",
-    "toastSuccess": "Collectible successfully added to wallet",
-    "toastError": "Error adding collectible"
+    "description": "If a collectible is missing from your wallet, you can manually add it here."
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
