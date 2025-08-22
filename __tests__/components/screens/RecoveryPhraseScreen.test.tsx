@@ -2,7 +2,11 @@ import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { fireEvent, render } from "@testing-library/react-native";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  RootStackParamList,
+} from "config/routes";
 import React from "react";
 import StellarHDWallet from "stellar-hd-wallet";
 
@@ -70,7 +74,7 @@ const mockRoute = {
 };
 
 type RecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList,
+  AuthStackParamList & RootStackParamList,
   typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
 >;
 

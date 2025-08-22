@@ -9,7 +9,13 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useFaceId } from "hooks/useFaceId";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { TextInput, View } from "react-native";
 
 interface InputPasswordTemplateProps {
@@ -23,6 +29,8 @@ interface InputPasswordTemplateProps {
   description?: string;
   showLogo?: boolean;
   insets?: BaseLayoutInsets;
+  signInMethod: "password" | "faceId";
+  setSignInMethod: (method: "password" | "faceId") => void;
 }
 
 const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
@@ -36,20 +44,21 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   description,
   insets,
   showLogo = true,
+  signInMethod,
+  setSignInMethod,
 }) => {
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const { isFaceIdActive } = useFaceId();
-  const [isPasswordFieldVisible, setIsPasswordFieldVisible] =
-    useState(!isFaceIdActive);
+  const { isFaceIdActive, verifyFaceId } = useFaceId();
   const { themeColors } = useColors();
 
   const canContinue = useMemo(
     () =>
-      passwordValue.length >= PASSWORD_MIN_LENGTH &&
-      passwordValue.length <= PASSWORD_MAX_LENGTH,
-    [passwordValue],
+      (passwordValue.length >= PASSWORD_MIN_LENGTH &&
+        passwordValue.length <= PASSWORD_MAX_LENGTH) ||
+      signInMethod === "faceId",
+    [passwordValue, signInMethod],
   );
 
   const handlePasswordChange = useCallback((value: string) => {
@@ -57,8 +66,19 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   }, []);
 
   const handleFaceIdToggle = useCallback(() => {
-    setIsPasswordFieldVisible(!isPasswordFieldVisible);
-  }, [isPasswordFieldVisible]);
+    setSignInMethod(signInMethod === "faceId" ? "password" : "faceId");
+  }, [signInMethod, setSignInMethod]);
+
+  const handleContinueWithFaceId = useCallback(async () => {
+    if (signInMethod === "password") {
+      handleContinue(passwordValue);
+    } else {
+      const result = await verifyFaceId();
+      if (result.success) {
+        handleContinue("");
+      }
+    }
+  }, [handleContinue, passwordValue, verifyFaceId, signInMethod]);
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
@@ -80,7 +100,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             {description ?? t("lockScreen.description")}
           </Text>
           <View className="w-full gap-4 mt-8">
-            {isPasswordFieldVisible && (
+            {signInMethod === "password" && (
               <Input
                 ref={inputRef}
                 isPassword
@@ -96,10 +116,10 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             <Button
               tertiary
               lg
-              onPress={() => handleContinue(passwordValue)}
-              disabled={!canContinue && isPasswordFieldVisible}
+              onPress={handleContinueWithFaceId}
+              disabled={!canContinue && signInMethod === "password"}
               icon={
-                isPasswordFieldVisible ? undefined : (
+                signInMethod === "password" ? undefined : (
                   <Icon.FaceId color={themeColors.foreground.secondary} />
                 )
               }
@@ -110,7 +130,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             </Button>
             {isFaceIdActive && (
               <Button minimal sm onPress={handleFaceIdToggle}>
-                {isPasswordFieldVisible
+                {signInMethod === "password"
                   ? t("lockScreen.useFaceId")
                   : t("lockScreen.enterPassword")}
               </Button>

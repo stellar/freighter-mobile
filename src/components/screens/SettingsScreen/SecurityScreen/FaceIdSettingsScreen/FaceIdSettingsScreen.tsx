@@ -26,26 +26,32 @@ interface FaceIdItem {
 const FaceIdSettingsScreen: React.FC<FaceIdSettingsScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { isFaceIdEnabled, verifyFaceId, setIsFaceIdEnabled } = useFaceId();
-  const [shouldVerifyFaceId, setShouldVerifyFaceId] = useState(false);
+  const { isFaceIdEnabled, setIsFaceIdEnabled, enableFaceId, disableFaceId } =
+    useFaceId();
+  const [shouldTriggerFaceIdDisable, setShouldTriggerFaceIdDisable] =
+    useState(false);
+
+  const handleFaceIdEnable = useCallback(async () => {
+    const success = await enableFaceId();
+    if (!success) {
+      setIsFaceIdEnabled(false);
+    }
+  }, [enableFaceId, setIsFaceIdEnabled]);
+
+  const handleFaceIdDisable = useCallback(async () => {
+    const success = await disableFaceId();
+    if (success) {
+      setIsFaceIdEnabled(false);
+    }
+  }, [disableFaceId, setIsFaceIdEnabled]);
 
   useEffect(() => {
-    const checkFaceIdMatch = async () => {
-      setShouldVerifyFaceId(false);
-      const result = await verifyFaceId();
-      // check if signature key is available
-      // if available, use it to verify the face id
-      // if not available, allow user to enable it and generate a new signature key
-      if (result.success) {
-        setIsFaceIdEnabled(false);
-      }
-    };
-    if (shouldVerifyFaceId) {
-      checkFaceIdMatch();
+    if (shouldTriggerFaceIdDisable) {
+      handleFaceIdDisable();
     }
-  }, [shouldVerifyFaceId, verifyFaceId, setIsFaceIdEnabled]);
+  }, [shouldTriggerFaceIdDisable, handleFaceIdDisable]);
 
-  const handleFaceIdDisable = useCallback(() => {
+  const openFaceIdDisablePrompt = useCallback(() => {
     Alert.alert(
       t("securityScreen.faceId.alert.disable.title"),
       t("securityScreen.faceId.alert.disable.message"),
@@ -56,30 +62,23 @@ const FaceIdSettingsScreen: React.FC<FaceIdSettingsScreenProps> = () => {
         },
         {
           text: t("common.yes"),
-          onPress: () => {
-            setShouldVerifyFaceId(true);
-          },
+          onPress: () => setShouldTriggerFaceIdDisable(true),
         },
       ],
     );
   }, [t]);
-
-  const handleFaceIdEnable = useCallback(async () => {
-    const result = await verifyFaceId();
-    if (result.success) {
-      setIsFaceIdEnabled(true);
-    }
-  }, [verifyFaceId, setIsFaceIdEnabled]);
 
   const renderFaceIdToggle = useCallback(
     () => (
       <Toggle
         id="face-id-toggle"
         checked={isFaceIdEnabled}
-        onChange={isFaceIdEnabled ? handleFaceIdDisable : handleFaceIdEnable}
+        onChange={
+          isFaceIdEnabled ? openFaceIdDisablePrompt : handleFaceIdEnable
+        }
       />
     ),
-    [isFaceIdEnabled, handleFaceIdDisable, handleFaceIdEnable],
+    [isFaceIdEnabled, handleFaceIdEnable, openFaceIdDisablePrompt],
   );
 
   const faceIdItems: FaceIdItem[] = useMemo(

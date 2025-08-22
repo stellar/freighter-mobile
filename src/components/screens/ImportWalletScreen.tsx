@@ -53,7 +53,9 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         const shouldNavigateToFaceIdOnboarding =
           success && !hasSeenFaceIdOnboarding && isFaceIdAvailable;
         if (shouldNavigateToFaceIdOnboarding) {
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
+            password,
+          });
         } else if (success) {
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
         }

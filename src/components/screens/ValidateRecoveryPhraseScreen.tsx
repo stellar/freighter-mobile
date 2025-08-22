@@ -51,8 +51,10 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   }, [navigation]);
 
   const handleNavigateToFaceIdOnboardingScreen = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
-  }, [navigation]);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
+      password,
+    });
+  }, [navigation, password]);
 
   const handleFinishSignUp = useCallback(async () => {
     const success = await signUp({

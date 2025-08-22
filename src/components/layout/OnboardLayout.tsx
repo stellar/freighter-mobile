@@ -127,6 +127,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
       <Button
         secondary
         lg
+        disabled={isLoading}
         testID="secondary-action-button"
         onPress={onPressSecondaryActionButton}
       >

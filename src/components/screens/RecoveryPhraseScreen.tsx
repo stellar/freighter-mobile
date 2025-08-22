@@ -91,14 +91,17 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { isFaceIdAvailable } = useFaceId();
+  const [isSkipping, setIsSkipping] = useState(false);
 
   const handleNavigateToMainTabStack = useCallback(() => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
   }, [navigation]);
 
   const handleNavigateToFaceIdOnboardingScreen = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
-  }, [navigation]);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
+      password,
+    });
+  }, [navigation, password]);
 
   useEffect(() => {
     clearError?.();
@@ -118,21 +121,28 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     skipModalRef.current?.present();
   };
 
-  const confirmSkip = useCallback(async () => {
-    const success = await signUp({
-      password,
-      mnemonicPhrase: recoveryPhrase,
-    });
+  const confirmSkip = useCallback(() => {
+    setIsSkipping(true);
 
-    if (success && !isFaceIdAvailable) {
-      handleNavigateToMainTabStack();
-    } else if (success) {
-      handleNavigateToFaceIdOnboardingScreen();
-    }
+    setTimeout(() => {
+      (async () => {
+        const success = await signUp({
+          password,
+          mnemonicPhrase: recoveryPhrase,
+        });
 
-    analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+        if (success && !isFaceIdAvailable) {
+          handleNavigateToMainTabStack();
+        } else if (success) {
+          handleNavigateToFaceIdOnboardingScreen();
+        }
 
-    skipModalRef.current?.dismiss();
+        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+
+        skipModalRef.current?.dismiss();
+        setIsSkipping(false);
+      })();
+    }, 0);
   }, [
     signUp,
     password,
@@ -171,11 +181,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <OnboardLayout
         icon={<Icon.ShieldTick circle />}
         title={t("recoveryPhraseScreen.title")}
-        isLoading={isLoading}
+        isLoading={isLoading || isSkipping}
         footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
         footer={
           <Footer
-            isLoading={isLoading}
+            isLoading={isLoading || isSkipping}
             onPressContinue={handleContinue}
             onPressSkip={handleSkip}
           />
@@ -202,6 +212,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <RecoveryPhraseSkipBottomSheet
         modalRef={skipModalRef}
         onConfirm={handleConfirmSkip}
+        isLoading={isLoading || isSkipping}
         onDismiss={() => skipModalRef.current?.dismiss()}
       />
     </>

@@ -24,20 +24,14 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { isFaceIdAvailable } = useFaceId();
+  const { isFaceIdActive, verifyFaceId } = useFaceId();
+  const [signInMethod, setSignInMethod] = useState<"password" | "faceId">(
+    isFaceIdActive ? "faceId" : "password",
+  );
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
-    const shouldGoToFaceIdOnboarding =
-      isFaceIdAvailable && !hasSeenFaceIdOnboarding;
-
-    if (shouldGoToFaceIdOnboarding) {
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN);
-    }
-
-    if (
-      authStatus === AUTH_STATUS.AUTHENTICATED &&
-      !shouldGoToFaceIdOnboarding
-    ) {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
       // Add a small delay to ensure state is settled before navigation
       const navigationTimeout = setTimeout(() => {
         navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
@@ -75,13 +69,24 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     [signIn, isSigningIn],
   );
 
+  const handleUnlockWithFaceId = useCallback(async () => {
+    const result = await verifyFaceId();
+    if (result.success) {
+      // check how to log user back in and refresh hash key
+    }
+  }, [verifyFaceId]);
+
   return (
     <InputPasswordTemplate
       publicKey={publicKey}
       error={error}
       isLoading={isSigningIn}
-      handleContinue={handleUnlock}
+      handleContinue={
+        signInMethod === "password" ? handleUnlock : handleUnlockWithFaceId
+      }
       handleLogout={() => logout(true)}
+      signInMethod={signInMethod}
+      setSignInMethod={setSignInMethod}
     />
   );
 };

@@ -154,7 +154,9 @@ export type RootStackParamList = {
     collectionAddress: string;
     tokenId: string;
   };
-  [ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN]: {
+    password: string;
+  };
 };
 
 export type AuthStackParamList = {

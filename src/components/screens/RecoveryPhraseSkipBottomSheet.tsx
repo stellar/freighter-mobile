@@ -12,17 +12,19 @@ interface RecoveryPhraseSkipBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
   onConfirm: () => void;
   onDismiss: () => void;
+  isLoading: boolean;
 }
 
 // Use Pick to reuse props from the main interface instead of duplicating
 type CustomContentProps = Pick<
   RecoveryPhraseSkipBottomSheetProps,
-  "onConfirm" | "onDismiss"
+  "onConfirm" | "onDismiss" | "isLoading"
 >;
 
 const CustomContent: React.FC<CustomContentProps> = ({
   onConfirm,
   onDismiss,
+  isLoading,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -57,10 +59,22 @@ const CustomContent: React.FC<CustomContentProps> = ({
       </View>
 
       <View className="gap-3">
-        <Button tertiary lg isFullWidth onPress={onConfirm}>
+        <Button
+          tertiary
+          lg
+          isFullWidth
+          onPress={onConfirm}
+          isLoading={isLoading}
+        >
           {t("recoverySkipModal.confirm")}
         </Button>
-        <Button secondary lg isFullWidth onPress={onDismiss}>
+        <Button
+          secondary
+          lg
+          isFullWidth
+          onPress={onDismiss}
+          disabled={isLoading}
+        >
           {t("recoverySkipModal.cancel")}
         </Button>
       </View>
@@ -70,12 +84,16 @@ const CustomContent: React.FC<CustomContentProps> = ({
 
 const RecoveryPhraseSkipBottomSheet: React.FC<
   RecoveryPhraseSkipBottomSheetProps
-> = ({ modalRef, onConfirm, onDismiss }) => (
+> = ({ modalRef, onConfirm, onDismiss, isLoading }) => (
   <BottomSheet
     modalRef={modalRef}
     handleCloseModal={onDismiss}
     customContent={
-      <CustomContent onConfirm={onConfirm} onDismiss={onDismiss} />
+      <CustomContent
+        onConfirm={onConfirm}
+        onDismiss={onDismiss}
+        isLoading={isLoading}
+      />
     }
   />
 );

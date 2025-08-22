@@ -2,7 +2,11 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userEvent, screen, act, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
-import type { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import type {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  RootStackParamList,
+} from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -72,7 +76,7 @@ const mockRoute = {
 const user = userEvent.setup();
 
 type ValidateRecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList,
+  AuthStackParamList & RootStackParamList,
   typeof AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN
 >;
 
