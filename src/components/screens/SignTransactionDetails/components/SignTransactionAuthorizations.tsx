@@ -108,7 +108,7 @@ const SignTransactionAuthorizations = ({
               </View>
             </View>
             <KeyValueList
-              operationKey={t("common.asset")}
+              operationKey={t("common.token")}
               operationValue={truncateAddress(detail.asset)}
             />
             {detail.args && <KeyValueInvokeHostFnArgs args={detail.args} />}
