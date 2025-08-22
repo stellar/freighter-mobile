@@ -43,6 +43,69 @@ export const freighterBackendV2 = createApiService({
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Fetches the Soroban contract specification (JSON Schema) from the backend.
+ *
+ * The returned object contains a `definitions` map for contract functions and types.
+ * Function entries expose an `args` object with a positional `required` array that we
+ * use to label parameters in the UI. Some specs may also include a top-level
+ * `$schema` field; we forward the backend payload as-is.
+ *
+ * @async
+ * @function getContractSpecs
+ * @param {Object} params - Request parameters
+ * @param {string} params.contractId - Soroban contract ID (hex-encoded)
+ * @param {NetworkDetails} params.networkDetails - Target network details
+ * @returns {Promise<Record<string, any>>} Contract spec JSON schema
+ * @throws {Error} If the backend responds with an error or an invalid payload
+ *
+ * @example
+ * // Access positional argument names for a function
+ * const spec = await getContractSpecs({ contractId: "CC...", networkDetails });
+ * const argNames = spec.definitions["transfer"].properties.args.required; // ["from", "to", "amount"]
+ *
+ * @example
+ * // Pool contract function (e.g., swap_chained)
+ * const required = spec.definitions["swap_chained"].properties.args.required;
+ * // ["user", "swaps_chain", "token_in", "in_amount", "out_min"]
+ *
+ * @example
+ * // Sample (trimmed) response for a token-like contract
+ * {
+ *   "definitions": {
+ *     "transfer": {
+ *       "properties": {
+ *         "args": {
+ *           "type": "object",
+ *           "required": ["from", "to", "amount"],
+ *           "additionalProperties": false,
+ *           "properties": {
+ *             "from": { "$ref": "#/definitions/Address" },
+ *             "to": { "$ref": "#/definitions/Address" },
+ *             "amount": { "$ref": "#/definitions/I128" }
+ *           }
+ *         }
+ *       },
+ *       "additionalProperties": false
+ *     },
+ *     "balance": {
+ *       "properties": {
+ *         "args": {
+ *           "type": "object",
+ *           "required": ["id"],
+ *           "additionalProperties": false,
+ *           "properties": {
+ *             "id": { "$ref": "#/definitions/Address" }
+ *           }
+ *         }
+ *       },
+ *       "additionalProperties": false
+ *     },
+ *     "Address": { "type": "string" },
+ *     "I128": { "type": "string" }
+ *   }
+ * }
+ */
 export const getContractSpecs = async ({
   contractId,
   networkDetails,
