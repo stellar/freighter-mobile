@@ -10,7 +10,6 @@ import {
   AUTH_STACK_ROUTES,
   AuthStackParamList,
   RootStackParamList,
-  ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
@@ -93,16 +92,6 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { isFaceIdAvailable } = useFaceId();
   const [isSkipping, setIsSkipping] = useState(false);
 
-  const handleNavigateToMainTabStack = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-  }, [navigation]);
-
-  const handleNavigateToFaceIdOnboardingScreen = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
-      password,
-    });
-  }, [navigation, password]);
-
   useEffect(() => {
     clearError?.();
   }, [clearError]);
@@ -126,16 +115,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
-        const success = await signUp({
+        await signUp({
           password,
           mnemonicPhrase: recoveryPhrase,
+          isFaceIdAvailable,
         });
-
-        if (success && !isFaceIdAvailable) {
-          handleNavigateToMainTabStack();
-        } else if (success) {
-          handleNavigateToFaceIdOnboardingScreen();
-        }
 
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
 
@@ -143,14 +127,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         setIsSkipping(false);
       })();
     }, 0);
-  }, [
-    signUp,
-    password,
-    recoveryPhrase,
-    isFaceIdAvailable,
-    handleNavigateToMainTabStack,
-    handleNavigateToFaceIdOnboardingScreen,
-  ]);
+  }, [signUp, password, recoveryPhrase, isFaceIdAvailable]);
 
   const handleConfirmSkip = useCallback(() => {
     confirmSkip();

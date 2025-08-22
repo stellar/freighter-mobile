@@ -1,18 +1,9 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import { useNavigation } from "@react-navigation/native";
-import {
-  NativeStackNavigationProp,
-  NativeStackScreenProps,
-} from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Textarea } from "components/sds/Textarea";
-import {
-  AUTH_STACK_ROUTES,
-  AuthStackParamList,
-  ROOT_NAVIGATOR_ROUTES,
-  RootStackParamList,
-} from "config/routes";
+import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useFaceId } from "hooks/useFaceId";
@@ -26,10 +17,7 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   route,
 }) => {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { importWallet, error, clearError, hasSeenFaceIdOnboarding } =
-    useAuthenticationStore();
+  const { importWallet, error, clearError } = useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
   const { isFaceIdAvailable } = useFaceId();
   const { t } = useAppTranslation();
@@ -46,19 +34,11 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
-        const success = await importWallet({
+        await importWallet({
           mnemonicPhrase: recoveryPhrase,
           password,
+          isFaceIdAvailable,
         });
-        const shouldNavigateToFaceIdOnboarding =
-          success && !hasSeenFaceIdOnboarding && isFaceIdAvailable;
-        if (shouldNavigateToFaceIdOnboarding) {
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
-            password,
-          });
-        } else if (success) {
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-        }
         setIsImporting(false);
       })();
     }, 0);

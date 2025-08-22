@@ -20,11 +20,9 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     authStatus,
     logout,
     clearError,
-    hasSeenFaceIdOnboarding,
     signInWithFaceId,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
-  const { isFaceIdAvailable } = useFaceId();
   const { isFaceIdActive } = useFaceId();
   const [signInMethod, setSignInMethod] = useState<"password" | "faceId">(
     isFaceIdActive ? "faceId" : "password",
@@ -43,7 +41,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
       };
     }
     return undefined;
-  }, [authStatus, navigation, hasSeenFaceIdOnboarding, isFaceIdAvailable]);
+  }, [authStatus, navigation]);
 
   useEffect(() => {
     const fetchActiveAccountPublicKey = async () => {

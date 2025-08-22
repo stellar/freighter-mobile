@@ -6,12 +6,7 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { VISUAL_DELAY_MS } from "config/constants";
-import {
-  AUTH_STACK_ROUTES,
-  AuthStackParamList,
-  ROOT_NAVIGATOR_ROUTES,
-  RootStackParamList,
-} from "config/routes";
+import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useFaceId } from "hooks/useFaceId";
@@ -20,7 +15,7 @@ import React, { useCallback, useMemo, useState, useLayoutEffect } from "react";
 import { analytics } from "services/analytics";
 
 type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
-  RootStackParamList & AuthStackParamList,
+  AuthStackParamList,
   typeof AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN
 >;
 
@@ -46,39 +41,18 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     [currentWord, currentWordIndex, words],
   );
 
-  const handleNavigateToMainTabStack = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-  }, [navigation]);
-
-  const handleNavigateToFaceIdOnboardingScreen = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN, {
-      password,
-    });
-  }, [navigation, password]);
-
   const handleFinishSignUp = useCallback(async () => {
-    const success = await signUp({
+    await signUp({
       password,
       mnemonicPhrase: recoveryPhrase,
+      isFaceIdAvailable,
     });
-
-    if (success && !isFaceIdAvailable) {
-      handleNavigateToMainTabStack();
-    } else if (success) {
-      handleNavigateToFaceIdOnboardingScreen();
-    }
 
     analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
     analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     setIsLoading(false);
-  }, [
-    password,
-    recoveryPhrase,
-    signUp,
-    isFaceIdAvailable,
-    handleNavigateToMainTabStack,
-    handleNavigateToFaceIdOnboardingScreen,
-  ]);
+  }, [password, recoveryPhrase, signUp, isFaceIdAvailable]);
+
   const handleContinue = useCallback(() => {
     if (!canContinue) {
       setIsLoading(true);

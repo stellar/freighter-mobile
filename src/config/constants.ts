@@ -213,7 +213,6 @@ export enum STORAGE_KEYS {
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
-  BIOMETRIC_KEY = "biometricKey",
 }
 
 /**

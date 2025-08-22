@@ -4,6 +4,7 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -18,24 +19,29 @@ type FaceIdOnboardingScreenProps = NativeStackScreenProps<
 >;
 
 export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
-  navigation,
+  route,
 }) => {
   const { t } = useAppTranslation();
-  const { setHasSeenFaceIdOnboarding } = useAuthenticationStore();
+  const { signInWithFaceId, isLoading, signIn, getAuthStatus, setAuthStatus } =
+    useAuthenticationStore();
   const { setIsFaceIdEnabled } = useFaceId();
   const [shouldVerifyFaceId, setShouldVerifyFaceId] = useState(false);
-  const [isVerifyingFaceId] = useState(false);
 
-  const handleVerifyFaceId = useCallback(() => {
+  const handleVerifyFaceId = useCallback(async () => {
+    await signInWithFaceId();
     setIsFaceIdEnabled(true);
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-  }, [setIsFaceIdEnabled, navigation]);
+  }, [setIsFaceIdEnabled, signInWithFaceId]);
 
   useEffect(() => {
-    if (shouldVerifyFaceId) {
-      setShouldVerifyFaceId(false);
-      handleVerifyFaceId();
-    }
+    const verifyFaceId = async () => {
+      if (shouldVerifyFaceId) {
+        setShouldVerifyFaceId(false);
+
+        await handleVerifyFaceId();
+      }
+    };
+
+    verifyFaceId();
   }, [shouldVerifyFaceId, handleVerifyFaceId]);
 
   const handleEnable = () => {
@@ -54,9 +60,15 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
     );
   };
 
-  const handleSkip = () => {
-    setHasSeenFaceIdOnboarding(true);
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+  const handleSkip = async () => {
+    const authStatus = await getAuthStatus();
+    if (route.params?.password) {
+      await signIn({
+        password: route.params.password,
+      });
+    } else if (authStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID) {
+      setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+    }
   };
 
   const BlurredBackgroundFaceIdIcon = (
@@ -128,8 +140,8 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
       secondaryActionButtonText={t("common.skip")}
       onPressSecondaryActionButton={handleSkip}
       onPressDefaultActionButton={handleEnable}
-      isLoading={isVerifyingFaceId}
-      isDefaultActionButtonDisabled={isVerifyingFaceId}
+      isLoading={isLoading}
+      isDefaultActionButtonDisabled={isLoading}
     >
       <View className="pr-8">
         <Text secondary md>
