@@ -897,6 +897,15 @@
       "executableType": "Executable Type",
       "accountId": "Account ID",
       "salt": "Salt"
+    },
+    "claimPredicates": {
+      "unconditional": "Unconditional",
+      "conditional": "Conditional",
+      "and": "And",
+      "or": "Or",
+      "not": "Not",
+      "beforeRelativeTime": "Before Relative Time",
+      "beforeAbsoluteTime": "Before Absolute Time"
     }
   }
 }

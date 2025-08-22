@@ -162,13 +162,21 @@ export enum OPERATION_TYPES {
 }
 
 export enum CLAIM_PREDICATES {
-  claimPredicateUnconditional = "Unconditional",
-  claimPredicateConditional = "Conditional",
-  claimPredicateAnd = "And",
-  claimPredicateOr = "Or",
-  claimPredicateNot = "Not",
-  claimPredicateBeforeRelativeTime = "Before Relative Time",
-  claimPredicateBeforeAbsoluteTime = "Before Absolute Time",
+  claimPredicateUnconditional = t(
+    "signTransactionDetails.claimPredicates.unconditional",
+  ),
+  claimPredicateConditional = t(
+    "signTransactionDetails.claimPredicates.conditional",
+  ),
+  claimPredicateAnd = t("signTransactionDetails.claimPredicates.and"),
+  claimPredicateOr = t("signTransactionDetails.claimPredicates.or"),
+  claimPredicateNot = t("signTransactionDetails.claimPredicates.not"),
+  claimPredicateBeforeRelativeTime = t(
+    "signTransactionDetails.claimPredicates.beforeRelativeTime",
+  ),
+  claimPredicateBeforeAbsoluteTime = t(
+    "signTransactionDetails.claimPredicates.beforeAbsoluteTime",
+  ),
 }
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;
