@@ -44,7 +44,7 @@ import React, {
 } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityLevel, SecurityContext } from "services/blockaid/constants";
 import {
   assessSiteSecurity,
   assessTransactionSecurity,
@@ -130,9 +130,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [securityWarningContext, setSecurityWarningContext] = useState<
-    "site" | "transaction"
-  >("site");
+  const [securityWarningContext, setSecurityWarningContext] =
+    useState<SecurityContext>(SecurityContext.SITE);
 
   /**
    * Network details mapped from the current network configuration
@@ -254,7 +253,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // =============================================================================
   const getWarnings = useCallback(
     (): SecurityWarning[] =>
-      securityWarningContext === "site"
+      securityWarningContext === SecurityContext.SITE
         ? siteSecurityWarnings
         : transactionSecurityWarnings,
     [securityWarningContext, siteSecurityWarnings, transactionSecurityWarnings],
@@ -262,7 +261,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   const getSeverity = useCallback(
     (): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined =>
-      securityWarningContext === "site"
+      securityWarningContext === SecurityContext.SITE
         ? siteSecuritySeverity
         : transactionSecuritySeverity,
     [securityWarningContext, siteSecuritySeverity, transactionSecuritySeverity],
@@ -270,7 +269,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   const getProceedAnywayText = useCallback(
     (): string =>
-      securityWarningContext === "site"
+      securityWarningContext === SecurityContext.SITE
         ? t("dappConnectionBottomSheetContent.connectAnyway")
         : t("dappRequestBottomSheetContent.confirmAnyway"),
     [securityWarningContext, t],
@@ -291,7 +290,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsConnecting(false);
       setProposalEvent(null);
       setSiteScanResult(undefined);
-      setSecurityWarningContext("site");
+      setSecurityWarningContext(SecurityContext.SITE);
       clearEvent();
     }, 200);
   };
@@ -319,7 +318,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setIsSigning(false);
       setRequestEvent(null);
       setTransactionScanResult(undefined);
-      setSecurityWarningContext("site");
+      setSecurityWarningContext(SecurityContext.SITE);
       saveMemo("");
       clearEvent();
     }, 200);
@@ -390,7 +389,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const presentSecurityWarningDetail = useCallback(
-    (context: "site" | "transaction") => {
+    (context: SecurityContext) => {
       setSecurityWarningContext(context);
 
       siteSecurityWarningBottomSheetModalRef.current?.present();
@@ -404,7 +403,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleProceedAnyway = (): void => {
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    if (securityWarningContext === "site") {
+    if (securityWarningContext === SecurityContext.SITE) {
       handleDappConnection();
 
       return;
@@ -422,7 +421,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleCancelSecurityWarning = useCallback(() => {
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    setSecurityWarningContext("site");
+    setSecurityWarningContext(SecurityContext.SITE);
   }, []);
 
   /**
@@ -610,7 +609,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancel={handleClearDappConnection}
             isMalicious={siteSecurityAssessment.isMalicious}
             isSuspicious={siteSecurityAssessment.isSuspicious}
-            securityWarningAction={() => presentSecurityWarningDetail("site")}
+            securityWarningAction={() =>
+              presentSecurityWarningDetail(SecurityContext.SITE)
+            }
           />
         }
       />
@@ -636,7 +637,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             isSuspicious={transactionSecurityAssessment.isSuspicious}
             transactionScanResult={transactionScanResult}
             securityWarningAction={() =>
-              presentSecurityWarningDetail("transaction")
+              presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }
             signTransactionDetails={signTransactionDetails}
             isMemoMissing={isMemoMissing}

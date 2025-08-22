@@ -64,3 +64,12 @@ export enum ValidationSeverity {
   MALICIOUS = "malicious",
   SUSPICIOUS = "suspicious",
 }
+
+/**
+ * Security context types for different scan operations
+ * Used to distinguish between site and transaction security contexts
+ */
+export enum SecurityContext {
+  SITE = "site",
+  TRANSACTION = "transaction",
+}
