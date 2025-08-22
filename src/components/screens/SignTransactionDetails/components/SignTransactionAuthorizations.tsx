@@ -1,8 +1,8 @@
 /* eslint-disable react/no-array-index-key */
 import { xdr } from "@stellar/stellar-sdk";
 import {
+  KeyValueListItem,
   KeyValueInvokeHostFnArgs,
-  KeyValueList,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -107,7 +107,7 @@ const SignTransactionAuthorizations = ({
                 </View>
               </View>
             </View>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("common.token")}
               operationValue={truncateAddress(detail.asset)}
             />
@@ -130,7 +130,7 @@ const SignTransactionAuthorizations = ({
                 </View>
               </View>
             </View>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t(
                 "signTransactionDetails.authorizations.contractAddress",
               )}
@@ -145,11 +145,11 @@ const SignTransactionAuthorizations = ({
                 </View>
               }
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("common.hash")}
               operationValue={truncateAddress(detail.hash)}
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("common.salt")}
               operationValue={truncateAddress(detail.salt)}
             />

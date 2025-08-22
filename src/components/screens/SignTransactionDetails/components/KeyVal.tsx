@@ -26,15 +26,15 @@ import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { getContractSpecs } from "services/backend";
 
-interface KeyValueListProps {
+interface KeyValueListItemProps {
   operationKey: string;
   operationValue: string | number | React.ReactNode;
 }
 
-export const KeyValueList = ({
+export const KeyValueListItem = ({
   operationKey,
   operationValue,
-}: KeyValueListProps) => (
+}: KeyValueListItemProps) => (
   <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
     <View className="flex-row items-center gap-[8px]">
       <Text>{operationKey}</Text>
@@ -150,7 +150,7 @@ export const KeyValueWithPublicKey = ({
   operationKey,
   operationValue,
 }: KeyValueWithPublicKeyProps) => (
-  <KeyValueList
+  <KeyValueListItem
     operationKey={operationKey}
     operationValue={<Avatar publicAddress={operationValue} size="sm" />}
   />
@@ -172,13 +172,13 @@ export const PathList = ({ paths }: PathListProps) => (
       >
         <Text>#{index + 1}</Text>
 
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.tokenCode")}
           operationValue={code}
         />
 
         {issuer ? (
-          <KeyValueList
+          <KeyValueListItem
             operationKey={t("signTransactionDetails.operations.issuer")}
             operationValue={<Avatar publicAddress={issuer} size="sm" />}
           />
@@ -205,7 +205,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("sha256Hash" in signer) {
       return (
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.sha256Hash)}
         />
@@ -214,7 +214,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("preAuthTx" in signer) {
       return (
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.preAuthTx)}
         />
@@ -223,7 +223,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("ed25519SignedPayload" in signer) {
       return (
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={truncateAddress(signer.ed25519SignedPayload)}
         />
@@ -236,7 +236,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
   return (
     <View>
       {renderSignerType()}
-      <KeyValueList
+      <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.signerWeight")}
         operationValue={signer.weight}
       />
@@ -252,15 +252,15 @@ export const KeyValueLine = ({ line }: KeyValueLineProps) => {
   if ("assetA" in line) {
     return (
       <View>
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.tokenA")}
           operationValue={line.assetA.getCode()}
         />
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.tokenB")}
           operationValue={line.assetB.getCode()}
         />
-        <KeyValueList
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.fee")}
           operationValue={line.fee}
         />
@@ -269,7 +269,7 @@ export const KeyValueLine = ({ line }: KeyValueLineProps) => {
   }
 
   return (
-    <KeyValueList
+    <KeyValueListItem
       operationKey={t("signTransactionDetails.operations.tokenCode")}
       operationValue={line.code}
     />
@@ -293,7 +293,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
     switch (predicate.switch().name) {
       case "claimPredicateUnconditional": {
         return (
-          <KeyValueList
+          <KeyValueListItem
             operationKey={
               hideKey ? "" : t("signTransactionDetails.operations.predicate")
             }
@@ -305,7 +305,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
       case "claimPredicateAnd": {
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
@@ -321,13 +321,13 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
       case "claimPredicateBeforeAbsoluteTime": {
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
               operationValue={CLAIM_PREDICATES[predicate.switch().name]}
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey=""
               operationValue={predicate.absBefore().toString()}
             />
@@ -338,13 +338,13 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
       case "claimPredicateBeforeRelativeTime": {
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
               operationValue={CLAIM_PREDICATES[predicate.switch().name]}
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey=""
               operationValue={predicate.relBefore().toString()}
             />
@@ -358,7 +358,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
         if (notPredicate) {
           return (
             <>
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={
                   hideKey
                     ? ""
@@ -377,7 +377,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
       case "claimPredicateOr": {
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
@@ -450,7 +450,7 @@ export const KeyValueInvokeHostFn = ({
 
             return (
               <>
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t("signTransactionDetails.operations.type")}
                   operationValue={t(
                     "signTransactionDetails.operations.createContract",
@@ -462,7 +462,7 @@ export const KeyValueInvokeHostFn = ({
                   )}
                   operationValue={accountId}
                 />
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t("signTransactionDetails.operations.salt")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
@@ -475,14 +475,14 @@ export const KeyValueInvokeHostFn = ({
                     </View>
                   }
                 />
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t(
                     "signTransactionDetails.operations.executableType",
                   )}
                   operationValue={executableType}
                 />
                 {executable.wasmHash() && (
-                  <KeyValueList
+                  <KeyValueListItem
                     operationKey={t(
                       "signTransactionDetails.operations.executableWasmHash",
                     )}
@@ -508,7 +508,7 @@ export const KeyValueInvokeHostFn = ({
 
           return (
             <>
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={t("signTransactionDetails.operations.type")}
                 operationValue={t(
                   "signTransactionDetails.operations.createContract",
@@ -518,7 +518,7 @@ export const KeyValueInvokeHostFn = ({
                 operationKey={t("signTransactionDetails.operations.contractId")}
                 operationValue={contractId}
               />
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={t("signTransactionDetails.operations.salt")}
                 operationValue={
                   <View className="flex-row items-center gap-[4px]">
@@ -531,14 +531,14 @@ export const KeyValueInvokeHostFn = ({
                   </View>
                 }
               />
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={t(
                   "signTransactionDetails.operations.executableType",
                 )}
                 operationValue={executableType}
               />
               {executable.wasmHash() && (
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t(
                     "signTransactionDetails.operations.executableWasmHash",
                   )}
@@ -567,7 +567,7 @@ export const KeyValueInvokeHostFn = ({
 
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("signTransactionDetails.operations.type")}
               operationValue={t(
                 "signTransactionDetails.operations.createContract",
@@ -576,7 +576,7 @@ export const KeyValueInvokeHostFn = ({
             {preimageFromAsset.switch().name === "assetTypeCreditAlphanum4" ||
             preimageFromAsset.switch().name === "assetTypeCreditAlphanum12" ? (
               <>
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t(
                     "signTransactionDetails.operations.tokenCode",
                   )}
@@ -584,7 +584,7 @@ export const KeyValueInvokeHostFn = ({
                     .assetCode()
                     .toString()}
                 />
-                <KeyValueList
+                <KeyValueListItem
                   operationKey={t("signTransactionDetails.operations.issuer")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
@@ -616,14 +616,14 @@ export const KeyValueInvokeHostFn = ({
               </>
             ) : null}
 
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t(
                 "signTransactionDetails.operations.executableType",
               )}
               operationValue={executableType}
             />
             {executable.wasmHash() && (
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={t(
                   "signTransactionDetails.operations.executableWasmHash",
                 )}
@@ -653,13 +653,13 @@ export const KeyValueInvokeHostFn = ({
 
         return (
           <>
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("signTransactionDetails.operations.type")}
               operationValue={t(
                 "signTransactionDetails.operations.invokeContract",
               )}
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("signTransactionDetails.operations.contractId")}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
@@ -672,7 +672,7 @@ export const KeyValueInvokeHostFn = ({
                 </View>
               }
             />
-            <KeyValueList
+            <KeyValueListItem
               operationKey={t("signTransactionDetails.operations.functionName")}
               operationValue={functionName}
             />
@@ -682,7 +682,7 @@ export const KeyValueInvokeHostFn = ({
 
       case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
         return (
-          <KeyValueList
+          <KeyValueListItem
             operationKey={t("signTransactionDetails.operations.type")}
             operationValue={t(
               "signTransactionDetails.operations.uploadContractWasm",
@@ -717,7 +717,7 @@ export const KeyValueSignerKeyOptions = ({
 
   if ("sha256Hash" in signer) {
     return (
-      <KeyValueList
+      <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.signerSha256Hash")}
         operationValue={signer.sha256Hash}
       />
@@ -726,7 +726,7 @@ export const KeyValueSignerKeyOptions = ({
 
   if ("preAuthTx" in signer) {
     return (
-      <KeyValueList
+      <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.preAuthTransaction")}
         operationValue={signer.preAuthTx}
       />
@@ -735,7 +735,7 @@ export const KeyValueSignerKeyOptions = ({
 
   if ("ed25519SignedPayload" in signer) {
     return (
-      <KeyValueList
+      <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.signedPayload")}
         operationValue={signer.ed25519SignedPayload}
       />

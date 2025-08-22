@@ -3,7 +3,7 @@ import { Address, Operation, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
-  KeyValueList,
+  KeyValueListItem,
   KeyValueSigner,
   KeyValueWithPublicKey,
   PathList,
@@ -1047,7 +1047,7 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
             const wasm = func.wasm().toString();
 
             return (
-              <KeyValueList
+              <KeyValueListItem
                 operationKey={t("signTransactionDetails.operations.wasm")}
                 operationValue={wasm}
               />
