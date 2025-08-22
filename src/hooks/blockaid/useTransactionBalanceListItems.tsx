@@ -59,7 +59,7 @@ export const useTransactionBalanceListItems = (
 
     // Build token IDs and optionally fetch missing prices
     const tokenIds: TokenIdentifier[] = balanceUpdates.map((c) =>
-      c.isNative ? "XLM" : `${c.assetCode}:${c.assetIssuer ?? ""}`,
+      c.isNative ? NATIVE_TOKEN_CODE : `${c.assetCode}:${c.assetIssuer ?? ""}`,
     );
 
     // Fire-and-forget fetch of missing prices (non-blocking render)
