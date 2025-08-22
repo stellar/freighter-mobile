@@ -6,6 +6,7 @@ import {
   SecurityLevel,
   SECURITY_LEVEL_MAP,
   SECURITY_MESSAGE_KEYS,
+  ValidationSeverity,
 } from "services/blockaid/constants";
 
 // Keep this helper UI-agnostic – no UI imports/hooks here
@@ -276,7 +277,7 @@ export const extractSecurityWarnings = (
 
 export interface ValidationFlaggedEntity {
   address: string;
-  severity: "malicious" | "suspicious";
+  severity: ValidationSeverity;
   classification?: string;
 }
 
@@ -307,7 +308,9 @@ export const extractFlaggedEntitiesFromTransaction = (
 
   const resultType = (validation.result_type || "").toUpperCase();
   const severity: ValidationFlaggedEntity["severity"] =
-    resultType === BLOCKAID_RESULT_TYPES.MALICIOUS ? "malicious" : "suspicious";
+    resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
+      ? ValidationSeverity.MALICIOUS
+      : ValidationSeverity.SUSPICIOUS;
 
   // Match Stellar account public keys (G... 56 chars base32)
   const ADDRESS_REGEX = /G[A-Z2-7]{55}/g;
