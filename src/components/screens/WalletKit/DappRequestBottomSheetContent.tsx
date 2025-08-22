@@ -149,15 +149,13 @@ const DappRequestBottomSheetContent: React.FC<
         title: assetCode,
         trailingContent: (
           <View className="flex-row items-center gap-2">
-            <Icon.PlusCircle size={16} themeColor="lilac" />
-            <Text color={themeColors.lilac[11]}>
-              {t("addTokenScreen.addToken")}
-            </Text>
+            <Icon.PlusCircle size={14} themeColor="gray" />
+            <Text>{t("addTokenScreen.addToken")}</Text>
           </View>
         ),
       },
     ];
-  }, [signTransactionDetails?.operations, themeColors.lilac, t]);
+  }, [signTransactionDetails?.operations, t]);
 
   const dappMetadata = useDappMetadata(requestEvent);
 
