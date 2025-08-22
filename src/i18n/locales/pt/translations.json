@@ -829,7 +829,7 @@
       "contractAddress": "Endereço do contrato"
     },
     "operations": {
-      "destination": "Destino",
+      "destination": "Destino #{{number}}",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
       "amount": "Valor",

@@ -401,9 +401,9 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
       {claimants.map((claimant, index) => (
         <View key={claimant.destination + claimant.predicate.switch().name}>
           <KeyValueWithPublicKey
-            operationKey={t(
-              `signTransactionDetails.operations.destination #${index + 1}`,
-            )}
+            operationKey={t("signTransactionDetails.operations.destination", {
+              number: index + 1,
+            })}
             operationValue={claimant.destination}
           />
           {claimPredicateValue({
