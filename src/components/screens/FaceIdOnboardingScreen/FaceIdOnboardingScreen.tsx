@@ -21,21 +21,15 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { setHasSeenFaceIdOnboarding, signIn } = useAuthenticationStore();
-  const { verifyFaceId } = useFaceId();
+  const { setHasSeenFaceIdOnboarding } = useAuthenticationStore();
+  const { setIsFaceIdEnabled } = useFaceId();
   const [shouldVerifyFaceId, setShouldVerifyFaceId] = useState(false);
-  const [isVerifyingFaceId, setIsVerifyingFaceId] = useState(false);
+  const [isVerifyingFaceId] = useState(false);
 
-  const handleVerifyFaceId = useCallback(async () => {
-    setIsVerifyingFaceId(true);
-    const result = await verifyFaceId();
-    if (result.success) {
-      await signIn({ password: "somepassword" }); // TODO: remove this after logic implementation
-      setHasSeenFaceIdOnboarding(true);
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
-    }
-    setIsVerifyingFaceId(false);
-  }, [verifyFaceId, setHasSeenFaceIdOnboarding, signIn, navigation]);
+  const handleVerifyFaceId = useCallback(() => {
+    setIsFaceIdEnabled(true);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+  }, [setIsFaceIdEnabled, navigation]);
 
   useEffect(() => {
     if (shouldVerifyFaceId) {

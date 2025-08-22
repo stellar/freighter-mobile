@@ -9,13 +9,7 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useFaceId } from "hooks/useFaceId";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
 interface InputPasswordTemplateProps {
@@ -50,8 +44,8 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const { isFaceIdActive, verifyFaceId } = useFaceId();
   const { themeColors } = useColors();
+  const { isFaceIdActive } = useFaceId();
 
   const canContinue = useMemo(
     () =>
@@ -69,16 +63,13 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
     setSignInMethod(signInMethod === "faceId" ? "password" : "faceId");
   }, [signInMethod, setSignInMethod]);
 
-  const handleContinueWithFaceId = useCallback(async () => {
+  const handleContinueWithFaceId = useCallback(() => {
     if (signInMethod === "password") {
       handleContinue(passwordValue);
     } else {
-      const result = await verifyFaceId();
-      if (result.success) {
-        handleContinue("");
-      }
+      handleContinue("");
     }
-  }, [handleContinue, passwordValue, verifyFaceId, signInMethod]);
+  }, [handleContinue, passwordValue, signInMethod]);
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>

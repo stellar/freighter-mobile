@@ -213,6 +213,16 @@ export enum STORAGE_KEYS {
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+  BIOMETRIC_KEY = "biometricKey",
+}
+
+/**
+ * Biometric storage keys.
+ *
+ * BIOMETRIC_PASSWORD The biometric password is used to store the biometric protected password.
+ * */
+export enum BIOMETRIC_STORAGE_KEYS {
+  BIOMETRIC_PASSWORD = "biometricPassword",
 }
 
 export enum TRANSACTION_WARNING {

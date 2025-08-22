@@ -9,6 +9,7 @@ import {
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE,
+  BIOMETRIC_STORAGE_KEYS,
   HASH_KEY_EXPIRATION_MS,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
@@ -46,6 +47,7 @@ import {
   getHashKey,
 } from "services/storage/helpers";
 import {
+  biometricDataStorage,
   dataStorage,
   secureDataStorage,
 } from "services/storage/storageFactory";
@@ -242,6 +244,8 @@ interface AuthActions {
   navigateToLockScreen: () => void;
   setHasSeenFaceIdOnboarding: (hasSeenFaceIdOnboarding: boolean) => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
+  disableFaceId: () => Promise<boolean>;
+  signInWithFaceId: () => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -984,6 +988,12 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       password,
     );
 
+    // password can be stored in the keychain as it's biometric protected
+    await biometricDataStorage.setItem(
+      SENSITIVE_STORAGE_KEYS.BIOMETRIC_KEY,
+      password,
+    );
+
     // After discovering accounts, make sure all existing accounts' private keys
     // are in the temporary store
     try {
@@ -1574,6 +1584,79 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           isLoading: false,
         });
         throw error; // Rethrow to handle in the UI
+      }
+    },
+    disableFaceId: async () => {
+      const item = await biometricDataStorage.getItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        {
+          cancel: t("common.cancel"),
+          title: t("authStore.faceId.title"),
+          subtitle: t("authStore.faceId.subtitle"),
+        },
+      );
+      if (!item) {
+        throw new Error("Biometric password not found");
+      }
+
+      try {
+        // Remove the stored biometric password from the secure keychain
+        await biometricDataStorage.remove(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        );
+        logger.info(
+          "disableFaceId",
+          "Biometric password removed from Face ID storage",
+        );
+        return true;
+      } catch (error) {
+        logger.error(
+          "disableFaceId",
+          "Failed to remove biometric password from Face ID storage",
+          error,
+        );
+        // Don't throw error as this shouldn't block the disable operation
+        return false;
+      }
+    },
+
+    /**
+     * Signs in using Face ID authentication
+     *
+     * Retrieves the stored password from the secure keychain after successful Face ID verification
+     * and then calls the regular signIn function with that password.
+     *
+     * @returns {Promise<void>}
+     */
+    signInWithFaceId: async () => {
+      try {
+        // Get the stored password from the secure keychain
+        const storedData = await biometricDataStorage.getItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          {
+            cancel: t("common.cancel"),
+            title: t("authStore.faceId.title"),
+            subtitle: t("authStore.faceId.subtitle"),
+          },
+        );
+
+        if (!storedData) {
+          throw new Error(
+            "No stored password found for Face ID authentication",
+          );
+        }
+
+        // Call the regular signIn function with the retrieved password
+        await get().signIn({ password: storedData.password });
+
+        logger.info("signInWithFaceId", "Successfully signed in using Face ID");
+      } catch (error) {
+        logger.error(
+          "signInWithFaceId",
+          "Face ID authentication failed",
+          error,
+        );
+        throw error;
       }
     },
 

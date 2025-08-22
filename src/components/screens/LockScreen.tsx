@@ -21,10 +21,11 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     logout,
     clearError,
     hasSeenFaceIdOnboarding,
+    signInWithFaceId,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { isFaceIdAvailable } = useFaceId();
-  const { isFaceIdActive, verifyFaceId } = useFaceId();
+  const { isFaceIdActive } = useFaceId();
   const [signInMethod, setSignInMethod] = useState<"password" | "faceId">(
     isFaceIdActive ? "faceId" : "password",
   );
@@ -70,11 +71,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   );
 
   const handleUnlockWithFaceId = useCallback(async () => {
-    const result = await verifyFaceId();
-    if (result.success) {
-      // check how to log user back in and refresh hash key
-    }
-  }, [verifyFaceId]);
+    await signInWithFaceId();
+  }, [signInWithFaceId]);
 
   return (
     <InputPasswordTemplate

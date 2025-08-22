@@ -297,3 +297,60 @@ jest.mock("react-native-permissions", () => ({
     },
   },
 }));
+
+// Mock react-native-keychain
+jest.mock("react-native-keychain", () => ({
+  BIOMETRY_TYPE: {
+    FACE_ID: "FaceID",
+    TOUCH_ID: "TouchID",
+    FINGERPRINT: "Fingerprint",
+    FACE: "Face",
+    IRIS: "Iris",
+    NONE: "None",
+  },
+  ACCESSIBLE: {
+    ALWAYS_THIS_DEVICE_ONLY: "AccessibleAlwaysThisDeviceOnly",
+    ALWAYS: "AccessibleAlways",
+    WHEN_UNLOCKED_THIS_DEVICE_ONLY: "AccessibleWhenUnlockedThisDeviceOnly",
+    WHEN_UNLOCKED: "AccessibleWhenUnlocked",
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY:
+      "AccessibleAfterFirstUnlockThisDeviceOnly",
+    AFTER_FIRST_UNLOCK: "AccessibleAfterFirstUnlock",
+    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY:
+      "AccessibleWhenPasscodeSetThisDeviceOnly",
+    WHEN_PASSCODE_SET: "AccessibleWhenPasscodeSet",
+  },
+  ACCESS_CONTROL: {
+    USER_PRESENCE: "UserPresence",
+    BIOMETRY_ANY: "BiometryAny",
+    BIOMETRY_CURRENT_SET: "BiometryCurrentSet",
+    DEVICE_PASSCODE: "DevicePasscode",
+    WATCH: "Watch",
+    OR: "Or",
+    AND: "And",
+  },
+  AUTHENTICATION_TYPE: {
+    BIOMETRICS: "AuthenticationWithBiometrics",
+    DEVICE_PASSCODE_OR_BIOMETRICS:
+      "AuthenticationWithDevicePasscodeOrBiometrics",
+    DEVICE_PASSCODE: "AuthenticationWithDevicePasscode",
+  },
+  SECURITY_LEVEL: {
+    ANY: "SecurityLevelAny",
+    SECURE_SOFTWARE: "SecurityLevelSecureSoftware",
+    SECURE_HARDWARE: "SecurityLevelSecureHardware",
+  },
+  getSupportedBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  getInternetCredentials: jest.fn(() => Promise.resolve(null)),
+  setInternetCredentials: jest.fn(() => Promise.resolve()),
+  resetInternetCredentials: jest.fn(() => Promise.resolve()),
+  getGenericPassword: jest.fn(() => Promise.resolve(null)),
+  setGenericPassword: jest.fn(() => Promise.resolve()),
+  resetGenericPassword: jest.fn(() => Promise.resolve()),
+  getAllGenericPasswordServices: jest.fn(() => Promise.resolve([])),
+  getAllInternetCredentials: jest.fn(() => Promise.resolve([])),
+  canImplyAuthentication: jest.fn(() => Promise.resolve(false)),
+  getSecurityLevel: jest.fn(() => Promise.resolve("SecurityLevelAny")),
+  getAvailableBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  isSensorAvailable: jest.fn(() => Promise.resolve(true)),
+}));

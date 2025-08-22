@@ -7,6 +7,7 @@ import {
 } from "config/routes";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useFaceId } from "hooks/useFaceId";
 import React, { useCallback, useEffect, useState } from "react";
 
 type VerifyPasswordScreenProps = NativeStackScreenProps<
@@ -21,6 +22,24 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { t } = useAppTranslation();
+  const [signInMethod, setSignInMethod] = useState<"password" | "faceId">(
+    "password",
+  );
+  const { isFaceIdActive } = useFaceId();
+
+  const handleSignInMethodChange = useCallback(
+    (method: "password" | "faceId") => {
+      setSignInMethod(method);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const checkFaceIdAvailability = () => {
+      setSignInMethod(isFaceIdActive ? "faceId" : "password");
+    };
+    checkFaceIdAvailability();
+  }, [isFaceIdActive]);
 
   useEffect(() => {
     clearError();
@@ -61,6 +80,8 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}
       insets={{ top: false, bottom: true }}
+      signInMethod={signInMethod}
+      setSignInMethod={handleSignInMethodChange}
     />
   );
 };
