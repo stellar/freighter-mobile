@@ -52,17 +52,16 @@ const buildSummary = (
 };
 
 const buildAuthEntries = (transaction: Transaction | FeeBumpTransaction) => {
-  const hasAuthEntries = transaction.operations.some(
-    (op) => op.type === "invokeHostFunction" && op.auth && op.auth.length,
-  );
+  const allAuthEntries = transaction.operations
+    .filter(
+      (op): op is Operation.InvokeHostFunction =>
+        op.type === "invokeHostFunction",
+    )
+    .flatMap((op) => op.auth ?? []);
 
-  if (!hasAuthEntries) return [];
+  if (!allAuthEntries.length) return [];
 
-  return (
-    (transaction.operations[0] as Operation.InvokeHostFunction).auth?.map(
-      (authEntry) => authEntry.rootInvocation(),
-    ) || []
-  );
+  return allAuthEntries.map((authEntry) => authEntry.rootInvocation());
 };
 
 export const useSignTransactionDetails = ({
