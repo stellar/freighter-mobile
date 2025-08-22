@@ -1,10 +1,15 @@
 import Blockaid from "@blockaid/client";
 import { ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { TokenTypeWithCustomToken, TokenIdentifier } from "config/types";
+import {
+  TokenTypeWithCustomToken,
+  TokenIdentifier,
+  NonNativeToken,
+} from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -14,29 +19,65 @@ import { View } from "react-native";
 import { getTransactionBalanceChanges } from "services/blockaid/helper";
 
 /**
- * Adapter hook that maps Blockaid transaction simulation results
+ * Adapter hook that maps Blockaid transaction simulation results and change trust operations
  * into `ListItemProps[]` for display.
  *
  * Scenarios handled:
- * - No result or simulation error → single row "Unable to simulate transaction"
- * - No diffs → single row "No balance changes detected"
- * - Otherwise, render one row per token with signed amount (red for debit, green for credit)
+ * - No scan result → single row "Unable to simulate transaction"
+ * - No balance changes AND no change trust → single row "No balance changes detected"
+ * - Change trust operations → show token being added
+ * - Balance changes → show token balance modifications
+ * - Both change trust AND balance changes → show both (when available)
  */
 export const useTransactionBalanceListItems = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
+  signTransactionDetails?: SignTransactionDetailsInterface | null,
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
   return useMemo(() => {
-    if (!scanResult) {
-      return [];
+    const items: ListItemProps[] = [];
+
+    // Handle change trust operations
+    if (
+      signTransactionDetails?.hasTrustlineChanges &&
+      signTransactionDetails?.operations
+    ) {
+      const changeTrustOp = signTransactionDetails.operations.find(
+        (op) => op.type === "changeTrust",
+      ) as
+        | { type: "changeTrust"; line?: { code?: string; issuer?: string } }
+        | undefined;
+
+      if (changeTrustOp?.line?.code && changeTrustOp?.line?.issuer) {
+        const { code: assetCode, issuer: issuerKey } = changeTrustOp.line;
+        const token: NonNativeToken = {
+          code: assetCode,
+          issuer: { key: issuerKey },
+        };
+
+        items.push({
+          key: `changeTrust:${assetCode}:${issuerKey}`,
+          icon: <TokenIcon token={token} size="sm" />,
+          title: assetCode,
+          trailingContent: (
+            <View className="flex-row items-center gap-2">
+              <Icon.PlusCircle size={14} themeColor="gray" />
+              <Text>{t("addTokenScreen.addToken")}</Text>
+            </View>
+          ),
+        });
+      }
     }
 
-    const balanceUpdates = getTransactionBalanceChanges(scanResult);
+    // Handle balance changes from Blockaid scan
+    if (!scanResult) {
+      // no scan but still have change trust operations
+      if (items.length > 0) {
+        return items;
+      }
 
-    // Unable to simulate
-    if (balanceUpdates === null) {
       return [
         {
           icon: <Icon.Cube01 size={14} themeColor="gray" />,
@@ -46,8 +87,37 @@ export const useTransactionBalanceListItems = (
       ];
     }
 
-    // No changes
+    const balanceUpdates = getTransactionBalanceChanges(scanResult);
+
+    // Unable to simulate
+    if (balanceUpdates === null) {
+      // If we have change trust operations, show them along with the error
+      if (items.length > 0) {
+        items.push({
+          icon: <Icon.Cube01 size={14} themeColor="gray" />,
+          title: t("blockaid.security.transaction.unableToSimulate"),
+          titleColor: themeColors.text.secondary,
+        });
+
+        return items;
+      }
+
+      return [
+        {
+          icon: <Icon.Cube01 size={14} themeColor="gray" />,
+          title: t("blockaid.security.transaction.unableToSimulate"),
+          titleColor: themeColors.text.secondary,
+        },
+      ];
+    }
+
+    // No balance changes
     if (balanceUpdates.length === 0) {
+      // If we have change trust operations, show them
+      if (items.length > 0) {
+        return items;
+      }
+
       return [
         {
           icon: <Icon.Cube01 size={14} themeColor="gray" />,
@@ -71,8 +141,8 @@ export const useTransactionBalanceListItems = (
       fetchPricesForTokenIds({ tokens: missing });
     }
 
-    // Render changes
-    return balanceUpdates.map((change) => {
+    // Add balance changes to the list
+    balanceUpdates.forEach((change) => {
       const {
         assetCode: tokenCode,
         assetIssuer: tokenIssuer,
@@ -94,8 +164,8 @@ export const useTransactionBalanceListItems = (
         ? { type: TokenTypeWithCustomToken.NATIVE, code: NATIVE_TOKEN_CODE }
         : { code: tokenCode, issuer: { key: tokenIssuer ?? "" } };
 
-      return {
-        key: `${tokenCode}:${tokenIssuer ?? "native"}`,
+      items.push({
+        key: `balance:${tokenCode}:${tokenIssuer ?? "native"}`,
         icon: <TokenIcon token={token as never} size="sm" />,
         title: tokenCode,
         titleComponent: (
@@ -119,10 +189,14 @@ export const useTransactionBalanceListItems = (
           </Text>
         ),
         titleColor: themeColors.text.primary,
-      } as ListItemProps;
+      });
     });
+
+    return items;
   }, [
     scanResult,
+    signTransactionDetails?.hasTrustlineChanges,
+    signTransactionDetails?.operations,
     t,
     themeColors.status.error,
     themeColors.status.success,

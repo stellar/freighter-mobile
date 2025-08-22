@@ -1,6 +1,5 @@
 import Blockaid from "@blockaid/client";
 import { List } from "components/List";
-import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { App } from "components/sds/App";
@@ -83,6 +82,7 @@ const DappRequestBottomSheetContent: React.FC<
   const { t } = useAppTranslation();
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
+    signTransactionDetails,
   );
 
   const accountDetailList = useMemo(
@@ -125,37 +125,6 @@ const DappRequestBottomSheetContent: React.FC<
     ],
     [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
   );
-
-  const changeTrustTokenList = useMemo(() => {
-    const changeTrustOp = signTransactionDetails?.operations.find(
-      (op) => op.type === "changeTrust",
-    ) as
-      | { type: "changeTrust"; line?: { code?: string; issuer?: string } }
-      | undefined;
-
-    const assetCode = changeTrustOp?.line?.code;
-    const issuerKey = changeTrustOp?.line?.issuer;
-
-    if (!assetCode || !issuerKey) {
-      return [] as { key?: string; icon: React.ReactNode; title: string }[];
-    }
-
-    const token = { code: assetCode, issuer: { key: issuerKey } } as never;
-
-    return [
-      {
-        key: `${assetCode}:${issuerKey}`,
-        icon: <TokenIcon token={token} size="sm" />,
-        title: assetCode,
-        trailingContent: (
-          <View className="flex-row items-center gap-2">
-            <Icon.PlusCircle size={14} themeColor="gray" />
-            <Text>{t("addTokenScreen.addToken")}</Text>
-          </View>
-        ),
-      },
-    ];
-  }, [signTransactionDetails?.operations, t]);
 
   const dappMetadata = useDappMetadata(requestEvent);
 
@@ -256,11 +225,7 @@ const DappRequestBottomSheetContent: React.FC<
         />
       )}
       <View className="gap-[12px]">
-        {changeTrustTokenList.length > 0 ? (
-          <List variant="secondary" items={changeTrustTokenList} />
-        ) : (
-          <List variant="secondary" items={transactionBalanceListItems} />
-        )}
+        <List variant="secondary" items={transactionBalanceListItems} />
         <List variant="secondary" items={accountDetailList} />
         {signTransactionDetails && (
           <SignTransactionDetails data={signTransactionDetails} />
