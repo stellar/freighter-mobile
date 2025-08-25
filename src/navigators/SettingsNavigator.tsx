@@ -8,7 +8,7 @@ import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
-import FaceIdSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/FaceIdSettingsScreen";
+import BiometricsSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/BiometricsSettingsScreen";
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
@@ -92,8 +92,8 @@ export const SettingsStackNavigator = () => {
         }}
       />
       <SettingsStack.Screen
-        name={SETTINGS_ROUTES.FACE_ID_SETTINGS_SCREEN}
-        component={FaceIdSettingsScreen}
+        name={SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN}
+        component={BiometricsSettingsScreen}
         options={{
           headerTitle: t("securityScreen.faceId.title"),
         }}

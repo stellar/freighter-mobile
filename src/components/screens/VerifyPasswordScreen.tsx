@@ -7,13 +7,23 @@ import {
 } from "config/routes";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useFaceId } from "hooks/useFaceId";
+import {
+  FACE_ID_BIOMETRY_TYPES,
+  FINGERPRINT_BIOMETRY_TYPES,
+  useBiometrics,
+} from "hooks/useBiometrics";
 import React, { useCallback, useEffect, useState } from "react";
 
 type VerifyPasswordScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
   typeof MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN
 >;
+
+enum BiometricsLoginType {
+  FACE_ID = "faceId",
+  FINGERPRINT = "fingerprint",
+  PASSWORD = "password",
+}
 
 const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
   navigation,
@@ -22,24 +32,34 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { t } = useAppTranslation();
-  const [signInMethod, setSignInMethod] = useState<"password" | "faceId">(
-    "password",
+  const [signInMethod, setSignInMethod] = useState<BiometricsLoginType>(
+    BiometricsLoginType.PASSWORD,
   );
-  const { isFaceIdActive } = useFaceId();
+  const { biometryType } = useBiometrics();
 
   const handleSignInMethodChange = useCallback(
-    (method: "password" | "faceId") => {
+    (method: BiometricsLoginType) => {
       setSignInMethod(method);
     },
     [],
   );
 
   useEffect(() => {
-    const checkFaceIdAvailability = () => {
-      setSignInMethod(isFaceIdActive ? "faceId" : "password");
+    const checkBiometricsAvailability = () => {
+      if (!biometryType) {
+        setSignInMethod(BiometricsLoginType.PASSWORD);
+        return;
+      }
+      if (FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+        setSignInMethod(BiometricsLoginType.FACE_ID);
+      } else if (FINGERPRINT_BIOMETRY_TYPES.includes(biometryType)) {
+        setSignInMethod(BiometricsLoginType.FINGERPRINT);
+      } else {
+        setSignInMethod(BiometricsLoginType.PASSWORD);
+      }
     };
-    checkFaceIdAvailability();
-  }, [isFaceIdActive]);
+    checkBiometricsAvailability();
+  }, [biometryType]);
 
   useEffect(() => {
     clearError();

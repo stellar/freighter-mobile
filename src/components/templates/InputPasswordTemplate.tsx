@@ -7,10 +7,16 @@ import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
+import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import { useFaceId } from "hooks/useFaceId";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
+
+enum BiometricsLoginType {
+  FACE_ID = "faceId",
+  FINGERPRINT = "fingerprint",
+  PASSWORD = "password",
+}
 
 interface InputPasswordTemplateProps {
   publicKey: string | null;
@@ -23,8 +29,8 @@ interface InputPasswordTemplateProps {
   description?: string;
   showLogo?: boolean;
   insets?: BaseLayoutInsets;
-  signInMethod: "password" | "faceId";
-  setSignInMethod: (method: "password" | "faceId") => void;
+  signInMethod: BiometricsLoginType;
+  setSignInMethod: (method: BiometricsLoginType) => void;
 }
 
 const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
@@ -45,13 +51,14 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
   const { themeColors } = useColors();
-  const { isFaceIdActive } = useFaceId();
+  const { isBiometricsAvailable, biometryType } = useBiometrics();
 
   const canContinue = useMemo(
     () =>
       (passwordValue.length >= PASSWORD_MIN_LENGTH &&
         passwordValue.length <= PASSWORD_MAX_LENGTH) ||
-      signInMethod === "faceId",
+      signInMethod === BiometricsLoginType.FACE_ID ||
+      signInMethod === BiometricsLoginType.FINGERPRINT,
     [passwordValue, signInMethod],
   );
 
@@ -59,12 +66,38 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
     setPasswordValue(value);
   }, []);
 
+  const getFallbackButtonText = useCallback(() => {
+    if (!isBiometricsAvailable) {
+      return "";
+    }
+    if (!biometryType) {
+      return t("lockScreen.enterPassword");
+    }
+    return FACE_ID_BIOMETRY_TYPES.includes(biometryType)
+      ? t("lockScreen.useFaceId")
+      : t("lockScreen.useFingerprint");
+  }, [biometryType, t, isBiometricsAvailable]);
+
   const handleFaceIdToggle = useCallback(() => {
-    setSignInMethod(signInMethod === "faceId" ? "password" : "faceId");
+    setSignInMethod(
+      signInMethod === BiometricsLoginType.FACE_ID
+        ? BiometricsLoginType.PASSWORD
+        : BiometricsLoginType.FACE_ID,
+    );
   }, [signInMethod, setSignInMethod]);
 
+  const getButtonIcon = useCallback(() => {
+    if (signInMethod === BiometricsLoginType.PASSWORD) {
+      return undefined;
+    }
+    if (signInMethod === BiometricsLoginType.FACE_ID) {
+      return <Icon.FaceId color={themeColors.foreground.secondary} />;
+    }
+    return <Icon.Fingerprint01 color={themeColors.foreground.secondary} />;
+  }, [signInMethod, themeColors]);
+
   const handleContinueWithFaceId = useCallback(() => {
-    if (signInMethod === "password") {
+    if (signInMethod === BiometricsLoginType.PASSWORD) {
       handleContinue(passwordValue);
     } else {
       handleContinue("");
@@ -91,7 +124,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             {description ?? t("lockScreen.description")}
           </Text>
           <View className="w-full gap-4 mt-8">
-            {signInMethod === "password" && (
+            {signInMethod === BiometricsLoginType.PASSWORD && (
               <Input
                 ref={inputRef}
                 isPassword
@@ -108,22 +141,18 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               tertiary
               lg
               onPress={handleContinueWithFaceId}
-              disabled={!canContinue && signInMethod === "password"}
-              icon={
-                signInMethod === "password" ? undefined : (
-                  <Icon.FaceId color={themeColors.foreground.secondary} />
-                )
+              disabled={
+                !canContinue && signInMethod === BiometricsLoginType.PASSWORD
               }
+              icon={getButtonIcon()}
               iconPosition={IconPosition.LEFT}
               isLoading={isLoading}
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}
             </Button>
-            {isFaceIdActive && (
+            {isBiometricsAvailable && (
               <Button minimal sm onPress={handleFaceIdToggle}>
-                {signInMethod === "password"
-                  ? t("lockScreen.useFaceId")
-                  : t("lockScreen.enterPassword")}
+                {getFallbackButtonText()}
               </Button>
             )}
           </View>

@@ -15,8 +15,8 @@ import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import { useClipboard } from "hooks/useClipboard";
-import { useFaceId } from "hooks/useFaceId";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
@@ -89,7 +89,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
-  const { isFaceIdAvailable } = useFaceId();
+  const { isBiometricsAvailable } = useBiometrics();
   const [isSkipping, setIsSkipping] = useState(false);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         await signUp({
           password,
           mnemonicPhrase: recoveryPhrase,
-          isFaceIdAvailable,
+          isBiometricsAvailable,
         });
 
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
@@ -127,7 +127,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         setIsSkipping(false);
       })();
     }, 0);
-  }, [signUp, password, recoveryPhrase, isFaceIdAvailable]);
+  }, [signUp, password, recoveryPhrase, isBiometricsAvailable]);
 
   const handleConfirmSkip = useCallback(() => {
     confirmSkip();

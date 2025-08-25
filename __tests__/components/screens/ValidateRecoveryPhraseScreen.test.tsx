@@ -2,11 +2,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userEvent, screen, act, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
-import type {
-  AUTH_STACK_ROUTES,
-  AuthStackParamList,
-  RootStackParamList,
-} from "config/routes";
+import type { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -76,7 +72,7 @@ const mockRoute = {
 const user = userEvent.setup();
 
 type ValidateRecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList & RootStackParamList,
+  AuthStackParamList,
   typeof AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN
 >;
 
@@ -85,14 +81,29 @@ type ValidateRecoveryPhraseScreenRouteProp = RouteProp<
   typeof AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN
 >;
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  push: jest.fn(),
+  pop: jest.fn(),
+  reset: jest.fn(),
+  isFocused: jest.fn(() => true),
+  canGoBack: jest.fn(() => true),
+  getId: jest.fn(),
+  getParent: jest.fn(),
+  getState: jest.fn(),
+  dispatch: jest.fn(),
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
+  setParams: jest.fn(),
+};
+
 const renderScreen = () =>
   renderWithProviders(
     <ValidateRecoveryPhraseScreen
       navigation={
-        {
-          setOptions: jest.fn(),
-          goBack: jest.fn(),
-        } as unknown as ValidateRecoveryPhraseScreenNavigationProp
+        mockNavigation as unknown as ValidateRecoveryPhraseScreenNavigationProp
       }
       route={mockRoute as unknown as ValidateRecoveryPhraseScreenRouteProp}
     />,

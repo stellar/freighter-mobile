@@ -194,12 +194,21 @@
     "errorText": "Word is incorrect, try again",
     "defaultActionButtonText": "Continue"
   },
-  "faceIdOnboardingScreen": {
-    "title": "Enable Face ID",
-    "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
-    "promptTitle": "Enable Face ID?",
-    "promptDescription": "Use Face ID to securely log in and approve transactions.",
-    "footerNoteText": "You can change this later in Settings."
+  "biometricsOnboardingScreen": {
+    "faceId": {
+      "title": "Enable Face ID",
+      "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Face ID?",
+      "promptDescription": "Use Face ID to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "fingerprint": {
+      "title": "Enable Fingerprint",
+      "description": "Add another layer of security by requiring Fingerprint to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Fingerprint?",
+      "promptDescription": "Use Fingerprint to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    }
   },
   "importWalletScreen": {
     "title": "Import Wallet",
@@ -214,6 +223,7 @@
     "unlockButtonText": "Unlock",
     "forgotPasswordButtonText": "Forgot password",
     "useFaceId": "Use Face ID instead",
+    "useFingerprint": "Use Fingerprint instead",
     "enterPassword": "Use password instead"
   },
   "onboarding": {
@@ -321,7 +331,19 @@
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key"
     },
-    "account": "Account {{number}}"
+    "account": "Account {{number}}",
+    "faceId": {
+      "disableTitle": "Confirm to disable Face ID",
+      "disableSubtitle": "Disabling Face ID decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to sign in",
+      "signInSubtitle": "Use Face ID to securely log in and approve transactions."
+    },
+    "fingerprint": {
+      "disableTitle": "Confirm to disable Fingerprint",
+      "disableSubtitle": "Disabling Fingerprint decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to sign in",
+      "signInSubtitle": "Use Fingerprint to securely log in and approve transactions."
+    }
   },
   "balancesList": {
     "title": "Tokens",
@@ -708,6 +730,17 @@
         "disable": {
           "title": "Disable Face ID?",
           "message": "Are you sure you want to disable Face ID?"
+        }
+      }
+    },
+    "fingerprint": {
+      "title": "Fingerprint authentication",
+      "description": "Enable Fingerprint for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Fingerprint",
+      "alert": {
+        "disable": {
+          "title": "Disable Fingerprint?",
+          "message": "Are you sure you want to disable Fingerprint?"
         }
       }
     }

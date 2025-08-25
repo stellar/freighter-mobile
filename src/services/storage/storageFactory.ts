@@ -14,11 +14,15 @@ export interface PersistentStorage {
 export interface BiometricStorage {
   getItem(
     key: string,
-    message?: Keychain.AuthenticationPrompt,
+    message?: {
+      title: string;
+      cancel: string;
+    },
   ): Promise<Keychain.UserCredentials | false>;
   setItem(key: string, value: string): Promise<void>;
   remove: (keys: string | string[]) => Promise<void>;
   clear: () => Promise<void>;
+  checkIfExists(key: string): Promise<boolean>;
 }
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.

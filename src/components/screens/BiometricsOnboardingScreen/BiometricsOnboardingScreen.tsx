@@ -8,70 +8,67 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useFaceId } from "hooks/useFaceId";
+import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, View, Image } from "react-native";
 import { Svg, Defs, Rect, LinearGradient, Stop, Path } from "react-native-svg";
 
-type FaceIdOnboardingScreenProps = NativeStackScreenProps<
+type BiometricsOnboardingScreenProps = NativeStackScreenProps<
   RootStackParamList,
-  typeof ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN
+  typeof ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN
 >;
 
-export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
-  route,
-}) => {
+export const BiometricsOnboardingScreen: React.FC<
+  BiometricsOnboardingScreenProps
+> = ({ route }) => {
   const { t } = useAppTranslation();
-  const { signInWithFaceId, isLoading, signIn, getAuthStatus, setAuthStatus } =
+  const { signInWithBiometrics, isLoading, signIn, setAuthStatus } =
     useAuthenticationStore();
-  const { setIsFaceIdEnabled } = useFaceId();
-  const [shouldVerifyFaceId, setShouldVerifyFaceId] = useState(false);
+  const { setIsBiometricsEnabled, biometryType } = useBiometrics();
+  const [shouldVerifyBiometrics, setShouldVerifyBiometrics] = useState(false);
 
-  const handleVerifyFaceId = useCallback(async () => {
-    await signInWithFaceId();
-    setIsFaceIdEnabled(true);
-  }, [setIsFaceIdEnabled, signInWithFaceId]);
+  const enableBiometrics = useCallback(async () => {
+    await signInWithBiometrics();
+    setIsBiometricsEnabled(true);
+  }, [setIsBiometricsEnabled, signInWithBiometrics]);
 
   useEffect(() => {
-    const verifyFaceId = async () => {
-      if (shouldVerifyFaceId) {
-        setShouldVerifyFaceId(false);
-
-        await handleVerifyFaceId();
+    const verifyBiometrics = async () => {
+      if (shouldVerifyBiometrics) {
+        setShouldVerifyBiometrics(false);
+        await enableBiometrics();
       }
     };
 
-    verifyFaceId();
-  }, [shouldVerifyFaceId, handleVerifyFaceId]);
+    verifyBiometrics();
+  }, [shouldVerifyBiometrics, enableBiometrics]);
 
   const handleEnable = () => {
     Alert.alert(
-      t("faceIdOnboardingScreen.promptTitle"),
-      t("faceIdOnboardingScreen.promptDescription"),
+      t("biometricsOnboardingScreen.faceId.promptTitle"),
+      t("biometricsOnboardingScreen.faceId.promptDescription"),
       [
         {
           text: t("common.cancel"),
         },
         {
           text: t("common.allow"),
-          onPress: () => setShouldVerifyFaceId(true),
+          onPress: () => setShouldVerifyBiometrics(true),
         },
       ],
     );
   };
 
   const handleSkip = async () => {
-    const authStatus = await getAuthStatus();
     if (route.params?.password) {
       await signIn({
         password: route.params.password,
       });
-    } else if (authStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID) {
       setAuthStatus(AUTH_STATUS.AUTHENTICATED);
     }
   };
 
-  const BlurredBackgroundFaceIdIcon = (
+  const BlurredBackgroundBiometricsIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
       style={{ width: pxValue(104), height: pxValue(104) }}
@@ -91,6 +88,23 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+
+  const BlurredBackgroundFingerprintIcon = (
+    <View
+      className="items-center justify-center mt-4 flex-grow-0 relative z-10"
+      style={{ width: pxValue(104), height: pxValue(104) }}
+    >
+      <Svg width={pxValue(104)} height={pxValue(104)} viewBox="0 0 104 104">
+        {/* Blurred background with rounded corners */}
+        <Rect
+          width="104"
+          height="104"
+          rx="16"
+          fill="rgba(255, 255, 255, 0.24)"
         />
       </Svg>
     </View>
@@ -131,11 +145,39 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
     </View>
   );
 
+  const getIcon = useCallback(() => {
+    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+      return <Icon.FaceId circle />;
+    }
+    return <Icon.Fingerprint01 circle />;
+  }, [biometryType]);
+
+  const getTitle = useCallback(() => {
+    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+      return t("biometricsOnboardingScreen.faceId.title");
+    }
+    return t("biometricsOnboardingScreen.fingerprint.title");
+  }, [biometryType, t]);
+
+  const getDescription = useCallback(() => {
+    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+      return t("biometricsOnboardingScreen.faceId.description");
+    }
+    return t("biometricsOnboardingScreen.fingerprint.description");
+  }, [biometryType, t]);
+
+  const getFooterNoteText = useCallback(() => {
+    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+      return t("biometricsOnboardingScreen.faceId.footerNoteText");
+    }
+    return t("biometricsOnboardingScreen.fingerprint.footerNoteText");
+  }, [biometryType, t]);
+
   return (
     <OnboardLayout
-      icon={<Icon.FaceId circle />}
-      title={t("faceIdOnboardingScreen.title")}
-      footerNoteText={t("faceIdOnboardingScreen.footerNoteText")}
+      icon={getIcon()}
+      title={getTitle()}
+      footerNoteText={getFooterNoteText()}
       defaultActionButtonText={t("common.enable")}
       secondaryActionButtonText={t("common.skip")}
       onPressSecondaryActionButton={handleSkip}
@@ -145,11 +187,13 @@ export const FaceIdOnboardingScreen: React.FC<FaceIdOnboardingScreenProps> = ({
     >
       <View className="pr-8">
         <Text secondary md>
-          {t("faceIdOnboardingScreen.description")}
+          {getDescription()}
         </Text>
       </View>
       <View className="items-center">
-        {BlurredBackgroundFaceIdIcon}
+        {biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)
+          ? BlurredBackgroundBiometricsIcon
+          : BlurredBackgroundFingerprintIcon}
         {iPhoneFrame}
       </View>
     </OnboardLayout>

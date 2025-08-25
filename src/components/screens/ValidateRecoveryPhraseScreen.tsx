@@ -9,7 +9,7 @@ import { VISUAL_DELAY_MS } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useFaceId } from "hooks/useFaceId";
+import { useBiometrics } from "hooks/useBiometrics";
 import { useWordSelection } from "hooks/useWordSelection";
 import React, { useCallback, useMemo, useState, useLayoutEffect } from "react";
 import { analytics } from "services/analytics";
@@ -28,7 +28,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const [isLoading, setIsLoading] = useState(false);
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { isFaceIdAvailable } = useFaceId();
+  const { isBiometricsAvailable } = useBiometrics();
   const { signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
@@ -45,13 +45,13 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     await signUp({
       password,
       mnemonicPhrase: recoveryPhrase,
-      isFaceIdAvailable,
+      isBiometricsAvailable,
     });
 
     analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
     analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     setIsLoading(false);
-  }, [password, recoveryPhrase, signUp, isFaceIdAvailable]);
+  }, [password, recoveryPhrase, signUp, isBiometricsAvailable]);
 
   const handleContinue = useCallback(() => {
     if (!canContinue) {

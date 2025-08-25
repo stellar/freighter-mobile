@@ -6,7 +6,7 @@ import { Textarea } from "components/sds/Textarea";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useFaceId } from "hooks/useFaceId";
+import { useBiometrics } from "hooks/useBiometrics";
 import React, { useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
@@ -19,7 +19,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 }) => {
   const { importWallet, error, clearError } = useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
-  const { isFaceIdAvailable } = useFaceId();
+  const { isBiometricsAvailable } = useBiometrics();
   const { t } = useAppTranslation();
   const [isImporting, setIsImporting] = useState(false);
 
@@ -37,7 +37,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         await importWallet({
           mnemonicPhrase: recoveryPhrase,
           password,
-          isFaceIdAvailable,
+          isBiometricsAvailable,
         });
         setIsImporting(false);
       })();

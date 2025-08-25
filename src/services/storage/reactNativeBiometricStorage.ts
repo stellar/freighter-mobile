@@ -1,6 +1,9 @@
 import { logger } from "config/logger";
+import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { BiometricStorage } from "services/storage/storageFactory";
+
+const rnBiometrics = new ReactNativeBiometrics();
 
 /**
  * Default service name used for the keychain
@@ -20,9 +23,13 @@ export const reactNativeBiometricStorage: BiometricStorage = {
    */
   setItem: async (key, value) => {
     const biometryType = await Keychain.getSupportedBiometryType();
-    if (biometryType === Keychain.BIOMETRY_TYPE.FACE_ID) {
+
+    if (!biometryType) {
+      return;
+    }
+
+    if (biometryType) {
       await Keychain.setGenericPassword(key, value, {
-        accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
         accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
         service: `${DEFAULT_SERVICE}_${key}`,
       });
@@ -31,13 +38,22 @@ export const reactNativeBiometricStorage: BiometricStorage = {
 
   getItem: async (key, prompt?: Keychain.AuthenticationPrompt) => {
     const biometryType = await Keychain.getSupportedBiometryType();
-    if (biometryType === Keychain.BIOMETRY_TYPE.FACE_ID) {
+    if (!biometryType) {
+      return false;
+    }
+
+    if (biometryType) {
+      const hasVerified = await rnBiometrics.simplePrompt({
+        promptMessage: prompt?.title ?? "",
+        cancelButtonText: prompt?.cancel ?? "",
+      });
+      if (!hasVerified.success) {
+        return false;
+      }
+
       const result = await Keychain.getGenericPassword({
         service: `${DEFAULT_SERVICE}_${key}`,
         accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
-        authenticationPrompt: {
-          ...prompt,
-        },
       });
       return result;
     }
@@ -73,6 +89,12 @@ export const reactNativeBiometricStorage: BiometricStorage = {
       );
       // Don't throw since removal failures shouldn't block execution
     }
+  },
+  checkIfExists: async (key) => {
+    const result = await Keychain.hasGenericPassword({
+      service: `${DEFAULT_SERVICE}_${key}`,
+    });
+    return result;
   },
   clear: async () => {
     await Keychain.resetGenericPassword({

@@ -295,7 +295,11 @@
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta"
     },
-    "account": "Conta {{number}}"
+    "account": "Conta {{number}}",
+    "faceId": {
+      "title": "Face ID",
+      "subtitle": "Desabilitar Face ID diminui a segurança. Você pode reabilitá-lo nas Configurações."
+    }
   },
   "balancesList": {
     "title": "Tokens",

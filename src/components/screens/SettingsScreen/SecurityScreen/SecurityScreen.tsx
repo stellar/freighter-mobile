@@ -4,8 +4,8 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import { useFaceId } from "hooks/useFaceId";
 import React from "react";
 import { View } from "react-native";
 
@@ -17,7 +17,7 @@ type SecurityScreenProps = NativeStackScreenProps<
 const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { isFaceIdAvailable } = useFaceId();
+  const { isBiometricsAvailable, biometryType } = useBiometrics();
   const listItems = [
     {
       icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
@@ -31,13 +31,19 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       testID: "show-recovery-phrase-button",
     },
   ];
-  if (isFaceIdAvailable) {
+  if (isBiometricsAvailable) {
     listItems.push({
-      icon: <Icon.FaceId color={themeColors.foreground.primary} />,
-      title: t("securityScreen.faceId.title"),
+      icon: FACE_ID_BIOMETRY_TYPES.includes(biometryType!) ? (
+        <Icon.FaceId color={themeColors.foreground.primary} />
+      ) : (
+        <Icon.Fingerprint01 color={themeColors.foreground.primary} />
+      ),
+      title: FACE_ID_BIOMETRY_TYPES.includes(biometryType!)
+        ? t("securityScreen.faceId.title")
+        : t("securityScreen.fingerprint.title"),
       titleColor: themeColors.text.primary,
       onPress: () =>
-        navigation.navigate(SETTINGS_ROUTES.FACE_ID_SETTINGS_SCREEN),
+        navigation.navigate(SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN),
       trailingContent: (
         <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),

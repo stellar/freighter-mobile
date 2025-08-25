@@ -42,7 +42,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
-  FACE_ID_ONBOARDING_SCREEN: "FaceIdOnboardingScreen",
+  BIOMETRICS_ONBOARDING_SCREEN: "BiometricsOnboardingScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -79,7 +79,7 @@ export const SETTINGS_ROUTES = {
   SECURITY_SCREEN: "SecurityScreen",
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
-  FACE_ID_SETTINGS_SCREEN: "FaceIdSettingsScreen",
+  BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -154,7 +154,7 @@ export type RootStackParamList = {
     collectionAddress: string;
     tokenId: string;
   };
-  [ROOT_NAVIGATOR_ROUTES.FACE_ID_ONBOARDING_SCREEN]: {
+  [ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN]: {
     password: string;
   };
 };
@@ -209,7 +209,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
     recoveryPhrase: string;
   };
-  [SETTINGS_ROUTES.FACE_ID_SETTINGS_SCREEN]: undefined;
+  [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {

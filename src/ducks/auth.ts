@@ -64,6 +64,7 @@ import { create } from "zustand";
 interface SignUpParams {
   mnemonicPhrase: string;
   password: string;
+  isBiometricsAvailable: boolean;
 }
 
 /**
@@ -86,6 +87,7 @@ interface SignInParams {
 interface ImportWalletParams {
   mnemonicPhrase: string;
   password: string;
+  isBiometricsAvailable: boolean;
 }
 
 /**
@@ -162,7 +164,7 @@ interface AuthState {
   isLoadingAccount: boolean;
   accountError: string | null;
   navigationRef: NavigationContainerRef<RootStackParamList> | null;
-  hasSeenFaceIdOnboarding: boolean;
+  isOnboardingFinished: boolean;
 }
 
 /**
@@ -221,7 +223,6 @@ interface ImportSecretKeyParams {
  * @property {Function} navigateToLockScreen - Navigates to the lock screen
  * @property {Function} createAccount - Creates a new account
  * @property {Function} getKeyFromKeyManager - Gets the key from the key manager
- * @property {Function} setHasSeenFaceIdOnboarding - Sets the has seen face id onboarding flag (true if face id is not available as well)
  * @property {Function} devResetAppAuth - Resets the app auth state to the initial state
  */
 interface AuthActions {
@@ -242,10 +243,9 @@ interface AuthActions {
   refreshActiveAccount: () => Promise<ActiveAccount | null>;
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
-  setHasSeenFaceIdOnboarding: (hasSeenFaceIdOnboarding: boolean) => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
-  disableFaceId: () => Promise<boolean>;
-  signInWithFaceId: () => Promise<void>;
+  disableBiometrics: () => Promise<boolean>;
+  signInWithBiometrics: () => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -253,6 +253,7 @@ interface AuthActions {
 
   clearError: () => void;
   devResetAppAuth: () => void;
+  setAuthStatus: (authStatus: AuthStatus) => void;
 }
 
 /**
@@ -280,7 +281,7 @@ const initialState: Omit<AuthState, "network"> = {
   isLoadingAccount: false,
   accountError: null,
   navigationRef: null,
-  hasSeenFaceIdOnboarding: false,
+  isOnboardingFinished: false,
 };
 
 /**
@@ -707,6 +708,10 @@ const storeAccount = async ({
       },
       shouldRefreshHashKey,
     }),
+    biometricDataStorage.setItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      password,
+    ),
   ]);
 };
 
@@ -990,7 +995,7 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
 
     // password can be stored in the keychain as it's biometric protected
     await biometricDataStorage.setItem(
-      SENSITIVE_STORAGE_KEYS.BIOMETRIC_KEY,
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
       password,
     );
 
@@ -1411,7 +1416,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
   return {
     ...initialState,
-
+    isOnboardingFinished: false,
     // Default to PUBLIC network
     network: NETWORKS.PUBLIC,
 
@@ -1500,11 +1505,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         await signUp(params);
         set({
           ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
+          authStatus: AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID,
           isLoading: false,
+          isOnboardingFinished: !params.isBiometricsAvailable,
         });
         // Fetch active account after successful signup
-        get().fetchActiveAccount();
+        await get().fetchActiveAccount();
 
         return true;
       } catch (error) {
@@ -1550,6 +1556,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             isLoading: false,
             account: activeAccount,
             isLoadingAccount: false,
+            isOnboardingFinished: true,
           });
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
@@ -1586,38 +1593,19 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         throw error; // Rethrow to handle in the UI
       }
     },
-    disableFaceId: async () => {
+    disableBiometrics: async () => {
       const item = await biometricDataStorage.getItem(
         BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
         {
           cancel: t("common.cancel"),
-          title: t("authStore.faceId.title"),
-          subtitle: t("authStore.faceId.subtitle"),
+          title: t("authStore.faceId.disableTitle"),
         },
       );
       if (!item) {
         throw new Error("Biometric password not found");
       }
 
-      try {
-        // Remove the stored biometric password from the secure keychain
-        await biometricDataStorage.remove(
-          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-        );
-        logger.info(
-          "disableFaceId",
-          "Biometric password removed from Face ID storage",
-        );
-        return true;
-      } catch (error) {
-        logger.error(
-          "disableFaceId",
-          "Failed to remove biometric password from Face ID storage",
-          error,
-        );
-        // Don't throw error as this shouldn't block the disable operation
-        return false;
-      }
+      return true;
     },
 
     /**
@@ -1628,15 +1616,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *
      * @returns {Promise<void>}
      */
-    signInWithFaceId: async () => {
+    signInWithBiometrics: async () => {
       try {
         // Get the stored password from the secure keychain
         const storedData = await biometricDataStorage.getItem(
           BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
           {
+            title: t("authStore.faceId.signInTitle"),
             cancel: t("common.cancel"),
-            title: t("authStore.faceId.title"),
-            subtitle: t("authStore.faceId.subtitle"),
           },
         );
 
@@ -1648,7 +1635,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
         // Call the regular signIn function with the retrieved password
         await get().signIn({ password: storedData.password });
-
         logger.info("signInWithFaceId", "Successfully signed in using Face ID");
       } catch (error) {
         logger.error(
@@ -1658,15 +1644,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         );
         throw error;
       }
-    },
-
-    /**
-     * Sets the has seen face id onboarding flag
-     *
-     * @param {boolean} hasSeenFaceIdOnboarding - The has seen face id onboarding flag
-     */
-    setHasSeenFaceIdOnboarding: (hasSeenFaceIdOnboarding: boolean) => {
-      set({ hasSeenFaceIdOnboarding });
     },
 
     /**
@@ -1681,8 +1658,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         await importWallet(params);
         set({
           ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
+          authStatus: params.isBiometricsAvailable
+            ? AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID
+            : AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
+          isOnboardingFinished: !params.isBiometricsAvailable,
         });
 
         // Fetch active account after successful wallet import
@@ -1711,6 +1691,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @returns {Promise<AuthStatus>} The current authentication status
      */
     getAuthStatus: async () => {
+      const currentAuthStatus = get().authStatus;
+      if (currentAuthStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID) {
+        return currentAuthStatus;
+      }
+
       const authStatus = await getAuthStatus();
       set({ authStatus });
 
@@ -1720,6 +1705,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       }
 
       return authStatus;
+    },
+
+    /**
+     * Sets the authentication status
+     *
+     * @param {AuthStatus} authStatus - The authentication status
+     */
+    setAuthStatus: (authStatus: AuthStatus) => {
+      set({ authStatus });
     },
 
     /**
