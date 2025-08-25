@@ -24,6 +24,11 @@ export interface ScanTokenParams {
   network: NETWORKS;
 }
 
+export interface ScanBulkTokensParams {
+  addressList: string[];
+  network: NETWORKS;
+}
+
 export interface ScanSiteParams {
   url: string;
   network: NETWORKS;

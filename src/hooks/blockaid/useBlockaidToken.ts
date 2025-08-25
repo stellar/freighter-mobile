@@ -1,13 +1,16 @@
 import Blockaid from "@blockaid/client";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCallback } from "react";
-import { scanToken } from "services/blockaid/api";
+import { scanBulkTokens, scanToken } from "services/blockaid/api";
 
 interface UseBlockaidTokenResponse {
   scanToken: (
     tokenCode: string,
     tokenIssuer?: string,
   ) => Promise<Blockaid.TokenScanResponse>;
+  scanBulkTokens: (
+    addressList: string[],
+  ) => Promise<Blockaid.TokenBulkScanResponse>;
 }
 
 export const useBlockaidToken = (): UseBlockaidTokenResponse => {
@@ -27,5 +30,19 @@ export const useBlockaidToken = (): UseBlockaidTokenResponse => {
     [network],
   );
 
-  return { scanToken: scanTokenFunction };
+  const scanBulkTokensFunction = useCallback(
+    async (addressList: string[]): Promise<Blockaid.TokenBulkScanResponse> => {
+      if (!addressList.length) {
+        throw new Error("No token codes provided for scanning");
+      }
+
+      return scanBulkTokens({ addressList, network });
+    },
+    [network],
+  );
+
+  return {
+    scanToken: scanTokenFunction,
+    scanBulkTokens: scanBulkTokensFunction,
+  };
 };

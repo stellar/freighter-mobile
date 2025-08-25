@@ -12,6 +12,7 @@ import {
   ScanTokenParams,
   ScanSiteParams,
   ScanTransactionParams,
+  ScanBulkTokensParams,
 } from "services/blockaid/types";
 
 const formatAddress = (tokenCode: string, tokenIssuer?: string): string => {
@@ -53,6 +54,45 @@ export const scanToken = async (
     return scanResult;
   } catch (error) {
     throw new Error(BLOCKAID_ERROR_MESSAGES.TOKEN_SCAN_FAILED);
+  }
+};
+
+export const scanBulkTokens = async (
+  params: ScanBulkTokensParams,
+): Promise<Blockaid.TokenBulkScanResponse> => {
+  const { addressList, network } = params;
+
+  try {
+    if (!isMainnet(network)) {
+      throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
+    }
+
+    // Build URL with query parameters for bulk scanning
+    const queryParams = addressList
+      .map((address) => `asset_ids=${encodeURIComponent(address)}`)
+      .join("&");
+    const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
+
+    const response =
+      await freighterBackend.get<
+        BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
+      >(endpoint);
+
+    if (response.data.error) {
+      throw new Error(response.data.error);
+    }
+
+    const scanResult = response.data.data as Blockaid.TokenBulkScanResponse;
+
+    analytics.track(AnalyticsEvent.BLOCKAID_BULK_TOKEN_SCAN, {
+      response: scanResult,
+      addressList,
+      network,
+    });
+
+    return scanResult;
+  } catch (error) {
+    throw new Error(BLOCKAID_ERROR_MESSAGES.BULK_TOKEN_SCAN_FAILED);
   }
 };
 
