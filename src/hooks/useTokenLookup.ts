@@ -37,107 +37,104 @@ export const useTokenLookup = ({
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
 
-  // Sort records by security level: benign first, then suspicious, then malicious
-  const sortBySecurityLevel = (
-    records: FormattedSearchTokenRecord[],
+  // Group tokens by security level while preserving stellar.expert's original order
+  const groupTokensBySecurityLevel = (
+    tokens: FormattedSearchTokenRecord[],
   ): FormattedSearchTokenRecord[] => {
-    const securityPriority = {
-      [SecurityLevel.SAFE]: 0,
-      [SecurityLevel.SUSPICIOUS]: 1,
-      [SecurityLevel.MALICIOUS]: 2,
-    };
+    const securityGroups: Record<SecurityLevel, FormattedSearchTokenRecord[]> =
+      {
+        [SecurityLevel.SAFE]: [],
+        [SecurityLevel.SUSPICIOUS]: [],
+        [SecurityLevel.MALICIOUS]: [],
+      };
 
-    return records.sort((a, b) => {
-      const priorityA = securityPriority[a.securityLevel as SecurityLevel] ?? 0;
-      const priorityB = securityPriority[b.securityLevel as SecurityLevel] ?? 0;
+    // Preserve original order by adding tokens to groups as they appear
+    tokens.forEach((token) => {
+      const level = token.securityLevel as SecurityLevel;
+      const targetGroup =
+        securityGroups[level] || securityGroups[SecurityLevel.SUSPICIOUS];
 
-      return priorityA - priorityB;
+      targetGroup.push(token);
     });
+
+    // Return in security priority order: Safe → Suspicious → Malicious
+    return [
+      ...securityGroups[SecurityLevel.SAFE],
+      ...securityGroups[SecurityLevel.SUSPICIOUS],
+      ...securityGroups[SecurityLevel.MALICIOUS],
+    ];
   };
 
-  // Enhance search results with security information
-  const getEnhancedTokenResults = (
-    records: FormattedSearchTokenRecord[],
-    bulkScanResult: Blockaid.TokenBulkScanResponse,
+  // Add security assessment to each token
+  const enhanceWithSecurityInfo = (
+    tokens: FormattedSearchTokenRecord[],
+    scanResults: Blockaid.TokenBulkScanResponse,
   ): FormattedSearchTokenRecord[] =>
-    records.map((record) => {
-      const tokenAddress = record.issuer
-        ? `${record.tokenCode}-${record.issuer}`
-        : record.tokenCode;
-      const scanResult = bulkScanResult.results?.[tokenAddress];
+    tokens.map((token) => {
+      const tokenIdentifier = token.issuer
+        ? `${token.tokenCode}-${token.issuer}`
+        : token.tokenCode;
 
-      const securityAssessment = assessTokenSecurity(scanResult);
+      const scanResult = scanResults.results?.[tokenIdentifier];
+      const securityInfo = assessTokenSecurity(scanResult);
 
       return {
-        ...record,
-        isSuspicious: securityAssessment.isSuspicious,
-        isMalicious: securityAssessment.isMalicious,
-        securityLevel: securityAssessment.level,
+        ...token,
+        isSuspicious: securityInfo.isSuspicious,
+        isMalicious: securityInfo.isMalicious,
+        securityLevel: securityInfo.level,
       };
     });
 
-  const checkHasTrustline = (
-    currentBalances: (PricedBalance & {
-      id: string;
-    })[],
+  // Check if user already has a trustline for this token
+  const hasExistingTrustline = (
+    userBalances: (PricedBalance & { id: string })[],
     tokenCode: string,
     issuer: string,
-  ) => {
-    const balance = currentBalances.find((currentBalance) => {
-      const formattedCurrentBalance = formatTokenIdentifier(currentBalance.id);
+  ): boolean => {
+    const matchingBalance = userBalances.find((balance) => {
+      const balanceToken = formatTokenIdentifier(balance.id);
 
       return (
-        formattedCurrentBalance.tokenCode === tokenCode &&
-        formattedCurrentBalance.issuer === issuer
+        balanceToken.tokenCode === tokenCode && balanceToken.issuer === issuer
       );
     });
 
-    return !!balance;
+    return !!matchingBalance;
   };
 
-  const formatSearchTokenRecords = (
-    records:
+  // Format tokens from different sources while preserving original order
+  const formatTokensFromSearchResults = (
+    rawSearchResults:
       | SearchTokenResponse["_embedded"]["records"]
       | FormattedSearchTokenRecord[],
-    currentBalances: (PricedBalance & {
-      id: string;
-    })[],
+    userBalances: (PricedBalance & { id: string })[],
   ): FormattedSearchTokenRecord[] =>
-    records
-      .map((record) => {
-        // Came from freighter-backend
-        if ("tokenCode" in record) {
-          return {
-            ...record,
-            hasTrustline: checkHasTrustline(
-              currentBalances,
-              record.tokenCode,
-              record.issuer,
-            ),
-          };
-        }
-
-        const formattedTokenRecord = record.asset.split("-");
-        const tokenCode = formattedTokenRecord[0];
-        const issuer = formattedTokenRecord[1] ?? "";
-
-        // Came from stellarExpert
+    rawSearchResults.map((result) => {
+      if ("tokenCode" in result) {
+        // came from freighter-backend
         return {
-          tokenCode,
-          domain: record.domain ?? "",
-          hasTrustline: checkHasTrustline(currentBalances, tokenCode, issuer),
-          issuer,
-          isNative: record.asset === NATIVE_TOKEN_CODE,
-          tokenType: getTokenType(`${tokenCode}:${issuer}`),
+          ...result,
+          hasTrustline: hasExistingTrustline(
+            userBalances,
+            result.tokenCode,
+            result.issuer,
+          ),
         };
-      })
-      .sort((a) => {
-        if (a.hasTrustline) {
-          return -1;
-        }
+      }
 
-        return 1;
-      });
+      // came from stellar.expert
+      const [tokenCode, issuer] = result.asset.split("-");
+
+      return {
+        tokenCode,
+        domain: result.domain ?? "",
+        hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        issuer: issuer ?? "",
+        isNative: result.asset === NATIVE_TOKEN_CODE,
+        tokenType: getTokenType(`${tokenCode}:${issuer}`),
+      };
+    });
 
   const debouncedSearch = useDebounce(() => {
     const performSearch = async () => {
@@ -173,7 +170,10 @@ export const useTokenLookup = ({
         return;
       }
 
-      const formattedRecords = formatSearchTokenRecords(resJson, balanceItems);
+      const formattedRecords = formatTokensFromSearchResults(
+        resJson,
+        balanceItems,
+      );
 
       if (formattedRecords.length > 0 && isMainnet(network)) {
         try {
@@ -184,15 +184,15 @@ export const useTokenLookup = ({
           );
 
           const bulkScanResult = await scanBulkTokens({ addressList, network });
-          const enhancedSearchResults = getEnhancedTokenResults(
+          const enhancedSearchResults = enhanceWithSecurityInfo(
             formattedRecords,
             bulkScanResult,
           );
-          const sortedSearchResults = sortBySecurityLevel(
+          const groupedSearchResults = groupTokensBySecurityLevel(
             enhancedSearchResults,
           );
 
-          setSearchResults(sortedSearchResults);
+          setSearchResults(groupedSearchResults);
         } catch (error) {
           // If security scan fails, mark tokens as suspicious since we can't verify their safety
           const fallbackSearchResults: FormattedSearchTokenRecord[] =
@@ -203,7 +203,11 @@ export const useTokenLookup = ({
               securityLevel: SecurityLevel.SUSPICIOUS,
             }));
 
-          setSearchResults(fallbackSearchResults);
+          const groupedFallbackResults = groupTokensBySecurityLevel(
+            fallbackSearchResults,
+          );
+
+          setSearchResults(groupedFallbackResults);
         }
       } else {
         const defaultSearchResults: FormattedSearchTokenRecord[] =
@@ -214,7 +218,10 @@ export const useTokenLookup = ({
             securityLevel: SecurityLevel.SAFE,
           }));
 
-        setSearchResults(defaultSearchResults);
+        const groupedDefaultResults =
+          groupTokensBySecurityLevel(defaultSearchResults);
+
+        setSearchResults(groupedDefaultResults);
       }
 
       setStatus(HookStatus.SUCCESS);
