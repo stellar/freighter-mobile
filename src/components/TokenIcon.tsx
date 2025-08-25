@@ -56,6 +56,19 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   const icons = useTokenIconsStore((state) => state.icons);
   const { t } = useTranslation();
 
+  const getFallbackTextSize = (tokenSize: TokenSize) => {
+    switch (tokenSize) {
+      case "sm":
+        return "xs";
+      case "md":
+        return "sm";
+      case "lg":
+        return "md";
+      default:
+        return "md";
+    }
+  };
+
   // Liquidity pool: show "LP" text
   if (isLiquidityPool(tokenProp)) {
     return (
@@ -67,7 +80,12 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
           altText: t("tokenIconAlt", { code: "LP" }),
           backgroundColor,
           renderContent: () => (
-            <Text sm bold secondary>
+            <Text
+              size={getFallbackTextSize(size)}
+              bold
+              secondary
+              isVerticallyCentered
+            >
               LP
             </Text>
           ),
@@ -149,10 +167,17 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   const icon = icons[tokenIdentifier];
   const imageUrl = icon?.imageUrl || "";
 
-  const tokenInitials = token.code?.slice(0, 2) || "";
+  const maxLetters = size === "sm" ? 1 : 2;
+  const tokenInitials = token.code?.slice(0, maxLetters) || "";
+
   const renderContent = !imageUrl
     ? () => (
-        <Text sm bold secondary>
+        <Text
+          size={getFallbackTextSize(size)}
+          bold
+          secondary
+          isVerticallyCentered
+        >
           {tokenInitials}
         </Text>
       )

@@ -22,6 +22,9 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
+    "token": "Token",
+    "hash": "Hash",
+    "salt": "Salt",
     "addMemo": "Add memo"
   },
   "home": {
@@ -644,10 +647,13 @@
   },
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Transaction Request",
+    "confirmTransaction": "Confirm transaction",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "confirmAnyway": "Confirm anyway",
     "xdrItem": "XDR",
-    "itemCopied": "{{itemName}} copied to clipboard!"
+    "itemCopied": "{{itemName}} copied to clipboard!",
+    "transactionDetails": "Transaction details"
   },
   "qrScanner": {
     "cameraNotAvailable": "Camera not permitted\nor not available"
@@ -804,13 +810,114 @@
       },
       "site": {
         "malicious": "This site was flagged as malicious",
-        "suspicious": "Unable to scan site for malicious behavior"
+        "suspicious": "Unable to scan site for malicious behavior",
+        "confirmTrust": "Only confirm if you trust this site"
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",
         "malicious": "This transaction was flagged as malicious",
-        "warning": "This transaction was flagged as warning"
+        "warning": "This transaction was flagged as warning",
+        "unableToSimulate": "Unable to simulate transaction",
+        "noBalanceChanges": "No balance changes detected"
       }
+    }
+  },
+  "signTransactionDetails": {
+    "title": "Transaction Details",
+    "summary": {
+      "operationsCount": "Operations",
+      "fee": "Fees",
+      "sequence": "Sequence #",
+      "memo": "Memo",
+      "xdr": "XDR"
+    },
+    "authorizations": {
+      "title": "Authorizations",
+      "invoke": "Invoke",
+      "contractCreation": "Contract creation",
+      "contractId": "Contract ID",
+      "functionName": "Function name",
+      "parameters": "Parameters",
+      "contractAddress": "Contract address"
+    },
+    "operations": {
+      "destination": "Destination #{{number}}",
+      "startingBalance": "Starting Balance",
+      "tokenCode": "Token Code",
+      "amount": "Amount",
+      "sendMax": "Send Max",
+      "destinationToken": "Destination Token",
+      "destinationAmount": "Destination Amount",
+      "path": "Path",
+      "issuer": "Issuer",
+      "sendAmount": "Send Amount",
+      "destinationMinimum": "Destination Minimum",
+      "buying": "Buying",
+      "selling": "Selling",
+      "price": "Price",
+      "offerId": "Offer ID",
+      "buyAmount": "Buy Amount",
+      "signer": "Signer",
+      "signerWeight": "Signer Weight",
+      "inflationDestination": "Inflation Destination",
+      "homeDomain": "Home Domain",
+      "highThreshold": "High Threshold",
+      "mediumThreshold": "Medium Threshold",
+      "lowThreshold": "Low Threshold",
+      "masterWeight": "Master Weight",
+      "setFlags": "Set Flags",
+      "clearFlags": "Clear Flags",
+      "tokenA": "Token A",
+      "tokenB": "Token B",
+      "fee": "Fee",
+      "type": "Type",
+      "limit": "Limit",
+      "trustor": "Trustor",
+      "authorize": "Authorize",
+      "name": "Name",
+      "value": "Value",
+      "bumpTo": "Bump To",
+      "predicate": "Predicate",
+      "balanceId": "Balance ID",
+      "sponsoredId": "Sponsored ID",
+      "from": "From",
+      "flags": {
+        "authorized": "Authorized",
+        "authorizedToMaintainLiabilities": "Authorized To Maintain Liabilities",
+        "clawbackEnabled": "Clawback Enabled"
+      },
+      "liquidityPoolId": "Liquidity Pool ID",
+      "maxAmountA": "Max Amount A",
+      "maxAmountB": "Max Amount B",
+      "maxPrice": "Max Price",
+      "minPrice": "Min Price",
+      "minAmountA": "Min Amount A",
+      "minAmountB": "Min Amount B",
+      "extendTo": "Extend To",
+      "functionName": "Function Name",
+      "createContract": "Create Contract",
+      "uploadContractWasm": "Upload Contract Wasm",
+      "signerKey": "Signer Key",
+      "signerSha256Hash": "Signer Sha256 Hash",
+      "preAuthTransaction": "Pre Auth Transaction",
+      "signedPayload": "Signed Payload",
+      "account": "Account",
+      "seller": "Seller",
+      "wasm": "WASM",
+      "parameters": "Parameters",
+      "source": "Source",
+      "executableType": "Executable Type",
+      "accountId": "Account ID",
+      "salt": "Salt"
+    },
+    "claimPredicates": {
+      "unconditional": "Unconditional",
+      "conditional": "Conditional",
+      "and": "And",
+      "or": "Or",
+      "not": "Not",
+      "beforeRelativeTime": "Before Relative Time",
+      "beforeAbsoluteTime": "Before Absolute Time"
     }
   }
 }

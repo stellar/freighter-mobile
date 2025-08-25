@@ -127,6 +127,9 @@ export const truncateAddress = (
   return `${prefix}...${suffix}`;
 };
 
+export const formattedBuffer = (data: Buffer) =>
+  truncateAddress(Buffer.from(data).toString("hex").toUpperCase());
+
 /**
  * Determines if two Stellar addresses refer to the same account
  * Only considers direct match between Ed25519 public keys

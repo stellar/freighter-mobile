@@ -55,3 +55,21 @@ export const SECURITY_MESSAGE_KEYS = {
   TRANSACTION_MALICIOUS: "blockaid.security.transaction.malicious",
   TRANSACTION_WARNING: "blockaid.security.transaction.warning",
 } as const;
+
+/**
+ * Validation severity levels for flagged entities
+ * Used specifically for transaction validation flagged addresses
+ */
+export enum ValidationSeverity {
+  MALICIOUS = "malicious",
+  SUSPICIOUS = "suspicious",
+}
+
+/**
+ * Security context types for different scan operations
+ * Used to distinguish between site and transaction security contexts
+ */
+export enum SecurityContext {
+  SITE = "site",
+  TRANSACTION = "transaction",
+}

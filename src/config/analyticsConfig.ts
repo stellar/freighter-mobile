@@ -22,6 +22,7 @@ export enum AnalyticsEvent {
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
   VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
+  VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "loaded screen: sign transaction details",
   VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
   VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
   VIEW_SEND_MEMO = "loaded screen: send payment settings",

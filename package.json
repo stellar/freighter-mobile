@@ -57,7 +57,7 @@
     "@shopify/react-native-skia": "^2.0.0-next.1",
     "@stablelib/base64": "^2.0.1",
     "@stablelib/utf8": "^2.0.1",
-    "@stellar/stellar-sdk": "^14.0.0-rc.3",
+    "@stellar/stellar-sdk": "^14.0.0",
     "@stellar/typescript-wallet-sdk-km": "^1.9.0",
     "@tradle/react-native-http": "^2.0.0",
     "@walletconnect/core": "^2.21.2",

@@ -1,11 +1,15 @@
 import Blockaid from "@blockaid/client";
+import BigNumber from "bignumber.js";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
   SecurityLevel,
   SECURITY_LEVEL_MAP,
   SECURITY_MESSAGE_KEYS,
+  ValidationSeverity,
 } from "services/blockaid/constants";
+
+// Keep this helper UI-agnostic – no UI imports/hooks here
 
 /**
  * Security warning interface for UI display
@@ -265,4 +269,140 @@ export const extractSecurityWarnings = (
   }
 
   return warnings;
+};
+
+// =============================================================================
+// Transaction validation flagged entities (addresses)
+// =============================================================================
+
+export interface ValidationFlaggedEntity {
+  address: string;
+  severity: ValidationSeverity;
+  classification?: string;
+}
+
+/**
+ * Extracts any Stellar account addresses mentioned in the Blockaid validation.description
+ * and classifies them as malicious or suspicious based on the result_type.
+ *
+ * Example description:
+ * "Gaining account GBXQAA7X3TBSXA7BUOCAR6U2BY7VQZZJMAOFLCGT6EL3RL22X5VFNSV6 is classified as custom_malicious"
+ */
+export const extractFlaggedEntitiesFromTransaction = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+): ValidationFlaggedEntity[] => {
+  if (!scanResult || !scanResult.validation) {
+    return [];
+  }
+
+  const validation = scanResult.validation as unknown as {
+    description?: string;
+    result_type?: string;
+    classification?: string;
+  };
+
+  const description = validation.description || "";
+  if (!description) {
+    return [];
+  }
+
+  const resultType = (validation.result_type || "").toUpperCase();
+  const severity: ValidationFlaggedEntity["severity"] =
+    resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
+      ? ValidationSeverity.MALICIOUS
+      : ValidationSeverity.SUSPICIOUS;
+
+  // Match Stellar account public keys (G... 56 chars base32)
+  const ADDRESS_REGEX = /G[A-Z2-7]{55}/g;
+  const matches = description.match(ADDRESS_REGEX) || [];
+
+  // Deduplicate addresses
+  const unique = Array.from(new Set(matches));
+
+  return unique.map((address) => ({
+    address,
+    severity,
+    classification: validation.classification,
+  }));
+};
+
+// =============================================================================
+// Transaction balance changes (domain model)
+// =============================================================================
+
+export interface TransactionBalanceChange {
+  assetCode: string;
+  assetIssuer?: string;
+  isNative: boolean;
+  /** Raw amount from Blockaid (integer scaled by 1e7), not converted/formatted */
+  amount: BigNumber;
+  isCredit: boolean;
+}
+
+type AccountAssetDiff = {
+  asset: { type: "NATIVE" | "ASSET"; code: string; issuer?: string };
+  in?: { raw_value?: number | string | null } | null;
+  out?: { raw_value?: number | string | null } | null;
+};
+
+/**
+ * Extracts per-asset balance changes from a Blockaid transaction simulation.
+ * - Returns null when simulation is unavailable or failed ("unable to simulate")
+ * - Returns [] when there are no balance changes
+ * - Otherwise returns a list of signed deltas per asset
+ */
+export const getTransactionBalanceChanges = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+): TransactionBalanceChange[] | null => {
+  // Missing result or simulation error -> treat as "unable to simulate"
+  if (
+    !scanResult ||
+    !scanResult.simulation ||
+    "error" in scanResult.simulation
+  ) {
+    return null;
+  }
+
+  // account_assets_diffs holds per-asset in/out raw deltas
+  type SimulationSummary = {
+    account_summary?: { account_assets_diffs?: AccountAssetDiff[] };
+  };
+
+  const sim = scanResult.simulation as unknown as SimulationSummary;
+  const diffs = sim.account_summary?.account_assets_diffs;
+
+  if (!Array.isArray(diffs) || diffs.length === 0) {
+    return [];
+  }
+
+  const changes: TransactionBalanceChange[] = diffs
+    .map((diff) => {
+      const inRaw = diff.in?.raw_value;
+      const outRaw = diff.out?.raw_value;
+
+      const hasIn = inRaw !== null && inRaw !== undefined;
+      const hasOut = outRaw !== null && outRaw !== undefined;
+
+      if (!hasIn && !hasOut) {
+        return undefined;
+      }
+
+      const rawValue = hasIn ? inRaw : outRaw;
+      const amount = new BigNumber(rawValue as number | string).dividedBy(1e7);
+      const isCredit = hasIn;
+      const isNative = diff.asset.type === "NATIVE";
+      const assetCode = diff.asset.code;
+      const assetIssuer = isNative ? undefined : diff.asset.issuer;
+
+      return {
+        assetCode,
+        assetIssuer,
+        isNative,
+        amount,
+        isCredit,
+      } as TransactionBalanceChange;
+    })
+    .filter(Boolean) as TransactionBalanceChange[];
+
+  return changes;
 };
