@@ -127,7 +127,7 @@ export enum AnalyticsEvent {
   QR_SCAN_ERROR = "mobile: qr scan error",
 
   // Blockaid Events
-  BLOCKAID_TOKEN_SCAN = "blockaid: scanned token",
+  BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
 }
