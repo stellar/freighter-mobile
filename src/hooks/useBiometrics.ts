@@ -66,7 +66,7 @@ export const useBiometrics = () => {
       );
     };
     checkIfBiometricsIsEnabled();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- we don't want to re-run this effect when the biometrics are enabled or disabled
   }, [checkBiometricsAvailability, setIsBiometricsEnabled]);
 
   return {
