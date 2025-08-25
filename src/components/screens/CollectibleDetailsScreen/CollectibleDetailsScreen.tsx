@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
+import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -8,9 +9,10 @@ import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
-import React, { useMemo, useLayoutEffect, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Image, Linking, ScrollView, View } from "react-native";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
@@ -30,8 +32,10 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * - Detailed description section
  * - Collectible traits/attributes displayed in a 2-column grid layout
  * - Conditional "View in Browser" button for external URLs
+ * - Right header context menu with collectible actions (handled by useCollectibleDetailsHeader)
  * - Responsive layout with proper spacing and typography
  * - Error handling for missing collectibles
+ * - Loading state with centered spinner
  *
  * @param {CollectibleDetailsScreenProps} props - Component props
  * @param {Object} props.route - Navigation route object containing collectible parameters
@@ -56,11 +60,12 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * ```
  */
 export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
-  React.memo(({ route, navigation }) => {
+  React.memo(({ route }) => {
     const { collectionAddress, tokenId } = route.params;
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const { getCollectible } = useCollectibles();
+    const { getCollectible, isLoading: isCollectiblesLoading } =
+      useCollectibles();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -72,6 +77,15 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       () => getCollectible({ collectionAddress, tokenId }),
       [getCollectible, collectionAddress, tokenId],
     );
+
+    /**
+     * Sets up the header configuration including title and context menu.
+     * This hook handles all header-related logic.
+     */
+    useCollectibleDetailsHeader({
+      collectionAddress,
+      collectibleName: collectible?.name,
+    });
 
     /**
      * Prepares the list items for displaying basic collectible information.
@@ -121,16 +135,6 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     );
 
     /**
-     * Sets the navigation header title to the collectible name.
-     * Falls back to a default title if the collectible name is not available.
-     */
-    useLayoutEffect(() => {
-      navigation.setOptions({
-        headerTitle: collectible?.name || t("collectibleDetails.title"),
-      });
-    }, [navigation, collectible?.name, t]);
-
-    /**
      * Handles opening the collectible's external URL in the device's default browser.
      * Includes error logging for debugging purposes.
      *
@@ -147,6 +151,17 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
         );
       }
     }, []);
+
+    // Show loading spinner when collectibles are being fetched
+    if (isCollectiblesLoading) {
+      return (
+        <BaseLayout insets={{ top: false }}>
+          <View className="flex-1 items-center justify-center p-4">
+            <Spinner size="large" color={themeColors.secondary} />
+          </View>
+        </BaseLayout>
+      );
+    }
 
     // If collectible is not found, show error state
     if (!collectible) {

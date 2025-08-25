@@ -52,16 +52,67 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
+// Mock the useRightHeaderMenu hook
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderMenu: jest.fn(),
+}));
+
+// Mock the useAuthenticationStore hook
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: () => ({
+    network: "testnet",
+  }),
+}));
+
+// Mock the useCollectiblesStore hook
+jest.mock("ducks/collectibles", () => ({
+  useCollectiblesStore: () => ({
+    fetchCollectibles: jest.fn(),
+  }),
+}));
+
+// Mock the getStellarExpertUrl helper
+jest.mock("helpers/stellarExpert", () => ({
+  getStellarExpertUrl: jest.fn(() => "https://testnet.stellar.expert"),
+}));
+
+// Mock the logger
+jest.mock("config/logger", () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Create a mock navigation object
+const mockNavigationObject = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  push: jest.fn(),
+  pop: jest.fn(),
+  reset: jest.fn(),
+  dispatch: jest.fn(),
+  canGoBack: jest.fn(),
+  isFocused: jest.fn(),
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
+};
+
+// Mock the useNavigation hook
+jest.mock("@react-navigation/native", () => ({
+  ...jest.requireActual("@react-navigation/native"),
+  useNavigation: () => mockNavigationObject,
+}));
+
 describe("CollectibleDetailsScreen", () => {
   const mockRoute = {
     params: {
       collectionAddress: "test-collection",
       tokenId: "123",
     },
-  };
-
-  const mockNavigation = {
-    setOptions: jest.fn(),
   };
 
   beforeEach(() => {
@@ -72,7 +123,7 @@ describe("CollectibleDetailsScreen", () => {
     const { getByText } = renderWithProviders(
       <CollectibleDetailsScreen
         route={mockRoute as any}
-        navigation={mockNavigation as any}
+        navigation={{} as any}
       />,
     );
 
@@ -98,7 +149,7 @@ describe("CollectibleDetailsScreen", () => {
     const { getByText } = renderWithProviders(
       <CollectibleDetailsScreen
         route={mockRoute as any}
-        navigation={mockNavigation as any}
+        navigation={{} as any}
       />,
     );
 
@@ -112,11 +163,11 @@ describe("CollectibleDetailsScreen", () => {
     renderWithProviders(
       <CollectibleDetailsScreen
         route={mockRoute as any}
-        navigation={mockNavigation as any}
+        navigation={{} as any}
       />,
     );
 
-    expect(mockNavigation.setOptions).toHaveBeenCalledWith({
+    expect(mockNavigationObject.setOptions).toHaveBeenCalledWith({
       headerTitle: "Test NFT",
     });
   });
