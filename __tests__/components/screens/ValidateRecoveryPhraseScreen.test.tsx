@@ -200,6 +200,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         password: "test-password",
         mnemonicPhrase: mockRoute.params.recoveryPhrase,
+        isBiometricsAvailable: true,
       });
     });
   }, 30000);

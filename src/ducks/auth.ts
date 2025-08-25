@@ -1505,7 +1505,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         await signUp(params);
         set({
           ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID,
+          authStatus: params.isBiometricsAvailable
+            ? AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
+            : AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
           isOnboardingFinished: !params.isBiometricsAvailable,
         });
@@ -1659,7 +1661,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         set({
           ...initialState,
           authStatus: params.isBiometricsAvailable
-            ? AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID
+            ? AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
             : AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
           isOnboardingFinished: !params.isBiometricsAvailable,
@@ -1692,7 +1694,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      */
     getAuthStatus: async () => {
       const currentAuthStatus = get().authStatus;
-      if (currentAuthStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID) {
+      if (
+        currentAuthStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
+      ) {
         return currentAuthStatus;
       }
 

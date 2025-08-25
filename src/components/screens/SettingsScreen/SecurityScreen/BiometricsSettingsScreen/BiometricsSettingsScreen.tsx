@@ -4,10 +4,11 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Toggle } from "components/sds/Toggle";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, View } from "react-native";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 interface BiometricsSettingsScreenProps
   extends NativeStackScreenProps<
@@ -48,27 +49,60 @@ const BiometricsSettingsScreen: React.FC<
     }
   }, [shouldTriggerBiometricsDisable, disableBiometrics]);
 
-  const openFingerprintDisablePrompt = useCallback(() => {
-    Alert.alert(
-      t("securityScreen.fingerprint.alert.disable.title"),
-      t("securityScreen.fingerprint.alert.disable.message"),
-      [
-        {
-          text: t("common.cancel"),
-          style: "cancel",
-        },
-        {
-          text: t("common.yes"),
-          onPress: () => setShouldTriggerBiometricsDisable(true),
-        },
-      ],
-    );
-  }, [t]);
+  const disableAlertTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.alert.disable.title"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "securityScreen.fingerprint.alert.disable.title",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.alert.disable.title"),
+      [BIOMETRY_TYPE.FACE]: t(
+        "securityScreen.faceBiometrics.alert.disable.title",
+      ),
+    }),
+    [t],
+  );
 
-  const openFaceIdDisablePrompt = useCallback(() => {
+  const disableAlertMessage: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.alert.disable.message"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "securityScreen.fingerprint.alert.disable.message",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t(
+        "securityScreen.touchId.alert.disable.message",
+      ),
+      [BIOMETRY_TYPE.FACE]: t(
+        "securityScreen.faceBiometrics.alert.disable.message",
+      ),
+    }),
+    [t],
+  );
+
+  const biometryToggleTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.toggleTitle"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.toggleTitle"),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.toggleTitle"),
+      [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.toggleTitle"),
+    }),
+    [t],
+  );
+
+  const biometryDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.description"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.description"),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.description"),
+      [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.description"),
+    }),
+    [t],
+  );
+
+  const openDisableBiometricsPrompt = useCallback(() => {
     Alert.alert(
-      t("securityScreen.faceId.alert.disable.title"),
-      t("securityScreen.faceId.alert.disable.message"),
+      disableAlertTitle[biometryType!] ?? "",
+      disableAlertMessage[biometryType!] ?? "",
       [
         {
           text: t("common.cancel"),
@@ -80,22 +114,16 @@ const BiometricsSettingsScreen: React.FC<
         },
       ],
     );
-  }, [t]);
+  }, [t, biometryType, disableAlertTitle, disableAlertMessage]);
 
   const handleOnChangeBiometrics = useCallback(() => {
     if (!isBiometricsEnabled) {
       handleBiometricsEnable();
       return;
     }
-    if (FACE_ID_BIOMETRY_TYPES.includes(biometryType!)) {
-      openFaceIdDisablePrompt();
-      return;
-    }
-    openFingerprintDisablePrompt();
+    openDisableBiometricsPrompt();
   }, [
-    openFaceIdDisablePrompt,
-    openFingerprintDisablePrompt,
-    biometryType,
+    openDisableBiometricsPrompt,
     handleBiometricsEnable,
     isBiometricsEnabled,
   ]);
@@ -110,26 +138,13 @@ const BiometricsSettingsScreen: React.FC<
     ),
     [isBiometricsEnabled, handleOnChangeBiometrics],
   );
-  const getTitle = useCallback(() => {
-    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-      return t("securityScreen.faceId.toggleTitle");
-    }
-    return t("securityScreen.fingerprint.toggleTitle");
-  }, [biometryType, t]);
-
-  const getDescription = useCallback(() => {
-    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-      return t("securityScreen.faceId.description");
-    }
-    return t("securityScreen.fingerprint.description");
-  }, [biometryType, t]);
 
   const biometricsItems: BiometricsItem[] = useMemo(
     () => [
       {
-        title: getTitle(),
+        title: biometryToggleTitle[biometryType!] ?? "",
         titleColor: themeColors.text.primary,
-        description: getDescription(),
+        description: biometryDescription[biometryType!] ?? "",
         trailingContent: renderBiometricsToggle(),
         testID: "biometrics-toggle",
       },
@@ -137,8 +152,9 @@ const BiometricsSettingsScreen: React.FC<
     [
       themeColors.text.primary,
       renderBiometricsToggle,
-      getDescription,
-      getTitle,
+      biometryType,
+      biometryDescription,
+      biometryToggleTitle,
     ],
   );
 

@@ -347,6 +347,7 @@ jest.mock("react-native-keychain", () => ({
   getGenericPassword: jest.fn(() => Promise.resolve(null)),
   setGenericPassword: jest.fn(() => Promise.resolve()),
   resetGenericPassword: jest.fn(() => Promise.resolve()),
+  hasGenericPassword: jest.fn(() => Promise.resolve(false)),
   getAllGenericPasswordServices: jest.fn(() => Promise.resolve([])),
   getAllInternetCredentials: jest.fn(() => Promise.resolve([])),
   canImplyAuthentication: jest.fn(() => Promise.resolve(false)),

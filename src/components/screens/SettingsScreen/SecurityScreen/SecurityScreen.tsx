@@ -8,6 +8,7 @@ import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 type SecurityScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -18,6 +19,13 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { isBiometricsAvailable, biometryType } = useBiometrics();
+
+  const biometryTitle: Partial<Record<BIOMETRY_TYPE, string>> = {
+    [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
+    [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.title"),
+    [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.title"),
+    [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.title"),
+  };
   const listItems = [
     {
       icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
@@ -38,9 +46,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       ) : (
         <Icon.Fingerprint01 color={themeColors.foreground.primary} />
       ),
-      title: FACE_ID_BIOMETRY_TYPES.includes(biometryType!)
-        ? t("securityScreen.faceId.title")
-        : t("securityScreen.fingerprint.title"),
+      title: biometryTitle[biometryType!] ?? "",
       titleColor: themeColors.text.primary,
       onPress: () =>
         navigation.navigate(SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN),

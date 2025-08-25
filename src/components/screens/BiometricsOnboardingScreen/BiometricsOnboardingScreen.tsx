@@ -9,9 +9,19 @@ import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
-import React, { useCallback, useEffect, useState } from "react";
+import useColors from "hooks/useColors";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, View, Image } from "react-native";
-import { Svg, Defs, Rect, LinearGradient, Stop, Path } from "react-native-svg";
+import { BIOMETRY_TYPE } from "react-native-keychain";
+import {
+  Svg,
+  Defs,
+  Rect,
+  LinearGradient,
+  Stop,
+  Path,
+  G,
+} from "react-native-svg";
 
 type BiometricsOnboardingScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -26,6 +36,7 @@ export const BiometricsOnboardingScreen: React.FC<
     useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const [shouldVerifyBiometrics, setShouldVerifyBiometrics] = useState(false);
+  const { themeColors } = useColors();
 
   const enableBiometrics = useCallback(async () => {
     await signInWithBiometrics();
@@ -43,10 +54,46 @@ export const BiometricsOnboardingScreen: React.FC<
     verifyBiometrics();
   }, [shouldVerifyBiometrics, enableBiometrics]);
 
+  const promptTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t(
+        "biometricsOnboardingScreen.faceId.promptTitle",
+      ),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "biometricsOnboardingScreen.fingerprint.promptTitle",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t(
+        "biometricsOnboardingScreen.touchId.promptTitle",
+      ),
+      [BIOMETRY_TYPE.FACE]: t(
+        "biometricsOnboardingScreen.faceBiometrics.promptTitle",
+      ),
+    }),
+    [t],
+  );
+
+  const promptDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t(
+        "biometricsOnboardingScreen.faceId.promptDescription",
+      ),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "biometricsOnboardingScreen.fingerprint.promptDescription",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t(
+        "biometricsOnboardingScreen.touchId.promptDescription",
+      ),
+      [BIOMETRY_TYPE.FACE]: t(
+        "biometricsOnboardingScreen.faceBiometrics.promptDescription",
+      ),
+    }),
+    [t],
+  );
+
   const handleEnable = () => {
     Alert.alert(
-      t("biometricsOnboardingScreen.faceId.promptTitle"),
-      t("biometricsOnboardingScreen.faceId.promptDescription"),
+      promptTitle[biometryType!] ?? "",
+      promptDescription[biometryType!] ?? "",
       [
         {
           text: t("common.cancel"),
@@ -106,6 +153,9 @@ export const BiometricsOnboardingScreen: React.FC<
           rx="16"
           fill="rgba(255, 255, 255, 0.24)"
         />
+        <G>
+          <Icon.Fingerprint05 color={themeColors.white} size={pxValue(104)} />
+        </G>
       </Svg>
     </View>
   );
@@ -152,32 +202,61 @@ export const BiometricsOnboardingScreen: React.FC<
     return <Icon.Fingerprint01 circle />;
   }, [biometryType]);
 
-  const getTitle = useCallback(() => {
-    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-      return t("biometricsOnboardingScreen.faceId.title");
-    }
-    return t("biometricsOnboardingScreen.fingerprint.title");
-  }, [biometryType, t]);
+  const biometryTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("biometricsOnboardingScreen.faceId.title"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "biometricsOnboardingScreen.fingerprint.title",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("biometricsOnboardingScreen.touchId.title"),
+      [BIOMETRY_TYPE.FACE]: t(
+        "biometricsOnboardingScreen.faceBiometrics.title",
+      ),
+    }),
+    [t],
+  );
 
-  const getDescription = useCallback(() => {
-    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-      return t("biometricsOnboardingScreen.faceId.description");
-    }
-    return t("biometricsOnboardingScreen.fingerprint.description");
-  }, [biometryType, t]);
+  const biometryDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t(
+        "biometricsOnboardingScreen.faceId.description",
+      ),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "biometricsOnboardingScreen.fingerprint.description",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t(
+        "biometricsOnboardingScreen.touchId.description",
+      ),
+      [BIOMETRY_TYPE.FACE]: t(
+        "biometricsOnboardingScreen.faceBiometrics.description",
+      ),
+    }),
+    [t],
+  );
 
-  const getFooterNoteText = useCallback(() => {
-    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-      return t("biometricsOnboardingScreen.faceId.footerNoteText");
-    }
-    return t("biometricsOnboardingScreen.fingerprint.footerNoteText");
-  }, [biometryType, t]);
+  const footerNoteText: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t(
+        "biometricsOnboardingScreen.faceId.footerNoteText",
+      ),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "biometricsOnboardingScreen.fingerprint.footerNoteText",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t(
+        "biometricsOnboardingScreen.touchId.footerNoteText",
+      ),
+      [BIOMETRY_TYPE.FACE]: t(
+        "biometricsOnboardingScreen.faceBiometrics.footerNoteText",
+      ),
+    }),
+    [t],
+  );
 
   return (
     <OnboardLayout
       icon={getIcon()}
-      title={getTitle()}
-      footerNoteText={getFooterNoteText()}
+      title={biometryTitle[biometryType!] ?? ""}
+      footerNoteText={footerNoteText[biometryType!] ?? ""}
       defaultActionButtonText={t("common.enable")}
       secondaryActionButtonText={t("common.skip")}
       onPressSecondaryActionButton={handleSkip}
@@ -187,7 +266,7 @@ export const BiometricsOnboardingScreen: React.FC<
     >
       <View className="pr-8">
         <Text secondary md>
-          {getDescription()}
+          {biometryDescription[biometryType!] ?? ""}
         </Text>
       </View>
       <View className="items-center">

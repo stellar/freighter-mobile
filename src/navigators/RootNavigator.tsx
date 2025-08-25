@@ -78,7 +78,7 @@ export const RootNavigator = () => {
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
     if (
-      authStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID &&
+      authStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS &&
       isBiometricsEnabled === undefined
     ) {
       return ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN;
@@ -179,7 +179,7 @@ export const RootNavigator = () => {
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
           component={LockScreen}
         />
-      ) : authStatus === AUTH_STATUS.AUTHENTICATED_PENDING_FACE_ID ? (
+      ) : authStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN}
           component={BiometricsOnboardingScreen}

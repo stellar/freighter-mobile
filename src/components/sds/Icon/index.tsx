@@ -500,6 +500,7 @@ import Fingerprint01 from "assets/icons/fingerprint-01.svg";
 import Fingerprint02 from "assets/icons/fingerprint-02.svg";
 import Fingerprint03 from "assets/icons/fingerprint-03.svg";
 import Fingerprint04 from "assets/icons/fingerprint-04.svg";
+import Fingerprint05 from "assets/icons/fingerprint-05.svg";
 import Flag01 from "assets/icons/flag-01.svg";
 import Flag02 from "assets/icons/flag-02.svg";
 import Flag03 from "assets/icons/flag-03.svg";
@@ -1682,6 +1683,7 @@ export const Icons = {
   Fingerprint02,
   Fingerprint03,
   Fingerprint04,
+  Fingerprint05,
   Flag01,
   Flag02,
   Flag03,

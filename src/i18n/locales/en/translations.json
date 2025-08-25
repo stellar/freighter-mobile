@@ -202,11 +202,25 @@
       "promptDescription": "Use Face ID to securely log in and approve transactions.",
       "footerNoteText": "You can change this later in Settings."
     },
+    "touchId": {
+      "title": "Enable Touch ID",
+      "description": "Add another layer of security by requiring Touch ID to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Touch ID?",
+      "promptDescription": "Use Touch ID to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
     "fingerprint": {
       "title": "Enable Fingerprint",
       "description": "Add another layer of security by requiring Fingerprint to unlock your wallet or approve transactions.",
       "promptTitle": "Enable Fingerprint?",
       "promptDescription": "Use Fingerprint to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "faceBiometrics": {
+      "title": "Enable Face Recognition",
+      "description": "Add another layer of security by requiring Face Recognition to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Face Recognition?",
+      "promptDescription": "Use Face Recognition to securely log in and approve transactions.",
       "footerNoteText": "You can change this later in Settings."
     }
   },
@@ -224,6 +238,8 @@
     "forgotPasswordButtonText": "Forgot password",
     "useFaceId": "Use Face ID instead",
     "useFingerprint": "Use Fingerprint instead",
+    "useFaceRecognition": "Use Face Recognition instead",
+    "useTouchId": "Use Touch ID instead",
     "enterPassword": "Use password instead"
   },
   "onboarding": {
@@ -335,13 +351,25 @@
     "faceId": {
       "disableTitle": "Confirm to disable Face ID",
       "disableSubtitle": "Disabling Face ID decreases security. You can re-enable it in Settings.",
-      "signInTitle": "Confirm to sign in",
+      "signInTitle": "Confirm to proceed",
       "signInSubtitle": "Use Face ID to securely log in and approve transactions."
+    },
+    "touchId": {
+      "disableTitle": "Confirm to disable Touch ID",
+      "disableSubtitle": "Disabling Touch ID decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Touch ID to securely log in and approve transactions."
+    },
+    "faceBiometrics": {
+      "disableTitle": "Confirm to disable Face Recognition",
+      "disableSubtitle": "Disabling Face Recognition decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Face Recognition to securely log in and approve transactions."
     },
     "fingerprint": {
       "disableTitle": "Confirm to disable Fingerprint",
       "disableSubtitle": "Disabling Fingerprint decreases security. You can re-enable it in Settings.",
-      "signInTitle": "Confirm to sign in",
+      "signInTitle": "Confirm to proceed",
       "signInSubtitle": "Use Fingerprint to securely log in and approve transactions."
     }
   },
@@ -741,6 +769,28 @@
         "disable": {
           "title": "Disable Fingerprint?",
           "message": "Are you sure you want to disable Fingerprint?"
+        }
+      }
+    },
+    "touchId": {
+      "title": "Touch ID authentication",
+      "description": "Enable Touch ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Touch ID",
+      "alert": {
+        "disable": {
+          "title": "Disable Touch ID?",
+          "message": "Are you sure you want to disable Touch ID?"
+        }
+      }
+    },
+    "faceBiometrics": {
+      "title": "Face Recognition authentication",
+      "description": "Enable Face Recognition for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Face Recognition",
+      "alert": {
+        "disable": {
+          "title": "Disable Face Recognition?",
+          "message": "Are you sure you want to disable Face Recognition?"
         }
       }
     }
