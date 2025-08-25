@@ -41,17 +41,25 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     [currentWord, currentWordIndex, words],
   );
 
-  const handleFinishSignUp = useCallback(async () => {
-    await signUp({
-      password,
-      mnemonicPhrase: recoveryPhrase,
-      isBiometricsAvailable,
-    });
+  const handleFinishSignUp = useCallback(() => {
+    if (isBiometricsAvailable) {
+      // Navigate to biometrics onboarding screen
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
+    } else {
+      // No biometrics available, proceed with normal signup
+      signUp({
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
 
-    analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
-    analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    }
     setIsLoading(false);
-  }, [password, recoveryPhrase, signUp, isBiometricsAvailable]);
+  }, [password, recoveryPhrase, signUp, isBiometricsAvailable, navigation]);
 
   const handleContinue = useCallback(() => {
     if (!canContinue) {

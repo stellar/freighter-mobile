@@ -90,7 +90,6 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { isBiometricsAvailable } = useBiometrics();
-  const [isSkipping, setIsSkipping] = useState(false);
 
   useEffect(() => {
     clearError?.();
@@ -111,23 +110,23 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   };
 
   const confirmSkip = useCallback(() => {
-    setIsSkipping(true);
+    if (isBiometricsAvailable) {
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
+    } else {
+      // No biometrics available, proceed with normal signup
+      signUp({
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
 
-    setTimeout(() => {
-      (async () => {
-        await signUp({
-          password,
-          mnemonicPhrase: recoveryPhrase,
-          isBiometricsAvailable,
-        });
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    }
 
-        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
-
-        skipModalRef.current?.dismiss();
-        setIsSkipping(false);
-      })();
-    }, 0);
-  }, [signUp, password, recoveryPhrase, isBiometricsAvailable]);
+    skipModalRef.current?.dismiss();
+  }, [signUp, password, recoveryPhrase, isBiometricsAvailable, navigation]);
 
   const handleConfirmSkip = useCallback(() => {
     confirmSkip();
@@ -158,11 +157,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <OnboardLayout
         icon={<Icon.ShieldTick circle />}
         title={t("recoveryPhraseScreen.title")}
-        isLoading={isLoading || isSkipping}
+        isLoading={isLoading}
         footerNoteText={t("recoveryPhraseScreen.footerNoteText")}
         footer={
           <Footer
-            isLoading={isLoading || isSkipping}
+            isLoading={isLoading}
             onPressContinue={handleContinue}
             onPressSkip={handleSkip}
           />
@@ -189,7 +188,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <RecoveryPhraseSkipBottomSheet
         modalRef={skipModalRef}
         onConfirm={handleConfirmSkip}
-        isLoading={isLoading || isSkipping}
+        isLoading={isLoading}
         onDismiss={() => skipModalRef.current?.dismiss()}
       />
     </>

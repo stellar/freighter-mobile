@@ -236,10 +236,10 @@
     "passwordInputPlaceholder": "Type your password",
     "unlockButtonText": "Unlock",
     "forgotPasswordButtonText": "Forgot password",
-    "useFaceId": "Use Face ID instead",
-    "useFingerprint": "Use Fingerprint instead",
-    "useFaceRecognition": "Use Face Recognition instead",
-    "useTouchId": "Use Touch ID instead",
+    "useFaceIdInstead": "Use Face ID instead",
+    "useFingerprintInstead": "Use Fingerprint instead",
+    "useFaceRecognitionInstead": "Use Face Recognition instead",
+    "useTouchIdInstead": "Use Touch ID instead",
     "enterPassword": "Use password instead"
   },
   "onboarding": {

@@ -3,14 +3,15 @@ import iPhoneFrameImage from "assets/iphone-frame.png";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
-import { AUTH_STATUS } from "config/types";
+import { AnalyticsEvent } from "config/analyticsConfig";
+import { logger } from "config/logger";
+import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Alert, View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import {
@@ -22,37 +23,58 @@ import {
   Path,
   G,
 } from "react-native-svg";
+import { analytics } from "services/analytics";
 
 type BiometricsOnboardingScreenProps = NativeStackScreenProps<
-  RootStackParamList,
-  typeof ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN
+  AuthStackParamList,
+  typeof AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN
 >;
 
 export const BiometricsOnboardingScreen: React.FC<
   BiometricsOnboardingScreenProps
 > = ({ route }) => {
   const { t } = useAppTranslation();
-  const { signInWithBiometrics, isLoading, signIn, setAuthStatus } =
-    useAuthenticationStore();
+  const { isLoading, signUp } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
-  const [shouldVerifyBiometrics, setShouldVerifyBiometrics] = useState(false);
   const { themeColors } = useColors();
 
-  const enableBiometrics = useCallback(async () => {
-    await signInWithBiometrics();
-    setIsBiometricsEnabled(true);
-  }, [setIsBiometricsEnabled, signInWithBiometrics]);
+  // Check if this is the pre-authentication flow (new) or post-authentication flow (existing)
 
-  useEffect(() => {
-    const verifyBiometrics = async () => {
-      if (shouldVerifyBiometrics) {
-        setShouldVerifyBiometrics(false);
-        await enableBiometrics();
-      }
-    };
+  const enableBiometrics = useCallback(() => {
+    // In pre-auth flow, we need to store the password for biometrics and complete the signup
+    const { password, mnemonicPhrase } = route.params;
 
-    verifyBiometrics();
-  }, [shouldVerifyBiometrics, enableBiometrics]);
+    console.log("password", password);
+    console.log("mnemonicPhrase", mnemonicPhrase);
+
+    if (!mnemonicPhrase) {
+      logger.error(
+        "BiometricsOnboardingScreen",
+        "Missing mnemonic phrase for pre-auth flow",
+      );
+      return;
+    }
+
+    try {
+      // Store the password for biometrics
+      setIsBiometricsEnabled(true);
+
+      signUp({
+        mnemonicPhrase,
+        password,
+      });
+
+      // Track analytics for successful completion
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    } catch (error) {
+      logger.error(
+        "BiometricsOnboardingScreen",
+        "Failed to complete authentication with biometrics",
+        error,
+      );
+      // Handle error appropriately
+    }
+  }, [route.params, setIsBiometricsEnabled, signUp]);
 
   const promptTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
     () => ({
@@ -100,18 +122,39 @@ export const BiometricsOnboardingScreen: React.FC<
         },
         {
           text: t("common.allow"),
-          onPress: () => setShouldVerifyBiometrics(true),
+          onPress: enableBiometrics,
         },
       ],
     );
   };
 
-  const handleSkip = async () => {
-    if (route.params?.password) {
-      await signIn({
-        password: route.params.password,
+  const handleSkip = () => {
+    // In pre-auth flow, complete the signup/import without biometrics
+    const { password, mnemonicPhrase } = route.params;
+
+    if (!mnemonicPhrase) {
+      logger.error(
+        "BiometricsOnboardingScreen",
+        "Missing mnemonic phrase for pre-auth flow",
+      );
+      return;
+    }
+
+    try {
+      signUp({
+        mnemonicPhrase,
+        password,
       });
-      setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+
+      // Track analytics for successful completion
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    } catch (error) {
+      logger.error(
+        "BiometricsOnboardingScreen",
+        "Failed to complete authentication",
+        error,
+      );
+      // Handle error appropriately
     }
   };
 

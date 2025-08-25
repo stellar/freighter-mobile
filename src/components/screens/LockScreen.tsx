@@ -13,8 +13,7 @@ import { BIOMETRY_TYPE } from "react-native-keychain";
 
 type LockScreenProps = NativeStackScreenProps<
   RootStackParamList,
-  | typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
-  | typeof ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN
+  typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
 >;
 
 enum BiometricsLoginType {

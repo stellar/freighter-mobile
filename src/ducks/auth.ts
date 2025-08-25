@@ -64,7 +64,6 @@ import { create } from "zustand";
 interface SignUpParams {
   mnemonicPhrase: string;
   password: string;
-  isBiometricsAvailable: boolean;
 }
 
 /**
@@ -87,7 +86,6 @@ interface SignInParams {
 interface ImportWalletParams {
   mnemonicPhrase: string;
   password: string;
-  isBiometricsAvailable: boolean;
 }
 
 /**
@@ -164,7 +162,6 @@ interface AuthState {
   isLoadingAccount: boolean;
   accountError: string | null;
   navigationRef: NavigationContainerRef<RootStackParamList> | null;
-  isOnboardingFinished: boolean;
 }
 
 /**
@@ -227,7 +224,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => Promise<boolean>;
+  signUp: (params: SignUpParams) => void;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
@@ -281,7 +278,6 @@ const initialState: Omit<AuthState, "network"> = {
   isLoadingAccount: false,
   accountError: null,
   navigationRef: null,
-  isOnboardingFinished: false,
 };
 
 /**
@@ -1499,33 +1495,40 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *
      * @param {SignUpParams} params - The signup parameters
      */
-    signUp: async (params) => {
+    signUp: (params) => {
       set((state) => ({ ...state, isLoading: true, error: null }));
-      try {
-        await signUp(params);
-        set({
-          ...initialState,
-          authStatus: params.isBiometricsAvailable
-            ? AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
-            : AUTH_STATUS.AUTHENTICATED,
-          isLoading: false,
-          isOnboardingFinished: !params.isBiometricsAvailable,
-        });
-        // Fetch active account after successful signup
-        await get().fetchActiveAccount();
+      setTimeout(() => {
+        signUp(params)
+          .then(() => {
+            set({
+              ...initialState,
+              isLoading: false,
+            });
 
-        return true;
-      } catch (error) {
-        logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToSignUp"),
-          isLoading: false,
-        });
-        return false;
-      }
+            // Fetch active account after successful signup
+            get()
+              .fetchActiveAccount()
+              .then(() => {
+                set({
+                  authStatus: AUTH_STATUS.AUTHENTICATED,
+                });
+              });
+          })
+          .catch((error) => {
+            logger.error(
+              "useAuthenticationStore.signUp",
+              "Sign up failed",
+              error,
+            );
+            set({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : t("authStore.error.failedToSignUp"),
+              isLoading: false,
+            });
+          });
+      }, 0);
     },
 
     /**
@@ -1558,7 +1561,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             isLoading: false,
             account: activeAccount,
             isLoadingAccount: false,
-            isOnboardingFinished: true,
           });
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
@@ -1660,11 +1662,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         await importWallet(params);
         set({
           ...initialState,
-          authStatus: params.isBiometricsAvailable
-            ? AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
-            : AUTH_STATUS.AUTHENTICATED,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
-          isOnboardingFinished: !params.isBiometricsAvailable,
         });
 
         // Fetch active account after successful wallet import
@@ -1693,13 +1692,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @returns {Promise<AuthStatus>} The current authentication status
      */
     getAuthStatus: async () => {
-      const currentAuthStatus = get().authStatus;
-      if (
-        currentAuthStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS
-      ) {
-        return currentAuthStatus;
-      }
-
       const authStatus = await getAuthStatus();
       set({ authStatus });
 

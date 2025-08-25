@@ -2,7 +2,8 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userEvent, screen, act, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
-import type { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import { AUTH_STACK_ROUTES } from "config/routes";
+import type { AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -25,6 +26,20 @@ jest.mock("hooks/useWordSelection", () => ({
       selectedIndexes: [0, 1, 2], // Always select first three words
     };
   },
+}));
+
+// Mock the useBiometrics hook
+let mockIsBiometricsAvailable = false;
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: () => ({
+    isBiometricsAvailable: mockIsBiometricsAvailable,
+    isBiometricsActive: false,
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(),
+    disableBiometrics: jest.fn(),
+  }),
 }));
 
 jest.mock("hooks/useAppTranslation", () => () => ({
@@ -116,6 +131,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     jest.clearAllMocks();
     mockIsLoading = false;
     mockError = null;
+    mockIsBiometricsAvailable = false;
     // Use modern fake timers
     jest.useFakeTimers();
   });
@@ -200,9 +216,69 @@ describe("ValidateRecoveryPhraseScreen", () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         password: "test-password",
         mnemonicPhrase: mockRoute.params.recoveryPhrase,
-        isBiometricsAvailable: true,
       });
     });
+  }, 30000);
+
+  it("completes validation flow with all 3 correct words and navigates to biometrics when available", async () => {
+    // Set biometrics as available for this test
+    mockIsBiometricsAvailable = true;
+
+    renderScreen();
+
+    // First word
+    let input = screen.getByPlaceholderText("Type the correct word");
+    let button = screen.getByTestId("default-action-button");
+    await user.type(input, words[0]);
+    await user.press(button);
+
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    });
+
+    // Second word
+    input = screen.getByPlaceholderText("Type the correct word");
+    button = screen.getByTestId("default-action-button");
+    await user.type(input, words[1]);
+    await user.press(button);
+
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #3/i)).toBeTruthy();
+    });
+
+    // Third word
+    input = screen.getByPlaceholderText("Type the correct word");
+    button = screen.getByTestId("default-action-button");
+    await user.type(input, words[2]);
+    await user.press(button);
+
+    // Run all timers
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalledWith(
+        AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN,
+        {
+          password: "test-password",
+          mnemonicPhrase: mockRoute.params.recoveryPhrase,
+        },
+      );
+    });
+
+    // Verify signUp was NOT called since we navigated to biometrics instead
+    expect(mockSignUp).not.toHaveBeenCalled();
   }, 30000);
 
   it("shows error when incorrect word is entered", async () => {

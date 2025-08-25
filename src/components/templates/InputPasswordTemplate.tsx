@@ -7,10 +7,11 @@ import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
-import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 enum BiometricsLoginType {
   FACE_ID = "faceId",
@@ -66,18 +67,15 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
     setPasswordValue(value);
   }, []);
 
-  const getFallbackButtonText = useCallback(() => {
-    if (!isBiometricsAvailable) {
-      return "";
-    }
-    if (!biometryType) {
-      return t("lockScreen.enterPassword");
-    }
-    return FACE_ID_BIOMETRY_TYPES.includes(biometryType)
-      ? t("lockScreen.useFaceId")
-      : t("lockScreen.useFingerprint");
-  }, [biometryType, t, isBiometricsAvailable]);
-
+  const fallbackButtonText: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("lockScreen.useFaceIdInstead"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t("lockScreen.useFingerprintInstead"),
+      [BIOMETRY_TYPE.FACE]: t("lockScreen.useFaceRecognitionInstead"),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("lockScreen.useTouchIdInstead"),
+    }),
+    [t],
+  );
   const handleFaceIdToggle = useCallback(() => {
     setSignInMethod(
       signInMethod === BiometricsLoginType.FACE_ID
@@ -152,7 +150,9 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             </Button>
             {isBiometricsAvailable && (
               <Button minimal sm onPress={handleFaceIdToggle}>
-                {getFallbackButtonText()}
+                {biometryType && signInMethod === BiometricsLoginType.PASSWORD
+                  ? fallbackButtonText[biometryType]
+                  : t("lockScreen.enterPassword")}
               </Button>
             )}
           </View>

@@ -53,8 +53,6 @@ export const AUTH_STATUS = {
   NOT_AUTHENTICATED: "NOT_AUTHENTICATED",
   // User is authenticated. Hash key is not expired and temporary store is found.
   AUTHENTICATED: "AUTHENTICATED",
-  // User is authenticated but still in onboarding flow (e.g., Face ID setup)
-  AUTHENTICATED_UNVERIFIED_BIOMETRICS: "AUTHENTICATED_UNVERIFIED_BIOMETRICS",
   // User is authenticated. Hash key is expired and temporary store is found.
   HASH_KEY_EXPIRED: "HASH_KEY_EXPIRED",
 } as const;

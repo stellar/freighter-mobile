@@ -7,7 +7,7 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -16,6 +16,7 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   route,
+  navigation,
 }) => {
   const { importWallet, error, clearError } = useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
@@ -29,20 +30,34 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     clearError();
   }, [clearError]);
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     setIsImporting(true);
 
     setTimeout(() => {
       (async () => {
-        await importWallet({
-          mnemonicPhrase: recoveryPhrase,
-          password,
-          isBiometricsAvailable,
-        });
+        if (isBiometricsAvailable) {
+          // Navigate to biometrics onboarding screen
+          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
+            password,
+            mnemonicPhrase: recoveryPhrase,
+          });
+        } else {
+          // No biometrics available, proceed with normal import
+          await importWallet({
+            mnemonicPhrase: recoveryPhrase,
+            password,
+          });
+        }
         setIsImporting(false);
       })();
     }, 0);
-  };
+  }, [
+    isBiometricsAvailable,
+    navigation,
+    password,
+    recoveryPhrase,
+    importWallet,
+  ]);
 
   const onPressPasteFromClipboard = async () => {
     const clipboardText = await Clipboard.getString();

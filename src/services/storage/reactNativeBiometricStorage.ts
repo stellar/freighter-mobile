@@ -22,42 +22,26 @@ export const reactNativeBiometricStorage: BiometricStorage = {
    * @returns {Promise<void>}
    */
   setItem: async (key, value) => {
-    const biometryType = await Keychain.getSupportedBiometryType();
-
-    if (!biometryType) {
-      return;
-    }
-
-    if (biometryType) {
-      await Keychain.setGenericPassword(key, value, {
-        accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-        service: `${DEFAULT_SERVICE}_${key}`,
-      });
-    }
+    await Keychain.setGenericPassword(key, value, {
+      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      service: `${DEFAULT_SERVICE}_${key}`,
+    });
   },
 
-  getItem: async (key, prompt?: Keychain.AuthenticationPrompt) => {
-    const biometryType = await Keychain.getSupportedBiometryType();
-    if (!biometryType) {
+  getItem: async (key, prompt) => {
+    const hasVerified = await rnBiometrics.simplePrompt({
+      promptMessage: prompt?.title ?? "",
+      cancelButtonText: prompt?.cancel ?? "",
+    });
+    if (!hasVerified.success) {
       return false;
     }
 
-    if (biometryType) {
-      const hasVerified = await rnBiometrics.simplePrompt({
-        promptMessage: prompt?.title ?? "",
-        cancelButtonText: prompt?.cancel ?? "",
-      });
-      if (!hasVerified.success) {
-        return false;
-      }
-
-      const result = await Keychain.getGenericPassword({
-        service: `${DEFAULT_SERVICE}_${key}`,
-        accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
-      });
-      return result;
-    }
-    return false;
+    const result = await Keychain.getGenericPassword({
+      service: `${DEFAULT_SERVICE}_${key}`,
+      accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+    });
+    return result;
   },
 
   /**

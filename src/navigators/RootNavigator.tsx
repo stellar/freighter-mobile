@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
-import { BiometricsOnboardingScreen } from "components/screens/BiometricsOnboardingScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
@@ -25,7 +24,6 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import {
   AuthNavigator,
   BuyXLMStackNavigator,
@@ -50,7 +48,6 @@ const RootStack = createNativeStackNavigator<
 
 export const RootNavigator = () => {
   const { authStatus, getAuthStatus } = useAuthenticationStore();
-  const { isBiometricsEnabled } = useBiometrics();
   const [initializing, setInitializing] = useState(true);
   const { t } = useAppTranslation();
 
@@ -77,15 +74,9 @@ export const RootNavigator = () => {
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
-    if (
-      authStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS &&
-      isBiometricsEnabled === undefined
-    ) {
-      return ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN;
-    }
 
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
-  }, [authStatus, isBiometricsEnabled]);
+  }, [authStatus]);
 
   if (initializing) {
     return <LoadingScreen />;
@@ -100,10 +91,6 @@ export const RootNavigator = () => {
     >
       {authStatus === AUTH_STATUS.AUTHENTICATED ? (
         <RootStack.Group>
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
-            component={AuthNavigator}
-          />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
             component={TabNavigator}
@@ -178,17 +165,6 @@ export const RootNavigator = () => {
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
           component={LockScreen}
-        />
-      ) : authStatus === AUTH_STATUS.AUTHENTICATED_UNVERIFIED_BIOMETRICS ? (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN}
-          component={BiometricsOnboardingScreen}
-          options={{
-            headerShown: true,
-            header: (props) => <CustomNavigationHeader {...props} />,
-            headerBackButtonMenuEnabled: false,
-            headerLeft: () => null,
-          }}
         />
       ) : (
         <RootStack.Screen

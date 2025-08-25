@@ -290,13 +290,11 @@ describe("auth duck", () => {
       result.current.signUp({
         mnemonicPhrase: mockMnemonicPhrase,
         password: mockPassword,
-        isBiometricsAvailable: true,
       });
 
       expect(signUpMock).toHaveBeenCalledWith({
         mnemonicPhrase: mockMnemonicPhrase,
         password: mockPassword,
-        isBiometricsAvailable: true,
       });
     });
 

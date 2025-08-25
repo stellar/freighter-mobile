@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
+import { BiometricsOnboardingScreen } from "components/screens/BiometricsOnboardingScreen";
 import { ChoosePasswordScreen } from "components/screens/ChoosePasswordScreen";
 import { ConfirmPasswordScreen } from "components/screens/ConfirmPasswordScreen";
 import { ImportWalletScreen } from "components/screens/ImportWalletScreen";
@@ -50,6 +51,10 @@ export const AuthNavigator = () => (
     <AuthStack.Screen
       name={AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN}
       component={ImportWalletScreen}
+    />
+    <AuthStack.Screen
+      name={AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN}
+      component={BiometricsOnboardingScreen}
     />
   </AuthStack.Navigator>
 );

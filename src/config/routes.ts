@@ -42,7 +42,6 @@ export const ROOT_NAVIGATOR_ROUTES = {
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
-  BIOMETRICS_ONBOARDING_SCREEN: "BiometricsOnboardingScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -53,6 +52,7 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+  BIOMETRICS_ONBOARDING_SCREEN: "BiometricsOnboardingScreen",
 
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -154,9 +154,6 @@ export type RootStackParamList = {
     collectionAddress: string;
     tokenId: string;
   };
-  [ROOT_NAVIGATOR_ROUTES.BIOMETRICS_ONBOARDING_SCREEN]: {
-    password: string;
-  };
 };
 
 export type AuthStackParamList = {
@@ -176,6 +173,10 @@ export type AuthStackParamList = {
   };
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
     password: string;
+  };
+  [AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN]: {
+    password: string;
+    mnemonicPhrase: string;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
