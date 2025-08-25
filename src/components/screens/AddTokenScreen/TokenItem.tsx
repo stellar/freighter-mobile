@@ -25,7 +25,6 @@ const TokenItem: React.FC<TokenItemProps> = ({
   isRemovingToken,
   isScanningToken,
 }) => {
-  // Use security information from the token itself
   const { isSuspicious, isMalicious } = {
     isSuspicious: token.isSuspicious || token.isMalicious,
     isMalicious: token.isMalicious,
