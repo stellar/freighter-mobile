@@ -20,7 +20,7 @@ export const useBiometrics = () => {
   const [biometryType, setBiometryType] =
     useState<Keychain.BIOMETRY_TYPE | null>(null);
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
-  const { disableBiometrics } = useAuthenticationStore();
+  const { verifyBiometrics } = useAuthenticationStore();
 
   const checkBiometricsAvailability =
     useCallback(async (): Promise<boolean> => {
@@ -45,10 +45,12 @@ export const useBiometrics = () => {
   }, [setIsBiometricsEnabled, checkBiometricsAvailability]);
 
   const handleDisableBiometrics = useCallback(async (): Promise<boolean> => {
-    const success = await disableBiometrics();
-    setIsBiometricsEnabled(false);
+    const success = await verifyBiometrics();
+    if (success) {
+      setIsBiometricsEnabled(false);
+    }
     return success;
-  }, [disableBiometrics, setIsBiometricsEnabled]);
+  }, [verifyBiometrics, setIsBiometricsEnabled]);
 
   useEffect(() => {
     const checkIfBiometricsIsEnabled = async () => {

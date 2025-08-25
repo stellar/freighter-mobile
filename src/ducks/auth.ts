@@ -244,7 +244,7 @@ interface AuthActions {
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
-  disableBiometrics: () => Promise<boolean>;
+  verifyBiometrics: () => Promise<boolean>;
   signInWithBiometrics: () => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
@@ -1593,7 +1593,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         throw error; // Rethrow to handle in the UI
       }
     },
-    disableBiometrics: async () => {
+    verifyBiometrics: async () => {
       const item = await biometricDataStorage.getItem(
         BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
         {
