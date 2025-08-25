@@ -16,6 +16,36 @@ interface BottomSheetAdaptiveContainerProps {
   contentGapPx?: number;
 }
 
+/**
+ * A container that adapts to the height of the bottom sheet. This container is used mainly for scrollable bottom sheets, that might occupy more than 100% of set height,
+ * so the content inside remains scrollable, but the BottomSheet can have a fixed header or snap height.
+ *
+ * Usage example:
+ * @example
+ * const SNAP_VALUE_PERCENT = 80;
+ * <View className="flex-1">
+ *    <BottomSheetAdaptiveContainer
+ *      bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
+ *      header={
+ *        <Text>Header</Text>
+ *      }
+ *    >
+ *      <BottomSheetScrollView
+ *        className="w-full"
+ *      >
+ *        {content}
+ *      </BottomSheetScrollView>
+ *    </BottomSheetAdaptiveContainer>
+ *  </View>
+ *);
+ *
+ * @param {React.ReactNode} header - The header of the bottom sheet
+ * @param {React.ReactNode} children - The children of the bottom sheet
+ * @param {number} sheetMaxHeightRatio - The ratio of the bottom sheet height to the screen height
+ * @param {number} topPaddingPx - The top padding of the bottom sheet
+ * @param {number} bottomPaddingPx - The bottom padding of the bottom sheet
+ * @param {number} contentGapPx - The gap between the header and the content of the bottom sheet
+ */
 const BottomSheetAdaptiveContainer: React.FC<
   BottomSheetAdaptiveContainerProps
 > = ({
