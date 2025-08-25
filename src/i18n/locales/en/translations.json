@@ -343,6 +343,18 @@
     "refreshMetadata": "Refresh metadata",
     "viewOnStellarExpert": "View on stellar.expert"
   },
+  "addCollectibleScreen": {
+    "title": "Add Collectible",
+    "collectionAddress": "Collection address",
+    "tokenId": "Token ID",
+    "addToWallet": "Add to wallet",
+    "enterDetails": "Enter details",
+    "invalidAddress": "Invalid address",
+    "addressNoSpaces": "Address cannot contain spaces",
+    "invalidTokenId": "Invalid token ID",
+    "tokenIdNoSpaces": "Token ID cannot contain spaces",
+    "description": "If a collectible is missing from your wallet, you can manually add it here."
+  },
   "friendbotButton": {
     "title": "Fund with Friendbot"
   },

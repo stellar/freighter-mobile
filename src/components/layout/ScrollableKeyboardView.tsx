@@ -30,7 +30,7 @@ const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView).attrs(
 const StyledScrollView = styled(ScrollView).attrs(
   (props: ScrollViewProps) =>
     ({
-      keyboardShouldPersistTaps: "never",
+      keyboardShouldPersistTaps: "handled",
       showsVerticalScrollIndicator: false,
       alwaysBounceVertical: false,
       contentContainerStyle: {
