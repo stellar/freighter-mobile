@@ -149,13 +149,14 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             ios: "plus.rectangle.on.rectangle",
             android: "add_box",
           }),
-          disabled: true,
+          onPress: () =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN),
         },
       ];
 
       // Reverse the array for iOS to match Android behavior
       return isIOS ? actions.reverse() : actions;
-    }, [t]);
+    }, [t, navigation]);
 
     /**
      * Renders the tokens/balances list content

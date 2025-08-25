@@ -42,6 +42,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
+  ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -152,6 +153,7 @@ export type RootStackParamList = {
     collectionAddress: string;
     tokenId: string;
   };
+  [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
 };
 
 export type AuthStackParamList = {
