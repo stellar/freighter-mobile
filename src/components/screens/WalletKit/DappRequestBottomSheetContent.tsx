@@ -85,6 +85,12 @@ const DappRequestBottomSheetContent: React.FC<
     signTransactionDetails,
   );
 
+  const formatFeeAmount = (feeXlm?: string | number) => {
+    if (!feeXlm) return "--";
+
+    return formatTokenAmount(String(feeXlm), NATIVE_TOKEN_CODE);
+  };
+
   const accountDetailList = useMemo(
     () => [
       {
@@ -113,10 +119,7 @@ const DappRequestBottomSheetContent: React.FC<
         trailingContent: (
           <View className="flex-row items-center gap-2">
             <Text md primary>
-              {formatTokenAmount(
-                String(signTransactionDetails?.summary.feeXlm ?? "0"),
-                NATIVE_TOKEN_CODE,
-              )}
+              {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
             </Text>
           </View>
         ),
