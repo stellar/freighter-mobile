@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import Blockaid from "@blockaid/client";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import {
   PricedBalance,
@@ -7,10 +8,14 @@ import {
   HookStatus,
 } from "config/types";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
+import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
 import useDebounce from "hooks/useDebounce";
 import { useState } from "react";
 import { handleContractLookup } from "services/backend";
+import { scanBulkTokens } from "services/blockaid/api";
+import { SecurityLevel } from "services/blockaid/constants";
+import { assessTokenSecurity } from "services/blockaid/helper";
 import { searchToken } from "services/stellarExpert";
 
 interface UseTokenLookupProps {
@@ -31,6 +36,45 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+
+  // Sort records by security level: benign first, then suspicious, then malicious
+  const sortBySecurityLevel = (
+    records: FormattedSearchTokenRecord[],
+  ): FormattedSearchTokenRecord[] => {
+    const securityPriority = {
+      [SecurityLevel.SAFE]: 0,
+      [SecurityLevel.SUSPICIOUS]: 1,
+      [SecurityLevel.MALICIOUS]: 2,
+    };
+
+    return records.sort((a, b) => {
+      const priorityA = securityPriority[a.securityLevel as SecurityLevel] ?? 0;
+      const priorityB = securityPriority[b.securityLevel as SecurityLevel] ?? 0;
+
+      return priorityA - priorityB;
+    });
+  };
+
+  // Enhance search results with security information
+  const getEnhancedTokenResults = (
+    records: FormattedSearchTokenRecord[],
+    bulkScanResult: Blockaid.TokenBulkScanResponse,
+  ): FormattedSearchTokenRecord[] =>
+    records.map((record) => {
+      const tokenAddress = record.issuer
+        ? `${record.tokenCode}-${record.issuer}`
+        : record.tokenCode;
+      const scanResult = bulkScanResult.results?.[tokenAddress];
+
+      const securityAssessment = assessTokenSecurity(scanResult);
+
+      return {
+        ...record,
+        isSuspicious: securityAssessment.isSuspicious,
+        isMalicious: securityAssessment.isMalicious,
+        securityLevel: securityAssessment.level,
+      };
+    });
 
   const checkHasTrustline = (
     currentBalances: (PricedBalance & {
@@ -131,7 +175,48 @@ export const useTokenLookup = ({
 
       const formattedRecords = formatSearchTokenRecords(resJson, balanceItems);
 
-      setSearchResults(formattedRecords);
+      if (formattedRecords.length > 0 && isMainnet(network)) {
+        try {
+          const addressList = formattedRecords.map((token) =>
+            token.issuer
+              ? `${token.tokenCode}-${token.issuer}`
+              : token.tokenCode,
+          );
+
+          const bulkScanResult = await scanBulkTokens({ addressList, network });
+          const enhancedSearchResults = getEnhancedTokenResults(
+            formattedRecords,
+            bulkScanResult,
+          );
+          const sortedSearchResults = sortBySecurityLevel(
+            enhancedSearchResults,
+          );
+
+          setSearchResults(sortedSearchResults);
+        } catch (error) {
+          // If security scan fails, mark tokens as suspicious since we can't verify their safety
+          const fallbackSearchResults: FormattedSearchTokenRecord[] =
+            formattedRecords.map((token) => ({
+              ...token,
+              isSuspicious: true,
+              isMalicious: false,
+              securityLevel: SecurityLevel.SUSPICIOUS,
+            }));
+
+          setSearchResults(fallbackSearchResults);
+        }
+      } else {
+        const defaultSearchResults: FormattedSearchTokenRecord[] =
+          formattedRecords.map((token) => ({
+            ...token,
+            isSuspicious: false,
+            isMalicious: false,
+            securityLevel: SecurityLevel.SAFE,
+          }));
+
+        setSearchResults(defaultSearchResults);
+      }
+
       setStatus(HookStatus.SUCCESS);
     };
 

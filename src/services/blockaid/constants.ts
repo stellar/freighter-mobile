@@ -1,5 +1,6 @@
 export const BLOCKAID_ENDPOINTS = {
   SCAN_TOKEN: "/scan-asset",
+  SCAN_BULK_TOKENS: "/scan-asset-bulk",
   SCAN_SITE: "/scan-dapp",
   SCAN_TRANSACTION: "/scan-tx",
 } as const;
@@ -13,6 +14,7 @@ export const BLOCKAID_RESULT_TYPES = {
 
 export const BLOCKAID_ERROR_MESSAGES = {
   TOKEN_SCAN_FAILED: "Failed to scan token",
+  BULK_TOKEN_SCAN_FAILED: "Failed to bulk scan tokens",
   SITE_SCAN_FAILED: "Failed to scan site",
   TRANSACTION_SCAN_FAILED: "Failed to scan transaction",
   NETWORK_NOT_SUPPORTED: "Scanning is not supported on this network",

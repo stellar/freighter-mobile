@@ -128,6 +128,7 @@ export enum AnalyticsEvent {
 
   // Blockaid Events
   BLOCKAID_TOKEN_SCAN = "blockaid: scanned token",
+  BLOCKAID_BULK_TOKEN_SCAN = "blockaid: bulk scanned tokens",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
 }
