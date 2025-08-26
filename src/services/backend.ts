@@ -39,7 +39,8 @@ export const freighterBackend = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_URL,
 });
 export const freighterBackendV2 = createApiService({
-  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
+  // baseURL: Config.FREIGHTER_BACKEND_V2_URL,
+  baseURL: "https://freighter-backend-v2-stg.stellar.org/api/v1",
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -855,7 +856,7 @@ export interface FetchCollectiblesParams {
  * Response from the collectibles API
  * @interface CollectiblesResponse
  * @property {Object} data - Response data container
- * @property {Object[]} data.collectibles - Array of collectible objects
+ * @property {Object[]} data.collections - Array of collection objects
  */
 interface CollectiblesResponse {
   data: {
@@ -877,20 +878,21 @@ interface CollectiblesResponse {
  * @async
  * @function fetchCollectibles
  * @param {FetchCollectiblesParams} params - Parameters for collectibles fetching
- * @returns {Promise<unknown[]>} Promise resolving to array of collectibles
+ * @returns {Promise<CollectiblesResponse['data']['collections']>} Promise resolving to array of collections
  *
  * @description
  * Retrieves collectibles from the backend:
  * - Fetches collectibles for the specified owner and contracts
  * - Uses POST request with owner and contracts array
  * - Each contract object contains an ID and array of token IDs
+ * - Returns collections grouped by contract address
  * - Handles API errors gracefully with logging
  *
  * @throws {Error} When the API request fails or response is invalid
  *
  * @example
  * ```ts
- * const collectibles = await fetchCollectibles({
+ * const collections = await fetchCollectibles({
  *   owner: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
  *   contracts: [{
  *     id: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
@@ -902,7 +904,7 @@ interface CollectiblesResponse {
 export const fetchCollectibles = async ({
   owner,
   contracts,
-}: FetchCollectiblesParams): Promise<unknown[]> => {
+}: FetchCollectiblesParams): Promise<CollectiblesResponse['data']['collections']> => {
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
       "/collectibles",

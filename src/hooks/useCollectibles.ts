@@ -1,18 +1,16 @@
-import { Collection, useCollectiblesStore } from "ducks/collectibles";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useMemo } from "react";
 
 /**
  * Custom hook for managing and processing collectibles data
  *
  * This hook provides:
- * - Access to collectibles state from the store
- * - Grouped collections by collection address
+ * - Access to collections state from the store
  * - Utility functions for finding specific collections and collectibles
  * - Memoized data processing for performance optimization
  *
- * @returns {Object} Object containing collectibles data, state, and utility functions
- * @returns {Collectible[]} returns.collectibles - Array of all collectibles
- * @returns {Collection[]} returns.collections - Collections grouped by address
+ * @returns {Object} Object containing collections data, state, and utility functions
+ * @returns {Collection[]} returns.collections - Array of collections
  * @returns {boolean} returns.isLoading - Loading state indicator
  * @returns {string|null} returns.error - Error message if any
  * @returns {Function} returns.getCollectionByCollectionAddress - Function to find collection by address
@@ -21,44 +19,8 @@ import { useMemo } from "react";
  * @returns {Function} returns.clearError - Function to clear error state
  */
 export const useCollectibles = () => {
-  const { collectibles, isLoading, error, fetchCollectibles, clearError } =
+  const { collections, isLoading, error, fetchCollectibles, clearError } =
     useCollectiblesStore();
-
-  /**
-   * Groups collectibles by collection address into Collection objects
-   *
-   * Each collection contains:
-   * - collectionAddress: The unique identifier for the collection
-   * - collectionName: Human-readable name of the collection
-   * - items: Array of collectibles belonging to this collection
-   * - count: Total number of collectibles in the collection
-   */
-  const groupedCollections = useMemo(() => {
-    const grouped = collectibles.reduce<Record<string, Collection>>(
-      (collections, collectible) => {
-        const address = collectible.collectionAddress;
-
-        /* eslint-disable no-param-reassign */
-        if (!collections[address]) {
-          collections[address] = {
-            collectionAddress: collectible.collectionAddress,
-            collectionName: collectible.collectionName,
-            items: [],
-            count: 0,
-          };
-        }
-
-        collections[address].items.push(collectible);
-        collections[address].count += 1;
-        /* eslint-enable no-param-reassign */
-
-        return collections;
-      },
-      {},
-    );
-
-    return Object.values(grouped);
-  }, [collectibles]);
 
   /**
    * Utility function to find a collection by its collection address
@@ -68,10 +30,10 @@ export const useCollectibles = () => {
    */
   const getCollection = useMemo(
     () => (collectionAddress: string) =>
-      groupedCollections.find(
+      collections.find(
         (collection) => collection.collectionAddress === collectionAddress,
       ),
-    [groupedCollections],
+    [collections],
   );
 
   /**
@@ -90,19 +52,20 @@ export const useCollectibles = () => {
       }: {
         collectionAddress: string;
         tokenId: string;
-      }) =>
-        collectibles.find(
-          (collectible) =>
-            collectible.collectionAddress === collectionAddress &&
-            collectible.tokenId === tokenId,
-        ),
-    [collectibles],
+      }) => {
+        const collection = collections.find(
+          (col) => col.collectionAddress === collectionAddress,
+        );
+        return collection?.items.find(
+          (item) => item.tokenId === tokenId,
+        );
+      },
+    [collections],
   );
 
   return {
     // Data
-    collectibles,
-    collections: groupedCollections,
+    collections,
 
     // State
     isLoading,

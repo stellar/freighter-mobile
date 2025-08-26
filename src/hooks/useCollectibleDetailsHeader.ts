@@ -5,6 +5,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useLayoutEffect, useMemo, useCallback } from "react";
 import { Linking, Platform } from "react-native";
@@ -39,6 +40,7 @@ export const useCollectibleDetailsHeader = ({
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
   const { fetchCollectibles } = useCollectiblesStore();
 
   /**
@@ -57,7 +59,9 @@ export const useCollectibleDetailsHeader = ({
    */
   const handleRefreshMetadata = useCallback(async () => {
     try {
-      await fetchCollectibles();
+      if (account?.publicKey && network) {
+        await fetchCollectibles({ publicKey: account.publicKey, network });
+      }
     } catch (error) {
       logger.error(
         "useCollectibleDetailsHeader",
@@ -65,7 +69,7 @@ export const useCollectibleDetailsHeader = ({
         error,
       );
     }
-  }, [fetchCollectibles]);
+  }, [fetchCollectibles, account?.publicKey, network]);
 
   /**
    * Handles opening the collectible on stellar.expert explorer.

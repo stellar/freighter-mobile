@@ -1,4 +1,6 @@
+import { fetchCollectibles as apiFetchCollectibles } from "services/backend";
 import { create } from "zustand";
+import { debug } from "helpers/debug";
 
 /**
  * Represents a trait/attribute of a collectible NFT
@@ -40,6 +42,8 @@ export interface Collection {
   collectionAddress: string;
   /** Human-readable name of the collection */
   collectionName: string;
+  /** Symbol/ticker for the collection */
+  collectionSymbol: string;
   /** Array of collectibles belonging to this collection */
   items: Collectible[];
   /** Total count of collectibles in this collection */
@@ -50,130 +54,141 @@ export interface Collection {
  * State interface for the collectibles Zustand store
  */
 interface CollectiblesState {
-  /** Array of all collectibles */
-  collectibles: Collectible[];
+  /** Array of collections */
+  collections: Collection[];
   /** Loading state indicator */
   isLoading: boolean;
   /** Error message if fetch fails */
   error: string | null;
   /** Function to fetch collectibles from API */
-  fetchCollectibles: () => Promise<void>;
+  fetchCollectibles: (params: { publicKey: string; network: string }) => Promise<void>;
   /** Function to clear any error state */
   clearError: () => void;
 }
 
 // Dummy data to test the collectibles UI
-const dummyCollectibles: Collectible[] = [
+const dummyCollections: Collection[] = [
   // Stellar Frogs Collection
   {
-    collectionAddress:
-      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
+    collectionAddress: "CAS3J7GYLGXMF6TDJBBYYSE3HW6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
     collectionName: "Stellar Frogs",
-    tokenId: "1",
-    name: "welcomingfrog.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/events/2023/5/NeToOQbYtaJILHMnkigEAsA6ckKYe2GAA4ppAOSp.jpg",
-    description:
-      "A 3D blue and purple frog with a smooth, shiny texture, standing upright with arms outstretched in a friendly, welcoming gesture. The frog is set against a dark, gradient background.",
-    externalUrl: "https://nftcalendar.io/event/hairy-frog/",
-    traits: [
-      { name: "Color", value: "Blue/Purple" },
-      { name: "Texture", value: "Smooth" },
-      { name: "Pose", value: "Outstretched Arms" },
-      { name: "Mood", value: "Welcoming" },
-      { name: "Background", value: "Dark Gradient" },
-    ],
-  },
-  {
-    collectionAddress:
-      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
-    collectionName: "Stellar Frogs",
-    tokenId: "2",
-    name: "pepethebot.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/2024/06/02/pepe-the-bot_ml4cWknXFrF3K3U1.jpeg",
-    description:
-      "A vibrant green frog with a wide smile, large expressive eyes, and a humanoid posture, set against a dark background. The frog's appearance is reminiscent of the popular Pepe meme.",
-    externalUrl: "https://nftcalendar.io/event/pepe-the-bot/",
-    traits: [
-      { name: "Color", value: "Bright Green" },
-      { name: "Expression", value: "Smiling" },
-      { name: "Eyes", value: "Large" },
-      { name: "Background", value: "Dark" },
-      { name: "Theme", value: "Meme" },
-      { name: "Rarity", value: "Epic" },
-    ],
-  },
-  {
-    collectionAddress:
-      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA", // Using XLM contract address for testing
-    collectionName: "Stellar Frogs",
-    tokenId: "3",
-    name: "princepepe.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/events/2023/8/5kFeYwNfhpUST3TsSoLxm7FaGY1ljwLRgfZ5gQnV.jpg",
-    description:
-      "A green frog with a golden crown, red lips, and a blue background, evoking a royal and whimsical appearance.",
-    externalUrl: "https://nftcalendar.io/event/prince-pepe/",
-    traits: [
-      { name: "Color", value: "Green" },
-      { name: "Accessory", value: "Golden Crown" },
-      { name: "Mouth", value: "Red Lips" },
-      { name: "Background", value: "Blue" },
-      { name: "Theme", value: "Royal" },
-      { name: "Rarity", value: "Legendary" },
+    collectionSymbol: "SFROG",
+    count: 3,
+    items: [
+      {
+        collectionAddress: "CAS3J7GYLGXMF6TDJBBYYSE3HW6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+        collectionName: "Stellar Frogs",
+        tokenId: "1",
+        name: "welcomingfrog.xlm",
+        image: "https://nftcalendar.io/storage/uploads/events/2023/5/NeToOQbYtaJILHMnkigEAsA6ckKYe2GAA4ppAOSp.jpg",
+        description: "A 3D blue and purple frog with a smooth, shiny texture, standing upright with arms outstretched in a friendly, welcoming gesture. The frog is set against a dark, gradient background.",
+        externalUrl: "https://nftcalendar.io/event/hairy-frog/",
+        traits: [
+          { name: "Color", value: "Blue/Purple" },
+          { name: "Texture", value: "Smooth" },
+          { name: "Pose", value: "Outstretched Arms" },
+          { name: "Mood", value: "Welcoming" },
+          { name: "Background", value: "Dark Gradient" },
+        ],
+      },
+      {
+        collectionAddress: "CAS3J7GYLGXMF6TDJBBYYSE3HW6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+        collectionName: "Stellar Frogs",
+        tokenId: "2",
+        name: "pepethebot.xlm",
+        image: "https://nftcalendar.io/storage/uploads/2024/06/02/pepe-the-bot_ml4cWknXFrF3K3U1.jpeg",
+        description: "A vibrant green frog with a wide smile, large expressive eyes, and a humanoid posture, set against a dark background. The frog's appearance is reminiscent of the popular Pepe meme.",
+        externalUrl: "https://nftcalendar.io/event/pepe-the-bot/",
+        traits: [
+          { name: "Color", value: "Bright Green" },
+          { name: "Expression", value: "Smiling" },
+          { name: "Eyes", value: "Large" },
+          { name: "Background", value: "Dark" },
+          { name: "Theme", value: "Meme" },
+          { name: "Rarity", value: "Epic" },
+        ],
+      },
+      {
+        collectionAddress: "CAS3J7GYLGXMF6TDJBBYYSE3HW6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+        collectionName: "Stellar Frogs",
+        tokenId: "3",
+        name: "princepepe.xlm",
+        image: "https://nftcalendar.io/storage/uploads/events/2023/8/5kFeYwNfhpUST3TsSoLxm7FaGY1ljwLRgfZ5gQnV.jpg",
+        description: "A green frog with a golden crown, red lips, and a blue background, evoking a royal and whimsical appearance.",
+        externalUrl: "https://nftcalendar.io/event/prince-pepe/",
+        traits: [
+          { name: "Color", value: "Green" },
+          { name: "Accessory", value: "Golden Crown" },
+          { name: "Mouth", value: "Red Lips" },
+          { name: "Background", value: "Blue" },
+          { name: "Theme", value: "Royal" },
+          { name: "Rarity", value: "Legendary" },
+        ],
+      },
     ],
   },
   // Soroban Domains Collection
   {
     collectionAddress: "CCCSorobanDomainsCollection",
     collectionName: "Soroban Domains",
-    tokenId: "102510",
-    name: "charles.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/events/2025/7/Hdqv6YNVErVCmYlwobFVYfS5BiH19ferUgQova7Z.webp",
-    description: "The protocol to register your Soroban username",
-    externalUrl: "https://app.sorobandomains.org/domains/charles.xlm",
-    traits: [
-      { name: "Name", value: "charles" },
-      { name: "Length", value: 7 },
-      { name: "Character", value: "Alphanumeric" },
-    ],
-  },
-  {
-    collectionAddress: "CCCSorobanDomainsCollection",
-    collectionName: "Soroban Domains",
-    tokenId: "102589",
-    name: "cassio.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/events/2025/7/MkaASwOL8VA3I5B2iIfCcNGT29vGBp4YZIJgmjzq.jpg",
-    description: "Cassio's Soroban username",
-    externalUrl: "https://app.sorobandomains.org/domains/cassio.xlm",
-    traits: [
-      { name: "Name", value: "cassio" },
-      { name: "Length", value: 6 },
-      { name: "Character", value: "Alphanumeric" },
-      { name: "Type", value: "Domain" },
+    collectionSymbol: "SDOM",
+    count: 2,
+    items: [
+      {
+        collectionAddress: "CCCSorobanDomainsCollection",
+        collectionName: "Soroban Domains",
+        tokenId: "102510",
+        name: "charles.xlm",
+        image: "https://nftcalendar.io/storage/uploads/events/2025/7/Hdqv6YNVErVCmYlwobFVYfS5BiH19ferUgQova7Z.webp",
+        description: "The protocol to register your Soroban username",
+        externalUrl: "https://app.sorobandomains.org/domains/charles.xlm",
+        traits: [
+          { name: "Name", value: "charles" },
+          { name: "Length", value: 7 },
+          { name: "Character", value: "Alphanumeric" },
+        ],
+      },
+      {
+        collectionAddress: "CCCSorobanDomainsCollection",
+        collectionName: "Soroban Domains",
+        tokenId: "102589",
+        name: "cassio.xlm",
+        image: "https://nftcalendar.io/storage/uploads/events/2025/7/MkaASwOL8VA3I5B2iIfCcNGT29vGBp4YZIJgmjzq.jpg",
+        description: "Cassio's Soroban username",
+        externalUrl: "https://app.sorobandomains.org/domains/cassio.xlm",
+        traits: [
+          { name: "Name", value: "cassio" },
+          { name: "Length", value: 6 },
+          { name: "Character", value: "Alphanumeric" },
+          { name: "Type", value: "Domain" },
+        ],
+      },
     ],
   },
   // Future Monkeys Collection
   {
     collectionAddress: "CCCFutureMonkeysCollection",
     collectionName: "Future Monkeys",
-    tokenId: "111",
-    name: "blueauramonkey.xlm",
-    image:
-      "https://nftcalendar.io/storage/uploads/events/2025/3/oUfeUrSj3KcVnjColyfnS5ICYuqzDbiuqQP4qLIz.png",
-    description:
-      "A 3D-rendered blue and purple monkey with a glossy, reflective coat, sitting upright and facing forward. The monkey has large, expressive eyes and is surrounded by a glowing purple aura. The background is a soft, dark gradient that accentuates the vibrant colors of the monkey.",
-    externalUrl: "https://nftcalendar.io/event/future-monkeys/",
-    traits: [
-      { name: "Species", value: "Monkey" },
-      { name: "Color", value: "Blue and Purple" },
-      { name: "Coat", value: "Glossy" },
-      { name: "Aura", value: "Glowing Purple" },
-      { name: "Eyes", value: "Large" },
-      { name: "Background", value: "Soft Dark Gradient" },
+    collectionSymbol: "FMONK",
+    count: 1,
+    items: [
+      {
+        collectionAddress: "CCCFutureMonkeysCollection",
+        collectionName: "Future Monkeys",
+        tokenId: "111",
+        name: "blueauramonkey.xlm",
+        image: "https://nftcalendar.io/storage/uploads/events/2025/3/oUfeUrSj3KcVnjColyfnS5ICYuqzDbiuqQP4qLIz.png",
+        description: "A 3D-rendered blue and purple monkey with a glossy, reflective coat, sitting upright and facing forward. The monkey has large, expressive eyes and is surrounded by a glowing purple aura. The background is a soft, dark gradient that accentuates the vibrant colors of the monkey.",
+        externalUrl: "https://nftcalendar.io/event/future-monkeys/",
+        traits: [
+          { name: "Species", value: "Monkey" },
+          { name: "Color", value: "Blue and Purple" },
+          { name: "Coat", value: "Glossy" },
+          { name: "Aura", value: "Glowing Purple" },
+          { name: "Eyes", value: "Large" },
+          { name: "Background", value: "Soft Dark Gradient" },
+        ],
+      },
     ],
   },
 ];
@@ -182,13 +197,13 @@ const dummyCollectibles: Collectible[] = [
  * Zustand store for managing collectibles state
  *
  * Provides state management for:
- * - Collectibles data
+ * - Collections data
  * - Loading states
  * - Error handling
  * - Data fetching operations
  */
 export const useCollectiblesStore = create<CollectiblesState>((set) => ({
-  collectibles: [],
+  collections: [],
   isLoading: false,
   error: null,
 
@@ -198,20 +213,31 @@ export const useCollectiblesStore = create<CollectiblesState>((set) => ({
    * Currently uses dummy data for development/testing.
    * TODO: Replace with actual API call to fetch real collectibles data.
    *
+   * @param {Object} params - Parameters for fetching collectibles
+   * @param {string} params.publicKey - The public key of the account to fetch collectibles for
+   * @param {string} params.network - The network to query (mainnet/testnet)
    * @returns {Promise<void>} Promise that resolves when fetch completes
    */
-  fetchCollectibles: async () => {
+  fetchCollectibles: async ({ publicKey, network }: { publicKey: string; network: string }) => {
     set({ isLoading: true, error: null });
 
     try {
-      // Simulate API call delay
-      // eslint-disable-next-line no-promise-executor-return
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // TODO: Replace with actual API call
+      const collections = await apiFetchCollectibles({
+        owner: publicKey,
+        // TODO: contracts should be retrieved from local storage for the given network and public key
+        contracts: [{
+          id: "CDSN4MICK7U5XOP4DE6OIZQCRMYO3UTQ5VYZV7ZA7H63OICZPBLXYRGJ",
+          token_ids: ["0"]
+        }]
+      });
 
-      // For now, return dummy data
+      debug("apiFetchCollectibles", "> > > > > > > collections: ", collections);
+
+      // For now, return dummy data grouped by collections
       // TODO: Replace with actual API call
       set({
-        collectibles: dummyCollectibles,
+        collections: dummyCollections,
         isLoading: false,
       });
     } catch (error) {

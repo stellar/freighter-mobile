@@ -4,9 +4,11 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
 import { Collectible, Collection } from "ducks/collectibles";
+import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibles } from "hooks/useCollectibles";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useEffect } from "react";
 import {
@@ -55,17 +57,23 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({ onCollectiblePress }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
+    const { account } = useGetActiveAccount();
+    const { network } = useAuthenticationStore();
     const { collections, isLoading, error, fetchCollectibles } =
       useCollectibles();
 
     // Fetch collectibles when component mounts
     useEffect(() => {
-      fetchCollectibles();
-    }, [fetchCollectibles]);
+      if (account?.publicKey && network) {
+        fetchCollectibles({ publicKey: account.publicKey, network });
+      }
+    }, [fetchCollectibles, account?.publicKey, network]);
 
     const handleRefresh = useCallback(() => {
-      fetchCollectibles();
-    }, [fetchCollectibles]);
+      if (account?.publicKey && network) {
+        fetchCollectibles({ publicKey: account.publicKey, network });
+      }
+    }, [fetchCollectibles, account?.publicKey, network]);
 
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
