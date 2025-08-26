@@ -61,7 +61,7 @@ const DappConnectionBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { network } = useAuthenticationStore();
+  const { network, verifyActionWithBiometrics } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
 
   const listItems = useMemo(() => {
@@ -169,8 +169,14 @@ const DappConnectionBottomSheetContent: React.FC<
             tertiary
             xl
             isFullWidth
-            onPress={onConnection}
+            onPress={() =>
+              verifyActionWithBiometrics(() => {
+                onConnection();
+                return Promise.resolve();
+              })
+            }
             isLoading={isConnecting}
+            disabled={isConnecting}
           >
             {t("dappConnectionBottomSheetContent.connect")}
           </Button>

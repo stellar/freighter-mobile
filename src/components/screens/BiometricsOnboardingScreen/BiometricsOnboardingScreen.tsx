@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import iPhoneFrameImage from "assets/iphone-frame.png";
+import ConfirmationModal from "components/ConfirmationModal";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -12,8 +13,8 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import React, { useCallback, useMemo } from "react";
-import { Alert, View, Image } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import {
   Svg,
@@ -34,6 +35,7 @@ type BiometricsOnboardingScreenProps = NativeStackScreenProps<
 export const BiometricsOnboardingScreen: React.FC<
   BiometricsOnboardingScreenProps
 > = ({ route }) => {
+  const [modalVisible, setModalVisible] = useState(false);
   const { t } = useAppTranslation();
   const { isLoading, signUp } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
@@ -111,19 +113,7 @@ export const BiometricsOnboardingScreen: React.FC<
   );
 
   const handleEnable = () => {
-    Alert.alert(
-      promptTitle[biometryType!] ?? "",
-      promptDescription[biometryType!] ?? "",
-      [
-        {
-          text: t("common.cancel"),
-        },
-        {
-          text: t("common.allow"),
-          onPress: enableBiometrics,
-        },
-      ],
-    );
+    setModalVisible(true);
   };
 
   const handleSkip = () => {
@@ -316,6 +306,16 @@ export const BiometricsOnboardingScreen: React.FC<
           : BlurredBackgroundFingerprintIcon}
         {iPhoneFrame}
       </View>
+
+      <ConfirmationModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={promptTitle[biometryType!] ?? ""}
+        message={promptDescription[biometryType!] ?? ""}
+        confirmText={t("common.allow")}
+        cancelText={t("common.cancel")}
+        onConfirm={enableBiometrics}
+      />
     </OnboardLayout>
   );
 };

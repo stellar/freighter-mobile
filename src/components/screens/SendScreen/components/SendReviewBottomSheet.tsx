@@ -8,6 +8,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
@@ -74,6 +75,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
 
@@ -182,7 +184,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     return (
       <View className="flex-1">
         <Button
-          onPress={onConfirm}
+          onPress={() =>
+            verifyActionWithBiometrics(() => {
+              onConfirm?.();
+              return Promise.resolve();
+            })
+          }
           tertiary
           xl
           disabled={isBuilding || !transactionXDR || !!error}

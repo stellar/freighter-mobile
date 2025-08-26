@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import ConfirmationModal from "components/ConfirmationModal";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Toggle } from "components/sds/Toggle";
@@ -7,7 +8,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 
 interface BiometricsSettingsScreenProps
@@ -37,6 +38,7 @@ const BiometricsSettingsScreen: React.FC<
   } = useBiometrics();
   const [shouldTriggerBiometricsDisable, setShouldTriggerBiometricsDisable] =
     useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const handleBiometricsEnable = useCallback(async () => {
     await enableBiometrics();
@@ -100,21 +102,8 @@ const BiometricsSettingsScreen: React.FC<
   );
 
   const openDisableBiometricsPrompt = useCallback(() => {
-    Alert.alert(
-      disableAlertTitle[biometryType!] ?? "",
-      disableAlertMessage[biometryType!] ?? "",
-      [
-        {
-          text: t("common.cancel"),
-          style: "cancel",
-        },
-        {
-          text: t("common.yes"),
-          onPress: () => setShouldTriggerBiometricsDisable(true),
-        },
-      ],
-    );
-  }, [t, biometryType, disableAlertTitle, disableAlertMessage]);
+    setModalVisible(true);
+  }, []);
 
   const handleOnChangeBiometrics = useCallback(() => {
     if (!isBiometricsEnabled) {
@@ -163,6 +152,16 @@ const BiometricsSettingsScreen: React.FC<
       <View className="flex gap-6 mt-4">
         <List items={biometricsItems} />
       </View>
+
+      <ConfirmationModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={disableAlertTitle[biometryType!] ?? ""}
+        message={disableAlertMessage[biometryType!] ?? ""}
+        confirmText={t("common.yes")}
+        cancelText={t("common.cancel")}
+        onConfirm={() => setShouldTriggerBiometricsDisable(true)}
+      />
     </BaseLayout>
   );
 };

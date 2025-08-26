@@ -12,7 +12,6 @@ import {
   PASSWORD_MIN_LENGTH,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { toAsync } from "helpers/toAsync";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -74,7 +73,10 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   }, [signInMethod, themeColors]);
 
   const handleContinueWithFaceId = useCallback(() => {
-    verifyActionWithBiometrics(toAsync(handleContinue));
+    verifyActionWithBiometrics((password) => {
+      handleContinue(password);
+      return Promise.resolve();
+    });
   }, [handleContinue, verifyActionWithBiometrics]);
 
   return (

@@ -260,7 +260,7 @@ interface AuthActions {
   selectNetwork: (network: NETWORKS) => Promise<void>;
 
   verifyActionWithBiometrics: <T, P extends unknown[]>(
-    callback: (password: string, ...args: P) => Promise<T>,
+    callback: (password4: string, ...args: P) => Promise<T>,
     ...args: P
   ) => Promise<T>;
   // Active account actions
@@ -1665,7 +1665,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *
      * @example
      * // Example 1: Show recovery phrase with biometric authentication
-     * await verifyActionWithBiometrics<{password: string}>(async (password: string) => {
+     * await verifyActionWithBiometrics(async (password: string) => {
      *   const key = await getKeyFromKeyManager(password);
      *   const keyExtra = key.extra as { mnemonicPhrase: string };
      *   if (keyExtra?.mnemonicPhrase) {
@@ -1674,15 +1674,29 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * });
      *
      * @example
-     * // Example 2: Export private key with biometric authentication
-     * const privateKey = await verifyActionWithBiometrics<string>(async (password: string) => {
+     * // Example 2: Simple action with biometric authentication (common pattern)
+     * verifyActionWithBiometrics(() => {
+     *   onConfirm();
+     *   return Promise.resolve();
+     * });
+     *
+     * @example
+     * // Example 3: Action with password parameter but no return value
+     * verifyActionWithBiometrics((password: string) => {
+     *   handleContinue(password);
+     *   return Promise.resolve();
+     * });
+     *
+     * @example
+     * // Example 4: Action that returns a value
+     * const result = await verifyActionWithBiometrics(async (password: string) => {
      *   const key = await getKeyFromKeyManager(password);
      *   return key.privateKey;
      * });
      *
      * @example
-     * // Example 3: Sign transaction with biometric authentication and additional params
-     * const signature = await verifyActionWithBiometrics<string, [Transaction, string]>(
+     * // Example 5: Action with additional parameters
+     * await verifyActionWithBiometrics(
      *   async (password: string, transaction: Transaction, network: string) => {
      *     const key = await getKeyFromKeyManager(password);
      *     return await signTransaction(transaction, key.privateKey, network);
@@ -1690,13 +1704,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *   transaction,
      *   network
      * );
-     *
-     * @example
-     * // Example 4: Action that doesn't need password (biometrics disabled)
-     * await verifyActionWithBiometrics<void, [string]>(async (password: string, userId: string) => {
-     *   // password will be empty string if biometrics is disabled
-     *   return await performAction(userId);
-     * }, userId);
      */
     verifyActionWithBiometrics: async <T, P extends unknown[]>(
       callback: (password: string, ...args: P) => Promise<T>,

@@ -38,7 +38,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
-  const { network } = useAuthenticationStore();
+  const { network, verifyActionWithBiometrics } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
 
   const {
@@ -291,7 +291,12 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
         <View className="flex-1">
           <Button
-            onPress={handleConfirmSwap}
+            onPress={() =>
+              verifyActionWithBiometrics(() => {
+                handleConfirmSwap();
+                return Promise.resolve();
+              })
+            }
             tertiary
             xl
             disabled={!transactionXDR || isBuilding}

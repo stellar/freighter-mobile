@@ -5,7 +5,7 @@ import { Banner } from "components/sds/Banner";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { ActiveAccount } from "ducks/auth";
+import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -58,7 +58,7 @@ const DappRequestBottomSheetContent: React.FC<
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
-
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(requestEvent);
 
   const sessionRequest = requestEvent?.params;
@@ -184,7 +184,12 @@ const DappRequestBottomSheetContent: React.FC<
             tertiary
             lg
             isFullWidth
-            onPress={onConfirm}
+            onPress={() =>
+              verifyActionWithBiometrics(() => {
+                onConfirm();
+                return Promise.resolve();
+              })
+            }
             isLoading={isSigning || isValidatingMemo}
             disabled={isMemoMissing || isSigning || isValidatingMemo || !xdr}
           >

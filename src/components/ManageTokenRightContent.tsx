@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import ConfirmationModal from "components/ConfirmationModal";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
-import Modal from "components/Modal";
-import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
+import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useTokenActions } from "hooks/useTokenActions";
 import React, { useState } from "react";
-import { Platform, View } from "react-native";
+import { Platform } from "react-native";
 
 const icons = Platform.select({
   ios: {
@@ -41,13 +40,17 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
   const { t } = useAppTranslation();
   const { copyTokenAddress } = useTokenActions();
   const { tokenCode } = formatTokenIdentifier(token.id);
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
 
   const showRemoveTokenAlert = () => {
     setModalVisible(true);
   };
 
   const handleRemoveTokenClick = () => {
-    handleRemoveToken(() => setModalVisible(false));
+    verifyActionWithBiometrics(() => {
+      handleRemoveToken(() => setModalVisible(false));
+      return Promise.resolve();
+    });
     // The modal will be closed by the callback when removal is complete
     // No need to set modalVisible to false immediately
   };
@@ -82,42 +85,19 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
       }}
     >
       <Icon.DotsHorizontal color={themeColors.foreground.primary} />
-      <Modal visible={modalVisible} onClose={() => setModalVisible(false)}>
-        <Text xl regular>
-          {t("manageTokenRightContent.removeTokenModal.title", {
-            tokenCode,
-          })}
-        </Text>
-        <View className="h-2" />
-        <Text md regular secondary>
-          {t("manageTokenRightContent.removeTokenModal.message")}
-        </Text>
-        <View className="h-8" />
-        <View className="flex-row justify-between w-full gap-3">
-          <View className="flex-1">
-            <Button
-              secondary
-              lg
-              isFullWidth
-              onPress={() => setModalVisible(false)}
-              disabled={isRemovingToken}
-            >
-              {t("common.cancel")}
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button
-              lg
-              destructive
-              isFullWidth
-              onPress={handleRemoveTokenClick}
-              isLoading={isRemovingToken}
-            >
-              {t("common.remove")}
-            </Button>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmationModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={t("manageTokenRightContent.removeTokenModal.title", {
+          tokenCode,
+        })}
+        message={t("manageTokenRightContent.removeTokenModal.message")}
+        confirmText={t("common.remove")}
+        cancelText={t("common.cancel")}
+        onConfirm={handleRemoveTokenClick}
+        isLoading={isRemovingToken}
+        destructive
+      />
     </ContextMenuButton>
   );
 };

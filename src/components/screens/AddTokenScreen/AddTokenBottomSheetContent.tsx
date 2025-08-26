@@ -45,6 +45,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
 
   const listItems = useMemo(() => {
     if (!token) return [];
@@ -220,7 +221,12 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           {isMalicious || isSuspicious ? (
             <TextButton
               text={t("addTokenScreen.approveAnyway")}
-              onPress={proceedAnywayAction}
+              onPress={() => {
+                verifyActionWithBiometrics(() => {
+                  proceedAnywayAction?.();
+                  return Promise.resolve();
+                });
+              }}
               isLoading={isAddingToken}
               disabled={isAddingToken}
               variant={isMalicious ? "error" : "secondary"}
@@ -230,7 +236,12 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
               tertiary
               xl
               isFullWidth
-              onPress={onAddToken}
+              onPress={() =>
+                verifyActionWithBiometrics(() => {
+                  onAddToken();
+                  return Promise.resolve();
+                })
+              }
               isLoading={isAddingToken}
             >
               {t("addTokenScreen.addTokenButton")}
