@@ -6,10 +6,40 @@ import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useMemo } from "react";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 
+/**
+ * Props for the BiometricToggleButton component
+ */
 interface BiometricToggleButtonProps {
+  /** Size variant of the button (sm, md, lg) */
   size?: "sm" | "md" | "lg";
 }
 
+/**
+ * BiometricToggleButton Component
+ *
+ * A toggle button that allows users to switch between password and biometric authentication methods.
+ * The button automatically adapts its text and behavior based on the current authentication method
+ * and available biometric types (Face ID, Touch ID, or fingerprint).
+ *
+ * The button only renders when biometrics are available and enabled. When using password authentication,
+ * it shows the biometric option. When using biometrics, it shows the password option.
+ *
+ * @example
+ * Basic usage:
+ * ```tsx
+ * <BiometricToggleButton size="md" />
+ * ```
+ *
+ * @example
+ * With custom size:
+ * ```tsx
+ * <BiometricToggleButton size="lg" />
+ * ```
+ *
+ * @param props - Component props
+ * @param props.size - Size variant of the button (defaults to "sm")
+ * @returns React component for toggling between authentication methods, or null if biometrics unavailable
+ */
 export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
   size = "sm",
 }) => {

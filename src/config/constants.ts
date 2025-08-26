@@ -220,6 +220,8 @@ export enum SENSITIVE_STORAGE_KEYS {
  * Biometric storage keys.
  *
  * BIOMETRIC_PASSWORD The biometric password is used to store the biometric protected password.
+ * This key is used to securely store the user's password in the device's secure storage
+ * (Keychain on iOS, Keystore on Android) for biometric authentication.
  * */
 export enum BIOMETRIC_STORAGE_KEYS {
   BIOMETRIC_PASSWORD = "biometricPassword",
@@ -260,6 +262,13 @@ export const BROWSER_CONSTANTS = {
 
 /**
  * Biometric login types for authentication
+ *
+ * These types represent the different authentication methods available to users:
+ * - FACE: Face ID or face recognition authentication
+ * - FINGERPRINT: Touch ID or fingerprint authentication
+ * - PASSWORD: Traditional password-based authentication
+ *
+ * The type is determined by the device's biometric capabilities and user preferences.
  */
 export enum LoginType {
   FACE = "face",
@@ -267,11 +276,21 @@ export enum LoginType {
   PASSWORD = "password",
 }
 
+/**
+ * Array of biometry types that correspond to Face ID authentication
+ *
+ * This includes both the specific Face ID type and the generic face biometry type
+ */
 export const FACE_ID_BIOMETRY_TYPES = [
   BIOMETRY_TYPE.FACE_ID,
   BIOMETRY_TYPE.FACE,
 ];
 
+/**
+ * Array of biometry types that correspond to fingerprint authentication
+ *
+ * This includes both Touch ID (iOS) and generic fingerprint types to support
+ */
 export const FINGERPRINT_BIOMETRY_TYPES = [
   BIOMETRY_TYPE.FINGERPRINT,
   BIOMETRY_TYPE.TOUCH_ID,

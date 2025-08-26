@@ -53,13 +53,13 @@ const BiometricsSettingsScreen: React.FC<
 
   const disableAlertTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
     () => ({
-      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.alert.disable.title"),
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.disableAlertTitle"),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
-        "securityScreen.fingerprint.alert.disable.title",
+        "securityScreen.fingerprint.disableAlertTitle",
       ),
-      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.alert.disable.title"),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.disableAlertTitle"),
       [BIOMETRY_TYPE.FACE]: t(
-        "securityScreen.faceBiometrics.alert.disable.title",
+        "securityScreen.faceBiometrics.disableAlertTitle",
       ),
     }),
     [t],
@@ -67,15 +67,13 @@ const BiometricsSettingsScreen: React.FC<
 
   const disableAlertMessage: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
     () => ({
-      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.alert.disable.message"),
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.disableAlertMessage"),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
-        "securityScreen.fingerprint.alert.disable.message",
+        "securityScreen.fingerprint.disableAlertMessage",
       ),
-      [BIOMETRY_TYPE.TOUCH_ID]: t(
-        "securityScreen.touchId.alert.disable.message",
-      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.disableAlertMessage"),
       [BIOMETRY_TYPE.FACE]: t(
-        "securityScreen.faceBiometrics.alert.disable.message",
+        "securityScreen.faceBiometrics.disableAlertMessage",
       ),
     }),
     [t],

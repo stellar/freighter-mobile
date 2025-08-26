@@ -754,45 +754,29 @@
       "title": "Face ID authentication",
       "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Face ID",
-      "alert": {
-        "disable": {
-          "title": "Disable Face ID?",
-          "message": "Are you sure you want to disable Face ID?"
-        }
-      }
+      "disableAlertTitle": "Disable Face ID?",
+      "disableAlertMessage": "Are you sure you want to disable Face ID?"
     },
     "fingerprint": {
       "title": "Fingerprint authentication",
       "description": "Enable Fingerprint for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Fingerprint",
-      "alert": {
-        "disable": {
-          "title": "Disable Fingerprint?",
-          "message": "Are you sure you want to disable Fingerprint?"
-        }
-      }
+      "disableAlertTitle": "Disable Fingerprint?",
+      "disableAlertMessage": "Are you sure you want to disable Fingerprint?"
     },
     "touchId": {
       "title": "Touch ID authentication",
       "description": "Enable Touch ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Touch ID",
-      "alert": {
-        "disable": {
-          "title": "Disable Touch ID?",
-          "message": "Are you sure you want to disable Touch ID?"
-        }
-      }
+      "disableAlertTitle": "Disable Touch ID?",
+      "disableAlertMessage": "Are you sure you want to disable Touch ID?"
     },
     "faceBiometrics": {
       "title": "Face Recognition authentication",
       "description": "Enable Face Recognition for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Face Recognition",
-      "alert": {
-        "disable": {
-          "title": "Disable Face Recognition?",
-          "message": "Are you sure you want to disable Face Recognition?"
-        }
-      }
+      "disableAlertTitle": "Disable Face Recognition?",
+      "disableAlertMessage": "Are you sure you want to disable Face Recognition?"
     }
   },
   "showRecoveryPhraseScreen": {

@@ -762,45 +762,29 @@
       "title": "Autenticação Face ID",
       "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Face ID",
-      "alert": {
-        "disable": {
-          "title": "Desabilitar Face ID?",
-          "message": "Tem certeza que deseja desabilitar Face ID?"
-        }
-      }
+      "disableAlertTitle": "Desabilitar Face ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Face ID?"
     },
     "fingerprint": {
       "title": "Autenticação por Impressão Digital",
       "description": "Habilite a autenticação por Impressão Digital para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Impressão Digital",
-      "alert": {
-        "disable": {
-          "title": "Desabilitar Impressão Digital?",
-          "message": "Tem certeza que deseja desabilitar Impressão Digital?"
-        }
-      }
+      "disableAlertTitle": "Desabilitar Impressão Digital?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Impressão Digital?"
     },
     "touchId": {
       "title": "Autenticação Touch ID",
       "description": "Habilite a autenticação Touch ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Touch ID",
-      "alert": {
-        "disable": {
-          "title": "Desabilitar Touch ID?",
-          "message": "Tem certeza que deseja desabilitar Touch ID?"
-        }
-      }
+      "disableAlertTitle": "Desabilitar Touch ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Touch ID?"
     },
     "faceBiometrics": {
       "title": "Autenticação por Reconhecimento Facial",
       "description": "Habilite a autenticação por Reconhecimento Facial para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Reconhecimento Facial",
-      "alert": {
-        "disable": {
-          "title": "Desabilitar Reconhecimento Facial?",
-          "message": "Tem certeza que deseja desabilitar Reconhecimento Facial?"
-        }
-      }
+      "disableAlertTitle": "Desabilitar Reconhecimento Facial?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Reconhecimento Facial?"
     }
   },
   "showRecoveryPhraseScreen": {

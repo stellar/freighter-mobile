@@ -117,7 +117,6 @@ export const BiometricsOnboardingScreen: React.FC<
   };
 
   const handleSkip = () => {
-    // In pre-auth flow, complete the signup/import without biometrics
     const { password, mnemonicPhrase } = route.params;
 
     if (!mnemonicPhrase) {
