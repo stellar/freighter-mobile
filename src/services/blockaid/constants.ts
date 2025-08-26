@@ -1,5 +1,6 @@
 export const BLOCKAID_ENDPOINTS = {
   SCAN_TOKEN: "/scan-asset",
+  SCAN_BULK_TOKENS: "/scan-asset-bulk",
   SCAN_SITE: "/scan-dapp",
   SCAN_TRANSACTION: "/scan-tx",
 } as const;
@@ -13,6 +14,7 @@ export const BLOCKAID_RESULT_TYPES = {
 
 export const BLOCKAID_ERROR_MESSAGES = {
   TOKEN_SCAN_FAILED: "Failed to scan token",
+  BULK_TOKEN_SCAN_FAILED: "Failed to bulk scan tokens",
   SITE_SCAN_FAILED: "Failed to scan site",
   TRANSACTION_SCAN_FAILED: "Failed to scan transaction",
   NETWORK_NOT_SUPPORTED: "Scanning is not supported on this network",
@@ -55,3 +57,21 @@ export const SECURITY_MESSAGE_KEYS = {
   TRANSACTION_MALICIOUS: "blockaid.security.transaction.malicious",
   TRANSACTION_WARNING: "blockaid.security.transaction.warning",
 } as const;
+
+/**
+ * Validation severity levels for flagged entities
+ * Used specifically for transaction validation flagged addresses
+ */
+export enum ValidationSeverity {
+  MALICIOUS = "malicious",
+  SUSPICIOUS = "suspicious",
+}
+
+/**
+ * Security context types for different scan operations
+ * Used to distinguish between site and transaction security contexts
+ */
+export enum SecurityContext {
+  SITE = "site",
+  TRANSACTION = "transaction",
+}

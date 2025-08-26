@@ -296,6 +296,9 @@ export type FormattedSearchTokenRecord = {
   tokenType?: TokenTypeWithCustomToken;
   name?: string;
   decimals?: number;
+  isSuspicious?: boolean;
+  isMalicious?: boolean;
+  securityLevel?: string;
 };
 
 /**

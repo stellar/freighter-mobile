@@ -3,6 +3,22 @@
 import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
 import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
 import mockGestureHandler from "react-native-gesture-handler/jestSetup";
+import { TextEncoder, TextDecoder } from "util";
+
+// Ensure TextEncoder/TextDecoder are available for libs that expect Web APIs
+// Node >= 11 provides these in 'util', but they may not be on the global in Jest
+// Keep assignments idempotent to avoid warnings across workers
+if (typeof global.TextEncoder === "undefined") {
+  // @ts-expect-error: global typing varies in Jest env
+  global.TextEncoder = TextEncoder;
+}
+if (typeof global.TextDecoder === "undefined") {
+  // @ts-expect-error: global typing varies in Jest env
+  global.TextDecoder = TextDecoder;
+}
+
+// Polyfill TextEncoder for Node.js environment
+global.TextEncoder = require("util").TextEncoder;
 
 // Create a direct mock for the specific functions from react-native-responsive-screen
 // This ensures these functions are defined before any module imports them
@@ -22,6 +38,7 @@ jest.mock("helpers/dimensions", () => ({
   fsValue: (value) => value,
   fs: (value) => `${value}px`,
   deviceAspectRatio: 0.5,
+  toPercent: (percentNumber) => `${percentNumber}%`,
   calculateEdgeSpacing: (baseSpacing, options) => {
     const { multiplier = 1, toNumber = false } = options || {};
     const scaledValue = baseSpacing * multiplier;

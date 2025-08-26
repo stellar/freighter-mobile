@@ -1,39 +1,57 @@
+import Blockaid from "@blockaid/client";
+import { List } from "components/List";
+import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
-import { Badge } from "components/sds/Badge";
 import { Banner } from "components/sds/Banner";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { NATIVE_TOKEN_CODE } from "config/constants";
+import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { pxValue } from "helpers/dimensions";
+import { formatTokenAmount } from "helpers/formatAmount";
+import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
-import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useMemo } from "react";
+import { View } from "react-native";
 
 /**
  * Props for the DappRequestBottomSheetContent component
  * @interface DappRequestBottomSheetContentProps
  * @property {WalletKitSessionRequest | null} requestEvent - The session request event
  * @property {ActiveAccount | null} account - The active account
- * @property {() => void} onCancel - Function to handle cancellation
+ * @property {() => void} onCancelRequest - Function to handle cancellation
  * @property {() => void} onConfirm - Function to handle confirmation
  * @property {boolean} isSigning - Whether a transaction is currently being signed
+ * @property {boolean} isMalicious - Whether the transaction is malicious
+ * @property {boolean} isSuspicious - Whether the transaction is suspicious
+ * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
+ * @property {() => void} securityWarningAction - Function to handle security warning
+ * @property {SignTransactionDetailsInterface} signTransactionDetails - The sign transaction details
+ * @property {boolean} isMemoMissing - Whether a required memo is missing
+ * @property {boolean} isValidatingMemo - Whether memo validation is in progress
+ * @property {() => void} onBannerPress - Function to handle memo warning banner press
  */
-type DappRequestBottomSheetContentProps = {
+interface DappRequestBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
   onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;
-  isMemoMissing: boolean;
-  isValidatingMemo: boolean;
-  onBannerPress: () => void;
-};
+  isMalicious?: boolean;
+  isSuspicious?: boolean;
+  transactionScanResult?: Blockaid.StellarTransactionScanResponse;
+  securityWarningAction?: () => void;
+  signTransactionDetails?: SignTransactionDetailsInterface | null;
+  isMemoMissing?: boolean;
+  isValidatingMemo?: boolean;
+  onBannerPress?: () => void;
+}
 
 /**
  * Bottom sheet content component for displaying and handling dApp transaction requests.
@@ -51,14 +69,66 @@ const DappRequestBottomSheetContent: React.FC<
   onCancelRequest,
   onConfirm,
   isSigning,
+  isMalicious,
+  isSuspicious,
+  transactionScanResult,
+  securityWarningAction,
+  signTransactionDetails,
   isMemoMissing,
   isValidatingMemo,
   onBannerPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { copyToClipboard } = useClipboard();
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
+  const transactionBalanceListItems = useTransactionBalanceListItems(
+    transactionScanResult,
+    signTransactionDetails,
+  );
+
+  const formatFeeAmount = (feeXlm?: string | number) => {
+    if (!feeXlm) return "--";
+
+    return formatTokenAmount(String(feeXlm), NATIVE_TOKEN_CODE);
+  };
+
+  const accountDetailList = useMemo(
+    () => [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("wallet"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+      {
+        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
+        title: t("transactionAmountScreen.details.fee"),
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Text md primary>
+              {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
+            </Text>
+          </View>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+    ],
+    [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
+  );
+
   const dappMetadata = useDappMetadata(requestEvent);
 
   const sessionRequest = requestEvent?.params;
@@ -67,70 +137,76 @@ const DappRequestBottomSheetContent: React.FC<
     return null;
   }
 
-  const { request } = sessionRequest;
-  const { params } = request;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const xdr = params?.xdr as string;
-
   const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
   const dAppName = dappMetadata.name;
   const dAppFavicon = dappMetadata.icons[0];
 
-  const handleCopy = (item: string, itemName: string) => {
-    copyToClipboard(item, {
-      notificationMessage: t("dappRequestBottomSheetContent.itemCopied", {
-        itemName,
-      }),
-    });
+  const renderButtons = () => {
+    const cancelButton = (
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+      >
+        <Button
+          tertiary={isSuspicious}
+          destructive={isMalicious}
+          secondary={!isMalicious && !isSuspicious}
+          xl
+          isFullWidth
+          onPress={onCancelRequest}
+          disabled={isSigning}
+        >
+          {t("common.cancel")}
+        </Button>
+      </View>
+    );
+
+    if (isMalicious || isSuspicious) {
+      return (
+        <>
+          {cancelButton}
+          <TextButton
+            text={t("dappRequestBottomSheetContent.confirmAnyway")}
+            onPress={onConfirm}
+            isLoading={isSigning}
+            disabled={isSigning}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cancelButton}
+        <View className="flex-1">
+          <Button
+            tertiary
+            xl
+            isFullWidth
+            onPress={onConfirm}
+            isLoading={isSigning || !!isValidatingMemo}
+            disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
+          >
+            {t("dappRequestBottomSheetContent.confirm")}
+          </Button>
+        </View>
+      </>
+    );
   };
 
   return (
-    <View className="flex-1 justify-center items-center mt-2">
-      <App size="lg" appName={dAppName} favicon={dAppFavicon} />
-      <View className="mt-4" />
-      <Text lg primary medium style={{ textAlign: "center" }}>
-        {dAppName}
-      </Text>
-      <View className="mt-1" />
-      {dAppDomain && (
-        <Text sm secondary>
-          {dAppDomain}
-        </Text>
-      )}
-      <View className="mt-2" />
-      <Badge
-        variant="secondary"
-        size="md"
-        icon={<Icon.Link01 size={16} />}
-        iconPosition={IconPosition.LEFT}
-      >
-        {t("dappRequestBottomSheetContent.transactionRequest")}
-      </Badge>
-      <View className="flex-row items-center mt-6 p-6 bg-background-tertiary rounded-xl justify-center">
-        <View className="flex-row items-center justify-between w-full">
-          <View className="flex-row items-center flex-1">
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary style={{ marginLeft: pxValue(8) }}>
-              {t("dappRequestBottomSheetContent.xdrItem")}
+    <View className="flex-1 justify-center mt-2 gap-[16px]">
+      <View className="flex-row items-center gap-[12px] w-full">
+        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
+        <View className="ml-2">
+          <Text md primary>
+            {t("dappRequestBottomSheetContent.confirmTransaction")}
+          </Text>
+          {dAppDomain && (
+            <Text sm secondary>
+              {dAppDomain}
             </Text>
-          </View>
-          <TouchableOpacity
-            className="flex-row items-center flex-1 ml-2"
-            onPress={() =>
-              handleCopy(xdr, t("dappRequestBottomSheetContent.xdrItem"))
-            }
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text
-              md
-              medium
-              primary
-              style={{ marginLeft: pxValue(8), flex: 1 }}
-              numberOfLines={1}
-            >
-              {xdr}
-            </Text>
-          </TouchableOpacity>
+          )}
         </View>
       </View>
       {isMemoMissing && (
@@ -138,64 +214,37 @@ const DappRequestBottomSheetContent: React.FC<
           variant="error"
           text={t("transactionAmountScreen.errors.memoMissing")}
           onPress={onBannerPress}
-          className="mt-4 w-full mt-[16px]"
         />
       )}
-      <View className="w-full flex-row items-center mt-6 px-6 py-4 bg-background-primary border border-border-primary rounded-xl justify-between">
-        <View className="flex-row items-center">
-          <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginLeft: pxValue(8) }}
-          >
-            {t("wallet")}
-          </Text>
-        </View>
-        <View className="flex-row items-center">
-          <Text
-            md
-            secondary
-            style={{ textAlign: "center", marginRight: pxValue(8) }}
-          >
-            {account?.accountName}
-          </Text>
-          <Avatar
-            size="sm"
-            hasBorder={false}
-            publicAddress={account?.publicKey ?? ""}
-          />
-        </View>
+      {(isMalicious || isSuspicious) && (
+        <Banner
+          variant={isMalicious ? "error" : "warning"}
+          text={
+            isMalicious
+              ? t("dappConnectionBottomSheetContent.maliciousFlag")
+              : t("dappConnectionBottomSheetContent.suspiciousFlag")
+          }
+          onPress={securityWarningAction}
+        />
+      )}
+      <View className="gap-[12px]">
+        <List variant="secondary" items={transactionBalanceListItems} />
+        <List variant="secondary" items={accountDetailList} />
+        {signTransactionDetails && (
+          <SignTransactionDetails data={signTransactionDetails} />
+        )}
       </View>
-      <View className="flex-row justify-between w-full mt-6 gap-3">
-        <View className="flex-1">
-          <Button
-            secondary
-            lg
-            isFullWidth
-            onPress={onCancelRequest}
-            disabled={isSigning}
-          >
-            {t("dappRequestBottomSheetContent.cancel")}
-          </Button>
-        </View>
-        <View className="flex-1">
-          <Button
-            tertiary
-            lg
-            isFullWidth
-            onPress={() =>
-              verifyActionWithBiometrics(() => {
-                onConfirm();
-                return Promise.resolve();
-              })
-            }
-            isLoading={isSigning || isValidatingMemo}
-            disabled={isMemoMissing || isSigning || isValidatingMemo || !xdr}
-          >
-            {t("dappRequestBottomSheetContent.confirm")}
-          </Button>
-        </View>
+
+      {!isMalicious && !isSuspicious && (
+        <Text sm secondary textAlign="center">
+          {t("blockaid.security.site.confirmTrust")}
+        </Text>
+      )}
+
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px]`}
+      >
+        {renderButtons()}
       </View>
     </View>
   );

@@ -101,3 +101,5 @@ export function fsValue(designFontSize: number): number {
 export function fs(designFontSize: number): string {
   return `${fsValue(designFontSize)}px`;
 }
+
+export const toPercent = (percentNumber: number): string => `${percentNumber}%`;

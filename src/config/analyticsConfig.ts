@@ -22,6 +22,7 @@ export enum AnalyticsEvent {
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
   VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
+  VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "loaded screen: sign transaction details",
   VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
   VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
   VIEW_SEND_MEMO = "loaded screen: send payment settings",
@@ -126,6 +127,7 @@ export enum AnalyticsEvent {
   QR_SCAN_ERROR = "mobile: qr scan error",
 
   // Blockaid Events
+  BLOCKAID_BULK_TOKEN_SCAN = "blockaid: bulk scanned tokens",
   BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",

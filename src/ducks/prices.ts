@@ -1,5 +1,5 @@
 import { NETWORKS } from "config/constants";
-import { Balance, TokenPricesMap } from "config/types";
+import { Balance, TokenIdentifier, TokenPricesMap } from "config/types";
 import { getTokenIdentifiersFromBalances } from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
 import { create } from "zustand";
@@ -28,6 +28,10 @@ interface PricesState {
     balances: Record<string, Balance>;
     publicKey: string;
     network: NETWORKS;
+  }) => Promise<void>;
+  /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
+  fetchPricesForTokenIds: (params: {
+    tokens: TokenIdentifier[];
   }) => Promise<void>;
 }
 
@@ -89,6 +93,25 @@ export const usePricesStore = create<PricesState>((set, get) => ({
             : "Failed to fetch token prices",
         isLoading: false,
       });
+    }
+  },
+  /** Lightweight fetch for arbitrary tokens */
+  fetchPricesForTokenIds: async ({ tokens }) => {
+    try {
+      if (!tokens || tokens.length === 0) return;
+      // Avoid duplicate requests for tokens already loaded
+      const existing = get().prices;
+      const missing = tokens.filter((t) => !existing[t]);
+      if (missing.length === 0) return;
+
+      const response = await fetchTokenPrices({ tokens: missing });
+      set({
+        prices: { ...get().prices, ...response },
+        lastUpdated: Date.now(),
+      });
+    } catch (error) {
+      // Silently keep existing prices on error
+      set({ lastUpdated: Date.now() });
     }
   },
 }));

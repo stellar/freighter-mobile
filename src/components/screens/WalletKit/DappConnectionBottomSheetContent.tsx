@@ -239,7 +239,7 @@ const DappConnectionBottomSheetContent: React.FC<
 
       {!isMalicious && !isSuspicious && (
         <Text sm secondary textAlign="center">
-          {t("addTokenScreen.confirmTrust")}
+          {t("blockaid.security.site.confirmTrust")}
         </Text>
       )}
 

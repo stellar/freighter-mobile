@@ -38,6 +38,12 @@ export const VISUAL_DELAY_MS = 500;
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
+// Bottom sheet layout defaults
+export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
+export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
+export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
+export const BOTTOM_SHEET_CONTENT_GAP = 16;
+
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://www.freighter.app";
 export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
@@ -154,6 +160,24 @@ export enum OPERATION_TYPES {
   setTrustLineFlags = "Set Trustline Flags",
   bumpFootprintExpiration = "Bump Footprint Expiration",
   restoreFootprint = "Restore Footprint",
+}
+
+export enum CLAIM_PREDICATES {
+  claimPredicateUnconditional = t(
+    "signTransactionDetails.claimPredicates.unconditional",
+  ),
+  claimPredicateConditional = t(
+    "signTransactionDetails.claimPredicates.conditional",
+  ),
+  claimPredicateAnd = t("signTransactionDetails.claimPredicates.and"),
+  claimPredicateOr = t("signTransactionDetails.claimPredicates.or"),
+  claimPredicateNot = t("signTransactionDetails.claimPredicates.not"),
+  claimPredicateBeforeRelativeTime = t(
+    "signTransactionDetails.claimPredicates.beforeRelativeTime",
+  ),
+  claimPredicateBeforeAbsoluteTime = t(
+    "signTransactionDetails.claimPredicates.beforeAbsoluteTime",
+  ),
 }
 
 export const DEFAULT_TRANSACTION_TIMEOUT = 180;

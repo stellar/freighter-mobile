@@ -29,14 +29,14 @@ const TOKEN_SIZES = {
   sm: {
     single: 16,
     swap: {
-      size: 12,
+      size: 15,
       containerWidth: 16,
       containerHeight: 16,
     },
     pair: {
-      size: 12,
+      size: 15,
       containerWidth: 20,
-      containerHeight: 12,
+      containerHeight: 15,
     },
     platform: {
       size: 16,
