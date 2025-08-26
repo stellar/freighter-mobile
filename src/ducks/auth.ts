@@ -1022,11 +1022,16 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       password,
     );
 
-    // password can be stored in the keychain as it's biometric protected
-    await biometricDataStorage.setItem(
+    const existingBiometricPassword = await biometricDataStorage.checkIfExists(
       BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-      password,
     );
+
+    if (!existingBiometricPassword) {
+      await biometricDataStorage.setItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        password,
+      );
+    }
 
     // After discovering accounts, make sure all existing accounts' private keys
     // are in the temporary store
