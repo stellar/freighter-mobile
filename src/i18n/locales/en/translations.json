@@ -544,7 +544,8 @@
       "memoMissing": "This transaction requires a memo",
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious"
-    }
+    },
+    "confirmAnyway": "Confirm anyway"
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",

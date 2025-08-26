@@ -516,7 +516,8 @@
       "memoMissing": "Esta transação requer um memo",
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito"
-    }
+    },
+    "confirmAnyway": "Confirmar mesmo assim"
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",

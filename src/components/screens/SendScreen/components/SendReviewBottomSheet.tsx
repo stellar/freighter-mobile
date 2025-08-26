@@ -5,6 +5,7 @@ import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
@@ -184,6 +185,26 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   };
 
+  const getDisableConfirmButtonConditions = () => {
+    if (isRequiredMemoMissing) {
+      return true;
+    }
+
+    if (isValidatingMemo) {
+      return true;
+    }
+
+    if (isBuilding) {
+      return true;
+    }
+
+    if (!transactionXDR) {
+      return true;
+    }
+
+    return false;
+  };
+
   /**
    * Renders the confirm button with different states based on memo validation
    * When a required memo is missing, shows "Add Memo" button
@@ -193,20 +214,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element} The appropriate button for the current state
    */
   const renderConfirmButton = () => {
-    if (isRequiredMemoMissing || isValidatingMemo) {
-      return (
-        <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            tertiary
-            xl
-            disabled={isBuilding || !transactionXDR || isValidatingMemo}
-          >
-            {t("common.addMemo")}
-          </Button>
-        </View>
-      );
-    }
+    const getButtonText = () => {
+      if (isRequiredMemoMissing || isValidatingMemo) {
+        return t("common.addMemo");
+      }
+
+      return t("common.confirm");
+    };
 
     return (
       <View className="flex-1">
@@ -214,11 +228,53 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           onPress={onConfirm}
           tertiary
           xl
-          disabled={isBuilding || !transactionXDR || !!error}
+          disabled={getDisableConfirmButtonConditions()}
         >
-          {t("common.confirm")}
+          {getButtonText()}
         </Button>
       </View>
+    );
+  };
+
+  const renderButtons = () => {
+    const cancelButton = (
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+      >
+        <Button
+          tertiary={isSuspicious}
+          destructive={isMalicious}
+          secondary={!isMalicious && !isSuspicious}
+          xl
+          isFullWidth
+          onPress={onCancel}
+          disabled={getDisableConfirmButtonConditions()}
+        >
+          {t("common.cancel")}
+        </Button>
+      </View>
+    );
+
+    if (isMalicious || isSuspicious) {
+      return (
+        <>
+          {cancelButton}
+          <TextButton
+            text={t("transactionAmountScreen.confirmAnyway")}
+            onPress={onConfirm}
+            isLoading={getDisableConfirmButtonConditions()}
+            disabled={getDisableConfirmButtonConditions()}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cancelButton}
+        {renderConfirmButton()}
+      </>
     );
   };
 
@@ -341,13 +397,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       </View>
       {renderBanner()}
       <List variant="secondary" items={transactionDetailsList} />
-      <View className="mt-[4px] gap-[12px] flex-row">
-        <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
-            {t("common.cancel")}
-          </Button>
-        </View>
-        {renderConfirmButton()}
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[4px]`}
+      >
+        {renderButtons()}
       </View>
     </View>
   );
