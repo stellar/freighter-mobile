@@ -834,3 +834,102 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
     throw error;
   }
 };
+
+/**
+ * Parameters for fetching collectibles
+ * @interface FetchCollectiblesParams
+ * @property {string} owner - The public key of the account that owns the collectibles
+ * @property {Object[]} contracts - Array of contract objects to query
+ * @property {string} contracts[].id - The contract ID
+ * @property {string[]} contracts[].token_ids - Array of token IDs to fetch
+ */
+export interface FetchCollectiblesParams {
+  owner: string;
+  contracts: {
+    id: string;
+    token_ids: string[];
+  }[];
+}
+
+/**
+ * Response from the collectibles API
+ * @interface CollectiblesResponse
+ * @property {Object} data - Response data container
+ * @property {Object[]} data.collectibles - Array of collectible objects
+ */
+interface CollectiblesResponse {
+  data: {
+    collections: {
+      address: string;
+      name: string;
+      symbol: string;
+      collectibles: {
+        owner: string;
+        token_id: string;
+        token_uri: string; // token_uri is the URL of the token JSON metadata
+      }[];
+    }[];
+  };
+}
+
+/**
+ * Fetches collectibles from the backend collectibles endpoint
+ * @async
+ * @function fetchCollectibles
+ * @param {FetchCollectiblesParams} params - Parameters for collectibles fetching
+ * @returns {Promise<unknown[]>} Promise resolving to array of collectibles
+ *
+ * @description
+ * Retrieves collectibles from the backend:
+ * - Fetches collectibles for the specified owner and contracts
+ * - Uses POST request with owner and contracts array
+ * - Each contract object contains an ID and array of token IDs
+ * - Handles API errors gracefully with logging
+ *
+ * @throws {Error} When the API request fails or response is invalid
+ *
+ * @example
+ * ```ts
+ * const collectibles = await fetchCollectibles({
+ *   owner: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+ *   contracts: [{
+ *     id: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+ *     token_ids: ["abc", "def", "ghi"]
+ *   }]
+ * });
+ * ```
+ */
+export const fetchCollectibles = async ({
+  owner,
+  contracts,
+}: FetchCollectiblesParams): Promise<unknown[]> => {
+  try {
+    const { data } = await freighterBackendV2.post<CollectiblesResponse>(
+      "/collectibles",
+      {
+        owner,
+        contracts,
+      },
+    );
+
+    if (!data.data || !data.data.collections) {
+      logger.error(
+        "backendApi.fetchCollectibles",
+        "Invalid response from server",
+        data,
+      );
+
+      throw new Error("Invalid response from server");
+    }
+
+    return data.data.collections;
+  } catch (error) {
+    logger.error(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      error,
+    );
+
+    throw error;
+  }
+};
