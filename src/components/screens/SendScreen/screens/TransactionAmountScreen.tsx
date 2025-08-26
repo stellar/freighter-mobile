@@ -14,6 +14,7 @@ import {
   SendReviewBottomSheet,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
+import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
@@ -110,6 +111,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   >(undefined);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const signTransactionDetails = useSignTransactionDetails({
+    xdr: transactionXDR ?? "",
+  });
 
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -571,6 +575,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             isValidatingMemo={isValidatingMemo}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            signTransactionDetails={signTransactionDetails}
           />
         }
       />

@@ -1,6 +1,8 @@
 import { BigNumber } from "bignumber.js";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -43,6 +45,7 @@ type SendReviewBottomSheetProps = {
   onBannerPress?: () => void;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  signTransactionDetails?: SignTransactionDetailsInterface | null;
 };
 
 /**
@@ -71,6 +74,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   onBannerPress,
   isMalicious,
   isSuspicious,
+  signTransactionDetails,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -397,6 +401,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       </View>
       {renderBanner()}
       <List variant="secondary" items={transactionDetailsList} />
+      {signTransactionDetails && (
+        <SignTransactionDetails data={signTransactionDetails} />
+      )}
       <View
         className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[4px]`}
       >

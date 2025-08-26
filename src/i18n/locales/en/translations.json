@@ -845,7 +845,8 @@
       "contractAddress": "Contract address"
     },
     "operations": {
-      "destination": "Destination #{{number}}",
+      "destinationWithNumber": "Destination #{{number}}",
+      "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
       "amount": "Amount",
