@@ -17,6 +17,9 @@ if (typeof global.TextDecoder === "undefined") {
   global.TextDecoder = TextDecoder;
 }
 
+// Polyfill TextEncoder for Node.js environment
+global.TextEncoder = require("util").TextEncoder;
+
 // Create a direct mock for the specific functions from react-native-responsive-screen
 // This ensures these functions are defined before any module imports them
 global.heightPercentageToDP = jest.fn((height) => height);
@@ -35,6 +38,7 @@ jest.mock("helpers/dimensions", () => ({
   fsValue: (value) => value,
   fs: (value) => `${value}px`,
   deviceAspectRatio: 0.5,
+  toPercent: (percentNumber) => `${percentNumber}%`,
   calculateEdgeSpacing: (baseSpacing, options) => {
     const { multiplier = 1, toNumber = false } = options || {};
     const scaledValue = baseSpacing * multiplier;
