@@ -83,8 +83,8 @@ android {
         applicationId "org.stellar.freighterwallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
-        versionName "0.8.23"
+        versionCode 17
+        versionName "0.9.23"
     }
     signingConfigs {
         debug {
