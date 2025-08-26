@@ -1,4 +1,5 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -10,6 +11,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
+import { heightPercentageToDP } from "react-native-responsive-screen";
 
 interface ManageAccountBottomSheetProps {
   handleCloseModal: () => void;
@@ -20,6 +22,8 @@ interface ManageAccountBottomSheetProps {
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
 }
+
+const SNAP_VALUE_PERCENT = 80;
 
 const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   handleCloseModal,
@@ -34,40 +38,46 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   const { themeColors } = useColors();
 
   return (
-    <View className="flex-1 justify-between items-center">
-      <View className="flex-row items-center justify-between w-full">
-        <TouchableOpacity onPress={handleCloseModal}>
-          <Icon.X color={themeColors.base[1]} />
-        </TouchableOpacity>
-        <Text md primary semiBold>
-          {t("home.manageAccount.title")}
-        </Text>
-        <TouchableOpacity onPress={onPressAddAnotherWallet}>
-          <Icon.PlusCircle color={themeColors.base[1]} />
-        </TouchableOpacity>
-      </View>
-      <BottomSheetScrollView
-        className="w-full"
-        showsVerticalScrollIndicator={false}
-        alwaysBounceVertical={false}
-        contentContainerStyle={{
-          paddingTop: pxValue(24),
-        }}
+    <View className="flex-1 justify-between items-center w-full">
+      <BottomSheetAdaptiveContainer
+        bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
+        header={
+          <View className="flex-row items-center justify-between w-full">
+            <TouchableOpacity onPress={handleCloseModal}>
+              <Icon.X color={themeColors.base[1]} />
+            </TouchableOpacity>
+            <Text md primary semiBold>
+              {t("home.manageAccount.title")}
+            </Text>
+            <TouchableOpacity onPress={onPressAddAnotherWallet}>
+              <Icon.PlusCircle color={themeColors.base[1]} />
+            </TouchableOpacity>
+          </View>
+        }
       >
-        {accounts.map((account) => (
-          <AccountItemRow
-            key={account.publicKey}
-            account={account}
-            handleCopyAddress={handleCopyAddress}
-            handleRenameAccount={handleRenameAccount}
-            handleSelectAccount={handleSelectAccount}
-            isSelected={account.publicKey === activeAccount?.publicKey}
-          />
-        ))}
-      </BottomSheetScrollView>
-      <Button tertiary isFullWidth lg onPress={onPressAddAnotherWallet}>
-        {t("home.manageAccount.addWallet")}
-      </Button>
+        <BottomSheetScrollView
+          className="w-full"
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={false}
+          contentContainerStyle={{
+            paddingTop: pxValue(24),
+          }}
+        >
+          {accounts.map((account) => (
+            <AccountItemRow
+              key={account.publicKey}
+              account={account}
+              handleCopyAddress={handleCopyAddress}
+              handleRenameAccount={handleRenameAccount}
+              handleSelectAccount={handleSelectAccount}
+              isSelected={account.publicKey === activeAccount?.publicKey}
+            />
+          ))}
+        </BottomSheetScrollView>
+        <Button tertiary isFullWidth lg onPress={onPressAddAnotherWallet}>
+          {t("home.manageAccount.addWallet")}
+        </Button>
+      </BottomSheetAdaptiveContainer>
     </View>
   );
 };

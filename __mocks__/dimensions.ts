@@ -44,3 +44,5 @@ export const calculateEdgeSpacing = (
 
   return toNumber ? scaledValue : `${scaledValue}px`;
 };
+
+export const toPercent = (percentNumber: number): string => `${percentNumber}%`;
