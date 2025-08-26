@@ -1,3 +1,4 @@
+import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
@@ -30,6 +31,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -46,6 +48,7 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
+import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -89,12 +92,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);
 
+  const { scanTransaction } = useBlockaidTransaction();
+
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [transactionScanResult, setTransactionScanResult] = useState<
+    Blockaid.StellarTransactionScanResponse | undefined
+  >(undefined);
 
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -139,6 +147,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
+
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(transactionScanResult),
+    [transactionScanResult],
+  );
 
   const {
     tokenAmount,
@@ -240,7 +253,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleOpenReview = useCallback(async () => {
     try {
-      await buildTransaction({
+      const finalXDR = await buildTransaction({
         tokenAmount,
         selectedBalance,
         recipientAddress,
@@ -251,7 +264,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         senderAddress: publicKey,
       });
 
-      reviewBottomSheetModalRef.current?.present();
+      if (!finalXDR) return;
+
+      scanTransaction(finalXDR, "internal")
+        .then((scanResult) => {
+          logger.info("TransactionAmountScreen", "scanResult", scanResult);
+          setTransactionScanResult(scanResult);
+        })
+        .catch(() => {
+          setTransactionScanResult(undefined);
+        })
+        .finally(() => {
+          reviewBottomSheetModalRef.current?.present();
+        });
     } catch (error) {
       logger.error(
         "TransactionAmountScreen",
@@ -269,6 +294,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     network,
     publicKey,
     buildTransaction,
+    scanTransaction,
   ]);
 
   const handleTransactionConfirmation = () => {
@@ -492,6 +518,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
             isValidatingMemo={isValidatingMemo}
+            isMalicious={transactionSecurityAssessment.isMalicious}
+            isSuspicious={transactionSecurityAssessment.isSuspicious}
           />
         }
       />
