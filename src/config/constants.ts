@@ -266,7 +266,7 @@ export const BROWSER_CONSTANTS = {
   TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   IOS_USER_AGENT:
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/0.9.23",
   ANDROID_USER_AGENT:
-    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36 FreighterMobile/0.9.23",
 } as const;
