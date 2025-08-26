@@ -1,48 +1,68 @@
 import { BIOMETRIC_STORAGE_KEYS } from "config/constants";
-import { useAuthenticationStore } from "ducks/auth";
+import { getLoginType, useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
 import { useCallback, useEffect, useState } from "react";
 import * as Keychain from "react-native-keychain";
 import { biometricDataStorage } from "services/storage/storageFactory";
-
-export const FACE_ID_BIOMETRY_TYPES = [
-  Keychain.BIOMETRY_TYPE.FACE_ID,
-  Keychain.BIOMETRY_TYPE.FACE,
-];
-
-export const FINGERPRINT_BIOMETRY_TYPES = [
-  Keychain.BIOMETRY_TYPE.FINGERPRINT,
-  Keychain.BIOMETRY_TYPE.TOUCH_ID,
-];
 
 export const useBiometrics = () => {
   const [isBiometricsAvailable, setIsBiometricsAvailable] = useState(false);
   const [biometryType, setBiometryType] =
     useState<Keychain.BIOMETRY_TYPE | null>(null);
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
-  const { verifyBiometrics } = useAuthenticationStore();
+  const { verifyBiometrics, getTemporaryStore, setSignInMethod } =
+    useAuthenticationStore();
 
-  const checkBiometricsAvailability =
-    useCallback(async (): Promise<boolean> => {
+  const checkBiometricsType =
+    useCallback(async (): Promise<Keychain.BIOMETRY_TYPE | null> => {
       const type = await Keychain.getSupportedBiometryType();
       if (!type) {
-        return false;
+        return null;
       }
 
       setBiometryType(type);
       setIsBiometricsAvailable(true);
-      return true;
+      return type;
     }, []);
 
   const handleEnableBiometrics = useCallback(async (): Promise<boolean> => {
-    const isAvailable = await checkBiometricsAvailability();
-    if (!isAvailable) {
+    const type = await checkBiometricsType();
+    if (!type) {
       return false;
     }
 
+    const isBiometricPasswordStored = await biometricDataStorage.checkIfExists(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+    );
+
+    if (isBiometricPasswordStored) {
+      setIsBiometricsEnabled(true);
+      return true;
+    }
+
+    const temporaryStore = await getTemporaryStore();
+    if (!temporaryStore) {
+      return false;
+    }
+    const { password } = temporaryStore;
+    if (!password) {
+      return false;
+    }
+    await biometricDataStorage.setItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      password,
+    );
+
     setIsBiometricsEnabled(true);
+    setSignInMethod(getLoginType(biometryType));
     return true;
-  }, [setIsBiometricsEnabled, checkBiometricsAvailability]);
+  }, [
+    setIsBiometricsEnabled,
+    checkBiometricsType,
+    getTemporaryStore,
+    biometryType,
+    setSignInMethod,
+  ]);
 
   const handleDisableBiometrics = useCallback(async (): Promise<boolean> => {
     const success = await verifyBiometrics();
@@ -54,22 +74,21 @@ export const useBiometrics = () => {
 
   useEffect(() => {
     const checkIfBiometricsIsEnabled = async () => {
-      const isAvailable = await checkBiometricsAvailability();
+      const type = await checkBiometricsType();
       const hasPaswordSaved = await biometricDataStorage.checkIfExists(
         BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
       );
-      if (!isAvailable || !isBiometricsEnabled || !hasPaswordSaved) {
+      if (!type || !isBiometricsEnabled || !hasPaswordSaved) {
         setIsBiometricsEnabled(false);
         return;
       }
 
-      setIsBiometricsEnabled(
-        hasPaswordSaved && isBiometricsEnabled && isAvailable,
-      );
+      setIsBiometricsEnabled(hasPaswordSaved && isBiometricsEnabled && !!type);
+      setSignInMethod(getLoginType(type));
     };
     checkIfBiometricsIsEnabled();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- we don't want to re-run this effect when the biometrics are enabled or disabled
-  }, [checkBiometricsAvailability, setIsBiometricsEnabled]);
+  }, [checkBiometricsType, setIsBiometricsEnabled]);
 
   return {
     isBiometricsActive: !!(isBiometricsAvailable && isBiometricsEnabled),

@@ -1,28 +1,29 @@
 import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
+import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
+import {
+  LoginType,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
+import { toAsync } from "helpers/toAsync";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
-import { BIOMETRY_TYPE } from "react-native-keychain";
-
-enum BiometricsLoginType {
-  FACE_ID = "faceId",
-  FINGERPRINT = "fingerprint",
-  PASSWORD = "password",
-}
 
 interface InputPasswordTemplateProps {
   publicKey: string | null;
   error: string | null;
-  handleContinue: (password: string) => void;
+  handleContinue:
+    | ((password: string) => void)
+    | ((password: string) => Promise<unknown>);
   isLoading: boolean;
   handleLogout?: () => void;
   continueButtonText?: string;
@@ -30,8 +31,6 @@ interface InputPasswordTemplateProps {
   description?: string;
   showLogo?: boolean;
   insets?: BaseLayoutInsets;
-  signInMethod: BiometricsLoginType;
-  setSignInMethod: (method: BiometricsLoginType) => void;
 }
 
 const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
@@ -45,21 +44,18 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   description,
   insets,
   showLogo = true,
-  signInMethod,
-  setSignInMethod,
 }) => {
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
   const { themeColors } = useColors();
-  const { isBiometricsAvailable, biometryType } = useBiometrics();
+  const { signInMethod, verifyActionWithBiometrics } = useAuthenticationStore();
 
   const canContinue = useMemo(
     () =>
       (passwordValue.length >= PASSWORD_MIN_LENGTH &&
         passwordValue.length <= PASSWORD_MAX_LENGTH) ||
-      signInMethod === BiometricsLoginType.FACE_ID ||
-      signInMethod === BiometricsLoginType.FINGERPRINT,
+      signInMethod !== LoginType.PASSWORD,
     [passwordValue, signInMethod],
   );
 
@@ -67,40 +63,19 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
     setPasswordValue(value);
   }, []);
 
-  const fallbackButtonText: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
-    () => ({
-      [BIOMETRY_TYPE.FACE_ID]: t("lockScreen.useFaceIdInstead"),
-      [BIOMETRY_TYPE.FINGERPRINT]: t("lockScreen.useFingerprintInstead"),
-      [BIOMETRY_TYPE.FACE]: t("lockScreen.useFaceRecognitionInstead"),
-      [BIOMETRY_TYPE.TOUCH_ID]: t("lockScreen.useTouchIdInstead"),
-    }),
-    [t],
-  );
-  const handleFaceIdToggle = useCallback(() => {
-    setSignInMethod(
-      signInMethod === BiometricsLoginType.FACE_ID
-        ? BiometricsLoginType.PASSWORD
-        : BiometricsLoginType.FACE_ID,
-    );
-  }, [signInMethod, setSignInMethod]);
-
   const getButtonIcon = useCallback(() => {
-    if (signInMethod === BiometricsLoginType.PASSWORD) {
+    if (signInMethod === LoginType.PASSWORD) {
       return undefined;
     }
-    if (signInMethod === BiometricsLoginType.FACE_ID) {
+    if (signInMethod === LoginType.FACE) {
       return <Icon.FaceId color={themeColors.foreground.secondary} />;
     }
     return <Icon.Fingerprint01 color={themeColors.foreground.secondary} />;
   }, [signInMethod, themeColors]);
 
   const handleContinueWithFaceId = useCallback(() => {
-    if (signInMethod === BiometricsLoginType.PASSWORD) {
-      handleContinue(passwordValue);
-    } else {
-      handleContinue("");
-    }
-  }, [handleContinue, passwordValue, signInMethod]);
+    verifyActionWithBiometrics(toAsync(handleContinue));
+  }, [handleContinue, verifyActionWithBiometrics]);
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
@@ -122,7 +97,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             {description ?? t("lockScreen.description")}
           </Text>
           <View className="w-full gap-4 mt-8">
-            {signInMethod === BiometricsLoginType.PASSWORD && (
+            {signInMethod === LoginType.PASSWORD && (
               <Input
                 ref={inputRef}
                 isPassword
@@ -139,22 +114,14 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               tertiary
               lg
               onPress={handleContinueWithFaceId}
-              disabled={
-                !canContinue && signInMethod === BiometricsLoginType.PASSWORD
-              }
+              disabled={!canContinue && signInMethod === LoginType.PASSWORD}
               icon={getButtonIcon()}
               iconPosition={IconPosition.LEFT}
               isLoading={isLoading}
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}
             </Button>
-            {isBiometricsAvailable && (
-              <Button minimal sm onPress={handleFaceIdToggle}>
-                {biometryType && signInMethod === BiometricsLoginType.PASSWORD
-                  ? fallbackButtonText[biometryType]
-                  : t("lockScreen.enterPassword")}
-              </Button>
-            )}
+            <BiometricToggleButton size="sm" />
           </View>
         </View>
 

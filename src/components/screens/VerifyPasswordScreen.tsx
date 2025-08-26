@@ -2,28 +2,22 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import {
   MANAGE_WALLETS_ROUTES,
-  ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
+  ManageWalletsStackParamList,
 } from "config/routes";
-import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
-import useAppTranslation from "hooks/useAppTranslation";
 import {
-  FACE_ID_BIOMETRY_TYPES,
-  FINGERPRINT_BIOMETRY_TYPES,
-  useBiometrics,
-} from "hooks/useBiometrics";
+  useAuthenticationStore,
+  getActiveAccountPublicKey,
+  getLoginType,
+} from "ducks/auth";
+import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useEffect, useState } from "react";
 
 type VerifyPasswordScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
   typeof MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN
 >;
-
-enum BiometricsLoginType {
-  FACE_ID = "faceId",
-  FINGERPRINT = "fingerprint",
-  PASSWORD = "password",
-}
 
 const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
   navigation,
@@ -32,34 +26,12 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { t } = useAppTranslation();
-  const [signInMethod, setSignInMethod] = useState<BiometricsLoginType>(
-    BiometricsLoginType.PASSWORD,
-  );
+  const { setSignInMethod } = useAuthenticationStore();
   const { biometryType } = useBiometrics();
 
-  const handleSignInMethodChange = useCallback(
-    (method: BiometricsLoginType) => {
-      setSignInMethod(method);
-    },
-    [],
-  );
-
   useEffect(() => {
-    const checkBiometricsAvailability = () => {
-      if (!biometryType) {
-        setSignInMethod(BiometricsLoginType.PASSWORD);
-        return;
-      }
-      if (FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-        setSignInMethod(BiometricsLoginType.FACE_ID);
-      } else if (FINGERPRINT_BIOMETRY_TYPES.includes(biometryType)) {
-        setSignInMethod(BiometricsLoginType.FINGERPRINT);
-      } else {
-        setSignInMethod(BiometricsLoginType.PASSWORD);
-      }
-    };
-    checkBiometricsAvailability();
-  }, [biometryType]);
+    setSignInMethod(getLoginType(biometryType));
+  }, [biometryType, setSignInMethod]);
 
   useEffect(() => {
     clearError();
@@ -100,8 +72,6 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}
       insets={{ top: false, bottom: true }}
-      signInMethod={signInMethod}
-      setSignInMethod={handleSignInMethodChange}
     />
   );
 };

@@ -1,40 +1,20 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
+import { LoginType } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
-import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
 import {
-  FACE_ID_BIOMETRY_TYPES,
-  FINGERPRINT_BIOMETRY_TYPES,
-  useBiometrics,
-} from "hooks/useBiometrics";
+  useAuthenticationStore,
+  getLoginType,
+  getActiveAccountPublicKey,
+} from "ducks/auth";
+import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useEffect, useState } from "react";
-import { BIOMETRY_TYPE } from "react-native-keychain";
 
 type LockScreenProps = NativeStackScreenProps<
   RootStackParamList,
   typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
 >;
-
-enum BiometricsLoginType {
-  FACE_ID = "faceId",
-  FINGERPRINT = "fingerprint",
-  PASSWORD = "password",
-}
-
-const getBiometricsLoginType = (biometryType: BIOMETRY_TYPE | null) => {
-  if (!biometryType) {
-    return BiometricsLoginType.PASSWORD;
-  }
-
-  if (FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-    return BiometricsLoginType.FACE_ID;
-  }
-  if (FINGERPRINT_BIOMETRY_TYPES.includes(biometryType)) {
-    return BiometricsLoginType.FINGERPRINT;
-  }
-  return BiometricsLoginType.PASSWORD;
-};
 
 export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const {
@@ -45,16 +25,15 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     logout,
     clearError,
     signInWithBiometrics,
+    signInMethod,
+    setSignInMethod,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { biometryType } = useBiometrics();
-  const [signInMethod, setSignInMethod] = useState<BiometricsLoginType>(
-    getBiometricsLoginType(biometryType),
-  );
 
   useEffect(() => {
-    setSignInMethod(getBiometricsLoginType(biometryType));
-  }, [biometryType]);
+    setSignInMethod(getLoginType(biometryType));
+  }, [biometryType, setSignInMethod]);
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
@@ -106,13 +85,11 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
       error={error}
       isLoading={isSigningIn}
       handleContinue={
-        signInMethod === BiometricsLoginType.PASSWORD
+        signInMethod === LoginType.PASSWORD
           ? handleUnlock
           : handleUnlockWithBiometrics
       }
       handleLogout={() => logout(true)}
-      signInMethod={signInMethod}
-      setSignInMethod={setSignInMethod}
     />
   );
 };

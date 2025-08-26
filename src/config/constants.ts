@@ -2,6 +2,7 @@
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { t } from "i18next";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
@@ -256,3 +257,22 @@ export const BROWSER_CONSTANTS = {
   ANDROID_USER_AGENT:
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
 } as const;
+
+/**
+ * Biometric login types for authentication
+ */
+export enum LoginType {
+  FACE = "face",
+  FINGERPRINT = "fingerprint",
+  PASSWORD = "password",
+}
+
+export const FACE_ID_BIOMETRY_TYPES = [
+  BIOMETRY_TYPE.FACE_ID,
+  BIOMETRY_TYPE.FACE,
+];
+
+export const FINGERPRINT_BIOMETRY_TYPES = [
+  BIOMETRY_TYPE.FINGERPRINT,
+  BIOMETRY_TYPE.TOUCH_ID,
+];

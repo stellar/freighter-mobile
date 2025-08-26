@@ -4,12 +4,13 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { FACE_ID_BIOMETRY_TYPES } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo } from "react";
 import { Alert, View, Image } from "react-native";
@@ -43,9 +44,6 @@ export const BiometricsOnboardingScreen: React.FC<
   const enableBiometrics = useCallback(() => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
     const { password, mnemonicPhrase } = route.params;
-
-    console.log("password", password);
-    console.log("mnemonicPhrase", mnemonicPhrase);
 
     if (!mnemonicPhrase) {
       logger.error(

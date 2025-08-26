@@ -2,11 +2,12 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
+import { FACE_ID_BIOMETRY_TYPES } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import { FACE_ID_BIOMETRY_TYPES, useBiometrics } from "hooks/useBiometrics";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useCallback } from "react";
 import { View } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 
@@ -26,6 +27,14 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
     [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.title"),
     [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.title"),
   };
+
+  const getBiometryIcon = useCallback(() => {
+    if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+      return <Icon.FaceId color={themeColors.foreground.primary} />;
+    }
+    return <Icon.Fingerprint01 color={themeColors.foreground.primary} />;
+  }, [biometryType, themeColors]);
+
   const listItems = [
     {
       icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
@@ -41,11 +50,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   ];
   if (isBiometricsAvailable) {
     listItems.push({
-      icon: FACE_ID_BIOMETRY_TYPES.includes(biometryType!) ? (
-        <Icon.FaceId color={themeColors.foreground.primary} />
-      ) : (
-        <Icon.Fingerprint01 color={themeColors.foreground.primary} />
-      ),
+      icon: getBiometryIcon(),
       title: biometryTitle[biometryType!] ?? "",
       titleColor: themeColors.text.primary,
       onPress: () =>
