@@ -195,6 +195,14 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                       javaScriptEnabled
                       domStorageEnabled
                       startInLoadingState
+                      injectedJavaScript={`
+                        window.stellar = {
+                          provider: 'freighter',
+                          platform: 'mobile',
+                          version: '0.9.23'
+                        };
+                        true;
+                      `}
                       ref={(ref) => {
                         webViewRefs.current[tab.id] = ref;
                         if (isActive) {
