@@ -54,6 +54,8 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
       [BIOMETRY_TYPE.FINGERPRINT]: t("lockScreen.useFingerprintInstead"),
       [BIOMETRY_TYPE.FACE]: t("lockScreen.useFaceRecognitionInstead"),
       [BIOMETRY_TYPE.TOUCH_ID]: t("lockScreen.useTouchIdInstead"),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("lockScreen.useOpticIdInstead"),
+      [BIOMETRY_TYPE.IRIS]: t("lockScreen.useIrisInstead"),
     }),
     [t],
   );
@@ -97,7 +99,7 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
       <Button minimal size={size} onPress={handleToggle}>
         {biometryType && fallbackButtonText[biometryType]
           ? fallbackButtonText[biometryType]
-          : t("lockScreen.enterPassword")}
+          : t("lockScreen.enterPasswordInstead")}
       </Button>
     );
   }
@@ -105,7 +107,7 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
   // If currently using biometrics, show the password option
   return (
     <Button minimal size={size} onPress={handleToggle}>
-      {t("lockScreen.enterPassword")}
+      {t("lockScreen.enterPasswordInstead")}
     </Button>
   );
 };

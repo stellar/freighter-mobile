@@ -15,12 +15,24 @@ import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedback
 import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import React from "react";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 export const SettingsStackNavigator = () => {
   const { t } = useAppTranslation();
+  const { biometryType } = useBiometrics();
+
+  const biometryTitle: Record<BIOMETRY_TYPE, string> = {
+    [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
+    [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.title"),
+    [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.title"),
+    [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.title"),
+    [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.title"),
+    [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.title"),
+  };
   return (
     <SettingsStack.Navigator
       screenOptions={{
@@ -95,7 +107,7 @@ export const SettingsStackNavigator = () => {
         name={SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN}
         component={BiometricsSettingsScreen}
         options={{
-          headerTitle: t("securityScreen.faceId.title"),
+          headerTitle: biometryTitle[biometryType!],
         }}
       />
     </SettingsStack.Navigator>

@@ -216,7 +216,7 @@
     "useFingerprintInstead": "Usar Impressão Digital ao invés",
     "useFaceRecognitionInstead": "Usar Reconhecimento Facial ao invés",
     "useTouchIdInstead": "Usar Touch ID ao invés",
-    "enterPassword": "Usar senha ao invés"
+    "enterPasswordInstead": "Usar senha ao invés"
   },
   "onboarding": {
     "continue": "Continuar",

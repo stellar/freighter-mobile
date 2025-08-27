@@ -76,7 +76,7 @@ export const BiometricsOnboardingScreen: React.FC<
     }
   }, [route.params, setIsBiometricsEnabled, signUp]);
 
-  const promptTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const promptTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t(
         "biometricsOnboardingScreen.faceId.promptTitle",
@@ -90,11 +90,15 @@ export const BiometricsOnboardingScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "biometricsOnboardingScreen.faceBiometrics.promptTitle",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t(
+        "biometricsOnboardingScreen.opticId.promptTitle",
+      ),
+      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.promptTitle"),
     }),
     [t],
   );
 
-  const promptDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const promptDescription: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t(
         "biometricsOnboardingScreen.faceId.promptDescription",
@@ -107,6 +111,12 @@ export const BiometricsOnboardingScreen: React.FC<
       ),
       [BIOMETRY_TYPE.FACE]: t(
         "biometricsOnboardingScreen.faceBiometrics.promptDescription",
+      ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t(
+        "biometricsOnboardingScreen.opticId.promptDescription",
+      ),
+      [BIOMETRY_TYPE.IRIS]: t(
+        "biometricsOnboardingScreen.iris.promptDescription",
       ),
     }),
     [t],
@@ -232,7 +242,7 @@ export const BiometricsOnboardingScreen: React.FC<
     return <Icon.Fingerprint01 circle />;
   }, [biometryType]);
 
-  const biometryTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const biometryTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("biometricsOnboardingScreen.faceId.title"),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
@@ -242,11 +252,13 @@ export const BiometricsOnboardingScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "biometricsOnboardingScreen.faceBiometrics.title",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("biometricsOnboardingScreen.opticId.title"),
+      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.title"),
     }),
     [t],
   );
 
-  const biometryDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const biometryDescription: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t(
         "biometricsOnboardingScreen.faceId.description",
@@ -260,11 +272,15 @@ export const BiometricsOnboardingScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "biometricsOnboardingScreen.faceBiometrics.description",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t(
+        "biometricsOnboardingScreen.opticId.footerNoteText",
+      ),
+      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.footerNoteText"),
     }),
     [t],
   );
 
-  const footerNoteText: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const footerNoteText: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t(
         "biometricsOnboardingScreen.faceId.footerNoteText",
@@ -278,6 +294,10 @@ export const BiometricsOnboardingScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "biometricsOnboardingScreen.faceBiometrics.footerNoteText",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t(
+        "biometricsOnboardingScreen.opticId.footerNoteText",
+      ),
+      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.footerNoteText"),
     }),
     [t],
   );

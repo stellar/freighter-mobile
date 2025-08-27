@@ -43,7 +43,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
 import { DevSettings } from "react-native";
-import { BIOMETRY_TYPE } from "react-native-keychain";
+import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
 import { getAccount } from "services/stellar";
 import {
@@ -62,7 +62,9 @@ import { create } from "zustand";
 /**
  * Helper function to determine the biometric login type based on biometry type
  */
-export const getLoginType = (biometryType: BIOMETRY_TYPE | null): LoginType => {
+export const getLoginType = (
+  biometryType: Keychain.BIOMETRY_TYPE | null,
+): LoginType => {
   if (!biometryType) {
     return LoginType.PASSWORD;
   }
@@ -260,7 +262,7 @@ interface AuthActions {
   selectNetwork: (network: NETWORKS) => Promise<void>;
 
   verifyActionWithBiometrics: <T, P extends unknown[]>(
-    callback: (password4: string, ...args: P) => Promise<T>,
+    callback: (password: string, ...args: P) => Promise<T>,
     ...args: P
   ) => Promise<T>;
   // Active account actions
@@ -1636,11 +1638,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       }
     },
     verifyBiometrics: async () => {
+      const biometryType = await Keychain.getSupportedBiometryType();
+
+      if (!biometryType) {
+        throw new Error("No biometry type found");
+      }
+
+      const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+        [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+          "authStore.fingerprint.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FACE]: t(
+          "authStore.faceBiometrics.signInTitle",
+        ),
+      };
+
       const item = await biometricDataStorage.getItem(
         BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
         {
           cancel: t("common.cancel"),
-          title: t("authStore.faceId.disableTitle"),
+          title: title[biometryType],
         },
       );
       if (!item) {
@@ -1723,12 +1744,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         if (!isBiometricsEnabled) {
           return await callback("password", ...args);
         }
+        const biometryType = await Keychain.getSupportedBiometryType();
+
+        if (!biometryType) {
+          throw new Error("No biometry type found");
+        }
+
+        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+            "authStore.fingerprint.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.FACE]: t(
+            "authStore.faceBiometrics.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        };
 
         // Get the stored password from biometric storage
         const storedData = await biometricDataStorage.getItem(
           BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
           {
-            title: t("authStore.faceId.verifyTitle"),
+            title: title[biometryType],
             cancel: t("common.cancel"),
           },
         );
@@ -1761,11 +1800,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      */
     signInWithBiometrics: async () => {
       try {
+        const biometryType = await Keychain.getSupportedBiometryType();
+
+        if (!biometryType) {
+          throw new Error("No biometry type found");
+        }
+
+        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+            "authStore.fingerprint.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FACE]: t(
+            "authStore.faceBiometrics.signInTitle",
+          ),
+        };
+
         // Get the stored password from the secure keychain
         const storedData = await biometricDataStorage.getItem(
           BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
           {
-            title: t("authStore.faceId.signInTitle"),
+            title: title[biometryType],
             cancel: t("common.cancel"),
           },
         );

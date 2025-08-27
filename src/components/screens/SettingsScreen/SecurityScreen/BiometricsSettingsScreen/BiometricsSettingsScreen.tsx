@@ -51,7 +51,7 @@ const BiometricsSettingsScreen: React.FC<
     }
   }, [shouldTriggerBiometricsDisable, disableBiometrics]);
 
-  const disableAlertTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const disableAlertTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.disableAlertTitle"),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
@@ -61,11 +61,13 @@ const BiometricsSettingsScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "securityScreen.faceBiometrics.disableAlertTitle",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.disableAlertTitle"),
+      [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.disableAlertTitle"),
     }),
     [t],
   );
 
-  const disableAlertMessage: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const disableAlertMessage: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.disableAlertMessage"),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
@@ -75,26 +77,32 @@ const BiometricsSettingsScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t(
         "securityScreen.faceBiometrics.disableAlertMessage",
       ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.disableAlertMessage"),
+      [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.disableAlertMessage"),
     }),
     [t],
   );
 
-  const biometryToggleTitle: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const biometryToggleTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.toggleTitle"),
       [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.toggleTitle"),
       [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.toggleTitle"),
       [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.toggleTitle"),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.toggleTitle"),
+      [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.toggleTitle"),
     }),
     [t],
   );
 
-  const biometryDescription: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
+  const biometryDescription: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.description"),
       [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.description"),
       [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.description"),
       [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.description"),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.description"),
+      [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.description"),
     }),
     [t],
   );
@@ -150,16 +158,17 @@ const BiometricsSettingsScreen: React.FC<
       <View className="flex gap-6 mt-4">
         <List items={biometricsItems} />
       </View>
-
-      <ConfirmationModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={disableAlertTitle[biometryType!] ?? ""}
-        message={disableAlertMessage[biometryType!] ?? ""}
-        confirmText={t("common.yes")}
-        cancelText={t("common.cancel")}
-        onConfirm={() => setShouldTriggerBiometricsDisable(true)}
-      />
+      <View>
+        <ConfirmationModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          title={disableAlertTitle[biometryType!] ?? ""}
+          message={disableAlertMessage[biometryType!] ?? ""}
+          confirmText={t("common.yes")}
+          cancelText={t("common.cancel")}
+          onConfirm={() => setShouldTriggerBiometricsDisable(true)}
+        />
+      </View>
     </BaseLayout>
   );
 };

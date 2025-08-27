@@ -21,11 +21,13 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { themeColors } = useColors();
   const { isBiometricsAvailable, biometryType } = useBiometrics();
 
-  const biometryTitle: Partial<Record<BIOMETRY_TYPE, string>> = {
+  const biometryTitle: Record<BIOMETRY_TYPE, string> = {
     [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
     [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.title"),
     [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.title"),
     [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.title"),
+    [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.title"),
+    [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.title"),
   };
 
   const getBiometryIcon = useCallback(() => {
