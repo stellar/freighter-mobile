@@ -74,10 +74,10 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
 
   const handleContinueWithFaceId = useCallback(() => {
     verifyActionWithBiometrics((password) => {
-      handleContinue(password);
+      handleContinue(password ?? passwordValue);
       return Promise.resolve();
     });
-  }, [handleContinue, verifyActionWithBiometrics]);
+  }, [handleContinue, verifyActionWithBiometrics, passwordValue]);
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>

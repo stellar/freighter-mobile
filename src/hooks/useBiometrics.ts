@@ -1,4 +1,4 @@
-import { BIOMETRIC_STORAGE_KEYS } from "config/constants";
+import { BIOMETRIC_STORAGE_KEYS, LoginType } from "config/constants";
 import { getLoginType, useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
 import { useCallback, useEffect, useState } from "react";
@@ -138,9 +138,10 @@ export const useBiometrics = () => {
     const success = await verifyBiometrics();
     if (success) {
       setIsBiometricsEnabled(false);
+      setSignInMethod(LoginType.PASSWORD);
     }
     return success;
-  }, [verifyBiometrics, setIsBiometricsEnabled]);
+  }, [verifyBiometrics, setIsBiometricsEnabled, setSignInMethod]);
 
   /**
    * Effect to initialize and validate biometrics state

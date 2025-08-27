@@ -52,7 +52,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
       setError(undefined);
 
       // Use biometrics to verify and get the password, then execute the recovery phrase logic
-      await verifyActionWithBiometrics(showRecoveryPhraseAction);
+      await verifyActionWithBiometrics(showRecoveryPhraseAction, localPassword);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

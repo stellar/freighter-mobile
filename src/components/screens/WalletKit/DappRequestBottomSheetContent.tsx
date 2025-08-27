@@ -10,7 +10,7 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { ActiveAccount } from "ducks/auth";
+import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenAmount } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
@@ -80,6 +80,7 @@ const DappRequestBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
     signTransactionDetails,
@@ -166,7 +167,12 @@ const DappRequestBottomSheetContent: React.FC<
           {cancelButton}
           <TextButton
             text={t("dappRequestBottomSheetContent.confirmAnyway")}
-            onPress={onConfirm}
+            onPress={() => {
+              verifyActionWithBiometrics(async () => {
+                onConfirm?.();
+                return Promise.resolve();
+              });
+            }}
             isLoading={isSigning}
             disabled={isSigning}
             variant={isMalicious ? "error" : "secondary"}
@@ -183,7 +189,12 @@ const DappRequestBottomSheetContent: React.FC<
             tertiary
             xl
             isFullWidth
-            onPress={onConfirm}
+            onPress={() => {
+              verifyActionWithBiometrics(async () => {
+                onConfirm?.();
+                return Promise.resolve();
+              });
+            }}
             isLoading={isSigning || !!isValidatingMemo}
             disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
           >

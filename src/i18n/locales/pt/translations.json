@@ -197,6 +197,20 @@
       "promptTitle": "Habilitar Reconhecimento Facial?",
       "promptDescription": "Use Reconhecimento Facial para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "opticId": {
+      "title": "Habilitar Optic ID",
+      "description": "Adicione outro nível de segurança ao exigir Optic ID para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Optic ID?",
+      "promptDescription": "Use Optic ID para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "iris": {
+      "title": "Habilitar Iris",
+      "description": "Adicione outro nível de segurança ao exigir Iris para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Iris?",
+      "promptDescription": "Use Iris para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     }
   },
 
@@ -216,6 +230,8 @@
     "useFingerprintInstead": "Usar Impressão Digital ao invés",
     "useFaceRecognitionInstead": "Usar Reconhecimento Facial ao invés",
     "useTouchIdInstead": "Usar Touch ID ao invés",
+    "useOpticIdInstead": "Usar Optic ID ao invés",
+    "useIrisInstead": "Usar Iris ao invés",
     "enterPasswordInstead": "Usar senha ao invés"
   },
   "onboarding": {
@@ -798,6 +814,20 @@
       "toggleTitle": "Habilitar Reconhecimento Facial",
       "disableAlertTitle": "Desabilitar Reconhecimento Facial?",
       "disableAlertMessage": "Tem certeza que deseja desabilitar Reconhecimento Facial?"
+    },
+    "opticId": {
+      "title": "Autenticação Optic ID",
+      "description": "Habilite a autenticação Optic ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Optic ID",
+      "disableAlertTitle": "Desabilitar Optic ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Optic ID?"
+    },
+    "iris": {
+      "title": "Autenticação Iris",
+      "description": "Habilite a autenticação Iris para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Iris",
+      "disableAlertTitle": "Desabilitar Iris?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?"
     }
   },
   "showRecoveryPhraseScreen": {

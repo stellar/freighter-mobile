@@ -263,6 +263,7 @@ interface AuthActions {
 
   verifyActionWithBiometrics: <T, P extends unknown[]>(
     callback: (password: string, ...args: P) => Promise<T>,
+    password?: string,
     ...args: P
   ) => Promise<T>;
   // Active account actions
@@ -272,7 +273,6 @@ interface AuthActions {
   navigateToLockScreen: () => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
   verifyBiometrics: () => Promise<boolean>;
-  signInWithBiometrics: () => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -1733,16 +1733,19 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      */
     verifyActionWithBiometrics: async <T, P extends unknown[]>(
       callback: (password: string, ...args: P) => Promise<T>,
+      password?: string,
       ...args: P
     ): Promise<T> => {
       try {
         // Check if biometrics is enabled
         const { isBiometricsEnabled } = usePreferencesStore.getState();
 
+        const { signInMethod } = get();
+
         // If biometrics is not enabled, call the callback directly with a placeholder password
         // This allows the function to work even when biometrics is disabled
-        if (!isBiometricsEnabled) {
-          return await callback("password", ...args);
+        if (!isBiometricsEnabled && signInMethod === LoginType.PASSWORD) {
+          return await callback(password!, ...args);
         }
         const biometryType = await Keychain.getSupportedBiometryType();
 
@@ -1784,63 +1787,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         logger.error(
           "verifyActionWithBiometrics",
           "Biometric authentication failed",
-          error,
-        );
-        throw error;
-      }
-    },
-
-    /**
-     * Signs in using Face ID authentication
-     *
-     * Retrieves the stored password from the secure keychain after successful Face ID verification
-     * and then calls the regular signIn function with that password.
-     *
-     * @returns {Promise<void>}
-     */
-    signInWithBiometrics: async () => {
-      try {
-        const biometryType = await Keychain.getSupportedBiometryType();
-
-        if (!biometryType) {
-          throw new Error("No biometry type found");
-        }
-
-        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
-          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
-            "authStore.fingerprint.signInTitle",
-          ),
-          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.FACE]: t(
-            "authStore.faceBiometrics.signInTitle",
-          ),
-        };
-
-        // Get the stored password from the secure keychain
-        const storedData = await biometricDataStorage.getItem(
-          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-          {
-            title: title[biometryType],
-            cancel: t("common.cancel"),
-          },
-        );
-
-        if (!storedData) {
-          throw new Error(
-            "No stored password found for Face ID authentication",
-          );
-        }
-
-        // Call the regular signIn function with the retrieved password
-        await get().signIn({ password: storedData.password });
-        logger.info("signInWithFaceId", "Successfully signed in using Face ID");
-      } catch (error) {
-        logger.error(
-          "signInWithFaceId",
-          "Face ID authentication failed",
           error,
         );
         throw error;

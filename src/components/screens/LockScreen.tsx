@@ -1,6 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
-import { LoginType } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import {
@@ -24,16 +23,16 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     authStatus,
     logout,
     clearError,
-    signInWithBiometrics,
-    signInMethod,
     setSignInMethod,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
-  const { biometryType } = useBiometrics();
+  const { biometryType, isBiometricsEnabled } = useBiometrics();
 
   useEffect(() => {
-    setSignInMethod(getLoginType(biometryType));
-  }, [biometryType, setSignInMethod]);
+    if (isBiometricsEnabled) {
+      setSignInMethod(getLoginType(biometryType));
+    }
+  }, [biometryType, setSignInMethod, isBiometricsEnabled]);
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
@@ -75,20 +74,12 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     [signIn, isSigningIn],
   );
 
-  const handleUnlockWithBiometrics = useCallback(async () => {
-    await signInWithBiometrics();
-  }, [signInWithBiometrics]);
-
   return (
     <InputPasswordTemplate
       publicKey={publicKey}
       error={error}
       isLoading={isSigningIn}
-      handleContinue={
-        signInMethod === LoginType.PASSWORD
-          ? handleUnlock
-          : handleUnlockWithBiometrics
-      }
+      handleContinue={handleUnlock}
       handleLogout={() => logout(true)}
     />
   );
