@@ -195,6 +195,20 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                       javaScriptEnabled
                       domStorageEnabled
                       startInLoadingState
+                      // NOTE: The window.stellar object is used by the Stellar Wallets kit to detect
+                      // when the webview is being opened from mobile instead of desktop so it navigates
+                      // users straight to the Wallet Connect modal instead of displaying extension options.
+                      injectedJavaScript={`
+                        window.stellar = {
+                          provider: 'freighter',
+                          platform: 'mobile',
+                          version: '0.9.23'
+                        };
+                      `}
+                      onMessage={() => {
+                        // It seems the onMessage handler is required for the window.stellar
+                        // object to be properly injected.
+                      }}
                       ref={(ref) => {
                         webViewRefs.current[tab.id] = ref;
                         if (isActive) {
