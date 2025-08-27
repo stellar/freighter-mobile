@@ -436,6 +436,7 @@ import Eye from "assets/icons/eye.svg";
 import FaceContent from "assets/icons/face-content.svg";
 import FaceFrown from "assets/icons/face-frown.svg";
 import FaceHappy from "assets/icons/face-happy.svg";
+import FaceId01 from "assets/icons/face-id-01.svg";
 import FaceIdSquare from "assets/icons/face-id-square.svg";
 import FaceId from "assets/icons/face-id.svg";
 import FaceNeutral from "assets/icons/face-neutral.svg";
@@ -1619,6 +1620,7 @@ export const Icons = {
   FaceContent,
   FaceFrown,
   FaceHappy,
+  FaceId01,
   FaceIdSquare,
   FaceId,
   FaceNeutral,

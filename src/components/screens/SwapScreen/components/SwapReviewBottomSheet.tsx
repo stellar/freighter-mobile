@@ -7,7 +7,7 @@ import {
   calculateMinimumReceived,
 } from "components/screens/SwapScreen/helpers";
 import Avatar from "components/sds/Avatar";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
@@ -20,6 +20,7 @@ import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import { useBiometrics } from "hooks/useBiometrics";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -40,6 +41,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const { network, verifyActionWithBiometrics } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
+  const { biometricButtonIcon } = useBiometrics();
 
   const {
     sourceAmount,
@@ -300,6 +302,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             tertiary
             xl
             disabled={!transactionXDR || isBuilding}
+            icon={biometricButtonIcon}
+            iconPosition={IconPosition.LEFT}
           >
             {t("common.confirm")}
           </Button>

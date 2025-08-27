@@ -3,7 +3,6 @@ import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
 import { Button, IconPosition } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import {
@@ -13,7 +12,7 @@ import {
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
+import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
@@ -47,8 +46,8 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const { themeColors } = useColors();
   const { signInMethod, verifyActionWithBiometrics } = useAuthenticationStore();
+  const { biometricButtonIcon } = useBiometrics();
 
   const canContinue = useMemo(
     () =>
@@ -61,16 +60,6 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const handlePasswordChange = useCallback((value: string) => {
     setPasswordValue(value);
   }, []);
-
-  const getButtonIcon = useCallback(() => {
-    if (signInMethod === LoginType.PASSWORD) {
-      return undefined;
-    }
-    if (signInMethod === LoginType.FACE) {
-      return <Icon.FaceId color={themeColors.foreground.secondary} />;
-    }
-    return <Icon.Fingerprint01 color={themeColors.foreground.secondary} />;
-  }, [signInMethod, themeColors]);
 
   const handleContinueWithFaceId = useCallback(() => {
     verifyActionWithBiometrics((password) => {
@@ -117,7 +106,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               lg
               onPress={handleContinueWithFaceId}
               disabled={!canContinue && signInMethod === LoginType.PASSWORD}
-              icon={getButtonIcon()}
+              icon={biometricButtonIcon}
               iconPosition={IconPosition.LEFT}
               isLoading={isLoading}
             >

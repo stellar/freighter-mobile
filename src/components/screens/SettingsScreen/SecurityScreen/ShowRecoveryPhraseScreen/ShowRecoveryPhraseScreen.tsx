@@ -9,8 +9,9 @@ import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
 
 type ShowRecoveryPhraseScreenProps = NativeStackScreenProps<
@@ -32,6 +33,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { verifyActionWithBiometrics, getKeyFromKeyManager, signInMethod } =
     useAuthenticationStore();
+  const { biometricButtonIcon } = useBiometrics();
 
   const showRecoveryPhraseAction = async (password: string) => {
     const key = await getKeyFromKeyManager(password ?? localPassword);
@@ -63,16 +65,6 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
       setIsLoading(false);
     }
   };
-
-  const getIcon = useCallback(() => {
-    if (signInMethod === LoginType.PASSWORD) {
-      return undefined;
-    }
-    if (signInMethod === LoginType.FACE) {
-      return <Icon.FaceId color={themeColors.foreground.primary} />;
-    }
-    return <Icon.Fingerprint01 color={themeColors.foreground.primary} />;
-  }, [signInMethod, themeColors]);
 
   return (
     <BaseLayout
@@ -155,7 +147,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
             onPress={handleShowRecoveryPhrase}
             testID="show-recovery-phrase-button"
             isLoading={isLoading}
-            icon={getIcon()}
+            icon={biometricButtonIcon}
             iconPosition={IconPosition.LEFT}
           >
             {t("showRecoveryPhraseScreen.showPhrase")}

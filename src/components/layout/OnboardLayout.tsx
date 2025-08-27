@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
@@ -25,6 +25,8 @@ interface OnboardLayoutProps {
   isLoading?: boolean;
   secondaryActionButtonText?: string;
   onPressSecondaryActionButton?: () => void | Promise<void>;
+  defaultActionButtonIcon?: React.ReactNode;
+  defaultActionButtonIconPosition?: IconPosition;
 }
 
 interface StyledProps {
@@ -69,6 +71,8 @@ interface DefaultFooterProps {
   hasClipboardButton?: boolean;
   onPressClipboardButton?: () => Promise<void>;
   isLoading?: boolean;
+  defaultActionButtonIcon?: React.ReactNode;
+  defaultActionButtonIconPosition?: IconPosition;
 }
 
 /**
@@ -89,6 +93,8 @@ interface DefaultFooterProps {
  * @param {() => void} [props.onPressSecondaryActionButton] - Optional callback for the secondary action button press.
  * @param {boolean} [props.hasClipboardButton] - Flag to display a clipboard button in the footer.
  * @param {() => void} [props.onPressClipboardButton] - Callback when the clipboard button is pressed.
+ * @param {React.ReactNode} [props.defaultActionButtonIcon] - Optional icon for the action button.
+ * @param {IconPosition} [props.defaultActionButtonIconPosition] - Optional position for the action button icon.
  */
 const DefaultFooter: React.FC<DefaultFooterProps> = ({
   onPressDefaultActionButton,
@@ -99,6 +105,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
   hasClipboardButton = false,
   onPressClipboardButton,
   isLoading,
+  defaultActionButtonIcon,
+  defaultActionButtonIconPosition,
 }) => (
   <StyledFooterButtonContainer>
     {hasClipboardButton && (
@@ -120,6 +128,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
       isLoading={isLoading}
       onPress={onPressDefaultActionButton}
       disabled={isDefaultActionButtonDisabled}
+      icon={defaultActionButtonIcon}
+      iconPosition={defaultActionButtonIconPosition}
     >
       {defaultActionButtonText}
     </Button>
@@ -181,6 +191,8 @@ export const OnboardLayout = ({
   isLoading,
   secondaryActionButtonText,
   onPressSecondaryActionButton,
+  defaultActionButtonIcon,
+  defaultActionButtonIconPosition,
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
 
@@ -208,6 +220,8 @@ export const OnboardLayout = ({
               hasClipboardButton={hasClipboardButton}
               onPressClipboardButton={onPressClipboardButton}
               isLoading={isLoading}
+              defaultActionButtonIcon={defaultActionButtonIcon}
+              defaultActionButtonIconPosition={defaultActionButtonIconPosition}
             />
           )}
         </FooterContainer>

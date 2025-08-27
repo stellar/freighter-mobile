@@ -1,7 +1,9 @@
+import Icon from "components/sds/Icon";
 import { BIOMETRIC_STORAGE_KEYS, LoginType } from "config/constants";
 import { getLoginType, useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
-import { useCallback, useEffect, useState } from "react";
+import useColors from "hooks/useColors";
+import React, { useCallback, useEffect, useState } from "react";
 import * as Keychain from "react-native-keychain";
 import { biometricDataStorage } from "services/storage/storageFactory";
 
@@ -51,6 +53,8 @@ export const useBiometrics = () => {
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
   const { verifyBiometrics, getTemporaryStore, setSignInMethod } =
     useAuthenticationStore();
+  const { signInMethod } = useAuthenticationStore();
+  const { themeColors } = useColors();
 
   /**
    * Checks and sets the supported biometry type on the device
@@ -143,6 +147,16 @@ export const useBiometrics = () => {
     return success;
   }, [verifyBiometrics, setIsBiometricsEnabled, setSignInMethod]);
 
+  const getButtonIcon = useCallback(() => {
+    if (signInMethod === LoginType.PASSWORD) {
+      return undefined;
+    }
+    if (signInMethod === LoginType.FACE) {
+      return <Icon.FaceId color={themeColors.foreground.secondary} />;
+    }
+    return <Icon.Fingerprint01 color={themeColors.foreground.secondary} />;
+  }, [signInMethod, themeColors]);
+
   /**
    * Effect to initialize and validate biometrics state
    *
@@ -182,5 +196,6 @@ export const useBiometrics = () => {
     isBiometricsEnabled,
     enableBiometrics: handleEnableBiometrics,
     disableBiometrics: handleDisableBiometrics,
+    biometricButtonIcon: getButtonIcon(),
   };
 };

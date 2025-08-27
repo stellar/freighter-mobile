@@ -5,7 +5,7 @@ import { SignTransactionDetailsInterface } from "components/screens/SignTransact
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
@@ -15,6 +15,7 @@ import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenAmount } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React, { useMemo } from "react";
@@ -81,6 +82,7 @@ const DappRequestBottomSheetContent: React.FC<
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { verifyActionWithBiometrics } = useAuthenticationStore();
+  const { biometricButtonIcon } = useBiometrics();
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
     signTransactionDetails,
@@ -189,6 +191,8 @@ const DappRequestBottomSheetContent: React.FC<
             tertiary
             xl
             isFullWidth
+            icon={biometricButtonIcon}
+            iconPosition={IconPosition.LEFT}
             onPress={() => {
               verifyActionWithBiometrics(async () => {
                 onConfirm?.();
