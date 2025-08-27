@@ -189,25 +189,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   };
 
-  const getDisableConfirmButtonConditions = () => {
-    if (isRequiredMemoMissing) {
-      return true;
-    }
-
-    if (isValidatingMemo) {
-      return true;
-    }
-
-    if (isBuilding) {
-      return true;
-    }
-
-    if (!transactionXDR) {
-      return true;
-    }
-
-    return false;
-  };
+  const isLoading = isValidatingMemo || isBuilding;
+  const isDisabled = isRequiredMemoMissing || !transactionXDR || isLoading;
 
   /**
    * Renders the confirm button with different states based on memo validation
@@ -228,12 +211,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <View className="flex-1">
-        <Button
-          onPress={onConfirm}
-          tertiary
-          xl
-          disabled={getDisableConfirmButtonConditions()}
-        >
+        <Button onPress={onConfirm} tertiary xl disabled={isDisabled}>
           {getButtonText()}
         </Button>
       </View>
@@ -252,7 +230,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           xl
           isFullWidth
           onPress={onCancel}
-          disabled={getDisableConfirmButtonConditions()}
+          disabled={isDisabled}
         >
           {t("common.cancel")}
         </Button>
@@ -266,8 +244,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           <TextButton
             text={t("transactionAmountScreen.confirmAnyway")}
             onPress={onConfirm}
-            isLoading={getDisableConfirmButtonConditions()}
-            disabled={getDisableConfirmButtonConditions()}
+            isLoading={isLoading}
+            disabled={isDisabled}
             variant={isMalicious ? "error" : "secondary"}
           />
         </>
