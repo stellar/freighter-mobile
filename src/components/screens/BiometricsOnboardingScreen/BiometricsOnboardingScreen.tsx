@@ -16,15 +16,7 @@ import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useState } from "react";
 import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
-import {
-  Svg,
-  Defs,
-  Rect,
-  LinearGradient,
-  Stop,
-  Path,
-  G,
-} from "react-native-svg";
+import { Svg, Defs, Rect, LinearGradient, Stop, Path } from "react-native-svg";
 import { analytics } from "services/analytics";
 
 type BiometricsOnboardingScreenProps = NativeStackScreenProps<
@@ -193,10 +185,13 @@ export const BiometricsOnboardingScreen: React.FC<
           rx="16"
           fill="rgba(255, 255, 255, 0.24)"
         />
-        <G>
-          <Icon.Fingerprint05 color={themeColors.white} size={pxValue(104)} />
-        </G>
       </Svg>
+      <View
+        className="absolute inset-0"
+        style={{ marginLeft: pxValue(4), marginTop: pxValue(4) }}
+      >
+        <Icon.Fingerprint05 color={themeColors.white} size={pxValue(104)} />
+      </View>
     </View>
   );
 
