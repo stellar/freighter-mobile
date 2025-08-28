@@ -111,6 +111,17 @@ export const BiometricsOnboardingScreen: React.FC<
     height: pxValue(104),
   };
 
+  const iPhoneFrameDimensions = {
+    width: pxValue(354),
+    height: pxValue(300),
+  };
+
+  const iPhoneFrameSvgProperties = {
+    width: pxValue(354),
+    height: pxValue(300),
+    viewBox: `0 0 ${Math.round(pxValue(354))} ${Math.round(pxValue(300))}`,
+  };
+
   const BlurredBackgroundFaceIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0"
@@ -119,7 +130,7 @@ export const BiometricsOnboardingScreen: React.FC<
       <View className="absolute inset-0">
         <BlurView
           blurType="light"
-          blurAmount={pxValue(6)}
+          blurAmount={6}
           reducedTransparencyFallbackColor={themeColors.white}
           style={{
             position: "absolute",
@@ -127,7 +138,7 @@ export const BiometricsOnboardingScreen: React.FC<
             left: 0,
             bottom: 0,
             right: 0,
-            borderRadius: pxValue(16),
+            borderRadius: Math.round(pxValue(16)),
             zIndex: 1,
           }}
         />
@@ -140,17 +151,6 @@ export const BiometricsOnboardingScreen: React.FC<
       </View>
     </View>
   );
-
-  const iPhoneFrameDimensions = {
-    width: pxValue(354),
-    height: pxValue(300),
-  };
-
-  const iPhoneFrameSvgProperties = {
-    width: pxValue(354),
-    height: pxValue(300),
-    viewBox: `0 0 ${pxValue(354)} ${pxValue(300)}`,
-  };
 
   const BlurredBackgroundFingerprintIcon = (
     <View
@@ -165,16 +165,13 @@ export const BiometricsOnboardingScreen: React.FC<
           bottom: 0,
           right: 0,
           zIndex: 1,
-          borderRadius: pxValue(16),
+          borderRadius: Math.round(pxValue(16)),
         }}
         blurType="light"
-        blurAmount={pxValue(14)}
+        blurAmount={6}
         reducedTransparencyFallbackColor={themeColors.white}
       />
-      <View
-        className="absolute inset-0 items-center justify-center"
-        style={{ zIndex: 2 }}
-      >
+      <View className="absolute inset-0 items-center justify-center z-[2]">
         <Icon.TouchId color={themeColors.white} size={pxValue(72)} />
       </View>
     </View>
