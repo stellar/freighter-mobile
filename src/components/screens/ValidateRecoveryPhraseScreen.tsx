@@ -1,10 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { WordBubble } from "components/WordBubble";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { WordBubble } from "components/sds/WordBubble";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { VALIDATION_WORDS_PER_ROW } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
