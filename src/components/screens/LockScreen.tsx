@@ -2,12 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
-import {
-  useAuthenticationStore,
-  getLoginType,
-  getActiveAccountPublicKey,
-} from "ducks/auth";
-import { useBiometrics } from "hooks/useBiometrics";
+import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
 import React, { useCallback, useEffect, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -23,16 +18,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     authStatus,
     logout,
     clearError,
-    setSignInMethod,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
-  const { biometryType, isBiometricsEnabled } = useBiometrics();
-
-  useEffect(() => {
-    if (isBiometricsEnabled) {
-      setSignInMethod(getLoginType(biometryType));
-    }
-  }, [biometryType, setSignInMethod, isBiometricsEnabled]);
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {

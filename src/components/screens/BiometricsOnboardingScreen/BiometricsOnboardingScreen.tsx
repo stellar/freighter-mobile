@@ -1,3 +1,4 @@
+import { BlurView } from "@react-native-community/blur";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import iPhoneFrameImage from "assets/iphone-frame.png";
 import { OnboardLayout } from "components/layout/OnboardLayout";
@@ -110,26 +111,32 @@ export const BiometricsOnboardingScreen: React.FC<
     height: pxValue(104),
   };
 
-  const iconSize = pxValue(80);
-
-  const iconSvgProperties = {
-    ...iconContainerDimensions,
-    viewBox: `0 0 ${pxValue(104)} ${pxValue(104)}`,
-    rx: pxValue(16),
-    fill: "rgba(255, 255, 255, 0.28)",
-  };
-
-  const BlurredBackgroundBiometricsIcon = (
+  const BlurredBackgroundFaceIcon = (
     <View
-      className="items-center justify-center mt-4 flex-grow-0 relative z-10"
+      className="items-center justify-center mt-4 flex-grow-0"
       style={iconContainerDimensions}
     >
-      <Svg {...iconSvgProperties}>
-        {/* Blurred background with rounded corners */}
-        <Rect {...iconSvgProperties} />
-      </Svg>
-      <View className="absolute inset-0 items-center justify-center">
-        <Icon.FaceId01 color={themeColors.white} size={iconSize} />
+      <View className="absolute inset-0">
+        <BlurView
+          blurType="light"
+          blurAmount={pxValue(6)}
+          reducedTransparencyFallbackColor={themeColors.white}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            right: 0,
+            borderRadius: pxValue(16),
+            zIndex: 1,
+          }}
+        />
+        <View
+          className="absolute inset-0 items-center justify-center"
+          style={{ zIndex: 2 }}
+        >
+          <Icon.FaceId01 color={themeColors.white} size={pxValue(80)} />
+        </View>
       </View>
     </View>
   );
@@ -150,12 +157,25 @@ export const BiometricsOnboardingScreen: React.FC<
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
       style={iconContainerDimensions}
     >
-      <Svg {...iconSvgProperties}>
-        {/* Blurred background with rounded corners */}
-        <Rect {...iconSvgProperties} />
-      </Svg>
-      <View className="absolute inset-0 items-center justify-center">
-        <Icon.Fingerprint05 color={themeColors.white} size={iconSize} />
+      <BlurView
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+          zIndex: 1,
+          borderRadius: pxValue(16),
+        }}
+        blurType="light"
+        blurAmount={pxValue(14)}
+        reducedTransparencyFallbackColor={themeColors.white}
+      />
+      <View
+        className="absolute inset-0 items-center justify-center"
+        style={{ zIndex: 2 }}
+      >
+        <Icon.TouchId color={themeColors.white} size={pxValue(72)} />
       </View>
     </View>
   );
@@ -285,7 +305,7 @@ export const BiometricsOnboardingScreen: React.FC<
       </View>
       <View className="items-center">
         {biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)
-          ? BlurredBackgroundBiometricsIcon
+          ? BlurredBackgroundFaceIcon
           : BlurredBackgroundFingerprintIcon}
         {iPhoneFrame}
       </View>

@@ -28,7 +28,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const [isLoading, setIsLoading] = useState(false);
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { isBiometricsAvailable } = useBiometrics();
+  const { isBiometricsSensorAvailable } = useBiometrics();
   const { signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
 
@@ -42,7 +42,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   );
 
   const handleFinishSignUp = useCallback(() => {
-    if (isBiometricsAvailable) {
+    if (isBiometricsSensorAvailable) {
       // Navigate to biometrics onboarding screen
       navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
         password,
@@ -59,7 +59,13 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     }
     setIsLoading(false);
-  }, [password, recoveryPhrase, signUp, isBiometricsAvailable, navigation]);
+  }, [
+    password,
+    recoveryPhrase,
+    signUp,
+    isBiometricsSensorAvailable,
+    navigation,
+  ]);
 
   const handleContinue = useCallback(() => {
     if (!canContinue) {

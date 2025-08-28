@@ -18,9 +18,10 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { importWallet, error, clearError } = useAuthenticationStore();
+  const { importWallet, error, clearError, verifyMnemonicPhrase } =
+    useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
-  const { isBiometricsAvailable } = useBiometrics();
+  const { isBiometricsSensorAvailable } = useBiometrics();
   const { t } = useAppTranslation();
   const [isImporting, setIsImporting] = useState(false);
 
@@ -35,7 +36,12 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
-        if (isBiometricsAvailable) {
+        if (isBiometricsSensorAvailable) {
+          const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
+          if (!isValidMnemonicPhrase) {
+            setIsImporting(false);
+            return;
+          }
           // Navigate to biometrics onboarding screen
           navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
             password,
@@ -52,10 +58,11 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       })();
     }, 0);
   }, [
-    isBiometricsAvailable,
+    isBiometricsSensorAvailable,
     navigation,
     password,
     recoveryPhrase,
+    verifyMnemonicPhrase,
     importWallet,
   ]);
 

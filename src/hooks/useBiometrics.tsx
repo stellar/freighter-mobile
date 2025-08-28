@@ -22,7 +22,7 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * Basic usage:
  * ```tsx
  * const {
- *   isBiometricsAvailable,
+ *   isBiometricsEnrolled,
  *   isBiometricsEnabled,
  *   biometryType,
  *   enableBiometrics,
@@ -33,14 +33,14 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * await enableBiometrics();
  *
  * // Check if biometrics are available
- * if (isBiometricsAvailable) {
+ * if (isBiometricsEnrolled) {
  *   // Handle biometric authentication
  * }
  * ```
  *
  * @returns Object containing biometric state and functions
  * @returns {boolean} returns.isBiometricsActive - Whether biometrics are both available and enabled
- * @returns {boolean} returns.isBiometricsAvailable - Whether biometrics are available on the device
+ * @returns {boolean} returns.isBiometricsEnrolled - Whether biometrics are available on the device
  * @returns {Keychain.BIOMETRY_TYPE | null} returns.biometryType - The type of biometric authentication available
  * @returns {Function} returns.setIsBiometricsEnabled - Function to set biometrics enabled state
  * @returns {boolean} returns.isBiometricsEnabled - Whether biometrics are currently enabled
@@ -48,7 +48,9 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * @returns {Function} returns.disableBiometrics - Function to disable biometrics
  */
 export const useBiometrics = () => {
-  const [isBiometricsAvailable, setIsBiometricsAvailable] = useState(false);
+  const [isBiometricsEnrolled, setIsBiometricsEnrolled] = useState(false);
+  const [isBiometricsSensorAvailable, setIsBiometricsSensorAvailable] =
+    useState(false);
   const [biometryType, setBiometryType] =
     useState<Keychain.BIOMETRY_TYPE | null>(null);
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
@@ -69,12 +71,13 @@ export const useBiometrics = () => {
     useCallback(async (): Promise<Keychain.BIOMETRY_TYPE | null> => {
       const type = await Keychain.getSupportedBiometryType();
       const isSensorAvailable = await rnBiometrics.isSensorAvailable();
+      setIsBiometricsSensorAvailable(isSensorAvailable.available);
       if (!type || !isSensorAvailable) {
         return null;
       }
 
       setBiometryType(type);
-      setIsBiometricsAvailable(true);
+      setIsBiometricsEnrolled(true);
       return type;
     }, []);
 
@@ -198,8 +201,9 @@ export const useBiometrics = () => {
   }, [checkBiometricsType, setIsBiometricsEnabled]);
 
   return {
-    isBiometricsActive: !!(isBiometricsAvailable && isBiometricsEnabled),
-    isBiometricsAvailable,
+    isBiometricsActive: !!(isBiometricsEnrolled && isBiometricsEnabled),
+    isBiometricsEnrolled,
+    isBiometricsSensorAvailable,
     biometryType,
     setIsBiometricsEnabled,
     isBiometricsEnabled,

@@ -45,7 +45,7 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { signInMethod, setSignInMethod } = useAuthenticationStore();
-  const { isBiometricsAvailable, isBiometricsEnabled, biometryType } =
+  const { isBiometricsEnrolled, isBiometricsEnabled, biometryType } =
     useBiometrics();
 
   const fallbackButtonText: Partial<Record<BIOMETRY_TYPE, string>> = useMemo(
@@ -62,7 +62,7 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
 
   const handleToggle = useCallback(() => {
     if (signInMethod === LoginType.PASSWORD) {
-      if (!isBiometricsAvailable || !isBiometricsEnabled) {
+      if (!isBiometricsEnrolled || !isBiometricsEnabled) {
         return;
       }
 
@@ -83,13 +83,13 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
   }, [
     signInMethod,
     setSignInMethod,
-    isBiometricsAvailable,
+    isBiometricsEnrolled,
     isBiometricsEnabled,
     biometryType,
   ]);
 
   // Don't render if biometrics is not available or not enabled
-  if (!isBiometricsAvailable || !isBiometricsEnabled) {
+  if (!isBiometricsEnrolled || !isBiometricsEnabled) {
     return null;
   }
 

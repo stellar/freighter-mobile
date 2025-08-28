@@ -29,11 +29,13 @@ jest.mock("hooks/useWordSelection", () => ({
 }));
 
 // Mock the useBiometrics hook
-let mockIsBiometricsAvailable = false;
+let mockIsBiometricsEnrolled = false;
+let mockIsBiometricsSensorAvailable = false;
 jest.mock("hooks/useBiometrics", () => ({
   useBiometrics: () => ({
-    isBiometricsAvailable: mockIsBiometricsAvailable,
+    isBiometricsEnrolled: mockIsBiometricsEnrolled,
     isBiometricsActive: false,
+    isBiometricsSensorAvailable: mockIsBiometricsSensorAvailable,
     biometryType: null,
     setIsBiometricsEnabled: jest.fn(),
     isBiometricsEnabled: false,
@@ -131,7 +133,8 @@ describe("ValidateRecoveryPhraseScreen", () => {
     jest.clearAllMocks();
     mockIsLoading = false;
     mockError = null;
-    mockIsBiometricsAvailable = false;
+    mockIsBiometricsEnrolled = false;
+    mockIsBiometricsSensorAvailable = false;
     // Use modern fake timers
     jest.useFakeTimers();
   });
@@ -222,7 +225,8 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
   it("completes validation flow with all 3 correct words and navigates to biometrics when available", async () => {
     // Set biometrics as available for this test
-    mockIsBiometricsAvailable = true;
+    mockIsBiometricsEnrolled = true;
+    mockIsBiometricsSensorAvailable = true;
 
     renderScreen();
 

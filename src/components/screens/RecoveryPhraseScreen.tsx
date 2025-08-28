@@ -89,7 +89,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
-  const { isBiometricsAvailable } = useBiometrics();
+  const { isBiometricsSensorAvailable } = useBiometrics();
 
   useEffect(() => {
     clearError?.();
@@ -110,7 +110,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   };
 
   const confirmSkip = useCallback(() => {
-    if (isBiometricsAvailable) {
+    if (isBiometricsSensorAvailable) {
       navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
         password,
         mnemonicPhrase: recoveryPhrase,
@@ -126,7 +126,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     }
 
     skipModalRef.current?.dismiss();
-  }, [signUp, password, recoveryPhrase, isBiometricsAvailable, navigation]);
+  }, [
+    signUp,
+    password,
+    recoveryPhrase,
+    isBiometricsSensorAvailable,
+    navigation,
+  ]);
 
   const handleConfirmSkip = useCallback(() => {
     confirmSkip();

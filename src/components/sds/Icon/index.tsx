@@ -1064,6 +1064,7 @@ import Toggle03Left from "assets/icons/toggle-03-left.svg";
 import Toggle03Right from "assets/icons/toggle-03-right.svg";
 import Tool01 from "assets/icons/tool-01.svg";
 import Tool02 from "assets/icons/tool-02.svg";
+import TouchId from "assets/icons/touch-id.svg";
 import Train from "assets/icons/train.svg";
 import Tram from "assets/icons/tram.svg";
 import Transform from "assets/icons/transform.svg";
@@ -2248,6 +2249,7 @@ export const Icons = {
   Toggle03Right,
   Tool01,
   Tool02,
+  TouchId,
   Train,
   Tram,
   Transform,

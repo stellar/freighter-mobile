@@ -253,6 +253,7 @@ interface AuthActions {
   signUp: (params: SignUpParams) => void;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
+  verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   getAuthStatus: () => Promise<AuthStatus>;
   renameAccount: (params: RenameAccountParams) => Promise<void>;
@@ -1457,6 +1458,31 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
     network: NETWORKS.PUBLIC,
 
     /**
+     * Verifies if a mnemonic phrase is valid
+     *
+     * @param {string} mnemonicPhrase - The mnemonic phrase to verify
+     * @returns {boolean} True if the mnemonic phrase is valid, false otherwise
+     */
+    verifyMnemonicPhrase: (mnemonicPhrase: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        StellarHDWallet.fromMnemonic(mnemonicPhrase);
+        return true;
+      } catch (error) {
+        logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.invalidMnemonicPhrase"),
+        });
+        return false;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
+    /**
      * Logs out the user by clearing sensitive data
      *
      * For accounts with existing accounts, it preserves account data but clears sensitive info,
@@ -1744,7 +1770,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
         // If biometrics is not enabled, call the callback directly with a placeholder password
         // This allows the function to work even when biometrics is disabled
-        if (!isBiometricsEnabled && signInMethod === LoginType.PASSWORD) {
+        if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
           return await callback(password!, ...args);
         }
         const biometryType = await Keychain.getSupportedBiometryType();
