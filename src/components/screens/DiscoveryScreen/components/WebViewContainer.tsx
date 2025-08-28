@@ -1,6 +1,6 @@
 import Spinner from "components/Spinner";
 import { DiscoveryHomepage } from "components/screens/DiscoveryScreen/components";
-import { BROWSER_CONSTANTS } from "config/constants";
+import { APP_VERSION, BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
@@ -189,8 +189,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                     }}
                   >
                     <WebView
-                      // The "iOS" user agent seems to work better for WalletConnect in all cases
-                      userAgent={BROWSER_CONSTANTS.IOS_USER_AGENT}
+                      userAgent={BROWSER_CONSTANTS.DISCOVERY_USER_AGENT}
                       allowsLinkPreview={false}
                       javaScriptEnabled
                       domStorageEnabled
@@ -199,7 +198,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                         window.stellar = {
                           provider: 'freighter',
                           platform: 'mobile',
-                          version: '0.9.23'
+                          version: '${APP_VERSION}'
                         };
                       `}
                       ref={(ref) => {
