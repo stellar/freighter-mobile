@@ -148,7 +148,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
           {t("validateRecoveryPhraseScreen.instructionText")}
         </Text>
 
-        {/* Word Selection Grid via FlatList: 3 items per row - margin left and right to remove padding in the sides */}
+        {/* Word Selection Grid via FlatList: 3 items per row. negative horizontal margin to remove padding in the sides */}
         <View className="-mx-2">
           <FlatList
             data={currentRoundWordOptions}
