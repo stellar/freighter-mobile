@@ -1,5 +1,6 @@
 /* eslint-disable react/no-array-index-key */
 import { xdr } from "@stellar/stellar-sdk";
+import CollapsibleSection from "components/CollapsibleSection";
 import {
   KeyValueListItem,
   KeyValueInvokeHostFnArgs,
@@ -173,18 +174,17 @@ const SignTransactionAuthorizations = ({
             key={`${getAuthEntryKey(detail)}-${detailIndex}`}
             className="py-[12px] px-[16px] bg-background-tertiary rounded-[16px] gap-[12px]"
           >
-            {/* Header */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-[8px]">
-                <Icon.CodeCircle01 size={16} themeColor="gray" />
-                <Text>{getAuthEntryTitle(detail)}</Text>
-              </View>
-
-              <Icon.ChevronDown size={16} themeColor="gray" />
-            </View>
-
-            {/* Content */}
-            {getAuthEntryContent(detail)}
+            <CollapsibleSection
+              header={
+                <View className="flex-row items-center gap-[8px]">
+                  <Icon.CodeCircle01 size={16} themeColor="gray" />
+                  <Text>{getAuthEntryTitle(detail)}</Text>
+                </View>
+              }
+              testID={`collapsible-auth-${getAuthEntryKey(detail)}-${detailIndex}`}
+            >
+              <View className="mt-[12px]">{getAuthEntryContent(detail)}</View>
+            </CollapsibleSection>
           </View>
         ))}
       </View>
