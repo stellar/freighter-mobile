@@ -4,7 +4,6 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
-import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapReviewBottomSheet } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
@@ -27,7 +26,6 @@ import {
   isAmountSpendable,
   hasXLMForFees,
 } from "helpers/balances";
-import { formatTokenAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -35,7 +33,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -71,7 +69,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceTokenId,
     destinationTokenId,
     sourceTokenSymbol,
-    destinationTokenSymbol,
     sourceAmount,
     destinationAmount,
     pathResult,
@@ -238,7 +235,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   useRightHeaderMenu({ actions: menuActions });
 
-  const handleSelectDestinationToken = () => {
+  const navigateToSelectDestinationTokenScreen = () => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
       selectionType: "destination",
     });
@@ -308,26 +305,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (destinationBalance) {
       handleOpenReview();
     } else {
-      handleSelectDestinationToken();
+      navigateToSelectDestinationTokenScreen();
     }
-  };
-
-  const getRightContent = () => {
-    if (isLoadingPath) {
-      return <Spinner size="small" />;
-    }
-    if (pathResult) {
-      return (
-        <Text md medium>
-          {formatTokenAmount(destinationAmount)}
-        </Text>
-      );
-    }
-    return (
-      <Text md secondary>
-        --
-      </Text>
-    );
   };
 
   // Reset everything on unmount
@@ -380,7 +359,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         )}
 
         <View className="flex-none gap-3 mt-[16px]">
-          <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
+          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
                 balance={sourceBalance}
@@ -397,34 +376,44 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             )}
           </View>
 
-          <TouchableOpacity onPress={handleSelectDestinationToken}>
-            <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary">
-              {destinationBalance ? (
-                <BalanceRow
-                  balance={destinationBalance}
-                  customTextContent={`${t("swapScreen.receive")} ${destinationTokenSymbol}`}
-                  isSingleRow
-                  rightContent={
-                    <View className="items-end">{getRightContent()}</View>
-                  }
-                />
-              ) : (
-                <View className="flex-row items-center gap-4 h-[44px]">
-                  <Icon.Plus
-                    circle
-                    size={26}
-                    color={themeColors.foreground.primary}
+          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
+            {destinationBalance ? (
+              <BalanceRow
+                balance={destinationBalance}
+                isSingleRow
+                rightContent={
+                  <IconButton
+                    Icon={Icon.ChevronRight}
+                    size="sm"
+                    variant="ghost"
+                    onPress={navigateToSelectDestinationTokenScreen}
                   />
-                  <View className="flex-col">
-                    <Text>{t("swapScreen.receive")}</Text>
-                    <Text sm secondary>
-                      {t("swapScreen.chooseToken")}
-                    </Text>
+                }
+              />
+            ) : (
+              <View className="flex-row w-full h-[44px] justify-between items-center">
+                <View className="flex-row items-center flex-1 mr-4">
+                  <View className="flex-row items-center gap-16px">
+                    <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
+                      <Icon.Plus size={25} themeColor="gray" />
+                    </View>
+                    <View className="flex-col flex-1">
+                      <Text>{t("swapScreen.receive")}</Text>
+                      <Text sm secondary>
+                        {t("swapScreen.chooseToken")}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              )}
-            </View>
-          </TouchableOpacity>
+                <IconButton
+                  Icon={Icon.ChevronRight}
+                  size="sm"
+                  variant="ghost"
+                  onPress={navigateToSelectDestinationTokenScreen}
+                />
+              </View>
+            )}
+          </View>
         </View>
 
         <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
