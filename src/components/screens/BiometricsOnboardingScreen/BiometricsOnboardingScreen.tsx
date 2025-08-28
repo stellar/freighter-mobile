@@ -105,13 +105,15 @@ export const BiometricsOnboardingScreen: React.FC<
     }
   };
 
-  const iconDimensions = {
+  const iconContainerDimensions = {
     width: pxValue(104),
     height: pxValue(104),
   };
 
+  const iconSize = pxValue(80);
+
   const iconSvgProperties = {
-    ...iconDimensions,
+    ...iconContainerDimensions,
     viewBox: `0 0 ${pxValue(104)} ${pxValue(104)}`,
     rx: pxValue(16),
     fill: "rgba(255, 255, 255, 0.28)",
@@ -120,14 +122,14 @@ export const BiometricsOnboardingScreen: React.FC<
   const BlurredBackgroundBiometricsIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
-      style={iconDimensions}
+      style={iconContainerDimensions}
     >
       <Svg {...iconSvgProperties}>
         {/* Blurred background with rounded corners */}
         <Rect {...iconSvgProperties} />
       </Svg>
       <View className="absolute inset-0 items-center justify-center">
-        <Icon.FaceId01 color={themeColors.white} size={iconDimensions.width} />
+        <Icon.FaceId01 color={themeColors.white} size={iconSize} />
       </View>
     </View>
   );
@@ -146,17 +148,14 @@ export const BiometricsOnboardingScreen: React.FC<
   const BlurredBackgroundFingerprintIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
-      style={iconDimensions}
+      style={iconContainerDimensions}
     >
       <Svg {...iconSvgProperties}>
         {/* Blurred background with rounded corners */}
         <Rect {...iconSvgProperties} />
       </Svg>
       <View className="absolute inset-0 items-center justify-center">
-        <Icon.Fingerprint05
-          color={themeColors.white}
-          size={iconDimensions.width}
-        />
+        <Icon.Fingerprint05 color={themeColors.white} size={iconSize} />
       </View>
     </View>
   );
