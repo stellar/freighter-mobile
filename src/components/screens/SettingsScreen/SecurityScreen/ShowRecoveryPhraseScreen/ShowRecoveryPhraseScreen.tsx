@@ -33,25 +33,43 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const { getKeyFromKeyManager, signInMethod } = useAuthenticationStore();
 
   const showRecoveryPhraseAction = async (password: string) => {
-    const key = await getKeyFromKeyManager(password ?? localPassword);
-    const keyExtra = key.extra as KeyExtra;
+    try {
+      const key = await getKeyFromKeyManager(password ?? localPassword);
+      const keyExtra = key.extra as KeyExtra;
 
-    if (keyExtra?.mnemonicPhrase) {
-      navigation.navigate(SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN, {
-        recoveryPhrase: keyExtra.mnemonicPhrase,
-      });
-    } else {
-      throw new Error(t("authStore.error.noKeyPairFound"));
+      if (keyExtra?.mnemonicPhrase) {
+        navigation.navigate(SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN, {
+          recoveryPhrase: keyExtra.mnemonicPhrase,
+        });
+      } else {
+        throw new Error(t("authStore.error.noKeyPairFound"));
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("authStore.error.invalidPassword"));
+      }
+      throw err; // Re-throw to be handled by the caller
     }
   };
 
-  const handleShowRecoveryPhrase = () => {
+  const handleShowRecoveryPhrase = async (...args: unknown[]) => {
     try {
       setIsLoading(true);
       setError(undefined);
 
-      // Use biometrics to verify and get the password, then execute the recovery phrase logic
-      showRecoveryPhraseAction(localPassword);
+      // Use the password from biometric authentication if available, otherwise use localPassword
+      const password = args[0] as string | undefined;
+      const passwordToUse = password ?? localPassword;
+
+      if (!passwordToUse) {
+        setError(t("authStore.error.invalidPassword"));
+        return;
+      }
+
+      // Execute the recovery phrase logic with the password
+      await showRecoveryPhraseAction(passwordToUse);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
