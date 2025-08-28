@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
+import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
@@ -72,7 +73,9 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
  */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
+  route,
 }) => {
+  const { tokenId } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -83,8 +86,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionTimeout,
     recipientAddress,
     selectedTokenId,
+    saveSelectedTokenId,
     saveMemo,
   } = useTransactionSettingsStore();
+
+  useEffect(() => {
+    if (tokenId) {
+      saveSelectedTokenId(tokenId);
+    }
+  }, [tokenId, saveSelectedTokenId]);
 
   const {
     buildTransaction,
@@ -488,26 +498,32 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           {amountError && (
             <Notification variant="error" message={amountError} />
           )}
-          <View className="rounded-[12px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-secondary">
+          <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             {selectedBalance && (
               <BalanceRow
                 balance={selectedBalance}
                 rightContent={
-                  <Button secondary lg onPress={() => navigation.goBack()}>
-                    {t("common.edit")}
-                  </Button>
+                  <IconButton
+                    Icon={Icon.ChevronRight}
+                    size="sm"
+                    variant="ghost"
+                    onPress={navigateToSendScreen}
+                  />
                 }
                 isSingleRow
               />
             )}
           </View>
-          <View className="rounded-[12px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-secondary">
+          <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             <ContactRow
               address={recipientAddress}
               rightElement={
-                <Button secondary lg onPress={navigateToSendScreen}>
-                  {t("common.edit")}
-                </Button>
+                <IconButton
+                  Icon={Icon.ChevronRight}
+                  size="sm"
+                  variant="ghost"
+                  onPress={navigateToSendScreen}
+                />
               }
             />
           </View>

@@ -118,7 +118,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     saveRecipientAddress(contactAddress);
 
     if (tokenId) {
-      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN);
+      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+        tokenId,
+      });
     } else {
       navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
     }

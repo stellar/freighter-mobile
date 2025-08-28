@@ -155,8 +155,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleSendPress = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-        screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
-        params: { tokenId: undefined },
+        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+        params: { tokenId: NATIVE_TOKEN_CODE },
       });
     }, [navigation]);
 
@@ -212,7 +212,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             </Display>
           </View>
 
-          <View className="flex-row gap-6 items-center justify-center my-8">
+          <View className="flex-row gap-[24px] items-center justify-center my-8">
             <IconButton
               Icon={Icon.Plus}
               title={t("home.buy")}
