@@ -315,6 +315,23 @@ jest.mock("react-native-permissions", () => ({
   },
 }));
 
+// Mock react-native-biometrics
+jest.mock("react-native-biometrics", () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    isSensorAvailable: jest.fn(() => Promise.resolve(true)),
+    simplePrompt: jest.fn(() => Promise.resolve({ success: true })),
+    createKeys: jest.fn(() =>
+      Promise.resolve({ publicKey: "mock-public-key" }),
+    ),
+    deleteKeys: jest.fn(() => Promise.resolve()),
+    createSignature: jest.fn(() =>
+      Promise.resolve({ signature: "mock-signature" }),
+    ),
+    biometricKeysExist: jest.fn(() => Promise.resolve(true)),
+  })),
+}));
+
 // Mock react-native-keychain
 jest.mock("react-native-keychain", () => ({
   BIOMETRY_TYPE: {

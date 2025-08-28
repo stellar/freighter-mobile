@@ -2,7 +2,7 @@ import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import {
@@ -12,7 +12,6 @@ import {
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
@@ -47,7 +46,6 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
   const { signInMethod, verifyActionWithBiometrics } = useAuthenticationStore();
-  const { biometricButtonIcon } = useBiometrics();
 
   const canContinue = useMemo(
     () =>
@@ -102,12 +100,11 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               />
             )}
             <Button
+              biometric
               tertiary
               lg
               onPress={handleContinueWithFaceId}
               disabled={!canContinue && signInMethod === LoginType.PASSWORD}
-              icon={biometricButtonIcon}
-              iconPosition={IconPosition.LEFT}
               isLoading={isLoading}
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}

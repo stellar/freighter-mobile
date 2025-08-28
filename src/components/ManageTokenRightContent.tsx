@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import ConfirmationModal from "components/ConfirmationModal";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
+import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useTokenActions } from "hooks/useTokenActions";
 import React, { useState } from "react";
@@ -39,6 +41,7 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyTokenAddress } = useTokenActions();
+  const { getBiometricButtonIcon } = useBiometrics();
   const { tokenCode } = formatTokenIdentifier(token.id);
   const { verifyActionWithBiometrics } = useAuthenticationStore();
 
@@ -95,6 +98,8 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
         confirmText={t("common.remove")}
         cancelText={t("common.cancel")}
         onConfirm={handleRemoveTokenClick}
+        confirmButtonIcon={getBiometricButtonIcon(themeColors.white)}
+        confirmButtonIconPosition={IconPosition.LEFT}
         isLoading={isRemovingToken}
         destructive
       />

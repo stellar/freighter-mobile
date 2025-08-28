@@ -3,19 +3,17 @@ import { BigNumber } from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
-import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -76,10 +74,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
-  const { biometricButtonIcon } = useBiometrics();
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -186,14 +182,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     return (
       <View className="flex-1">
         <Button
-          icon={biometricButtonIcon}
-          iconPosition={IconPosition.LEFT}
-          onPress={() =>
-            verifyActionWithBiometrics(() => {
-              onConfirm?.();
-              return Promise.resolve();
-            })
-          }
+          biometric
+          onPress={() => onConfirm?.()}
           tertiary
           xl
           disabled={isBuilding || !transactionXDR || !!error}

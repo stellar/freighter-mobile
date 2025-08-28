@@ -11,7 +11,6 @@ import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { WalletKitSessionProposal } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React, { useMemo } from "react";
@@ -62,8 +61,7 @@ const DappConnectionBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { network, verifyActionWithBiometrics } = useAuthenticationStore();
-  const { biometricButtonIcon } = useBiometrics();
+  const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
 
   const listItems = useMemo(() => {
@@ -168,17 +166,11 @@ const DappConnectionBottomSheetContent: React.FC<
         {cancelButton}
         <View className="flex-1">
           <Button
+            biometric
             tertiary
             xl
-            icon={biometricButtonIcon}
-            iconPosition={IconPosition.LEFT}
             isFullWidth
-            onPress={() =>
-              verifyActionWithBiometrics(() => {
-                onConnection();
-                return Promise.resolve();
-              })
-            }
+            onPress={() => onConnection()}
             isLoading={isConnecting}
             disabled={isConnecting}
           >

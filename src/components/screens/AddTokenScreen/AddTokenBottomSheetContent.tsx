@@ -15,7 +15,6 @@ import {
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
@@ -44,10 +43,8 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { network } = useAuthenticationStore();
+  const { network, verifyActionWithBiometrics } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
-  const { biometricButtonIcon } = useBiometrics();
 
   const listItems = useMemo(() => {
     if (!token) return [];
@@ -235,17 +232,11 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
             />
           ) : (
             <Button
+              biometric
               tertiary
               xl
-              icon={biometricButtonIcon}
-              iconPosition={IconPosition.LEFT}
               isFullWidth
-              onPress={() =>
-                verifyActionWithBiometrics(() => {
-                  onAddToken();
-                  return Promise.resolve();
-                })
-              }
+              onPress={() => onAddToken()}
               isLoading={isAddingToken}
             >
               {t("addTokenScreen.addTokenButton")}

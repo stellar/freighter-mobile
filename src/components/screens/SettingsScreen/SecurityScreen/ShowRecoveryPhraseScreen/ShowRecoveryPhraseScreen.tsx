@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
-import { Button, IconPosition } from "components/sds/Button";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
@@ -9,7 +9,6 @@ import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
@@ -33,7 +32,6 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { verifyActionWithBiometrics, getKeyFromKeyManager, signInMethod } =
     useAuthenticationStore();
-  const { biometricButtonIcon } = useBiometrics();
 
   const showRecoveryPhraseAction = async (password: string) => {
     const key = await getKeyFromKeyManager(password ?? localPassword);
@@ -142,13 +140,12 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
           </View>
 
           <Button
+            biometric
             tertiary
             lg
             onPress={handleShowRecoveryPhrase}
             testID="show-recovery-phrase-button"
             isLoading={isLoading}
-            icon={biometricButtonIcon}
-            iconPosition={IconPosition.LEFT}
           >
             {t("showRecoveryPhraseScreen.showPhrase")}
           </Button>

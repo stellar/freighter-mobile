@@ -1,1 +1,3 @@
 "NSUserTrackingUsageDescription" = "Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.";
+"NSFaceIDUsageDescription" = "Freighter needs access to your Face ID to unlock the app and approve transactions.";
+"NSCameraUsageDescription" = "Freighter needs access to your Camera to scan QR codes";

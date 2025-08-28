@@ -5,6 +5,7 @@ import { usePreferencesStore } from "ducks/preferences";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
 import * as Keychain from "react-native-keychain";
+import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
 import { biometricDataStorage } from "services/storage/storageFactory";
 
 /**
@@ -67,7 +68,8 @@ export const useBiometrics = () => {
   const checkBiometricsType =
     useCallback(async (): Promise<Keychain.BIOMETRY_TYPE | null> => {
       const type = await Keychain.getSupportedBiometryType();
-      if (!type) {
+      const isSensorAvailable = await rnBiometrics.isSensorAvailable();
+      if (!type || !isSensorAvailable) {
         return null;
       }
 
@@ -147,15 +149,22 @@ export const useBiometrics = () => {
     return success;
   }, [verifyBiometrics, setIsBiometricsEnabled, setSignInMethod]);
 
-  const getButtonIcon = useCallback(() => {
-    if (signInMethod === LoginType.PASSWORD) {
-      return undefined;
-    }
-    if (signInMethod === LoginType.FACE) {
-      return <Icon.FaceId color={themeColors.foreground.secondary} />;
-    }
-    return <Icon.Fingerprint01 color={themeColors.foreground.secondary} />;
-  }, [signInMethod, themeColors]);
+  const getButtonIcon = useCallback(
+    (color?: string) => {
+      if (signInMethod === LoginType.PASSWORD) {
+        return undefined;
+      }
+      if (signInMethod === LoginType.FACE) {
+        return (
+          <Icon.FaceId color={color ?? themeColors.foreground.secondary} />
+        );
+      }
+      return (
+        <Icon.Fingerprint01 color={color ?? themeColors.foreground.secondary} />
+      );
+    },
+    [signInMethod, themeColors],
+  );
 
   /**
    * Effect to initialize and validate biometrics state
@@ -196,6 +205,6 @@ export const useBiometrics = () => {
     isBiometricsEnabled,
     enableBiometrics: handleEnableBiometrics,
     disableBiometrics: handleDisableBiometrics,
-    biometricButtonIcon: getButtonIcon(),
+    getBiometricButtonIcon: (color?: string) => getButtonIcon(color),
   };
 };

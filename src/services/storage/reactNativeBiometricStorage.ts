@@ -3,7 +3,9 @@ import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { BiometricStorage } from "services/storage/storageFactory";
 
-const rnBiometrics = new ReactNativeBiometrics();
+export const rnBiometrics = new ReactNativeBiometrics({
+  allowDeviceCredentials: true,
+});
 
 /**
  * Default service name used for the keychain

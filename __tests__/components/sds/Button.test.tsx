@@ -311,4 +311,46 @@ describe("Button", () => {
       });
     });
   });
+
+  describe("Biometric functionality", () => {
+    it("wraps onPress with biometric verification when biometric prop is true", () => {
+      const { getByTestId } = renderWithProviders(
+        <Button biometric onPress={onPressMock} testID="test-button">
+          Biometric Button
+        </Button>,
+      );
+
+      const button = getByTestId("test-button");
+      fireEvent.press(button);
+
+      // The onPress should be called through the biometric wrapper
+      expect(onPressMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onPress directly when biometric prop is false", () => {
+      const { getByTestId } = renderWithProviders(
+        <Button biometric={false} onPress={onPressMock} testID="test-button">
+          Regular Button
+        </Button>,
+      );
+
+      const button = getByTestId("test-button");
+      fireEvent.press(button);
+
+      expect(onPressMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onPress directly when biometric prop is not provided", () => {
+      const { getByTestId } = renderWithProviders(
+        <Button onPress={onPressMock} testID="test-button">
+          Default Button
+        </Button>,
+      );
+
+      const button = getByTestId("test-button");
+      fireEvent.press(button);
+
+      expect(onPressMock).toHaveBeenCalledTimes(1);
+    });
+  });
 });

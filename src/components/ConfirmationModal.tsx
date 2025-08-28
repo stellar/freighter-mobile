@@ -1,5 +1,5 @@
 import Modal from "components/Modal";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import React from "react";
 import { View } from "react-native";
@@ -28,6 +28,14 @@ interface ConfirmationModalProps {
   isLoading?: boolean;
   /** Whether to use destructive styling for the confirm button */
   destructive?: boolean;
+  /** Whether to show a loading state on the confirm button */
+  cancelButtonIcon?: React.ReactNode;
+  /** Whether to use destructive styling for the confirm button */
+  cancelButtonIconPosition?: IconPosition;
+  /** Whether to use destructive styling for the confirm button */
+  confirmButtonIcon?: React.ReactNode;
+  /** Whether to use destructive styling for the confirm button */
+  confirmButtonIconPosition?: IconPosition;
 }
 
 /**
@@ -111,6 +119,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onCancel,
   isLoading = false,
   destructive = false,
+  cancelButtonIcon,
+  cancelButtonIconPosition,
+  confirmButtonIcon,
+  confirmButtonIconPosition,
 }) => {
   const handleCancel = () => {
     if (onCancel) {
@@ -139,6 +151,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <Button
             secondary
             lg
+            icon={cancelButtonIcon}
+            iconPosition={cancelButtonIconPosition}
             isFullWidth
             onPress={handleCancel}
             disabled={isLoading}
@@ -149,6 +163,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <View className="flex-1">
           <Button
             lg
+            icon={confirmButtonIcon}
+            iconPosition={confirmButtonIconPosition}
             destructive={destructive}
             isFullWidth
             onPress={handleConfirm}

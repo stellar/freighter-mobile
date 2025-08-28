@@ -105,45 +105,58 @@ export const BiometricsOnboardingScreen: React.FC<
     }
   };
 
+  const iconDimensions = {
+    width: pxValue(104),
+    height: pxValue(104),
+  };
+
+  const iconSvgProperties = {
+    ...iconDimensions,
+    viewBox: `0 0 ${pxValue(104)} ${pxValue(104)}`,
+    rx: pxValue(16),
+    fill: "rgba(255, 255, 255, 0.28)",
+  };
+
   const BlurredBackgroundBiometricsIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
-      style={{ width: pxValue(104), height: pxValue(104) }}
+      style={iconDimensions}
     >
-      <Svg width={pxValue(104)} height={pxValue(104)} viewBox="0 0 104 104">
+      <Svg {...iconSvgProperties}>
         {/* Blurred background with rounded corners */}
-        <Rect
-          width="104"
-          height="104"
-          rx="16"
-          fill="rgba(255, 255, 255, 0.24)"
-        />
-        <View className="absolute inset-0">
-          <Icon.FaceId01 color={themeColors.white} size={pxValue(104)} />
-        </View>
+        <Rect {...iconSvgProperties} />
       </Svg>
+      <View className="absolute inset-0 items-center justify-center">
+        <Icon.FaceId01 color={themeColors.white} size={iconDimensions.width} />
+      </View>
     </View>
   );
+
+  const iPhoneFrameDimensions = {
+    width: pxValue(354),
+    height: pxValue(300),
+  };
+
+  const iPhoneFrameSvgProperties = {
+    width: pxValue(354),
+    height: pxValue(300),
+    viewBox: `0 0 ${pxValue(354)} ${pxValue(300)}`,
+  };
 
   const BlurredBackgroundFingerprintIcon = (
     <View
       className="items-center justify-center mt-4 flex-grow-0 relative z-10"
-      style={{ width: pxValue(104), height: pxValue(104) }}
+      style={iconDimensions}
     >
-      <Svg width={pxValue(104)} height={pxValue(104)} viewBox="0 0 104 104">
+      <Svg {...iconSvgProperties}>
         {/* Blurred background with rounded corners */}
-        <Rect
-          width="104"
-          height="104"
-          rx="16"
-          fill="rgba(255, 255, 255, 0.24)"
-        />
+        <Rect {...iconSvgProperties} />
       </Svg>
-      <View
-        className="absolute inset-0"
-        style={{ marginLeft: pxValue(4), marginTop: pxValue(4) }}
-      >
-        <Icon.Fingerprint05 color={themeColors.white} size={pxValue(104)} />
+      <View className="absolute inset-0 items-center justify-center">
+        <Icon.Fingerprint05
+          color={themeColors.white}
+          size={iconDimensions.width}
+        />
       </View>
     </View>
   );
@@ -153,12 +166,12 @@ export const BiometricsOnboardingScreen: React.FC<
       <View className="relative">
         <Image
           source={iPhoneFrameImage}
-          style={{ width: pxValue(354), height: pxValue(300) }}
+          style={iPhoneFrameDimensions}
           resizeMode="contain"
         />
         {/* Gradient Mask Overlay */}
         <View className="absolute inset-0">
-          <Svg width={pxValue(354)} height={pxValue(300)} viewBox="0 0 354 300">
+          <Svg {...iPhoneFrameSvgProperties}>
             <Defs>
               <LinearGradient
                 id="paint0_linear_6563_78245"
@@ -173,8 +186,7 @@ export const BiometricsOnboardingScreen: React.FC<
               </LinearGradient>
             </Defs>
             <Rect
-              width="354"
-              height="300"
+              {...iPhoneFrameSvgProperties}
               fill="url(#paint0_linear_6563_78245)"
             />
           </Svg>
