@@ -30,8 +30,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const [localPassword, setLocalPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const { verifyActionWithBiometrics, getKeyFromKeyManager, signInMethod } =
-    useAuthenticationStore();
+  const { getKeyFromKeyManager, signInMethod } = useAuthenticationStore();
 
   const showRecoveryPhraseAction = async (password: string) => {
     const key = await getKeyFromKeyManager(password ?? localPassword);
@@ -46,13 +45,13 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
     }
   };
 
-  const handleShowRecoveryPhrase = async () => {
+  const handleShowRecoveryPhrase = () => {
     try {
       setIsLoading(true);
       setError(undefined);
 
       // Use biometrics to verify and get the password, then execute the recovery phrase logic
-      await verifyActionWithBiometrics(showRecoveryPhraseAction, localPassword);
+      showRecoveryPhraseAction(localPassword);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

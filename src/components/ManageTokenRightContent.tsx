@@ -3,7 +3,6 @@ import ConfirmationModal from "components/ConfirmationModal";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -43,17 +42,13 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
   const { copyTokenAddress } = useTokenActions();
   const { getBiometricButtonIcon } = useBiometrics();
   const { tokenCode } = formatTokenIdentifier(token.id);
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
 
   const showRemoveTokenAlert = () => {
     setModalVisible(true);
   };
 
   const handleRemoveTokenClick = () => {
-    verifyActionWithBiometrics(() => {
-      handleRemoveToken(() => setModalVisible(false));
-      return Promise.resolve();
-    });
+    handleRemoveToken(() => setModalVisible(false));
     // The modal will be closed by the callback when removal is complete
     // No need to set modalVisible to false immediately
   };

@@ -45,7 +45,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const { t } = useAppTranslation();
   const [passwordValue, setPasswordValue] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const { signInMethod, verifyActionWithBiometrics } = useAuthenticationStore();
+  const { signInMethod } = useAuthenticationStore();
 
   const canContinue = useMemo(
     () =>
@@ -58,13 +58,6 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const handlePasswordChange = useCallback((value: string) => {
     setPasswordValue(value);
   }, []);
-
-  const handleContinueWithFaceId = useCallback(() => {
-    verifyActionWithBiometrics((password) => {
-      handleContinue(password ?? passwordValue);
-      return Promise.resolve();
-    });
-  }, [handleContinue, verifyActionWithBiometrics, passwordValue]);
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
@@ -103,7 +96,9 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               biometric
               tertiary
               lg
-              onPress={handleContinueWithFaceId}
+              onPress={(password) => {
+                handleContinue((password as string) ?? passwordValue);
+              }}
               disabled={!canContinue && signInMethod === LoginType.PASSWORD}
               isLoading={isLoading}
             >

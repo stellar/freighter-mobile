@@ -266,7 +266,7 @@ interface ButtonProps extends VariantProps, SizeProps {
   disabled?: boolean;
   squared?: boolean;
   biometric?: boolean;
-  onPress?: () => void | Promise<void>;
+  onPress?: (...args: unknown[]) => void | Promise<void>;
   testID?: string;
 }
 
@@ -301,8 +301,8 @@ export const Button = ({
     if (!onPress) return;
 
     if (biometric) {
-      verifyActionWithBiometrics(async () => {
-        await onPress();
+      verifyActionWithBiometrics(async (...args: unknown[]) => {
+        await onPress(...args);
         return Promise.resolve();
       });
     } else {
