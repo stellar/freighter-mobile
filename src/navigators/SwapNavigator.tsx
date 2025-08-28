@@ -26,9 +26,12 @@ export const SwapStackNavigator = () => {
       <SwapStack.Screen
         name={SWAP_ROUTES.SWAP_SCREEN}
         component={SwapScreen}
-        options={{
-          headerTitle: t("swapScreen.swapFrom"),
-        }}
+        options={({ route }) => ({
+          headerTitle:
+            route.params.selectionType === "destination"
+              ? t("swapScreen.swapTo")
+              : t("swapScreen.swapFrom"),
+        })}
       />
       <SwapStack.Screen
         name={SWAP_ROUTES.SWAP_AMOUNT_SCREEN}

@@ -6,10 +6,7 @@ import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
-import {
-  SelectTokenBottomSheet,
-  SwapReviewBottomSheet,
-} from "components/screens/SwapScreen/components";
+import { SwapReviewBottomSheet } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
@@ -60,7 +57,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     useSwapSettingsStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
 
-  const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -243,15 +239,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   useRightHeaderMenu({ actions: menuActions });
 
   const handleSelectDestinationToken = () => {
-    selectTokenBottomSheetModalRef.current?.present();
+    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
+      selectionType: "destination",
+    });
   };
 
-  const handleDestinationTokenSelect = (
-    tokenId: string,
-    tokenSymbol: string,
-  ) => {
-    setDestinationToken(tokenId, tokenSymbol);
-    selectTokenBottomSheetModalRef.current?.dismiss();
+  const navigateToSelectSourceTokenScreen = () => {
+    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
+      selectionType: "source",
+    });
   };
 
   const handleAmountChange = (key: string) => {
@@ -343,10 +339,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     },
     [resetSwap, resetTransaction, resetToDefaults],
   );
-
-  const navigateToSelectSourceTokenScreen = () => {
-    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN);
-  };
 
   if (isProcessing) {
     return (
@@ -476,27 +468,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         </View>
       </View>
-
-      <BottomSheet
-        modalRef={selectTokenBottomSheetModalRef}
-        handleCloseModal={() =>
-          selectTokenBottomSheetModalRef.current?.dismiss()
-        }
-        snapPoints={["80%"]}
-        enablePanDownToClose={false}
-        enableContentPanningGesture={false}
-        enableDynamicSizing={false}
-        useInsetsBottomPadding={false}
-        analyticsEvent={AnalyticsEvent.VIEW_SEARCH_TOKEN}
-        customContent={
-          <SelectTokenBottomSheet
-            onTokenSelect={handleDestinationTokenSelect}
-            title={t("swapScreen.swapTo")}
-            onClose={() => selectTokenBottomSheetModalRef.current?.dismiss()}
-            network={network}
-          />
-        }
-      />
 
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}

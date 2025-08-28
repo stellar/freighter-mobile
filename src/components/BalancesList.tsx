@@ -52,6 +52,7 @@ interface BalancesListProps {
   onTokenPress?: (tokenId: string) => void;
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
+  excludeTokenIds?: string[];
 }
 
 /**
@@ -75,6 +76,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   onTokenPress,
   disableNavigation = false,
   renderRightContent,
+  excludeTokenIds = [],
 }) => {
   const { t } = useAppTranslation();
 
@@ -88,7 +90,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   }
 
   const {
-    balanceItems,
+    balanceItems: allBalanceItems,
     isLoading,
     error,
     noBalances,
@@ -96,6 +98,12 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     isFunded,
     handleRefresh,
   } = useBalancesList({ publicKey, network, shouldPoll: true, searchTerm });
+
+  // Filter out excluded tokens
+  const balanceItems = React.useMemo(
+    () => allBalanceItems.filter((item) => !excludeTokenIds.includes(item.id)),
+    [allBalanceItems, excludeTokenIds],
+  );
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,

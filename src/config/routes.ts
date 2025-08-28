@@ -237,7 +237,9 @@ export type SendPaymentStackParamList = {
 };
 
 export type SwapStackParamList = {
-  [SWAP_ROUTES.SWAP_SCREEN]: undefined;
+  [SWAP_ROUTES.SWAP_SCREEN]: {
+    selectionType: "source" | "destination";
+  };
   [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
