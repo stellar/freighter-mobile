@@ -162,7 +162,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleSwapPress = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
-        screen: SWAP_ROUTES.SWAP_SCREEN,
+        screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
+        params: { tokenId: NATIVE_TOKEN_CODE, tokenSymbol: NATIVE_TOKEN_CODE },
       });
     }, [navigation]);
 
