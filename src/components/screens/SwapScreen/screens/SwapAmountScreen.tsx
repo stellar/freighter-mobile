@@ -2,6 +2,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
+import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -55,8 +56,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapTimeout, swapSlippage } = useSwapSettingsStore();
-  const { isBuilding } = useTransactionBuilderStore();
+  const { swapFee, swapTimeout, swapSlippage, resetToDefaults } =
+    useSwapSettingsStore();
+  const { isBuilding, resetTransaction } = useTransactionBuilderStore();
 
   const selectTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -82,6 +84,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
     setSourceAmount,
+    resetSwap,
   } = useSwapStore();
 
   const sourceBalance = useMemo(
@@ -331,6 +334,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   };
 
+  // Reset everything on unmount
+  useEffect(
+    () => () => {
+      resetSwap();
+      resetTransaction();
+      resetToDefaults();
+    },
+    [resetSwap, resetTransaction, resetToDefaults],
+  );
+
+  const navigateToSelectSourceTokenScreen = () => {
+    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN);
+  };
+
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -376,9 +393,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               <BalanceRow
                 balance={sourceBalance}
                 rightContent={
-                  <Button secondary lg onPress={handleSetMax}>
-                    {t("swapScreen.setMax")}
-                  </Button>
+                  <IconButton
+                    Icon={Icon.ChevronRight}
+                    size="sm"
+                    variant="ghost"
+                    onPress={navigateToSelectSourceTokenScreen}
+                  />
                 }
                 isSingleRow
               />

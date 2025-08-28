@@ -100,15 +100,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
   }, [tokenId, saveSelectedTokenId]);
 
-  useEffect(
-    () => () => {
-      saveSelectedTokenId("");
-      resetSendRecipient();
-      resetSettings();
-    },
-    [resetSettings, resetSendRecipient, saveSelectedTokenId],
-  );
-
   const {
     buildTransaction,
     signTransaction,
@@ -117,6 +108,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isBuilding,
     transactionXDR,
   } = useTransactionBuilderStore();
+
+  // Reset everything on unmount
+  useEffect(
+    () => () => {
+      saveSelectedTokenId("");
+      resetSendRecipient();
+      resetSettings();
+      resetTransaction();
+    },
+    [resetSettings, resetSendRecipient, saveSelectedTokenId, resetTransaction],
+  );
 
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);

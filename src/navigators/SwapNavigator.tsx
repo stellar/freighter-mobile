@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import SwapScreen from "components/screens/SwapScreen";
 import {
@@ -9,7 +8,6 @@ import {
   SwapSlippageScreen,
   SwapTimeoutScreen,
 } from "components/screens/SwapScreen/screens";
-import Icon from "components/sds/Icon";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -30,7 +28,6 @@ export const SwapStackNavigator = () => {
         component={SwapScreen}
         options={{
           headerTitle: t("swapScreen.swapFrom"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <SwapStack.Screen

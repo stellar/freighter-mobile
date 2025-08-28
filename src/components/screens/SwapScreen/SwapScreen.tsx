@@ -4,9 +4,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { TokenSelectionContent } from "components/screens/SwapScreen/components";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
-import { useSwapSettingsStore } from "ducks/swapSettings";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import React, { useEffect } from "react";
+import React from "react";
 
 type SwapScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -14,22 +12,12 @@ type SwapScreenProps = NativeStackScreenProps<
 >;
 
 const SwapScreen: React.FC<SwapScreenProps> = ({ navigation }) => {
-  const { resetSwap } = useSwapStore();
-  const { resetToDefaults } = useSwapSettingsStore();
-  const { resetTransaction } = useTransactionBuilderStore();
-
-  // Reset all swap-related state when entering the swap flow
-  useEffect(() => {
-    resetSwap();
-    resetTransaction();
-    resetToDefaults();
-  }, [resetSwap, resetTransaction, resetToDefaults]);
+  const { setSourceToken } = useSwapStore();
 
   const handleTokenPress = (tokenId: string, tokenSymbol: string) => {
-    navigation.navigate(SWAP_ROUTES.SWAP_AMOUNT_SCREEN, {
-      tokenId,
-      tokenSymbol,
-    });
+    setSourceToken(tokenId, tokenSymbol);
+
+    navigation.goBack();
   };
 
   return (
