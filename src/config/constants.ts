@@ -226,6 +226,7 @@ export enum STORAGE_KEYS {
   FACE_ID_ENABLED = "faceIdEnabled",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
+  HAS_SEEN_FACE_ID_ONBOARDING = "hasSeenFaceIdOnboarding",
 }
 
 /**

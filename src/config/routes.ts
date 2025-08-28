@@ -53,7 +53,7 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
-  BIOMETRICS_ONBOARDING_SCREEN: "BiometricsOnboardingScreen",
+  BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -176,9 +176,10 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
     password: string;
   };
-  [AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN]: {
-    password: string;
-    mnemonicPhrase: string;
+  [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
+    password?: string;
+    mnemonicPhrase?: string;
+    postOnboarding?: boolean;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {

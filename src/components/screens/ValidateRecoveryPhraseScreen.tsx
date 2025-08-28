@@ -44,7 +44,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const handleFinishSignUp = useCallback(() => {
     if (isBiometricsSensorAvailable) {
       // Navigate to biometrics onboarding screen
-      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
         password,
         mnemonicPhrase: recoveryPhrase,
       });

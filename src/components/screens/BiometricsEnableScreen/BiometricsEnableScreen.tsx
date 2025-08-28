@@ -1,14 +1,23 @@
 import { BlurView } from "@react-native-community/blur";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import iPhoneFrameImage from "assets/iphone-frame.png";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { FACE_ID_BIOMETRY_TYPES } from "config/constants";
+import { FACE_ID_BIOMETRY_TYPES, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -19,10 +28,11 @@ import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
 import { analytics } from "services/analytics";
+import { dataStorage } from "services/storage/storageFactory";
 
 type BiometricsOnboardingScreenProps = NativeStackScreenProps<
   AuthStackParamList,
-  typeof AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN
+  typeof AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN
 >;
 
 export const BiometricsOnboardingScreen: React.FC<
@@ -33,30 +43,40 @@ export const BiometricsOnboardingScreen: React.FC<
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
   const { verifyActionWithBiometrics } = useAuthenticationStore();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Check if this is the pre-authentication flow (new) or post-authentication flow (existing)
 
-  const enableBiometrics = useCallback(() => {
+  const enableBiometrics = useCallback(async () => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
     const { password, mnemonicPhrase } = route.params;
 
-    if (!mnemonicPhrase) {
-      logger.error(
-        "BiometricsOnboardingScreen",
-        "Missing mnemonic phrase for pre-auth flow",
-      );
+    if (route.params.postOnboarding) {
+      await verifyActionWithBiometrics(async () => {
+        setIsBiometricsEnabled(true);
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+        await dataStorage.setItem(
+          STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+          "true",
+        );
+        return Promise.resolve();
+      }, true);
+      return;
+    }
+
+    if (!mnemonicPhrase || !password) {
+      logger.error("BiometricsOnboardingScreen", "Missing mnemonic phrase");
       return;
     }
 
     try {
-      // Store the password for biometrics
-      setIsBiometricsEnabled(true);
-
-      verifyActionWithBiometrics(() => {
+      verifyActionWithBiometrics((biometricPassword) => {
         signUp({
           mnemonicPhrase,
-          password,
+          password: biometricPassword ?? password,
         });
+        setIsBiometricsEnabled(true);
         return Promise.resolve();
       });
 
@@ -69,21 +89,36 @@ export const BiometricsOnboardingScreen: React.FC<
         error,
       );
       // Handle error appropriately
+    } finally {
+      await dataStorage.setItem(
+        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+        "true",
+      );
     }
   }, [
     route.params,
     setIsBiometricsEnabled,
     signUp,
     verifyActionWithBiometrics,
+    navigation,
   ]);
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     const { password, mnemonicPhrase } = route.params;
 
-    if (!mnemonicPhrase) {
+    if (route.params.postOnboarding) {
+      navigation.goBack();
+      await dataStorage.setItem(
+        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+        "true",
+      );
+      return;
+    }
+
+    if (!mnemonicPhrase || !password) {
       logger.error(
         "BiometricsOnboardingScreen",
-        "Missing mnemonic phrase for pre-auth flow",
+        "Missing mnemonic phrase or password",
       );
       return;
     }
@@ -103,6 +138,11 @@ export const BiometricsOnboardingScreen: React.FC<
         error,
       );
       // Handle error appropriately
+    } finally {
+      await dataStorage.setItem(
+        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+        "true",
+      );
     }
   };
 

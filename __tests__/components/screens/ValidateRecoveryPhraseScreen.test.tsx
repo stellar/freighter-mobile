@@ -273,7 +273,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     await waitFor(() => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith(
-        AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN,
+        AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
         {
           password: "test-password",
           mnemonicPhrase: mockRoute.params.recoveryPhrase,

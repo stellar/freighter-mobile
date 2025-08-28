@@ -263,8 +263,8 @@ interface AuthActions {
   selectNetwork: (network: NETWORKS) => Promise<void>;
 
   verifyActionWithBiometrics: <T, P extends unknown[]>(
-    callback: (password: string, ...args: P) => Promise<T>,
-    password?: string,
+    callback: (password?: string, ...args: P) => Promise<T>,
+    strictlyBiometric?: boolean,
     ...args: P
   ) => Promise<T>;
   // Active account actions
@@ -1711,6 +1711,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @template T - The return type of the callback function
      * @template P - The type of additional parameters (defaults to empty array)
      * @param {Function} callback - A function that takes the password and additional args, returns Promise<T>
+     * @param {boolean} strict - Whether to enforce biometric authentication (defaults to false)
      * @param {...P} args - Additional arguments to pass to the callback function
      * @returns {Promise<T>} The result of executing the callback function
      * @throws {Error} If biometric authentication fails or no stored password is found
@@ -1723,21 +1724,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *   if (keyExtra?.mnemonicPhrase) {
      *     navigation.navigate('RecoveryPhrase', { phrase: keyExtra.mnemonicPhrase });
      *   }
-     * });
+     * }, false);
      *
      * @example
      * // Example 2: Simple action with biometric authentication (common pattern)
-     * verifyActionWithBiometrics(() => {
+     * verifyActionWithBiometrics((password: string) => {
      *   onConfirm();
      *   return Promise.resolve();
-     * });
+     * }, false);
      *
      * @example
      * // Example 3: Action with password parameter but no return value
      * verifyActionWithBiometrics((password: string) => {
      *   handleContinue(password);
      *   return Promise.resolve();
-     * });
+     * }, false);
      *
      * @example
      * // Example 4: Action that returns a value
@@ -1758,8 +1759,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * );
      */
     verifyActionWithBiometrics: async <T, P extends unknown[]>(
-      callback: (password: string, ...args: P) => Promise<T>,
-      password?: string,
+      callback: (password?: string, ...args: P) => Promise<T>,
+      strictlyBiometric?: boolean,
       ...args: P
     ): Promise<T> => {
       try {
@@ -1768,10 +1769,18 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
         const { signInMethod } = get();
 
+        console.log("isBiometricsEnabled", isBiometricsEnabled);
+        console.log("signInMethod", signInMethod);
+        console.log("strictlyBiometric", strictlyBiometric);
+        console.log("args", args);
+
         // If biometrics is not enabled, call the callback directly with a placeholder password
         // This allows the function to work even when biometrics is disabled
-        if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
-          return await callback(password!, ...args);
+        if (
+          (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) &&
+          !strictlyBiometric
+        ) {
+          return await callback(undefined, ...args);
         }
         const biometryType = await Keychain.getSupportedBiometryType();
 

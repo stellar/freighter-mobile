@@ -111,7 +111,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const confirmSkip = useCallback(() => {
     if (isBiometricsSensorAvailable) {
-      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ONBOARDING_SCREEN, {
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
         password,
         mnemonicPhrase: recoveryPhrase,
       });
