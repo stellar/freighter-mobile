@@ -117,13 +117,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     // Transaction settings store is for the transaction flow
     saveRecipientAddress(contactAddress);
 
-    if (tokenId) {
-      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
-        tokenId,
-      });
-    } else {
-      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
-    }
+    navigation.goBack();
   };
 
   const handlePasteFromClipboard = () => {

@@ -30,6 +30,7 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
@@ -88,13 +89,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveMemo,
+    resetSettings,
   } = useTransactionSettingsStore();
+
+  const { resetSendRecipient } = useSendRecipientStore();
 
   useEffect(() => {
     if (tokenId) {
       saveSelectedTokenId(tokenId);
     }
   }, [tokenId, saveSelectedTokenId]);
+
+  useEffect(
+    () => () => {
+      saveSelectedTokenId("");
+      resetSendRecipient();
+      resetSettings();
+    },
+    [resetSettings, resetSendRecipient, saveSelectedTokenId],
+  );
 
   const {
     buildTransaction,
@@ -144,12 +157,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSettingsBottomSheetModalRef.current?.dismiss();
   };
 
-  const navigateToSendScreen = () => {
-    try {
-      navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {});
-    } catch (error) {
-      navigation.popToTop();
-    }
+  const navigateToSelectTokenScreen = () => {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
+  };
+
+  const navigateToSelectContactScreen = () => {
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      tokenId,
+    });
   };
 
   const { balanceItems } = useBalancesList({
@@ -416,6 +431,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment.isSuspicious,
   ]);
 
+  const isContinueButtonDisabled = useMemo(() => {
+    if (!recipientAddress) {
+      return false;
+    }
+
+    return (
+      !!amountError ||
+      BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
+      isBuilding
+    );
+  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
+
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
@@ -439,6 +466,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     } else {
       transactionSecurityWarningBottomSheetModalRef.current?.present();
     }
+  };
+  const handleContinueButtonPress = () => {
+    if (!recipientAddress) {
+      navigateToSelectContactScreen();
+      return;
+    }
+
+    handleOpenReview();
+  };
+
+  const getContinueButtonText = () => {
+    if (!recipientAddress) {
+      return t("transactionAmountScreen.chooseRecipient");
+    }
+
+    if (BigNumber(tokenAmount).isLessThanOrEqualTo(0)) {
+      return t("transactionAmountScreen.setAmount");
+    }
+
+    return t("transactionAmountScreen.reviewButton");
   };
 
   return (
@@ -507,7 +554,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     Icon={Icon.ChevronRight}
                     size="sm"
                     variant="ghost"
-                    onPress={navigateToSendScreen}
+                    onPress={navigateToSelectTokenScreen}
                   />
                 }
                 isSingleRow
@@ -522,7 +569,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                   Icon={Icon.ChevronRight}
                   size="sm"
                   variant="ghost"
-                  onPress={navigateToSendScreen}
+                  onPress={navigateToSelectContactScreen}
                 />
               }
             />
@@ -558,14 +605,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <Button
               tertiary
               xl
-              onPress={handleOpenReview}
-              disabled={
-                !!amountError ||
-                BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-                isBuilding
-              }
+              onPress={handleContinueButtonPress}
+              disabled={isContinueButtonDisabled}
             >
-              {t("transactionAmountScreen.reviewButton")}
+              {getContinueButtonText()}
             </Button>
           </View>
         </View>

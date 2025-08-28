@@ -1,14 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { IconButton } from "components/IconButton";
 import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ContactRow } from "components/screens/SendScreen/components";
-import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { DEFAULT_PADDING } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { pxValue } from "helpers/dimensions";
-import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
 import { View } from "react-native";
@@ -21,8 +21,7 @@ type TransactionTokenScreenProps = NativeStackScreenProps<
 const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
 }) => {
-  const { t } = useAppTranslation();
-  const { recipientAddress, saveSelectedTokenId } =
+  const { recipientAddress, saveSelectedTokenId, selectedTokenId } =
     useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -36,21 +35,30 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     });
   };
 
+  const navigateToSelectContactScreen = () => {
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      tokenId: selectedTokenId,
+    });
+  };
+
   return (
     <BaseLayout
       insets={{ top: false, bottom: false, left: false, right: false }}
     >
       <View className="flex-1">
         <View
-          className="rounded-[12px] py-[12px] px-[16px] bg-background-secondary"
+          className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary"
           style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
         >
           <ContactRow
             address={recipientAddress}
             rightElement={
-              <Button secondary lg onPress={() => navigation.goBack()}>
-                {t("common.edit")}
-              </Button>
+              <IconButton
+                Icon={Icon.ChevronRight}
+                size="sm"
+                variant="ghost"
+                onPress={navigateToSelectContactScreen}
+              />
             }
           />
         </View>
