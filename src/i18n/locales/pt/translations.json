@@ -25,7 +25,8 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "addMemo": "Adicionar memo"
+    "addMemo": "Adicionar memo",
+    "wallet": "Carteira"
   },
   "home": {
     "title": "Início",
@@ -512,8 +513,11 @@
     "errors": {
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
-      "memoMissing": "Esta transação requer um memo"
-    }
+      "memoMissing": "Esta transação requer um memo",
+      "malicious": "Este endereço foi marcado como malicioso",
+      "suspicious": "Este endereço foi marcado como suspeito"
+    },
+    "confirmAnyway": "Confirmar mesmo assim"
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",
@@ -841,7 +845,8 @@
       "contractAddress": "Endereço do contrato"
     },
     "operations": {
-      "destination": "Destino #{{number}}",
+      "destinationWithNumber": "Destino #{{number}}",
+      "destination": "Destino",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
       "amount": "Valor",
