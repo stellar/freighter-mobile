@@ -109,6 +109,10 @@ export const initializeSentry = (): void => {
     dsn: SENTRY_CONFIG.DSN,
     sendDefaultPii: false,
     spotlight: __DEV__,
+    release: `freighter-mobile@${getVersion()}+${getBuildNumber()}`,
+
+    // Performance monitoring - equivalent to browserTracingIntegration
+    tracesSampleRate: 1.0,
 
     beforeSend(event) {
       // Update context on each event to ensure freshness
