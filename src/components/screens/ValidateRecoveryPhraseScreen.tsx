@@ -36,7 +36,6 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const [isLoading, setIsLoading] = useState(false);
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
   const [roundIndex, setRoundIndex] = useState(0);
-  const [isRegeneratingWords, setIsRegeneratingWords] = useState(false);
 
   const { signUp } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -52,12 +51,8 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   >([]);
 
   const regenerateWords = useCallback(() => {
-    setIsRegeneratingWords(true);
-
     const newWordOptions = generateWordOptionsForRound(roundIndex);
     setCurrentRoundWordOptions(newWordOptions);
-
-    setIsRegeneratingWords(false);
     setSelectedWord("");
   }, [generateWordOptionsForRound, roundIndex]);
 
@@ -163,7 +158,6 @@ export const ValidateRecoveryPhraseScreen: React.FC<
                   isSelected={selectedWord === word}
                   onPress={() => handleWordSelect(word)}
                   testID={`word-bubble-${word}`}
-                  disabled={isRegeneratingWords}
                   size="lg"
                 />
               </View>
