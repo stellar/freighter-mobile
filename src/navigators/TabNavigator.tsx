@@ -76,7 +76,7 @@ export const TabNavigator = () => {
   });
 
   // Fetch icons whenever balances are updated
-  useFetchTokenIcons(networkDetails.networkUrl);
+  useFetchTokenIcons(networkDetails.network);
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({

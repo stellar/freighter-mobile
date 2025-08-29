@@ -13,10 +13,10 @@ import {
 import Icon from "components/sds/Icon";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE, NETWORK_URLS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenAmount } from "helpers/formatAmount";
-import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
+import { getIconUrl } from "helpers/getIconUrl";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -27,7 +27,7 @@ interface SwapHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
-  networkUrl: NETWORK_URLS;
+  network: NETWORKS;
   themeColors: ThemeColors;
 }
 
@@ -39,7 +39,7 @@ export const mapSwapHistoryItem = async ({
   stellarExpertUrl,
   date,
   fee,
-  networkUrl,
+  network,
   themeColors,
 }: SwapHistoryItemData): Promise<HistoryItemData> => {
   const {
@@ -59,19 +59,23 @@ export const mapSwapHistoryItem = async ({
   const destIcon =
     destTokenCodeFinal === NATIVE_TOKEN_CODE
       ? logos.stellar
-      : await getIconUrlFromIssuer({
-          issuerKey: tokenIssuer || "",
-          tokenCode: destTokenCodeFinal || "",
-          networkUrl,
+      : await getIconUrl({
+          asset: {
+            code: destTokenCodeFinal || "",
+            issuer: tokenIssuer || "",
+          },
+          network,
         });
 
   const sourceIcon =
     srcTokenCode === NATIVE_TOKEN_CODE
       ? logos.stellar
-      : await getIconUrlFromIssuer({
-          issuerKey: sourceTokenIssuer || "",
-          tokenCode: srcTokenCode || "",
-          networkUrl,
+      : await getIconUrl({
+          asset: {
+            code: sourceTokenIssuer || "",
+            issuer: srcTokenCode || "",
+          },
+          network,
         });
 
   const ActionIconComponent = (

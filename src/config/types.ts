@@ -269,6 +269,11 @@ export interface SearchTokenResponse {
       };
       score: number;
       paging_token: number;
+      tomlInfo: {
+        code: string;
+        image: string;
+        issuer: string;
+      };
     }[];
   };
 }

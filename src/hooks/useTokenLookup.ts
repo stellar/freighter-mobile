@@ -6,8 +6,14 @@ import {
   SearchTokenResponse,
   FormattedSearchTokenRecord,
   HookStatus,
+  TokenTypeWithCustomToken,
 } from "config/types";
-import { formatTokenIdentifier, getTokenType } from "helpers/balances";
+import { Icon, useTokenIconsStore } from "ducks/tokenIcons";
+import {
+  formatTokenIdentifier,
+  getTokenIdentifier,
+  getTokenType,
+} from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
 import useDebounce from "hooks/useDebounce";
@@ -36,6 +42,8 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+
+  const { cacheTokenIcons } = useTokenIconsStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
   const groupTokensBySecurityLevel = (
@@ -163,6 +171,32 @@ export const useTokenLookup = ({
         const response = await searchToken(searchTerm, network);
 
         resJson = response && response._embedded && response._embedded.records;
+
+        // Cache icons from stellar expert results so that TokenIcon can render them
+        const icons = resJson?.reduce(
+          (prev, curr) => {
+            const tokenIdentifier = getTokenIdentifier({
+              type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+              code: curr.tomlInfo?.code,
+              issuer: {
+                key: curr.tomlInfo?.issuer,
+              },
+            });
+            const icon = {
+              imageUrl: curr.tomlInfo?.image,
+              network,
+            };
+
+            // eslint-disable-next-line no-param-reassign
+            prev[tokenIdentifier] = icon;
+            return prev;
+          },
+          {} as Record<string, Icon>,
+        );
+
+        if (icons) {
+          cacheTokenIcons({ icons });
+        }
       }
 
       if (!resJson) {
