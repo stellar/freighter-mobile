@@ -1,6 +1,7 @@
 import * as amplitude from "@amplitude/analytics-react-native";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
+import { onAnalyticsPreferenceChange } from "config/sentryConfig";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
@@ -250,6 +251,9 @@ export const trackAppOpened = (props?: { previousState: string }): void => {
 useAnalyticsStore.subscribe((state) => {
   try {
     amplitude.setOptOut(!state.isEnabled);
+
+    // Update Sentry context when analytics preference changes
+    onAnalyticsPreferenceChange();
 
     logger.debug(
       DEBUG_CONFIG.LOG_PREFIX,
