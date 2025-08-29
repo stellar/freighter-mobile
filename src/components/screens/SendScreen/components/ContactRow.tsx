@@ -5,6 +5,7 @@ import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { truncateAddress } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
 interface ContactRowProps {
@@ -33,6 +34,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
+  const { t } = useTranslation();
   const slicedAddress = truncateAddress(address, 4, 4);
 
   const renderPlusIcon = () => (
@@ -47,9 +49,9 @@ export const ContactRow: React.FC<ContactRowProps> = ({
         <View className="flex-row items-center gap-16px">
           {renderPlusIcon()}
           <View className="flex-col flex-1">
-            <Text>Send to</Text>
+            <Text>{t("sendPaymentScreen.title")}</Text>
             <Text sm secondary>
-              Choose recipient
+              {t("transactionAmountScreen.chooseRecipient")}
             </Text>
           </View>
         </View>
