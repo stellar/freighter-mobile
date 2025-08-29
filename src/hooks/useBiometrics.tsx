@@ -156,7 +156,7 @@ export const useBiometrics = () => {
   useEffect(() => {
     const checkBiometricsAvailable = async () => {
       const type = await checkBiometrics();
-      if (!type || !isBiometricsEnabled) {
+      if (!isBiometricsEnabled) {
         setSignInMethod(LoginType.PASSWORD);
       } else if (type && isBiometricsEnabled) {
         setSignInMethod(getLoginType(type));
