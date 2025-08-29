@@ -183,7 +183,7 @@ const SignTransactionAuthorizations = ({
               }
               testID={`collapsible-auth-${getAuthEntryKey(detail)}-${detailIndex}`}
             >
-              <View className="mt-[12px]">{getAuthEntryContent(detail)}</View>
+              {getAuthEntryContent(detail)}
             </CollapsibleSection>
           </View>
         ))}
