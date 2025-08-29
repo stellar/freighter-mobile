@@ -61,15 +61,8 @@ export const useBiometrics = () => {
       const type = await Keychain.getSupportedBiometryType();
       setBiometryType(type);
 
-      if (!type || !isBiometricsEnabled) {
-        setSignInMethod(LoginType.PASSWORD);
-        return null;
-      }
-
-      setSignInMethod(getLoginType(type));
-
       return type;
-    }, [isBiometricsEnabled, setSignInMethod]);
+    }, [setBiometryType]);
 
   /**
    * Enables biometric authentication
@@ -161,8 +154,16 @@ export const useBiometrics = () => {
   );
 
   useEffect(() => {
-    checkBiometrics();
-  }, [checkBiometrics]);
+    const checkBiometricsAvailable = async () => {
+      const type = await checkBiometrics();
+      if (!type || !isBiometricsEnabled) {
+        setSignInMethod(LoginType.PASSWORD);
+      } else if (type && isBiometricsEnabled) {
+        setSignInMethod(getLoginType(type));
+      }
+    };
+    checkBiometricsAvailable();
+  }, [checkBiometrics, setSignInMethod, isBiometricsEnabled]);
 
   return {
     biometryType,
