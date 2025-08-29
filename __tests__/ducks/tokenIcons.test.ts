@@ -9,6 +9,16 @@ import {
 } from "config/types";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getIconUrl } from "helpers/getIconUrl";
+import {
+  fetchVerifiedTokens,
+  TokenListReponseItem,
+} from "services/verified-token-lists";
+
+// Mock verified tokens service
+jest.mock("services/verified-token-lists", () => ({
+  fetchVerifiedTokens: jest.fn(),
+  TOKEN_LISTS_API_SERVICES: {},
+}));
 
 // Mock the getIconUrl helper
 jest.mock("helpers/getIconUrl", () => ({
@@ -17,6 +27,9 @@ jest.mock("helpers/getIconUrl", () => ({
 
 describe("tokenIcons store", () => {
   const mockGetIconUrl = getIconUrl as jest.MockedFunction<typeof getIconUrl>;
+  const mockFetchVerifiedTokens = fetchVerifiedTokens as jest.MockedFunction<
+    typeof fetchVerifiedTokens
+  >;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -186,6 +199,111 @@ describe("tokenIcons store", () => {
 
       expect(mockGetIconUrl).toHaveBeenCalled();
       expect(useTokenIconsStore.getState().lastRefreshed).toBeTruthy();
+    });
+  });
+
+  describe("cacheTokenIcons", () => {
+    it("should add new icons to the store", () => {
+      const newIcons = {
+        "USDC:ISSUER1": {
+          imageUrl: "https://example.com/usdc.png",
+          network: NETWORKS.PUBLIC,
+        },
+      };
+
+      useTokenIconsStore.getState().cacheTokenIcons({ icons: newIcons });
+
+      expect(useTokenIconsStore.getState().icons["USDC:ISSUER1"]).toEqual(
+        newIcons["USDC:ISSUER1"],
+      );
+    });
+
+    it("should merge icons without removing existing ones", () => {
+      const existingIcon = {
+        "BTC:ISSUER2": {
+          imageUrl: "https://example.com/btc.png",
+          network: NETWORKS.TESTNET,
+        },
+      };
+
+      useTokenIconsStore.setState({ icons: existingIcon });
+
+      const newIcons = {
+        "USDC:ISSUER1": {
+          imageUrl: "https://example.com/usdc.png",
+          network: NETWORKS.PUBLIC,
+        },
+      };
+
+      useTokenIconsStore.getState().cacheTokenIcons({ icons: newIcons });
+
+      expect(useTokenIconsStore.getState().icons).toEqual({
+        ...existingIcon,
+        ...newIcons,
+      });
+    });
+  });
+
+  describe("cacheTokenListIcons", () => {
+    it("should fetch verified tokens and cache their icons", async () => {
+      mockFetchVerifiedTokens.mockResolvedValue([
+        {
+          code: "USDC",
+          issuer: "GA123",
+          icon: "https://example.com/usdc.png",
+          contract: "C123",
+        },
+        {
+          code: "BTC",
+          issuer: "GB456",
+          icon: "https://example.com/btc.png",
+          // no contract for BTC
+        },
+      ] as TokenListReponseItem[]);
+
+      await useTokenIconsStore
+        .getState()
+        .cacheTokenListIcons({ network: NETWORKS.PUBLIC });
+
+      const { icons } = useTokenIconsStore.getState();
+
+      expect(mockFetchVerifiedTokens).toHaveBeenCalledWith({
+        tokenListsApiServices: expect.anything(),
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(icons).toMatchObject({
+        "USDC:GA123": {
+          imageUrl: "https://example.com/usdc.png",
+          network: NETWORKS.PUBLIC,
+        },
+        "USDC:C123": {
+          imageUrl: "https://example.com/usdc.png",
+          network: NETWORKS.PUBLIC,
+        },
+        "BTC:GB456": {
+          imageUrl: "https://example.com/btc.png",
+          network: NETWORKS.PUBLIC,
+        },
+      });
+    });
+
+    it("should ignore tokens without icon field", async () => {
+      mockFetchVerifiedTokens.mockResolvedValue([
+        {
+          code: "NOICON",
+          issuer: "GA999",
+          // no icon
+        },
+      ] as TokenListReponseItem[]);
+
+      await useTokenIconsStore
+        .getState()
+        .cacheTokenListIcons({ network: NETWORKS.PUBLIC });
+
+      const { icons } = useTokenIconsStore.getState();
+
+      expect(icons).toEqual({});
     });
   });
 });
