@@ -1,10 +1,13 @@
-import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
+import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
@@ -17,7 +20,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
@@ -40,6 +43,9 @@ type SendReviewBottomSheetProps = {
    * Typically opens a modal to explain why the memo is required
    */
   onBannerPress?: () => void;
+  isMalicious?: boolean;
+  isSuspicious?: boolean;
+  signTransactionDetails?: SignTransactionDetailsInterface | null;
 };
 
 /**
@@ -66,26 +72,28 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   isRequiredMemoMissing,
   isValidatingMemo,
   onBannerPress,
+  isMalicious,
+  isSuspicious,
+  signTransactionDetails,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { recipientAddress, transactionMemo, transactionFee } =
     useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
-  const publicKey = account?.publicKey;
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
 
-  const handleCopyXdr = () => {
+  const handleCopyXdr = useCallback(() => {
     if (transactionXDR) {
       copyToClipboard(transactionXDR, {
         notificationMessage: t("common.copied"),
       });
     }
-  };
+  }, [copyToClipboard, t, transactionXDR]);
 
-  const renderXdrContent = () => {
+  const renderXdrContent = useCallback(() => {
     if (isBuilding) {
       return (
         <ActivityIndicator size="small" color={themeColors.text.secondary} />
@@ -105,7 +113,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     }
 
     return t("common.none");
-  };
+  }, [
+    error,
+    isBuilding,
+    t,
+    themeColors.status.error,
+    themeColors.text.secondary,
+    transactionXDR,
+  ]);
 
   /**
    * Renders the memo section title with appropriate icon and warning indicator
@@ -114,7 +129,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    *
    * @returns {JSX.Element} The memo title with icon and optional warning
    */
-  const renderMemoTitle = () => {
+  const renderMemoTitle = useCallback(() => {
     if (isBuilding) {
       return (
         <ActivityIndicator size="small" color={themeColors.text.secondary} />
@@ -123,7 +138,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <View className="flex-row items-center gap-[8px]">
-        <Icon.File02 size={16} color={themeColors.foreground.primary} />
         <Text md medium secondary>
           {t("transactionAmountScreen.details.memo")}
         </Text>
@@ -132,29 +146,51 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         )}
       </View>
     );
-  };
+  }, [
+    isBuilding,
+    isRequiredMemoMissing,
+    t,
+    themeColors.status.error,
+    themeColors.text.secondary,
+  ]);
 
   /**
-   * Renders a warning banner when a required memo is missing
-   * Only shows when isRequiredMemoMissing is true
+   * Renders a warning banner for the following cases:
+   * - When a required memo is missing
+   * - When the transaction is flagged as malicious
+   * - When the transaction is flagged as suspicious
    * Includes a call-to-action button to add the required memo
    *
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
    */
-  const renderMemoMissingWarning = () => {
-    if (!isRequiredMemoMissing) {
+  const renderBanner = () => {
+    if (!isRequiredMemoMissing && !isMalicious && !isSuspicious) {
       return null;
     }
 
+    const getBannerText = () => {
+      if (isMalicious) {
+        return t("transactionAmountScreen.errors.malicious");
+      }
+
+      if (isSuspicious) {
+        return t("transactionAmountScreen.errors.suspicious");
+      }
+
+      return t("transactionAmountScreen.errors.memoMissing");
+    };
+
     return (
       <Banner
-        variant="error"
-        text={t("transactionAmountScreen.errors.memoMissing")}
+        variant={isSuspicious ? "warning" : "error"}
+        text={getBannerText()}
         onPress={onBannerPress}
-        className="w-full mt-[16px]"
       />
     );
   };
+
+  const isLoading = isValidatingMemo || isBuilding;
+  const isDisabled = isRequiredMemoMissing || !transactionXDR || isLoading;
 
   /**
    * Renders the confirm button with different states based on memo validation
@@ -165,43 +201,149 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element} The appropriate button for the current state
    */
   const renderConfirmButton = () => {
-    if (isRequiredMemoMissing || isValidatingMemo) {
-      return (
-        <View className="flex-1">
-          <Button
-            onPress={onConfirm}
-            tertiary
-            xl
-            disabled={isBuilding || !transactionXDR || isValidatingMemo}
-          >
-            {t("common.addMemo")}
-          </Button>
-        </View>
-      );
-    }
+    const getButtonText = () => {
+      if (isRequiredMemoMissing || isValidatingMemo) {
+        return t("common.addMemo");
+      }
+
+      return t("common.confirm");
+    };
+
     return (
       <View className="flex-1">
-        <Button
-          onPress={onConfirm}
-          tertiary
-          xl
-          disabled={isBuilding || !transactionXDR || !!error}
-        >
-          {t("common.confirm")}
+        <Button onPress={onConfirm} tertiary xl disabled={isDisabled}>
+          {getButtonText()}
         </Button>
       </View>
     );
   };
 
+  const renderButtons = () => {
+    const cancelButton = (
+      <View
+        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+      >
+        <Button
+          tertiary={isSuspicious}
+          destructive={isMalicious}
+          secondary={!isMalicious && !isSuspicious}
+          xl
+          isFullWidth
+          onPress={onCancel}
+          disabled={isDisabled}
+        >
+          {t("common.cancel")}
+        </Button>
+      </View>
+    );
+
+    if (isMalicious || isSuspicious) {
+      return (
+        <>
+          {cancelButton}
+          <TextButton
+            text={t("transactionAmountScreen.confirmAnyway")}
+            onPress={onConfirm}
+            isLoading={isLoading}
+            disabled={isDisabled}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cancelButton}
+        {renderConfirmButton()}
+      </>
+    );
+  };
+
+  const transactionDetailsList: ListItemProps[] = useMemo(
+    () => [
+      {
+        icon: (
+          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("common.wallet"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Avatar
+              size="sm"
+              publicAddress={account?.publicKey ?? ""}
+              hasBorder={false}
+              hasBackground={false}
+            />
+            <Text md primary>
+              {account?.accountName}
+            </Text>
+          </View>
+        ),
+      },
+      {
+        icon: <Icon.File02 size={16} color={themeColors.foreground.primary} />,
+        titleComponent: renderMemoTitle(),
+        trailingContent: (
+          <Text md secondary={!transactionMemo}>
+            {transactionMemo || t("common.none")}
+          </Text>
+        ),
+      },
+      {
+        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
+        title: t("transactionAmountScreen.details.fee"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <Text md primary>
+            {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
+          </Text>
+        ),
+      },
+      {
+        icon: (
+          <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
+        ),
+        title: t("transactionAmountScreen.details.xdr"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <TouchableOpacity
+            onPress={handleCopyXdr}
+            disabled={isBuilding || !transactionXDR}
+            className="flex-row items-center gap-[8px]"
+          >
+            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            <Text md medium secondary={isBuilding}>
+              {renderXdrContent()}
+            </Text>
+          </TouchableOpacity>
+        ),
+      },
+    ],
+    [
+      account?.accountName,
+      account?.publicKey,
+      handleCopyXdr,
+      isBuilding,
+      renderMemoTitle,
+      renderXdrContent,
+      t,
+      themeColors.foreground.primary,
+      themeColors.text.secondary,
+      transactionFee,
+      transactionMemo,
+      transactionXDR,
+    ],
+  );
+
   return (
-    <View className="flex-1">
-      <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary">
-        <Text lg medium>
-          {t("transactionReviewScreen.title")}
-        </Text>
+    <View className="flex-1 gap-[12px]">
+      <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
+        <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
           {selectedBalance && !isLiquidityPool(selectedBalance) && (
-            <View className="w-full flex-row items-center gap-4">
+            <View className="w-full flex-row items-center gap-[16px]">
               <TokenIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
@@ -225,7 +367,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               color={themeColors.foreground.secondary}
             />
           </View>
-          <View className="w-full flex-row items-center gap-4">
+          <View className="w-full flex-row items-center gap-[16px]">
             <Avatar size="lg" publicAddress={recipientAddress} />
             <View className="flex-1">
               <Text xl medium>
@@ -235,77 +377,15 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           </View>
         </View>
       </View>
-      {renderMemoMissingWarning()}
+      {renderBanner()}
+      <List variant="secondary" items={transactionDetailsList} />
+      {signTransactionDetails && (
+        <SignTransactionDetails data={signTransactionDetails} />
+      )}
       <View
-        className={`rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border ${
-          isRequiredMemoMissing ? "mt-[16px]" : "mt-[24px]"
-        }`}
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[4px]`}
       >
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.from")}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-[8px]">
-            <Text md medium>
-              {account?.accountName || truncateAddress(publicKey ?? "", 4, 4)}
-            </Text>
-            <Avatar size="sm" publicAddress={publicKey ?? ""} />
-          </View>
-        </View>
-        <View className="flex-row items-center justify-between">
-          {renderMemoTitle()}
-          <Text md medium secondary={!transactionMemo}>
-            {transactionMemo || t("common.none")}
-          </Text>
-        </View>
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Route size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.fee")}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-[4px]">
-            <StellarLogo width={16} height={16} />
-            <Text md medium>
-              {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
-            </Text>
-          </View>
-        </View>
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.xdr")}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleCopyXdr}
-            disabled={isBuilding || !transactionXDR}
-            className="flex-row items-center gap-[8px]"
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary={isBuilding}>
-              {renderXdrContent()}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View className="mt-[24px]">
-        <Text sm medium secondary textAlign="center">
-          {t("transactionReviewScreen.reviewMessage")}
-        </Text>
-      </View>
-      <View className="mt-[24px] gap-[12px] flex-row">
-        <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
-            {t("common.cancel")}
-          </Button>
-        </View>
-        {renderConfirmButton()}
+        {renderButtons()}
       </View>
     </View>
   );
