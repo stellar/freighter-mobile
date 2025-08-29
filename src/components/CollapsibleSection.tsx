@@ -18,8 +18,7 @@ interface CollapsibleSectionProps {
  *
  * Features:
  * - Independent state management for each instance
- * - Accessible with proper ARIA attributes
- * - Smooth visual feedback with chevron rotation
+ * - Chevron icon indicates state (right = collapsed, down = expanded)
  * - TouchableOpacity header area for intuitive interaction
  *
  * @example
@@ -55,13 +54,14 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         className="flex-row items-center justify-between"
       >
         {header}
-        {!isExpanded ? (
-          <Icon.ChevronRight size={16} themeColor="gray" />
-        ) : (
+        {isExpanded ? (
           <Icon.ChevronDown size={16} themeColor="gray" />
+        ) : (
+          <Icon.ChevronRight size={16} themeColor="gray" />
         )}
       </TouchableOpacity>
-      {isExpanded && <View>{children}</View>}
+
+      {isExpanded && <View className="mt-[12px]">{children}</View>}
     </View>
   );
 };
