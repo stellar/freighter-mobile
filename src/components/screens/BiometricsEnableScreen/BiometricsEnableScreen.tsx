@@ -35,6 +35,67 @@ type BiometricsOnboardingScreenProps = NativeStackScreenProps<
   typeof AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN
 >;
 
+/**
+ * Unified component for displaying biometric icons with blurred background
+ *
+ * This component renders either a Face ID or fingerprint icon with a blurred
+ * background overlay, automatically determining the appropriate icon and size
+ * based on the biometry type.
+ *
+ * @param {BIOMETRY_TYPE} iconBiometryType - The type of biometric authentication
+ * @param {string} color - The color of the icon (defaults to white)
+ * @param {number} [iconSize] - Optional custom icon size
+ * @param {Object} iconContainerDimensions - The dimensions for the icon container
+ * @returns {JSX.Element} The blurred background icon component
+ */
+const BlurredBackgroundIcon = ({
+  iconBiometryType,
+  color,
+  iconSize,
+  iconContainerDimensions,
+}: {
+  iconBiometryType: BIOMETRY_TYPE;
+  color: string;
+  iconSize?: number;
+  iconContainerDimensions: { width: number; height: number };
+}) => {
+  const isFaceId = FACE_ID_BIOMETRY_TYPES.includes(iconBiometryType);
+  const defaultIconSize = isFaceId ? pxValue(80) : pxValue(72);
+  const iconSizeToUse = iconSize ?? defaultIconSize;
+
+  const IconComponent = isFaceId ? Icon.FaceId01 : Icon.TouchId;
+
+  return (
+    <View
+      className="items-center justify-center mt-4 flex-grow-0"
+      style={iconContainerDimensions}
+    >
+      <View className="absolute inset-0">
+        <BlurView
+          blurType="light"
+          blurAmount={6}
+          reducedTransparencyFallbackColor={color}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            right: 0,
+            borderRadius: Math.round(pxValue(16)), // care about rounded values for blurView
+            zIndex: 1,
+          }}
+        />
+        <View
+          className="absolute inset-0 items-center justify-center"
+          style={{ zIndex: 2 }}
+        >
+          <IconComponent color={color} size={iconSizeToUse} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
 export const BiometricsOnboardingScreen: React.FC<
   BiometricsOnboardingScreenProps
 > = ({ route }) => {
@@ -162,61 +223,6 @@ export const BiometricsOnboardingScreen: React.FC<
     viewBox: `0 0 ${Math.round(pxValue(354))} ${Math.round(pxValue(300))}`,
   };
 
-  const BlurredBackgroundFaceIcon = (
-    <View
-      className="items-center justify-center mt-4 flex-grow-0"
-      style={iconContainerDimensions}
-    >
-      <View className="absolute inset-0">
-        <BlurView
-          blurType="light"
-          blurAmount={6}
-          reducedTransparencyFallbackColor={themeColors.white}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            borderRadius: Math.round(pxValue(16)),
-            zIndex: 1,
-          }}
-        />
-        <View
-          className="absolute inset-0 items-center justify-center"
-          style={{ zIndex: 2 }}
-        >
-          <Icon.FaceId01 color={themeColors.white} size={pxValue(80)} />
-        </View>
-      </View>
-    </View>
-  );
-
-  const BlurredBackgroundFingerprintIcon = (
-    <View
-      className="items-center justify-center mt-4 flex-grow-0 relative z-10"
-      style={iconContainerDimensions}
-    >
-      <BlurView
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-          zIndex: 1,
-          borderRadius: Math.round(pxValue(16)),
-        }}
-        blurType="light"
-        blurAmount={6}
-        reducedTransparencyFallbackColor={themeColors.white}
-      />
-      <View className="absolute inset-0 items-center justify-center z-[2]">
-        <Icon.TouchId color={themeColors.white} size={pxValue(72)} />
-      </View>
-    </View>
-  );
-
   const iPhoneFrame = (
     <View className="items-center justify-center -mt-[64px] relative z-0">
       <View className="relative">
@@ -341,9 +347,13 @@ export const BiometricsOnboardingScreen: React.FC<
         </Text>
       </View>
       <View className="items-center">
-        {biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)
-          ? BlurredBackgroundFaceIcon
-          : BlurredBackgroundFingerprintIcon}
+        {biometryType && (
+          <BlurredBackgroundIcon
+            iconBiometryType={biometryType}
+            color={themeColors.white}
+            iconContainerDimensions={iconContainerDimensions}
+          />
+        )}
         {iPhoneFrame}
       </View>
     </OnboardLayout>

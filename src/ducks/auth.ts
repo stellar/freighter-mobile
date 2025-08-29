@@ -62,6 +62,25 @@ import { create } from "zustand";
 
 /**
  * Helper function to determine the biometric login type based on biometry type
+ *
+ * This function maps the device's supported biometry type to the corresponding
+ * LoginType enum value. It handles Face ID, Touch ID, fingerprint, and other
+ * biometric authentication methods supported by the device.
+ *
+ * @param {Keychain.BIOMETRY_TYPE | null} biometryType - The biometry type supported by the device
+ * @returns {LoginType} The corresponding login type (FACE, FINGERPRINT, or PASSWORD)
+ *
+ * @example
+ * const loginType = getLoginType(Keychain.BIOMETRY_TYPE.FACE_ID);
+ * // Returns LoginType.FACE
+ *
+ * @example
+ * const loginType = getLoginType(Keychain.BIOMETRY_TYPE.FINGERPRINT);
+ * // Returns LoginType.FINGERPRINT
+ *
+ * @example
+ * const loginType = getLoginType(null);
+ * // Returns LoginType.PASSWORD
  */
 export const getLoginType = (
   biometryType: Keychain.BIOMETRY_TYPE | null,
@@ -1666,6 +1685,29 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         throw error; // Rethrow to handle in the UI
       }
     },
+    /**
+     * Verifies biometric authentication by prompting the user for biometric input
+     *
+     * This function prompts the user to authenticate using their device's biometric
+     * capabilities (Face ID, Touch ID, fingerprint, etc.) and verifies that the
+     * stored biometric password can be retrieved. It's used to confirm the user's
+     * identity before performing sensitive operations.
+     *
+     * @returns {Promise<boolean>} Promise resolving to true if biometric authentication succeeds
+     * @throws {Error} If no biometry type is found or biometric password retrieval fails
+     *
+     * @example
+     * try {
+     *   const isAuthenticated = await verifyBiometrics();
+     *   if (isAuthenticated) {
+     *     // Proceed with sensitive operation
+     *     showRecoveryPhrase();
+     *   }
+     * } catch (error) {
+     *   // Handle authentication failure
+     *   console.error('Biometric verification failed:', error);
+     * }
+     */
     verifyBiometrics: async () => {
       const biometryType = await Keychain.getSupportedBiometryType();
 
@@ -1703,18 +1745,25 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
     /**
      * Generic function to verify biometrics and execute an action with the stored password
      *
-     * This function checks if biometrics is enabled. If enabled, it prompts the user for
-     * biometric authentication, retrieves the stored password, and then executes the provided
-     * callback function with that password and any additional arguments. If biometrics is
-     * disabled, it calls the callback directly with a placeholder password.
+     * This function intelligently handles biometric authentication based on user preferences
+     * and device capabilities. If biometrics are enabled and available, it prompts the user
+     * for biometric authentication, retrieves the stored password, and executes the callback
+     * with that password. If biometrics are disabled or unavailable, it gracefully falls back
+     * to calling the callback with an undefined password, allowing the action to proceed
+     * without biometric verification.
+     *
+     * The function automatically detects:
+     * - Whether biometrics are enabled in user preferences
+     * - The user's preferred sign-in method (biometric vs password)
+     * - Device sensor availability
+     * - Supported biometry types
      *
      * This is useful for actions that require the user's password but can be authenticated
      * via biometrics, or actions that work with or without biometrics.
      *
      * @template T - The return type of the callback function
      * @template P - The type of additional parameters (defaults to empty array)
-     * @param {Function} callback - A function that takes the password and additional args, returns Promise<T>
-     * @param {boolean} strict - Whether to enforce biometric authentication (defaults to false)
+     * @param {(password?: string, ...args: P) => Promise<T>} callback - Function that takes the password and additional args, returns Promise<T>
      * @param {...P} args - Additional arguments to pass to the callback function
      * @returns {Promise<T>} The result of executing the callback function
      * @throws {Error} If biometric authentication fails or no stored password is found
@@ -1722,26 +1771,42 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @example
      * // Example 1: Show recovery phrase with biometric authentication
      * await verifyActionWithBiometrics(async (password: string) => {
-     *   const key = await getKeyFromKeyManager(password);
-     *   const keyExtra = key.extra as { mnemonicPhrase: string };
-     *   if (keyExtra?.mnemonicPhrase) {
-     *     navigation.navigate('RecoveryPhrase', { phrase: keyExtra.mnemonicPhrase });
+     *   if (password) {
+     *     const key = await getKeyFromKeyManager(password);
+     *     const keyExtra = key.extra as { mnemonicPhrase: string };
+     *     if (keyExtra?.mnemonicPhrase) {
+     *       navigation.navigate('RecoveryPhrase', { phrase: keyExtra.mnemonicPhrase });
+     *     }
+     *   } else {
+     *     // Handle case where no password is available (user disabled biometrics)
+     *     navigation.navigate('PasswordInput');
      *   }
-     * }, false);
+     * });
      *
      * @example
-     * // Example 2: Simple action with biometric authentication (common pattern)
-     * verifyActionWithBiometrics((password: string) => {
-     *   onConfirm();
-     *   return Promise.resolve();
-     * }, false);
+     * // Example 2: Simple action with biometric authentication
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   if (password) {
+     *     // Use biometric password
+     *     await performSecureAction(password);
+     *   } else {
+     *     // Fallback to password input
+     *     await promptForPassword();
+     *   }
+     * });
      *
      * @example
      * // Example 3: Action with password parameter but no return value
-     * verifyActionWithBiometrics((password: string) => {
-     *   handleContinue(password);
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   if (password) {
+     *     handleContinue(password);
+     *   } else {
+     *     // Handle password input manually
+     *     const manualPassword = await promptForPassword();
+     *     handleContinue(manualPassword);
+     *   }
      *   return Promise.resolve();
-     * }, false);
+     * });
      *
      * @example
      * // Example 4: Action that returns a value
