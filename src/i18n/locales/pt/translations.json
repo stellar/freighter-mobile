@@ -162,8 +162,8 @@
   },
   "validateRecoveryPhraseScreen": {
     "title": "Digite a Palavra #{{number}}",
-    "inputPlaceholder": "Digite a palavra correta",
-    "errorText": "Palavra incorreta, tente novamente",
+    "instructionText": "Consulte a frase de recuperação que você acabou de salvar",
+    "errorText": "Palavra incorreta selecionada, tente novamente",
     "defaultActionButtonText": "Continuar"
   },
   "importWalletScreen": {

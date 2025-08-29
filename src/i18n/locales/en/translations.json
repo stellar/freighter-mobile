@@ -190,8 +190,8 @@
   },
   "validateRecoveryPhraseScreen": {
     "title": "Enter Word #{{number}}",
-    "inputPlaceholder": "Type the correct word",
-    "errorText": "Word is incorrect, try again",
+    "instructionText": "Refer to the recovery phrase you just saved",
+    "errorText": "Incorrect word selected, try again",
     "defaultActionButtonText": "Continue"
   },
   "importWalletScreen": {

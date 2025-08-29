@@ -37,6 +37,11 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
+// Recovery phrase validation constants
+export const VALIDATION_WORDS_PER_ROW: number = 3;
+export const VALIDATION_EXTRA_USER_WORDS: number = 2;
+export const VALIDATION_DECOY_WORDS: number = 6;
+
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
