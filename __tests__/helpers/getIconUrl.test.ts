@@ -1,4 +1,4 @@
-import { NETWORKS, NETWORK_URLS } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { getIconUrl } from "helpers/getIconUrl";
 import * as tokenListModule from "helpers/getIconUrlFromTokensLists";
 
@@ -10,7 +10,6 @@ describe("getIconUrl", () => {
   };
 
   const network = NETWORKS.PUBLIC;
-  const networkUrl = NETWORK_URLS.PUBLIC;
 
   afterEach(() => {
     jest.resetAllMocks();
@@ -21,7 +20,7 @@ describe("getIconUrl", () => {
       .spyOn(tokenListModule, "getIconUrlFromTokensLists")
       .mockResolvedValue("https://token-list-icon.png");
 
-    const result = await getIconUrl({ asset, network, networkUrl });
+    const result = await getIconUrl({ asset, network });
 
     expect(result).toBe("https://token-list-icon.png");
     expect(tokenListModule.getIconUrlFromTokensLists).toHaveBeenCalledTimes(1);

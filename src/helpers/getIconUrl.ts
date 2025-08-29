@@ -5,7 +5,6 @@ import { getIconUrlFromTokensLists } from "helpers/getIconUrlFromTokensLists";
 export const getIconUrl = async ({
   asset,
   network,
-  networkUrl,
 }: {
   asset: {
     issuer?: string;
@@ -13,8 +12,8 @@ export const getIconUrl = async ({
     code?: string;
   };
   network: NETWORKS;
-  networkUrl: NETWORK_URLS;
 }): Promise<string> => {
+  const networkUrl = NETWORK_URLS[network];
   const iconFromList = await getIconUrlFromTokensLists({ asset, network });
   if (iconFromList) return iconFromList;
 

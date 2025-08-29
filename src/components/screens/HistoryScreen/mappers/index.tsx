@@ -99,7 +99,7 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
-      networkUrl: networkDetails.networkUrl,
+      network: networkDetails.network,
       themeColors,
     });
   }
