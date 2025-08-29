@@ -1,7 +1,9 @@
 /* eslint-disable global-require */
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 const { mergeConfig, getDefaultConfig } = require("@react-native/metro-config");
+const { withSentryConfig } = require("@sentry/react-native/metro");
 const { withNativeWind } = require("nativewind/metro");
 const {
   wrapWithReanimatedMetroConfig,
@@ -24,8 +26,11 @@ const config = {
   },
 };
 
-module.exports = wrapWithReanimatedMetroConfig(
-  withNativeWind(mergeConfig(getDefaultConfig(__dirname), config), {
-    input: "./global.css",
-  }),
+module.exports = withSentryConfig(
+  wrapWithReanimatedMetroConfig(
+    withNativeWind(mergeConfig(getDefaultConfig(__dirname), config), {
+      input: "./global.css",
+    }),
+  ),
+  { annotateReactComponents: true },
 );

@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import * as Sentry from "@sentry/react-native";
 import { debug } from "helpers/debug";
 
 /**
@@ -118,19 +119,134 @@ class Logger {
 export const logger = Logger.getInstance();
 
 /**
- * Example Sentry adapter implementation
- *
- * @example
- * ```typescript
- * import * as Sentry from "@sentry/react-native";
- *
- * const sentryAdapter: LoggerAdapter = {
- *   debug: (message, ...args) => Sentry.addBreadcrumb({ level: "debug", message, data: args }),
- *   info: (message, ...args) => Sentry.addBreadcrumb({ level: "info", message, data: args }),
- *   warn: (message, ...args) => Sentry.addBreadcrumb({ level: "warning", message, data: args }),
- *   error: (message, ...args) => Sentry.captureException(new Error(message), { extra: args }),
- * };
- *
- * logger.setAdapter(sentryAdapter);
- * ```
+ * Sanitize data to remove potential PII before sending to Sentry
+ * Add or remove fields on the list if necessary
  */
+const sanitizeLogData = (data: unknown): unknown => {
+  if (!data || typeof data !== "object") {
+    return data;
+  }
+
+  const sanitized = { ...(data as Record<string, unknown>) };
+
+  // Remove common PII fields
+  const piiFields = [
+    "email",
+    "phone",
+    "address",
+    "name",
+    "firstName",
+    "lastName",
+    "username",
+    "userId",
+    "accountId",
+    "privateKey",
+    "seed",
+    "mnemonic",
+    "password",
+    "token",
+    "jwt",
+    "session",
+    "ip",
+    "ipAddress",
+    "location",
+    "coordinates",
+  ];
+
+  piiFields.forEach((field) => {
+    if (field in sanitized) {
+      sanitized[field] = "[REDACTED]";
+    }
+  });
+
+  return sanitized;
+};
+
+/**
+ * Sentry adapter implementation for production logging
+ */
+const sentryAdapter: LoggerAdapter = {
+  debug: (context: string, message: string, ...args: unknown[]) => {
+    // Only add debug breadcrumbs in development
+    if (__DEV__) {
+      Sentry.addBreadcrumb({
+        level: "debug",
+        message: `[${context}] ${message}`,
+        data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+        category: context,
+      });
+    }
+  },
+  info: (context: string, message: string, ...args: unknown[]) => {
+    Sentry.addBreadcrumb({
+      level: "info",
+      message: `[${context}] ${message}`,
+      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+      category: context,
+    });
+  },
+  warn: (context: string, message: string, ...args: unknown[]) => {
+    Sentry.addBreadcrumb({
+      level: "warning",
+      message: `[${context}] ${message}`,
+      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+      category: context,
+    });
+
+    // Also capture as a warning-level message for visibility
+    Sentry.captureMessage(`[${context}] ${message}`, "warning");
+  },
+  error: (context: string, message: string, ...args: unknown[]) => {
+    const errorMessage = `[${context}] ${message}`;
+
+    // Create an error object for better stack traces
+    const error = new Error(errorMessage);
+    error.name = `${context}Error`;
+
+    // Add breadcrumb for context
+    Sentry.addBreadcrumb({
+      level: "error",
+      message: errorMessage,
+      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+      category: context,
+    });
+
+    // Capture the error with additional context
+    Sentry.captureException(error, {
+      tags: { context },
+      extra: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+    });
+  },
+};
+
+/**
+ * Combined adapter that logs to both console (in development) and Sentry
+ */
+const combinedAdapter: LoggerAdapter = {
+  debug: (context: string, message: string, ...args: unknown[]) => {
+    consoleAdapter.debug(context, message, ...args);
+    sentryAdapter.debug(context, message, ...args);
+  },
+  info: (context: string, message: string, ...args: unknown[]) => {
+    consoleAdapter.info(context, message, ...args);
+    sentryAdapter.info(context, message, ...args);
+  },
+  warn: (context: string, message: string, ...args: unknown[]) => {
+    consoleAdapter.warn(context, message, ...args);
+    sentryAdapter.warn(context, message, ...args);
+  },
+  error: (context: string, message: string, ...args: unknown[]) => {
+    consoleAdapter.error(context, message, ...args);
+    sentryAdapter.error(context, message, ...args);
+  },
+};
+
+/**
+ * Initialize Sentry integration for the logger
+ * This should be called after Sentry.init() in the application bootstrap
+ */
+export const initializeSentryLogger = (): void => {
+  // Use combined adapter for development (console + Sentry for Spotlight),
+  // Sentry only for production
+  logger.setAdapter(__DEV__ ? combinedAdapter : sentryAdapter);
+};
