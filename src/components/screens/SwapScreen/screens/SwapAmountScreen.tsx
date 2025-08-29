@@ -14,7 +14,7 @@ import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, SWAP_SELECTION_TYPES } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
@@ -237,13 +237,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const navigateToSelectDestinationTokenScreen = () => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-      selectionType: "destination",
+      selectionType: SWAP_SELECTION_TYPES.DESTINATION,
     });
   };
 
   const navigateToSelectSourceTokenScreen = () => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-      selectionType: "source",
+      selectionType: SWAP_SELECTION_TYPES.SOURCE,
     });
   };
 

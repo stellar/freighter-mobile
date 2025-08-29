@@ -191,6 +191,11 @@ export const DEFAULT_TRANSACTION_TIMEOUT = 180;
 export const MIN_TRANSACTION_TIMEOUT = 1;
 export const MIN_IOS_VERSION_FOR_ATT_REQUEST = 14.5;
 
+export enum SWAP_SELECTION_TYPES {
+  SOURCE = "source",
+  DESTINATION = "destination",
+}
+
 export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
   TESTNET_NETWORK_DETAILS,

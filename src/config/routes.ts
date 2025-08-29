@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -236,7 +236,7 @@ export type SendPaymentStackParamList = {
 
 export type SwapStackParamList = {
   [SWAP_ROUTES.SWAP_SCREEN]: {
-    selectionType: "source" | "destination";
+    selectionType: SWAP_SELECTION_TYPES;
   };
   [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
     tokenId: string;

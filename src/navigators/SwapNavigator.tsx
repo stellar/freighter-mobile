@@ -8,6 +8,7 @@ import {
   SwapSlippageScreen,
   SwapTimeoutScreen,
 } from "components/screens/SwapScreen/screens";
+import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -28,7 +29,7 @@ export const SwapStackNavigator = () => {
         component={SwapScreen}
         options={({ route }) => ({
           headerTitle:
-            route.params.selectionType === "destination"
+            route.params.selectionType === SWAP_SELECTION_TYPES.DESTINATION
               ? t("swapScreen.swapTo")
               : t("swapScreen.swapFrom"),
         })}
