@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { getAppVersion } from "helpers/version";
 import { t } from "i18next";
 import { BIOMETRY_TYPE } from "react-native-keychain";
+
+export const APP_VERSION = getAppVersion();
 
 export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
@@ -34,6 +37,11 @@ export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
+
+// Recovery phrase validation constants
+export const VALIDATION_WORDS_PER_ROW: number = 3;
+export const VALIDATION_EXTRA_USER_WORDS: number = 2;
+export const VALIDATION_DECOY_WORDS: number = 6;
 
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
@@ -278,11 +286,9 @@ export const BROWSER_CONSTANTS = {
   TAB_PREVIEW_FAVICON_SIZE: 32,
   TAB_PREVIEW_CLOSE_ICON_SIZE: 12,
   TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
+
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
-  IOS_USER_AGENT:
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
-  ANDROID_USER_AGENT:
-    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.103 Mobile Safari/537.36",
+  DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
 } as const;
 
 /**

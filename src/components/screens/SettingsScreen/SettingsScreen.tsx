@@ -6,7 +6,7 @@ import Icon from "components/sds/Icon";
 import { FREIGHTER_BASE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { getAppVersion } from "helpers/version";
+import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -20,7 +20,7 @@ type SettingsScreenProps = NativeStackScreenProps<
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { logout } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const appVersion = getAppVersion();
+  const appVersion = getAppVersionAndBuildNumber();
   const { themeColors } = useColors();
 
   const handleLogout = () => {

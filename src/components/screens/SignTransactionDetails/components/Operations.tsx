@@ -106,7 +106,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.destination"),
-          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={destination} size="sm" />
+              <Text>{truncateAddress(destination)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -126,7 +131,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.destination"),
-          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={destination} size="sm" />
+              <Text>{truncateAddress(destination)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -162,7 +172,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.destination"),
-          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={destination} size="sm" />
+              <Text>{truncateAddress(destination)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -205,7 +220,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.destination"),
-          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={destination} size="sm" />
+              <Text>{truncateAddress(destination)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -359,7 +379,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       if (inflationDest) {
         items.push({
           title: t("signTransactionDetails.operations.inflationDestination"),
-          trailingContent: <Avatar publicAddress={inflationDest} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={inflationDest} size="sm" />
+              <Text>{truncateAddress(inflationDest)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }
@@ -473,7 +498,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.trustor"),
-          trailingContent: <Avatar publicAddress={trustor} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={trustor} size="sm" />
+              <Text>{truncateAddress(trustor)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -496,7 +526,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.destination"),
-          trailingContent: <Avatar publicAddress={destination} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={destination} size="sm" />
+              <Text>{truncateAddress(destination)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -613,7 +648,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.from"),
-          trailingContent: <Avatar publicAddress={from} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={from} size="sm" />
+              <Text>{truncateAddress(from)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -639,7 +679,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.trustor"),
-          trailingContent: <Avatar publicAddress={trustor} size="sm" />,
+          trailingContent: (
+            <View className="flex-row items-center gap-[4px]">
+              <Avatar publicAddress={trustor} size="sm" />
+              <Text>{truncateAddress(trustor)}</Text>
+            </View>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -831,7 +876,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         const items: ListItemProps[] = [
           {
             title: t("signTransactionDetails.operations.account"),
-            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <Avatar publicAddress={account} size="sm" />
+                <Text>{truncateAddress(account)}</Text>
+              </View>
+            ),
             titleColor: themeColors.text.secondary,
           },
         ];
@@ -864,7 +914,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         const items: ListItemProps[] = [
           {
             title: t("signTransactionDetails.operations.account"),
-            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <Avatar publicAddress={account} size="sm" />
+                <Text>{truncateAddress(account)}</Text>
+              </View>
+            ),
             titleColor: themeColors.text.secondary,
           },
         ];
@@ -879,7 +934,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         const items: ListItemProps[] = [
           {
             title: t("signTransactionDetails.operations.seller"),
-            trailingContent: <Avatar publicAddress={seller} size="sm" />,
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <Avatar publicAddress={seller} size="sm" />
+                <Text>{truncateAddress(seller)}</Text>
+              </View>
+            ),
             titleColor: themeColors.text.secondary,
           },
           {
@@ -899,7 +959,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         const items: ListItemProps[] = [
           {
             title: t("signTransactionDetails.operations.account"),
-            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <Avatar publicAddress={account} size="sm" />
+                <Text>{truncateAddress(account)}</Text>
+              </View>
+            ),
             titleColor: themeColors.text.secondary,
           },
           {
@@ -943,7 +1008,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           },
           {
             title: t("signTransactionDetails.operations.account"),
-            trailingContent: <Avatar publicAddress={account} size="sm" />,
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <Avatar publicAddress={account} size="sm" />
+                <Text>{truncateAddress(account)}</Text>
+              </View>
+            ),
             titleColor: themeColors.text.secondary,
           },
         ];

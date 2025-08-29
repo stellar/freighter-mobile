@@ -29,7 +29,8 @@
     "enable": "Enable",
     "token": "Token",
     "hash": "Hash",
-    "salt": "Salt"
+    "salt": "Salt",
+    "wallet": "Wallet"
   },
   "home": {
     "title": "Home",
@@ -193,8 +194,8 @@
   },
   "validateRecoveryPhraseScreen": {
     "title": "Enter Word #{{number}}",
-    "inputPlaceholder": "Type the correct word",
-    "errorText": "Word is incorrect, try again",
+    "instructionText": "Refer to the recovery phrase you just saved",
+    "errorText": "Incorrect word selected, try again",
     "defaultActionButtonText": "Continue"
   },
   "biometricsOnboardingScreen": {
@@ -631,8 +632,11 @@
     "errors": {
       "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "amountTooHigh": "The amount entered is greater than the available balance",
-      "memoMissing": "This transaction requires a memo"
-    }
+      "memoMissing": "This transaction requires a memo",
+      "malicious": "This address was flagged as malicious",
+      "suspicious": "This address was flagged as suspicious"
+    },
+    "confirmAnyway": "Confirm anyway"
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",
@@ -976,7 +980,8 @@
       "contractAddress": "Contract address"
     },
     "operations": {
-      "destination": "Destination #{{number}}",
+      "destinationWithNumber": "Destination #{{number}}",
+      "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
       "amount": "Amount",

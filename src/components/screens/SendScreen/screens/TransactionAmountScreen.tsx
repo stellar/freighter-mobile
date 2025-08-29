@@ -1,3 +1,4 @@
+import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
@@ -6,12 +7,14 @@ import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
+import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
   SendReviewBottomSheet,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
+import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
@@ -30,6 +33,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -46,6 +50,11 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
+import {
+  assessTransactionSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -89,12 +98,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);
 
+  const { scanTransaction } = useBlockaidTransaction();
+
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [transactionScanResult, setTransactionScanResult] = useState<
+    Blockaid.StellarTransactionScanResponse | undefined
+  >(undefined);
+  const transactionSecurityWarningBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
+  const signTransactionDetails = useSignTransactionDetails({
+    xdr: transactionXDR ?? "",
+  });
 
   const onConfirmAddMemo = () => {
     reviewBottomSheetModalRef.current?.dismiss();
@@ -103,11 +122,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
-  };
-
-  const onOpenAddMemoExplanationBottomSheet = () => {
-    reviewBottomSheetModalRef.current?.dismiss();
-    addMemoExplanationBottomSheetModalRef.current?.present();
   };
 
   const handleConfirmTransactionSettings = () => {
@@ -139,6 +153,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
+
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(transactionScanResult),
+    [transactionScanResult],
+  );
 
   const {
     tokenAmount,
@@ -240,7 +259,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleOpenReview = useCallback(async () => {
     try {
-      await buildTransaction({
+      const finalXDR = await buildTransaction({
         tokenAmount,
         selectedBalance,
         recipientAddress,
@@ -251,7 +270,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         senderAddress: publicKey,
       });
 
-      reviewBottomSheetModalRef.current?.present();
+      if (!finalXDR) return;
+
+      scanTransaction(finalXDR, "internal")
+        .then((scanResult) => {
+          logger.info("TransactionAmountScreen", "scanResult", scanResult);
+          setTransactionScanResult(scanResult);
+        })
+        .catch(() => {
+          setTransactionScanResult(undefined);
+        })
+        .finally(() => {
+          reviewBottomSheetModalRef.current?.present();
+        });
     } catch (error) {
       logger.error(
         "TransactionAmountScreen",
@@ -269,6 +300,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     network,
     publicKey,
     buildTransaction,
+    scanTransaction,
   ]);
 
   const handleTransactionConfirmation = () => {
@@ -339,6 +371,41 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   };
 
+  const handleCancelSecurityWarning = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+  };
+
+  const transactionSecurityWarnings = useMemo(() => {
+    if (
+      transactionSecurityAssessment.isMalicious ||
+      transactionSecurityAssessment.isSuspicious
+    ) {
+      const warnings = extractSecurityWarnings(transactionScanResult);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    transactionScanResult,
+  ]);
+
+  const transactionSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious)
+      return SecurityLevel.MALICIOUS;
+    if (transactionSecurityAssessment.isSuspicious)
+      return SecurityLevel.SUSPICIOUS;
+
+    return undefined;
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+  ]);
+
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
@@ -349,6 +416,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
     );
   }
+
+  const handleConfirmAnyway = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    handleTransactionConfirmation();
+  };
+
+  const onBannerPress = () => {
+    if (isRequiredMemoMissing) {
+      addMemoExplanationBottomSheetModalRef.current?.present();
+    } else {
+      transactionSecurityWarningBottomSheetModalRef.current?.present();
+    }
+  };
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -482,7 +563,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
-            onBannerPress={onOpenAddMemoExplanationBottomSheet}
+            onBannerPress={onBannerPress}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={
               isRequiredMemoMissing
@@ -492,6 +573,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
             isValidatingMemo={isValidatingMemo}
+            isMalicious={transactionSecurityAssessment.isMalicious}
+            isSuspicious={transactionSecurityAssessment.isSuspicious}
+            signTransactionDetails={signTransactionDetails}
           />
         }
       />
@@ -538,6 +622,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <TransactionSettingsBottomSheet
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={transactionSecurityWarningBottomSheetModalRef}
+        handleCloseModal={handleCancelSecurityWarning}
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={transactionSecurityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnyway}
+            onClose={handleCancelSecurityWarning}
+            severity={transactionSecuritySeverity}
+            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
           />
         }
       />
