@@ -4,10 +4,12 @@ import {
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
+  LoginType,
 } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, ActiveAccount } from "ducks/auth";
+import { usePreferencesStore } from "ducks/preferences";
 import {
   encryptDataWithPassword,
   decryptDataWithPassword,
@@ -15,14 +17,18 @@ import {
   generateSalt,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
   getHashKey,
 } from "services/storage/helpers";
+// Import mocked modules
+import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
 import {
   dataStorage,
   secureDataStorage,
+  biometricDataStorage,
 } from "services/storage/storageFactory";
 import StellarHDWallet from "stellar-hd-wallet";
 
@@ -48,6 +54,33 @@ jest.mock("services/storage/storageFactory", () => ({
     getItem: jest.fn(),
     setItem: jest.fn(),
     remove: jest.fn(),
+  },
+  biometricDataStorage: {
+    getItem: jest.fn(),
+  },
+}));
+
+jest.mock("services/storage/reactNativeBiometricStorage", () => ({
+  rnBiometrics: {
+    isSensorAvailable: jest.fn(),
+  },
+}));
+
+jest.mock("react-native-keychain", () => ({
+  getSupportedBiometryType: jest.fn(),
+  BIOMETRY_TYPE: {
+    FACE_ID: "FaceID",
+    FINGERPRINT: "Fingerprint",
+    FACE: "Face",
+    TOUCH_ID: "TouchID",
+    OPTIC_ID: "OpticID",
+    IRIS: "Iris",
+  },
+}));
+
+jest.mock("ducks/preferences", () => ({
+  usePreferencesStore: {
+    getState: jest.fn(),
   },
 }));
 
@@ -128,19 +161,9 @@ describe("auth duck", () => {
     mnemonicPhrase: mockMnemonicPhrase,
   });
 
-  const mockAccountList = [
-    {
-      id: mockAccountId,
-      name: mockAccountName,
-      publicKey: mockPublicKey,
-      network: NETWORKS.TESTNET,
-    },
-  ];
-
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-
     // Reset the store before each test
     useAuthenticationStore.getState().logout = jest.fn();
     useAuthenticationStore.getState().signUp = jest.fn();
@@ -176,6 +199,30 @@ describe("auth duck", () => {
       });
     });
 
+    // Setup storage mocks to return empty/initial state
+    (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+        return Promise.resolve(null); // No accounts exist
+      }
+      if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+        return Promise.resolve(null);
+      }
+      if (key === STORAGE_KEYS.ACTIVE_NETWORK) {
+        return Promise.resolve(NETWORKS.PUBLIC);
+      }
+      return Promise.resolve(null);
+    });
+
+    (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+      if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+        return Promise.resolve(null); // No temporary store
+      }
+      if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+        return Promise.resolve(null); // No hash key
+      }
+      return Promise.resolve(null);
+    });
+
     // Setup createKeyManager mock
     (createKeyManager as jest.Mock).mockReturnValue(mockKeyManager);
 
@@ -202,27 +249,6 @@ describe("auth duck", () => {
     (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
     (clearTemporaryData as jest.Mock).mockResolvedValue(undefined);
     (clearNonSensitiveData as jest.Mock).mockResolvedValue(undefined);
-
-    // Setup storage mocks
-    (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
-      if (key === STORAGE_KEYS.ACCOUNT_LIST) {
-        return Promise.resolve(JSON.stringify(mockAccountList));
-      }
-      if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
-        return Promise.resolve(mockAccountId);
-      }
-      return Promise.resolve(null);
-    });
-
-    (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
-      if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
-        return Promise.resolve(mockEncryptedData);
-      }
-      if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
-        return Promise.resolve(JSON.stringify(mockHashKeyObj));
-      }
-      return Promise.resolve(null);
-    });
 
     // Setup KeyManager mocks with explicit promises
     mockKeyManager.storeKey.mockResolvedValue({ id: mockAccountId });
@@ -479,6 +505,268 @@ describe("auth duck", () => {
       expect(result.current.account).toBeDefined();
       expect(result.current.account?.publicKey).toBe(mockPublicKey);
       expect(result.current.account?.privateKey).toBe(mockPrivateKey);
+    });
+  });
+
+  describe("enableBiometrics", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (getSupportedBiometryType as jest.Mock).mockResolvedValue(
+        BIOMETRY_TYPE.FACE_ID,
+      );
+      (rnBiometrics.isSensorAvailable as jest.Mock).mockResolvedValue(true);
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: true,
+      });
+    });
+
+    it("should successfully enable biometrics and execute callback with password", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockStoredData = { password: "storedPassword" };
+
+      (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(
+        mockStoredData,
+      );
+
+      const response = await result.current.enableBiometrics(mockCallback);
+
+      expect(getSupportedBiometryType).toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).toHaveBeenCalledWith(
+        "biometricPassword",
+        {
+          title: "authStore.faceId.signInTitle",
+          cancel: "common.cancel",
+        },
+      );
+      expect(mockCallback).toHaveBeenCalledWith("storedPassword");
+      expect(response).toBe("success");
+    });
+
+    it("should throw error when no biometry type is found", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+
+      (getSupportedBiometryType as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        result.current.enableBiometrics(mockCallback),
+      ).rejects.toThrow("No biometry type found");
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it("should throw error when no stored password is found", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+
+      (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        result.current.enableBiometrics(mockCallback),
+      ).rejects.toThrow(
+        "No stored password found for biometric authentication",
+      );
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it("should handle biometric authentication failure", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockError = new Error("Biometric authentication failed");
+
+      (biometricDataStorage.getItem as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(
+        result.current.enableBiometrics(mockCallback),
+      ).rejects.toThrow("Biometric authentication failed");
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("verifyActionWithBiometrics", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (getSupportedBiometryType as jest.Mock).mockResolvedValue(
+        BIOMETRY_TYPE.FACE_ID,
+      );
+      (rnBiometrics.isSensorAvailable as jest.Mock).mockResolvedValue(true);
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: true,
+      });
+    });
+
+    it("should successfully verify action with biometrics when enabled", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockStoredData = { password: "storedPassword" };
+      const mockArgs = ["arg1", "arg2"];
+
+      // Set up the store state to enable biometrics
+      act(() => {
+        useAuthenticationStore.setState({
+          signInMethod: LoginType.FACE,
+        });
+      });
+
+      (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(
+        mockStoredData,
+      );
+
+      const response = await result.current.verifyActionWithBiometrics(
+        mockCallback,
+        ...mockArgs,
+      );
+
+      expect(getSupportedBiometryType).toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).toHaveBeenCalledWith(
+        "biometricPassword",
+        {
+          title: "authStore.faceId.signInTitle",
+          cancel: "common.cancel",
+        },
+      );
+      expect(mockCallback).toHaveBeenCalledWith("storedPassword", ...mockArgs);
+      expect(response).toBe("success");
+    });
+
+    it("should fall back to callback without password when biometrics disabled", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: false,
+      });
+
+      const response = await result.current.verifyActionWithBiometrics(
+        mockCallback,
+        ...mockArgs,
+      );
+
+      expect(getSupportedBiometryType).not.toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
+      expect(mockCallback).toHaveBeenCalledWith(undefined, ...mockArgs);
+      expect(response).toBe("success");
+    });
+
+    it("should fall back to callback without password when sensor unavailable", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+
+      (rnBiometrics.isSensorAvailable as jest.Mock).mockResolvedValue(false);
+
+      const response = await result.current.verifyActionWithBiometrics(
+        mockCallback,
+        ...mockArgs,
+      );
+
+      expect(getSupportedBiometryType).not.toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
+      expect(mockCallback).toHaveBeenCalledWith(undefined, ...mockArgs);
+      expect(response).toBe("success");
+    });
+
+    it("should fall back to callback without password when using password sign-in method", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+
+      // Mock the store state to have password sign-in method
+      act(() => {
+        useAuthenticationStore.setState({
+          signInMethod: LoginType.PASSWORD,
+        });
+      });
+
+      const response = await result.current.verifyActionWithBiometrics(
+        mockCallback,
+        ...mockArgs,
+      );
+
+      expect(getSupportedBiometryType).not.toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
+      expect(mockCallback).toHaveBeenCalledWith(undefined, ...mockArgs);
+      expect(response).toBe("success");
+    });
+
+    it("should fall back to callback without password when no biometry type available", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+
+      // Set up the store state to enable biometrics
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: true,
+      });
+
+      // Set the sign-in method to FACE so biometrics path is taken
+      act(() => {
+        useAuthenticationStore.setState({
+          signInMethod: LoginType.FACE,
+        });
+      });
+
+      (getSupportedBiometryType as jest.Mock).mockResolvedValue(null);
+
+      const response = await result.current.verifyActionWithBiometrics(
+        mockCallback,
+        ...mockArgs,
+      );
+
+      expect(getSupportedBiometryType).toHaveBeenCalled();
+      expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
+      expect(mockCallback).toHaveBeenCalledWith(undefined, ...mockArgs);
+      expect(response).toBe("success");
+    });
+
+    it("should throw error when no stored password is found", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+
+      // Set up the store state to enable biometrics
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: true,
+      });
+      act(() => {
+        useAuthenticationStore.setState({
+          signInMethod: LoginType.FACE,
+        });
+      });
+
+      (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        result.current.verifyActionWithBiometrics(mockCallback, ...mockArgs),
+      ).rejects.toThrow(
+        "No stored password found for biometric authentication",
+      );
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it("should handle biometric authentication failure", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+      const mockCallback = jest.fn().mockResolvedValue("success");
+      const mockArgs = ["arg1", "arg2"];
+      const mockError = new Error("Biometric authentication failed");
+
+      // Set up the store state to enable biometrics
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: true,
+      });
+      act(() => {
+        useAuthenticationStore.setState({
+          signInMethod: LoginType.FACE,
+        });
+      });
+
+      (biometricDataStorage.getItem as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(
+        result.current.verifyActionWithBiometrics(mockCallback, ...mockArgs),
+      ).rejects.toThrow("Biometric authentication failed");
+      expect(mockCallback).not.toHaveBeenCalled();
     });
   });
 });

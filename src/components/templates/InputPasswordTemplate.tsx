@@ -99,7 +99,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               onPress={(password) => {
                 handleContinue((password as string) ?? passwordValue);
               }}
-              disabled={!canContinue && signInMethod === LoginType.PASSWORD}
+              disabled={!canContinue}
               isLoading={isLoading}
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}

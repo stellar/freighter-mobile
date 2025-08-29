@@ -5,6 +5,41 @@ import { pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
+// Mock the auth module to provide getLoginType function
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(() => ({
+    network: "testnet",
+    setSignInMethod: jest.fn(),
+    verifyActionWithBiometrics: jest.fn((callback) => callback()),
+  })),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
+  }),
+}));
+
+// Mock the useBiometrics hook
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: () => ({
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
+    getBiometricButtonIcon: jest.fn(() => null),
+  }),
+}));
+
 describe("Button", () => {
   const onPressMock = jest.fn();
 

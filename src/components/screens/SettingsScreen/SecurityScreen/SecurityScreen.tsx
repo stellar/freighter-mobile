@@ -19,7 +19,7 @@ type SecurityScreenProps = NativeStackScreenProps<
 const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { isBiometricsSensorAvailable, biometryType } = useBiometrics();
+  const { biometryType } = useBiometrics();
 
   const biometryTitle: Record<BIOMETRY_TYPE, string> = {
     [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
@@ -50,10 +50,10 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       testID: "show-recovery-phrase-button",
     },
   ];
-  if (isBiometricsSensorAvailable) {
+  if (biometryType) {
     listItems.push({
       icon: getBiometryIcon(),
-      title: biometryTitle[biometryType!] ?? "",
+      title: biometryTitle[biometryType] ?? "",
       titleColor: themeColors.text.primary,
       onPress: () =>
         navigation.navigate(SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN),

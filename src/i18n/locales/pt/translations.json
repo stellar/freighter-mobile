@@ -363,6 +363,18 @@
       "disableSubtitle": "Desabilitar Impressão Digital diminui a segurança. Você pode reabilitá-lo nas Configurações.",
       "signInTitle": "Confirmar para prosseguir",
       "signInSubtitle": "Use Impressão Digital para fazer login e aprovar transações de forma segura."
+    },
+    "opticId": {
+      "disableTitle": "Confirmar para desabilitar Optic ID",
+      "disableSubtitle": "Desabilitar Optic ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Optic ID para fazer login e aprovar transações de forma segura."
+    },
+    "iris": {
+      "disableTitle": "Confirmar para desabilitar Iris",
+      "disableSubtitle": "Desabilitar Iris diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Iris para fazer login e aprovar transações de forma segura."
     }
   },
   "balancesList": {

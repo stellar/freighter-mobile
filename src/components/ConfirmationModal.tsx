@@ -141,10 +141,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       <Text xl regular>
         {title}
       </Text>
-      <View className="h-2" />
-      <Text md regular secondary>
-        {message}
-      </Text>
+      <View className="mt-4 mb-8">
+        <Text md regular secondary>
+          {message}
+        </Text>
+      </View>
       <View className="h-8" />
       <View className="flex-row justify-between w-full gap-3">
         <View className="flex-1">

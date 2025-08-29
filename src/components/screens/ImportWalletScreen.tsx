@@ -21,7 +21,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { importWallet, error, clearError, verifyMnemonicPhrase } =
     useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
-  const { isBiometricsSensorAvailable } = useBiometrics();
+  const { biometryType } = useBiometrics();
   const { t } = useAppTranslation();
   const [isImporting, setIsImporting] = useState(false);
 
@@ -36,7 +36,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
-        if (isBiometricsSensorAvailable) {
+        if (biometryType) {
           const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
           if (!isValidMnemonicPhrase) {
             setIsImporting(false);
@@ -58,12 +58,12 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       })();
     }, 0);
   }, [
-    isBiometricsSensorAvailable,
     navigation,
     password,
     recoveryPhrase,
     verifyMnemonicPhrase,
     importWallet,
+    biometryType,
   ]);
 
   const onPressPasteFromClipboard = async () => {

@@ -51,6 +51,7 @@ import {
   clearTemporaryData,
   getHashKey,
 } from "services/storage/helpers";
+import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
 import {
   biometricDataStorage,
   dataStorage,
@@ -262,9 +263,11 @@ interface AuthActions {
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
 
+  enableBiometrics: <T>(
+    callback: (biometricPassword?: string) => Promise<T>,
+  ) => Promise<T>;
   verifyActionWithBiometrics: <T, P extends unknown[]>(
     callback: (password?: string, ...args: P) => Promise<T>,
-    strictlyBiometric?: boolean,
     ...args: P
   ) => Promise<T>;
   // Active account actions
@@ -1757,35 +1760,141 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *   transaction,
      *   network
      * );
+    },
+
+    /**
+     * Enables biometrics for the current session
+     *
+     * This function is specifically for enabling biometrics during onboarding.
+     * It forces biometric authentication and executes the callback upon success.
+     * Unlike verifyActionWithBiometrics, this function always requires biometric
+     * authentication and does not fall back to password-based authentication.
+     *
+     * @template T - The return type of the callback function
+     * @param {(biometricPassword?: string) => Promise<T>} callback - The function to execute after successful biometric authentication
+     * @returns {Promise<T>} The result of the callback function
+     *
+     * @example
+     * // Enable biometrics during onboarding
+     * await enableBiometrics(async (biometricPassword: string) => {
+     *   setIsBiometricsEnabled(true);
+     *   navigation.navigate('MainScreen');
+     *   return Promise.resolve();
+     * });
      */
-    verifyActionWithBiometrics: async <T, P extends unknown[]>(
-      callback: (password?: string, ...args: P) => Promise<T>,
-      strictlyBiometric?: boolean,
-      ...args: P
+    enableBiometrics: async <T>(
+      callback: (biometricPassword?: string) => Promise<T>,
     ): Promise<T> => {
       try {
-        // Check if biometrics is enabled
-        const { isBiometricsEnabled } = usePreferencesStore.getState();
-
-        const { signInMethod } = get();
-
-        console.log("isBiometricsEnabled", isBiometricsEnabled);
-        console.log("signInMethod", signInMethod);
-        console.log("strictlyBiometric", strictlyBiometric);
-        console.log("args", args);
-
-        // If biometrics is not enabled, call the callback directly with a placeholder password
-        // This allows the function to work even when biometrics is disabled
-        if (
-          (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) &&
-          !strictlyBiometric
-        ) {
-          return await callback(undefined, ...args);
-        }
         const biometryType = await Keychain.getSupportedBiometryType();
 
         if (!biometryType) {
           throw new Error("No biometry type found");
+        }
+
+        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+            "authStore.fingerprint.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.FACE]: t(
+            "authStore.faceBiometrics.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        };
+
+        // Get the stored password from biometric storage
+        const storedData = await biometricDataStorage.getItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          {
+            title: title[biometryType],
+            cancel: t("common.cancel"),
+          },
+        );
+
+        if (!storedData || !storedData.password) {
+          throw new Error(
+            "No stored password found for biometric authentication",
+          );
+        }
+
+        // Execute the callback function
+        return await callback(storedData.password);
+      } catch (error) {
+        logger.error(
+          "enableBiometrics",
+          "Biometric authentication failed",
+          error,
+        );
+        throw error;
+      }
+    },
+
+    /**
+     * Verifies an action with biometric authentication
+     *
+     * This function handles biometric authentication for sensitive actions.
+     * It retrieves the stored password from biometric storage and passes it to the callback.
+     * If biometrics are disabled or unavailable, it falls back to calling the callback
+     * with an undefined password, allowing the action to proceed without biometric verification and letting the caller handle password management.
+     *
+     * @template T - The return type of the callback function
+     * @template P - The parameter types for the callback function
+     * @param {(password?: string, ...args: P) => Promise<T>} callback - The function to execute after successful biometric authentication
+     * @param {...P} args - Additional arguments to pass to the callback function
+     * @returns {Promise<T>} The result of the callback function
+     *
+     * @example
+     * // Example 1: Simple action verification
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   const key = await getKeyFromKeyManager(password);
+     *   return await performAction(key);
+     * });
+     *
+     * // Example 2: Action with additional parameters
+     * await verifyActionWithBiometrics(
+     *   async (password: string, transaction: Transaction) => {
+     *     const key = await getKeyFromKeyManager(password);
+     *     return await signTransaction(transaction, key.privateKey);
+     *   },
+     *   transaction
+     * );
+     *
+     * // Example 3: Action with multiple additional parameters
+     * await verifyActionWithBiometrics(
+     *   async (password: string, transaction: Transaction, network: string) => {
+     *     const key = await getKeyFromKeyManager(password);
+     *     return await signTransaction(transaction, key.privateKey, network);
+     *   },
+     *   transaction,
+     *   network
+     * );
+     */
+    verifyActionWithBiometrics: async <T, P extends unknown[]>(
+      callback: (password?: string, ...args: P) => Promise<T>,
+      ...args: P
+    ): Promise<T> => {
+      try {
+        // Check if biometrics is enabled first
+        const { isBiometricsEnabled } = usePreferencesStore.getState();
+        const { signInMethod } = get();
+
+        // If biometrics is not enabled or user opts to use password, call the callback directly with an empty password
+        if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
+          return await callback(undefined, ...args);
+        }
+
+        // Only check sensor availability and biometry type if biometrics are enabled
+        const isSensorAvailable = await rnBiometrics.isSensorAvailable();
+        if (!isSensorAvailable) {
+          return await callback(undefined, ...args);
+        }
+
+        const biometryType = await Keychain.getSupportedBiometryType();
+        if (!biometryType) {
+          return await callback(undefined, ...args);
         }
 
         const title: Record<Keychain.BIOMETRY_TYPE, string> = {

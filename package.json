@@ -14,6 +14,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint:check": "eslint ./src ./__tests__",
+    "lint:translations": "eslint ./src --rule 'translations/missing-translations: error'",
     "check": "yarn lint:ts && yarn lint:check && yarn format:check",
     "fix": "yarn lint && yarn format",
     "postinstall": "husky && rn-nodeify --install fs,url,events,https,http,util,stream,crypto,vm,buffer --hack --yarn && patch-package && yarn pod-install",

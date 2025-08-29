@@ -42,7 +42,7 @@ export const BiometricsOnboardingScreen: React.FC<
   const { isLoading, signUp } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
+  const { enableBiometrics: enableBiometricsAction } = useAuthenticationStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -53,7 +53,7 @@ export const BiometricsOnboardingScreen: React.FC<
     const { password, mnemonicPhrase } = route.params;
 
     if (route.params.postOnboarding) {
-      await verifyActionWithBiometrics(async () => {
+      await enableBiometricsAction(async () => {
         setIsBiometricsEnabled(true);
         navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
         await dataStorage.setItem(
@@ -61,7 +61,7 @@ export const BiometricsOnboardingScreen: React.FC<
           "true",
         );
         return Promise.resolve();
-      }, true);
+      });
       return;
     }
 
@@ -71,7 +71,7 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      verifyActionWithBiometrics((biometricPassword) => {
+      enableBiometricsAction((biometricPassword) => {
         signUp({
           mnemonicPhrase,
           password: biometricPassword ?? password,
@@ -99,7 +99,7 @@ export const BiometricsOnboardingScreen: React.FC<
     route.params,
     setIsBiometricsEnabled,
     signUp,
-    verifyActionWithBiometrics,
+    enableBiometricsAction,
     navigation,
   ]);
 

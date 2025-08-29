@@ -332,7 +332,8 @@ jest.mock("react-native-biometrics", () => ({
   })),
 }));
 
-// Mock react-native-keychain
+// Mock the useBiometrics hook
+
 jest.mock("react-native-keychain", () => ({
   BIOMETRY_TYPE: {
     FACE_ID: "FaceID",

@@ -30,6 +30,24 @@ jest.mock("providers/ToastProvider", () => ({
   useToast: () => ({ showToast: jest.fn() }),
 }));
 
+// Mock the useBiometrics hook
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: () => ({
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
+  }),
+}));
+
 jest.mock("stellar-hd-wallet", () => ({
   generateMnemonic: jest.fn(
     () =>
@@ -60,7 +78,15 @@ jest.mock("ducks/auth", () => ({
     signUp: mockSignUp,
     error: null,
     isLoading: false,
+    setSignInMethod: jest.fn(),
   })),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
+  }),
 }));
 
 const mockNavigation = {

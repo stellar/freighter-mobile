@@ -5,7 +5,6 @@ import { usePreferencesStore } from "ducks/preferences";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
 import * as Keychain from "react-native-keychain";
-import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
 import { biometricDataStorage } from "services/storage/storageFactory";
 
 /**
@@ -22,7 +21,6 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * Basic usage:
  * ```tsx
  * const {
- *   isBiometricsEnrolled,
  *   isBiometricsEnabled,
  *   biometryType,
  *   enableBiometrics,
@@ -32,15 +30,9 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * // Enable biometrics
  * await enableBiometrics();
  *
- * // Check if biometrics are available
- * if (isBiometricsEnrolled) {
- *   // Handle biometric authentication
- * }
- * ```
+
  *
  * @returns Object containing biometric state and functions
- * @returns {boolean} returns.isBiometricsActive - Whether biometrics are both available and enabled
- * @returns {boolean} returns.isBiometricsEnrolled - Whether biometrics are available on the device
  * @returns {Keychain.BIOMETRY_TYPE | null} returns.biometryType - The type of biometric authentication available
  * @returns {Function} returns.setIsBiometricsEnabled - Function to set biometrics enabled state
  * @returns {boolean} returns.isBiometricsEnabled - Whether biometrics are currently enabled
@@ -48,9 +40,6 @@ import { biometricDataStorage } from "services/storage/storageFactory";
  * @returns {Function} returns.disableBiometrics - Function to disable biometrics
  */
 export const useBiometrics = () => {
-  const [isBiometricsEnrolled, setIsBiometricsEnrolled] = useState(false);
-  const [isBiometricsSensorAvailable, setIsBiometricsSensorAvailable] =
-    useState(false);
   const [biometryType, setBiometryType] =
     useState<Keychain.BIOMETRY_TYPE | null>(null);
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
@@ -67,19 +56,20 @@ export const useBiometrics = () => {
    *
    * @returns Promise resolving to the supported biometry type, or null if none available
    */
-  const checkBiometricsType =
+  const checkBiometrics =
     useCallback(async (): Promise<Keychain.BIOMETRY_TYPE | null> => {
       const type = await Keychain.getSupportedBiometryType();
-      const isSensorAvailable = await rnBiometrics.isSensorAvailable();
-      setIsBiometricsSensorAvailable(isSensorAvailable.available);
-      if (!type || !isSensorAvailable) {
+      setBiometryType(type);
+
+      if (!type || !isBiometricsEnabled) {
+        setSignInMethod(LoginType.PASSWORD);
         return null;
       }
 
-      setBiometryType(type);
-      setIsBiometricsEnrolled(true);
+      setSignInMethod(getLoginType(type));
+
       return type;
-    }, []);
+    }, [isBiometricsEnabled, setSignInMethod]);
 
   /**
    * Enables biometric authentication
@@ -95,7 +85,7 @@ export const useBiometrics = () => {
    * @throws {Error} When biometrics are not supported or password storage fails
    */
   const handleEnableBiometrics = useCallback(async (): Promise<boolean> => {
-    const type = await checkBiometricsType();
+    const type = await checkBiometrics();
     if (!type) {
       return false;
     }
@@ -106,6 +96,7 @@ export const useBiometrics = () => {
 
     if (isBiometricPasswordStored) {
       setIsBiometricsEnabled(true);
+      setSignInMethod(getLoginType(biometryType));
       return true;
     }
 
@@ -127,7 +118,7 @@ export const useBiometrics = () => {
     return true;
   }, [
     setIsBiometricsEnabled,
-    checkBiometricsType,
+    checkBiometrics,
     getTemporaryStore,
     biometryType,
     setSignInMethod,
@@ -169,41 +160,11 @@ export const useBiometrics = () => {
     [signInMethod, themeColors],
   );
 
-  /**
-   * Effect to initialize and validate biometrics state
-   *
-   * This effect runs on component mount and whenever biometrics configuration changes.
-   * It ensures that the biometrics state is consistent with the device capabilities
-   * and stored passwords.
-   *
-   * The effect:
-   * 1. Checks if biometrics are supported on the device
-   * 2. Verifies if a biometric password is stored
-   * 3. Updates the enabled state based on availability and stored passwords
-   * 4. Sets the appropriate sign-in method
-   */
   useEffect(() => {
-    const checkIfBiometricsIsEnabled = async () => {
-      const type = await checkBiometricsType();
-      const hasPaswordSaved = await biometricDataStorage.checkIfExists(
-        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-      );
-      if (!type || !isBiometricsEnabled || !hasPaswordSaved) {
-        setIsBiometricsEnabled(false);
-        return;
-      }
-
-      setIsBiometricsEnabled(hasPaswordSaved && isBiometricsEnabled && !!type);
-      setSignInMethod(getLoginType(type));
-    };
-    checkIfBiometricsIsEnabled();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- we don't want to re-run this effect when the biometrics are enabled or disabled
-  }, [checkBiometricsType, setIsBiometricsEnabled]);
+    checkBiometrics();
+  }, [checkBiometrics]);
 
   return {
-    isBiometricsActive: !!(isBiometricsEnrolled && isBiometricsEnabled),
-    isBiometricsEnrolled,
-    isBiometricsSensorAvailable,
     biometryType,
     setIsBiometricsEnabled,
     isBiometricsEnabled,

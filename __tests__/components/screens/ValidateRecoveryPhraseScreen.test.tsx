@@ -29,18 +29,20 @@ jest.mock("hooks/useWordSelection", () => ({
 }));
 
 // Mock the useBiometrics hook
-let mockIsBiometricsEnrolled = false;
-let mockIsBiometricsSensorAvailable = false;
 jest.mock("hooks/useBiometrics", () => ({
   useBiometrics: () => ({
-    isBiometricsEnrolled: mockIsBiometricsEnrolled,
-    isBiometricsActive: false,
-    isBiometricsSensorAvailable: mockIsBiometricsSensorAvailable,
     biometryType: null,
     setIsBiometricsEnabled: jest.fn(),
     isBiometricsEnabled: false,
-    enableBiometrics: jest.fn(),
-    disableBiometrics: jest.fn(),
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
   }),
 }));
 
@@ -68,13 +70,22 @@ jest.mock("ducks/auth", () => ({
         signUp: mockSignUp,
         error: mockError,
         isLoading: mockIsLoading,
+        setSignInMethod: jest.fn(),
       });
     }
     return {
       signUp: mockSignUp,
       error: mockError,
       isLoading: mockIsLoading,
+      setSignInMethod: jest.fn(),
     };
+  }),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
   }),
 }));
 
@@ -133,8 +144,6 @@ describe("ValidateRecoveryPhraseScreen", () => {
     jest.clearAllMocks();
     mockIsLoading = false;
     mockError = null;
-    mockIsBiometricsEnrolled = false;
-    mockIsBiometricsSensorAvailable = false;
     // Use modern fake timers
     jest.useFakeTimers();
   });
@@ -224,9 +233,22 @@ describe("ValidateRecoveryPhraseScreen", () => {
   }, 30000);
 
   it("completes validation flow with all 3 correct words and navigates to biometrics when available", async () => {
-    // Set biometrics as available for this test
-    mockIsBiometricsEnrolled = true;
-    mockIsBiometricsSensorAvailable = true;
+    // Mock useBiometrics to return a biometryType for this test
+    const useBiometricsModule = jest.requireMock("hooks/useBiometrics");
+    useBiometricsModule.useBiometrics = jest.fn(() => ({
+      biometryType: "FaceID",
+      setIsBiometricsEnabled: jest.fn(),
+      isBiometricsEnabled: false,
+      enableBiometrics: jest.fn(() => Promise.resolve(true)),
+      disableBiometrics: jest.fn(() => Promise.resolve(true)),
+      checkBiometrics: jest.fn(() => Promise.resolve("FaceID")),
+      handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+      handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+      verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+      getButtonIcon: jest.fn(() => null),
+      getButtonText: jest.fn(() => ""),
+      getButtonColor: jest.fn(() => "#000000"),
+    }));
 
     renderScreen();
 

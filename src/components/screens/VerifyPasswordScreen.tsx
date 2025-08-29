@@ -5,13 +5,8 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   ManageWalletsStackParamList,
 } from "config/routes";
-import {
-  useAuthenticationStore,
-  getActiveAccountPublicKey,
-  getLoginType,
-} from "ducks/auth";
+import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useEffect, useState } from "react";
 
 type VerifyPasswordScreenProps = NativeStackScreenProps<
@@ -26,12 +21,6 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { t } = useAppTranslation();
-  const { setSignInMethod } = useAuthenticationStore();
-  const { biometryType } = useBiometrics();
-
-  useEffect(() => {
-    setSignInMethod(getLoginType(biometryType));
-  }, [biometryType, setSignInMethod]);
 
   useEffect(() => {
     clearError();
