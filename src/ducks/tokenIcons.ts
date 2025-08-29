@@ -20,7 +20,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
  */
-interface Icon {
+export interface Icon {
   imageUrl: string;
   network: NETWORKS;
 }
@@ -33,6 +33,20 @@ interface Icon {
 interface TokenIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
+  /**
+   * Caches a single token icon
+   * @param {Object} params - Function parameters
+   * @param {string} params.imageUrl - Image URL for params.token
+   * @param {Token} params.token - Token to assign the icon to
+   * @param {NETWORKS} params.network - The network to fetch from
+   */
+  cacheTokenIcons: (params: { icons: Record<string, Icon> }) => void;
+  /**
+   * Caches all icons from the token lists
+   * @param {Object} params - Function parameters
+   * @param {NETWORKS} params.network - The network to fetch from
+   */
+  cacheTokenListIcons: (params: { network: NETWORKS }) => Promise<void>;
   /**
    * Fetches an icon URL for a given token
    * @param {Object} params - Function parameters
@@ -59,12 +73,6 @@ interface TokenIconsState {
    * Processes icons in batches to avoid overwhelming the network
    */
   refreshIcons: () => void;
-  /**
-   * Caches all icons from the token lists
-   * @param {Object} params - Function parameters
-   * @param {NETWORKS} params.network - The network to fetch from
-   */
-  cacheTokenListIcons: (params: { network: NETWORKS }) => Promise<void>;
 }
 
 /** Number of icons to process in each batch */
@@ -186,6 +194,46 @@ export const useTokenIconsStore = create<TokenIconsState>()(
     (set, get) => ({
       icons: {},
       lastRefreshed: null,
+      cacheTokenIcons: ({ icons }) => {
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            ...icons,
+          },
+        }));
+      },
+      cacheTokenListIcons: async ({ network }) => {
+        const verifiedTokens = await fetchVerifiedTokens({
+          tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
+          network,
+        });
+        const iconMap = verifiedTokens.reduce(
+          (prev, curr) => {
+            if (curr.icon) {
+              const icon: Icon = {
+                imageUrl: curr.icon,
+                network,
+              };
+              // eslint-disable-next-line no-param-reassign
+              prev[`${curr.code}:${curr.issuer}`] = icon;
+
+              // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
+              if (curr.contract) {
+                // eslint-disable-next-line no-param-reassign
+                prev[`${curr.code}:${curr.contract}`] = icon;
+              }
+            }
+            return prev;
+          },
+          {} as Record<string, Icon>,
+        );
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            ...iconMap,
+          },
+        }));
+      },
       fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
         const cachedIcon = get().icons[cacheKey];
@@ -296,38 +344,6 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           startTime,
           set,
         });
-      },
-      cacheTokenListIcons: async ({ network }) => {
-        const verifiedTokens = await fetchVerifiedTokens({
-          tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
-          network,
-        });
-        const iconMap = verifiedTokens.reduce(
-          (prev, curr) => {
-            if (curr.icon) {
-              const icon: Icon = {
-                imageUrl: curr.icon,
-                network,
-              };
-              // eslint-disable-next-line no-param-reassign
-              prev[`${curr.code}:${curr.issuer}`] = icon;
-
-              // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
-              if (curr.contract) {
-                // eslint-disable-next-line no-param-reassign
-                prev[`${curr.code}:${curr.contract}`] = icon;
-              }
-            }
-            return prev;
-          },
-          {} as Record<string, Icon>,
-        );
-        set((state) => ({
-          icons: {
-            ...state.icons,
-            ...iconMap,
-          },
-        }));
       },
     }),
     {
