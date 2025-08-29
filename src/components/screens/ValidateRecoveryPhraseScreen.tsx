@@ -33,7 +33,6 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const { password, recoveryPhrase } = route.params;
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [error, setError] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(false);
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
   const [roundIndex, setRoundIndex] = useState(0);
 
@@ -78,14 +77,11 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       // Word is incorrect - show error and generate new words
       setError(t("validateRecoveryPhraseScreen.errorText"));
       analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL);
-
       regenerateWords();
       return;
     }
 
-    // Word is correct - proceed to next round
-    setIsLoading(true);
-
+    // Word is correct - proceed to next round or complete signup
     if (roundIndex < 2) {
       setRoundIndex(roundIndex + 1);
       setSelectedWord("");
@@ -95,9 +91,10 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         password,
         mnemonicPhrase: recoveryPhrase,
       });
-    }
 
-    setIsLoading(false);
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    }
   }, [
     canContinue,
     roundIndex,
@@ -131,12 +128,12 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       title={t("validateRecoveryPhraseScreen.title", {
         number: selectedIndexes[roundIndex] + 1,
       })}
-      isDefaultActionButtonDisabled={!selectedWord || isLoading || isSigningUp}
+      isDefaultActionButtonDisabled={!selectedWord || isSigningUp}
       defaultActionButtonText={t(
         "validateRecoveryPhraseScreen.defaultActionButtonText",
       )}
       onPressDefaultActionButton={handleContinue}
-      isLoading={isLoading || isSigningUp}
+      isLoading={isSigningUp}
     >
       <View className="mb-6 gap-[24px]">
         <Text secondary regular>
