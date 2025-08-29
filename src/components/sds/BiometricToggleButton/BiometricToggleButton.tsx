@@ -54,8 +54,8 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
       [BIOMETRY_TYPE.FINGERPRINT]: t("lockScreen.useFingerprintInstead"),
       [BIOMETRY_TYPE.FACE]: t("lockScreen.useFaceRecognitionInstead"),
       [BIOMETRY_TYPE.TOUCH_ID]: t("lockScreen.useTouchIdInstead"),
-      [BIOMETRY_TYPE.OPTIC_ID]: t("lockScreen.useOpticIdInstead"),
       [BIOMETRY_TYPE.IRIS]: t("lockScreen.useIrisInstead"),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("lockScreen.useOpticIdInstead"),
     }),
     [t],
   );
