@@ -112,7 +112,6 @@ const processIconBatches = async (params: {
       try {
         // Parse the cache key to get token details
         const [tokenCode, issuerKey] = cacheKey.split(":");
-
         const imageUrl = await getIconUrl({
           asset: {
             code: tokenCode,
@@ -312,6 +311,12 @@ export const useTokenIconsStore = create<TokenIconsState>()(
               };
               // eslint-disable-next-line no-param-reassign
               prev[`${curr.code}:${curr.issuer}`] = icon;
+
+              // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
+              if (curr.contract) {
+                // eslint-disable-next-line no-param-reassign
+                prev[`${curr.code}:${curr.contract}`] = icon;
+              }
             }
             return prev;
           },
