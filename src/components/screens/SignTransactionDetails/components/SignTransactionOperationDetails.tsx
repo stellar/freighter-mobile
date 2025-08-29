@@ -26,4 +26,4 @@ const SignTransactionOperationDetails =
     );
   });
 
-export default React.memo(SignTransactionOperationDetails, () => true);
+export default SignTransactionOperationDetails;
