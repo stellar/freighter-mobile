@@ -21,7 +21,7 @@ type TransactionTokenScreenProps = NativeStackScreenProps<
 const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
 }) => {
-  const { recipientAddress, saveSelectedTokenId, selectedTokenId } =
+  const { recipientAddress, saveSelectedTokenId } =
     useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -34,9 +34,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   };
 
   const navigateToSelectContactScreen = () => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
-      tokenId: selectedTokenId,
-    });
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
 
   return (
