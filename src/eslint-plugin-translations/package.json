@@ -1,0 +1,9 @@
+{
+  "name": "eslint-plugin-translations",
+  "version": "1.0.0",
+  "description": "ESLint plugin for translations",
+  "main": "index.js",
+  "scripts": {},
+  "author": "Freighter",
+  "license": "ISC"
+}

@@ -10,6 +10,7 @@ import { VALIDATION_WORDS_PER_ROW } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useWordSelection } from "hooks/useWordSelection";
 import React, {
@@ -34,6 +35,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [error, setError] = useState<string | undefined>();
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
+  const { biometryType } = useBiometrics();
   const [roundIndex, setRoundIndex] = useState(0);
 
   const { signUp } = useAuthenticationStore();
@@ -67,6 +69,24 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     [selectedWord, currentCorrectWord],
   );
 
+  const handleFinishSignUp = useCallback(() => {
+    if (biometryType) {
+      // Navigate to biometrics onboarding screen
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
+    } else {
+      // No biometrics available, proceed with normal signup
+      signUp({
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
+
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    }
+  }, [password, recoveryPhrase, signUp, navigation, biometryType]);
   const handleWordSelect = useCallback((word: string) => {
     setSelectedWord(word);
     setError(undefined);
@@ -87,23 +107,9 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       setSelectedWord("");
       setError(undefined);
     } else {
-      signUp({
-        password,
-        mnemonicPhrase: recoveryPhrase,
-      });
-
-      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
-      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+      handleFinishSignUp();
     }
-  }, [
-    canContinue,
-    roundIndex,
-    password,
-    recoveryPhrase,
-    signUp,
-    t,
-    regenerateWords,
-  ]);
+  }, [canContinue, roundIndex, handleFinishSignUp, regenerateWords, t]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

@@ -6,7 +6,8 @@ import { Textarea } from "components/sds/Textarea";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useEffect, useState } from "react";
+import { useBiometrics } from "hooks/useBiometrics";
+import React, { useCallback, useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -15,23 +16,55 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   route,
+  navigation,
 }) => {
-  const { password } = route.params;
-  const { importWallet, error, isLoading, clearError } =
+  const { importWallet, error, clearError, verifyMnemonicPhrase } =
     useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
+  const { biometryType } = useBiometrics();
   const { t } = useAppTranslation();
+  const [isImporting, setIsImporting] = useState(false);
+
+  const { password } = route.params;
 
   useEffect(() => {
     clearError();
   }, [clearError]);
 
-  const handleContinue = () => {
-    importWallet({
-      mnemonicPhrase: recoveryPhrase,
-      password,
-    });
-  };
+  const handleContinue = useCallback(() => {
+    setIsImporting(true);
+
+    setTimeout(() => {
+      (async () => {
+        if (biometryType) {
+          const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
+          if (!isValidMnemonicPhrase) {
+            setIsImporting(false);
+            return;
+          }
+          // Navigate to biometrics onboarding screen
+          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+            password,
+            mnemonicPhrase: recoveryPhrase,
+          });
+        } else {
+          // No biometrics available, proceed with normal import
+          await importWallet({
+            mnemonicPhrase: recoveryPhrase,
+            password,
+          });
+        }
+        setIsImporting(false);
+      })();
+    }, 0);
+  }, [
+    navigation,
+    password,
+    recoveryPhrase,
+    verifyMnemonicPhrase,
+    importWallet,
+    biometryType,
+  ]);
 
   const onPressPasteFromClipboard = async () => {
     const clipboardText = await Clipboard.getString();
@@ -47,7 +80,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       isDefaultActionButtonDisabled={!recoveryPhrase}
       hasClipboardButton
       onPressClipboardButton={onPressPasteFromClipboard}
-      isLoading={isLoading}
+      isLoading={isImporting}
     >
       <Textarea
         fieldSize="lg"

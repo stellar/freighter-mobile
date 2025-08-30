@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
@@ -17,12 +17,16 @@ interface OnboardLayoutProps {
   title?: string;
   footer?: React.ReactNode;
   footerNoteText?: string;
-  onPressDefaultActionButton?: () => void;
+  onPressDefaultActionButton?: () => void | Promise<void>;
   isDefaultActionButtonDisabled?: boolean;
   defaultActionButtonText?: string;
   hasClipboardButton?: boolean;
   onPressClipboardButton?: () => Promise<void>;
   isLoading?: boolean;
+  secondaryActionButtonText?: string;
+  onPressSecondaryActionButton?: () => void | Promise<void>;
+  defaultActionButtonIcon?: React.ReactNode;
+  defaultActionButtonIconPosition?: IconPosition;
 }
 
 interface StyledProps {
@@ -59,12 +63,16 @@ const StyledFooterButtonContainer = styled.View`
 `;
 
 interface DefaultFooterProps {
-  onPressDefaultActionButton?: () => void;
+  onPressDefaultActionButton?: () => void | Promise<void>;
   isDefaultActionButtonDisabled?: boolean;
   defaultActionButtonText?: string;
+  secondaryActionButtonText?: string;
+  onPressSecondaryActionButton?: () => void | Promise<void>;
   hasClipboardButton?: boolean;
   onPressClipboardButton?: () => Promise<void>;
   isLoading?: boolean;
+  defaultActionButtonIcon?: React.ReactNode;
+  defaultActionButtonIconPosition?: IconPosition;
 }
 
 /**
@@ -81,16 +89,24 @@ interface DefaultFooterProps {
  * @param {() => void} [props.onPressDefaultActionButton] - Callback when the action button is pressed.
  * @param {boolean} [props.isDefaultActionButtonDisabled] - Flag to disable the action button.
  * @param {string} [props.defaultActionButtonText="Continue"] - Text to display on the action button.
+ * @param {string} [props.secondaryActionButtonText] - Optional text for the secondary action button.
+ * @param {() => void} [props.onPressSecondaryActionButton] - Optional callback for the secondary action button press.
  * @param {boolean} [props.hasClipboardButton] - Flag to display a clipboard button in the footer.
  * @param {() => void} [props.onPressClipboardButton] - Callback when the clipboard button is pressed.
+ * @param {React.ReactNode} [props.defaultActionButtonIcon] - Optional icon for the action button.
+ * @param {IconPosition} [props.defaultActionButtonIconPosition] - Optional position for the action button icon.
  */
 const DefaultFooter: React.FC<DefaultFooterProps> = ({
   onPressDefaultActionButton,
   isDefaultActionButtonDisabled,
+  secondaryActionButtonText,
+  onPressSecondaryActionButton,
   defaultActionButtonText = t("onboarding.continue"),
   hasClipboardButton = false,
   onPressClipboardButton,
   isLoading,
+  defaultActionButtonIcon,
+  defaultActionButtonIconPosition,
 }) => (
   <StyledFooterButtonContainer>
     {hasClipboardButton && (
@@ -112,9 +128,22 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
       isLoading={isLoading}
       onPress={onPressDefaultActionButton}
       disabled={isDefaultActionButtonDisabled}
+      icon={defaultActionButtonIcon}
+      iconPosition={defaultActionButtonIconPosition}
     >
       {defaultActionButtonText}
     </Button>
+    {secondaryActionButtonText && (
+      <Button
+        secondary
+        lg
+        disabled={isLoading}
+        testID="secondary-action-button"
+        onPress={onPressSecondaryActionButton}
+      >
+        {secondaryActionButtonText}
+      </Button>
+    )}
   </StyledFooterButtonContainer>
 );
 
@@ -145,6 +174,8 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
  * @param {string} [props.defaultActionButtonText="Continue"] - Optional text for the default action button.
  * @param {boolean} [props.hasClipboardButton] - Optional flag to display a clipboard button in the footer.
  * @param {() => Promise<void>} [props.onPressClipboardButton] - Optional callback for the clipboard button press.
+ * @param {string} [props.secondaryActionButtonText] - Optional text for the secondary action button.
+ * @param {() => void} [props.onPressSecondaryActionButton] - Optional callback for the secondary action button press.
  */
 export const OnboardLayout = ({
   children,
@@ -158,6 +189,10 @@ export const OnboardLayout = ({
   hasClipboardButton,
   onPressClipboardButton,
   isLoading,
+  secondaryActionButtonText,
+  onPressSecondaryActionButton,
+  defaultActionButtonIcon,
+  defaultActionButtonIconPosition,
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
 
@@ -180,9 +215,13 @@ export const OnboardLayout = ({
               onPressDefaultActionButton={onPressDefaultActionButton}
               isDefaultActionButtonDisabled={isDefaultActionButtonDisabled}
               defaultActionButtonText={defaultActionButtonText}
+              secondaryActionButtonText={secondaryActionButtonText}
+              onPressSecondaryActionButton={onPressSecondaryActionButton}
               hasClipboardButton={hasClipboardButton}
               onPressClipboardButton={onPressClipboardButton}
               isLoading={isLoading}
+              defaultActionButtonIcon={defaultActionButtonIcon}
+              defaultActionButtonIconPosition={defaultActionButtonIconPosition}
             />
           )}
         </FooterContainer>

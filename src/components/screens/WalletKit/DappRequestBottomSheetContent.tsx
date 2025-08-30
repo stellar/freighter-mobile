@@ -80,6 +80,7 @@ const DappRequestBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
     signTransactionDetails,
@@ -166,7 +167,10 @@ const DappRequestBottomSheetContent: React.FC<
           {cancelButton}
           <TextButton
             text={t("dappRequestBottomSheetContent.confirmAnyway")}
-            onPress={onConfirm}
+            biometric
+            onPress={() => {
+              onConfirm?.();
+            }}
             isLoading={isSigning}
             disabled={isSigning}
             variant={isMalicious ? "error" : "secondary"}
@@ -180,10 +184,11 @@ const DappRequestBottomSheetContent: React.FC<
         {cancelButton}
         <View className="flex-1">
           <Button
+            biometric
             tertiary
             xl
             isFullWidth
-            onPress={onConfirm}
+            onPress={() => onConfirm?.()}
             isLoading={isSigning || !!isValidatingMemo}
             disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
           >

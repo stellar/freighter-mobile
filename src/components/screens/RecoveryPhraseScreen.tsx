@@ -6,11 +6,16 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  RootStackParamList,
+} from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
@@ -18,7 +23,7 @@ import StellarHDWallet from "stellar-hd-wallet";
 import styled from "styled-components/native";
 
 type RecoveryPhraseScreenProps = NativeStackScreenProps<
-  AuthStackParamList,
+  AuthStackParamList & RootStackParamList,
   typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
 >;
 
@@ -84,7 +89,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
-
+  const { biometryType } = useBiometrics();
   useEffect(() => {
     clearError?.();
   }, [clearError]);
@@ -103,16 +108,28 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     skipModalRef.current?.present();
   };
 
-  const handleConfirmSkip = () => {
-    signUp({
-      password,
-      mnemonicPhrase: recoveryPhrase,
-    });
+  const confirmSkip = useCallback(() => {
+    if (biometryType) {
+      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
+    } else {
+      // No biometrics available, proceed with normal signup
+      signUp({
+        password,
+        mnemonicPhrase: recoveryPhrase,
+      });
 
-    analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+    }
 
     skipModalRef.current?.dismiss();
-  };
+  }, [signUp, password, recoveryPhrase, navigation, biometryType]);
+
+  const handleConfirmSkip = useCallback(() => {
+    confirmSkip();
+  }, [confirmSkip]);
 
   const handleCopy = useCallback(() => {
     if (!recoveryPhrase) return;
@@ -170,6 +187,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       <RecoveryPhraseSkipBottomSheet
         modalRef={skipModalRef}
         onConfirm={handleConfirmSkip}
+        isLoading={isLoading}
         onDismiss={() => skipModalRef.current?.dismiss()}
       />
     </>

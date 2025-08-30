@@ -436,6 +436,7 @@ import Eye from "assets/icons/eye.svg";
 import FaceContent from "assets/icons/face-content.svg";
 import FaceFrown from "assets/icons/face-frown.svg";
 import FaceHappy from "assets/icons/face-happy.svg";
+import FaceId01 from "assets/icons/face-id-01.svg";
 import FaceIdSquare from "assets/icons/face-id-square.svg";
 import FaceId from "assets/icons/face-id.svg";
 import FaceNeutral from "assets/icons/face-neutral.svg";
@@ -500,6 +501,7 @@ import Fingerprint01 from "assets/icons/fingerprint-01.svg";
 import Fingerprint02 from "assets/icons/fingerprint-02.svg";
 import Fingerprint03 from "assets/icons/fingerprint-03.svg";
 import Fingerprint04 from "assets/icons/fingerprint-04.svg";
+import Fingerprint05 from "assets/icons/fingerprint-05.svg";
 import Flag01 from "assets/icons/flag-01.svg";
 import Flag02 from "assets/icons/flag-02.svg";
 import Flag03 from "assets/icons/flag-03.svg";
@@ -1062,6 +1064,7 @@ import Toggle03Left from "assets/icons/toggle-03-left.svg";
 import Toggle03Right from "assets/icons/toggle-03-right.svg";
 import Tool01 from "assets/icons/tool-01.svg";
 import Tool02 from "assets/icons/tool-02.svg";
+import TouchId from "assets/icons/touch-id.svg";
 import Train from "assets/icons/train.svg";
 import Tram from "assets/icons/tram.svg";
 import Transform from "assets/icons/transform.svg";
@@ -1618,6 +1621,7 @@ export const Icons = {
   FaceContent,
   FaceFrown,
   FaceHappy,
+  FaceId01,
   FaceIdSquare,
   FaceId,
   FaceNeutral,
@@ -1682,6 +1686,7 @@ export const Icons = {
   Fingerprint02,
   Fingerprint03,
   Fingerprint04,
+  Fingerprint05,
   Flag01,
   Flag02,
   Flag03,
@@ -2244,6 +2249,7 @@ export const Icons = {
   Toggle03Right,
   Tool01,
   Tool02,
+  TouchId,
   Train,
   Tram,
   Transform,

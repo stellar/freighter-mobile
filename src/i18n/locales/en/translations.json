@@ -22,10 +22,14 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
+    "addMemo": "Add memo",
+    "yes": "Yes",
+    "allow": "Allow",
+    "skip": "Skip",
+    "enable": "Enable",
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "addMemo": "Add memo",
     "wallet": "Wallet"
   },
   "home": {
@@ -194,6 +198,50 @@
     "errorText": "Incorrect word selected, try again",
     "defaultActionButtonText": "Continue"
   },
+  "biometricsOnboardingScreen": {
+    "faceId": {
+      "title": "Enable Face ID",
+      "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Face ID?",
+      "promptDescription": "Use Face ID to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "touchId": {
+      "title": "Enable Touch ID",
+      "description": "Add another layer of security by requiring Touch ID to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Touch ID?",
+      "promptDescription": "Use Touch ID to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "fingerprint": {
+      "title": "Enable Fingerprint",
+      "description": "Add another layer of security by requiring Fingerprint to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Fingerprint?",
+      "promptDescription": "Use Fingerprint to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "faceBiometrics": {
+      "title": "Enable Face Recognition",
+      "description": "Add another layer of security by requiring Face Recognition to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Face Recognition?",
+      "promptDescription": "Use Face Recognition to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "opticId": {
+      "title": "Enable Optic ID",
+      "description": "Add another layer of security by requiring Optic ID to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Optic ID?",
+      "promptDescription": "Use Optic ID to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    },
+    "iris": {
+      "title": "Enable Iris",
+      "description": "Add another layer of security by requiring Iris to unlock your wallet or approve transactions.",
+      "promptTitle": "Enable Iris?",
+      "promptDescription": "Use Iris to securely log in and approve transactions.",
+      "footerNoteText": "You can change this later in Settings."
+    }
+  },
   "importWalletScreen": {
     "title": "Import Wallet",
     "textAreaPlaceholder": "Enter recovery phrase",
@@ -205,7 +253,14 @@
     "description": "Enter password to unlock Freighter",
     "passwordInputPlaceholder": "Type your password",
     "unlockButtonText": "Unlock",
-    "forgotPasswordButtonText": "Forgot password"
+    "forgotPasswordButtonText": "Forgot password",
+    "useFaceIdInstead": "Use Face ID instead",
+    "useFingerprintInstead": "Use Fingerprint instead",
+    "useFaceRecognitionInstead": "Use Face Recognition instead",
+    "useTouchIdInstead": "Use Touch ID instead",
+    "useOpticIdInstead": "Use Optic ID instead",
+    "useIrisInstead": "Use Iris instead",
+    "enterPasswordInstead": "Use password instead"
   },
   "onboarding": {
     "continue": "Continue",
@@ -312,7 +367,43 @@
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key"
     },
-    "account": "Account {{number}}"
+    "account": "Account {{number}}",
+    "faceId": {
+      "disableTitle": "Confirm to disable Face ID",
+      "disableSubtitle": "Disabling Face ID decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Face ID to securely log in and approve transactions."
+    },
+    "touchId": {
+      "disableTitle": "Confirm to disable Touch ID",
+      "disableSubtitle": "Disabling Touch ID decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Touch ID to securely log in and approve transactions."
+    },
+    "faceBiometrics": {
+      "disableTitle": "Confirm to disable Face Recognition",
+      "disableSubtitle": "Disabling Face Recognition decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Face Recognition to securely log in and approve transactions."
+    },
+    "fingerprint": {
+      "disableTitle": "Confirm to disable Fingerprint",
+      "disableSubtitle": "Disabling Fingerprint decreases security. You can re-enable it in Settings.",
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Fingerprint to securely log in and approve transactions."
+    },
+    "opticId": {
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Optic ID to securely log in and approve transactions.",
+      "disableTitle": "Confirm to disable Optic ID",
+      "disableSubtitle": "Disabling Optic ID decreases security. You can re-enable it in Settings."
+    },
+    "iris": {
+      "signInTitle": "Confirm to proceed",
+      "signInSubtitle": "Use Iris to securely log in and approve transactions.",
+      "disableTitle": "Confirm to disable Iris",
+      "disableSubtitle": "Disabling Iris decreases security. You can re-enable it in Settings."
+    }
   },
   "balancesList": {
     "title": "Tokens",
@@ -625,6 +716,7 @@
   "transactionReviewScreen": {
     "title": "You are sending",
     "previousSend": "1 previous send",
+    "previousSends": "{{count}} previous sends",
     "reviewMessage": "Make sure to review the transaction above, once you confirm it's irreversible"
   },
   "transactionProcessingScreen": {
@@ -711,7 +803,49 @@
   },
   "securityScreen": {
     "title": "Security",
-    "showRecoveryPhrase": "Show recovery phrase"
+    "showRecoveryPhrase": "Show recovery phrase",
+    "faceId": {
+      "title": "Face ID authentication",
+      "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Face ID",
+      "disableAlertTitle": "Disable Face ID?",
+      "disableAlertMessage": "Are you sure you want to disable Face ID?"
+    },
+    "fingerprint": {
+      "title": "Fingerprint authentication",
+      "description": "Enable Fingerprint for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Fingerprint",
+      "disableAlertTitle": "Disable Fingerprint?",
+      "disableAlertMessage": "Are you sure you want to disable Fingerprint?"
+    },
+    "touchId": {
+      "title": "Touch ID authentication",
+      "description": "Enable Touch ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Touch ID",
+      "disableAlertTitle": "Disable Touch ID?",
+      "disableAlertMessage": "Are you sure you want to disable Touch ID?"
+    },
+    "faceBiometrics": {
+      "title": "Face Recognition authentication",
+      "description": "Enable Face Recognition for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Face Recognition",
+      "disableAlertTitle": "Disable Face Recognition?",
+      "disableAlertMessage": "Are you sure you want to disable Face Recognition?"
+    },
+    "opticId": {
+      "title": "Optic ID authentication",
+      "description": "Enable Optic ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Optic ID",
+      "disableAlertTitle": "Disable Optic ID?",
+      "disableAlertMessage": "Are you sure you want to disable Optic ID?"
+    },
+    "iris": {
+      "title": "Iris authentication",
+      "description": "Enable Iris for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
+      "toggleTitle": "Enable Iris",
+      "disableAlertTitle": "Disable Iris?",
+      "disableAlertMessage": "Are you sure you want to disable Iris?"
+    }
   },
   "showRecoveryPhraseScreen": {
     "title": "Show Recovery Phrase",
@@ -782,6 +916,7 @@
   },
   "analytics": {
     "debug": {
+      "resetApp": "Reset App State",
       "title": "📊 Analytics Debug",
       "status": "Status",
       "enabled": "✅ Enabled",

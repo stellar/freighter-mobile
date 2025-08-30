@@ -53,6 +53,7 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+  BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -79,6 +80,7 @@ export const SETTINGS_ROUTES = {
   SECURITY_SCREEN: "SecurityScreen",
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
+  BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -174,6 +176,11 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
     password: string;
   };
+  [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
+    password?: string;
+    mnemonicPhrase?: string;
+    postOnboarding?: boolean;
+  };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
     password: string;
@@ -206,6 +213,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
     recoveryPhrase: string;
   };
+  [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {

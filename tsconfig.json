@@ -12,5 +12,6 @@
     "__mocks__",
     "eslint.config.mjs",
     "nativewind-env.d.ts"
-  ]
+  ],
+  "exclude": ["eslint-plugin-translations/index.js"]
 }

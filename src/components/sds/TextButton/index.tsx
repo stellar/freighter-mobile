@@ -1,5 +1,6 @@
 import Spinner from "components/Spinner";
 import { Text } from "components/sds/Typography";
+import { useAuthenticationStore } from "ducks/auth";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -21,6 +22,8 @@ export interface TextButtonProps {
   className?: string;
   /** Optional test ID for testing */
   testID?: string;
+  /** Whether the button is a biometric button */
+  biometric?: boolean;
 }
 
 /**
@@ -64,10 +67,11 @@ export const TextButton: React.FC<TextButtonProps> = ({
   disabled = false,
   variant = "secondary",
   className = "",
+  biometric = false,
   testID,
 }) => {
   const { themeColors } = useColors();
-
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
   // Determine text color based on variant
   const getTextColor = () => {
     switch (variant) {
@@ -82,6 +86,18 @@ export const TextButton: React.FC<TextButtonProps> = ({
         return themeColors.text.secondary;
     }
   };
+
+  const handlePress = React.useCallback(() => {
+    if (!onPress) return;
+    if (biometric) {
+      verifyActionWithBiometrics(() => {
+        onPress();
+        return Promise.resolve();
+      });
+    } else {
+      onPress();
+    }
+  }, [onPress, biometric, verifyActionWithBiometrics]);
 
   const isDisabled = disabled || isLoading || !onPress;
 
@@ -100,7 +116,11 @@ export const TextButton: React.FC<TextButtonProps> = ({
   // Only render TouchableOpacity if we have onPress and are not disabled
   if (onPress && !isDisabled) {
     return (
-      <TouchableOpacity onPress={onPress} className="w-full" testID={testID}>
+      <TouchableOpacity
+        onPress={handlePress}
+        className="w-full"
+        testID={testID}
+      >
         {content}
       </TouchableOpacity>
     );

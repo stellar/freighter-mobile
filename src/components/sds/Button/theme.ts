@@ -74,6 +74,11 @@ export const BUTTON_THEME = {
       background: PALETTE.light.red["09"],
       text: PALETTE.light.base["00"],
     } as ButtonColorConfig,
+    minimal: {
+      background: "transparent",
+      text: THEME.colors.text.primary,
+      border: "transparent",
+    } as ButtonColorConfig,
     disabled: {
       background: THEME.colors.background.tertiary,
       text: PALETTE.light.gray["09"],

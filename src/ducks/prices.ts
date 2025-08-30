@@ -30,7 +30,9 @@ interface PricesState {
     network: NETWORKS;
   }) => Promise<void>;
   /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
-  fetchPricesForTokenIds: (params: { tokens: TokenIdentifier[] }) => Promise<void>;
+  fetchPricesForTokenIds: (params: {
+    tokens: TokenIdentifier[];
+  }) => Promise<void>;
 }
 
 /**
@@ -103,7 +105,10 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       if (missing.length === 0) return;
 
       const response = await fetchTokenPrices({ tokens: missing });
-      set({ prices: { ...get().prices, ...response }, lastUpdated: Date.now() });
+      set({
+        prices: { ...get().prices, ...response },
+        lastUpdated: Date.now(),
+      });
     } catch (error) {
       // Silently keep existing prices on error
       set({ lastUpdated: Date.now() });

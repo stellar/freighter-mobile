@@ -211,7 +211,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <View className="flex-1">
-        <Button onPress={onConfirm} tertiary xl disabled={isDisabled}>
+        <Button
+          biometric
+          onPress={() => onConfirm?.()}
+          tertiary
+          xl
+          disabled={isBuilding || !transactionXDR || !!error}
+        >
           {getButtonText()}
         </Button>
       </View>

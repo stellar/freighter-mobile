@@ -8,19 +8,31 @@ import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
+import BiometricsSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/BiometricsSettingsScreen";
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
 import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBiometrics } from "hooks/useBiometrics";
 import React from "react";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 export const SettingsStackNavigator = () => {
   const { t } = useAppTranslation();
+  const { biometryType } = useBiometrics();
 
+  const biometryTitle: Record<BIOMETRY_TYPE, string> = {
+    [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
+    [BIOMETRY_TYPE.FINGERPRINT]: t("securityScreen.fingerprint.title"),
+    [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.title"),
+    [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.title"),
+    [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.title"),
+    [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.title"),
+  };
   return (
     <SettingsStack.Navigator
       screenOptions={{
@@ -89,6 +101,13 @@ export const SettingsStackNavigator = () => {
         component={YourRecoveryPhraseScreen}
         options={{
           headerTitle: t("yourRecoveryPhrase.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN}
+        component={BiometricsSettingsScreen}
+        options={{
+          headerTitle: biometryTitle[biometryType!],
         }}
       />
     </SettingsStack.Navigator>
