@@ -1,3 +1,4 @@
+import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
 import { useCallback, useEffect, useState } from "react";
 import { Linking } from "react-native";
@@ -14,16 +15,20 @@ const getCoinbaseUrl = ({ sessionToken, token }: GetCoinBaseUrlParams) => {
   return `https://pay.coinbase.com/buy/select-asset?sessionToken=${sessionToken}&defaultExperience=buy${selectedToken}`;
 };
 
+interface OnrampTokenResponse {
+  token: string;
+  error: string;
+}
+
 interface UseCoinbaseOnrampParams {
   token?: string;
 }
 
 function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
-  const [sessionTokenError, setSessionTokenError] = useState("");
-  const [coinbaseUrl, setCoinbaseUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [publicKey, setPublicKey] = useState("");
 
-  const fetchData = useCallback(async (publicKey: string) => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       const options = {
@@ -40,7 +45,11 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       };
 
       if (!data.token || data.error) {
-        setSessionTokenError(data.error);
+        logger.error(
+          "useCoinbaseOnramp",
+          "unable to fetch onramp token",
+          data.error,
+        );
         setIsLoading(false);
         return data;
       }
@@ -48,60 +57,56 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       setIsLoading(false);
       return data;
     } catch (error) {
-      setSessionTokenError(error as string);
+      logger.error("useCoinbaseOnramp", "unable to fetch onramp token", error);
       return error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [publicKey]);
 
   useEffect(() => {
-    const getOnRampToken = async () => {
-      const publicKey = await getActiveAccountPublicKey();
+    const getPublicKey = async () => {
+      const pKey = await getActiveAccountPublicKey();
 
-      if (!publicKey) {
-        return;
-      }
-
-      const data = (await fetchData(publicKey)) as {
-        token: string;
-        error: string;
-      };
-
-      if (data.token && !data.error) {
-        const url = getCoinbaseUrl({ sessionToken: data.token, token });
-        setCoinbaseUrl(url);
+      if (pKey) {
+        setPublicKey(pKey);
       }
     };
 
-    getOnRampToken();
+    getPublicKey();
   }, [fetchData, token]);
 
-  const clearTokenError = () => {
-    setSessionTokenError("");
-  };
-
   const openCoinbaseUrl = useCallback(async () => {
-    if (coinbaseUrl) {
+    if (isLoading || !publicKey) {
+      return;
+    }
+
+    const data = (await fetchData()) as OnrampTokenResponse;
+    if (!data.token || data.error) {
+      logger.error(
+        "useCoinbaseOnramp",
+        "unable to fetch onramp token",
+        data.error,
+      );
+      return;
+    }
+
+    const url = getCoinbaseUrl({ sessionToken: data.token, token });
+    if (url) {
       try {
-        const supported = await Linking.canOpenURL(coinbaseUrl);
+        const supported = await Linking.canOpenURL(url);
         if (supported) {
-          await Linking.openURL(coinbaseUrl);
+          await Linking.openURL(url);
         } else {
-          setSessionTokenError("Cannot open Coinbase URL");
+          logger.error("useCoinbaseOnramp", "cannot open Coinbase URL");
         }
       } catch (error) {
-        setSessionTokenError("Failed to open Coinbase URL");
+        logger.error("useCoinbaseOnramp", "failed to open Coinbase URL", error);
       }
     }
-  }, [coinbaseUrl]);
+  }, [token, fetchData, isLoading, publicKey]);
 
   return {
-    fetchData,
-    sessionTokenError,
-    clearTokenError,
-    coinbaseUrl,
-    isLoading,
     openCoinbaseUrl,
   };
 }
