@@ -359,7 +359,7 @@ export const logger = Logger.getInstance();
  * Sanitize data to remove potential PII before sending to Sentry
  * Add or remove fields on the list if necessary
  */
-const sanitizeLogData = (data: unknown): unknown => {
+export const sanitizeLogData = (data: unknown): unknown => {
   if (!data || typeof data !== "object") {
     return data;
   }
@@ -388,11 +388,21 @@ const sanitizeLogData = (data: unknown): unknown => {
     "ipAddress",
     "location",
     "coordinates",
+    "auth",
+    "key",
+    "secret",
+    "secretKey",
+    "recovery",
+    "recoveryPhrase",
+    "mnemonicPhrase",
   ];
 
-  piiFields.forEach((field) => {
-    if (field in sanitized) {
-      sanitized[field] = "[REDACTED]";
+  const sanitizedKeys = Object.keys(sanitized);
+  const piiFieldsLower = piiFields.map((field) => field.toLowerCase());
+
+  sanitizedKeys.forEach((key) => {
+    if (piiFieldsLower.includes(key.toLowerCase())) {
+      sanitized[key] = "[REDACTED]";
     }
   });
 
@@ -403,34 +413,10 @@ const sanitizeLogData = (data: unknown): unknown => {
  * Sentry adapter implementation for production logging
  */
 const sentryAdapter: LoggerAdapter = {
-  debug: (context: string, message: string, ...args: unknown[]) => {
-    // Only add debug breadcrumbs in development
-    if (__DEV__) {
-      Sentry.addBreadcrumb({
-        level: "debug",
-        message: `[${context}] ${message}`,
-        data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
-        category: context,
-      });
-    }
-  },
-  info: (context: string, message: string, ...args: unknown[]) => {
-    Sentry.addBreadcrumb({
-      level: "info",
-      message: `[${context}] ${message}`,
-      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
-      category: context,
-    });
-  },
-  warn: (context: string, message: string, ...args: unknown[]) => {
-    Sentry.addBreadcrumb({
-      level: "warning",
-      message: `[${context}] ${message}`,
-      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
-      category: context,
-    });
-
-    // Also capture as a warning-level message for visibility
+  debug: () => {},
+  info: () => {},
+  warn: (context: string, message: string) => {
+    // capture a message for warning level
     Sentry.captureMessage(`[${context}] ${message}`, "warning");
   },
   error: (
@@ -440,16 +426,8 @@ const sentryAdapter: LoggerAdapter = {
     ...args: unknown[]
   ) => {
     const normalizedError = normalizeError(error);
-    const errorMessage = `[${context}] ${message}`;
 
-    // Add breadcrumb for context
-    Sentry.addBreadcrumb({
-      level: "error",
-      message: errorMessage,
-      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
-      category: context,
-    });
-
+    // capture the error with context and sanitized extra data
     Sentry.captureException(normalizedError, {
       tags: { context },
       extra: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
@@ -463,11 +441,9 @@ const sentryAdapter: LoggerAdapter = {
 const combinedAdapter: LoggerAdapter = {
   debug: (context: string, message: string, ...args: unknown[]) => {
     consoleAdapter.debug(context, message, ...args);
-    sentryAdapter.debug(context, message, ...args);
   },
   info: (context: string, message: string, ...args: unknown[]) => {
     consoleAdapter.info(context, message, ...args);
-    sentryAdapter.info(context, message, ...args);
   },
   warn: (context: string, message: string, ...args: unknown[]) => {
     consoleAdapter.warn(context, message, ...args);
