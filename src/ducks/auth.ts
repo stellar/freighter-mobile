@@ -356,6 +356,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     return AUTH_STATUS.AUTHENTICATED;
   } catch (error) {
     logger.error("validateAuth", "Failed to validate auth", error);
+
     return AUTH_STATUS.NOT_AUTHENTICATED;
   }
 };
@@ -399,7 +400,12 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
     const hashKey = await getHashKey();
 
     if (!hashKey) {
-      logger.error("getTemporaryStore", "Hash key not found");
+      logger.error(
+        "[getTemporaryStore]",
+        "Hash key error",
+        "Hash key not found",
+      );
+
       return null;
     }
 
@@ -409,7 +415,12 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
     );
 
     if (!temporaryStore) {
-      logger.error("getTemporaryStore", "Temporary store data not found");
+      logger.error(
+        "[getTemporaryStore]",
+        "Temporary store data error",
+        "Temporary store data not found",
+      );
+
       return null;
     }
 
@@ -420,7 +431,12 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
       );
 
       if (!decryptedTemporaryStore) {
-        logger.error("getTemporaryStore", "Failed to decrypt temporary store");
+        logger.error(
+          "[getTemporaryStore]",
+          "decryption error",
+          "Failed to decrypt temporary store",
+        );
+
         return null;
       }
 
@@ -431,16 +447,19 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
       ) {
         logger.error(
           "getTemporaryStore",
+          "invalid structure error",
           "Temporary store has invalid structure",
         );
+
         await clearTemporaryData();
+
         return null;
       }
 
       return decryptedTemporaryStore;
     } catch (error) {
       logger.error(
-        "getTemporaryStore",
+        "[getTemporaryStore]",
         "Failed to decrypt temporary store",
         error,
       );
@@ -452,7 +471,8 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
       return null;
     }
   } catch (error) {
-    logger.error("getTemporaryStore", "Failed to get temporary store", error);
+    logger.error("[getTemporaryStore]", "Failed to get temporary store", error);
+
     return null;
   }
 };
@@ -552,7 +572,8 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
 
     return hashKeyObj;
   } catch (error) {
-    logger.error("generateHashKey", "Failed to generate hash key", error);
+    logger.error("[generateHashKey]", "Failed to generate hash key", error);
+
     throw new Error("Failed to generate hash key");
   }
 };
@@ -631,6 +652,7 @@ const createTemporaryStore = async (input: {
       "Failed to create temporary store",
       error,
     );
+
     throw new Error("Failed to create temporary store");
   }
 };
@@ -938,7 +960,11 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       | undefined;
 
     if (!keyExtraData || !keyExtraData?.mnemonicPhrase) {
-      logger.error("signIn", "Key exists but has no extra data");
+      logger.error(
+        "signIn",
+        "No extra data error",
+        "Key exists but has no extra data",
+      );
       // Clear the all the data and throw an error
       await clearAllData();
       throw new Error(t("authStore.error.noKeyPairFound"));
@@ -949,7 +975,11 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     let account = accountList.find((a) => a.id === activeAccount);
 
     if (!account) {
-      logger.error("signIn", "Account not found in account list");
+      logger.error(
+        "signIn",
+        "Account not found error",
+        "Account not found in account list",
+      );
 
       account = {
         id: loadedKey.id,
@@ -1064,6 +1094,7 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     }
   } catch (error) {
     logger.error("signIn", "Failed to sign in", error);
+
     throw error;
   }
 };
@@ -1214,6 +1245,7 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
     throw new Error(t("authStore.error.authenticationExpired"));
   } catch (error) {
     logger.error("getActiveAccount", "Failed to get active account", error);
+
     throw error;
   }
 };
@@ -1303,6 +1335,7 @@ const createAccount = async (password: string): Promise<void> => {
     });
   } catch (error) {
     logger.error("createAccount", "Failed to create account", error);
+
     throw error;
   }
 };
@@ -1461,6 +1494,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             }
           } catch (error) {
             logger.error("logout", "Failed to logout", error);
+
             set({
               error:
                 error instanceof Error
@@ -1500,6 +1534,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               "Sign up failed",
               error,
             );
+
             set({
               error:
                 error instanceof Error
@@ -1567,6 +1602,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       } catch (error) {
         analytics.trackReAuthFail();
         logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
+
         set({
           error:
             error instanceof Error
@@ -1574,6 +1610,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               : t("authStore.error.failedToSignIn"),
           isLoading: false,
         });
+
         throw error; // Rethrow to handle in the UI
       }
     },
@@ -1604,6 +1641,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               "Import wallet failed",
               error,
             );
+
             set({
               error:
                 error instanceof Error
@@ -1724,6 +1762,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         set({ isRenamingAccount: false });
       } catch (error) {
         logger.error("renameAccount", "Failed to rename account", error);
+
         set({
           error:
             error instanceof Error
@@ -1826,6 +1865,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         set({ isLoading: false, error: null });
       } catch (error) {
         logger.error("importSecretKey", "Failed to import secret key", error);
+
         set({
           error:
             error instanceof Error

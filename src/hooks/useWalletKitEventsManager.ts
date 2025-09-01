@@ -97,6 +97,7 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
           "WalletConnect URI param not found: ",
           event.url,
         );
+
         return;
       }
 

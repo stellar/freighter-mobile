@@ -35,6 +35,7 @@ export const getStoredScreenshots = async (): Promise<
     return new Map(Object.entries(screenshotsMap));
   } catch (error) {
     logger.error("screenshots", "Failed to get stored screenshots:", error);
+
     return new Map();
   }
 };
@@ -83,6 +84,7 @@ export const removeTabScreenshot = async (tabId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("removeTabScreenshot", "Failed to remove screenshot:", error);
+
     return false;
   }
 };
@@ -135,6 +137,7 @@ export const clearAllScreenshots = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("clearAllScreenshots", "Failed to clear screenshots:", error);
+
     return false;
   }
 };

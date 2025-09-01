@@ -73,6 +73,7 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
         "Failed to configure keychain store",
         e,
       );
+
       return Promise.reject(e);
     }
   }
@@ -96,8 +97,10 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     if (usedKeys.length) {
       logger.error(
         "ReactNativeKeychainKeyStore.storeKeys",
-        `Some keys already exist in keychain: ${usedKeys.map((k) => k.id).join(", ")}`,
+        "Some keys already exist in keychain",
+        `Key list: ${usedKeys.map((k) => k.id).join(", ")}`,
       );
+
       return Promise.reject(
         `Some keys were already stored in the keystore: ${usedKeys
           .map((k) => k.id)
@@ -135,8 +138,10 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     if (notFoundKeys.length) {
       logger.error(
         "ReactNativeKeychainKeyStore.updateKeys",
-        `Some keys not found in keychain: ${notFoundKeys.map((k) => k.id).join(", ")}`,
+        "Some keys not found in keychain",
+        `Key list: ${notFoundKeys.map((k) => k.id).join(", ")}`,
       );
+
       return Promise.reject(
         `Some keys couldn't be found in the keystore: ${notFoundKeys
           .map((k) => k.id)
@@ -165,8 +170,10 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     if (!key) {
       logger.error(
         "ReactNativeKeychainKeyStore.loadKey",
+        "Key not found in keychain error",
         `Key ${id} not found in keychain`,
       );
+
       return Promise.reject(id);
     }
 
@@ -184,8 +191,10 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     if (!hasKey) {
       logger.error(
         "ReactNativeKeychainKeyStore.removeKey",
+        "Key not found in keychain error",
         `Key ${id} not found in keychain`,
       );
+
       return Promise.reject(id);
     }
 
@@ -193,8 +202,10 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     if (!key) {
       logger.error(
         "ReactNativeKeychainKeyStore.removeKey",
+        "error retrieving key from keychain",
         `Key ${id} could not be retrieved from keychain`,
       );
+
       return Promise.reject(id);
     }
     const metadata: KeyMetadata = getKeyMetadata(key);

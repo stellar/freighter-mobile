@@ -284,8 +284,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       logger.error(
         "SwapAmountScreen",
         "Failed to setup swap transaction:",
-        error instanceof Error ? error.message : String(error),
+        error,
       );
+
       setSwapError(t("swapScreen.errors.failedToSetupTransaction"));
     }
   };
@@ -295,11 +296,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
     setTimeout(() => {
       executeSwap().catch((error) => {
-        logger.error(
-          "SwapAmountScreen",
-          "Swap transaction failed:",
-          error instanceof Error ? error.message : String(error),
-        );
+        logger.error("SwapAmountScreen", "Swap transaction failed:", error);
+
         setSwapError(t("swapScreen.errors.swapTransactionFailed"));
       });
     }, 100);

@@ -85,10 +85,8 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           logger.error(
             "SwapProcessingScreen",
             "Failed to fetch transaction details",
-            {
-              error: error instanceof Error ? error.message : String(error),
-              transactionHash,
-            },
+            error,
+            transactionHash,
           );
         });
     }

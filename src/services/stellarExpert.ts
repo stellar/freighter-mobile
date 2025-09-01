@@ -39,6 +39,7 @@ export const searchToken = async (token: string, network: NETWORKS) => {
     return response.data;
   } catch (error) {
     logger.error("stellarExpert", "Error searching token", error);
+
     return null;
   }
 };

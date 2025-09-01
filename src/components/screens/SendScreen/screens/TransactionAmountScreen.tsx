@@ -287,7 +287,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       logger.error(
         "TransactionAmountScreen",
         "Failed to build transaction:",
-        error instanceof Error ? error.message : String(error),
+        error,
       );
     }
   }, [
@@ -338,7 +338,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         logger.error(
           "TransactionAmountScreen",
           "Transaction submission failed:",
-          error instanceof Error ? error.message : String(error),
+          error,
         );
 
         analytics.trackTransactionError({

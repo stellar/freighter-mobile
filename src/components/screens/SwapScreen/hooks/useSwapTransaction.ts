@@ -89,6 +89,7 @@ export const useSwapTransaction = ({
         "Failed to setup swap transaction",
         error,
       );
+
       throw error;
     }
   };

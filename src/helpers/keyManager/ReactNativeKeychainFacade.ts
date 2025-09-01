@@ -50,6 +50,7 @@ export class ReactNativeKeychainFacade {
         "Error checking key existence:",
         error,
       );
+
       return false;
     }
   }
@@ -74,6 +75,7 @@ export class ReactNativeKeychainFacade {
         `Error getting key ${id}:`,
         error,
       );
+
       return null;
     }
   }
@@ -92,6 +94,7 @@ export class ReactNativeKeychainFacade {
         `Error setting key ${id}:`,
         error,
       );
+
       throw new Error(`Failed to set key ${id}`);
     }
   }
@@ -146,6 +149,7 @@ export class ReactNativeKeychainFacade {
       );
       // No index found, return empty array
     }
+
     return keys;
   }
 
@@ -182,6 +186,7 @@ export class ReactNativeKeychainFacade {
         "Error adding to key index, creating new index:",
         error,
       );
+
       await Keychain.setGenericPassword(
         DEFAULT_KEY_INDEX,
         JSON.stringify([id]),

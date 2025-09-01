@@ -408,6 +408,7 @@ export const getTokenDetails = async ({
         "Invalid response from indexer",
         response.data,
       );
+
       throw new Error("Invalid response from indexer");
     }
 
@@ -423,6 +424,7 @@ export const getTokenDetails = async ({
       "Error fetching token details",
       error,
     );
+
     return null;
   }
 };
@@ -473,6 +475,7 @@ export const isSacContractExecutable = async (
         "Invalid response from indexer",
         response.data,
       );
+
       throw new Error("Invalid response from indexer");
     }
 
@@ -483,6 +486,7 @@ export const isSacContractExecutable = async (
       "Error fetching sac contract executable",
       error,
     );
+
     return false;
   }
 };
@@ -540,6 +544,7 @@ export const getIndexerAccountHistory = async ({
       "Error fetching account history",
       error,
     );
+
     return [];
   }
 };

@@ -110,6 +110,7 @@ export const initializeSentry = (): void => {
     sendDefaultPii: false,
     spotlight: __DEV__,
     release: `freighter-mobile@${getVersion()}+${getBuildNumber()}`,
+    denyUrls: [/api\.amplitude\.com\/2\/httpapi/i],
 
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,

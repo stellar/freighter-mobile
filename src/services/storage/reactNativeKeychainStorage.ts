@@ -55,6 +55,7 @@ export const reactNativeKeychainStorage: PersistentStorage = {
         `Error storing key in keychain: ${key}`,
         error,
       );
+
       throw new Error(`Failed to store item in keychain: ${key}`);
     }
   },

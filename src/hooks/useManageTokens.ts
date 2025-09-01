@@ -66,6 +66,7 @@ const getCustomTokenStorage = async (): Promise<CustomTokenStorage> => {
       "Error parsing custom token storage",
       e,
     );
+
     return {};
   }
 };
@@ -311,6 +312,7 @@ export const useManageTokens = ({
         "Error removing token",
         error,
       );
+
       toastOptions = {
         title: t("manageTokensScreen.removeTokenError", {
           tokenCode,

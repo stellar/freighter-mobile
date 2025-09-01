@@ -252,10 +252,9 @@ export const buildSorobanTransferOperation = (
     logger.error(
       "TransactionService",
       "Error building Soroban transfer operation",
-      {
-        error: errorMessage,
-      },
+      error,
     );
+
     throw new Error(
       `Error building Soroban transfer operation: ${errorMessage}`,
     );
@@ -399,9 +398,12 @@ export const buildPaymentTransaction = async (
     return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("TransactionService", "Failed to build payment transaction", {
-      error: errorMessage,
-    });
+    logger.error(
+      "TransactionService",
+      "Failed to build payment transaction",
+      error,
+    );
+
     throw new Error(`Failed to build payment transaction: ${errorMessage}`);
   }
 };
@@ -481,9 +483,12 @@ export const buildSwapTransaction = async (
     return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("TransactionService", "Failed to build swap transaction", {
-      error: errorMessage,
-    });
+    logger.error(
+      "TransactionService",
+      "Failed to build swap transaction",
+      error,
+    );
+
     throw new Error(`Failed to build swap transaction: ${errorMessage}`);
   }
 };
