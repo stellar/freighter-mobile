@@ -9,16 +9,16 @@ interface GetCoinBaseUrlParams {
 }
 
 const getCoinbaseUrl = ({ sessionToken, token }: GetCoinBaseUrlParams) => {
-  const selectedAsset = token ? `&defaultAsset=${token}` : "";
+  const selectedToken = token ? `&defaultAsset=${token}` : "";
 
-  return `https://pay.coinbase.com/buy/select-asset?sessionToken=${sessionToken}&defaultExperience=buy${selectedAsset}`;
+  return `https://pay.coinbase.com/buy/select-asset?sessionToken=${sessionToken}&defaultExperience=buy${selectedToken}`;
 };
 
-interface UseGetOnrampTokenParams {
+interface UseCoinbaseOnrampParams {
   token?: string;
 }
 
-function useGetOnrampToken({ token }: UseGetOnrampTokenParams) {
+function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
   const [sessionTokenError, setSessionTokenError] = useState("");
   const [coinbaseUrl, setCoinbaseUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -106,4 +106,4 @@ function useGetOnrampToken({ token }: UseGetOnrampTokenParams) {
   };
 }
 
-export { useGetOnrampToken };
+export { useCoinbaseOnramp };

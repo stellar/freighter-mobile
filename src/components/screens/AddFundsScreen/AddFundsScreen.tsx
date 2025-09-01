@@ -10,7 +10,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useGetOnrampToken } from "hooks/useGetOnrampToken";
+import { useCoinbaseOnramp } from "hooks/useCoinbaseOnramp";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -27,8 +27,8 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
   const { t } = useAppTranslation();
   const { isUnfunded } = route.params;
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { openCoinbaseUrl } = useGetOnrampToken({
-    token: "XLM",
+  const { openCoinbaseUrl } = useCoinbaseOnramp({
+    ...(isUnfunded ? { token: "XLM" } : {}),
   });
 
   useRightHeaderButton({
