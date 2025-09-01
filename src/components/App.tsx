@@ -20,6 +20,7 @@ import { Appearance, StatusBar } from "react-native";
 import Config from "react-native-config";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { getUserId } from "services/analytics/user";
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -33,13 +34,21 @@ export const App = (): React.JSX.Element => {
   // initialize sentry here but we enhance the configuration
   // in RootNavigator once the user is authenticated
   useEffect(() => {
-    Sentry.init({
-      dsn: Config.SENTRY_DSN,
-      sendDefaultPii: false,
-      spotlight: __DEV__,
-    });
+    const initializeSentry = async () => {
+      Sentry.init({
+        dsn: Config.SENTRY_DSN,
+        sendDefaultPii: false,
+        spotlight: __DEV__,
+      });
 
-    initializeSentryLogger();
+      const userId = await getUserId();
+
+      Sentry.setUser({ id: userId });
+
+      initializeSentryLogger();
+    };
+
+    initializeSentry();
   }, []);
 
   return (

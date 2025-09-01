@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/react-native";
-import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
@@ -10,17 +9,12 @@ import {
   getBuildNumber,
   getBundleId,
 } from "react-native-device-info";
-import { getUserId } from "services/analytics/user";
 
 /**
  * Sentry configuration constants
  */
 export const SENTRY_CONFIG = {
   DSN: Config.SENTRY_DSN,
-
-  // Even when analytics are disabled, we still track errors but with minimal context
-  TRACK_ERRORS_WHEN_ANALYTICS_DISABLED: true,
-
   // Reduced context when user has disabled analytics
   MINIMAL_CONTEXT_FIELDS: [
     "platform",
@@ -77,27 +71,6 @@ const buildSentryContext = (
 /**
  * Sets up Sentry context based on current app state and user preferences
  */
-export const updateSentryContext = async (): Promise<void> => {
-  try {
-    const context = buildSentryContext();
-
-    Sentry.setContext("appContext", context);
-
-    const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
-
-    if (analyticsEnabled) {
-      // Use the same user ID as analytics for consistency
-      const userId = await getUserId();
-
-      Sentry.setUser({ id: userId });
-    } else {
-      // Anonymous user when analytics is disabled
-      Sentry.setUser({ id: "anonymous" });
-    }
-  } catch (error) {
-    logger.warn("Failed to update Sentry context:", error as string);
-  }
-};
 
 /**
  * Initialize Sentry with privacy-conscious configuration
@@ -119,6 +92,7 @@ export const initializeSentry = (): void => {
       // Update context on each event to ensure freshness
       // Note: beforeSend is synchronous, so we can't await updateSentryContext
       // Context will be updated on next async call
+      Sentry.setContext("appContext", buildSentryContext());
 
       // Additional PII scrubbing based on analytics preferences
       if (!analyticsEnabled && event.contexts?.appContext) {
@@ -137,39 +111,5 @@ export const initializeSentry = (): void => {
 
       return event;
     },
-  });
-
-  // Set initial context
-  updateSentryContext().catch((error) => {
-    logger.warn("Failed to set initial Sentry context:", error as string);
-  });
-};
-
-/**
- * Enhance Sentry configuration after initial setup
- * Called after analytics and user context are available
- * NOTE: it calls the same method as onAnalyticsPreferenceChange
- * but we log different messages for better tracking and debugging
- */
-export const enhanceSentryConfiguration = (): void => {
-  // Set up context and user identification
-  updateSentryContext().catch((error) => {
-    logger.warn("Failed to enhance Sentry configuration:", error as string);
-  });
-};
-
-/**
- * Updates Sentry configuration when analytics preferences change
- * Note: We don't disable Sentry entirely when analytics are disabled
- * because error tracking is still valuable for app stability
- * We just reduce the context we send
- */
-export const onAnalyticsPreferenceChange = (): void => {
-  // Update context immediately when preference changes
-  updateSentryContext().catch((error) => {
-    logger.warn(
-      "Failed to update Sentry context on preference change:",
-      error as string,
-    );
   });
 };

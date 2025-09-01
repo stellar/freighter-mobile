@@ -21,7 +21,6 @@ import {
   BuyXLMStackParamList,
   ManageTokensStackParamList,
 } from "config/routes";
-import { enhanceSentryConfiguration } from "config/sentryConfig";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
@@ -66,13 +65,6 @@ export const RootNavigator = () => {
     };
     initializeApp();
   }, [getAuthStatus]);
-
-  useEffect(() => {
-    if (!initializing) {
-      // Enhance Sentry with analytics integration and user context
-      enhanceSentryConfiguration();
-    }
-  }, [initializing]);
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
