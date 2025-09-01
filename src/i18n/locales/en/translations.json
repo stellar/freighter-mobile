@@ -112,7 +112,7 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receive XLM",
+    "title": "Receive funds",
     "copyButton": "Copy address",
     "helperText": "Scan the QR code or \ncopy your address",
     "bottomSheet": {
@@ -129,14 +129,18 @@
     "pairingError": "Failed to pair",
     "invalidUriError": "Please enter a valid QR Code URI"
   },
-  "buyXLMScreen": {
-    "title": "Add XLM",
+  "addFundsScreen": {
+    "title": "Add funds",
     "bottomSheet": {
       "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
     },
-    "actions": {
+    "transferFromAnotherAccount": {
       "title": "Transfer from another account",
       "description": "Receive funds from another wallet"
+    },
+    "buyWithCoinbase": {
+      "title": "Buy with Coinbase",
+      "description": "Transfer from Coinbase & other options"
     }
   },
   "changeNetworkScreen": {
