@@ -93,7 +93,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   const handleSendPress = () => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
       params: { tokenId },
     });
   };
