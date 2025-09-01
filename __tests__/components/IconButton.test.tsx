@@ -51,12 +51,50 @@ describe("IconButton", () => {
     expect(mockOnPress).not.toHaveBeenCalled();
   });
 
-  it("renders with correct opacity when disabled", () => {
+  it("renders with correct opacity className when disabled", () => {
     const { getByTestId } = render(
       <IconButton Icon={Icon.Home02} title="Home" disabled />,
     );
 
     const container = getByTestId("icon-button-container");
-    expect(container.props.style).toHaveProperty("opacity", 0.6);
+    expect(container.props.className).toContain("opacity-50");
+  });
+
+  it("renders without title when title prop is not provided", () => {
+    const { queryByText } = render(
+      <IconButton Icon={Icon.Home02} onPress={mockOnPress} />,
+    );
+
+    expect(queryByText("Home")).toBeNull();
+  });
+
+  it("renders with different sizes", () => {
+    const { getByTestId } = render(
+      <IconButton
+        Icon={Icon.Home02}
+        title="Home"
+        size="sm"
+        onPress={mockOnPress}
+      />,
+    );
+
+    const button = getByTestId("icon-button-home");
+
+    expect(button).toBeTruthy();
+  });
+
+  it("renders with different variants", () => {
+    const { getByTestId } = render(
+      <IconButton
+        Icon={Icon.Home02}
+        title="Home"
+        variant="ghost"
+        onPress={mockOnPress}
+      />,
+    );
+
+    const button = getByTestId("icon-button-home");
+
+    expect(button).toBeTruthy();
   });
 });

@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import {
@@ -10,7 +9,6 @@ import {
   TransactionTimeoutScreen,
   TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
-import Icon from "components/sds/Icon";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -32,7 +30,6 @@ export const SendPaymentStackNavigator = () => {
         component={SendSearchContacts}
         options={{
           headerTitle: t("sendPaymentScreen.title"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <SendPaymentStack.Screen
