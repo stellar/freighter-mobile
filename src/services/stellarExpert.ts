@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { NETWORKS } from "config/constants";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import { SearchTokenResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
 import { createApiService } from "services/apiFactory";
@@ -27,13 +27,7 @@ export const searchToken = async (token: string, network: NETWORKS) => {
     });
 
     if (!response.data || !response.data._embedded) {
-      logger.error(
-        "stellarExpertApi.searchToken",
-        "Invalid response from stellarExpert",
-        response.data,
-      );
-
-      throw new Error("Invalid response from stellarExpert");
+      throw normalizeError(response);
     }
 
     return response.data;

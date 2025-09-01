@@ -89,12 +89,6 @@ export class ReactNativeKeychainFacade {
         service: `${this.service}_${id}`,
       });
     } catch (error) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.setKey",
-        `Error setting key ${id}:`,
-        error,
-      );
-
       throw new Error(`Failed to set key ${id}`);
     }
   }

@@ -17,7 +17,6 @@ import {
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
@@ -249,11 +248,6 @@ export const buildSorobanTransferOperation = (
     transactionBuilder.addOperation(transaction);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      "TransactionService",
-      "Error building Soroban transfer operation",
-      error,
-    );
 
     throw new Error(
       `Error building Soroban transfer operation: ${errorMessage}`,
@@ -398,11 +392,6 @@ export const buildPaymentTransaction = async (
     return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      "TransactionService",
-      "Failed to build payment transaction",
-      error,
-    );
 
     throw new Error(`Failed to build payment transaction: ${errorMessage}`);
   }
@@ -483,11 +472,6 @@ export const buildSwapTransaction = async (
     return { tx: transaction, xdr: transaction.toXDR() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      "TransactionService",
-      "Failed to build swap transaction",
-      error,
-    );
 
     throw new Error(`Failed to build swap transaction: ${errorMessage}`);
   }

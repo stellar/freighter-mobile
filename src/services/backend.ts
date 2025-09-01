@@ -17,7 +17,7 @@
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import {
   TokenTypeWithCustomToken,
   BalanceMap,
@@ -113,32 +113,22 @@ export const getContractSpecs = async ({
   contractId: string;
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
-  try {
-    const response = await freighterBackend.get<{ data: Record<string, any> }>(
-      `/contract-spec/${contractId}`,
-      {
-        params: {
-          network: networkDetails.network,
-        },
+  const response = await freighterBackend.get<{ data: Record<string, any> }>(
+    `/contract-spec/${contractId}`,
+    {
+      params: {
+        network: networkDetails.network,
       },
-    );
+    },
+  );
 
-    const payload = response.data;
+  const payload = response.data;
 
-    if (!payload || !payload.data) {
-      throw new Error("Invalid response from backend");
-    }
-
-    return payload.data;
-  } catch (error) {
-    logger.error(
-      "backendApi.getContractSpecs",
-      "Error fetching contract spec",
-      error,
-    );
-
-    throw error;
+  if (!payload || !payload.data) {
+    throw normalizeError(payload);
   }
+
+  return payload.data;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -403,13 +393,7 @@ export const getTokenDetails = async ({
     );
 
     if (!response.data) {
-      logger.error(
-        "backendApi.getTokenDetails",
-        "Invalid response from indexer",
-        response.data,
-      );
-
-      throw new Error("Invalid response from indexer");
+      throw normalizeError(response);
     }
 
     return response.data;
@@ -470,13 +454,7 @@ export const isSacContractExecutable = async (
     );
 
     if (!response.data) {
-      logger.error(
-        "backendApi.isSacContractExecutable",
-        "Invalid response from indexer",
-        response.data,
-      );
-
-      throw new Error("Invalid response from indexer");
+      throw normalizeError(response);
     }
 
     return response.data.isSacContract;
@@ -795,47 +773,31 @@ interface ProtocolsResponse {
  * ```
  */
 export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
-  try {
-    const { data } =
-      await freighterBackendV2.get<ProtocolsResponse>("/protocols");
+  const { data } =
+    await freighterBackendV2.get<ProtocolsResponse>("/protocols");
 
-    if (!data.data || !data.data.protocols) {
-      logger.error(
-        "backendApi.fetchProtocols",
-        "Invalid response from server",
-        data,
-      );
-
-      throw new Error("Invalid response from server");
-    }
-
-    // Filter out blacklisted/unsupported protocols and
-    // transform the response to match our Protocol type
-    return data.data.protocols
-      .filter((protocol) => {
-        if (
-          protocol.is_blacklisted === true ||
-          protocol.is_wc_not_supported === true
-        ) {
-          return false;
-        }
-
-        return true;
-      })
-      .map((protocol) => ({
-        description: protocol.description,
-        iconUrl: protocol.icon_url,
-        name: protocol.name,
-        websiteUrl: protocol.website_url,
-        tags: protocol.tags,
-      }));
-  } catch (error) {
-    logger.error(
-      "backendApi.fetchProtocols",
-      "Error fetching protocols",
-      error,
-    );
-
-    throw error;
+  if (!data.data || !data.data.protocols) {
+    throw normalizeError(data);
   }
+
+  // Filter out blacklisted/unsupported protocols and
+  // transform the response to match our Protocol type
+  return data.data.protocols
+    .filter((protocol) => {
+      if (
+        protocol.is_blacklisted === true ||
+        protocol.is_wc_not_supported === true
+      ) {
+        return false;
+      }
+
+      return true;
+    })
+    .map((protocol) => ({
+      description: protocol.description,
+      iconUrl: protocol.icon_url,
+      name: protocol.name,
+      websiteUrl: protocol.website_url,
+      tags: protocol.tags,
+    }));
 };
