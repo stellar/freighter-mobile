@@ -1,8 +1,10 @@
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
 import { useCallback, useEffect, useState } from "react";
 import { Linking } from "react-native";
 import Config from "react-native-config";
+import { analytics } from "services/analytics";
 
 interface GetCoinBaseUrlParams {
   sessionToken: string;
@@ -72,6 +74,7 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
         throw new Error("Cannot open Coinbase URL");
       }
 
+      analytics.track(AnalyticsEvent.COINBASE_ONRAMP_OPENED);
       await Linking.openURL(url);
     } catch (error) {
       logger.error("useCoinbaseOnramp", "Failed to open Coinbase URL", error);
