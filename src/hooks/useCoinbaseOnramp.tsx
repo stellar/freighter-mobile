@@ -15,11 +15,6 @@ const getCoinbaseUrl = ({ sessionToken, token }: GetCoinBaseUrlParams) => {
   return `https://pay.coinbase.com/buy/select-asset?sessionToken=${sessionToken}&defaultExperience=buy${selectedToken}`;
 };
 
-interface OnrampTokenResponse {
-  token: string;
-  error: string;
-}
-
 interface UseCoinbaseOnrampParams {
   token?: string;
 }
@@ -29,85 +24,66 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
   const [publicKey, setPublicKey] = useState("");
 
   const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const options = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ address: publicKey }),
-      };
-      const url = `${Config.INDEXER_URL}/onramp/token`;
-      const response = await fetch(url, options);
-      const { data } = (await response.json()) as {
-        data: { token: string; error: string };
-      };
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ address: publicKey }),
+    };
 
-      if (!data.token || data.error) {
-        logger.error(
-          "useCoinbaseOnramp",
-          "unable to fetch onramp token",
-          data.error,
-        );
-        setIsLoading(false);
-        return data;
-      }
+    const url = `${Config.INDEXER_URL}/onramp/token`;
+    const response = await fetch(url, options);
+    const { data } = (await response.json()) as {
+      data: { token: string; error: string };
+    };
 
-      setIsLoading(false);
-      return data;
-    } catch (error) {
-      logger.error("useCoinbaseOnramp", "unable to fetch onramp token", error);
-      return error;
-    } finally {
-      setIsLoading(false);
+    if (!data.token || data.error) {
+      throw new Error(data.error || "Failed to fetch onramp token");
     }
+
+    return data;
   }, [publicKey]);
 
   useEffect(() => {
     const getPublicKey = async () => {
       const pKey = await getActiveAccountPublicKey();
-
       if (pKey) {
         setPublicKey(pKey);
       }
     };
 
     getPublicKey();
-  }, [fetchData, token]);
+  }, []);
 
   const openCoinbaseUrl = useCallback(async () => {
     if (isLoading || !publicKey) {
       return;
     }
 
-    const data = (await fetchData()) as OnrampTokenResponse;
-    if (!data.token || data.error) {
-      logger.error(
-        "useCoinbaseOnramp",
-        "unable to fetch onramp token",
-        data.error,
-      );
-      return;
-    }
+    setIsLoading(true);
 
-    const url = getCoinbaseUrl({ sessionToken: data.token, token });
-    if (url) {
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          logger.error("useCoinbaseOnramp", "cannot open Coinbase URL");
-        }
-      } catch (error) {
-        logger.error("useCoinbaseOnramp", "failed to open Coinbase URL", error);
+    try {
+      const data = await fetchData();
+      const url = getCoinbaseUrl({ sessionToken: data.token, token });
+
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        throw new Error("Cannot open Coinbase URL");
       }
+
+      await Linking.openURL(url);
+    } catch (error) {
+      logger.error("useCoinbaseOnramp", "Failed to open Coinbase URL", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   }, [token, fetchData, isLoading, publicKey]);
 
   return {
     openCoinbaseUrl,
+    isLoading,
   };
 }
 
