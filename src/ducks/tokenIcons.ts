@@ -36,9 +36,7 @@ interface TokenIconsState {
   /**
    * Caches a single token icon
    * @param {Object} params - Function parameters
-   * @param {string} params.imageUrl - Image URL for params.token
-   * @param {Token} params.token - Token to assign the icon to
-   * @param {NETWORKS} params.network - The network to fetch from
+   * @param { Record<string, Icon>} params.icons - A map of token ID to Icon
    */
   cacheTokenIcons: (params: { icons: Record<string, Icon> }) => void;
   /**
