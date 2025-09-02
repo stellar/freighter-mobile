@@ -1,5 +1,4 @@
 /* eslint-disable react/no-unstable-nested-components */
-import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -35,17 +34,13 @@ type SendSearchContactsProps = NativeStackScreenProps<
  * @returns {JSX.Element} The rendered component
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
-  route,
   navigation,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const { saveRecipientAddress, resetSettings, saveSelectedTokenId } =
-    useTransactionSettingsStore();
-
-  const { tokenId } = route.params || {};
+  const { saveRecipientAddress } = useTransactionSettingsStore();
 
   const {
     recentAddresses,
@@ -63,33 +58,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
     // Clear any previous search state on component mount
     resetSendRecipient();
-
-    if (!tokenId) {
-      resetSettings();
-    }
-
-    if (tokenId) {
-      saveSelectedTokenId(tokenId);
-    }
-  }, [
-    loadRecentAddresses,
-    resetSendRecipient,
-    resetSettings,
-    tokenId,
-    saveSelectedTokenId,
-  ]);
-
-  // Reset search input and store state when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      setAddress("");
-      resetSendRecipient();
-
-      if (!tokenId) {
-        resetSettings();
-      }
-    }, [resetSendRecipient, resetSettings, tokenId]),
-  );
+  }, [loadRecentAddresses, resetSendRecipient]);
 
   /**
    * Handles search input changes and updates suggestions
@@ -117,11 +86,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     // Transaction settings store is for the transaction flow
     saveRecipientAddress(contactAddress);
 
-    if (tokenId) {
-      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN);
-    } else {
-      navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
-    }
+    navigation.goBack();
   };
 
   const handlePasteFromClipboard = () => {

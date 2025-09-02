@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -232,18 +232,20 @@ export type BuyXLMStackParamList = {
 };
 
 export type SendPaymentStackParamList = {
-  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: {
-    tokenId?: string;
-  };
+  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
+    tokenId: string;
+  };
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };
 
 export type SwapStackParamList = {
-  [SWAP_ROUTES.SWAP_SCREEN]: undefined;
+  [SWAP_ROUTES.SWAP_SCREEN]: {
+    selectionType: SWAP_SELECTION_TYPES;
+  };
   [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;

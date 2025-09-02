@@ -616,6 +616,8 @@
       "seventyFive": "75%",
       "max": "Max"
     },
+    "chooseRecipient": "Choose recipient",
+    "setAmount": "Set amount",
     "reviewButton": "Review",
     "menu": {
       "fee": "Fee: {{fee}} XLM",

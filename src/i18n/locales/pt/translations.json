@@ -589,6 +589,8 @@
       "seventyFive": "75%",
       "max": "Máx"
     },
+    "chooseRecipient": "Escolher destinatário",
+    "setAmount": "Definir valor",
     "reviewButton": "Revisar",
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
