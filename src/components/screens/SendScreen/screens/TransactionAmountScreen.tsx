@@ -492,7 +492,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[32px] max-xs:py-[16px] px-[24px] max-xs:px-[16px] items-center">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
               <Display
                 xl
