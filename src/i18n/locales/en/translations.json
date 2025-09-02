@@ -112,15 +112,15 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receive XLM",
+    "title": "QR Code",
     "copyButton": "Copy address",
     "helperText": "Scan the QR code or \ncopy your address",
     "bottomSheet": {
-      "title": "Receive XLM",
+      "title": "QR Code",
       "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
     }
   },
-  "scanQRCodeScreen": {
+  "walletConnect": {
     "title": "Scan to Connect",
     "scanWCQrCode": "Scan a WalletConnect QR code",
     "connectWithWalletConnect": "Paste a WalletConnect URI",

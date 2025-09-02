@@ -1,4 +1,5 @@
 import { Text } from "components/sds/Typography";
+import { QRCodeSource } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -28,11 +29,13 @@ const ABOVE_OVERLAY_Z_INDEX = 10;
  * Props for the QRScanner component
  * @interface QRScannerProps
  * @property {(data: string) => void} onRead - Callback function called when a QR code is successfully scanned
- * @property {"wallet_connect" | "address_input" | "import_wallet"} [context] - Context for analytics tracking
+ * @property {QRCodeSource} [context] - Context for analytics tracking
+ * @property {string} title - Title text to display in the scanner overlay
  */
 type QRScannerProps = {
   onRead: (data: string) => void;
-  context?: "wallet_connect" | "address_input" | "import_wallet";
+  context?: QRCodeSource;
+  title: string;
 };
 
 /**
@@ -69,7 +72,8 @@ type QRScannerProps = {
  */
 export const QRScanner: React.FC<QRScannerProps> = ({
   onRead,
-  context = "wallet_connect",
+  context = QRCodeSource.WALLET_CONNECT,
+  title,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
@@ -111,7 +115,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   );
 
   const codeScanner = useCodeScanner({
-    codeTypes: ["qr", "ean-13"],
+    codeTypes: ["qr"],
     onCodeScanned: handleCodeScanned,
   });
 
@@ -228,9 +232,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
           }}
         >
           <Text md primary medium textAlign="center">
-            {context === "address_input"
-              ? t("sendPaymentScreen.scanQRCodeText")
-              : t("scanQRCodeScreen.scanWCQrCode")}
+            {title}
           </Text>
         </View>
       </View>

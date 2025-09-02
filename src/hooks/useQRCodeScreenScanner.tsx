@@ -1,10 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { logos } from "assets/logos";
-import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
-import { Input } from "components/sds/Input";
-import { Text } from "components/sds/Typography";
+import { WalletConnectManualInputOverlay } from "components/WalletConnectManualInputOverlay";
 import { QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useQRDataStore } from "ducks/qrData";
@@ -12,7 +8,6 @@ import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Image, TouchableOpacity } from "react-native";
 
 const PAIRING_SUCCESS_VISUALDELAY_MS = 1000;
 const PAIRING_ERROR_VISUALDELAY_MS = 500;
@@ -47,6 +42,8 @@ interface QRCodeScreenState {
   showManualInput: boolean;
   /** Title for the screen */
   title: string;
+  /** Title for the QR scanner overlay */
+  scannerTitle: string;
   /** Context for analytics */
   context: QRCodeSource;
 }
@@ -58,6 +55,32 @@ interface QRCodeScreenConfig {
   usePopToTop: boolean;
 }
 
+interface QRCodeScreenReturn {
+  handlers: QRCodeScreenHandlers;
+  state: QRCodeScreenState;
+  config: QRCodeScreenConfig;
+  /** Manual input overlay component (only for WALLET_CONNECT context) */
+  ManualInputOverlay?: React.ComponentType<{
+    manualInput: string;
+    onManualInputChange: (text: string) => void;
+    onConnect: () => void;
+    onClearInput: () => void;
+    onPasteFromClipboard: () => void;
+    isConnecting: boolean;
+    error: string;
+    themeColors: {
+      text: {
+        primary: string;
+        secondary: string;
+      };
+      background: {
+        secondary: string;
+      };
+    };
+    t: ReturnType<typeof useAppTranslation>["t"];
+  }>;
+}
+
 /**
  * Custom hook for QR Code Scanner Screen functionality
  *
@@ -67,7 +90,9 @@ interface QRCodeScreenConfig {
  * @param source - The source/context of the QR scanner
  * @returns Object containing handlers, state, and configuration
  */
-export const useQRCodeScreenScanner = (source: QRCodeSource) => {
+export const useQRCodeScreenScanner = (
+  source: QRCodeSource,
+): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
   const navigation =
@@ -89,11 +114,12 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
   const getTitle = useCallback((): string => {
     switch (source) {
       case QRCodeSource.WALLET_CONNECT:
-        return t("scanQRCodeScreen.title");
+        return t("walletConnect.title");
       case QRCodeSource.ADDRESS_INPUT:
         return t("qrCodeScannerScreen.title");
       case QRCodeSource.IMPORT_WALLET:
         return t("qrCodeScannerScreen.title");
+
       default:
         return t("qrCodeScannerScreen.title");
     }
@@ -108,10 +134,25 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
         return QRCodeSource.ADDRESS_INPUT;
       case QRCodeSource.IMPORT_WALLET:
         return QRCodeSource.IMPORT_WALLET;
+
       default:
         return QRCodeSource.ADDRESS_INPUT;
     }
   }, [source]);
+
+  // Get the appropriate scanner title based on source
+  const getScannerTitle = useCallback((): string => {
+    switch (source) {
+      case QRCodeSource.WALLET_CONNECT:
+        return t("walletConnect.scanWCQrCode");
+      case QRCodeSource.ADDRESS_INPUT:
+        return t("sendPaymentScreen.scanQRCodeText");
+      case QRCodeSource.IMPORT_WALLET:
+        return t("qrCodeScannerScreen.title");
+      default:
+        return t("sendPaymentScreen.scanQRCodeText");
+    }
+  }, [source, t]);
 
   // Configuration based on source
   const config: QRCodeScreenConfig = {
@@ -126,6 +167,7 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
     error,
     showManualInput: source === QRCodeSource.WALLET_CONNECT,
     title: getTitle(),
+    scannerTitle: getScannerTitle(),
     context: getContext(),
   };
 
@@ -154,7 +196,7 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
   const handleConnect = useCallback(
     async (uri: string) => {
       if (!uri) {
-        setError(t("scanQRCodeScreen.invalidUriError"));
+        setError(t("walletConnect.invalidUriError"));
         return;
       }
 
@@ -173,7 +215,7 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
           setError(
             err instanceof Error
               ? err.message
-              : t("scanQRCodeScreen.pairingError"),
+              : t("walletConnect.pairingError"),
           );
         }, PAIRING_ERROR_VISUALDELAY_MS);
       }
@@ -260,98 +302,8 @@ export const useQRCodeScreenScanner = (source: QRCodeSource) => {
     handlers,
     state,
     config,
+    ...(source === QRCodeSource.WALLET_CONNECT && {
+      ManualInputOverlay: WalletConnectManualInputOverlay,
+    }),
   };
 };
-
-/**
- * Component for rendering the manual input overlay (WalletConnect specific)
- */
-interface QRCodeManualInputOverlayProps {
-  manualInput: string;
-  onManualInputChange: (text: string) => void;
-  onConnect: () => void;
-  onClearInput: () => void;
-  onPasteFromClipboard: () => void;
-  isConnecting: boolean;
-  error: string;
-  themeColors: {
-    text: {
-      primary: string;
-      secondary: string;
-    };
-    background: {
-      secondary: string;
-    };
-  };
-  t: ReturnType<typeof useAppTranslation>["t"];
-}
-
-export const QRCodeManualInputOverlay: React.FC<
-  QRCodeManualInputOverlayProps
-> = ({
-  manualInput,
-  onManualInputChange,
-  onConnect,
-  onClearInput,
-  onPasteFromClipboard,
-  isConnecting,
-  error,
-  themeColors,
-  t,
-}) => (
-  <View className="flex-1 justify-end z-[100]">
-    <View className="bg-background-tertiary rounded-2xl py-4 px-5 gap-3 pointer-events-auto">
-      <View className="flex-row items-center">
-        <View className="w-6 h-6 rounded-full overflow-hidden mr-2 justify-center items-center">
-          <Image
-            source={logos.walletConnect}
-            resizeMode="contain"
-            style={{ width: "100%", height: "100%" }}
-          />
-        </View>
-        <Text sm secondary medium>
-          {t("scanQRCodeScreen.connectWithWalletConnect")}
-        </Text>
-      </View>
-
-      <Input
-        editable={false}
-        placeholder={t("scanQRCodeScreen.inputPlaceholder")}
-        value={manualInput}
-        onChangeText={onManualInputChange}
-        error={error}
-        rightElement={
-          <TouchableOpacity className="p-3 mr-1" onPress={onClearInput}>
-            <Icon.X
-              size={20}
-              color={
-                isConnecting
-                  ? themeColors.text.secondary
-                  : themeColors.text.primary
-              }
-            />
-          </TouchableOpacity>
-        }
-        endButton={{
-          content: t("common.paste"),
-          onPress: onPasteFromClipboard,
-          disabled: isConnecting,
-          color: isConnecting
-            ? themeColors.text.secondary
-            : themeColors.text.primary,
-          backgroundColor: themeColors.background.secondary,
-        }}
-      />
-
-      <Button
-        isLoading={isConnecting}
-        disabled={isConnecting || !manualInput.trim()}
-        lg
-        tertiary
-        onPress={onConnect}
-      >
-        {t("scanQRCodeScreen.connect")}
-      </Button>
-    </View>
-  </View>
-);
