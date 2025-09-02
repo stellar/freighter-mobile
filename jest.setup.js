@@ -312,5 +312,33 @@ jest.mock("react-native-permissions", () => ({
     IOS: {
       APP_TRACKING_TRANSPARENCY: "app-tracking-transparency",
     },
+    ANDROID: {
+      READ_MEDIA_IMAGES: "android.permission.READ_MEDIA_IMAGES",
+      READ_MEDIA_VIDEO: "android.permission.READ_MEDIA_VIDEO",
+      READ_EXTERNAL_STORAGE: "android.permission.READ_EXTERNAL_STORAGE",
+    },
+  },
+  RESULTS: {
+    GRANTED: "granted",
+    DENIED: "denied",
+    BLOCKED: "blocked",
+    UNAVAILABLE: "unavailable",
+  },
+  check: jest.fn(() => Promise.resolve("granted")),
+  request: jest.fn(() => Promise.resolve("granted")),
+  checkMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  requestMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  openSettings: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("@react-native-camera-roll/camera-roll", () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(() => Promise.resolve()),
+    getPhotos: jest.fn(() => Promise.resolve({ edges: [] })),
+    deletePhotos: jest.fn(() => Promise.resolve()),
   },
 }));

@@ -342,7 +342,8 @@
     "traits": "Collectible Traits",
     "view": "View",
     "refreshMetadata": "Refresh metadata",
-    "viewOnStellarExpert": "View on stellar.expert"
+    "viewOnStellarExpert": "View on stellar.expert",
+    "saveToPhotos": "Save to photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",

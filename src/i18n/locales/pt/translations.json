@@ -314,7 +314,8 @@
     "traits": "Características do Colecionável",
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
-    "viewOnStellarExpert": "Ver no stellar.expert"
+    "viewOnStellarExpert": "Ver no stellar.expert",
+    "saveToPhotos": "Salvar na galeria"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",

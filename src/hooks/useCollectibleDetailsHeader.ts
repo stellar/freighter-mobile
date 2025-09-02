@@ -5,9 +5,16 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import useDeviceStorage from "hooks/useDeviceStorage";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useLayoutEffect, useMemo, useCallback } from "react";
 import { Linking, Platform } from "react-native";
+
+interface UseCollectibleDetailsHeaderProps {
+  collectionAddress: string;
+  collectibleName?: string;
+  collectibleImage?: string;
+}
 
 /**
  * Custom hook for managing the CollectibleDetailsScreen header configuration.
@@ -32,14 +39,13 @@ import { Linking, Platform } from "react-native";
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
   collectibleName,
-}: {
-  collectionAddress: string;
-  collectibleName?: string;
-}) => {
+  collectibleImage,
+}: UseCollectibleDetailsHeaderProps) => {
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { fetchCollectibles } = useCollectiblesStore();
+  const { saveToPhotos } = useDeviceStorage();
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -94,14 +100,25 @@ export const useCollectibleDetailsHeader = ({
         ios: {
           refreshMetadata: "arrow.clockwise", // Circular arrow for refresh
           viewOnStellarExpert: "link", // Link/chain icon
+          saveToPhotos: "square.and.arrow.down", // Save to photos icon
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
+          saveToPhotos: "place_item", // Save to photos icon (Material)
         },
       }),
     [],
   );
+
+  /**
+   * Handles saving the collectible to the photos library.
+   */
+  const handleSaveToPhotos = useCallback(async () => {
+    if (!collectibleImage) return;
+
+    await saveToPhotos(collectibleImage);
+  }, [collectibleImage, saveToPhotos]);
 
   /**
    * Context menu actions configuration with platform-specific icons.
@@ -119,8 +136,19 @@ export const useCollectibleDetailsHeader = ({
         systemIcon: systemIcons?.viewOnStellarExpert,
         onPress: handleViewOnStellarExpert,
       },
+      {
+        title: t("collectibleDetails.saveToPhotos"),
+        systemIcon: systemIcons?.saveToPhotos,
+        onPress: handleSaveToPhotos,
+      },
     ],
-    [t, systemIcons, handleRefreshMetadata, handleViewOnStellarExpert],
+    [
+      t,
+      systemIcons,
+      handleRefreshMetadata,
+      handleViewOnStellarExpert,
+      handleSaveToPhotos,
+    ],
   );
 
   // Set up the right header menu
@@ -133,5 +161,6 @@ export const useCollectibleDetailsHeader = ({
   return {
     handleRefreshMetadata,
     handleViewOnStellarExpert,
+    handleSaveToPhotos,
   };
 };

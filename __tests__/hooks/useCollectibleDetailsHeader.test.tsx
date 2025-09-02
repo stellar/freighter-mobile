@@ -79,6 +79,7 @@ describe("useCollectibleDetailsHeader", () => {
     expect(result.current).toEqual({
       handleRefreshMetadata: expect.any(Function),
       handleViewOnStellarExpert: expect.any(Function),
+      handleSaveToPhotos: expect.any(Function),
     });
   });
 
@@ -141,10 +142,12 @@ describe("useCollectibleDetailsHeader", () => {
       ios: {
         refreshMetadata: "arrow.clockwise",
         viewOnStellarExpert: "link",
+        saveToPhotos: "square.and.arrow.down",
       },
       android: {
         refreshMetadata: "refresh",
         viewOnStellarExpert: "link",
+        saveToPhotos: "place_item",
       },
     });
   });
