@@ -414,7 +414,8 @@
     "recents": "Recentes",
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
-    "invalidAddress": "Endereço Stellar inválido"
+    "invalidAddress": "Endereço Stellar inválido",
+    "scanQRCodeText": "Escanear um QR Code do Freighter"
   },
   "swapScreen": {
     "swapFrom": "Trocar de",

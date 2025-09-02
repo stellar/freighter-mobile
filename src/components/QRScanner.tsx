@@ -111,7 +111,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   );
 
   const codeScanner = useCodeScanner({
-    codeTypes: ["qr"],
+    codeTypes: ["qr", "ean-13"],
     onCodeScanned: handleCodeScanned,
   });
 
@@ -131,7 +131,6 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     // Track error if permissions denied or camera unavailable (mobile-specific feature)
     if (device == null || !hasPermission) {
       const error = device == null ? "camera_unavailable" : "permission_denied";
-
       analytics.trackQRScanError(error, context);
     }
   }, [hasMounted, device, hasPermission, context]);
@@ -164,7 +163,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         isActive
       />
 
-      <View style={StyleSheet.absoluteFill}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {/* SVG Mask overlay with center cutout */}
         <Svg style={StyleSheet.absoluteFill}>
           <Defs>
@@ -229,7 +228,9 @@ export const QRScanner: React.FC<QRScannerProps> = ({
           }}
         >
           <Text md primary medium textAlign="center">
-            {t("scanQRCodeScreen.scanWCQrCode")}
+            {context === "address_input"
+              ? t("sendPaymentScreen.scanQRCodeText")
+              : t("scanQRCodeScreen.scanWCQrCode")}
           </Text>
         </View>
       </View>

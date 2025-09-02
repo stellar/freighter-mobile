@@ -9,7 +9,7 @@ import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScree
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
-import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
+import { ScanQRCodeScreen } from "components/screens/QRCodeScannerScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {
@@ -128,6 +128,9 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
             component={ScanQRCodeScreen}
+            options={{
+              headerShown: false,
+            }}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}

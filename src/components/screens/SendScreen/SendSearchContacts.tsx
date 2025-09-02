@@ -9,18 +9,26 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { QRCodeSource } from "config/constants";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+} from "config/routes";
+import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useEffect, useState } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
-  SendPaymentStackParamList,
+  RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
 
@@ -43,6 +51,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { saveRecipientAddress } = useTransactionSettingsStore();
 
   const {
+    scannedData,
+    source: storedSource,
+    isConsumed,
+    consumeQRData,
+    clearQRData,
+  } = useQRDataStore();
+
+  const {
     recentAddresses,
     searchResults,
     searchError,
@@ -60,16 +76,22 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient();
   }, [loadRecentAddresses, resetSendRecipient]);
 
+  // Clear QR data when component unmounts
+  useEffect(() => () => clearQRData(), [clearQRData]);
+
   /**
    * Handles search input changes and updates suggestions
    *
    * @param {string} text - The search text entered by user
    */
-  const handleSearch = (text: string) => {
-    setAddress(text);
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    searchAddress(text);
-  };
+  const handleSearch = useCallback(
+    (text: string) => {
+      setAddress(text);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      searchAddress(text);
+    },
+    [searchAddress],
+  );
 
   /**
    * Handles when a contact or address is selected
@@ -92,6 +114,34 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
+
+  const handleOpenQRScanner = () => {
+    // Navigate to the root navigator's QR scanner screen
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+      source: QRCodeSource.ADDRESS_INPUT,
+    });
+  };
+
+  // Handle scanned QR data when available
+  useEffect(() => {
+    if (
+      scannedData &&
+      storedSource === QRCodeSource.ADDRESS_INPUT &&
+      !isConsumed
+    ) {
+      // Use the scanned data as the search input
+      handleSearch(scannedData);
+      // Mark the data as consumed
+      consumeQRData();
+    }
+  }, [scannedData, storedSource, isConsumed, consumeQRData, handleSearch]);
+
+  // Set up the QR code button in the header
+  useRightHeaderButton({
+    onPress: handleOpenQRScanner,
+    icon: Icon.QrCode01,
+    iconSize: 20,
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

@@ -7,6 +7,7 @@ import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
@@ -53,18 +54,9 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     hidden: !showNavigationAsCloseButton,
     icon: Icon.Scan,
     onPress: () => {
-      const routes = navigation.getState()?.routes ?? [];
-      const scanRouteIndex = routes.findIndex(
-        (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
-      );
-
-      // If the scan route is already in the stack, pop to it
-      // Otherwise, navigate to it
-      if (scanRouteIndex !== -1) {
-        navigation.popTo(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN);
-      } else {
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN);
-      }
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+        source: QRCodeSource.WALLET_CONNECT,
+      });
     },
   });
 
@@ -83,7 +75,6 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
           </View>
         </View>
         <View className="items-center w-full">
-          {/* NOTE: using png logo for now because it wasnt rendering the svg correctly */}
           <QRCode
             size={pxValue(210)}
             logo={logos.freighter2d}
@@ -91,6 +82,8 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
             quietZone={6}
             logoMargin={12}
             logoSize={60}
+            logoBackgroundColor="transparent"
+            ecl="H"
           />
         </View>
         <View className="items-center justify-center gap-[32px]">

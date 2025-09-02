@@ -129,6 +129,9 @@
     "pairingError": "Failed to pair",
     "invalidUriError": "Please enter a valid QR Code URI"
   },
+  "qrCodeScannerScreen": {
+    "title": "Scan QR Code"
+  },
   "buyXLMScreen": {
     "title": "Add XLM",
     "bottomSheet": {
@@ -442,7 +445,8 @@
     "recents": "Recents",
     "suggestions": "Suggestions",
     "cannotSendToSelf": "Cannot send to yourself",
-    "invalidAddress": "Invalid Stellar address"
+    "invalidAddress": "Invalid Stellar address",
+    "scanQRCodeText": "Scan a Freighter QR Code"
   },
   "swapScreen": {
     "swapFrom": "Swap from",

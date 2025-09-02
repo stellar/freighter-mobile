@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
+import { NETWORKS, QRCodeSource, SWAP_SELECTION_TYPES } from "config/constants";
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -140,7 +140,9 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
     showNavigationAsCloseButton?: boolean;
   };
-  [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
+    source?: QRCodeSource;
+  };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
