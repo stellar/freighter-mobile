@@ -5,6 +5,7 @@ import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { truncateAddress } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 
 interface ContactRowProps {
@@ -33,16 +34,32 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
+  const { t } = useTranslation();
   const slicedAddress = truncateAddress(address, 4, 4);
 
-  return (
-    <TouchableOpacity
-      className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
-      onPress={onPress}
-      delayPressIn={DEFAULT_PRESS_DELAY}
-      testID={testID}
-    >
-      <View className="flex-row items-center flex-1 mr-4">
+  const renderPlusIcon = () => (
+    <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
+      <Icon.Plus size={25} themeColor="gray" />
+    </View>
+  );
+
+  const renderContent = () => {
+    if (!address) {
+      return (
+        <View className="flex-row items-center gap-16px">
+          {renderPlusIcon()}
+          <View className="flex-col flex-1">
+            <Text>{t("sendPaymentScreen.title")}</Text>
+            <Text sm secondary>
+              {t("transactionAmountScreen.chooseRecipient")}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <>
         <Avatar size="lg" publicAddress={address} />
         <View className="flex-col ml-4 flex-1">
           <Text medium numberOfLines={1}>
@@ -52,6 +69,19 @@ export const ContactRow: React.FC<ContactRowProps> = ({
             {slicedAddress}
           </Text>
         </View>
+      </>
+    );
+  };
+
+  return (
+    <TouchableOpacity
+      className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
+      onPress={onPress}
+      delayPressIn={DEFAULT_PRESS_DELAY}
+      testID={testID}
+    >
+      <View className="flex-row items-center flex-1 mr-4">
+        {renderContent()}
       </View>
       {rightElement ||
         (onDotsPress && (

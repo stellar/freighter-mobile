@@ -17,11 +17,13 @@ import { View } from "react-native";
 interface TokenSelectionContentProps {
   onTokenPress: (tokenId: string, tokenSymbol: string) => void;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
+  excludeTokenIds?: string[];
 }
 
 const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   onTokenPress,
   renderRightContent,
+  excludeTokenIds = [],
 }) => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey ?? "";
@@ -93,6 +95,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         searchTerm={filteringTerm}
         disableNavigation
         renderRightContent={renderRightContent}
+        excludeTokenIds={excludeTokenIds}
       />
     </View>
   );

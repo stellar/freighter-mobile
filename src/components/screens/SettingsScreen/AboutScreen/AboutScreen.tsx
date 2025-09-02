@@ -11,7 +11,7 @@ import {
   STELLAR_FOUNDATION_PRIVACY_URL,
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { getAppVersion } from "helpers/version";
+import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -25,7 +25,7 @@ type AboutScreenProps = NativeStackScreenProps<
 const AboutScreen: React.FC<AboutScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const appVersion = getAppVersion();
+  const appVersion = getAppVersionAndBuildNumber();
   const currentYear = new Date().getFullYear();
 
   const linksListItems = [
