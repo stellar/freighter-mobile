@@ -1,4 +1,4 @@
-import { NETWORK_URLS } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { debug } from "helpers/debug";
@@ -17,12 +17,12 @@ import { useEffect } from "react";
  * - Implements low-priority background refresh after 5s delay
  * - Cleans up background tasks on unmount
  *
- * @param {NETWORK_URLS} networkUrl - The network URL to fetch icons from
+ * @param {NETWORKS} network - The network to fetch icons from
  *
  * @example
  * // Basic usage
  * function TokenList() {
- *   useFetchTokenIcons(NETWORK_URLS.PUBLIC);
+ *   useFetchTokenIcons(NETWORKS.PUBLIC);
  *   // ... rest of the component
  * }
  *
@@ -30,9 +30,10 @@ import { useEffect } from "react";
  * - Icon refresh is delayed by 5s to avoid interfering with critical operations
  * - Uses the token icons store for caching and persistence
  */
-export const useFetchTokenIcons = (networkUrl: NETWORK_URLS) => {
+export const useFetchTokenIcons = (network: NETWORKS) => {
   const balances = useBalancesStore((state) => state.balances);
-  const { fetchBalancesIcons, refreshIcons } = useTokenIconsStore();
+  const { fetchBalancesIcons, refreshIcons, cacheTokenListIcons } =
+    useTokenIconsStore();
 
   // Create a balances key that changes only when the set of balances changes
   const balancesKey = Object.keys(balances).sort().join(",");
@@ -42,19 +43,20 @@ export const useFetchTokenIcons = (networkUrl: NETWORK_URLS) => {
       debug("useFetchTokenIcons", "Balances changed", balancesKey);
 
       // Fetch icons in the background
-      fetchBalancesIcons({ balances, networkUrl });
+      fetchBalancesIcons({ balances, network });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balancesKey, networkUrl, fetchBalancesIcons]);
+  }, [balancesKey, network, fetchBalancesIcons]);
 
-  // Try refreshing icons after some initial delay (5s) so that it doesn't
+  // Try caching and starting to refresh icons after some initial delay (5s) so that it doesn't
   // interfere with any other process that may be loading since this
   // is a lower priority operation
   useEffect(() => {
     const timer = setTimeout(() => {
+      cacheTokenListIcons({ network });
       refreshIcons();
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [refreshIcons]);
+  }, [refreshIcons, cacheTokenListIcons, network]);
 };
