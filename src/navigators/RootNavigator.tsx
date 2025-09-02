@@ -9,7 +9,7 @@ import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScree
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
-import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen/ScanQRCodeScreen";
+import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
 import {

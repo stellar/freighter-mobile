@@ -167,7 +167,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         isActive
       />
 
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={StyleSheet.absoluteFill}>
         {/* SVG Mask overlay with center cutout */}
         <Svg style={StyleSheet.absoluteFill}>
           <Defs>
