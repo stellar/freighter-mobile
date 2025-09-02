@@ -629,7 +629,7 @@ export const handleContractLookup = async (
     issuer,
     isNative: false,
     tokenType: isSacContract
-      ? getTokenType(contractId)
+      ? getTokenType(tokenDetails.name)
       : TokenTypeWithCustomToken.CUSTOM_TOKEN,
     decimals: tokenDetails.decimals,
     name: tokenDetails.name,
