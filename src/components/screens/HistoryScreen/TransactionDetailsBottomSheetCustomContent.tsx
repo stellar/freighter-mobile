@@ -66,7 +66,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
       ),
       titleComponent: (
-        <Text md secondary color={THEME.colors.text.secondary}>
+        <Text md secondary>
           {t("history.transactionDetails.status")}
         </Text>
       ),
