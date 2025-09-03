@@ -90,7 +90,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
           ),
           titleComponent: (
-            <Text md secondary color={THEME.colors.text.secondary}>
+            <Text md secondary>
               {t("history.transactionDetails.rate")}
             </Text>
           ),
