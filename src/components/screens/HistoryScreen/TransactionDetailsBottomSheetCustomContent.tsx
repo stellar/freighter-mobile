@@ -87,7 +87,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
     transactionDetails.transactionType === TransactionType.SWAP
       ? {
           icon: (
-            <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
+            <Icon.Divide03 size={16} themeColor="gray" />
           ),
           titleComponent: (
             <Text md secondary>
