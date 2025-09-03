@@ -343,7 +343,8 @@
     "view": "View",
     "refreshMetadata": "Refresh metadata",
     "viewOnStellarExpert": "View on stellar.expert",
-    "saveToPhotos": "Save to photos"
+    "saveToPhotos": "Save to photos",
+    "imageSavedToPhotos": "Image saved to photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",

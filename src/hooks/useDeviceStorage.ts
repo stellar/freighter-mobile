@@ -6,6 +6,7 @@ import {
 } from "@dr.pogodin/react-native-fs";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 import { logger } from "config/logger";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
 import { Platform } from "react-native";
@@ -92,6 +93,7 @@ const deleteTempFile = async (filePath: string): Promise<void> => {
 
 const useDeviceStorage = () => {
   const { showToast } = useToast();
+  const { t } = useAppTranslation();
   const saveToPhotos = useCallback(
     async (imageUrl: string, imageName: string) => {
       let tempFilePath: string | null = null;
@@ -105,7 +107,7 @@ const useDeviceStorage = () => {
 
       CameraRoll.saveAsset(tempFilePath).finally(() => {
         showToast({
-          title: "Image saved to camera roll successfully",
+          title: t("collectibleDetails.imageSavedToPhotos"),
           variant: "success",
         });
 
@@ -117,7 +119,7 @@ const useDeviceStorage = () => {
         }, 1000);
       });
     },
-    [showToast],
+    [showToast, t],
   );
 
   return {
