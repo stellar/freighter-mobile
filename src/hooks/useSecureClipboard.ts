@@ -29,10 +29,12 @@ interface UseSecureClipboardResult {
 /**
  * Hook for securely copying text to clipboard with enhanced security features:
  * - Auto-clear clipboard after specified timeout
- * - Platform-specific sensitive data flagging (always enabled)
+ * - Platform-specific sensitive data flagging (Android 13+ only)
  * - Optional toast notification
  *
  * All data copied through this hook is treated as sensitive for maximum security.
+ * On Android 13+, uses EXTRA_IS_SENSITIVE flag to prevent clipboard previews.
+ * On older Android versions, falls back to standard clipboard behavior.
  * Use the regular useClipboard hook for non-sensitive data.
  *
  * @returns Object containing secure clipboard functions

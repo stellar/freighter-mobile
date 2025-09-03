@@ -7,7 +7,8 @@ import { Platform } from "react-native";
  * Service for handling secure clipboard operations with platform-specific enhancements
  *
  * Platform-specific security features:
- * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag to prevent clipboard previews
+ * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag to prevent clipboard previews (Android 13+)
+ *   On older Android versions (7.0-12), falls back to standard clipboard behavior
  * - iOS: Uses UIPasteboard expiration for automatic clipboard clearing (iOS 10+)
  * - Both platforms: Graceful fallback to standard clipboard if native modules fail
  */

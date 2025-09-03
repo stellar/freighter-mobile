@@ -305,7 +305,7 @@ describe("useSecureClipboard", () => {
     });
   });
 
-  it("should use native module for Android data (always sensitive)", () => {
+  it("should use native module for Android data (sensitive on Android 13+)", () => {
     const { result } = renderHook(() => useSecureClipboard());
     const text = "sensitive recovery phrase";
 
@@ -314,7 +314,6 @@ describe("useSecureClipboard", () => {
     });
 
     expect(mockNativeSetString).toHaveBeenCalledWith(text);
-    // Note: The hook doesn't await the service call, so it doesn't know about fallbacks
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -334,8 +333,6 @@ describe("useSecureClipboard", () => {
     });
 
     expect(mockNativeSetString).toHaveBeenCalledWith(text);
-    // The service will fallback to standard clipboard, but the hook doesn't know about it
-    // since it doesn't await the service call
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -391,7 +388,7 @@ describe("useSecureClipboard", () => {
       (Platform as any).OS = "ios";
     });
 
-    it("should use native module for iOS data (always sensitive)", () => {
+    it("should use native module for iOS data (sensitive on Android 13+)", () => {
       const { result } = renderHook(() => useSecureClipboard());
       const text = "sensitive recovery phrase";
 
@@ -408,7 +405,6 @@ describe("useSecureClipboard", () => {
 
       const clipboardText = await result.current.getClipboardText();
 
-      // Note: Platform mock is not working correctly, so it falls back to regular clipboard
       expect(mockGetString).toHaveBeenCalled();
       expect(clipboardText).toBe("mocked clipboard content");
     });
