@@ -109,7 +109,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         </Text>
       ),
       trailingContent: (
-        <Text md secondary color={THEME.colors.text.primary}>
+        <Text>
           {formatTokenAmount(fee, NATIVE_TOKEN_CODE)}
         </Text>
       ),
