@@ -1787,6 +1787,27 @@ PODS:
     - React-logger (= 0.78.0)
     - React-perflogger (= 0.78.0)
     - React-utils (= 0.78.0)
+  - ReactNativeFs (2.35.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNBootSplash (6.3.4):
     - DoubleConversion
     - glog
@@ -2216,6 +2237,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - RNBootSplash (from `../node_modules/react-native-bootsplash`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
@@ -2399,6 +2421,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeFs:
+    :path: "../node_modules/@dr.pogodin/react-native-fs"
   RNBootSplash:
     :path: "../node_modules/react-native-bootsplash"
   RNCAsyncStorage:
@@ -2510,13 +2534,14 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: a1fb08dfdc7ebc387b2e54cfc9decd283ed821d8
   ReactCodegen: 008c319179d681a6a00966edfc67fda68f9fbb2e
   ReactCommon: 0c097b53f03d6bf166edbcd0915da32f3015dd90
+  ReactNativeFs: fc5214ea36867d4a8ad9a1a440b218df5fda1124
   RNBootSplash: 540e4bfcfe3a9c0a2fe5b3d28d5efe0458f8e7cb
   RNCAsyncStorage: 79cfba789fca205b204f3ce7948b874500129eb4
   RNCClipboard: f13dd3ceae005858e137ae9e70f3c414e174ff81
   RNDeviceInfo: d863506092aef7e7af3a1c350c913d867d795047
   RNGestureHandler: dcb1b1db024f3744b03af56d132f4f72c4c27195
   RNKeychain: 8d45ee314f242a6fb81fa9677ed8e0bf39dcecc3
-  RNPermissions: 3ee8fea8b8c0265b93cc700d1f03a50ba8e37ce4
+  RNPermissions: c73ac102f075d73f4f11eb0f51e23704ea673f44
   RNReanimated: 04813c30d3c04044c32c60379945b71e0c6c950f
   RNScreens: b32d0d59b53acb574fa795a9343591ef4e7ab7c2
   RNScrypt: 3e8612600c93aaa3bfa7849b6d1a4ab61613e2af
@@ -2525,6 +2550,6 @@ SPEC CHECKSUMS:
   VisionCamera: 7aaae584148bbc250e81b5662e45a7f25c18be2e
   Yoga: afd04ff05ebe0121a00c468a8a3c8080221cb14c
 
-PODFILE CHECKSUM: 701d4421f11033bc2d85a0be7ab943cbaec23ee4
+PODFILE CHECKSUM: bacb03bdd2f49d5d4bbc18e4b7ce4dd83c05b64f
 
 COCOAPODS: 1.15.2

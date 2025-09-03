@@ -342,3 +342,12 @@ jest.mock("@react-native-camera-roll/camera-roll", () => ({
     deletePhotos: jest.fn(() => Promise.resolve()),
   },
 }));
+
+jest.mock("@dr.pogodin/react-native-fs", () => ({
+  DocumentDirectoryPath: "/mock/documents/path",
+  downloadFile: jest.fn(() => ({
+    promise: Promise.resolve({ statusCode: 200 }),
+  })),
+  exists: jest.fn(() => Promise.resolve(true)),
+  unlink: jest.fn(() => Promise.resolve()),
+}));

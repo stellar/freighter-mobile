@@ -5,6 +5,12 @@ import { Platform } from "react-native";
 // Create mock for navigation
 const mockSetOptions = jest.fn();
 
+// Mock the useToast hook
+const mockShowToast = jest.fn();
+jest.mock("providers/ToastProvider", () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
 // Mock all dependencies
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({

@@ -115,10 +115,10 @@ export const useCollectibleDetailsHeader = ({
    * Handles saving the collectible to the photos library.
    */
   const handleSaveToPhotos = useCallback(async () => {
-    if (!collectibleImage) return;
+    if (!collectibleImage || !collectibleName) return;
 
-    await saveToPhotos(collectibleImage);
-  }, [collectibleImage, saveToPhotos]);
+    await saveToPhotos(collectibleImage, collectibleName);
+  }, [collectibleImage, collectibleName, saveToPhotos]);
 
   /**
    * Context menu actions configuration with platform-specific icons.
