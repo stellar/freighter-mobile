@@ -95,7 +95,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
           trailingContent: (
-            <Text md secondary color={THEME.colors.text.primary}>
+            <Text>
               {swapRateText}
             </Text>
           ),
