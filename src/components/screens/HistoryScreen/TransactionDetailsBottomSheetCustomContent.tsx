@@ -102,7 +102,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         }
       : undefined,
     {
-      icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
+      icon: <Icon.Route size={16} themeColor="gray" />,
       titleComponent: (
         <Text md secondary>
           {t("history.transactionDetails.fee")}
