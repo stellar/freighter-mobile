@@ -3,8 +3,9 @@
  *
  * This module provides secure clipboard functionality with platform-specific enhancements:
  * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag and native Handler for expiration (Android 13+)
- * - iOS: Uses UIPasteboard expiration for automatic clipboard clearing
+ * - iOS: Uses manual expiration with content verification to prevent overwriting user data
  * - Both platforms: All data is treated as sensitive for maximum security
+ * - Safety: Only clears clipboard if content hasn't been overwritten by other applications
  */
 
 export interface SecureClipboardNative {

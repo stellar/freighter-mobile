@@ -55,7 +55,15 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
           try {
             ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
             if (clipboard != null) {
-              clipboard.clearPrimaryClip();
+              // Only clear if the clipboard still contains our original text
+              ClipData currentClip = clipboard.getPrimaryClip();
+              if (currentClip != null && currentClip.getItemCount() > 0) {
+                String currentText = currentClip.getItemAt(0).getText().toString();
+                if (text.equals(currentText)) {
+                  clipboard.clearPrimaryClip();
+                }
+                // If text doesn't match, it was overwritten - do nothing
+              }
             }
           } catch (Exception e) {
             // Silently fail - clearing clipboard is best effort

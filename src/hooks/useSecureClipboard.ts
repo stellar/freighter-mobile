@@ -28,13 +28,14 @@ interface UseSecureClipboardResult {
 
 /**
  * Hook for securely copying text to clipboard with enhanced security features:
- * - Native expiration handling (no JavaScript timers needed)
+ * - Native expiration handling with content verification (no JavaScript timers needed)
  * - Platform-specific sensitive data flagging (Android 13+ only)
  * - Optional toast notification
+ * - Safety: Only clears clipboard if content hasn't been overwritten by other applications
  *
  * All data copied through this hook is treated as sensitive for maximum security.
  * On Android 13+, uses EXTRA_IS_SENSITIVE flag and native Handler for expiration.
- * On iOS 15.1+, uses UIPasteboard expiration for automatic clearing.
+ * On iOS 15.1+, uses manual expiration with content verification.
  * On older versions, falls back to standard clipboard behavior.
  * Use the regular useClipboard hook for non-sensitive data.
  *

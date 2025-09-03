@@ -17,7 +17,7 @@ class SecureClipboardModule: NSObject {
       // Always treat data as sensitive for secure clipboard service
       let expirationSeconds = Double(expirationMs.intValue) / 1000.0
       
-      // Set expiration time using native iOS pasteboard expiration (iOS 15.1+)
+      // Set expiration time using native iOS pasteboard expiration)
       if expirationSeconds > 0 {
         pasteboard.setItems([[UIPasteboard.type.string: text]], options: [
           UIPasteboard.OptionsKey.expirationDate: Date().addingTimeInterval(expirationSeconds)

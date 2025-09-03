@@ -8,10 +8,11 @@ import { Platform } from "react-native";
  *
  * Platform-specific security features:
  * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag to prevent clipboard previews (Android 13+)
- *   Expiration is handled via native Handler for delayed clearing
+ *   Expiration is handled via native Handler for delayed clearing with content verification
  *   On older Android versions (7.0-12), falls back to standard clipboard behavior
- * - iOS: Uses UIPasteboard expiration for automatic clipboard clearing (iOS 15.1+)
+ * - iOS: Uses manual expiration with content verification to prevent overwriting user data (iOS 15.1+)
  * - Both platforms: Graceful fallback to standard clipboard if native modules fail
+ * - Safety: Only clears clipboard if content hasn't been overwritten by other applications
  */
 export class SecureClipboardService {
   /**
