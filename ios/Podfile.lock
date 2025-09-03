@@ -2060,7 +2060,7 @@ PODS:
     - Yoga
   - RNScrypt (1.2.1):
     - React
-  - RNSentry (6.20.0):
+  - RNSentry (7.0.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2523,7 +2523,7 @@ SPEC CHECKSUMS:
   RNReanimated: 04813c30d3c04044c32c60379945b71e0c6c950f
   RNScreens: b32d0d59b53acb574fa795a9343591ef4e7ab7c2
   RNScrypt: 3e8612600c93aaa3bfa7849b6d1a4ab61613e2af
-  RNSentry: 71b4eefaa22620dc37f2f475f073b59c6d7cf93a
+  RNSentry: 22edef33d1bd3adaa718e597dd1088b4f6ee9515
   RNSVG: 4aaeac3fdc7c5bc88ca801e228f62fb469be37e9
   Sentry: 59993bffde4a1ac297ba6d268dc4bbce068d7c1b
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
