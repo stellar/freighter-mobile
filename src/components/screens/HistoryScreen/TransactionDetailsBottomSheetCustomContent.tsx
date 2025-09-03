@@ -18,7 +18,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { THEME } from "config/theme";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
 import { formatTokenAmount, stroopToXlm } from "helpers/formatAmount";
@@ -62,9 +61,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
   const detailItems = [
     {
-      icon: (
-        <Icon.ClockCheck size={16} themeColor="gray" />
-      ),
+      icon: <Icon.ClockCheck size={16} themeColor="gray" />,
       titleComponent: (
         <Text md secondary>
           {t("history.transactionDetails.status")}
@@ -86,19 +83,13 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
     },
     transactionDetails.transactionType === TransactionType.SWAP
       ? {
-          icon: (
-            <Icon.Divide03 size={16} themeColor="gray" />
-          ),
+          icon: <Icon.Divide03 size={16} themeColor="gray" />,
           titleComponent: (
             <Text md secondary>
               {t("history.transactionDetails.rate")}
             </Text>
           ),
-          trailingContent: (
-            <Text>
-              {swapRateText}
-            </Text>
-          ),
+          trailingContent: <Text>{swapRateText}</Text>,
         }
       : undefined,
     {
@@ -108,11 +99,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
           {t("history.transactionDetails.fee")}
         </Text>
       ),
-      trailingContent: (
-        <Text>
-          {formatTokenAmount(fee, NATIVE_TOKEN_CODE)}
-        </Text>
-      ),
+      trailingContent: <Text>{formatTokenAmount(fee, NATIVE_TOKEN_CODE)}</Text>,
     },
     // filter out undefined entries for non-swaps in order to keep detail order.
   ].filter(Boolean) as ListItemProps[];
@@ -167,7 +154,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         />
       )}
 
-      <List items={detailItems} />
+      <List variant="secondary" items={detailItems} />
       <Button
         isFullWidth
         tertiary
