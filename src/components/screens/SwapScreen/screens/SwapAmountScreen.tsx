@@ -463,7 +463,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={() =>
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
-        snapPoints={["80%"]}
+        snapPoints={["90%"]}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet

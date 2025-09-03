@@ -1,4 +1,5 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
+import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import {
   formatConversionRate,
@@ -11,6 +12,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -198,84 +200,116 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      <View className="mt-[24px] rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("swapScreen.review.wallet")}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-[8px]">
-            <Text md medium>
-              {account?.accountName || truncateAddress(publicKey ?? "", 4, 4)}
-            </Text>
-            <Avatar size="sm" publicAddress={publicKey ?? ""} />
-          </View>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.BarChart05 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("swapScreen.review.minimum")}
-            </Text>
-          </View>
-          <Text md medium>
-            {stableMinimumReceived
-              ? formatTokenAmount(stableMinimumReceived, destinationTokenSymbol)
-              : "--"}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.InfoCircle size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("swapScreen.review.rate")}
-            </Text>
-          </View>
-          <Text md medium>
-            {stableConversionRate || "--"}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Route size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("swapScreen.review.fee")}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-[4px]">
-            <StellarLogo width={16} height={16} />
-            <Text md medium>
-              {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("swapScreen.review.xdr")}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleCopyXdr}
-            disabled={!transactionXDR}
-            className="flex-row items-center gap-[8px]"
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium>
-              {transactionXDR
-                ? truncateAddress(transactionXDR, 10, 4)
-                : t("common.none")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <List
+        className="mt-[24px]"
+        items={[
+          {
+            icon: (
+              <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("swapScreen.review.wallet")}
+              </Text>
+            ),
+            trailingContent: (
+              <View className="flex-row items-center gap-[8px]">
+                <Text md medium>
+                  {account?.accountName ||
+                    truncateAddress(publicKey ?? "", 4, 4)}
+                </Text>
+                <Avatar size="sm" publicAddress={publicKey ?? ""} />
+              </View>
+            ),
+          },
+          {
+            icon: (
+              <Icon.BarChart05
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("swapScreen.review.minimum")}
+              </Text>
+            ),
+            trailingContent: (
+              <Text md medium>
+                {stableMinimumReceived
+                  ? formatTokenAmount(
+                      stableMinimumReceived,
+                      destinationTokenSymbol,
+                    )
+                  : "--"}
+              </Text>
+            ),
+          },
+          {
+            icon: (
+              <Icon.InfoCircle
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("swapScreen.review.rate")}
+              </Text>
+            ),
+            trailingContent: (
+              <Text md medium>
+                {stableConversionRate || "--"}
+              </Text>
+            ),
+          },
+          {
+            icon: (
+              <Icon.Route size={16} color={themeColors.foreground.primary} />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("swapScreen.review.fee")}
+              </Text>
+            ),
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <StellarLogo width={16} height={16} />
+                <Text md medium>
+                  {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
+                </Text>
+              </View>
+            ),
+          },
+          {
+            icon: (
+              <Icon.FileCode02
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("swapScreen.review.xdr")}
+              </Text>
+            ),
+            trailingContent: (
+              <TouchableOpacity
+                onPress={handleCopyXdr}
+                disabled={!transactionXDR}
+                className="flex-row items-center gap-[8px]"
+              >
+                <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+                <Text md medium>
+                  {transactionXDR
+                    ? truncateAddress(transactionXDR, 10, 4)
+                    : t("common.none")}
+                </Text>
+              </TouchableOpacity>
+            ),
+          },
+        ]}
+      />
 
       <View className="mt-[24px]">
         <Text sm medium secondary textAlign="center">
