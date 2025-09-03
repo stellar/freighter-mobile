@@ -16,9 +16,11 @@ jest.mock(
 );
 
 const mockCopyToClipboard = jest.fn();
-jest.mock("hooks/useClipboard", () => ({
-  useClipboard: () => ({
+jest.mock("hooks/useSecureClipboard", () => ({
+  useSecureClipboard: () => ({
     copyToClipboard: mockCopyToClipboard,
+    getClipboardText: jest.fn(),
+    clearClipboard: jest.fn(),
   }),
 }));
 

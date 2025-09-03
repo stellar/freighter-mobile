@@ -9,6 +9,8 @@ module.exports = {
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
     "^helpers/(.*)$": "<rootDir>/__mocks__/helpers/$1",
     "^services/(.*)$": "<rootDir>/__mocks__/services/$1",
+    "^@stellar/freighter-rn-secure-clipboard$":
+      "<rootDir>/__mocks__/@stellar/freighter-rn-secure-clipboard.ts",
   },
   transformIgnorePatterns: [
     `node_modules/(?!(${[
@@ -31,6 +33,7 @@ module.exports = {
       "@react-native-cookies/cookies",
       "react-native-view-shot",
       "react-native-webview",
+      "@stellar/freighter-rn-secure-clipboard",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
