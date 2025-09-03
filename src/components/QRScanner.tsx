@@ -107,11 +107,9 @@ export const QRScanner: React.FC<QRScannerProps> = ({
       lastScanTimeRef.current = now;
       setProcessedCodes((prev) => new Set([...prev, codeValue]));
 
-      // Track analytics and call onRead
-      analytics.trackQRScanSuccess(context);
       onRead(codeValue);
     },
-    [processedCodes, context, onRead],
+    [processedCodes, onRead],
   );
 
   const codeScanner = useCodeScanner({

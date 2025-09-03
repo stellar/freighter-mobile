@@ -130,7 +130,7 @@
     "invalidUriError": "Please enter a valid QR Code URI"
   },
   "qrCodeScannerScreen": {
-    "title": "Scan to Send"
+    "title": "Scan to send"
   },
   "buyXLMScreen": {
     "title": "Add XLM",

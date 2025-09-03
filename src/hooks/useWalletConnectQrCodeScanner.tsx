@@ -4,10 +4,12 @@ import { WalletConnectManualInputOverlay } from "components/WalletConnectManualI
 import { QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useQRDataStore } from "ducks/qrData";
+import { isValidWalletConnectURI } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import React, { useState, useCallback, useEffect } from "react";
+import { analytics } from "services/analytics";
 
 const PAIRING_SUCCESS_VISUALDELAY_MS = 1000;
 const PAIRING_ERROR_VISUALDELAY_MS = 500;
@@ -103,7 +105,7 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
     scannedData,
     source: storedSource,
     isConsumed,
-    consumeQRData,
+    setScannedData,
     clearQRData,
   } = useQRDataStore();
 
@@ -172,21 +174,34 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
     [t, handleClose],
   );
 
-  // Handle QR code scanning
-  const handleQRCodeScanned = useCallback((data: string) => {
-    // For wallet connect, set the manual input
-    setManualInput(data);
-  }, []);
-
-  // Handle manual input changes
-  const handleManualInputChange = useCallback((text: string) => {
-    setManualInput(text);
-  }, []);
-
   // Handle connect button press
   const handleConnectPress = useCallback(() => {
     handleConnect(manualInput);
   }, [handleConnect, manualInput]);
+
+  // Handle QR code scanning
+  const handleQRCodeScanned = useCallback(
+    (data: string) => {
+      // Set the scanned data in the store so the useEffect can process it
+      setScannedData(data, QRCodeSource.WALLET_CONNECT);
+    },
+    [setScannedData],
+  );
+
+  // Handle manual input changes
+  const handleManualInputChange = useCallback(
+    (text: string) => {
+      setManualInput(text);
+
+      // Validate manual input and show error if invalid
+      if (text.trim() && !isValidWalletConnectURI(text)) {
+        setError(t("walletConnect.invalidUriError"));
+      } else {
+        setError(""); // Clear error for valid input or empty input
+      }
+    },
+    [t],
+  );
 
   // Handle clear input
   const handleClearInput = useCallback(() => {
@@ -196,8 +211,17 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
 
   // Handle paste from clipboard
   const handlePasteFromClipboard = useCallback(() => {
-    getClipboardText().then(setManualInput);
-  }, [getClipboardText]);
+    getClipboardText().then((text) => {
+      setManualInput(text);
+
+      // Validate pasted content and show error if invalid
+      if (text.trim() && !isValidWalletConnectURI(text)) {
+        setError(t("walletConnect.invalidUriError"));
+      } else {
+        setError(""); // Clear error for valid input or empty input
+      }
+    });
+  }, [getClipboardText, t]);
 
   // Handle scanned QR data when available
   useEffect(() => {
@@ -206,11 +230,21 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
       storedSource === QRCodeSource.WALLET_CONNECT &&
       !isConsumed
     ) {
-      // For wallet connect, set the manual input and consume the data
-      setManualInput(scannedData);
-      consumeQRData();
+      // Validate that the scanned data is a valid WalletConnect URI
+      if (isValidWalletConnectURI(scannedData)) {
+        setManualInput(scannedData);
+        setError(""); // Clear any previous errors
+        // Track analytics
+        analytics.trackQRScanSuccess(QRCodeSource.WALLET_CONNECT);
+        // Automatically connect when a valid WalletConnect URI is scanned
+        // Call handleConnect directly with the scanned data instead of relying on manualInput state
+        handleConnect(scannedData);
+      }
+      // For scanned QR codes, don't show errors - just ignore invalid ones silently
+      // Always clear the QR data to allow continuous scanning
+      clearQRData();
     }
-  }, [scannedData, storedSource, isConsumed, consumeQRData]);
+  }, [scannedData, storedSource, isConsumed, clearQRData, handleConnect]);
 
   // Clear QR data when component unmounts
   useEffect(() => clearQRData(), [clearQRData]);

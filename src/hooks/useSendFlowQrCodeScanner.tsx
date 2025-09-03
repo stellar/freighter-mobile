@@ -1,10 +1,18 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { QRCodeSource } from "config/constants";
-import { RootStackParamList } from "config/routes";
+import {
+  RootStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  SEND_PAYMENT_ROUTES,
+} from "config/routes";
 import { useQRDataStore } from "ducks/qrData";
+import { useSendRecipientStore } from "ducks/sendRecipient";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isValidStellarAddressForQR } from "helpers/qrValidation";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { analytics } from "services/analytics";
 
 interface QRCodeScreenHandlers {
   /** Function to handle QR code scanning */
@@ -17,13 +25,13 @@ interface QRCodeScreenHandlers {
 
 interface QRCodeScreenState {
   /** Current manual input value */
-  manualInput: "";
+  manualInput: string;
   /** Whether connection is in progress */
-  isConnecting: false;
+  isConnecting: boolean;
   /** Error message to display */
-  error: "";
+  error: string;
   /** Whether to show manual input overlay */
-  showManualInput: false;
+  showManualInput: boolean;
   /** Title for the screen */
   title: string;
   /** Title for the QR scanner overlay */
@@ -60,13 +68,19 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const [isProcessingQRScan, setIsProcessingQRScan] = useState(false);
+
+  const { clearQRData } = useQRDataStore();
+
   const {
-    scannedData,
-    source: storedSource,
-    isConsumed,
-    consumeQRData,
-    clearQRData,
-  } = useQRDataStore();
+    searchAddress,
+    searchResults,
+    isValidDestination,
+    isSearching,
+    destinationAddress,
+  } = useSendRecipientStore();
+  const { saveRecipientAddress, selectedTokenId } =
+    useTransactionSettingsStore();
 
   // Configuration for Send Flow
   const config: QRCodeScreenConfig = {
@@ -77,7 +91,7 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
   // State for Send Flow
   const state: QRCodeScreenState = {
     manualInput: "",
-    isConnecting: false,
+    isConnecting: isProcessingQRScan && isSearching,
     error: "",
     showManualInput: false,
     title: t("qrCodeScannerScreen.title"),
@@ -96,24 +110,71 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
   }, [handleClose]);
 
   // Handle QR code scanning
-  const handleQRCodeScanned = useCallback((data: string) => {
-    // For send flow, save to store and let useEffect handle it
-    const { setScannedData } = useQRDataStore.getState();
-    setScannedData(data, QRCodeSource.ADDRESS_INPUT);
-  }, []);
+  const handleQRCodeScanned = useCallback(
+    (data: string) => {
+      if (isValidStellarAddressForQR(data)) {
+        // Start processing the QR scan
+        setIsProcessingQRScan(true);
+        // Start the address search
+        searchAddress(data);
+        // Track analytics and call onRead
+        analytics.trackQRScanSuccess(QRCodeSource.ADDRESS_INPUT);
+      }
+      // If invalid, do nothing - the QR scanner will continue scanning
+    },
+    [searchAddress],
+  );
 
-  // Handle scanned QR data when available
+  // Handle search results when QR scan is processed
   useEffect(() => {
     if (
-      scannedData &&
-      storedSource === QRCodeSource.ADDRESS_INPUT &&
-      !isConsumed
+      isProcessingQRScan &&
+      isValidDestination &&
+      !isSearching &&
+      searchResults.length > 0
     ) {
-      // For send flow, consume the data and navigate back
-      consumeQRData();
-      navigation.goBack();
+      // Save the recipient address to transaction settings store
+      // The send recipient store already has the correct address from the search
+      saveRecipientAddress(destinationAddress);
+
+      // Navigate directly to transaction amount screen with the selected token
+      // Reset the navigation stack so back action goes to main tab instead of QR scanner
+      navigation.reset({
+        index: 1,
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          },
+          {
+            name: ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK,
+            state: {
+              routes: [
+                {
+                  name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+                  params: {
+                    tokenId: selectedTokenId,
+                    recipientAddress: destinationAddress,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+
+      // Reset the processing flag
+      setIsProcessingQRScan(false);
     }
-  }, [scannedData, storedSource, isConsumed, consumeQRData, navigation]);
+  }, [
+    isProcessingQRScan,
+    isValidDestination,
+    isSearching,
+    searchResults,
+    destinationAddress,
+    saveRecipientAddress,
+    selectedTokenId,
+    navigation,
+  ]);
 
   // Clear QR data when component unmounts
   useEffect(() => clearQRData(), [clearQRData]);

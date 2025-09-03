@@ -230,6 +230,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;
+    recipientAddress?: string;
   };
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;

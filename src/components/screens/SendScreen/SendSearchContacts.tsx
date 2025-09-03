@@ -98,18 +98,21 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    *
    * @param {string} contactAddress - The selected contact address
    */
-  const handleContactPress = (contactAddress: string) => {
-    if (recentAddresses.some((c) => c.address === contactAddress)) {
-      analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
-    }
-    // Save to both stores for different purposes
-    // Send store is for contact management
-    setDestinationAddress(contactAddress);
-    // Transaction settings store is for the transaction flow
-    saveRecipientAddress(contactAddress);
+  const handleContactPress = useCallback(
+    (contactAddress: string) => {
+      if (recentAddresses.some((c) => c.address === contactAddress)) {
+        analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
+      }
+      // Save to both stores for different purposes
+      // Send store is for contact management
+      setDestinationAddress(contactAddress);
+      // Transaction settings store is for the transaction flow
+      saveRecipientAddress(contactAddress);
 
-    navigation.goBack();
-  };
+      navigation.goBack();
+    },
+    [recentAddresses, setDestinationAddress, saveRecipientAddress, navigation],
+  );
 
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
@@ -139,7 +142,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   // Set up the QR code button in the header
   useRightHeaderButton({
     onPress: handleOpenQRScanner,
-    icon: Icon.QrCode01,
+    icon: Icon.Scan,
     iconSize: 20,
   });
 
