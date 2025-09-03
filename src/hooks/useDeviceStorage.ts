@@ -109,9 +109,12 @@ const useDeviceStorage = () => {
           variant: "success",
         });
 
-        if (tempFilePath) {
-          deleteTempFile(tempFilePath);
-        }
+        // Delay the deletion of the temp file to ensure the image is saved to the camera roll
+        setTimeout(() => {
+          if (tempFilePath) {
+            deleteTempFile(tempFilePath);
+          }
+        }, 1000);
       });
     },
     [showToast],
