@@ -1,6 +1,6 @@
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { SecureClipboardService } from "services/SecureClipboardService";
 
 interface SecureCopyToClipboardOptions {
@@ -28,13 +28,14 @@ interface UseSecureClipboardResult {
 
 /**
  * Hook for securely copying text to clipboard with enhanced security features:
- * - Auto-clear clipboard after specified timeout
+ * - Native expiration handling (no JavaScript timers needed)
  * - Platform-specific sensitive data flagging (Android 13+ only)
  * - Optional toast notification
  *
  * All data copied through this hook is treated as sensitive for maximum security.
- * On Android 13+, uses EXTRA_IS_SENSITIVE flag to prevent clipboard previews.
- * On older Android versions, falls back to standard clipboard behavior.
+ * On Android 13+, uses EXTRA_IS_SENSITIVE flag and native Handler for expiration.
+ * On iOS 15.1+, uses UIPasteboard expiration for automatic clearing.
+ * On older versions, falls back to standard clipboard behavior.
  * Use the regular useClipboard hook for non-sensitive data.
  *
  * @returns Object containing secure clipboard functions
@@ -54,7 +55,6 @@ interface UseSecureClipboardResult {
 export const useSecureClipboard = (): UseSecureClipboardResult => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();
-  const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearClipboard = useCallback(async () => {
     try {
@@ -67,19 +67,9 @@ export const useSecureClipboard = (): UseSecureClipboardResult => {
   const copyToClipboard = useCallback(
     (text: string, options: SecureCopyToClipboardOptions = {}) => {
       try {
-        // Clear any existing timeout
-        if (clearTimeoutRef.current) {
-          clearTimeout(clearTimeoutRef.current);
-        }
-
-        // Copy to clipboard with security enhancements
-        SecureClipboardService.copyToClipboard(text);
-
-        // Set up auto-clear timeout
-        const timeout = options.autoClearTimeout ?? 30000; // Default 30 seconds
-        clearTimeoutRef.current = setTimeout(() => {
-          clearClipboard();
-        }, timeout);
+        // Copy to clipboard with security enhancements and native expiration
+        const expirationMs = options.autoClearTimeout ?? 30000; // Default 30 seconds
+        SecureClipboardService.copyToClipboard(text, expirationMs);
 
         // Show notification if not hidden
         if (!options.hideNotification) {
@@ -90,7 +80,7 @@ export const useSecureClipboard = (): UseSecureClipboardResult => {
           });
         }
 
-        // Platform-specific sensitive data handling is now handled by SecureClipboardService
+        // Platform-specific sensitive data handling and expiration is now handled by SecureClipboardService
         // All data copied through this hook is treated as sensitive
       } catch (error) {
         showToast({
@@ -100,7 +90,7 @@ export const useSecureClipboard = (): UseSecureClipboardResult => {
         });
       }
     },
-    [showToast, t, clearClipboard],
+    [showToast, t],
   );
 
   const getClipboardText = useCallback(

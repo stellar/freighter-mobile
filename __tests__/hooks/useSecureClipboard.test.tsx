@@ -97,7 +97,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -116,7 +116,7 @@ describe("useSecureClipboard", () => {
       });
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: customMessage,
       variant: "success",
@@ -134,7 +134,7 @@ describe("useSecureClipboard", () => {
       });
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "primary",
@@ -152,7 +152,7 @@ describe("useSecureClipboard", () => {
       });
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).not.toHaveBeenCalled();
   });
 
@@ -169,7 +169,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockSetString).toHaveBeenCalledWith(text); // Should fallback to standard clipboard
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       "SecureClipboardService.copyToClipboard",
@@ -183,7 +183,7 @@ describe("useSecureClipboard", () => {
     });
   });
 
-  it("should auto-clear clipboard after default timeout (30 seconds)", () => {
+  it("should set native expiration for default timeout (30 seconds)", () => {
     const { result } = renderHook(() => useSecureClipboard());
     const text = "sensitive data";
 
@@ -191,19 +191,11 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    // Verify initial copy
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
-
-    // Fast-forward 30 seconds
-    act(() => {
-      jest.advanceTimersByTime(30000);
-    });
-
-    // Verify clipboard was cleared using clearString
-    expect(mockNativeClearString).toHaveBeenCalled();
+    // Verify native module is called with text and expiration
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
   });
 
-  it("should auto-clear clipboard after custom timeout", () => {
+  it("should set native expiration for custom timeout", () => {
     const { result } = renderHook(() => useSecureClipboard());
     const text = "sensitive data";
     const customTimeout = 15000; // 15 seconds
@@ -214,19 +206,11 @@ describe("useSecureClipboard", () => {
       });
     });
 
-    // Verify initial copy
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
-
-    // Fast-forward 15 seconds
-    act(() => {
-      jest.advanceTimersByTime(customTimeout);
-    });
-
-    // Verify clipboard was cleared using clearString
-    expect(mockNativeClearString).toHaveBeenCalled();
+    // Verify native module is called with text and custom expiration
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, customTimeout);
   });
 
-  it("should clear previous timeout when copying again", () => {
+  it("should handle multiple copies with different expiration times", () => {
     const { result } = renderHook(() => useSecureClipboard());
     const text1 = "first text";
     const text2 = "second text";
@@ -235,23 +219,16 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text1);
     });
 
-    // Fast-forward 20 seconds
+    // Copy again with different expiration
     act(() => {
-      jest.advanceTimersByTime(20000);
+      result.current.copyToClipboard(text2, {
+        autoClearTimeout: 15000,
+      });
     });
 
-    // Copy again
-    act(() => {
-      result.current.copyToClipboard(text2);
-    });
-
-    // Fast-forward another 30 seconds (total 50 seconds from first copy, 30 seconds from second copy)
-    act(() => {
-      jest.advanceTimersByTime(30000);
-    });
-
-    // Should only have been cleared once (for the second copy)
-    expect(mockNativeClearString).toHaveBeenCalledTimes(1);
+    // Verify both calls were made with correct parameters
+    expect(mockNativeSetString).toHaveBeenCalledWith(text1, 30000);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text2, 15000);
   });
 
   it("should manually clear clipboard", async () => {
@@ -281,7 +258,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -297,7 +274,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -313,7 +290,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -332,7 +309,7 @@ describe("useSecureClipboard", () => {
       result.current.copyToClipboard(text);
     });
 
-    expect(mockNativeSetString).toHaveBeenCalledWith(text);
+    expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockShowToast).toHaveBeenCalledWith({
       title: "Copied to clipboard!",
       variant: "success",
@@ -396,7 +373,7 @@ describe("useSecureClipboard", () => {
         result.current.copyToClipboard(text);
       });
 
-      expect(mockNativeSetString).toHaveBeenCalledWith(text);
+      expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
       expect(mockSetString).not.toHaveBeenCalled(); // Should not use regular clipboard
     });
 

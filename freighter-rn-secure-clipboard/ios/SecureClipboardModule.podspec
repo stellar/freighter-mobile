@@ -6,8 +6,8 @@ Pod::Spec.new do |s|
   s.name         = "SecureClipboardModule"
   s.version      = package["version"]
   s.summary      = "Secure clipboard module for Freighter mobile app"
-  s.description  = "A native module that provides secure clipboard functionality with platform-specific security enhancements"
-  s.homepage     = "https://github.com/stellar/freighter"
+  s.description  = "A native module that provides secure clipboard functionality with platform-specific security enhancements (Android 13+ sensitive flag support)"
+  s.homepage     = "https://github.com/stellar/freighter-mobile"
   s.license      = "MIT"
   s.authors      = { "Stellar Development Foundation" => "hello@stellar.org" }
   s.platforms    = { :ios => "11.0" }

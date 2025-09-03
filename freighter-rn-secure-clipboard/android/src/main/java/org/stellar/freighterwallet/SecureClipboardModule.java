@@ -5,6 +5,8 @@ import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PersistableBundle;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -14,10 +16,12 @@ import com.facebook.react.bridge.Promise;
 
 public class SecureClipboardModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
+    private final Handler mainHandler;
 
     public SecureClipboardModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
     @Override
@@ -26,7 +30,7 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
     }
 
       @ReactMethod
-  public void setString(String text, Promise promise) {
+  public void setString(String text, int expirationMs, Promise promise) {
     try {
       Context context = reactContext.getApplicationContext();
       ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -43,6 +47,20 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
         PersistableBundle extras = new PersistableBundle();
         extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
         clip.getDescription().setExtras(extras);
+      }
+      
+      // Schedule clipboard clearing if expiration is specified
+      if (expirationMs > 0) {
+        mainHandler.postDelayed(() -> {
+          try {
+            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) {
+              clipboard.clearPrimaryClip();
+            }
+          } catch (Exception e) {
+            // Silently fail - clearing clipboard is best effort
+          }
+        }, expirationMs);
       }
       
       clipboard.setPrimaryClip(clip);

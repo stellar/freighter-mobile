@@ -10,24 +10,21 @@ class SecureClipboardModule: NSObject {
   }
   
   @objc
-  func setString(_ text: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+  func setString(_ text: String, expirationMs: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
       let pasteboard = UIPasteboard.general
       
       // Always treat data as sensitive for secure clipboard service
-      // 1. Set a shorter expiration time (iOS 10+)
-      if #available(iOS 10.0, *) {
+      let expirationSeconds = Double(expirationMs.intValue) / 1000.0
+      
+      // Set expiration time using native iOS pasteboard expiration (iOS 15.1+)
+      if expirationSeconds > 0 {
         pasteboard.setItems([[UIPasteboard.type.string: text]], options: [
-          UIPasteboard.OptionsKey.expirationDate: Date().addingTimeInterval(30) // 30 seconds
+          UIPasteboard.OptionsKey.expirationDate: Date().addingTimeInterval(expirationSeconds)
         ])
       } else {
-        // Fallback for older iOS versions
+        // No expiration, just set the text
         pasteboard.string = text
-      }
-      
-      // 2. Clear clipboard after a short delay for additional security
-      DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-        pasteboard.string = ""
       }
       
       resolver(nil)

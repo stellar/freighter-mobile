@@ -8,8 +8,9 @@ import { Platform } from "react-native";
  *
  * Platform-specific security features:
  * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag to prevent clipboard previews (Android 13+)
+ *   Expiration is handled via native Handler for delayed clearing
  *   On older Android versions (7.0-12), falls back to standard clipboard behavior
- * - iOS: Uses UIPasteboard expiration for automatic clipboard clearing (iOS 10+)
+ * - iOS: Uses UIPasteboard expiration for automatic clipboard clearing (iOS 15.1+)
  * - Both platforms: Graceful fallback to standard clipboard if native modules fail
  */
 export class SecureClipboardService {
@@ -17,12 +18,16 @@ export class SecureClipboardService {
    * Copy text to clipboard with security enhancements
    * All data copied through this service is treated as sensitive for maximum security
    * @param text - The text to copy
+   * @param expirationMs - Expiration time in milliseconds (0 = no expiration)
    */
-  static async copyToClipboard(text: string): Promise<void> {
+  static async copyToClipboard(
+    text: string,
+    expirationMs: number = 0,
+  ): Promise<void> {
     try {
       if (Platform.OS === "android" || Platform.OS === "ios") {
         // Always use sensitive flag for secure clipboard service
-        await SecureClipboardNative.setString(text);
+        await SecureClipboardNative.setString(text, expirationMs);
       } else {
         // Fallback to standard clipboard for other platforms
         Clipboard.setString(text);
