@@ -208,6 +208,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
       </View>
 
       <List
+        variant="secondary"
         items={[
           {
             icon: (

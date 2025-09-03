@@ -198,6 +198,7 @@ const TransactionDetailsBottomSheet: React.FC<
       </View>
 
       <List
+        variant="secondary"
         items={[
           {
             icon: (

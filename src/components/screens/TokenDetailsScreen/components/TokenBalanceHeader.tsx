@@ -145,7 +145,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
     const rows = priceRow ? [...baseRows, priceRow] : baseRows;
 
-    return <List items={rows} />;
+    return <List variant="secondary" items={rows} />;
   };
 
   return (

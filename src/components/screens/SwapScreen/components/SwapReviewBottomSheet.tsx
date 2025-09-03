@@ -201,6 +201,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       </View>
 
       <List
+        variant="secondary"
         className="mt-[24px]"
         items={[
           {
