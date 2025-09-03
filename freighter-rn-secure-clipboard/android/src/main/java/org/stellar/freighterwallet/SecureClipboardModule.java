@@ -1,3 +1,5 @@
+package org.stellar.freighterwallet;
+
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;

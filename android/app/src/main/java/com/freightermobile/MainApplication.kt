@@ -20,6 +20,8 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+              // Manually add SecureClipboardPackage if autolinking fails
+              add(org.stellar.freighterwallet.SecureClipboardPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
