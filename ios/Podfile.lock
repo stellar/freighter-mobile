@@ -6,9 +6,10 @@ PODS:
     - DGSwiftUtilities (~> 0.11)
   - ContextMenuAuxiliaryPreview (0.5.2):
     - DGSwiftUtilities (~> 0.29)
-  - DGSwiftUtilities (0.46.4)
+  - DGSwiftUtilities (0.47.0)
   - DoubleConversion (1.1.6)
   - fast_float (6.1.4)
+  - FastOpenCV-iOS (1.0.4)
   - FBLazyVector (0.78.0)
   - fmt (11.0.2)
   - glog (0.3.5)
@@ -1272,6 +1273,28 @@ PODS:
     - React-Core
   - react-native-cookies (6.2.1):
     - React-Core
+  - react-native-fast-opencv (0.4.6):
+    - DoubleConversion
+    - FastOpenCV-iOS (= 1.0.4)
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-get-random-values (1.11.0):
     - React-Core
   - react-native-ios-context-menu (3.1.0):
@@ -2156,6 +2179,7 @@ DEPENDENCIES:
   - "react-native-compat (from `../node_modules/@walletconnect/react-native-compat`)"
   - react-native-config (from `../node_modules/react-native-config`)
   - "react-native-cookies (from `../node_modules/@react-native-cookies/cookies`)"
+  - react-native-fast-opencv (from `../node_modules/react-native-fast-opencv`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-ios-context-menu (from `../node_modules/react-native-ios-context-menu`)
   - react-native-ios-utilities (from `../node_modules/react-native-ios-utilities`)
@@ -2213,6 +2237,7 @@ SPEC REPOS:
     - ComputableLayout
     - ContextMenuAuxiliaryPreview
     - DGSwiftUtilities
+    - FastOpenCV-iOS
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2299,6 +2324,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-config"
   react-native-cookies:
     :path: "../node_modules/@react-native-cookies/cookies"
+  react-native-fast-opencv:
+    :path: "../node_modules/react-native-fast-opencv"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-ios-context-menu:
@@ -2407,9 +2434,10 @@ SPEC CHECKSUMS:
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   ComputableLayout: c50faffac4ed9f8f05b0ce5e6f3a60df1f6042c8
   ContextMenuAuxiliaryPreview: 20be0be795b783b68f8792732eed4bed9f202c1c
-  DGSwiftUtilities: 536456ae3d0e5083ac42e06b6b720921601864b5
+  DGSwiftUtilities: 567f8d5ee618f0b7afb185b17aa45ff356315a0f
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
+  FastOpenCV-iOS: 2057f306db3ad068577e6fca38411f1b1920d71e
   FBLazyVector: 6fe148afcef2e3213e484758e3459609d40d57f5
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: eb93e2f488219332457c3c4eafd2738ddc7e80b8
@@ -2447,6 +2475,7 @@ SPEC CHECKSUMS:
   react-native-compat: c26360d234b067dfa5105fb42a89f68d8383a944
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-cookies: d648ab7025833b977c0b19e142503034f5f29411
+  react-native-fast-opencv: b15c8aa72f871bd8e3bf8f12c60813415a648593
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-ios-context-menu: 4a750e3ae633536e5fe30736ab7ebbfdbf042506
   react-native-ios-utilities: 1e2d29936bc4f67d869f6761c76644342bfa2ff4
@@ -2502,4 +2531,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 701d4421f11033bc2d85a0be7ab943cbaec23ee4
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
