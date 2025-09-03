@@ -63,7 +63,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const detailItems = [
     {
       icon: (
-        <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
+        <Icon.ClockCheck size={16} themeColor="gray" />
       ),
       titleComponent: (
         <Text md secondary>
