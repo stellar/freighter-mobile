@@ -81,7 +81,12 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       set({ recentAddresses: contactList });
     } catch (error) {
-      logger.error("Failed to load recent addresses:", String(error));
+      logger.error(
+        "[sendRecipient]",
+        "Failed to load recent addresses:",
+        error,
+      );
+
       set({ recentAddresses: [] });
     }
   },
@@ -109,7 +114,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         );
       }
     } catch (error) {
-      logger.error("Failed to add recent address:", String(error));
+      logger.error("[sendRecipient]", "Failed to add recent address:", error);
     }
   },
 
@@ -175,11 +180,17 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
             return;
           }
         } catch (error) {
-          logger.error("Federation resolution failed:", String(error));
+          logger.error(
+            "[sendRecipient]",
+            "Federation resolution failed:",
+            error,
+          );
+
           set({
             isSearching: false,
             searchError: t("sendRecipient.error.federationNotFound"),
           });
+
           return;
         }
       }
@@ -205,11 +216,13 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         if (isNotFoundError) {
           isFunded = false;
         } else {
-          logger.error("Account lookup failed:", String(error));
+          logger.error("[sendRecipient]", "Account lookup failed:", error);
+
           set({
             isSearching: false,
             searchError: t("sendRecipient.error.destinationAccountStatus"),
           });
+
           return;
         }
       }
@@ -229,7 +242,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         searchError: null,
       });
     } catch (error) {
-      logger.error("Error searching for address:", String(error));
+      logger.error("[sendRecipient]", "Error searching for address:", error);
+
       set({
         isSearching: false,
         searchError: t("sendRecipient.error.unexpectedSearchError"),

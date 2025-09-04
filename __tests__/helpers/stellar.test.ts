@@ -148,7 +148,7 @@ describe("Stellar helpers", () => {
       expect(mockedLogger.error).toHaveBeenCalledWith(
         "StellarHelper",
         "Error extracting base account:",
-        String(error),
+        error,
       );
     });
 
@@ -220,7 +220,7 @@ describe("Stellar helpers", () => {
       expect(mockedLogger.error).toHaveBeenCalledWith(
         "StellarHelper",
         "Error validating Stellar address:",
-        String(error),
+        error,
       );
     });
   });
@@ -411,7 +411,7 @@ describe("Stellar helpers", () => {
       expect(mockedLogger.error).toHaveBeenCalledWith(
         "StellarHelper",
         "Error comparing Stellar addresses:",
-        String(error),
+        error,
       );
     });
   });

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NETWORK_URLS } from "config/constants";
+import { NETWORKS } from "config/constants";
 import {
   NonNativeToken,
   BalanceMap,
@@ -7,7 +7,11 @@ import {
 } from "config/types";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
-import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
+import { getIconUrl } from "helpers/getIconUrl";
+import {
+  fetchVerifiedTokens,
+  TOKEN_LISTS_API_SERVICES,
+} from "services/verified-token-lists";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -16,9 +20,9 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
  */
-interface Icon {
+export interface Icon {
   imageUrl: string;
-  networkUrl: NETWORK_URLS;
+  network: NETWORKS;
 }
 
 /**
@@ -30,25 +34,37 @@ interface TokenIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
   /**
+   * Caches a single token icon
+   * @param {Object} params - Function parameters
+   * @param { Record<string, Icon>} params.icons - A map of token ID to Icon
+   */
+  cacheTokenIcons: (params: { icons: Record<string, Icon> }) => void;
+  /**
+   * Caches all icons from the token lists
+   * @param {Object} params - Function parameters
+   * @param {NETWORKS} params.network - The network to fetch from
+   */
+  cacheTokenListIcons: (params: { network: NETWORKS }) => Promise<void>;
+  /**
    * Fetches an icon URL for a given token
    * @param {Object} params - Function parameters
    * @param {NonNativeToken} params.token - The token to fetch the icon for
-   * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
+   * @param {NETWORKS} params.network - The network to fetch from
    * @returns {Promise<Icon>} The fetched icon data
    */
   fetchIconUrl: (params: {
     token: NonNativeToken;
-    networkUrl: NETWORK_URLS;
+    network: NETWORKS;
   }) => Promise<Icon>;
   /**
    * Fetches icons for all tokens in a balance map
    * @param {Object} params - Function parameters
    * @param {BalanceMap} params.balances - Map of balances to fetch icons for
-   * @param {NETWORK_URLS} params.networkUrl - The network URL to fetch from
+   * @param {NETWORKS} params.network - The network to fetch from
    */
   fetchBalancesIcons: (params: {
     balances: BalanceMap;
-    networkUrl: NETWORK_URLS;
+    network: NETWORKS;
   }) => Promise<void>;
   /**
    * Refreshes all cached icons if 24 hours have passed since last refresh
@@ -102,16 +118,17 @@ const processIconBatches = async (params: {
       try {
         // Parse the cache key to get token details
         const [tokenCode, issuerKey] = cacheKey.split(":");
-
-        const imageUrl = await getIconUrlFromIssuer({
-          tokenCode,
-          issuerKey,
-          networkUrl: icon.networkUrl,
+        const imageUrl = await getIconUrl({
+          asset: {
+            code: tokenCode,
+            issuer: issuerKey,
+          },
+          network: icon.network,
         });
 
         updatedIcons[cacheKey] = {
           imageUrl,
-          networkUrl: icon.networkUrl,
+          network: icon.network,
         };
       } catch (error) {
         // Keep the existing icon URL if refresh fails
@@ -175,7 +192,47 @@ export const useTokenIconsStore = create<TokenIconsState>()(
     (set, get) => ({
       icons: {},
       lastRefreshed: null,
-      fetchIconUrl: async ({ token, networkUrl }) => {
+      cacheTokenIcons: ({ icons }) => {
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            ...icons,
+          },
+        }));
+      },
+      cacheTokenListIcons: async ({ network }) => {
+        const verifiedTokens = await fetchVerifiedTokens({
+          tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
+          network,
+        });
+        const iconMap = verifiedTokens.reduce(
+          (prev, curr) => {
+            if (curr.icon) {
+              const icon: Icon = {
+                imageUrl: curr.icon,
+                network,
+              };
+              // eslint-disable-next-line no-param-reassign
+              prev[`${curr.code}:${curr.issuer}`] = icon;
+
+              // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
+              if (curr.contract) {
+                // eslint-disable-next-line no-param-reassign
+                prev[`${curr.code}:${curr.contract}`] = icon;
+              }
+            }
+            return prev;
+          },
+          {} as Record<string, Icon>,
+        );
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            ...iconMap,
+          },
+        }));
+      },
+      fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
         const cachedIcon = get().icons[cacheKey];
 
@@ -186,15 +243,17 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
         try {
           // Fetch icon URL if not cached
-          const imageUrl = await getIconUrlFromIssuer({
-            tokenCode: token.code,
-            issuerKey: token.issuer.key,
-            networkUrl,
+          const imageUrl = await getIconUrl({
+            asset: {
+              code: token.code,
+              issuer: token.issuer.key,
+            },
+            network,
           });
 
           const icon: Icon = {
             imageUrl,
-            networkUrl,
+            network,
           };
 
           debug(
@@ -216,11 +275,11 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         } catch (error) {
           return {
             imageUrl: "",
-            networkUrl,
+            network,
           };
         }
       },
-      fetchBalancesIcons: async ({ balances, networkUrl }) => {
+      fetchBalancesIcons: async ({ balances, network }) => {
         // Process all balances in parallel using Promise.all
         await Promise.all(
           Object.entries(balances).map(async ([id, balance]) => {
@@ -242,7 +301,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             // so that we don't need to return anything
             await get().fetchIconUrl({
               token: balance.token,
-              networkUrl,
+              network,
             });
           }),
         );

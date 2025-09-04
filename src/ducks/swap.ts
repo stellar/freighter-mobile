@@ -126,9 +126,8 @@ const findClassicSwapPath = async (params: {
       conversionRate,
     };
   } catch (error) {
-    logger.error("SwapStore", "Failed to find classic swap path", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.error("SwapStore", "Failed to find classic swap path", error);
+
     return null;
   }
 };
@@ -191,9 +190,8 @@ export const useSwapStore = create<SwapState>((set) => ({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      logger.error("SwapStore", "Failed to find swap path", {
-        error: errorMessage,
-      });
+
+      logger.error("SwapStore", "Failed to find swap path", error);
 
       set({
         isLoadingPath: false,

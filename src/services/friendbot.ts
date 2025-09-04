@@ -14,6 +14,7 @@ const friendBotFuturenet = createApiService({
 export const fundAccount = async (publicKey: string, network: NETWORKS) => {
   if (![NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(network)) {
     logger.error("friendbot", "Unsupported network", network);
+
     return;
   }
 

@@ -92,9 +92,12 @@ export const getSorobanRpcServer = (network: NETWORKS) => {
   const sorobanRpcUrl = SOROBAN_RPC_URLS[network];
 
   if (!sorobanRpcUrl) {
-    logger.error("StellarService", "No Soroban RPC URL available for network", {
+    logger.error(
+      "StellarService",
+      "No Soroban RPC URL available for network",
       network,
-    });
+    );
+
     return null;
   }
 
@@ -292,8 +295,8 @@ export const getTransactionDetails = async (
     logger.error(
       "stellarService.getTransactionDetails",
       "Failed to get transaction details",
+      error,
       {
-        error: error instanceof Error ? error.message : String(error),
         transactionHash,
         network,
       },

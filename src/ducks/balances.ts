@@ -228,6 +228,7 @@ const retrieveCustomTokens = async (params: {
       "Error retrieving custom tokens:",
       error,
     );
+
     return [];
   }
 };
