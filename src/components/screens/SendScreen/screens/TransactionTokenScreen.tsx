@@ -51,11 +51,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
             onPress={navigateToSelectContactScreen}
             address={recipientAddress}
             rightElement={
-              <IconButton
-                Icon={Icon.ChevronRight}
-                size="sm"
-                variant="ghost"
-              />
+              <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
             }
           />
         </View>

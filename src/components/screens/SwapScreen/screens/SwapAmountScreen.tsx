@@ -377,7 +377,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
             {destinationBalance ? (
               <BalanceRow
-                isSingleRow  
+                isSingleRow
                 balance={destinationBalance}
                 onPress={navigateToSelectDestinationTokenScreen}
                 rightContent={

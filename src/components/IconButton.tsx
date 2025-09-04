@@ -140,7 +140,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   // We should only wrap in TouchableOpacity if onPress is provided
   // otherwise it would steal the touch event from the parent
   const IconWrapper = onPress ? TouchableOpacity : View;
-  
+
   return (
     <View
       className={`flex flex-col items-center ${title ? "gap-[12px]" : ""} ${isDisabled ? "opacity-50" : "opacity-100"}`}
