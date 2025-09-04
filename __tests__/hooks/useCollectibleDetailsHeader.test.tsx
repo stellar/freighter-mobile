@@ -91,6 +91,7 @@ describe("useCollectibleDetailsHeader", () => {
   const defaultParams = {
     collectionAddress: "test-collection-address",
     collectibleName: "Test NFT",
+    tokenId: "test-token-id",
   };
 
   it("should return handler functions", () => {
@@ -127,6 +128,7 @@ describe("useCollectibleDetailsHeader", () => {
       useCollectibleDetailsHeader({
         collectionAddress: "test-collection",
         collectibleName: undefined,
+        tokenId: "test-token-id",
       }),
     );
 
