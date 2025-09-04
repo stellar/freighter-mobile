@@ -1,7 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import { BrowserTab } from "ducks/browserTabs";
+import { Platform } from "react-native";
+import {
+  BorderTypes,
+  DataTypes,
+  ObjectType,
+  OpenCV,
+} from "react-native-fast-opencv";
 import ViewShot from "react-native-view-shot";
 
 /**
@@ -35,6 +42,7 @@ export const getStoredScreenshots = async (): Promise<
     return new Map(Object.entries(screenshotsMap));
   } catch (error) {
     logger.error("screenshots", "Failed to get stored screenshots:", error);
+
     return new Map();
   }
 };
@@ -83,6 +91,7 @@ export const removeTabScreenshot = async (tabId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("removeTabScreenshot", "Failed to remove screenshot:", error);
+
     return false;
   }
 };
@@ -135,6 +144,7 @@ export const clearAllScreenshots = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("clearAllScreenshots", "Failed to clear screenshots:", error);
+
     return false;
   }
 };
@@ -176,6 +186,65 @@ export const pruneScreenshots = async (
 };
 
 /**
+ * Applies a blur effect to a base64 image data URI using OpenCV.
+ * @param uri - Base64 image data URI (e.g., "data:image/png;base64,iVBORw0KGgo...")
+ * @returns The blurred image as a base64 string, or the original URI if blur fails
+ */
+const getBlurredImage = (uri: string) => {
+  try {
+    // Extract base64 data from data URI if present
+    const base64Data = uri.includes(",") ? uri.split(",")[1] : uri;
+
+    const mat = OpenCV.base64ToMat(base64Data);
+
+    if (!base64Data || base64Data.length === 0) {
+      logger.error(
+        "getBlurredImage",
+        "base64 error",
+        normalizeError("Empty base64 data provided"),
+      );
+
+      return uri;
+    }
+
+    const kernelPlatform = Platform.select({
+      ios: BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.EXTREMELY_STRONG,
+      android: BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.VERY_STRONG,
+    });
+
+    const destination = OpenCV.createObject(
+      ObjectType.Mat,
+      0,
+      0,
+      DataTypes.CV_8U,
+    );
+    const kernel = OpenCV.createObject(
+      ObjectType.Size,
+      kernelPlatform as number,
+      kernelPlatform as number,
+    );
+
+    OpenCV.invoke(
+      "GaussianBlur",
+      mat,
+      destination,
+      kernel,
+      0, // sigmaX - 0 means calculate from kernel size
+      0, // sigmaY - 0 means calculate from kernel size
+      BorderTypes.BORDER_DEFAULT,
+    );
+
+    const result = OpenCV.toJSValue(destination);
+
+    return `data:image/jpeg;base64,${result.base64}`;
+  } catch (error) {
+    logger.error("getBlurredImage", "Failed to blur image:", error);
+
+    return uri;
+  }
+};
+
+/**
  * Parameters for capturing a screenshot of a tab.
  * @property viewShotRef - Reference to the ViewShot component
  * @property tabId - The ID of the tab
@@ -209,23 +278,29 @@ export const captureTabScreenshot = async ({
     if (viewShotRef?.capture) {
       const uri = await viewShotRef.capture();
 
+      const blurredUri = getBlurredImage(uri);
+
       // Save to persistent storage
       const tab = tabs.find((t) => t.id === tabId);
       if (tab) {
         const screenshotData: ScreenshotData = {
           tabId,
           timestamp: Date.now(),
-          uri,
+          uri: blurredUri,
           tabUrl: tab.url,
         };
 
         await saveScreenshot(screenshotData);
-        updateTab(tabId, { screenshot: uri });
+        updateTab(tabId, { screenshot: blurredUri });
 
         logger.debug(source, `Screenshot captured for tab ${tabId}`);
       }
     }
   } catch (error) {
     logger.error(source, "Failed to capture screenshot:", error);
+  } finally {
+    // Clear OpenCV buffers
+    // otherwise it will cause a memory leak
+    OpenCV.clearBuffers();
   }
 };

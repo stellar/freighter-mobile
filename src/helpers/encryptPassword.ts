@@ -4,7 +4,6 @@ import {
   decode as base64Decode,
 } from "@stablelib/base64";
 import { encode as utf8Encode, decode as utf8Decode } from "@stablelib/utf8";
-import { logger } from "config/logger";
 import rnScrypt from "react-native-scrypt";
 import nacl from "tweetnacl";
 
@@ -166,8 +165,6 @@ export async function decryptDataWithPassword({
 
     return utf8Decode(decryptedBytes);
   } catch (error) {
-    logger.error("decryptDataWithPassword", "Error decrypting data:", error);
-
     // Rethrow the error with a more specific message
     if (error instanceof Error) {
       throw new Error(`Decryption error: ${error.message}`);

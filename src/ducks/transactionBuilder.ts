@@ -157,9 +157,12 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        logger.error("TransactionBuilderStore", "Failed to build transaction", {
-          error: errorMessage,
-        });
+
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build transaction",
+          error,
+        );
 
         // Only set error state if this build request is still current.
         // Prevents stale error from overwriting newer transaction state.
@@ -224,9 +227,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         logger.error(
           "TransactionBuilderStore",
           "Failed to build swap transaction",
-          {
-            error: errorMessage,
-          },
+          error,
         );
 
         // Only set error state if this swap build is still current.
@@ -265,11 +266,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        logger.error("TransactionBuilderStore", "Failed to sign transaction", {
-          error: errorMessage,
-        });
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to sign transaction",
+          error,
+        );
 
         set({ error: errorMessage });
+
         return null;
       }
     },
@@ -312,9 +316,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         logger.error(
           "TransactionBuilderStore",
           "Failed to submit transaction",
-          {
-            error: errorMessage,
-          },
+          error,
         );
 
         // Only set error state if this submit request is still current.

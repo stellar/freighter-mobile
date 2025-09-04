@@ -1,5 +1,6 @@
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { BigNumber } from "bignumber.js";
+import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
@@ -7,6 +8,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
+import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -134,7 +136,11 @@ const TransactionDetailsBottomSheet: React.FC<
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
     Linking.openURL(explorerUrl).catch((err) =>
-      logger.error("Error opening transaction explorer:", String(err)),
+      logger.error(
+        "[Linking - openURL]",
+        "Error opening transaction explorer:",
+        err,
+      ),
     );
   };
 
@@ -195,66 +201,88 @@ const TransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="rounded-[16px] p-[24px] gap-[12px] bg-background-primary border-gray-6 border">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionDetailsBottomSheet.status")}
-            </Text>
-          </View>
-          <Text md medium color={transactionStatus.color}>
-            {transactionStatus.text}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.File02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.memo")}
-            </Text>
-          </View>
-          <Text md medium secondary={!transactionMemo}>
-            {transactionMemo || t("common.none")}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Route size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.fee")}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-[4px]">
-            <StellarLogo width={16} height={16} />
-            <Text md medium>
-              {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary>
-              {t("transactionAmountScreen.details.xdr")}
-            </Text>
-          </View>
-          <View
-            className="flex-row items-center gap-[8px]"
-            onTouchEnd={handleCopyXdr}
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium>
-              {transactionXDR
-                ? truncateAddress(transactionXDR, 10, 4)
-                : t("common.none")}
-            </Text>
-          </View>
-        </View>
-      </View>
+      <List
+        variant="secondary"
+        items={[
+          {
+            icon: (
+              <Icon.ClockCheck
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("transactionDetailsBottomSheet.status")}
+              </Text>
+            ),
+            trailingContent: (
+              <Text md medium color={transactionStatus.color}>
+                {transactionStatus.text}
+              </Text>
+            ),
+          },
+          {
+            icon: (
+              <Icon.File02 size={16} color={themeColors.foreground.primary} />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("transactionAmountScreen.details.memo")}
+              </Text>
+            ),
+            trailingContent: (
+              <Text md medium secondary={!transactionMemo}>
+                {transactionMemo || t("common.none")}
+              </Text>
+            ),
+          },
+          {
+            icon: (
+              <Icon.Route size={16} color={themeColors.foreground.primary} />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("transactionAmountScreen.details.fee")}
+              </Text>
+            ),
+            trailingContent: (
+              <View className="flex-row items-center gap-[4px]">
+                <StellarLogo width={16} height={16} />
+                <Text md medium>
+                  {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
+                </Text>
+              </View>
+            ),
+          },
+          {
+            icon: (
+              <Icon.FileCode02
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("transactionAmountScreen.details.xdr")}
+              </Text>
+            ),
+            trailingContent: (
+              <View
+                className="flex-row items-center gap-[8px]"
+                onTouchEnd={handleCopyXdr}
+              >
+                <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+                <Text md medium>
+                  {transactionXDR
+                    ? truncateAddress(transactionXDR, 10, 4)
+                    : t("common.none")}
+                </Text>
+              </View>
+            ),
+          },
+        ]}
+      />
 
       {transactionHash && (
         <Button

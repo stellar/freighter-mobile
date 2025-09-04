@@ -16,11 +16,16 @@ const clearTemporaryData = async (): Promise<void> => {
 };
 
 /**
- * Clears all non-sensitive data except network preference
+ * Clears all non-sensitive data except network preference, custom token list, and collectibles list
  */
 const clearNonSensitiveData = async (): Promise<void> => {
   const keysToClear = Object.values(STORAGE_KEYS).filter(
-    (key) => key !== STORAGE_KEYS.ACTIVE_NETWORK,
+    (key) =>
+      ![
+        STORAGE_KEYS.ACTIVE_NETWORK,
+        STORAGE_KEYS.CUSTOM_TOKEN_LIST,
+        STORAGE_KEYS.COLLECTIBLES_LIST,
+      ].includes(key),
   );
 
   await Promise.all(keysToClear.map((key) => dataStorage.remove(key)));

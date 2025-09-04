@@ -345,7 +345,8 @@
     "traits": "Collectible Traits",
     "view": "View",
     "refreshMetadata": "Refresh metadata",
-    "viewOnStellarExpert": "View on stellar.expert"
+    "viewOnStellarExpert": "View on stellar.expert",
+    "removeCollectible": "Remove collectible"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -357,7 +358,24 @@
     "addressNoSpaces": "Address cannot contain spaces",
     "invalidTokenId": "Invalid token ID",
     "tokenIdNoSpaces": "Token ID cannot contain spaces",
-    "description": "If a collectible is missing from your wallet, you can manually add it here."
+    "description": "If a collectible is missing from your wallet, you can manually add it here.",
+    "toastSuccess": "Successfully added collectible",
+    "toastError": "Error adding collectible. {{errorMessage}}",
+    "alreadyInWallet": "This collectible is already in your wallet"
+  },
+  "collectibles": {
+    "errors": {
+      "collectionNotFound": "Collection not found for the given address.",
+      "notOwnedByUser": "It appears this collectible is not owned by you.",
+      "failedToAdd": "Failed to add collectible",
+      "failedToRemove": "Failed to remove collectible",
+      "invalidAddressOrTokenId": "Please make sure the collection address and token ID are correct."
+    },
+    "fallbacks": {
+      "tokenName": "Token #{{tokenId}}",
+      "unknownTrait": "Unknown",
+      "descriptionUnavailable": "Description unavailable"
+    }
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"

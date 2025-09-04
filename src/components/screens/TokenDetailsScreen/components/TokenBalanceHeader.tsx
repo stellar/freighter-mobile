@@ -1,8 +1,9 @@
 /* eslint-disable react/no-unstable-nested-components */
-import StellarLogo from "assets/logos/stellar-logo.svg";
+import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import {
   formatTokenAmount,
@@ -27,30 +28,6 @@ interface TokenDisplayInfo {
   symbol: string;
   name: string;
 }
-
-interface BalanceRowProps {
-  label: string;
-  value: string;
-  isNativeToken?: boolean;
-}
-
-const BalanceRow: React.FC<BalanceRowProps> = ({
-  label,
-  value,
-  isNativeToken,
-}) => (
-  <View className="flex-row justify-between items-center">
-    <Text md medium secondary>
-      {label}
-    </Text>
-    <View className="flex-row items-center gap-1">
-      {isNativeToken && <StellarLogo width={16} height={16} />}
-      <Text md medium>
-        {value}
-      </Text>
-    </View>
-  </View>
-);
 
 const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   tokenId,
@@ -138,34 +115,37 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const renderBalanceDetails = () => {
     const baseRows = [
       {
-        label: t("tokenDetailsScreen.balance"),
-        value: formatTokenAmount(tokenBalance.total, tokenBalance.tokenCode),
-        isNativeToken: tokenId === "native" || tokenId === NATIVE_TOKEN_CODE,
+        titleComponent: (
+          <Text md secondary color={THEME.colors.text.secondary}>
+            {t("tokenDetailsScreen.balance")}
+          </Text>
+        ),
+        trailingContent: (
+          <Text md secondary color={THEME.colors.text.primary}>
+            {formatTokenAmount(tokenBalance.total, tokenBalance.tokenCode)}
+          </Text>
+        ),
       },
     ];
 
     const priceRow = hasPrice
       ? {
-          label: t("tokenDetailsScreen.value"),
-          value: formatFiatAmount(tokenBalance.fiatTotal ?? 0),
-          isNativeToken: false,
+          titleComponent: (
+            <Text md secondary color={THEME.colors.text.secondary}>
+              {t("tokenDetailsScreen.value")}
+            </Text>
+          ),
+          trailingContent: (
+            <Text md secondary color={THEME.colors.text.primary}>
+              {formatFiatAmount(tokenBalance.fiatTotal ?? 0)}
+            </Text>
+          ),
         }
       : null;
 
     const rows = priceRow ? [...baseRows, priceRow] : baseRows;
 
-    return (
-      <View className="border border-border-primary p-6 rounded-[16px] gap-3">
-        {rows.map((row) => (
-          <BalanceRow
-            key={row.label}
-            label={row.label}
-            value={row.value}
-            isNativeToken={row.isNativeToken}
-          />
-        ))}
-      </View>
-    );
+    return <List variant="secondary" items={rows} />;
   };
 
   return (

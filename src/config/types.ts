@@ -269,6 +269,11 @@ export interface SearchTokenResponse {
       };
       score: number;
       paging_token: number;
+      tomlInfo: {
+        code: string;
+        image: string;
+        issuer: string;
+      };
     }[];
   };
 }
@@ -319,6 +324,49 @@ export type CustomTokenStorage = {
   [publicKey: string]: {
     [network: string]: CustomToken[];
   };
+};
+
+/**
+ * Represents a collectible contract with its associated token IDs
+ */
+export type CollectibleContract = {
+  contractId: string;
+  tokenIds: string[];
+};
+
+/**
+ * Storage structure for collectibles, organized by publicKey -> network -> contracts
+ * This allows efficiently storing and retrieving collectible contracts for any account across networks
+ */
+export type CollectiblesStorage = {
+  [publicKey: string]: {
+    [network: string]: CollectibleContract[];
+  };
+};
+
+/**
+ * Represents the JSON NFT metadata of a collectible
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0050.md#notes-on-name-symbol-and-token_uri
+ *
+ * @property {string} name - The name of the collectible
+ * @property {string} description - The description of the collectible
+ * @property {string} image - The image of the collectible
+ * @property {string} external_url - The external URL of the collectible
+ * @property {Object[]} attributes - The attributes of the collectible
+ */
+export type CollectibleMetadata = {
+  name?: string;
+  description?: string;
+  image?: string;
+  external_url?: string;
+  attributes?: {
+    trait_type?: string;
+    value?: string | number;
+
+    // the below are not being used in the frontend yet
+    display_type?: string;
+    max_value?: number;
+  }[];
 };
 
 /**

@@ -17,7 +17,7 @@
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import {
   TokenTypeWithCustomToken,
   BalanceMap,
@@ -39,7 +39,8 @@ export const freighterBackend = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_URL,
 });
 export const freighterBackendV2 = createApiService({
-  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
+  // baseURL: Config.FREIGHTER_BACKEND_V2_URL,
+  baseURL: "https://freighter-backend-v2-stg.stellar.org/api/v1",
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -113,32 +114,22 @@ export const getContractSpecs = async ({
   contractId: string;
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
-  try {
-    const response = await freighterBackend.get<{ data: Record<string, any> }>(
-      `/contract-spec/${contractId}`,
-      {
-        params: {
-          network: networkDetails.network,
-        },
+  const response = await freighterBackend.get<{ data: Record<string, any> }>(
+    `/contract-spec/${contractId}`,
+    {
+      params: {
+        network: networkDetails.network,
       },
-    );
+    },
+  );
 
-    const payload = response.data;
+  const payload = response.data;
 
-    if (!payload || !payload.data) {
-      throw new Error("Invalid response from backend");
-    }
-
-    return payload.data;
-  } catch (error) {
-    logger.error(
-      "backendApi.getContractSpecs",
-      "Error fetching contract spec",
-      error,
-    );
-
-    throw error;
+  if (!payload || !payload.data) {
+    throw normalizeError(payload);
   }
+
+  return payload.data;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -403,12 +394,7 @@ export const getTokenDetails = async ({
     );
 
     if (!response.data) {
-      logger.error(
-        "backendApi.getTokenDetails",
-        "Invalid response from indexer",
-        response.data,
-      );
-      throw new Error("Invalid response from indexer");
+      throw normalizeError(response);
     }
 
     return response.data;
@@ -423,6 +409,7 @@ export const getTokenDetails = async ({
       "Error fetching token details",
       error,
     );
+
     return null;
   }
 };
@@ -468,12 +455,7 @@ export const isSacContractExecutable = async (
     );
 
     if (!response.data) {
-      logger.error(
-        "backendApi.isSacContractExecutable",
-        "Invalid response from indexer",
-        response.data,
-      );
-      throw new Error("Invalid response from indexer");
+      throw normalizeError(response);
     }
 
     return response.data.isSacContract;
@@ -483,6 +465,7 @@ export const isSacContractExecutable = async (
       "Error fetching sac contract executable",
       error,
     );
+
     return false;
   }
 };
@@ -540,6 +523,7 @@ export const getIndexerAccountHistory = async ({
       "Error fetching account history",
       error,
     );
+
     return [];
   }
 };
@@ -646,7 +630,7 @@ export const handleContractLookup = async (
     issuer,
     isNative: false,
     tokenType: isSacContract
-      ? getTokenType(contractId)
+      ? getTokenType(tokenDetails.name)
       : TokenTypeWithCustomToken.CUSTOM_TOKEN,
     decimals: tokenDetails.decimals,
     name: tokenDetails.name,
@@ -790,13 +774,159 @@ interface ProtocolsResponse {
  * ```
  */
 export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
-  try {
-    const { data } =
-      await freighterBackendV2.get<ProtocolsResponse>("/protocols");
+  const { data } =
+    await freighterBackendV2.get<ProtocolsResponse>("/protocols");
 
-    if (!data.data || !data.data.protocols) {
+  if (!data.data || !data.data.protocols) {
+    throw normalizeError(data);
+  }
+
+  // Filter out blacklisted/unsupported protocols and
+  // transform the response to match our Protocol type
+  return data.data.protocols
+    .filter((protocol) => {
+      if (
+        protocol.is_blacklisted === true ||
+        protocol.is_wc_not_supported === true
+      ) {
+        return false;
+      }
+
+      return true;
+    })
+    .map((protocol) => ({
+      description: protocol.description,
+      iconUrl: protocol.icon_url,
+      name: protocol.name,
+      websiteUrl: protocol.website_url,
+      tags: protocol.tags,
+    }));
+};
+
+/**
+ * Parameters for fetching collectibles
+ * @interface FetchCollectiblesParams
+ * @property {string} owner - The public key of the account that owns the collectibles
+ * @property {Object[]} contracts - Array of contract objects to query
+ * @property {string} contracts[].id - The contract ID
+ * @property {string[]} contracts[].token_ids - Array of token IDs to fetch
+ */
+export interface FetchCollectiblesParams {
+  owner: string;
+  contracts: {
+    id: string;
+    token_ids: string[];
+  }[];
+}
+
+/**
+ * Represents a single collectible item returned from the backend.
+ * @typedef {Object} BackendCollectible
+ * @property {string} owner - The public key of the owner of the collectible.
+ * @property {string} token_id - The unique token ID of the collectible.
+ * @property {string} token_uri - The URI pointing to the collectible's metadata JSON.
+ */
+export type BackendCollectible = {
+  owner: string;
+  token_id: string;
+  token_uri: string; // token_uri is the URL of the token JSON metadata
+};
+
+/**
+ * Represents a collection of collectibles returned from the backend.
+ * @typedef {Object} BackendCollection
+ * @property {Object} collection - The collection object.
+ * @property {string} collection.address - The contract address of the collection.
+ * @property {string} collection.name - The human-readable name of the collection.
+ * @property {string} collection.symbol - The symbol/ticker of the collection.
+ * @property {BackendCollectible[]} collection.collectibles - Array of collectibles in this collection.
+ */
+export type BackendCollection = {
+  collection: {
+    address: string;
+    name: string;
+    symbol: string;
+    collectibles: BackendCollectible[];
+  };
+};
+
+/**
+ * Represents an error response for a collection or its tokens from the backend.
+ * @typedef {Object} BackendCollectionError
+ * @property {Object} error - The error object.
+ * @property {string} error.collection_address - The contract address of the collection with the error.
+ * @property {string} [error.error_message] - Optional error message for the collection.
+ * @property {Array<{token_id: string, error_message: string}>} [error.tokens] - Optional array of token-level errors.
+ */
+export type BackendCollectionError = {
+  error: {
+    collection_address: string;
+    error_message?: string;
+    tokens?: {
+      token_id: string;
+      error_message: string;
+    }[];
+  };
+};
+
+/**
+ * The response structure from the collectibles API endpoint.
+ * @typedef {Object} CollectiblesResponse
+ * @property {Object} data - The response data container.
+ * @property {(BackendCollection | BackendCollectionError)[]} data.collections - Array of collection objects or error objects.
+ */
+export type CollectiblesResponse = {
+  data: {
+    collections: (BackendCollection | BackendCollectionError)[];
+  };
+};
+
+/**
+ * Fetches collectibles from the backend collectibles endpoint
+ * @async
+ * @function fetchCollectibles
+ * @param {FetchCollectiblesParams} params - Parameters for collectibles fetching
+ * @returns {Promise<(BackendCollection | BackendCollectionError)[]>} Promise resolving to array of collections or error objects
+ *
+ * @description
+ * Retrieves collectibles from the backend:
+ * - Fetches collectibles for the specified owner and contracts
+ * - Uses POST request with owner and contracts array
+ * - Each contract object contains an ID and array of token IDs
+ * - Returns collections grouped by contract address
+ * - Handles API errors gracefully with logging
+ *
+ * @throws {Error} When the API request fails or response is invalid
+ *
+ * @example
+ * ```ts
+ * const collections = await fetchCollectibles({
+ *   owner: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+ *   contracts: [{
+ *     id: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+ *     token_ids: ["abc", "def", "ghi"]
+ *   }]
+ * });
+ * ```
+ */
+export const fetchCollectibles = async ({
+  owner,
+  contracts,
+}: FetchCollectiblesParams): Promise<
+  (BackendCollection | BackendCollectionError)[]
+> => {
+  try {
+    const { data } = await freighterBackendV2.post<CollectiblesResponse>(
+      "/collectibles",
+      {
+        owner,
+        contracts,
+      },
+    );
+
+    if (!data.data || !data.data.collections) {
       logger.error(
-        "backendApi.fetchProtocols",
+        "backendApi.fetchCollectibles",
         "Invalid response from server",
         data,
       );
@@ -804,30 +934,11 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       throw new Error("Invalid response from server");
     }
 
-    // Filter out blacklisted/unsupported protocols and
-    // transform the response to match our Protocol type
-    return data.data.protocols
-      .filter((protocol) => {
-        if (
-          protocol.is_blacklisted === true ||
-          protocol.is_wc_not_supported === true
-        ) {
-          return false;
-        }
-
-        return true;
-      })
-      .map((protocol) => ({
-        description: protocol.description,
-        iconUrl: protocol.icon_url,
-        name: protocol.name,
-        websiteUrl: protocol.website_url,
-        tags: protocol.tags,
-      }));
+    return data.data.collections;
   } catch (error) {
     logger.error(
-      "backendApi.fetchProtocols",
-      "Error fetching protocols",
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
       error,
     );
 

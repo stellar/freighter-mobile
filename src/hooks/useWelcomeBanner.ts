@@ -61,7 +61,11 @@ export const useWelcomeBanner = ({
         welcomeBannerBottomSheetModalRef.current?.present();
       }
     } catch (error) {
-      logger.error("Error checking welcome banner status:", String(error));
+      logger.error(
+        "[useWelcomeBanner]",
+        "Error checking welcome banner status:",
+        error,
+      );
     }
   }, [account?.publicKey, hasAccountSeenWelcome, isFunded, isLoadingBalances]);
 
@@ -76,7 +80,11 @@ export const useWelcomeBanner = ({
       }
       setHasAccountSeenWelcome(true);
     } catch (error) {
-      logger.error("Error saving welcome banner status:", String(error));
+      logger.error(
+        "[useWelcomeBanner]",
+        "Error saving welcome banner status:",
+        error,
+      );
     }
     welcomeBannerBottomSheetModalRef.current?.dismiss();
   }, [welcomeBannerShownKey]);

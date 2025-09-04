@@ -5,6 +5,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useLayoutEffect, useMemo, useCallback } from "react";
 import { Linking, Platform } from "react-native";
@@ -32,14 +33,17 @@ import { Linking, Platform } from "react-native";
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
   collectibleName,
+  tokenId,
 }: {
   collectionAddress: string;
   collectibleName?: string;
+  tokenId: string;
 }) => {
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
-  const { fetchCollectibles } = useCollectiblesStore();
+  const { account } = useGetActiveAccount();
+  const { fetchCollectibles, removeCollectible } = useCollectiblesStore();
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -57,7 +61,9 @@ export const useCollectibleDetailsHeader = ({
    */
   const handleRefreshMetadata = useCallback(async () => {
     try {
-      await fetchCollectibles();
+      if (account?.publicKey && network) {
+        await fetchCollectibles({ publicKey: account.publicKey, network });
+      }
     } catch (error) {
       logger.error(
         "useCollectibleDetailsHeader",
@@ -65,7 +71,7 @@ export const useCollectibleDetailsHeader = ({
         error,
       );
     }
-  }, [fetchCollectibles]);
+  }, [fetchCollectibles, account?.publicKey, network]);
 
   /**
    * Handles opening the collectible on stellar.expert explorer.
@@ -86,6 +92,39 @@ export const useCollectibleDetailsHeader = ({
   }, [network, collectionAddress]);
 
   /**
+   * Handles removing the collectible from the wallet.
+   * Removes the collectible from local storage and navigates back.
+   */
+  const handleRemoveCollectible = useCallback(async () => {
+    try {
+      if (account?.publicKey && network) {
+        await removeCollectible({
+          publicKey: account.publicKey,
+          network,
+          contractId: collectionAddress,
+          tokenId,
+        });
+
+        // Navigate back after successful removal
+        navigation.goBack();
+      }
+    } catch (error) {
+      logger.error(
+        "useCollectibleDetailsHeader",
+        "Failed to remove collectible:",
+        error,
+      );
+    }
+  }, [
+    removeCollectible,
+    account?.publicKey,
+    network,
+    collectionAddress,
+    tokenId,
+    navigation,
+  ]);
+
+  /**
    * Platform-specific system icons for the context menu actions.
    */
   const systemIcons = useMemo(
@@ -94,10 +133,12 @@ export const useCollectibleDetailsHeader = ({
         ios: {
           refreshMetadata: "arrow.clockwise", // Circular arrow for refresh
           viewOnStellarExpert: "link", // Link/chain icon
+          removeCollectible: "trash", // Trash icon for removal
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
+          removeCollectible: "delete", // Delete icon (Material)
         },
       }),
     [],
@@ -119,8 +160,27 @@ export const useCollectibleDetailsHeader = ({
         systemIcon: systemIcons?.viewOnStellarExpert,
         onPress: handleViewOnStellarExpert,
       },
+
+      // Only show remove collectible in development mode for
+      // testing purposes
+      ...(__DEV__
+        ? [
+            {
+              title: t("collectibleDetails.removeCollectible"),
+              systemIcon: systemIcons?.removeCollectible,
+              onPress: handleRemoveCollectible,
+              destructive: true, // Mark as destructive action
+            },
+          ]
+        : []),
     ],
-    [t, systemIcons, handleRefreshMetadata, handleViewOnStellarExpert],
+    [
+      t,
+      systemIcons,
+      handleRefreshMetadata,
+      handleViewOnStellarExpert,
+      handleRemoveCollectible,
+    ],
   );
 
   // Set up the right header menu
@@ -133,5 +193,6 @@ export const useCollectibleDetailsHeader = ({
   return {
     handleRefreshMetadata,
     handleViewOnStellarExpert,
+    handleRemoveCollectible,
   };
 };

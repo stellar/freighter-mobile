@@ -6,10 +6,14 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useToast } from "providers/ToastProvider";
 import React, { useState, useCallback, useRef } from "react";
 import { View, TextInput } from "react-native";
 
@@ -24,6 +28,14 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
   const { themeColors } = useColors();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+  const {
+    addCollectible,
+    isLoading: isAddingCollectible,
+    checkCollectibleExists,
+  } = useCollectiblesStore();
+  const { showToast } = useToast();
 
   const [collectionAddress, setCollectionAddress] = useState("");
   const [tokenId, setTokenId] = useState("");
@@ -35,7 +47,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
 
   const validateCollectionAddress = useCallback(
     (address: string) => {
-      if (!address.trim()) {
+      if (!address) {
         setCollectionAddressError("");
         return;
       }
@@ -45,7 +57,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         return;
       }
 
-      if (!isContractId(address.trim())) {
+      if (!isContractId(address)) {
         setCollectionAddressError(t("addCollectibleScreen.invalidAddress"));
         return;
       }
@@ -57,7 +69,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
 
   const validateTokenId = useCallback(
     (id: string) => {
-      if (!id.trim()) {
+      if (!id) {
         setTokenIdError("");
         return;
       }
@@ -67,23 +79,42 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         return;
       }
 
+      // Check if collectible already exists
+      if (collectionAddress && id) {
+        const exists = checkCollectibleExists({
+          contractId: collectionAddress,
+          tokenId: id,
+        });
+
+        if (exists) {
+          setTokenIdError(t("addCollectibleScreen.alreadyInWallet"));
+          return;
+        }
+      }
+
       setTokenIdError("");
     },
-    [t],
+    [t, collectionAddress, checkCollectibleExists],
   );
 
   const handleCollectionAddressChange = useCallback(
     (text: string) => {
-      setCollectionAddress(text);
-      validateCollectionAddress(text);
+      const trimmedText = text.trim();
+      setCollectionAddress(trimmedText);
+      validateCollectionAddress(trimmedText);
+      // Re-validate token ID since it depends on collection address
+      if (tokenId) {
+        validateTokenId(tokenId);
+      }
     },
-    [validateCollectionAddress],
+    [validateCollectionAddress, validateTokenId, tokenId],
   );
 
   const handleTokenIdChange = useCallback(
     (text: string) => {
-      setTokenId(text);
-      validateTokenId(text);
+      const trimmedText = text.trim();
+      setTokenId(trimmedText);
+      validateTokenId(trimmedText);
     },
     [validateTokenId],
   );
@@ -91,9 +122,10 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   const handlePasteCollectionAddress = useCallback(() => {
     getClipboardText()
       .then((text) => {
-        if (text) {
-          setCollectionAddress(text);
-          validateCollectionAddress(text);
+        const trimmedText = text.trim();
+        if (trimmedText) {
+          setCollectionAddress(trimmedText);
+          validateCollectionAddress(trimmedText);
         }
       })
       .catch((error) => {
@@ -108,9 +140,10 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   const handlePasteTokenId = useCallback(() => {
     getClipboardText()
       .then((text) => {
-        if (text) {
-          setTokenId(text);
-          validateTokenId(text);
+        const trimmedText = text.trim();
+        if (trimmedText) {
+          setTokenId(trimmedText);
+          validateTokenId(trimmedText);
         }
       })
       .catch((error) => {
@@ -123,21 +156,44 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   }, [validateTokenId, getClipboardText]);
 
   const isFormValid =
-    collectionAddress.trim() &&
-    tokenId.trim() &&
-    !collectionAddressError &&
-    !tokenIdError;
+    collectionAddress && tokenId && !collectionAddressError && !tokenIdError;
 
-  const handleButtonPress = useCallback(() => {
+  const handleBottomButtonPress = useCallback(async () => {
     if (isFormValid) {
-      navigation.goBack();
+      try {
+        await addCollectible({
+          publicKey: account?.publicKey || "",
+          network,
+          contractId: collectionAddress,
+          tokenId,
+        });
+
+        // Show success toast
+        showToast({
+          title: t("addCollectibleScreen.toastSuccess"),
+          variant: "success",
+        });
+
+        // Navigate back after successful addition
+        navigation.goBack();
+      } catch (error) {
+        // Show error toast with friendly error message
+        showToast({
+          toastId: "add-collectible-error",
+          title: t("addCollectibleScreen.toastError", {
+            errorMessage:
+              error instanceof Error ? error.message : t("common.unknownError"),
+          }),
+          variant: "error",
+        });
+      }
       return;
     }
 
     // Focus next available input field
-    if (!collectionAddress.trim() || collectionAddressError) {
+    if (!collectionAddress || collectionAddressError) {
       collectionAddressRef.current?.focus();
-    } else if (!tokenId.trim() || tokenIdError) {
+    } else if (!tokenId || tokenIdError) {
       tokenIdRef.current?.focus();
     }
   }, [
@@ -147,6 +203,11 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     collectionAddressError,
     tokenIdError,
     navigation,
+    addCollectible,
+    account?.publicKey,
+    network,
+    showToast,
+    t,
   ]);
 
   const buttonTitle = isFormValid
@@ -194,7 +255,14 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
       </View>
 
       <View className="mt-auto">
-        <Button xl tertiary onPress={handleButtonPress} isFullWidth>
+        <Button
+          xl
+          tertiary
+          onPress={handleBottomButtonPress}
+          isFullWidth
+          isLoading={isAddingCollectible}
+          disabled={isAddingCollectible}
+        >
           {buttonTitle}
         </Button>
       </View>

@@ -1,0 +1,15 @@
+# Sentry configuration for Android
+# Copy this file to sentry.properties and fill in your actual values
+
+# Your Sentry organization slug
+defaults.org=stellar-test
+
+# Your Sentry project slug
+defaults.project=freighter-test
+
+# Sentry instance URL (usually https://sentry.io/)
+defaults.url=https://sentry.io/
+
+# Your Sentry auth token (get this from Sentry dashboard)
+# This token is used for uploading source maps and debug symbols
+auth.token=your_auth_token_here

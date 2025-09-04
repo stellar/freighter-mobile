@@ -143,6 +143,7 @@ export const clearAllCookies = async (): Promise<boolean> => {
     return result;
   } catch (error) {
     logger.error("clearAllCookies", "Failed to clear cookies", error);
+
     return false;
   }
 };
@@ -177,6 +178,7 @@ export const clearAllWebViewData = async (): Promise<boolean> => {
     return success;
   } catch (error) {
     logger.error("clearAllWebViewData", "Failed to clear WebView data", error);
+
     return false;
   }
 };
