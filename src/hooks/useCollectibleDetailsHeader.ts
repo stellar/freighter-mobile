@@ -136,11 +136,15 @@ export const useCollectibleDetailsHeader = ({
         systemIcon: systemIcons?.viewOnStellarExpert,
         onPress: handleViewOnStellarExpert,
       },
-      {
-        title: t("collectibleDetails.saveToPhotos"),
-        systemIcon: systemIcons?.saveToPhotos,
-        onPress: handleSaveToPhotos,
-      },
+      ...(collectibleImage
+        ? [
+            {
+              title: t("collectibleDetails.saveToPhotos"),
+              systemIcon: systemIcons?.saveToPhotos,
+              onPress: handleSaveToPhotos,
+            },
+          ]
+        : []),
     ],
     [
       t,
@@ -148,6 +152,7 @@ export const useCollectibleDetailsHeader = ({
       handleRefreshMetadata,
       handleViewOnStellarExpert,
       handleSaveToPhotos,
+      collectibleImage,
     ],
   );
 

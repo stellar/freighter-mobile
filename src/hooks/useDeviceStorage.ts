@@ -5,7 +5,7 @@ import {
   unlink,
 } from "@dr.pogodin/react-native-fs";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
@@ -16,6 +16,44 @@ import {
   PERMISSIONS,
   RESULTS,
 } from "react-native-permissions";
+
+/**
+ * Extracts file extension from URL and validates it's a supported image format
+ * @param imageUrl - URL to extract extension from
+ * @returns string - Valid image extension or 'jpg' as fallback
+ */
+const getImageExtensionFromUrl = (imageUrl: string): string => {
+  try {
+    // Remove query parameters and get the last part after the last dot
+    const cleanUrl = imageUrl.split("?")[0];
+    const parts = cleanUrl.split(".");
+
+    if (parts.length > 1) {
+      const extension = parts[parts.length - 1].toLowerCase();
+
+      const supportedFormats = [
+        "jpg",
+        "jpeg",
+        "png",
+        "webp",
+        "gif",
+        "bmp",
+        "tiff",
+      ];
+
+      if (supportedFormats.includes(extension)) {
+        return extension;
+      }
+    }
+  } catch (error) {
+    logger.warn("DeviceStorage", "Failed to extract extension from URL", {
+      imageUrl,
+      error,
+    });
+  }
+
+  return "jpg";
+};
 
 // TODO: use normalizeError when PR #318 is merged
 const hasAndroidPermission = async () => {
@@ -44,34 +82,31 @@ const hasAndroidPermission = async () => {
 };
 
 /**
- * Downloads an image from a remote URL to a temporary local file
+ * Downloads an image from a remote URL to a temporary local file with proper format detection
  * @param imageUrl - The remote URL of the image to download
+ * @param imageName - Base name for the downloaded file
  * @returns Promise<string> - The local file path of the downloaded image
  */
 const downloadImageToTemp = async (
   imageUrl: string,
   imageName: string,
 ): Promise<string> => {
-  const fileName = `${imageName}_${Date.now()}.jpg`;
+  const extension = getImageExtensionFromUrl(imageUrl);
+  const fileName = `${imageName}_${Date.now()}.${extension}`;
   const localFilePath = `${DocumentDirectoryPath}/${fileName}`;
 
-  try {
-    const downloadResult = await downloadFile({
-      fromUrl: imageUrl,
-      toFile: localFilePath,
-    }).promise;
+  const downloadResult = await downloadFile({
+    fromUrl: imageUrl,
+    toFile: localFilePath,
+  }).promise;
 
-    if (downloadResult.statusCode !== 200) {
-      throw new Error(
-        `Download failed with status code: ${downloadResult.statusCode}`,
-      );
-    }
-
-    return localFilePath;
-  } catch (error) {
-    logger.error("DeviceStorage", "Error downloading image", error);
-    throw error;
+  if (downloadResult.statusCode !== 200) {
+    throw normalizeError(
+      `Download failed with status code: ${downloadResult.statusCode}`,
+    );
   }
+
+  return localFilePath;
 };
 
 /**
