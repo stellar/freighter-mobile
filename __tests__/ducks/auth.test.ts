@@ -654,6 +654,11 @@ describe("auth duck", () => {
       const mockCallback = jest.fn().mockResolvedValue("success");
       const mockArgs = ["arg1", "arg2"];
 
+      // Mock biometrics as disabled so the function returns early
+      (usePreferencesStore.getState as jest.Mock).mockReturnValue({
+        isBiometricsEnabled: false,
+      });
+
       (rnBiometrics.isSensorAvailable as jest.Mock).mockResolvedValue(false);
 
       const response = await result.current.verifyActionWithBiometrics(

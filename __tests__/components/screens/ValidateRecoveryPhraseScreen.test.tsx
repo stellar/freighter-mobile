@@ -91,6 +91,7 @@ jest.mock("ducks/auth", () => ({
         error: mockError,
         isLoading: mockIsLoading,
         setSignInMethod: jest.fn(),
+        storeBiometricPassword: jest.fn(() => Promise.resolve()),
       });
     }
     return {
@@ -98,6 +99,7 @@ jest.mock("ducks/auth", () => ({
       error: mockError,
       isLoading: mockIsLoading,
       setSignInMethod: jest.fn(),
+      storeBiometricPassword: jest.fn(() => Promise.resolve()),
     };
   }),
   getLoginType: jest.fn((biometryType) => {

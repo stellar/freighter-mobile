@@ -43,6 +43,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
 import { DevSettings } from "react-native";
+import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
 import { getAccount } from "services/stellar";
@@ -51,7 +52,6 @@ import {
   clearTemporaryData,
   getHashKey,
 } from "services/storage/helpers";
-import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
 import {
   biometricDataStorage,
   dataStorage,
@@ -296,6 +296,7 @@ interface AuthActions {
   navigateToLockScreen: () => void;
   getTemporaryStore: () => Promise<TemporaryStore | null>;
   verifyBiometrics: () => Promise<boolean>;
+  storeBiometricPassword: (password: string) => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -1512,6 +1513,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       }
     },
 
+    storeBiometricPassword: async (password: string) => {
+      await biometricDataStorage.setItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        password,
+      );
+    },
+
     /**
      * Logs out the user by clearing sensitive data
      *
@@ -1840,10 +1848,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
     /**
      * Enables biometrics for the current session
      *
-     * This function is specifically for enabling biometrics during onboarding.
+     * This function is specifically for enabling biometrics on screens without password.
      * It forces biometric authentication and executes the callback upon success.
      * Unlike verifyActionWithBiometrics, this function always requires biometric
-     * authentication and does not fall back to password-based authentication.
+     * authentication and does not fall back to password-based authentication nor access biometric password from storage or route params to verify it.
      *
      * @template T - The return type of the callback function
      * @param {(biometricPassword?: string) => Promise<T>} callback - The function to execute after successful biometric authentication
@@ -1888,7 +1896,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             cancel: t("common.cancel"),
           },
         );
-
         if (!storedData || !storedData.password) {
           throw new Error(
             "No stored password found for biometric authentication",
@@ -1952,6 +1959,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       ...args: P
     ): Promise<T> => {
       try {
+        const rnBiometrics = new ReactNativeBiometrics({
+          allowDeviceCredentials: true,
+        });
         // Check if biometrics is enabled first
         const { isBiometricsEnabled } = usePreferencesStore.getState();
         const { signInMethod } = get();

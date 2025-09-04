@@ -85,7 +85,8 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       entropyBits: 128,
     }),
   );
-  const { error, isLoading, signUp, clearError } = useAuthenticationStore();
+  const { error, isLoading, signUp, clearError, storeBiometricPassword } =
+    useAuthenticationStore();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
@@ -110,9 +111,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const confirmSkip = useCallback(() => {
     if (biometryType) {
-      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-        password,
-        mnemonicPhrase: recoveryPhrase,
+      storeBiometricPassword(password).then(() => {
+        navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+          password,
+          mnemonicPhrase: recoveryPhrase,
+        });
       });
     } else {
       // No biometrics available, proceed with normal signup
@@ -125,7 +128,14 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     }
 
     skipModalRef.current?.dismiss();
-  }, [signUp, password, recoveryPhrase, navigation, biometryType]);
+  }, [
+    signUp,
+    password,
+    recoveryPhrase,
+    navigation,
+    biometryType,
+    storeBiometricPassword,
+  ]);
 
   const handleConfirmSkip = useCallback(() => {
     confirmSkip();

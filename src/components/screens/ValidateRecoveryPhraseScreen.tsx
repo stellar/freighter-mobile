@@ -38,7 +38,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const { biometryType } = useBiometrics();
   const [roundIndex, setRoundIndex] = useState(0);
 
-  const { signUp } = useAuthenticationStore();
+  const { signUp, storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -71,10 +71,11 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   const handleFinishSignUp = useCallback(() => {
     if (biometryType) {
-      // Navigate to biometrics onboarding screen
-      navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-        password,
-        mnemonicPhrase: recoveryPhrase,
+      storeBiometricPassword(password).then(() => {
+        navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+          password,
+          mnemonicPhrase: recoveryPhrase,
+        });
       });
     } else {
       // No biometrics available, proceed with normal signup
@@ -86,7 +87,14 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
       analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     }
-  }, [password, recoveryPhrase, signUp, navigation, biometryType]);
+  }, [
+    password,
+    recoveryPhrase,
+    signUp,
+    navigation,
+    biometryType,
+    storeBiometricPassword,
+  ]);
   const handleWordSelect = useCallback((word: string) => {
     setSelectedWord(word);
     setError(undefined);
