@@ -20,7 +20,9 @@ const clearTemporaryData = async (): Promise<void> => {
  */
 const clearNonSensitiveData = async (): Promise<void> => {
   const keysToClear = Object.values(STORAGE_KEYS).filter(
-    (key) => key !== STORAGE_KEYS.ACTIVE_NETWORK,
+    (key) =>
+      key !== STORAGE_KEYS.ACTIVE_NETWORK &&
+      key !== STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
   );
 
   await Promise.all(keysToClear.map((key) => dataStorage.remove(key)));

@@ -156,11 +156,12 @@ export const useBiometrics = () => {
   useEffect(() => {
     const checkBiometricsAvailable = async () => {
       const type = await checkBiometrics();
-      if (!isBiometricsEnabled) {
+      if (!isBiometricsEnabled || !type) {
         setSignInMethod(LoginType.PASSWORD);
-      } else if (type && isBiometricsEnabled) {
-        setSignInMethod(getLoginType(type));
+        return;
       }
+
+      setSignInMethod(getLoginType(type));
     };
     checkBiometricsAvailable();
   }, [checkBiometrics, setSignInMethod, isBiometricsEnabled]);
@@ -169,6 +170,7 @@ export const useBiometrics = () => {
     biometryType,
     setIsBiometricsEnabled,
     isBiometricsEnabled,
+    checkBiometrics,
     enableBiometrics: handleEnableBiometrics,
     disableBiometrics: handleDisableBiometrics,
     getBiometricButtonIcon: (color?: string) => getButtonIcon(color),

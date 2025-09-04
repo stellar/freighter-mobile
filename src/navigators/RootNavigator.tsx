@@ -67,7 +67,7 @@ export const RootNavigator = () => {
   const [initializing, setInitializing] = useState(true);
   const hasSeenFaceIdOnboardingRef = useRef(false);
   const { t } = useAppTranslation();
-  const { biometryType } = useBiometrics();
+  const { checkBiometrics } = useBiometrics();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
@@ -80,19 +80,22 @@ export const RootNavigator = () => {
       RNBootSplash.hide({ fade: true });
     };
 
-    const triggerFaceIdOnboarding = async () => {
-      const hasSeenFaceIdOnboardingStorage = await dataStorage.getItem(
-        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
-      );
-      if (
-        hasSeenFaceIdOnboardingStorage !== "true" &&
-        !!biometryType &&
-        authStatus === AUTH_STATUS.AUTHENTICATED
-      ) {
+    const triggerFaceIdOnboarding = () => {
+      if (authStatus === AUTH_STATUS.AUTHENTICATED) {
         setTimeout(() => {
-          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-            postOnboarding: true,
-          });
+          dataStorage
+            .getItem(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING)
+            .then(async (hasSeenFaceIdOnboardingStorage) => {
+              const type = await checkBiometrics();
+              if (hasSeenFaceIdOnboardingStorage !== "true" && !!type) {
+                navigation.navigate(
+                  AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
+                  {
+                    postOnboarding: true,
+                  },
+                );
+              }
+            });
         }, 3000);
       }
     };
@@ -105,7 +108,7 @@ export const RootNavigator = () => {
     hasSeenFaceIdOnboardingRef,
     navigation,
     authStatus,
-    biometryType,
+    checkBiometrics,
   ]);
 
   // Make the stack re-render when auth status changes

@@ -1457,6 +1457,14 @@ const selectAccount = async (publicKey: string): Promise<void> => {
   await dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, account.id);
 };
 
+const clearBiometricsData = async (): Promise<void> => {
+  usePreferencesStore.getState().setIsBiometricsEnabled(false);
+  await Promise.all([
+    dataStorage.remove(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING),
+    biometricDataStorage.clear(),
+  ]);
+};
+
 /**
  * Authentication Store
  *
@@ -1557,6 +1565,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               // This will redirect to the welcome screen where the user can create a new account or restore from seed phrase
             } else {
               await clearNonSensitiveData();
+
+              await clearBiometricsData();
 
               set({
                 ...initialState,

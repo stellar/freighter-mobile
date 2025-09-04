@@ -24,7 +24,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo } from "react";
-import { View, Image } from "react-native";
+import { View, Image, Platform } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
 import { analytics } from "services/analytics";
@@ -40,7 +40,8 @@ type BiometricsOnboardingScreenProps = NativeStackScreenProps<
  *
  * This component renders either a Face ID or fingerprint icon with a blurred
  * background overlay, automatically determining the appropriate icon and size
- * based on the biometry type.
+ * based on the biometry type. On Android, it uses a fallback background color
+ * instead of blur to avoid rendering issues.
  *
  * @param {BIOMETRY_TYPE} iconBiometryType - The type of biometric authentication
  * @param {string} color - The color of the icon (defaults to white)
@@ -60,7 +61,7 @@ const BlurredBackgroundIcon = ({
   iconContainerDimensions: { width: number; height: number };
 }) => {
   const isFaceId = FACE_ID_BIOMETRY_TYPES.includes(iconBiometryType);
-  const defaultIconSize = isFaceId ? pxValue(80) : pxValue(72);
+  const defaultIconSize = pxValue(80);
   const iconSizeToUse = iconSize ?? defaultIconSize;
 
   const IconComponent = isFaceId ? Icon.FaceId01 : Icon.TouchId;
@@ -70,21 +71,43 @@ const BlurredBackgroundIcon = ({
       className="items-center justify-center mt-4 flex-grow-0"
       style={iconContainerDimensions}
     >
-      <View className="absolute inset-0">
-        <BlurView
-          blurType="light"
-          blurAmount={6}
-          reducedTransparencyFallbackColor={color}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            borderRadius: Math.round(pxValue(16)), // care about rounded values for blurView
-            zIndex: 1,
-          }}
-        />
+      <View
+        style={{
+          width: iconContainerDimensions.width,
+          height: iconContainerDimensions.height,
+          position: "relative",
+        }}
+      >
+        {Platform.OS === "ios" ? (
+          <BlurView
+            blurType="light"
+            blurAmount={6}
+            reducedTransparencyFallbackColor={color}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+              borderRadius: Math.round(pxValue(16)), // care about rounded values for blurView
+              zIndex: 1,
+            }}
+          />
+        ) : (
+          // Android fallback: use a semi-transparent background instead of blur
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: iconContainerDimensions.width,
+              height: iconContainerDimensions.height,
+              borderRadius: Math.round(pxValue(16)),
+              backgroundColor: "rgba(255, 255, 255, 0.17)",
+              zIndex: 1,
+            }}
+          />
+        )}
         <View
           className="absolute inset-0 items-center justify-center"
           style={{ zIndex: 2 }}
@@ -100,10 +123,13 @@ export const BiometricsOnboardingScreen: React.FC<
   BiometricsOnboardingScreenProps
 > = ({ route }) => {
   const { t } = useAppTranslation();
-  const { isLoading, signUp } = useAuthenticationStore();
+  const {
+    isLoading,
+    signUp,
+    enableBiometrics: enableBiometricsAction,
+  } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
-  const { enableBiometrics: enableBiometricsAction } = useAuthenticationStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -115,12 +141,13 @@ export const BiometricsOnboardingScreen: React.FC<
 
     if (route.params.postOnboarding) {
       await enableBiometricsAction(async () => {
-        setIsBiometricsEnabled(true);
-        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
         await dataStorage.setItem(
           STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
           "true",
         );
+        setIsBiometricsEnabled(true);
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
+
         return Promise.resolve();
       });
       return;
@@ -132,12 +159,17 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      enableBiometricsAction((biometricPassword) => {
+      enableBiometricsAction(async (biometricPassword) => {
+        await dataStorage.setItem(
+          STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+          "true",
+        );
         signUp({
           mnemonicPhrase,
           password: biometricPassword ?? password,
         });
         setIsBiometricsEnabled(true);
+
         return Promise.resolve();
       });
 
@@ -150,11 +182,6 @@ export const BiometricsOnboardingScreen: React.FC<
         error,
       );
       // Handle error appropriately
-    } finally {
-      await dataStorage.setItem(
-        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
-        "true",
-      );
     }
   }, [
     route.params,
@@ -166,13 +193,10 @@ export const BiometricsOnboardingScreen: React.FC<
 
   const handleSkip = async () => {
     const { password, mnemonicPhrase } = route.params;
+    await dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING, "true");
 
     if (route.params.postOnboarding) {
       navigation.goBack();
-      await dataStorage.setItem(
-        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
-        "true",
-      );
       return;
     }
 
@@ -199,11 +223,6 @@ export const BiometricsOnboardingScreen: React.FC<
         error,
       );
       // Handle error appropriately
-    } finally {
-      await dataStorage.setItem(
-        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
-        "true",
-      );
     }
   };
 
@@ -327,11 +346,15 @@ export const BiometricsOnboardingScreen: React.FC<
     [t],
   );
 
+  if (!biometryType) {
+    return null;
+  }
+
   return (
     <OnboardLayout
       icon={getIcon()}
-      title={biometryTitle[biometryType!] ?? ""}
-      footerNoteText={footerNoteText[biometryType!] ?? ""}
+      title={biometryTitle[biometryType] ?? ""}
+      footerNoteText={footerNoteText[biometryType] ?? ""}
       defaultActionButtonIcon={getIcon(themeColors.foreground.primary, false)}
       defaultActionButtonIconPosition={IconPosition.LEFT}
       defaultActionButtonText={t("common.enable")}
@@ -343,17 +366,16 @@ export const BiometricsOnboardingScreen: React.FC<
     >
       <View className="pr-8">
         <Text secondary md>
-          {biometryDescription[biometryType!] ?? ""}
+          {biometryDescription[biometryType] ?? ""}
         </Text>
       </View>
       <View className="items-center">
-        {biometryType && (
-          <BlurredBackgroundIcon
-            iconBiometryType={biometryType}
-            color={themeColors.white}
-            iconContainerDimensions={iconContainerDimensions}
-          />
-        )}
+        <BlurredBackgroundIcon
+          iconBiometryType={biometryType}
+          color={themeColors.white}
+          iconContainerDimensions={iconContainerDimensions}
+        />
+
         {iPhoneFrame}
       </View>
     </OnboardLayout>
