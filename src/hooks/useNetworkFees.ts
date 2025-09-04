@@ -29,7 +29,7 @@ export const useNetworkFees = () => {
         setRecommendedFee(fee);
         setNetworkCongestion(congestion);
       } catch (error) {
-        logger.error("Error fetching network fees:", String(error));
+        logger.error("[useNetworkFees]", "Error fetching network fees:", error);
       }
     };
 

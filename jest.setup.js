@@ -350,3 +350,16 @@ jest.mock("react-native-fast-opencv", () => ({
     clearBuffers: jest.fn(),
   },
 }));
+
+// Mock Sentry for Jest tests
+jest.mock("@sentry/react-native", () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  addBreadcrumb: jest.fn(),
+  setContext: jest.fn(),
+  setUser: jest.fn(),
+  setTag: jest.fn(),
+  setExtra: jest.fn(),
+  wrap: jest.fn((component) => component), // Return component as-is for testing
+}));

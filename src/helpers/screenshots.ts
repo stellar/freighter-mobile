@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
-import { logger } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 import { BrowserTab } from "ducks/browserTabs";
 import { Platform } from "react-native";
 import {
@@ -42,6 +42,7 @@ export const getStoredScreenshots = async (): Promise<
     return new Map(Object.entries(screenshotsMap));
   } catch (error) {
     logger.error("screenshots", "Failed to get stored screenshots:", error);
+
     return new Map();
   }
 };
@@ -90,6 +91,7 @@ export const removeTabScreenshot = async (tabId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("removeTabScreenshot", "Failed to remove screenshot:", error);
+
     return false;
   }
 };
@@ -142,6 +144,7 @@ export const clearAllScreenshots = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("clearAllScreenshots", "Failed to clear screenshots:", error);
+
     return false;
   }
 };
@@ -195,7 +198,11 @@ const getBlurredImage = (uri: string) => {
     const mat = OpenCV.base64ToMat(base64Data);
 
     if (!base64Data || base64Data.length === 0) {
-      logger.error("getBlurredImage", "Empty base64 data provided");
+      logger.error(
+        "getBlurredImage",
+        "base64 error",
+        normalizeError("Empty base64 data provided"),
+      );
 
       return uri;
     }

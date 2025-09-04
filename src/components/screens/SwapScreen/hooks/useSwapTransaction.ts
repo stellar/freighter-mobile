@@ -66,30 +66,21 @@ export const useSwapTransaction = ({
       return;
     }
 
-    try {
-      const transactionXDR = await buildSwapTransaction({
-        sourceAmount,
-        sourceBalance,
-        destinationBalance,
-        path: pathResult.path,
-        destinationAmount: pathResult.destinationAmount,
-        destinationAmountMin: pathResult.destinationAmountMin,
-        transactionFee: swapFee,
-        transactionTimeout: swapTimeout,
-        network,
-        senderAddress: account.publicKey,
-      });
+    const transactionXDR = await buildSwapTransaction({
+      sourceAmount,
+      sourceBalance,
+      destinationBalance,
+      path: pathResult.path,
+      destinationAmount: pathResult.destinationAmount,
+      destinationAmountMin: pathResult.destinationAmountMin,
+      transactionFee: swapFee,
+      transactionTimeout: swapTimeout,
+      network,
+      senderAddress: account.publicKey,
+    });
 
-      if (!transactionXDR) {
-        throw new Error("Failed to build swap transaction");
-      }
-    } catch (error) {
-      logger.error(
-        "SwapTransaction",
-        "Failed to setup swap transaction",
-        error,
-      );
-      throw error;
+    if (!transactionXDR) {
+      throw new Error("Failed to build swap transaction");
     }
   };
 
