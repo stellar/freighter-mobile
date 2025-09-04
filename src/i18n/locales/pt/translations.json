@@ -334,11 +334,9 @@
   },
   "collectibles": {
     "errors": {
-      "invalidParameters": "Parâmetros inválidos para adicionar colecionável.",
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
       "notOwnedByUser": "Parece que este colecionável não é seu.",
       "failedToAdd": "Falha ao adicionar colecionável",
-      "invalidRemoveParameters": "Parâmetros inválidos para remover colecionável.",
       "failedToRemove": "Falha ao remover colecionável",
       "invalidAddressOrTokenId": "Certifique-se de que o endereço da coleção e o ID do token estão corretos."
     },

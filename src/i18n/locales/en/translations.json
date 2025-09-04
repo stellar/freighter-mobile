@@ -362,11 +362,9 @@
   },
   "collectibles": {
     "errors": {
-      "invalidParameters": "Invalid parameters for adding collectible.",
       "collectionNotFound": "Collection not found for the given address.",
       "notOwnedByUser": "It appears this collectible is not owned by you.",
       "failedToAdd": "Failed to add collectible",
-      "invalidRemoveParameters": "Invalid parameters for removing collectible.",
       "failedToRemove": "Failed to remove collectible",
       "invalidAddressOrTokenId": "Please make sure the collection address and token ID are correct."
     },

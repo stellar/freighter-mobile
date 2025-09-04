@@ -438,11 +438,6 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Validate parameters
-      if (!publicKey || !network || !contractId || !tokenId) {
-        throw new Error(t("collectibles.errors.invalidParameters"));
-      }
-
       // Fetch the single collectible from the API
       const collections = await apiFetchCollectibles({
         owner: publicKey,
@@ -554,11 +549,6 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Validate parameters
-      if (!publicKey || !network || !contractId || !tokenId) {
-        throw new Error(t("collectibles.errors.invalidRemoveParameters"));
-      }
-
       // Remove the collectible from local storage
       await removeCollectibleFromStorage({
         network,
