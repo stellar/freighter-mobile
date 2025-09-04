@@ -316,7 +316,8 @@
     "refreshMetadata": "Atualizar metadados",
     "viewOnStellarExpert": "Ver no stellar.expert",
     "saveToPhotos": "Salvar na galeria",
-    "imageSavedToPhotos": "Imagem salva na galeria"
+    "imageSavedToPhotos": "Imagem salva na galeria",
+    "imageSaveFailed": "Falha ao salvar imagem na galeria"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",

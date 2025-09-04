@@ -344,7 +344,8 @@
     "refreshMetadata": "Refresh metadata",
     "viewOnStellarExpert": "View on stellar.expert",
     "saveToPhotos": "Save to photos",
-    "imageSavedToPhotos": "Image saved to photos"
+    "imageSavedToPhotos": "Image saved to photos",
+    "imageSaveFailed": "Failed to save image to photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",

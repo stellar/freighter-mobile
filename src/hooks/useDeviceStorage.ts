@@ -140,6 +140,15 @@ const useDeviceStorage = () => {
 
       tempFilePath = await downloadImageToTemp(imageUrl, imageName);
 
+      if (!tempFilePath) {
+        showToast({
+          title: t("collectibleDetails.imageSaveFailed"),
+          variant: "error",
+        });
+
+        return;
+      }
+
       CameraRoll.saveAsset(tempFilePath).finally(() => {
         showToast({
           title: t("collectibleDetails.imageSavedToPhotos"),
