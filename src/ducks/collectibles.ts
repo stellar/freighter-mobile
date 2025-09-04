@@ -15,6 +15,7 @@ import { create } from "zustand";
 
 /**
  * Represents a trait/attribute of a collectible NFT
+ * @interface CollectibleTrait
  */
 export interface CollectibleTrait {
   /** The name of the trait (e.g., "Color", "Rarity") */
@@ -25,6 +26,7 @@ export interface CollectibleTrait {
 
 /**
  * Represents a single collectible NFT item
+ * @interface Collectible
  */
 export interface Collectible {
   /** Unique identifier for the collection this collectible belongs to */
@@ -47,6 +49,7 @@ export interface Collectible {
 
 /**
  * Represents a collection of collectibles grouped by collection address
+ * @interface Collection
  */
 export interface Collection {
   /** Unique identifier for the collection */
@@ -63,6 +66,7 @@ export interface Collection {
 
 /**
  * State interface for the collectibles Zustand store
+ * @interface CollectiblesState
  */
 interface CollectiblesState {
   /** Array of collections */
@@ -243,6 +247,28 @@ const dummyCollections: Collection[] = [
  * - Loading states
  * - Error handling
  * - Data fetching operations
+ * - Local storage synchronization
+ *
+ * @example
+ * ```ts
+ * const { collections, fetchCollectibles, addCollectible } = useCollectiblesStore();
+ *
+ * // Fetch collectibles for an account
+ * await fetchCollectibles({
+ *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+ *   network: "PUBLIC"
+ * });
+ *
+ * // Add a new collectible
+ * await addCollectible({
+ *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+ *   network: "PUBLIC",
+ *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+ *   tokenId: "123"
+ * });
+ * ```
+ *
+ * @returns {CollectiblesState} The collectibles store state and actions
  */
 export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   collections: [],
@@ -250,14 +276,25 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   error: null,
 
   /**
-   * Fetches collectibles from the API
+   * Fetches collectibles from the API and updates the store
    *
-   * Currently uses dummy data for development/testing.
+   * Retrieves collectibles from local storage contracts and fetches their metadata
+   * from the backend API. Filters out error collections and only includes collectibles
+   * owned by the specified public key.
    *
    * @param {Object} params - Parameters for fetching collectibles
    * @param {string} params.publicKey - The public key of the account to fetch collectibles for
    * @param {string} params.network - The network to query (mainnet/testnet)
    * @returns {Promise<void>} Promise that resolves when fetch completes
+   * @throws {Error} When API request fails or data transformation fails
+   *
+   * @example
+   * ```ts
+   * await fetchCollectibles({
+   *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+   *   network: "PUBLIC"
+   * });
+   * ```
    */
   fetchCollectibles: async ({
     publicKey,
@@ -364,7 +401,10 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   },
 
   /**
-   * Adds a single collectible to the store and local storage after validation.
+   * Adds a single collectible to the store and local storage after validation
+   *
+   * Validates the collectible exists and is owned by the specified public key,
+   * then adds it to local storage and refreshes the collections.
    *
    * @param {Object} params - Parameters for adding a collectible
    * @param {string} params.publicKey - The public key of the account owning the collectible
@@ -372,6 +412,17 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
    * @param {string} params.contractId - The contract ID of the collectible
    * @param {string} params.tokenId - The token ID of the collectible
    * @returns {Promise<void>} Promise that resolves when add completes
+   * @throws {Error} When parameters are invalid, collectible doesn't exist, or API fails
+   *
+   * @example
+   * ```ts
+   * await addCollectible({
+   *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+   *   network: "PUBLIC",
+   *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+   *   tokenId: "123"
+   * });
+   * ```
    */
   addCollectible: async ({
     publicKey,
@@ -466,7 +517,10 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   },
 
   /**
-   * Removes a single collectible from local storage and updates the store.
+   * Removes a single collectible from local storage and updates the store
+   *
+   * Removes the collectible from local storage and refreshes the collections
+   * to reflect the removal.
    *
    * @param {Object} params - Parameters for removing a collectible
    * @param {string} params.publicKey - The public key of the account owning the collectible
@@ -474,6 +528,17 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
    * @param {string} params.contractId - The contract ID of the collectible
    * @param {string} params.tokenId - The token ID of the collectible
    * @returns {Promise<void>} Promise that resolves when remove completes
+   * @throws {Error} When parameters are invalid or storage operation fails
+   *
+   * @example
+   * ```ts
+   * await removeCollectible({
+   *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+   *   network: "PUBLIC",
+   *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+   *   tokenId: "123"
+   * });
+   * ```
    */
   removeCollectible: async ({
     publicKey,
@@ -520,10 +585,21 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   /**
    * Checks if a collectible already exists in the current collections
    *
+   * Searches through all collections to find a collectible with the specified
+   * contract ID and token ID.
+   *
    * @param {Object} params - Parameters for checking collectible existence
    * @param {string} params.contractId - The contract ID of the collectible
    * @param {string} params.tokenId - The token ID of the collectible
    * @returns {boolean} True if the collectible exists, false otherwise
+   *
+   * @example
+   * ```ts
+   * const exists = checkCollectibleExists({
+   *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+   *   tokenId: "123"
+   * });
+   * ```
    */
   checkCollectibleExists: ({
     contractId,
@@ -544,16 +620,33 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
 
   /**
    * Clears any error state from the store
+   *
+   * Resets the error field to null, removing any error messages.
+   *
+   * @example
+   * ```ts
+   * clearError(); // Clears any existing error state
+   * ```
    */
   clearError: () => {
     set({ error: null });
   },
 
   /**
-   * Finds a collection by its collection address.
+   * Finds a collection by its collection address
    *
-   * @param {string} collectionAddress - The address of the collection to find.
-   * @returns {Collection | undefined} The collection if found, otherwise undefined.
+   * Searches through all collections to find one with the specified address.
+   *
+   * @param {string} collectionAddress - The address of the collection to find
+   * @returns {Collection | undefined} The collection if found, otherwise undefined
+   *
+   * @example
+   * ```ts
+   * const collection = getCollection("CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON");
+   * if (collection) {
+   *   console.log(`Found collection: ${collection.collectionName}`);
+   * }
+   * ```
    */
   getCollection: (collectionAddress: string) =>
     get().collections.find(
@@ -561,12 +654,26 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     ),
 
   /**
-   * Finds a specific collectible by its collection address and token ID.
+   * Finds a specific collectible by its collection address and token ID
    *
-   * @param {Object} params - Parameters for finding a collectible.
-   * @param {string} params.collectionAddress - The address of the collection.
-   * @param {string} params.tokenId - The token ID of the collectible.
-   * @returns {Collectible | undefined} The collectible if found, otherwise undefined.
+   * Searches through all collections to find a collectible with the specified
+   * collection address and token ID.
+   *
+   * @param {Object} params - Parameters for finding a collectible
+   * @param {string} params.collectionAddress - The address of the collection
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {Collectible | undefined} The collectible if found, otherwise undefined
+   *
+   * @example
+   * ```ts
+   * const collectible = getCollectible({
+   *   collectionAddress: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+   *   tokenId: "123"
+   * });
+   * if (collectible) {
+   *   console.log(`Found collectible: ${collectible.name}`);
+   * }
+   * ```
    */
   getCollectible: ({
     collectionAddress,
