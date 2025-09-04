@@ -9,8 +9,6 @@ module.exports = {
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
     "^helpers/(.*)$": "<rootDir>/__mocks__/helpers/$1",
     "^services/(.*)$": "<rootDir>/__mocks__/services/$1",
-    "^@stellar/freighter-rn-secure-clipboard$":
-      "<rootDir>/__mocks__/SecureClipboardNative.ts",
   },
   transformIgnorePatterns: [
     `node_modules/(?!(${[

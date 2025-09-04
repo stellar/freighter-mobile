@@ -40,12 +40,7 @@ export default [
     },
   },
   {
-    ignores: [
-      "jest.setup.js", 
-      "tsconfig.json", 
-      "shim.js",
-      "freighter-rn-secure-clipboard/**/*"
-    ],
+    ignores: ["jest.setup.js", "tsconfig.json", "shim.js"],
   },
   {
     languageOptions: {

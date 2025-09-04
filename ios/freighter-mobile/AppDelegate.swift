@@ -14,10 +14,7 @@ class AppDelegate: RCTAppDelegate {
     // They will be passed down to the ViewController used by React Native.
     self.initialProps = [:]
 
-    let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
-    
-    
-    return result
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func sourceURL(for bridge: RCTBridge) -> URL? {
