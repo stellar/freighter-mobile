@@ -35,8 +35,10 @@ export const initAnalytics = (): void => {
   if (!AMPLITUDE_API_KEY) {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
+      "missing amplitude config error",
       "Missing AMPLITUDE_API_KEY in environment",
     );
+
     return;
   }
 
@@ -76,9 +78,9 @@ export const setAnalyticsEnabled = (enabled: boolean): void => {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
       "Failed to update analytics settings",
+      error,
       {
         enabled,
-        error,
       },
     );
   }
@@ -93,9 +95,9 @@ export const setAttRequested = (requested: boolean): void => {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
       "Failed to update ATT requested state",
+      error,
       {
         requested,
-        error,
       },
     );
   }
@@ -107,10 +109,14 @@ export const setAnalyticsUserId = (userId: string | null): void => {
 
     logger.debug(DEBUG_CONFIG.LOG_PREFIX, `Analytics userId set to: ${userId}`);
   } catch (error) {
-    logger.error(DEBUG_CONFIG.LOG_PREFIX, "Failed to update analytics userId", {
-      userId,
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to update analytics userId",
       error,
-    });
+      {
+        userId,
+      },
+    );
   }
 };
 
@@ -196,10 +202,14 @@ const dispatchUnthrottled = (
 
     logger.debug(DEBUG_CONFIG.LOG_PREFIX, `Event sent to Amplitude: ${event}`);
   } catch (error) {
-    logger.error(DEBUG_CONFIG.LOG_PREFIX, `Failed to track event: ${event}`, {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      `Failed to track event: ${event}`,
       error,
-      props,
-    });
+      {
+        props,
+      },
+    );
   }
 };
 

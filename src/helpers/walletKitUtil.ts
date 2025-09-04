@@ -476,6 +476,7 @@ export const clearWalletKitStorage = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     logger.error("clearWalletKitStorage", "Failed to clear WC storage", error);
+
     return false;
   }
 };
