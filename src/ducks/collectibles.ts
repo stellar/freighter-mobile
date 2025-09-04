@@ -34,15 +34,15 @@ export interface Collectible {
   /** Unique identifier for this specific collectible within the collection */
   tokenId: string;
   /** Human-readable name of the collectible */
-  name: string;
+  name?: string;
   /** URL to the collectible's image */
-  image: string;
+  image?: string;
   /** Detailed description of the collectible */
-  description: string;
+  description?: string;
   /** External URL for more information about the collectible */
-  externalUrl: string;
+  externalUrl?: string;
   /** Array of traits/attributes that define this collectible */
-  traits: CollectibleTrait[];
+  traits?: CollectibleTrait[];
 }
 
 /**

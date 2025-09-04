@@ -142,7 +142,9 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
      *
      * @param {string} url - The external URL to open
      */
-    const handleViewInBrowser = useCallback(async (url: string) => {
+    const handleViewInBrowser = useCallback(async (url?: string) => {
+      if (!url) return;
+
       try {
         await Linking.openURL(url);
       } catch (error) {
@@ -201,42 +203,46 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           </View>
 
           {/* Description */}
-          <View className="mb-6 bg-background-tertiary rounded-2xl p-4">
-            <View className="mb-3">
-              <Text md medium secondary>
-                {t("collectibleDetails.description")}
+          {collectible.description && (
+            <View className="mb-6 bg-background-tertiary rounded-2xl p-4">
+              <View className="mb-3">
+                <Text md medium secondary>
+                  {t("collectibleDetails.description")}
+                </Text>
+              </View>
+              <Text md medium>
+                {collectible.description}
               </Text>
             </View>
-            <Text md medium>
-              {collectible.description}
-            </Text>
-          </View>
+          )}
 
           {/* Collectible Traits */}
-          <View className="mb-6 bg-background-tertiary rounded-2xl px-4 pt-4 pb-1">
-            <View className="mb-3">
-              <Text md medium secondary>
-                {t("collectibleDetails.traits")}
-              </Text>
-            </View>
-            <View className="flex-row flex-wrap justify-between">
-              {collectible.traits.map((trait) => (
-                <View
-                  key={`${trait.name}-${trait.value}`}
-                  className="bg-background-secondary rounded-2xl p-4 w-[48%] mb-3 items-center justify-center"
-                >
-                  <Text sm medium textAlign="center">
-                    {trait.value}
-                  </Text>
-                  <View className="mt-1">
-                    <Text sm secondary textAlign="center">
-                      {trait.name}
+          {collectible.traits && collectible.traits?.length > 0 && (
+            <View className="mb-6 bg-background-tertiary rounded-2xl px-4 pt-4 pb-1">
+              <View className="mb-3">
+                <Text md medium secondary>
+                  {t("collectibleDetails.traits")}
+                </Text>
+              </View>
+              <View className="flex-row flex-wrap justify-between">
+                {collectible.traits?.map((trait) => (
+                  <View
+                    key={`${trait.name}-${trait.value}`}
+                    className="bg-background-secondary rounded-2xl p-4 w-[48%] mb-3 items-center justify-center"
+                  >
+                    <Text sm medium textAlign="center">
+                      {trait.value}
                     </Text>
+                    <View className="mt-1">
+                      <Text sm secondary textAlign="center">
+                        {trait.name}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          )}
         </ScrollView>
 
         {/* View in browser button */}

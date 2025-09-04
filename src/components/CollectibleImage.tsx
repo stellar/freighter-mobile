@@ -8,7 +8,7 @@ import { Image, View } from "react-native";
  */
 interface CollectibleImageProps {
   /** The image URI to display */
-  imageUri: string;
+  imageUri?: string;
   /** The size of the placeholder icon */
   placeholderIconSize?: number;
   /** Additional className for the container */
@@ -34,7 +34,7 @@ interface CollectibleImageProps {
  * @returns {JSX.Element} The collectible image component
  */
 export const CollectibleImage: React.FC<CollectibleImageProps> = ({
-  imageUri,
+  imageUri = "",
   placeholderIconSize = 45,
   containerClassName = "w-full h-full",
   imageClassName = "w-full h-full",

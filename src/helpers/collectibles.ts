@@ -237,9 +237,9 @@ export const transformBackendCollections = async (
                   t("collectibles.fallbacks.tokenName", {
                     tokenId: collectible.token_id,
                   }),
-                image: metadata.image || "",
-                description: metadata.description || "",
-                externalUrl: metadata.external_url || "",
+                image: metadata.image,
+                description: metadata.description,
+                externalUrl: metadata.external_url,
                 traits: (metadata.attributes || []).map((trait) => ({
                   name:
                     trait.trait_type ||
