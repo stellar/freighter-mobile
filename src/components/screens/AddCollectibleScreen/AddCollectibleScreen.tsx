@@ -87,7 +87,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         });
 
         if (exists) {
-          setTokenIdError("This collectible is already in your wallet"); // TODO: add translations
+          setTokenIdError(t("addCollectibleScreen.alreadyInWallet"));
           return;
         }
       }

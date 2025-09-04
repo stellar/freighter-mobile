@@ -166,7 +166,7 @@ export const useCollectibleDetailsHeader = ({
       ...(__DEV__
         ? [
             {
-              title: "Remove collectible", // TODO: add translations
+              title: t("collectibleDetails.removeCollectible"),
               systemIcon: systemIcons?.removeCollectible,
               onPress: handleRemoveCollectible,
               destructive: true, // Mark as destructive action

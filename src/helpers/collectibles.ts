@@ -6,6 +6,7 @@ import {
   CollectibleMetadata,
 } from "config/types";
 import type { Collection, Collectible } from "ducks/collectibles";
+import { t } from "i18next";
 import { BackendCollection } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -231,12 +232,18 @@ export const transformBackendCollections = async (
                 collectionAddress: collection.address,
                 collectionName: collection.name,
                 tokenId: collectible.token_id,
-                name: metadata.name || `Token #${collectible.token_id}`, // TODO: add translations
+                name:
+                  metadata.name ||
+                  t("collectibles.fallbacks.tokenName", {
+                    tokenId: collectible.token_id,
+                  }),
                 image: metadata.image || "",
                 description: metadata.description || "",
                 externalUrl: metadata.external_url || "",
                 traits: (metadata.attributes || []).map((trait) => ({
-                  name: trait.trait_type || "Unknown", // TODO: add translations
+                  name:
+                    trait.trait_type ||
+                    t("collectibles.fallbacks.unknownTrait"),
                   value: trait.value === undefined ? "" : trait.value,
                 })),
               };
@@ -252,9 +259,11 @@ export const transformBackendCollections = async (
                 collectionAddress: collection.address,
                 collectionName: collection.name,
                 tokenId: collectible.token_id,
-                name: `Token #${collectible.token_id}`, // TODO: add translations
+                name: t("collectibles.fallbacks.tokenName", {
+                  tokenId: collectible.token_id,
+                }),
                 image: "",
-                description: "Description unavailable", // TODO: add translations
+                description: t("collectibles.fallbacks.descriptionUnavailable"),
                 externalUrl: "",
                 traits: [],
               };

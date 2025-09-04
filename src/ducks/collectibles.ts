@@ -5,6 +5,7 @@ import {
   removeCollectibleFromStorage,
   transformBackendCollections,
 } from "helpers/collectibles";
+import { t } from "i18next";
 import {
   fetchCollectibles as apiFetchCollectibles,
   BackendCollectionError,
@@ -388,7 +389,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     try {
       // Validate parameters
       if (!publicKey || !network || !contractId || !tokenId) {
-        throw new Error("Invalid parameters for adding collectible."); // TODO: add translations
+        throw new Error(t("collectibles.errors.invalidParameters"));
       }
 
       // Fetch the single collectible from the API
@@ -408,7 +409,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       if (collectibleError) {
         const collectionErrorMessage = collectibleError.error.error_message;
         const tokenErrorMessage = collectibleError.error.tokens?.find(
-          (t) => t.token_id === tokenId,
+          (tk) => tk.token_id === tokenId,
         )?.error_message;
 
         // Let's log the backend error so we keep track of it on Sentry
@@ -420,9 +421,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
             "Failed to add collectible.",
         );
 
-        throw new Error(
-          "Please make sure the collection address and token ID are correct.",
-        ); // TODO: add translations
+        throw new Error(t("collectibles.errors.invalidAddressOrTokenId"));
       }
 
       const collection = collections?.find(
@@ -430,7 +429,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       ) as BackendCollection;
       // Validate that we receive a collection for the given address
       if (!collection) {
-        throw new Error("Collection not found for the given address."); // TODO: add translations
+        throw new Error(t("collectibles.errors.collectionNotFound"));
       }
 
       const collectible = collection.collection.collectibles.find(
@@ -438,7 +437,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       );
       // Validate that the collectible is owned by the public key
       if (!collectible) {
-        throw new Error("It appears this collectible is not owned by you."); // TODO: add translations
+        throw new Error(t("collectibles.errors.notOwnedByUser"));
       }
 
       // Save the collectible to local storage
@@ -456,7 +455,9 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     } catch (error) {
       set({
         error:
-          error instanceof Error ? error.message : "Failed to add collectible", // TODO: add translations
+          error instanceof Error
+            ? error.message
+            : t("collectibles.errors.failedToAdd"),
         isLoading: false,
       });
 
@@ -490,7 +491,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     try {
       // Validate parameters
       if (!publicKey || !network || !contractId || !tokenId) {
-        throw new Error("Invalid parameters for removing collectible."); // TODO: add translations
+        throw new Error(t("collectibles.errors.invalidRemoveParameters"));
       }
 
       // Remove the collectible from local storage
@@ -510,7 +511,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         error:
           error instanceof Error
             ? error.message
-            : "Failed to remove collectible", // TODO: add translations
+            : t("collectibles.errors.failedToRemove"),
         isLoading: false,
       });
     }
