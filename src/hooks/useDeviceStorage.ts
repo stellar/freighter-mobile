@@ -149,19 +149,39 @@ const useDeviceStorage = () => {
         return;
       }
 
-      CameraRoll.saveAsset(tempFilePath).finally(() => {
-        showToast({
-          title: t("collectibleDetails.imageSavedToPhotos"),
-          variant: "success",
-        });
+      CameraRoll.saveAsset(tempFilePath)
+        .then((image) => {
+          logger.info(
+            "DeviceStorage",
+            "Image successfully saved to photos",
+            image,
+          );
 
-        // Delay the deletion of the temp file to ensure the image is saved to the camera roll
-        setTimeout(() => {
-          if (tempFilePath) {
-            deleteTempFile(tempFilePath);
-          }
-        }, 1000);
-      });
+          showToast({
+            title: t("collectibleDetails.imageSavedToPhotos"),
+            variant: "success",
+          });
+        })
+        .catch((error) => {
+          logger.error(
+            "DeviceStorage",
+            "Failed to save image to photos",
+            error,
+          );
+
+          showToast({
+            title: t("collectibleDetails.imageSaveAttempted"),
+            variant: "error",
+          });
+        })
+        .finally(() => {
+          // Delay the deletion of the temp file to ensure the image is saved to the camera roll
+          setTimeout(() => {
+            if (tempFilePath) {
+              deleteTempFile(tempFilePath);
+            }
+          }, 1000);
+        });
     },
     [showToast, t],
   );

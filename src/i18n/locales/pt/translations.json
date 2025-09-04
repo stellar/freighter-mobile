@@ -317,7 +317,8 @@
     "viewOnStellarExpert": "Ver no stellar.expert",
     "saveToPhotos": "Salvar na galeria",
     "imageSavedToPhotos": "Imagem salva na galeria",
-    "imageSaveFailed": "Falha ao salvar imagem na galeria"
+    "imageSaveFailed": "Falha ao salvar imagem na galeria",
+    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
