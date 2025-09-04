@@ -1,12 +1,18 @@
 import Foundation
 import React
+import UniformTypeIdentifiers
 
 @objc(SecureClipboardModule)
-class SecureClipboardModule: NSObject {
+class SecureClipboardModule: NSObject, RCTBridgeModule {
   
   @objc
   static func requiresMainQueueSetup() -> Bool {
     return false
+  }
+  
+  @objc
+  static func moduleName() -> String! {
+    return "SecureClipboard"
   }
   
   @objc
@@ -17,13 +23,13 @@ class SecureClipboardModule: NSObject {
       // Always treat data as sensitive for secure clipboard service
       let expirationSeconds = Double(expirationMs.intValue) / 1000.0
       
-      // Set expiration time using native iOS pasteboard expiration)
-      if expirationSeconds > 0 {
+      // Set expiration time using native iOS pasteboard expiration (iOS 15.1+)
+      if expirationSeconds > 0, #available(iOS 15.1, *) {
         pasteboard.setItems([[UTType.utf8PlainText.identifier: text]], options: [
           UIPasteboard.OptionsKey.expirationDate: Date().addingTimeInterval(expirationSeconds)
         ])
       } else {
-        // No expiration, just set the text
+        // No expiration or older iOS version, just set the text
         pasteboard.string = text
       }
       

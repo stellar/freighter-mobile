@@ -29,7 +29,7 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
         return "SecureClipboard";
     }
 
-      @ReactMethod
+    @ReactMethod
   public void setString(String text, int expirationMs, Promise promise) {
     try {
       Context context = reactContext.getApplicationContext();
