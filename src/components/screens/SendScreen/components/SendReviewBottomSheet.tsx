@@ -190,7 +190,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   };
 
   const isLoading = isValidatingMemo || isBuilding;
-  const isDisabled = isRequiredMemoMissing || !transactionXDR || isLoading;
+  const isDisabled = !transactionXDR || isLoading;
 
   /**
    * Renders the confirm button with different states based on memo validation
