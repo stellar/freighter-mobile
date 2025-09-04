@@ -1,6 +1,6 @@
 #import <React/RCTBridgeModule.h>
 
-@interface RCT_EXTERN_MODULE(SecureClipboardModule, NSObject)
+@interface RCT_EXTERN_MODULE(SecureClipboard, NSObject)
 
 RCT_EXTERN_METHOD(setString:(NSString *)text
                   expirationMs:(NSNumber *)expirationMs
@@ -14,3 +14,4 @@ RCT_EXTERN_METHOD(clearString:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 @end
+

@@ -2207,7 +2207,7 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNScrypt (from `../node_modules/react-native-scrypt`)
   - RNSVG (from `../node_modules/react-native-svg`)
-  - SecureClipboard (from `./freighter-mobile`)
+  - SecureClipboard (from `./`)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2401,7 +2401,7 @@ EXTERNAL SOURCES:
   RNSVG:
     :path: "../node_modules/react-native-svg"
   SecureClipboard:
-    :path: "./freighter-mobile"
+    :path: "./"
   VisionCamera:
     :path: "../node_modules/react-native-vision-camera"
   Yoga:
@@ -2501,11 +2501,11 @@ SPEC CHECKSUMS:
   RNScreens: b32d0d59b53acb574fa795a9343591ef4e7ab7c2
   RNScrypt: 3e8612600c93aaa3bfa7849b6d1a4ab61613e2af
   RNSVG: 4aaeac3fdc7c5bc88ca801e228f62fb469be37e9
-  SecureClipboard: 4f7e78a534f61c813ef9563e7b72d0431fe9c8d8
+  SecureClipboard: dbeb03e8b1c4227ce910b7f32afd7cc204dfd7d7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   VisionCamera: 7aaae584148bbc250e81b5662e45a7f25c18be2e
   Yoga: afd04ff05ebe0121a00c468a8a3c8080221cb14c
 
-PODFILE CHECKSUM: e4db463ddb9d87d2696d4a62d7ad451f7b8254cd
+PODFILE CHECKSUM: 03434fbbd2d3db64ce412a8199211a68a3b3e7d5
 
 COCOAPODS: 1.15.2

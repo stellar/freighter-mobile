@@ -131,3 +131,4 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
         }
     }
 }
+

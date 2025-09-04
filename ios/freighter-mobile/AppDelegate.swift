@@ -16,17 +16,6 @@ class AppDelegate: RCTAppDelegate {
 
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     
-    // Debug: Log available native modules
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      if let bridge = self.bridge {
-        let moduleNames = bridge.moduleNames()
-        print("=== Available Native Modules ===")
-        for moduleName in moduleNames {
-          print("Module: \(moduleName)")
-        }
-        print("SecureClipboard available: \(moduleNames.contains("SecureClipboard"))")
-      }
-    }
     
     return result
   }

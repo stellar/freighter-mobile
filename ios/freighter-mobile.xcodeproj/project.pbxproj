@@ -21,8 +21,6 @@
 		C92BC0E45A0344A499E724C4 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */; };
 		D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		D8E3BC1680FC4B7C9D639125 /* Inter-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 302D33B0FE4D45C9ABEC3073 /* Inter-VariableFont_opsz,wght.ttf */; };
-		SECURE003 /* SecureClipboardModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = SECURE001 /* SecureClipboardModule.swift */; };
-		SECURE004 /* SecureClipboardModule.m in Sources */ = {isa = PBXBuildFile; fileRef = SECURE002 /* SecureClipboardModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,8 +45,6 @@
 		D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = "freighter-mobile/BootSplash.storyboard"; sourceTree = "<group>"; };
 		E805A8B55BFFAA694D5F40A5 /* Pods-freighter-mobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-freighter-mobile.release.xcconfig"; path = "Target Support Files/Pods-freighter-mobile/Pods-freighter-mobile.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		SECURE001 /* SecureClipboardModule.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SecureClipboardModule.swift; sourceTree = "<group>"; };
-		SECURE002 /* SecureClipboardModule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SecureClipboardModule.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,8 +67,6 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
-				SECURE001 /* SecureClipboardModule.swift */,
-				SECURE002 /* SecureClipboardModule.m */,
 				D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */,
 				6EA47F7F1A9043699AECB850 /* Colors.xcassets */,
 				75BAEB742E32B39B0084934A /* InfoPlist.strings */,
@@ -301,8 +295,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
-				SECURE003 /* SecureClipboardModule.swift in Sources */,
-				SECURE004 /* SecureClipboardModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

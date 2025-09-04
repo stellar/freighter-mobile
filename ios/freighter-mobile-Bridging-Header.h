@@ -12,3 +12,4 @@
 #import <React/RCTEventEmitter.h>
 
 #endif /* freighter_mobile_Bridging_Header_h */
+

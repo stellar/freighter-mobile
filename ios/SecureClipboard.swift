@@ -2,8 +2,8 @@ import Foundation
 import React
 import UniformTypeIdentifiers
 
-@objc(SecureClipboardModule)
-class SecureClipboardModule: NSObject, RCTBridgeModule {
+@objc(SecureClipboard)
+class SecureClipboard: NSObject, RCTBridgeModule {
   
   @objc
   static func requiresMainQueueSetup() -> Bool {

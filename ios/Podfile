@@ -52,7 +52,7 @@ target 'freighter-mobile' do
 
   # Manual linking for freighter-rn-secure-clipboard
   # SecureClipboard is now part of the main project
-  pod 'SecureClipboard', :path => './freighter-mobile'
+  pod 'SecureClipboard', :path => './'
 
   use_react_native!(
     :path => config[:reactNativePath],
