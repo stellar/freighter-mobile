@@ -460,10 +460,12 @@ describe("collectibles helpers", () => {
           symbol: "TC",
           collectibles: [
             {
+              owner: "test-owner-address",
               token_id: "token1",
               token_uri: "https://example.com/metadata1.json",
             },
             {
+              owner: "test-owner-address",
               token_id: "token2",
               token_uri: "https://example.com/metadata2.json",
             },
