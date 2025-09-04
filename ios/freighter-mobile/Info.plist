@@ -45,9 +45,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Freighter needs access to your Camera to scan QR codes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Freighter needs access to your Photos to save QRCodes and collectibles to your photo library.</string>
+	<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Freighter needs access to your Photos to save QRCodes and collectibles to your photo library.</string>
+	<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter-Bold.ttf</string>
