@@ -30,7 +30,6 @@ import {
 } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
-import { debug } from "helpers/debug";
 import { getNativeContractDetails } from "helpers/soroban";
 import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
@@ -950,11 +949,6 @@ export const fetchCollectibles = async ({
   (BackendCollection | BackendCollectionError)[]
 > => {
   try {
-    debug("fetchCollectibles", "> > > > > > > > > > Fetching collectibles", {
-      owner,
-      contracts,
-    });
-
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
       "/collectibles",
       {
