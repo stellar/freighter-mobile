@@ -36,11 +36,8 @@ export const getBaseAccount = (muxedAddress: string): string | null => {
     }
     return muxedAddress;
   } catch (error) {
-    logger.error(
-      "StellarHelper",
-      "Error extracting base account:",
-      String(error),
-    );
+    logger.error("StellarHelper", "Error extracting base account:", error);
+
     return null;
   }
 };
@@ -85,11 +82,8 @@ export const isValidStellarAddress = (publicKey: string): boolean => {
 
     return false;
   } catch (error) {
-    logger.error(
-      "StellarHelper",
-      "Error validating Stellar address:",
-      String(error),
-    );
+    logger.error("StellarHelper", "Error validating Stellar address:", error);
+
     return false;
   }
 };
@@ -200,11 +194,8 @@ export const isSameAccount = (address1: string, address2: string): boolean => {
     // Final case - different addresses that are both valid Ed25519 keys
     return false;
   } catch (error) {
-    logger.error(
-      "StellarHelper",
-      "Error comparing Stellar addresses:",
-      String(error),
-    );
+    logger.error("StellarHelper", "Error comparing Stellar addresses:", error);
+
     return false;
   }
 };
