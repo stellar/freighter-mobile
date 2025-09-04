@@ -1,6 +1,6 @@
 import Icon from "components/sds/Icon";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
 /**
@@ -25,8 +25,9 @@ interface CollectibleImageProps {
  * A reusable component for displaying collectible images with a fallback placeholder.
  * Features include:
  * - Displays collectible image with proper sizing
- * - Shows placeholder icon when image fails to load or is loading
- * - Handles image loading states
+ * - Shows placeholder icon after 1 second if image hasn't loaded
+ * - Shows placeholder icon immediately when image fails to load
+ * - Handles image loading states with timeout
  * - Customizable placeholder icon size
  * - Flexible styling through className props
  *
@@ -41,17 +42,45 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
   resizeMode = "cover",
 }) => {
   const { themeColors } = useColors();
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [showPlaceholder, setShowPlaceholder] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const imageLoadedRef = useRef(false);
 
-  const showPlaceholder = !imageLoaded || imageError;
+  // Show placeholder after 1 second if image hasn't loaded, or immediately on error
+  useEffect(() => {
+    if (!imageUri) {
+      setShowPlaceholder(true);
+    } else {
+      // Reset states when imageUri changes
+      setShowPlaceholder(false);
+      imageLoadedRef.current = false;
+
+      // Clear any existing timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+
+      // Set a timer to show placeholder after 1 second if image hasn't loaded
+      timerRef.current = setTimeout(() => {
+        if (!imageLoadedRef.current) {
+          setShowPlaceholder(true);
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [imageUri]);
 
   return (
     <View
       className={`${containerClassName} bg-background-tertiary`}
       testID="collectible-image-container"
     >
-      {/* Placeholder icon - shown when image is loading or failed to load */}
+      {/* Placeholder icon - shown after 1 second if image hasn't loaded, or immediately when image fails to load */}
       {showPlaceholder && (
         <View className="absolute z-1 items-center justify-center w-full h-full">
           <Icon.Image01
@@ -67,8 +96,14 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
         source={{ uri: imageUri }}
         className={imageClassName}
         resizeMode={resizeMode}
-        onLoad={() => setImageLoaded(true)}
-        onError={() => setImageError(true)}
+        onError={() => setShowPlaceholder(true)}
+        onLoad={() => {
+          imageLoadedRef.current = true;
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+          }
+          setShowPlaceholder(false);
+        }}
         testID="collectible-image"
       />
     </View>
