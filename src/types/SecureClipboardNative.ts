@@ -1,5 +1,5 @@
 /**
- * TypeScript definitions for @stellar/freighter-rn-secure-clipboard
+ * TypeScript definitions for SecureClipboard native module
  *
  * This module provides secure clipboard functionality with platform-specific enhancements:
  * - Android: Uses ClipDescription.EXTRA_IS_SENSITIVE flag and native Handler for expiration (Android 13+)

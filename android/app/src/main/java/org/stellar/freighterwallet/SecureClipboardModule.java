@@ -51,22 +51,23 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
       
       // Schedule clipboard clearing if expiration is specified
       if (expirationMs > 0) {
+        final String textToClear = text;
+        final Context appContext = context;
         mainHandler.postDelayed(() -> {
           try {
-            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-            if (clipboard != null) {
+            ClipboardManager delayedClipboard = (ClipboardManager) appContext.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (delayedClipboard != null) {
               // Only clear if the clipboard still contains our original text
-              ClipData currentClip = clipboard.getPrimaryClip();
+              ClipData currentClip = delayedClipboard.getPrimaryClip();
               if (currentClip != null && currentClip.getItemCount() > 0) {
                 String currentText = currentClip.getItemAt(0).getText().toString();
-                if (text.equals(currentText)) {
-                  clipboard.clearPrimaryClip();
+                if (textToClear.equals(currentText)) {
+                  delayedClipboard.clearPrimaryClip();
                 }
-                // If text doesn't match, it was overwritten - do nothing
               }
             }
           } catch (Exception e) {
-            // Silently fail - clearing clipboard is best effort
+            // Silently handle expiration clear errors
           }
         }, expirationMs);
       }
@@ -112,8 +113,19 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
                 return;
             }
 
+            // Clear the clipboard
             clipboard.clearPrimaryClip();
-            promise.resolve(null);
+            
+            // Verify the clipboard was cleared
+            ClipData currentClip = clipboard.getPrimaryClip();
+            if (currentClip == null || currentClip.getItemCount() == 0) {
+                promise.resolve(null);
+            } else {
+                // If still has content, try to set empty string as fallback
+                ClipData emptyClip = ClipData.newPlainText("", "");
+                clipboard.setPrimaryClip(emptyClip);
+                promise.resolve(null);
+            }
         } catch (Exception e) {
             promise.reject("CLIPBOARD_ERROR", "Failed to clear clipboard", e);
         }

@@ -1,7 +1,12 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import SecureClipboardNative from "@stellar/freighter-rn-secure-clipboard";
 import { logger } from "config/logger";
-import { Platform } from "react-native";
+import { NativeModules, Platform } from "react-native";
+// Import local types
+import type { SecureClipboardNative } from "types/SecureClipboardNative";
+
+// Get the native module directly
+const { SecureClipboard } = NativeModules;
+const SecureClipboardModule = SecureClipboard as SecureClipboardNative;
 
 /**
  * Service for handling secure clipboard operations with platform-specific enhancements
@@ -28,7 +33,7 @@ export class SecureClipboardService {
     try {
       if (Platform.OS === "android" || Platform.OS === "ios") {
         // Always use sensitive flag for secure clipboard service
-        await SecureClipboardNative.setString(text, expirationMs);
+        await SecureClipboardModule.setString(text, expirationMs);
       } else {
         // Fallback to standard clipboard for other platforms
         Clipboard.setString(text);
@@ -50,7 +55,7 @@ export class SecureClipboardService {
   static async clearClipboard(): Promise<void> {
     try {
       if (Platform.OS === "android" || Platform.OS === "ios") {
-        await SecureClipboardNative.clearString();
+        await SecureClipboardModule.clearString();
       } else {
         Clipboard.setString("");
       }
@@ -71,7 +76,7 @@ export class SecureClipboardService {
   static async getClipboardText(): Promise<string> {
     try {
       if (Platform.OS === "android" || Platform.OS === "ios") {
-        return await SecureClipboardNative.getString();
+        return await SecureClipboardModule.getString();
       }
       return await Clipboard.getString();
     } catch (error) {

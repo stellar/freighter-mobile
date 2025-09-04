@@ -1,9 +1,13 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import SecureClipboardNative from "@stellar/freighter-rn-secure-clipboard";
 import { renderHook, act } from "@testing-library/react-hooks";
 import { logger } from "config/logger";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
-import { Platform } from "react-native";
+import { NativeModules, Platform } from "react-native";
+import type { SecureClipboardNative } from "types/SecureClipboardNative";
+
+// Get the native module directly
+const { SecureClipboard } = NativeModules;
+const SecureClipboardModule = SecureClipboard as SecureClipboardNative;
 
 // Mock the logger
 jest.mock("config/logger", () => ({
@@ -21,16 +25,18 @@ jest.mock("@react-native-clipboard/clipboard", () => ({
 }));
 
 // Mock the native module
-jest.mock("@stellar/freighter-rn-secure-clipboard", () => ({
-  setString: jest.fn(() => Promise.resolve()),
-  getString: jest.fn(() => Promise.resolve("mocked native clipboard content")),
-  clearString: jest.fn(() => Promise.resolve()),
-}));
-
-// Mock Platform - default to Android for most tests
 jest.mock("react-native", () => ({
   Platform: {
     OS: "android",
+  },
+  NativeModules: {
+    SecureClipboard: {
+      setString: jest.fn(() => Promise.resolve()),
+      getString: jest.fn(() =>
+        Promise.resolve("mocked native clipboard content"),
+      ),
+      clearString: jest.fn(() => Promise.resolve()),
+    },
   },
 }));
 
@@ -64,16 +70,16 @@ const mockGetString = Clipboard.getString as jest.MockedFunction<
 >;
 
 const mockNativeSetString =
-  SecureClipboardNative.setString as jest.MockedFunction<
-    typeof SecureClipboardNative.setString
+  SecureClipboardModule.setString as jest.MockedFunction<
+    typeof SecureClipboardModule.setString
   >;
 const mockNativeGetString =
-  SecureClipboardNative.getString as jest.MockedFunction<
-    typeof SecureClipboardNative.getString
+  SecureClipboardModule.getString as jest.MockedFunction<
+    typeof SecureClipboardModule.getString
   >;
 const mockNativeClearString =
-  SecureClipboardNative.clearString as jest.MockedFunction<
-    typeof SecureClipboardNative.clearString
+  SecureClipboardModule.clearString as jest.MockedFunction<
+    typeof SecureClipboardModule.clearString
   >;
 
 const mockLoggerWarn = logger.warn as jest.MockedFunction<typeof logger.warn>;

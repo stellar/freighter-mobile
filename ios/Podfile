@@ -50,6 +50,9 @@ end
 target 'freighter-mobile' do
   config = use_native_modules!
 
+  # Manual linking for freighter-rn-secure-clipboard
+  # SecureClipboard is now part of the main project
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
