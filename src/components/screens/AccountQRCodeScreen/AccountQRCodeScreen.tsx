@@ -10,6 +10,7 @@ import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
@@ -53,12 +54,47 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     }
   }, [navigation, showNavigationAsCloseButton]);
 
+  const getRightHeaderIcon = () =>
+    showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
+
+  const handleWalletConnectNavigation = () => {
+    // WalletConnect flow: Navigate between QR Scan and QR Address screens
+    const routes = navigation.getState()?.routes ?? [];
+    const scanRouteIndex = routes.findIndex(
+      (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
+    );
+
+    // If the scan route is already in the stack, go back to it
+    // Otherwise, navigate to it
+    if (scanRouteIndex !== -1) {
+      // Calculate how many screens to go back
+      const currentIndex = routes.length - 1;
+      const stepsBack = currentIndex - scanRouteIndex;
+      for (let i = 0; i < stepsBack; i++) {
+        navigation.goBack();
+      }
+    } else {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+        source: QRCodeSource.WALLET_CONNECT,
+      });
+    }
+  };
+
+  const handleHelpModalPress = () => {
+    explanationModalRef.current?.present();
+  };
+
+  const handleRightHeaderPress = () => {
+    if (showNavigationAsCloseButton) {
+      handleWalletConnectNavigation();
+    } else {
+      handleHelpModalPress();
+    }
+  };
+
   useRightHeaderButton({
-    hidden: !showNavigationAsCloseButton,
-    icon: Icon.HelpCircle,
-    onPress: () => {
-      explanationModalRef.current?.present();
-    },
+    icon: getRightHeaderIcon(),
+    onPress: handleRightHeaderPress,
   });
 
   return (

@@ -41,6 +41,14 @@ describe("QR Validation", () => {
         // WalletConnect v2 format
         "wc:b90698bedbc7da879e3c079e7d1275fef9c4ae7f46b24327f1e0082a3b21b625@2?relay-protocol=irn&symKey=535e8d8e9989fccf40925e8488c5cf6dc4c9b6582edb914222d9e340e0e76e3c",
         "wc:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef@2?relay-protocol=irn&symKey=abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        // Discovery tab apps
+        "wc:7eadcb4eb777b9f2c5e9d3faf19049bd038923bfbe949a1ac81d1d65faf31895@2?expiryTimestamp=1757014512&relay-protocol=irn&symKey=00184e99499837f06756e2084848626cdb6d9c329c6e2c27c98c5f2c5a14eaf6", // FxDAO
+        "wc:5c1caaf291d160fe83d7895a67786e38cabf51b186a79a6de692be88b359b292@2?expiryTimestamp=1757014558&relay-protocol=irn&symKey=81f5e1e8a77272e5a62361ef8a7448e9f237d1fe1e3b600deb132af7bd65a99c", // Aqua
+        "wc:b0ef5e7e4f8c886d13a2edf5850fbca8ccdf82aef9509ce2a744fee9be54588e@2?relay-protocol=irn&symKey=b67e8e7ac0e52449e2e2588a389660529c3b645c343d7048725612d23b1cd2ce&expiryTimestamp=1757014601", // Allbridge
+        "wc:f16720099ac84e4225bdc9e359470fdf923322cc43625c382f1129e78fd79641@2?expiryTimestamp=1757014673&relay-protocol=irn&symKey=d1eacbb456944023b23cd3cde033b0bc8d82d9d51b7afcb242222bceb8a96052", // Blend
+        "wc:c5f5d1405a2fbd9c247e994528e4448a68b5292c5438960f1d33a3b7204eb03f@2?expiryTimestamp=1757014760&relay-protocol=irn&symKey=5e35941d82425ed5892ae2f733051f7738c2dca9bb7932ec5a16adfb2bcd8d83", // Etherfuse
+        "wc:7de080bd9dea4baf8ad88870990f3856eff7063a3cd681484545de47f93b55f4@2?expiryTimestamp=1757014846&relay-protocol=irn&symKey=429fa73b0617720a3f89a0af648e12dcd78f43edb137b890a06732e8b20c7dad", // xBull Swaps
+        "wc:f82c24f0a750254e6534140a7338b141717c7ae1fb2711a4d3b4af6c2e1c565d@2?expiryTimestamp=1757014875&relay-protocol=irn&symKey=5263c001b26889d3f1e2769766fbdcc643860848e27023783116c270a50a86dc", // Soroban Domains
       ];
 
       validURIs.forEach((uri) => {

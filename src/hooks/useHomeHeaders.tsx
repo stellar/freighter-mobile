@@ -49,7 +49,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         }),
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-            showNavigationAsCloseButton: true,
+            showNavigationAsCloseButton: false,
           }),
       },
     ],

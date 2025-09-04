@@ -43,8 +43,6 @@ interface QRCodeScreenState {
 interface QRCodeScreenConfig {
   /** Whether to show header right button */
   showHeaderRight: boolean;
-  /** Whether to use popToTop for closing */
-  usePopToTop: boolean;
 }
 
 interface QRCodeScreenReturn {

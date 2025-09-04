@@ -53,8 +53,6 @@ interface QRCodeScreenState {
 interface QRCodeScreenConfig {
   /** Whether to show header right button */
   showHeaderRight: true;
-  /** Whether to use popToTop for closing */
-  usePopToTop: true;
 }
 
 interface QRCodeScreenReturn {
@@ -112,7 +110,6 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
   // Configuration for WalletConnect
   const config: QRCodeScreenConfig = {
     showHeaderRight: true,
-    usePopToTop: true,
   };
 
   // State for WalletConnect

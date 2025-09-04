@@ -50,13 +50,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const [address, setAddress] = useState("");
   const { saveRecipientAddress } = useTransactionSettingsStore();
 
-  const {
-    scannedData,
-    source: storedSource,
-    isConsumed,
-    consumeQRData,
-    clearQRData,
-  } = useQRDataStore();
+  const { clearQRData } = useQRDataStore();
 
   const {
     recentAddresses,
@@ -124,20 +118,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       source: QRCodeSource.ADDRESS_INPUT,
     });
   };
-
-  // Handle scanned QR data when available
-  useEffect(() => {
-    if (
-      scannedData &&
-      storedSource === QRCodeSource.ADDRESS_INPUT &&
-      !isConsumed
-    ) {
-      // Use the scanned data as the search input
-      handleSearch(scannedData);
-      // Mark the data as consumed
-      consumeQRData();
-    }
-  }, [scannedData, storedSource, isConsumed, consumeQRData, handleSearch]);
 
   // Set up the QR code button in the header
   useRightHeaderButton({

@@ -674,11 +674,12 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receber XLM",
+    "title": "QR Code",
     "copyButton": "Copiar endereço",
+    "helpButton": "Ajuda",
     "helperText": "Digitalize o código QR ou \n copie seu endereço",
     "bottomSheet": {
-      "title": "Receber XLM",
+      "title": "QR Code",
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
   },
@@ -690,6 +691,9 @@
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
     "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
+  },
+  "qrCodeScannerScreen": {
+    "title": "Escanear para enviar"
   },
   "buyXLMScreen": {
     "title": "Adicionar XLM",

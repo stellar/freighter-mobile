@@ -138,28 +138,14 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
       saveRecipientAddress(destinationAddress);
 
       // Navigate directly to transaction amount screen with the selected token
-      // Reset the navigation stack so back action goes to main tab instead of QR scanner
-      navigation.reset({
-        index: 1,
-        routes: [
-          {
-            name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
-          },
-          {
-            name: ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK,
-            state: {
-              routes: [
-                {
-                  name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-                  params: {
-                    tokenId: selectedTokenId,
-                    recipientAddress: destinationAddress,
-                  },
-                },
-              ],
-            },
-          },
-        ],
+      // Pop to main tab first to remove the QR scanner screen from the stack, then navigate to send payment stack
+      navigation.popToTop();
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+        params: {
+          tokenId: selectedTokenId,
+          recipientAddress: destinationAddress,
+        },
       });
 
       // Reset the processing flag
