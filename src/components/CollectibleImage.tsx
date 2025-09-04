@@ -47,13 +47,17 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
   const showPlaceholder = !imageLoaded || imageError;
 
   return (
-    <View className={`${containerClassName} bg-background-tertiary`}>
+    <View
+      className={`${containerClassName} bg-background-tertiary`}
+      testID="collectible-image-container"
+    >
       {/* Placeholder icon - shown when image is loading or failed to load */}
       {showPlaceholder && (
         <View className="absolute z-1 items-center justify-center w-full h-full">
           <Icon.Image01
             size={placeholderIconSize}
             color={themeColors.text.secondary}
+            testID="collectible-image-placeholder"
           />
         </View>
       )}
@@ -65,6 +69,7 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
         resizeMode={resizeMode}
         onLoad={() => setImageLoaded(true)}
         onError={() => setImageError(true)}
+        testID="collectible-image"
       />
     </View>
   );
