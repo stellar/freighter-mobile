@@ -1,3 +1,4 @@
+import { CollectibleImage } from "components/CollectibleImage";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
@@ -18,13 +19,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo, useEffect, useState } from "react";
-import {
-  TouchableOpacity,
-  View,
-  FlatList,
-  Image,
-  RefreshControl,
-} from "react-native";
+import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
  * Props for the CollectiblesGrid component
@@ -98,7 +93,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
         <TouchableOpacity
-          className="w-[165px] h-[165px] rounded-2xl overflow-hidden items-center justify-center mr-6 bg-background-tertiary"
+          className="w-[165px] h-[165px] rounded-2xl overflow-hidden mr-6"
           delayPressIn={DEFAULT_PRESS_DELAY}
           onPress={() =>
             onCollectiblePress?.({
@@ -107,22 +102,10 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             })
           }
         >
-          {/* Placeholder icon for when the image is not loaded */}
-          <View className="absolute z-1">
-            <Icon.Image01 size={45} color={themeColors.text.secondary} />
-          </View>
-
-          {/* NFT image TODO: hide this when image fails to load */}
-          <View className="absolute z-10 w-full h-full bg-background-tertiary">
-            <Image
-              source={{ uri: item.image }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-          </View>
+          <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
         </TouchableOpacity>
       ),
-      [onCollectiblePress, themeColors.text.secondary],
+      [onCollectiblePress],
     );
 
     const renderCollection = useCallback(

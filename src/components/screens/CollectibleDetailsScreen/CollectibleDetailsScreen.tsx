@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -13,7 +14,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
-import { Image, Linking, ScrollView, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -187,20 +188,11 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           contentContainerStyle={{ paddingBottom: pxValue(40) }}
         >
           {/* Collectible Image */}
-          <View className="w-[354px] h-[354px] rounded-[32px] overflow-hidden items-center justify-center bg-background-tertiary mt-2 mb-6">
-            {/* Placeholder icon for when the image is not loaded */}
-            <View className="absolute z-1">
-              <Icon.Image01 size={90} color={themeColors.text.secondary} />
-            </View>
-
-            {/* NFT image TODO: hide this when image fails to load */}
-            <View className="absolute z-10 w-full h-full bg-background-tertiary">
-              <Image
-                source={{ uri: collectible.image }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            </View>
+          <View className="w-[354px] h-[354px] rounded-[32px] overflow-hidden mt-2 mb-6">
+            <CollectibleImage
+              imageUri={collectible.image}
+              placeholderIconSize={90}
+            />
           </View>
 
           {/* Basic Information */}
