@@ -111,7 +111,11 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
     Linking.openURL(explorerUrl).catch((err) =>
-      logger.error("Error opening transaction explorer:", String(err)),
+      logger.error(
+        "[Linking - openURL]",
+        "Error opening transaction explorer:",
+        err,
+      ),
     );
   };
 

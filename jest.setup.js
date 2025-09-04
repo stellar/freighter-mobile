@@ -314,3 +314,52 @@ jest.mock("react-native-permissions", () => ({
     },
   },
 }));
+
+// Mock react-native-fast-opencv
+jest.mock("react-native-fast-opencv", () => ({
+  BorderTypes: {
+    BORDER_DEFAULT: 0,
+  },
+  DataTypes: {
+    CV_8U: 0,
+  },
+  ObjectType: {
+    Mat: "Mat",
+    Size: "Size",
+    Point: "Point",
+  },
+  OpenCV: {
+    base64ToMat: jest.fn((base64) => ({
+      // Mock Mat object
+      empty: jest.fn(() => false),
+    })),
+    createObject: jest.fn((type, ...args) => ({
+      type,
+      args,
+    })),
+    invoke: jest.fn((method, ...args) => {
+      // Mock OpenCV method invocation
+      if (method === "GaussianBlur") {
+        return true;
+      }
+      return true;
+    }),
+    toJSValue: jest.fn((obj) => ({
+      base64: "mock-blurred-base64-data",
+    })),
+    clearBuffers: jest.fn(),
+  },
+}));
+
+// Mock Sentry for Jest tests
+jest.mock("@sentry/react-native", () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  addBreadcrumb: jest.fn(),
+  setContext: jest.fn(),
+  setUser: jest.fn(),
+  setTag: jest.fn(),
+  setExtra: jest.fn(),
+  wrap: jest.fn((component) => component), // Return component as-is for testing
+}));
