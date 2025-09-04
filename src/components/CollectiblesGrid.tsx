@@ -3,13 +3,16 @@ import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
-import { Collectible, Collection } from "ducks/collectibles";
 import { useAuthenticationStore } from "ducks/auth";
+import {
+  Collectible,
+  Collection,
+  useCollectiblesStore,
+} from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useCollectibles } from "hooks/useCollectibles";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo, useEffect } from "react";
 import {
   TouchableOpacity,
@@ -60,7 +63,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { account } = useGetActiveAccount();
     const { network } = useAuthenticationStore();
     const { collections, isLoading, error, fetchCollectibles } =
-      useCollectibles();
+      useCollectiblesStore();
 
     // Fetch collectibles when component mounts
     useEffect(() => {
@@ -92,8 +95,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             <Icon.Image01 size={45} color={themeColors.text.secondary} />
           </View>
 
-          {/* NFT image */}
-          <View className="absolute z-10 w-full h-full">
+          {/* NFT image TODO: hide this when image fails to load */}
+          <View className="absolute z-10 w-full h-full bg-background-tertiary">
             <Image
               source={{ uri: item.image }}
               className="w-full h-full"
@@ -170,7 +173,10 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
       if (error) {
         return (
-          <View className="flex-1 pt-4">
+          <View
+            className="flex-1 pt-4"
+            style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+          >
             <Text md secondary>
               {t("collectiblesGrid.error")}
             </Text>

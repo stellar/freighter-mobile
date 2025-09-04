@@ -7,10 +7,10 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
-import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
 import { Image, Linking, ScrollView, View } from "react-native";
@@ -65,7 +65,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { getCollectible, isLoading: isCollectiblesLoading } =
-      useCollectibles();
+      useCollectiblesStore();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -85,6 +85,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     useCollectibleDetailsHeader({
       collectionAddress,
       collectibleName: collectible?.name,
+      tokenId,
     });
 
     /**
@@ -192,8 +193,8 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
               <Icon.Image01 size={90} color={themeColors.text.secondary} />
             </View>
 
-            {/* NFT image */}
-            <View className="absolute z-10 w-full h-full">
+            {/* NFT image TODO: hide this when image fails to load */}
+            <View className="absolute z-10 w-full h-full bg-background-tertiary">
               <Image
                 source={{ uri: collectible.image }}
                 className="w-full h-full"

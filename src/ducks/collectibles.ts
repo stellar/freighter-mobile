@@ -1,6 +1,16 @@
-import { fetchCollectibles as apiFetchCollectibles } from "services/backend";
+import { logger } from "config/logger";
+import {
+  retrieveCollectiblesContracts,
+  addCollectibleToStorage,
+  removeCollectibleFromStorage,
+  transformBackendCollections,
+} from "helpers/collectibles";
+import {
+  fetchCollectibles as apiFetchCollectibles,
+  BackendCollectionError,
+  BackendCollection,
+} from "services/backend";
 import { create } from "zustand";
-import { debug } from "helpers/debug";
 
 /**
  * Represents a trait/attribute of a collectible NFT
@@ -61,11 +71,41 @@ interface CollectiblesState {
   /** Error message if fetch fails */
   error: string | null;
   /** Function to fetch collectibles from API */
-  fetchCollectibles: (params: { publicKey: string; network: string }) => Promise<void>;
+  fetchCollectibles: (params: {
+    publicKey: string;
+    network: string;
+  }) => Promise<void>;
+  /** Function to add a single collectible after validation */
+  addCollectible: (params: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => Promise<void>;
+  /** Function to remove a single collectible from local storage */
+  removeCollectible: (params: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => Promise<void>;
+  /** Function to check if a collectible already exists */
+  checkCollectibleExists: (params: {
+    contractId: string;
+    tokenId: string;
+  }) => boolean;
   /** Function to clear any error state */
   clearError: () => void;
+  /** Function to find a collection by its collection address */
+  getCollection: (collectionAddress: string) => Collection | undefined;
+  /** Function to find a specific collectible by its collection address and token ID */
+  getCollectible: (params: {
+    collectionAddress: string;
+    tokenId: string;
+  }) => Collectible | undefined;
 }
 
+/*
 // Dummy data to test the collectibles UI
 const dummyCollections: Collection[] = [
   // Stellar Frogs Collection
@@ -192,6 +232,7 @@ const dummyCollections: Collection[] = [
     ],
   },
 ];
+*/
 
 /**
  * Zustand store for managing collectibles state
@@ -202,7 +243,7 @@ const dummyCollections: Collection[] = [
  * - Error handling
  * - Data fetching operations
  */
-export const useCollectiblesStore = create<CollectiblesState>((set) => ({
+export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   collections: [],
   isLoading: false,
   error: null,
@@ -211,33 +252,103 @@ export const useCollectiblesStore = create<CollectiblesState>((set) => ({
    * Fetches collectibles from the API
    *
    * Currently uses dummy data for development/testing.
-   * TODO: Replace with actual API call to fetch real collectibles data.
    *
    * @param {Object} params - Parameters for fetching collectibles
    * @param {string} params.publicKey - The public key of the account to fetch collectibles for
    * @param {string} params.network - The network to query (mainnet/testnet)
    * @returns {Promise<void>} Promise that resolves when fetch completes
    */
-  fetchCollectibles: async ({ publicKey, network }: { publicKey: string; network: string }) => {
+  fetchCollectibles: async ({
+    publicKey,
+    network,
+  }: {
+    publicKey: string;
+    network: string;
+  }) => {
     set({ isLoading: true, error: null });
 
     try {
-      // TODO: Replace with actual API call
-      const collections = await apiFetchCollectibles({
-        owner: publicKey,
-        // TODO: contracts should be retrieved from local storage for the given network and public key
-        contracts: [{
-          id: "CDSN4MICK7U5XOP4DE6OIZQCRMYO3UTQ5VYZV7ZA7H63OICZPBLXYRGJ",
-          token_ids: ["0"]
-        }]
+      // Retrieve collectible contracts from local storage
+      const collectiblesContracts = await retrieveCollectiblesContracts({
+        network,
+        publicKey,
       });
 
-      debug("apiFetchCollectibles", "> > > > > > > collections: ", collections);
+      if (collectiblesContracts.length === 0) {
+        // No collectibles to fetch, set empty state
+        set({
+          collections: [],
+          isLoading: false,
+        });
+        return;
+      }
 
-      // For now, return dummy data grouped by collections
-      // TODO: Replace with actual API call
+      // Transform local storage data to API format
+      const contracts = collectiblesContracts.map((contract) => ({
+        id: contract.contractId,
+        token_ids: contract.tokenIds,
+      }));
+
+      // Fetch collectibles from API using stored contracts
+      const collections = await apiFetchCollectibles({
+        owner: publicKey,
+        contracts,
+      });
+
+      // Filter collections that are an error
+      const errorCollections = collections.filter(
+        (collection) => "error" in collection,
+      );
+      if (errorCollections.length > 0) {
+        errorCollections.forEach((errorCollection) => {
+          const { error } = errorCollection;
+
+          // Let's silently log the backend errors so we keep track of it on Sentry
+          if (
+            error.tokens &&
+            Array.isArray(error.tokens) &&
+            error.tokens.length > 0
+          ) {
+            error.tokens.forEach((token) => {
+              logger.error(
+                "fetchCollectibles",
+                `Error in token ${token.token_id} of collection ${error.collection_address}`,
+                token.error_message,
+              );
+            });
+          } else {
+            logger.error(
+              "fetchCollectibles",
+              `Error in collection ${error.collection_address}`,
+              error.error_message,
+            );
+          }
+        });
+      }
+
+      // Filter collections that are owned by the publicKey
+      const backendCollections = collections.filter(
+        (collection) => "collection" in collection,
+      );
+      const ownedCollections = backendCollections
+        .map(({ collection }) => ({
+          // Add collectibles that are owned by the publicKey
+          collection: {
+            ...collection,
+            collectibles: (collection.collectibles || []).filter(
+              (item) => item?.owner === publicKey,
+            ),
+          },
+        }))
+        .filter(({ collection }) => collection.collectibles.length > 0);
+
+      // Transform backend collections to frontend Collection interface
+      const transformedCollections =
+        await transformBackendCollections(ownedCollections);
+
+      // Set the transformed collections
       set({
-        collections: dummyCollections,
+        collections: transformedCollections,
         isLoading: false,
       });
     } catch (error) {
@@ -252,9 +363,220 @@ export const useCollectiblesStore = create<CollectiblesState>((set) => ({
   },
 
   /**
+   * Adds a single collectible to the store and local storage after validation.
+   *
+   * @param {Object} params - Parameters for adding a collectible
+   * @param {string} params.publicKey - The public key of the account owning the collectible
+   * @param {string} params.network - The network of the collectible
+   * @param {string} params.contractId - The contract ID of the collectible
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {Promise<void>} Promise that resolves when add completes
+   */
+  addCollectible: async ({
+    publicKey,
+    network,
+    contractId,
+    tokenId,
+  }: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Validate parameters
+      if (!publicKey || !network || !contractId || !tokenId) {
+        throw new Error("Invalid parameters for adding collectible."); // TODO: add translations
+      }
+
+      // Fetch the single collectible from the API
+      const collections = await apiFetchCollectibles({
+        owner: publicKey,
+        contracts: [
+          {
+            id: contractId,
+            token_ids: [tokenId],
+          },
+        ],
+      });
+
+      const collectibleError = collections?.find(
+        (c) => "error" in c && c.error.collection_address === contractId,
+      ) as BackendCollectionError;
+      if (collectibleError) {
+        const collectionErrorMessage = collectibleError.error.error_message;
+        const tokenErrorMessage = collectibleError.error.tokens?.find(
+          (t) => t.token_id === tokenId,
+        )?.error_message;
+
+        // Let's log the backend error so we keep track of it on Sentry
+        logger.error(
+          "addCollectible",
+          "Failed to add collectible",
+          tokenErrorMessage ||
+            collectionErrorMessage ||
+            "Failed to add collectible.",
+        );
+
+        throw new Error(
+          "Please make sure the collection address and token ID are correct.",
+        ); // TODO: add translations
+      }
+
+      const collection = collections?.find(
+        (c) => "collection" in c && c.collection.address === contractId,
+      ) as BackendCollection;
+      // Validate that we receive a collection for the given address
+      if (!collection) {
+        throw new Error("Collection not found for the given address."); // TODO: add translations
+      }
+
+      const collectible = collection.collection.collectibles.find(
+        (c) => c.token_id === tokenId && c.owner === publicKey,
+      );
+      // Validate that the collectible is owned by the public key
+      if (!collectible) {
+        throw new Error("It appears this collectible is not owned by you."); // TODO: add translations
+      }
+
+      // Save the collectible to local storage
+      await addCollectibleToStorage({
+        network,
+        publicKey,
+        contractId,
+        tokenId,
+      });
+
+      // Re-fetch collections to include the new collectible
+      await get().fetchCollectibles({ publicKey, network });
+
+      set({ isLoading: false, error: null });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : "Failed to add collectible", // TODO: add translations
+        isLoading: false,
+      });
+
+      throw error;
+    }
+  },
+
+  /**
+   * Removes a single collectible from local storage and updates the store.
+   *
+   * @param {Object} params - Parameters for removing a collectible
+   * @param {string} params.publicKey - The public key of the account owning the collectible
+   * @param {string} params.network - The network of the collectible
+   * @param {string} params.contractId - The contract ID of the collectible
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {Promise<void>} Promise that resolves when remove completes
+   */
+  removeCollectible: async ({
+    publicKey,
+    network,
+    contractId,
+    tokenId,
+  }: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Validate parameters
+      if (!publicKey || !network || !contractId || !tokenId) {
+        throw new Error("Invalid parameters for removing collectible."); // TODO: add translations
+      }
+
+      // Remove the collectible from local storage
+      await removeCollectibleFromStorage({
+        network,
+        publicKey,
+        contractId,
+        tokenId,
+      });
+
+      // Re-fetch collections to reflect the removal
+      await get().fetchCollectibles({ publicKey, network });
+
+      set({ isLoading: false, error: null });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove collectible", // TODO: add translations
+        isLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Checks if a collectible already exists in the current collections
+   *
+   * @param {Object} params - Parameters for checking collectible existence
+   * @param {string} params.contractId - The contract ID of the collectible
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {boolean} True if the collectible exists, false otherwise
+   */
+  checkCollectibleExists: ({
+    contractId,
+    tokenId,
+  }: {
+    contractId: string;
+    tokenId: string;
+  }): boolean => {
+    const state = get();
+
+    // Check if the collectible exists in the current collections
+    const existingCollectible = state.collections
+      .find((collection) => collection.collectionAddress === contractId)
+      ?.items.find((item) => item.tokenId === tokenId);
+
+    return !!existingCollectible;
+  },
+
+  /**
    * Clears any error state from the store
    */
   clearError: () => {
     set({ error: null });
   },
+
+  /**
+   * Finds a collection by its collection address.
+   *
+   * @param {string} collectionAddress - The address of the collection to find.
+   * @returns {Collection | undefined} The collection if found, otherwise undefined.
+   */
+  getCollection: (collectionAddress: string) =>
+    get().collections.find(
+      (collection) => collection.collectionAddress === collectionAddress,
+    ),
+
+  /**
+   * Finds a specific collectible by its collection address and token ID.
+   *
+   * @param {Object} params - Parameters for finding a collectible.
+   * @param {string} params.collectionAddress - The address of the collection.
+   * @param {string} params.tokenId - The token ID of the collectible.
+   * @returns {Collectible | undefined} The collectible if found, otherwise undefined.
+   */
+  getCollectible: ({
+    collectionAddress,
+    tokenId,
+  }: {
+    collectionAddress: string;
+    tokenId: string;
+  }) =>
+    get()
+      .collections.find(
+        (collection) => collection.collectionAddress === collectionAddress,
+      )
+      ?.items.find((item) => item.tokenId === tokenId),
 }));

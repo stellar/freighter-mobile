@@ -33,15 +33,17 @@ import { Linking, Platform } from "react-native";
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
   collectibleName,
+  tokenId,
 }: {
   collectionAddress: string;
   collectibleName?: string;
+  tokenId: string;
 }) => {
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
-  const { fetchCollectibles } = useCollectiblesStore();
+  const { fetchCollectibles, removeCollectible } = useCollectiblesStore();
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -90,6 +92,39 @@ export const useCollectibleDetailsHeader = ({
   }, [network, collectionAddress]);
 
   /**
+   * Handles removing the collectible from the wallet.
+   * Removes the collectible from local storage and navigates back.
+   */
+  const handleRemoveCollectible = useCallback(async () => {
+    try {
+      if (account?.publicKey && network) {
+        await removeCollectible({
+          publicKey: account.publicKey,
+          network,
+          contractId: collectionAddress,
+          tokenId,
+        });
+
+        // Navigate back after successful removal
+        navigation.goBack();
+      }
+    } catch (error) {
+      logger.error(
+        "useCollectibleDetailsHeader",
+        "Failed to remove collectible:",
+        error,
+      );
+    }
+  }, [
+    removeCollectible,
+    account?.publicKey,
+    network,
+    collectionAddress,
+    tokenId,
+    navigation,
+  ]);
+
+  /**
    * Platform-specific system icons for the context menu actions.
    */
   const systemIcons = useMemo(
@@ -98,10 +133,12 @@ export const useCollectibleDetailsHeader = ({
         ios: {
           refreshMetadata: "arrow.clockwise", // Circular arrow for refresh
           viewOnStellarExpert: "link", // Link/chain icon
+          removeCollectible: "trash", // Trash icon for removal
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
+          removeCollectible: "delete", // Delete icon (Material)
         },
       }),
     [],
@@ -123,8 +160,27 @@ export const useCollectibleDetailsHeader = ({
         systemIcon: systemIcons?.viewOnStellarExpert,
         onPress: handleViewOnStellarExpert,
       },
+
+      // Only show remove collectible in development mode for
+      // testing purposes
+      ...(__DEV__
+        ? [
+            {
+              title: "Remove collectible", // TODO: add translations
+              systemIcon: systemIcons?.removeCollectible,
+              onPress: handleRemoveCollectible,
+              destructive: true, // Mark as destructive action
+            },
+          ]
+        : []),
     ],
-    [t, systemIcons, handleRefreshMetadata, handleViewOnStellarExpert],
+    [
+      t,
+      systemIcons,
+      handleRefreshMetadata,
+      handleViewOnStellarExpert,
+      handleRemoveCollectible,
+    ],
   );
 
   // Set up the right header menu
@@ -137,5 +193,6 @@ export const useCollectibleDetailsHeader = ({
   return {
     handleRefreshMetadata,
     handleViewOnStellarExpert,
+    handleRemoveCollectible,
   };
 };

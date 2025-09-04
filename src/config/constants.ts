@@ -233,6 +233,7 @@ export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
+  COLLECTIBLES_LIST = "collectiblesList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",

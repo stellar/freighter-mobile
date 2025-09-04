@@ -9,25 +9,6 @@ jest.mock("react-native/Libraries/Linking/Linking", () => ({
   openURL: jest.fn(),
 }));
 
-// Mock the useCollectibles hook
-jest.mock("hooks/useCollectibles", () => ({
-  useCollectibles: () => ({
-    getCollectible: jest.fn(() => ({
-      collectionAddress: "test-collection",
-      collectionName: "Test Collection",
-      tokenId: "123",
-      name: "Test NFT",
-      image: "https://example.com/image.jpg",
-      description: "A test NFT description",
-      externalUrl: "https://example.com/nft",
-      traits: [
-        { name: "Color", value: "Blue" },
-        { name: "Rarity", value: "Common" },
-      ],
-    })),
-  }),
-}));
-
 // Mock the useAppTranslation hook
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,

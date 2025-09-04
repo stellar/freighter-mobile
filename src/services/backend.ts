@@ -30,6 +30,7 @@ import {
 } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
+import { debug } from "helpers/debug";
 import { getNativeContractDetails } from "helpers/soroban";
 import Config from "react-native-config";
 import { createApiService } from "services/apiFactory";
@@ -853,32 +854,73 @@ export interface FetchCollectiblesParams {
 }
 
 /**
- * Response from the collectibles API
- * @interface CollectiblesResponse
- * @property {Object} data - Response data container
- * @property {Object[]} data.collections - Array of collection objects
+ * Represents a single collectible item returned from the backend.
+ * @typedef {Object} BackendCollectible
+ * @property {string} owner - The public key of the owner of the collectible.
+ * @property {string} token_id - The unique token ID of the collectible.
+ * @property {string} token_uri - The URI pointing to the collectible's metadata JSON.
  */
-interface CollectiblesResponse {
-  data: {
-    collections: {
-      address: string;
-      name: string;
-      symbol: string;
-      collectibles: {
-        owner: string;
-        token_id: string;
-        token_uri: string; // token_uri is the URL of the token JSON metadata
-      }[];
+export type BackendCollectible = {
+  owner: string;
+  token_id: string;
+  token_uri: string; // token_uri is the URL of the token JSON metadata
+};
+
+/**
+ * Represents a collection of collectibles returned from the backend.
+ * @typedef {Object} BackendCollection
+ * @property {Object} collection - The collection object.
+ * @property {string} collection.address - The contract address of the collection.
+ * @property {string} collection.name - The human-readable name of the collection.
+ * @property {string} collection.symbol - The symbol/ticker of the collection.
+ * @property {BackendCollectible[]} collection.collectibles - Array of collectibles in this collection.
+ */
+export type BackendCollection = {
+  collection: {
+    address: string;
+    name: string;
+    symbol: string;
+    collectibles: BackendCollectible[];
+  };
+};
+
+/**
+ * Represents an error response for a collection or its tokens from the backend.
+ * @typedef {Object} BackendCollectionError
+ * @property {Object} error - The error object.
+ * @property {string} error.collection_address - The contract address of the collection with the error.
+ * @property {string} [error.error_message] - Optional error message for the collection.
+ * @property {Array<{token_id: string, error_message: string}>} [error.tokens] - Optional array of token-level errors.
+ */
+export type BackendCollectionError = {
+  error: {
+    collection_address: string;
+    error_message?: string;
+    tokens?: {
+      token_id: string;
+      error_message: string;
     }[];
   };
-}
+};
+
+/**
+ * The response structure from the collectibles API endpoint.
+ * @typedef {Object} CollectiblesResponse
+ * @property {Object} data - The response data container.
+ * @property {(BackendCollection | BackendCollectionError)[]} data.collections - Array of collection objects or error objects.
+ */
+export type CollectiblesResponse = {
+  data: {
+    collections: (BackendCollection | BackendCollectionError)[];
+  };
+};
 
 /**
  * Fetches collectibles from the backend collectibles endpoint
  * @async
  * @function fetchCollectibles
  * @param {FetchCollectiblesParams} params - Parameters for collectibles fetching
- * @returns {Promise<CollectiblesResponse['data']['collections']>} Promise resolving to array of collections
+ * @returns {Promise<(BackendCollection | BackendCollectionError)[]>} Promise resolving to array of collections or error objects
  *
  * @description
  * Retrieves collectibles from the backend:
@@ -904,8 +946,15 @@ interface CollectiblesResponse {
 export const fetchCollectibles = async ({
   owner,
   contracts,
-}: FetchCollectiblesParams): Promise<CollectiblesResponse['data']['collections']> => {
+}: FetchCollectiblesParams): Promise<
+  (BackendCollection | BackendCollectionError)[]
+> => {
   try {
+    debug("fetchCollectibles", "> > > > > > > > > > Fetching collectibles", {
+      owner,
+      contracts,
+    });
+
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
       "/collectibles",
       {
