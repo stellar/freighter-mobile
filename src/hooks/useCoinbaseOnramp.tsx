@@ -1,8 +1,9 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useEffect, useState } from "react";
-import { Linking } from "react-native";
+import { Platform } from "react-native";
 import Config from "react-native-config";
 import { analytics } from "services/analytics";
 
@@ -21,9 +22,12 @@ interface UseCoinbaseOnrampParams {
   token?: string;
 }
 
+const isCoinbaseOnrampAvailable = (): boolean => Platform.OS === "android";
+
 function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
   const [isLoading, setIsLoading] = useState(false);
   const [publicKey, setPublicKey] = useState("");
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const fetchData = useCallback(async () => {
     const options = {
@@ -63,31 +67,33 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       return;
     }
 
+    // Check if Coinbase onramp is available on this platform
+    if (!isCoinbaseOnrampAvailable()) {
+      throw new Error("Coinbase onramp is not availabl");
+    }
+
     setIsLoading(true);
 
     try {
       const data = await fetchData();
       const url = getCoinbaseUrl({ sessionToken: data.token, token });
 
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        throw new Error("Cannot open Coinbase URL");
-      }
-
       analytics.track(AnalyticsEvent.COINBASE_ONRAMP_OPENED);
-      await Linking.openURL(url);
+
+      await openInAppBrowser(url);
     } catch (error) {
       logger.error("useCoinbaseOnramp", "Failed to open Coinbase URL", error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  }, [token, fetchData, isLoading, publicKey]);
+  }, [token, fetchData, isLoading, publicKey, openInAppBrowser]);
 
   return {
     openCoinbaseUrl,
     isLoading,
+    isAvailable: isCoinbaseOnrampAvailable(),
   };
 }
 
-export { useCoinbaseOnramp };
+export { useCoinbaseOnramp, isCoinbaseOnrampAvailable };
