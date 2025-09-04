@@ -60,12 +60,12 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
         clearTimeout(timerRef.current);
       }
 
-      // Set a timer to show placeholder after 1 second if image hasn't loaded
+      // Set a timer to show placeholder after 500ms if image hasn't loaded
       timerRef.current = setTimeout(() => {
         if (!imageLoadedRef.current) {
           setShowPlaceholder(true);
         }
-      }, 1000);
+      }, 500);
     }
 
     return () => {
