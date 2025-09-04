@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { BrowserTab } from "ducks/browserTabs";
+import { Platform } from "react-native";
 import {
   BorderTypes,
   DataTypes,
@@ -199,6 +200,11 @@ const getBlurredImage = (uri: string) => {
       return uri;
     }
 
+    const kernelPlatform = Platform.select({
+      ios: BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.EXTREMELY_STRONG,
+      android: BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.VERY_STRONG,
+    });
+
     const destination = OpenCV.createObject(
       ObjectType.Mat,
       0,
@@ -207,8 +213,8 @@ const getBlurredImage = (uri: string) => {
     );
     const kernel = OpenCV.createObject(
       ObjectType.Size,
-      BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.VERY_STRONG,
-      BROWSER_CONSTANTS.SCREENSHOT_BLUR_STRENGTH.VERY_STRONG,
+      kernelPlatform as number,
+      kernelPlatform as number,
     );
 
     OpenCV.invoke(
@@ -281,13 +287,13 @@ export const captureTabScreenshot = async ({
         updateTab(tabId, { screenshot: blurredUri });
 
         logger.debug(source, `Screenshot captured for tab ${tabId}`);
-
-        // Clear OpenCV buffers
-        // otherwise it will cause a memory leak
-        OpenCV.clearBuffers();
       }
     }
   } catch (error) {
     logger.error(source, "Failed to capture screenshot:", error);
+  } finally {
+    // Clear OpenCV buffers
+    // otherwise it will cause a memory leak
+    OpenCV.clearBuffers();
   }
 };
