@@ -2,7 +2,11 @@ import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  DEFAULT_PRESS_DELAY,
+  DEFAULT_REFRESH_DELAY,
+} from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   Collectible,
@@ -13,7 +17,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
 import {
   TouchableOpacity,
   View,
@@ -65,6 +69,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { collections, isLoading, error, fetchCollectibles } =
       useCollectiblesStore();
 
+    // Local state for managing refresh UI only
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     // Fetch collectibles when component mounts
     useEffect(() => {
       if (account?.publicKey && network) {
@@ -74,7 +81,17 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
     const handleRefresh = useCallback(() => {
       if (account?.publicKey && network) {
+        setIsRefreshing(true);
+
+        // Start fetching collectibles immediately
         fetchCollectibles({ publicKey: account.publicKey, network });
+
+        // Add a minimum delay to prevent UI flickering
+        new Promise((resolve) => {
+          setTimeout(resolve, DEFAULT_REFRESH_DELAY);
+        }).finally(() => {
+          setIsRefreshing(false);
+        });
       }
     }, [fetchCollectibles, account?.publicKey, network]);
 
@@ -150,7 +167,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             ListFooterComponent={DefaultListFooter}
             refreshControl={
               <RefreshControl
-                refreshing={isLoading}
+                refreshing={isRefreshing}
                 tintColor={themeColors.secondary}
                 onRefresh={handleRefresh}
               />
@@ -195,6 +212,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     }, [
       collections,
       isLoading,
+      isRefreshing,
       error,
       t,
       themeColors.text.secondary,
