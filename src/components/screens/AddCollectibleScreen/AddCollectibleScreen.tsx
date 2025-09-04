@@ -177,13 +177,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         // Navigate back after successful addition
         navigation.goBack();
       } catch (error) {
-        logger.error(
-          "AddCollectibleScreen.handleBottomButtonPress",
-          "Failed to add collectible",
-          error,
-        );
-
-        // Show error toast
+        // Show error toast with friendly error message
         showToast({
           toastId: "add-collectible-error",
           title: t("addCollectibleScreen.toastError", {
