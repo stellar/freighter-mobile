@@ -90,10 +90,10 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   );
 };
 
-const renderContent = (children: ReactNode, onPress?: () => void) => {
+const renderContent = (children: ReactNode, onPress?: () => void, isSingleRow?: boolean) => {
   if (onPress) {
     return (
-      <TouchableOpacity onPress={onPress} delayPressIn={DEFAULT_PRESS_DELAY}>
+      <TouchableOpacity onPress={onPress} delayPressIn={isSingleRow ? 0 : DEFAULT_PRESS_DELAY}>
         {children}
       </TouchableOpacity>
     );
@@ -133,4 +133,5 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
       )}
     </BalanceRowContainer>,
     onPress,
+    isSingleRow,
   );

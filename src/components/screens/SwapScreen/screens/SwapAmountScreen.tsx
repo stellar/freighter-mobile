@@ -33,7 +33,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text as RNText } from "react-native";
+import { View, Text as RNText, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -360,16 +360,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
             {sourceBalance && (
               <BalanceRow
+                isSingleRow
                 balance={sourceBalance}
+                onPress={navigateToSelectSourceTokenScreen}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
                     size="sm"
                     variant="ghost"
-                    onPress={navigateToSelectSourceTokenScreen}
                   />
                 }
-                isSingleRow
               />
             )}
           </View>
@@ -377,19 +377,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
             {destinationBalance ? (
               <BalanceRow
+                isSingleRow  
                 balance={destinationBalance}
-                isSingleRow
+                onPress={navigateToSelectDestinationTokenScreen}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
                     size="sm"
                     variant="ghost"
-                    onPress={navigateToSelectDestinationTokenScreen}
                   />
                 }
               />
             ) : (
-              <View className="flex-row w-full h-[44px] justify-between items-center">
+              <TouchableOpacity
+                className="flex-row w-full h-[44px] justify-between items-center"
+                onPress={navigateToSelectDestinationTokenScreen}
+              >
                 <View className="flex-row items-center flex-1 mr-4">
                   <View className="flex-row items-center gap-16px">
                     <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
@@ -407,9 +410,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                   Icon={Icon.ChevronRight}
                   size="sm"
                   variant="ghost"
-                  onPress={navigateToSelectDestinationTokenScreen}
                 />
-              </View>
+              </TouchableOpacity>
             )}
           </View>
         </View>

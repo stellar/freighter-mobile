@@ -13,6 +13,7 @@ interface ContactRowProps {
   name?: string;
   onPress?: () => void;
   onDotsPress?: () => void;
+  isSingleRow?: boolean;
   rightElement?: React.ReactNode;
   className?: string;
   testID?: string;
@@ -29,6 +30,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
   name,
   onPress,
   onDotsPress,
+  isSingleRow,
   rightElement,
   className,
   testID,
@@ -77,7 +79,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
     <TouchableOpacity
       className={`flex-row w-full h-[44px] justify-between items-center ${className || ""}`}
       onPress={onPress}
-      delayPressIn={DEFAULT_PRESS_DELAY}
+      delayPressIn={isSingleRow ? 0 : DEFAULT_PRESS_DELAY}
       testID={testID}
     >
       <View className="flex-row items-center flex-1 mr-4">
