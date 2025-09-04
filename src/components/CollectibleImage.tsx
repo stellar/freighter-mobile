@@ -25,7 +25,7 @@ interface CollectibleImageProps {
  * A reusable component for displaying collectible images with a fallback placeholder.
  * Features include:
  * - Displays collectible image with proper sizing
- * - Shows placeholder icon after 1 second if image hasn't loaded
+ * - Shows placeholder icon after 500ms if image hasn't loaded
  * - Shows placeholder icon immediately when image fails to load
  * - Handles image loading states with timeout
  * - Customizable placeholder icon size
@@ -46,7 +46,7 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const imageLoadedRef = useRef(false);
 
-  // Show placeholder after 1 second if image hasn't loaded, or immediately on error
+  // Show placeholder after 500ms if image hasn't loaded, or immediately on error
   useEffect(() => {
     if (!imageUri) {
       setShowPlaceholder(true);
@@ -80,7 +80,7 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
       className={`${containerClassName} bg-background-tertiary`}
       testID="collectible-image-container"
     >
-      {/* Placeholder icon - shown after 1 second if image hasn't loaded, or immediately when image fails to load */}
+      {/* Placeholder icon - shown after 500ms if image hasn't loaded, or immediately when image fails to load */}
       {showPlaceholder && (
         <View className="absolute z-1 items-center justify-center w-full h-full">
           <Icon.Image01
