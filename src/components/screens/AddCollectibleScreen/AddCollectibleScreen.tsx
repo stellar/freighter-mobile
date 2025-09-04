@@ -35,7 +35,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
 
   const validateCollectionAddress = useCallback(
     (address: string) => {
-      if (!address.trim()) {
+      if (!address) {
         setCollectionAddressError("");
         return;
       }
@@ -45,7 +45,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         return;
       }
 
-      if (!isContractId(address.trim())) {
+      if (!isContractId(address)) {
         setCollectionAddressError(t("addCollectibleScreen.invalidAddress"));
         return;
       }
@@ -57,7 +57,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
 
   const validateTokenId = useCallback(
     (id: string) => {
-      if (!id.trim()) {
+      if (!id) {
         setTokenIdError("");
         return;
       }
@@ -82,8 +82,9 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
 
   const handleTokenIdChange = useCallback(
     (text: string) => {
-      setTokenId(text);
-      validateTokenId(text);
+      const trimmedText = text.trim();
+      setTokenId(trimmedText);
+      validateTokenId(trimmedText);
     },
     [validateTokenId],
   );
@@ -91,9 +92,10 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   const handlePasteCollectionAddress = useCallback(() => {
     getClipboardText()
       .then((text) => {
-        if (text) {
-          setCollectionAddress(text);
-          validateCollectionAddress(text);
+        const trimmedText = text.trim();
+        if (trimmedText) {
+          setCollectionAddress(trimmedText);
+          validateCollectionAddress(trimmedText);
         }
       })
       .catch((error) => {
@@ -108,9 +110,10 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   const handlePasteTokenId = useCallback(() => {
     getClipboardText()
       .then((text) => {
-        if (text) {
-          setTokenId(text);
-          validateTokenId(text);
+        const trimmedText = text.trim();
+        if (trimmedText) {
+          setTokenId(trimmedText);
+          validateTokenId(trimmedText);
         }
       })
       .catch((error) => {
@@ -123,10 +126,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
   }, [validateTokenId, getClipboardText]);
 
   const isFormValid =
-    collectionAddress.trim() &&
-    tokenId.trim() &&
-    !collectionAddressError &&
-    !tokenIdError;
+    collectionAddress && tokenId && !collectionAddressError && !tokenIdError;
 
   const handleButtonPress = useCallback(() => {
     if (isFormValid) {
@@ -135,9 +135,9 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     }
 
     // Focus next available input field
-    if (!collectionAddress.trim() || collectionAddressError) {
+    if (!collectionAddress || collectionAddressError) {
       collectionAddressRef.current?.focus();
-    } else if (!tokenId.trim() || tokenIdError) {
+    } else if (!tokenId || tokenIdError) {
       tokenIdRef.current?.focus();
     }
   }, [
