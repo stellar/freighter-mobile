@@ -77,6 +77,9 @@ jest.mock("@react-navigation/native", () => {
     return mockRef;
   };
 
+  // Make sure createNavigationContainerRef is available
+  createNavigationContainerRef.mockRef = mockRef;
+
   return {
     __esModule: true,
     ...originalModule,
@@ -159,6 +162,15 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("helpers/getOsLanguage", () =>
   jest.fn().mockImplementationOnce(() => "en"),
 );
+
+// Mock stellarExpert service to avoid import issues
+jest.mock("services/stellarExpert", () => ({
+  searchToken: jest.fn(async () => ({
+    _embedded: {
+      records: [],
+    },
+  })),
+}));
 
 // Mock react-native-bootsplash
 jest.mock("react-native-bootsplash", () => ({
