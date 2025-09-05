@@ -19,12 +19,13 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useState } from "react";
-import { View, Image, Platform } from "react-native";
+import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
 import { analytics } from "services/analytics";
@@ -78,7 +79,7 @@ const BlurredBackgroundIcon = ({
           position: "relative",
         }}
       >
-        {Platform.OS === "ios" ? (
+        {isIOS ? (
           <BlurView
             blurType="light"
             blurAmount={6}
