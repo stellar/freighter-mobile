@@ -1,6 +1,9 @@
 import { TokenIcon } from "components/TokenIcon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PRESS_DELAY } from "config/constants";
+import {
+  DEFAULT_PRESS_DELAY,
+  POSITIVE_PRICE_CHANGE_THRESHOLD,
+} from "config/constants";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
@@ -73,7 +76,9 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
             sm
             medium
             color={
-              balance.percentagePriceChange24h?.gt(0)
+              balance.percentagePriceChange24h?.gte(
+                POSITIVE_PRICE_CHANGE_THRESHOLD,
+              )
                 ? THEME.colors.status.success
                 : THEME.colors.text.secondary
             }
