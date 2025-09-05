@@ -87,8 +87,8 @@ export const MANAGE_WALLETS_ROUTES = {
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
 } as const;
 
-export const BUY_XLM_ROUTES = {
-  BUY_XLM_SCREEN: "BuyXLMScreen",
+export const ADD_FUNDS_ROUTES = {
+  ADD_FUNDS_SCREEN: "BuyXLMScreen", // mismatching name, unchanged on purpose due to analytics
 } as const;
 
 export const SEND_PAYMENT_ROUTES = {
@@ -125,7 +125,7 @@ export const ALL_ROUTES_OBJECT = [
   MANAGE_TOKENS_ROUTES,
   SETTINGS_ROUTES,
   MANAGE_WALLETS_ROUTES,
-  BUY_XLM_ROUTES,
+  ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
 ] as const;
@@ -144,7 +144,7 @@ export type RootStackParamList = {
     source?: QRCodeSource;
   };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
@@ -216,8 +216,8 @@ export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
 };
 
-export type BuyXLMStackParamList = {
-  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
+export type AddFundsStackParamList = {
+  [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {

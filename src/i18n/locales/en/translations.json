@@ -112,7 +112,7 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "QR Code",
+    "title": "Receive funds",
     "copyButton": "Copy address",
     "helperText": "Scan the QR code or \ncopy your address",
     "bottomSheet": {
@@ -132,14 +132,18 @@
   "qrCodeScannerScreen": {
     "title": "Scan to send"
   },
-  "buyXLMScreen": {
-    "title": "Add XLM",
+  "addFundsScreen": {
+    "title": "Add funds",
     "bottomSheet": {
       "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
     },
-    "actions": {
+    "transferFromAnotherAccount": {
       "title": "Transfer from another account",
       "description": "Receive funds from another wallet"
+    },
+    "buyWithCoinbase": {
+      "title": "Buy with Coinbase",
+      "description": "Transfer from Coinbase & other options"
     }
   },
   "changeNetworkScreen": {
@@ -346,7 +350,11 @@
     "view": "View",
     "refreshMetadata": "Refresh metadata",
     "viewOnStellarExpert": "View on stellar.expert",
-    "removeCollectible": "Remove collectible"
+    "removeCollectible": "Remove collectible",
+    "saveToPhotos": "Save to photos",
+    "imageSavedToPhotos": "Image saved to photos",
+    "imageSaveFailed": "Failed to save image to photos",
+    "imageSaveAttempted": "Save attempted, check your photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
