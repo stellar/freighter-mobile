@@ -555,28 +555,29 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             {selectedBalance && (
               <BalanceRow
+                isSingleRow
+                onPress={navigateToSelectTokenScreen}
                 balance={selectedBalance}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
                     size="sm"
                     variant="ghost"
-                    onPress={navigateToSelectTokenScreen}
                   />
                 }
-                isSingleRow
               />
             )}
           </View>
           <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             <ContactRow
+              isSingleRow
+              onPress={navigateToSelectContactScreen}
               address={recipientAddress}
               rightElement={
                 <IconButton
                   Icon={Icon.ChevronRight}
                   size="sm"
                   variant="ghost"
-                  onPress={navigateToSelectContactScreen}
                 />
               }
             />

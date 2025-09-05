@@ -49,9 +49,10 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             <Text md primary semiBold>
               {t("home.manageAccount.title")}
             </Text>
-            <TouchableOpacity onPress={onPressAddAnotherWallet}>
-              <Icon.PlusCircle color={themeColors.base[1]} />
-            </TouchableOpacity>
+            {/* Add a ghost icon here so the title remains centered */}
+            <View className="opacity-0">
+              <Icon.X />
+            </View>
           </View>
         }
       >
@@ -60,7 +61,8 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
           showsVerticalScrollIndicator={false}
           alwaysBounceVertical={false}
           contentContainerStyle={{
-            paddingTop: pxValue(24),
+            paddingTop: pxValue(10),
+            paddingBottom: pxValue(20),
           }}
         >
           {accounts.map((account) => (

@@ -47,14 +47,11 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
           style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
         >
           <ContactRow
+            isSingleRow
+            onPress={navigateToSelectContactScreen}
             address={recipientAddress}
             rightElement={
-              <IconButton
-                Icon={Icon.ChevronRight}
-                size="sm"
-                variant="ghost"
-                onPress={navigateToSelectContactScreen}
-              />
+              <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
             }
           />
         </View>
