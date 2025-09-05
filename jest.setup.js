@@ -77,6 +77,9 @@ jest.mock("@react-navigation/native", () => {
     return mockRef;
   };
 
+  // Make sure createNavigationContainerRef is available
+  createNavigationContainerRef.mockRef = mockRef;
+
   return {
     __esModule: true,
     ...originalModule,
@@ -159,6 +162,15 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("helpers/getOsLanguage", () =>
   jest.fn().mockImplementationOnce(() => "en"),
 );
+
+// Mock stellarExpert service to avoid import issues
+jest.mock("services/stellarExpert", () => ({
+  searchToken: jest.fn(async () => ({
+    _embedded: {
+      records: [],
+    },
+  })),
+}));
 
 // Mock react-native-bootsplash
 jest.mock("react-native-bootsplash", () => ({
@@ -312,9 +324,121 @@ jest.mock("react-native-permissions", () => ({
     IOS: {
       APP_TRACKING_TRANSPARENCY: "app-tracking-transparency",
     },
+    ANDROID: {
+      READ_MEDIA_IMAGES: "android.permission.READ_MEDIA_IMAGES",
+      READ_MEDIA_VIDEO: "android.permission.READ_MEDIA_VIDEO",
+      READ_EXTERNAL_STORAGE: "android.permission.READ_EXTERNAL_STORAGE",
+    },
+  },
+  RESULTS: {
+    GRANTED: "granted",
+    DENIED: "denied",
+    BLOCKED: "blocked",
+    UNAVAILABLE: "unavailable",
+  },
+  check: jest.fn(() => Promise.resolve("granted")),
+  request: jest.fn(() => Promise.resolve("granted")),
+  checkMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  requestMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  openSettings: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("@react-native-camera-roll/camera-roll", () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(() => Promise.resolve()),
+    getPhotos: jest.fn(() => Promise.resolve({ edges: [] })),
+    deletePhotos: jest.fn(() => Promise.resolve()),
   },
 }));
 
+jest.mock("@dr.pogodin/react-native-fs", () => ({
+  DocumentDirectoryPath: "/mock/documents/path",
+  downloadFile: jest.fn(() => ({
+    promise: Promise.resolve({ statusCode: 200 }),
+  })),
+  exists: jest.fn(() => Promise.resolve(true)),
+  unlink: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock react-native-biometrics
+jest.mock("react-native-biometrics", () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    isSensorAvailable: jest.fn(() => Promise.resolve(true)),
+    simplePrompt: jest.fn(() => Promise.resolve({ success: true })),
+    createKeys: jest.fn(() =>
+      Promise.resolve({ publicKey: "mock-public-key" }),
+    ),
+    deleteKeys: jest.fn(() => Promise.resolve()),
+    createSignature: jest.fn(() =>
+      Promise.resolve({ signature: "mock-signature" }),
+    ),
+    biometricKeysExist: jest.fn(() => Promise.resolve(true)),
+  })),
+}));
+
+// Mock the useBiometrics hook
+
+jest.mock("react-native-keychain", () => ({
+  BIOMETRY_TYPE: {
+    FACE_ID: "FaceID",
+    TOUCH_ID: "TouchID",
+    FINGERPRINT: "Fingerprint",
+    FACE: "Face",
+    IRIS: "Iris",
+    NONE: "None",
+  },
+  ACCESSIBLE: {
+    ALWAYS_THIS_DEVICE_ONLY: "AccessibleAlwaysThisDeviceOnly",
+    ALWAYS: "AccessibleAlways",
+    WHEN_UNLOCKED_THIS_DEVICE_ONLY: "AccessibleWhenUnlockedThisDeviceOnly",
+    WHEN_UNLOCKED: "AccessibleWhenUnlocked",
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY:
+      "AccessibleAfterFirstUnlockThisDeviceOnly",
+    AFTER_FIRST_UNLOCK: "AccessibleAfterFirstUnlock",
+    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY:
+      "AccessibleWhenPasscodeSetThisDeviceOnly",
+    WHEN_PASSCODE_SET: "AccessibleWhenPasscodeSet",
+  },
+  ACCESS_CONTROL: {
+    USER_PRESENCE: "UserPresence",
+    BIOMETRY_ANY: "BiometryAny",
+    BIOMETRY_CURRENT_SET: "BiometryCurrentSet",
+    DEVICE_PASSCODE: "DevicePasscode",
+    WATCH: "Watch",
+    OR: "Or",
+    AND: "And",
+  },
+  AUTHENTICATION_TYPE: {
+    BIOMETRICS: "AuthenticationWithBiometrics",
+    DEVICE_PASSCODE_OR_BIOMETRICS:
+      "AuthenticationWithDevicePasscodeOrBiometrics",
+    DEVICE_PASSCODE: "AuthenticationWithDevicePasscode",
+  },
+  SECURITY_LEVEL: {
+    ANY: "SecurityLevelAny",
+    SECURE_SOFTWARE: "SecurityLevelSecureSoftware",
+    SECURE_HARDWARE: "SecurityLevelSecureHardware",
+  },
+  getSupportedBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  getInternetCredentials: jest.fn(() => Promise.resolve(null)),
+  setInternetCredentials: jest.fn(() => Promise.resolve()),
+  resetInternetCredentials: jest.fn(() => Promise.resolve()),
+  getGenericPassword: jest.fn(() => Promise.resolve(null)),
+  setGenericPassword: jest.fn(() => Promise.resolve()),
+  resetGenericPassword: jest.fn(() => Promise.resolve()),
+  hasGenericPassword: jest.fn(() => Promise.resolve(false)),
+  getAllGenericPasswordServices: jest.fn(() => Promise.resolve([])),
+  getAllInternetCredentials: jest.fn(() => Promise.resolve([])),
+  canImplyAuthentication: jest.fn(() => Promise.resolve(false)),
+  getSecurityLevel: jest.fn(() => Promise.resolve("SecurityLevelAny")),
+  getAvailableBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  isSensorAvailable: jest.fn(() => Promise.resolve(true)),
+}));
 // Mock react-native-fast-opencv
 jest.mock("react-native-fast-opencv", () => ({
   BorderTypes: {

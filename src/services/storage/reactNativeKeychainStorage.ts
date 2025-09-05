@@ -85,4 +85,9 @@ export const reactNativeKeychainStorage: PersistentStorage = {
       // Don't throw since removal failures shouldn't block execution
     }
   },
+  clear: async () => {
+    await Keychain.resetGenericPassword({
+      service: DEFAULT_SERVICE,
+    });
+  },
 };

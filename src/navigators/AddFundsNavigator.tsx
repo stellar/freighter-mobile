@@ -3,36 +3,36 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
-import BuyXLMScreen from "components/screens/BuyXLMScreen";
+import AddFundsScreen from "components/screens/AddFundsScreen";
 import Icon from "components/sds/Icon";
 import {
-  BUY_XLM_ROUTES,
-  BuyXLMStackParamList,
+  ADD_FUNDS_ROUTES,
+  AddFundsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
-const BuyXLMStack = createNativeStackNavigator<BuyXLMStackParamList>();
+const AddFundsStack = createNativeStackNavigator<AddFundsStackParamList>();
 
-export const BuyXLMStackNavigator = () => {
+export const AddFundsStackNavigator = () => {
   const { t } = useAppTranslation();
 
   return (
-    <BuyXLMStack.Navigator
+    <AddFundsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
       }}
     >
-      <BuyXLMStack.Screen
-        name={BUY_XLM_ROUTES.BUY_XLM_SCREEN}
-        component={BuyXLMScreen}
+      <AddFundsStack.Screen
+        name={ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN}
+        component={AddFundsScreen}
         options={{
-          headerTitle: t("buyXLMScreen.title"),
+          headerTitle: t("addFundsScreen.title"),
           headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
-      <BuyXLMStack.Screen
+      <AddFundsStack.Screen
         name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
         component={AccountQRCodeScreen}
         options={{
@@ -43,6 +43,6 @@ export const BuyXLMStackNavigator = () => {
           headerLeft: () => <CustomHeaderButton icon={Icon.ArrowLeft} />,
         }}
       />
-    </BuyXLMStack.Navigator>
+    </AddFundsStack.Navigator>
   );
 };

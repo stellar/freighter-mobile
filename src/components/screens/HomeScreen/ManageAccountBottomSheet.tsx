@@ -60,7 +60,8 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
           showsVerticalScrollIndicator={false}
           alwaysBounceVertical={false}
           contentContainerStyle={{
-            paddingTop: pxValue(24),
+            paddingTop: pxValue(10),
+            paddingBottom: pxValue(20),
           }}
         >
           {accounts.map((account) => (

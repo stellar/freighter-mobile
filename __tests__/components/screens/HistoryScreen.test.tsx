@@ -69,7 +69,15 @@ jest.mock("hooks/useGetActiveAccount", () => ({
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({
     network: "PUBLIC",
+    setSignInMethod: jest.fn(),
   })),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
+  }),
 }));
 
 // Use a function-based mock component to avoid Jest error with View

@@ -126,6 +126,14 @@ jest.mock("ducks/auth", () => ({
     selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
     isRenamingAccount: false,
     allAccounts: [{ publicKey: "GTESTPUBLICKEY", accountName: "Test Account" }],
+    setSignInMethod: jest.fn(),
+  }),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
   }),
 }));
 

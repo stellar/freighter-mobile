@@ -5,8 +5,8 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useSecureClipboard } from "hooks/useSecureClipboard";
 import React from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
@@ -23,7 +23,7 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { recoveryPhrase } = route.params;
-  const { copyToClipboard } = useClipboard();
+  const { copyToClipboard } = useSecureClipboard();
   const handleCopyToClipboard = () => {
     copyToClipboard(recoveryPhrase);
 

@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
+import { NETWORKS, QRCodeSource, SWAP_SELECTION_TYPES } from "config/constants";
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -53,6 +53,7 @@ export const AUTH_STACK_ROUTES = {
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
   VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
+  BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
@@ -79,6 +80,7 @@ export const SETTINGS_ROUTES = {
   SECURITY_SCREEN: "SecurityScreen",
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
+  BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -87,8 +89,8 @@ export const MANAGE_WALLETS_ROUTES = {
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
 } as const;
 
-export const BUY_XLM_ROUTES = {
-  BUY_XLM_SCREEN: "BuyXLMScreen",
+export const ADD_FUNDS_ROUTES = {
+  ADD_FUNDS_SCREEN: "BuyXLMScreen", // mismatching name, unchanged on purpose due to analytics
 } as const;
 
 export const SEND_PAYMENT_ROUTES = {
@@ -125,7 +127,7 @@ export const ALL_ROUTES_OBJECT = [
   MANAGE_TOKENS_ROUTES,
   SETTINGS_ROUTES,
   MANAGE_WALLETS_ROUTES,
-  BUY_XLM_ROUTES,
+  ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
 ] as const;
@@ -140,9 +142,11 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
     showNavigationAsCloseButton?: boolean;
   };
-  [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
+    source?: QRCodeSource;
+  };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<BuyXLMStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
@@ -173,6 +177,11 @@ export type AuthStackParamList = {
   };
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
     password: string;
+  };
+  [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
+    password?: string;
+    mnemonicPhrase?: string;
+    postOnboarding?: boolean;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
@@ -206,6 +215,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
     recoveryPhrase: string;
   };
+  [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {
@@ -214,8 +224,8 @@ export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
 };
 
-export type BuyXLMStackParamList = {
-  [BUY_XLM_ROUTES.BUY_XLM_SCREEN]: {
+export type AddFundsStackParamList = {
+  [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
   };
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
@@ -228,6 +238,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;
+    recipientAddress?: string;
   };
   [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;

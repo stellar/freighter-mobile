@@ -5,6 +5,7 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
+import translations from "eslint-plugin-translations";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,7 +41,12 @@ export default [
     },
   },
   {
-    ignores: ["jest.setup.js", "tsconfig.json", "shim.js"],
+    ignores: [
+      "jest.setup.js",
+      "tsconfig.json",
+      "shim.js",
+      "src/eslint-plugin-translations/**/*",
+    ],
   },
   {
     languageOptions: {
@@ -55,6 +61,7 @@ export default [
     },
     plugins: {
       "@fnando/consistent-import": consistentImport,
+      translations,
     },
     rules: {
       "import/order": [
@@ -113,6 +120,8 @@ export default [
           props: true,
         },
       ],
+
+      "translations/missing-translations": "error",
     },
   },
 ];

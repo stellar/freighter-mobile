@@ -1,9 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -25,24 +27,55 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const [password, setPassword] = useState("");
+  const [localPassword, setLocalPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const { getKeyFromKeyManager } = useAuthenticationStore();
+  const { getKeyFromKeyManager, signInMethod } = useAuthenticationStore();
 
-  const handleShowRecoveryPhrase = async () => {
+  const showRecoveryPhraseAction = async (password: string) => {
     try {
-      setIsLoading(true);
-      const key = await getKeyFromKeyManager(password);
+      const key = await getKeyFromKeyManager(password ?? localPassword);
       const keyExtra = key.extra as KeyExtra;
 
       if (keyExtra?.mnemonicPhrase) {
         navigation.navigate(SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN, {
           recoveryPhrase: keyExtra.mnemonicPhrase,
         });
+      } else {
+        throw new Error(t("authStore.error.noKeyPairFound"));
       }
     } catch (err) {
-      setError(t("authStore.error.invalidPassword"));
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("authStore.error.invalidPassword"));
+      }
+      throw err; // Re-throw to be handled by the caller
+    }
+  };
+
+  const handleShowRecoveryPhrase = async (...args: unknown[]) => {
+    try {
+      setIsLoading(true);
+      setError(undefined);
+
+      // Use the password from biometric authentication if available, otherwise use localPassword
+      const password = args[0] as string | undefined;
+      const passwordToUse = password ?? localPassword;
+
+      if (!passwordToUse) {
+        setError(t("authStore.error.invalidPassword"));
+        return;
+      }
+
+      // Execute the recovery phrase logic with the password
+      await showRecoveryPhraseAction(passwordToUse);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("authStore.error.invalidPassword"));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -103,25 +136,28 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
           </View>
 
           <View className="mb-6">
-            <Input
-              autoCapitalize="none"
-              fieldSize="lg"
-              label={t("showRecoveryPhraseScreen.password")}
-              placeholder={t(
-                "showRecoveryPhraseScreen.passwordInputPlaceholder",
-              )}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError(undefined);
-              }}
-              secureTextEntry
-              testID="password-input"
-              error={error}
-            />
+            {signInMethod === LoginType.PASSWORD && (
+              <Input
+                autoCapitalize="none"
+                fieldSize="lg"
+                label={t("showRecoveryPhraseScreen.password")}
+                placeholder={t(
+                  "showRecoveryPhraseScreen.passwordInputPlaceholder",
+                )}
+                value={localPassword}
+                onChangeText={(text) => {
+                  setLocalPassword(text);
+                  setError(undefined);
+                }}
+                secureTextEntry
+                testID="password-input"
+                error={error}
+              />
+            )}
           </View>
 
           <Button
+            biometric
             tertiary
             lg
             onPress={handleShowRecoveryPhrase}
@@ -130,7 +166,9 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
           >
             {t("showRecoveryPhraseScreen.showPhrase")}
           </Button>
-
+          <View className="mt-4">
+            <BiometricToggleButton size="sm" />
+          </View>
           <View className="mb-10" />
         </ScrollView>
       </View>

@@ -2,7 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
-import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
 import React, { useCallback, useEffect, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<

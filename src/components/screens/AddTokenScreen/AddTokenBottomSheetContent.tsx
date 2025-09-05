@@ -220,17 +220,21 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           {isMalicious || isSuspicious ? (
             <TextButton
               text={t("addTokenScreen.approveAnyway")}
-              onPress={proceedAnywayAction}
+              biometric
+              onPress={() => {
+                proceedAnywayAction?.();
+              }}
               isLoading={isAddingToken}
               disabled={isAddingToken}
               variant={isMalicious ? "error" : "secondary"}
             />
           ) : (
             <Button
+              biometric
               tertiary
               xl
               isFullWidth
-              onPress={onAddToken}
+              onPress={() => onAddToken()}
               isLoading={isAddingToken}
             >
               {t("addTokenScreen.addTokenButton")}

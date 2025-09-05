@@ -18,4 +18,7 @@ export const asyncStorage: PersistentStorage = {
 
     await AsyncStorage.removeItem(keys);
   },
+  clear: async () => {
+    await AsyncStorage.clear();
+  },
 };

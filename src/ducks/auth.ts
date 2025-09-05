@@ -9,7 +9,11 @@ import {
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE,
+  BIOMETRIC_STORAGE_KEYS,
+  FACE_ID_BIOMETRY_TYPES,
+  FINGERPRINT_BIOMETRY_TYPES,
   HASH_KEY_EXPIRATION_MS,
+  LoginType,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
   STORAGE_KEYS,
@@ -26,6 +30,7 @@ import {
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { usePreferencesStore } from "ducks/preferences";
 import { useWalletKitStore } from "ducks/walletKit";
 import { clearAllWebViewData } from "helpers/browser";
 import {
@@ -37,6 +42,9 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
+import { DevSettings } from "react-native";
+import ReactNativeBiometrics from "react-native-biometrics";
+import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
 import { getAccount } from "services/stellar";
 import {
@@ -45,11 +53,49 @@ import {
   getHashKey,
 } from "services/storage/helpers";
 import {
+  biometricDataStorage,
   dataStorage,
   secureDataStorage,
 } from "services/storage/storageFactory";
 import StellarHDWallet from "stellar-hd-wallet";
 import { create } from "zustand";
+
+/**
+ * Helper function to determine the biometric login type based on biometry type
+ *
+ * This function maps the device's supported biometry type to the corresponding
+ * LoginType enum value. It handles Face ID, Touch ID, fingerprint, and other
+ * biometric authentication methods supported by the device.
+ *
+ * @param {Keychain.BIOMETRY_TYPE | null} biometryType - The biometry type supported by the device
+ * @returns {LoginType} The corresponding login type (FACE, FINGERPRINT, or PASSWORD)
+ *
+ * @example
+ * const loginType = getLoginType(Keychain.BIOMETRY_TYPE.FACE_ID);
+ * // Returns LoginType.FACE
+ *
+ * @example
+ * const loginType = getLoginType(Keychain.BIOMETRY_TYPE.FINGERPRINT);
+ * // Returns LoginType.FINGERPRINT
+ *
+ * @example
+ * const loginType = getLoginType(null);
+ * // Returns LoginType.PASSWORD
+ */
+export const getLoginType = (
+  biometryType: Keychain.BIOMETRY_TYPE | null,
+): LoginType => {
+  if (!biometryType) {
+    return LoginType.PASSWORD;
+  }
+  if (FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
+    return LoginType.FACE;
+  }
+  if (FINGERPRINT_BIOMETRY_TYPES.includes(biometryType)) {
+    return LoginType.FINGERPRINT;
+  }
+  return LoginType.PASSWORD;
+};
 
 /**
  * Parameters for signUp function
@@ -159,6 +205,9 @@ interface AuthState {
   isLoadingAccount: boolean;
   accountError: string | null;
   navigationRef: NavigationContainerRef<RootStackParamList> | null;
+
+  // Biometric authentication state
+  signInMethod: LoginType;
 }
 
 /**
@@ -217,12 +266,14 @@ interface ImportSecretKeyParams {
  * @property {Function} navigateToLockScreen - Navigates to the lock screen
  * @property {Function} createAccount - Creates a new account
  * @property {Function} getKeyFromKeyManager - Gets the key from the key manager
+ * @property {Function} devResetAppAuth - Resets the app auth state to the initial state
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => void;
+  signUp: (params: SignUpParams) => Promise<void>;
   signIn: (params: SignInParams) => Promise<void>;
-  importWallet: (params: ImportWalletParams) => void;
+  importWallet: (params: ImportWalletParams) => Promise<boolean>;
+  verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   getAuthStatus: () => Promise<AuthStatus>;
   renameAccount: (params: RenameAccountParams) => Promise<void>;
@@ -231,19 +282,32 @@ interface AuthActions {
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
 
+  enableBiometrics: <T>(
+    callback: (biometricPassword?: string) => Promise<T>,
+  ) => Promise<T>;
+  verifyActionWithBiometrics: <T, P extends unknown[]>(
+    callback: (password?: string, ...args: P) => Promise<T>,
+    ...args: P
+  ) => Promise<T>;
   // Active account actions
   fetchActiveAccount: () => Promise<ActiveAccount | null>;
   refreshActiveAccount: () => Promise<ActiveAccount | null>;
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
-
   getTemporaryStore: () => Promise<TemporaryStore | null>;
+  verifyBiometrics: () => Promise<boolean>;
+  storeBiometricPassword: (password: string) => Promise<void>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
   ) => Promise<Key>;
 
   clearError: () => void;
+  devResetAppAuth: () => void;
+  setAuthStatus: (authStatus: AuthStatus) => void;
+
+  // Biometric authentication actions
+  setSignInMethod: (method: LoginType) => void;
 }
 
 /**
@@ -271,6 +335,8 @@ const initialState: Omit<AuthState, "network"> = {
   isLoadingAccount: false,
   accountError: null,
   navigationRef: null,
+  // Biometric authentication initial state
+  signInMethod: LoginType.PASSWORD,
 };
 
 /**
@@ -711,6 +777,10 @@ const storeAccount = async ({
       },
       shouldRefreshHashKey,
     }),
+    biometricDataStorage.setItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      password,
+    ),
   ]);
 };
 
@@ -993,6 +1063,17 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     keyExtraData.mnemonicPhrase,
     password,
   );
+
+  const existingBiometricPassword = await biometricDataStorage.checkIfExists(
+    BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+  );
+
+  if (!existingBiometricPassword) {
+    await biometricDataStorage.setItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      password,
+    );
+  }
 
   // After discovering accounts, make sure all existing accounts' private keys
   // are in the temporary store
@@ -1374,6 +1455,14 @@ const selectAccount = async (publicKey: string): Promise<void> => {
   await dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, account.id);
 };
 
+const clearBiometricsData = async (): Promise<void> => {
+  usePreferencesStore.getState().setIsBiometricsEnabled(false);
+  await Promise.all([
+    dataStorage.remove(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN),
+    biometricDataStorage.clear(),
+  ]);
+};
+
 /**
  * Authentication Store
  *
@@ -1392,9 +1481,41 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
   return {
     ...initialState,
-
+    isOnboardingFinished: false,
     // Default to PUBLIC network
     network: NETWORKS.PUBLIC,
+
+    /**
+     * Verifies if a mnemonic phrase is valid
+     *
+     * @param {string} mnemonicPhrase - The mnemonic phrase to verify
+     * @returns {boolean} True if the mnemonic phrase is valid, false otherwise
+     */
+    verifyMnemonicPhrase: (mnemonicPhrase: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        StellarHDWallet.fromMnemonic(mnemonicPhrase);
+        return true;
+      } catch (error) {
+        logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.invalidMnemonicPhrase"),
+        });
+        return false;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
+    storeBiometricPassword: async (password: string) => {
+      await biometricDataStorage.setItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        password,
+      );
+    },
 
     /**
      * Logs out the user by clearing sensitive data
@@ -1450,6 +1571,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             } else {
               await clearNonSensitiveData();
 
+              await clearBiometricsData();
+
               set({
                 ...initialState,
                 authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
@@ -1475,39 +1598,29 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * Signs up a new user with the provided credentials
      *
      * @param {SignUpParams} params - The signup parameters
+     * @returns {Promise<void>}
      */
-    signUp: (params) => {
+    signUp: async (params): Promise<void> => {
       set((state) => ({ ...state, isLoading: true, error: null }));
-
-      // Use a setTimeout to allow UI updates to propagate
-      setTimeout(() => {
-        signUp(params)
-          .then(() => {
-            set({
-              ...initialState,
-              authStatus: AUTH_STATUS.AUTHENTICATED,
-              isLoading: false,
-            });
-
-            // Fetch active account after successful signup
-            get().fetchActiveAccount();
-          })
-          .catch((error) => {
-            logger.error(
-              "useAuthenticationStore.signUp",
-              "Sign up failed",
-              error,
-            );
-
-            set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToSignUp"),
-              isLoading: false,
-            });
-          });
-      }, 0);
+      try {
+        await signUp(params);
+        set({
+          ...initialState,
+          isLoading: false,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+        // Fetch active account after successful signup
+        await get().fetchActiveAccount();
+      } catch (error) {
+        logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToSignUp"),
+          isLoading: false,
+        });
+      }
     },
 
     /**
@@ -1577,43 +1690,359 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         throw error; // Rethrow to handle in the UI
       }
     },
+    /**
+     * Verifies biometric authentication by prompting the user for biometric input
+     *
+     * This function prompts the user to authenticate using their device's biometric
+     * capabilities (Face ID, Touch ID, fingerprint, etc.) and verifies that the
+     * stored biometric password can be retrieved. It's used to confirm the user's
+     * identity before performing sensitive operations.
+     *
+     * @returns {Promise<boolean>} Promise resolving to true if biometric authentication succeeds
+     * @throws {Error} If no biometry type is found or biometric password retrieval fails
+     *
+     * @example
+     * try {
+     *   const isAuthenticated = await verifyBiometrics();
+     *   if (isAuthenticated) {
+     *     // Proceed with sensitive operation
+     *     showRecoveryPhrase();
+     *   }
+     * } catch (error) {
+     *   // Handle authentication failure
+     *   console.error('Biometric verification failed:', error);
+     * }
+     */
+    verifyBiometrics: async () => {
+      const biometryType = await Keychain.getSupportedBiometryType();
+
+      if (!biometryType) {
+        throw new Error("No biometry type found");
+      }
+
+      const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+        [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+          "authStore.fingerprint.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FACE]: t(
+          "authStore.faceBiometrics.signInTitle",
+        ),
+      };
+
+      const item = await biometricDataStorage.getItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        {
+          cancel: t("common.cancel"),
+          title: title[biometryType],
+        },
+      );
+      if (!item) {
+        throw new Error("Biometric password not found");
+      }
+
+      return true;
+    },
+
+    /**
+     * Generic function to verify biometrics and execute an action with the stored password
+     *
+     * This function intelligently handles biometric authentication based on user preferences
+     * and device capabilities. If biometrics are enabled and available, it prompts the user
+     * for biometric authentication, retrieves the stored password, and executes the callback
+     * with that password. If biometrics are disabled or unavailable, it gracefully falls back
+     * to calling the callback with an undefined password, allowing the action to proceed
+     * without biometric verification.
+     *
+     * The function automatically detects:
+     * - Whether biometrics are enabled in user preferences
+     * - The user's preferred sign-in method (biometric vs password)
+     * - Device sensor availability
+     * - Supported biometry types
+     *
+     * This is useful for actions that require the user's password but can be authenticated
+     * via biometrics, or actions that work with or without biometrics.
+     *
+     * @template T - The return type of the callback function
+     * @template P - The type of additional parameters (defaults to empty array)
+     * @param {(password?: string, ...args: P) => Promise<T>} callback - Function that takes the password and additional args, returns Promise<T>
+     * @param {...P} args - Additional arguments to pass to the callback function
+     * @returns {Promise<T>} The result of executing the callback function
+     * @throws {Error} If biometric authentication fails or no stored password is found
+     *
+     * @example
+     * // Example 1: Show recovery phrase with biometric authentication
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   if (password) {
+     *     const key = await getKeyFromKeyManager(password);
+     *     const keyExtra = key.extra as { mnemonicPhrase: string };
+     *     if (keyExtra?.mnemonicPhrase) {
+     *       navigation.navigate('RecoveryPhrase', { phrase: keyExtra.mnemonicPhrase });
+     *     }
+     *   } else {
+     *     // Handle case where no password is available (user disabled biometrics)
+     *     navigation.navigate('PasswordInput');
+     *   }
+     * });
+     *
+     * @example
+     * // Example 2: Simple action with biometric authentication
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   if (password) {
+     *     // Use biometric password
+     *     await performSecureAction(password);
+     *   } else {
+     *     // Fallback to password input
+     *     await promptForPassword();
+     *   }
+     * });
+     *
+     * @example
+     * // Example 3: Action with password parameter but no return value
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   if (password) {
+     *     handleContinue(password);
+     *   } else {
+     *     // Handle password input manually
+     *     const manualPassword = await promptForPassword();
+     *     handleContinue(manualPassword);
+     *   }
+     *   return Promise.resolve();
+     * });
+     *
+     * @example
+     * // Example 4: Action that returns a value
+     * const result = await verifyActionWithBiometrics(async (password: string) => {
+     *   const key = await getKeyFromKeyManager(password);
+     *   return key.privateKey;
+     * });
+     *
+     * @example
+     * // Example 5: Action with additional parameters
+     * await verifyActionWithBiometrics(
+     *   async (password: string, transaction: Transaction, network: string) => {
+     *     const key = await getKeyFromKeyManager(password);
+     *     return await signTransaction(transaction, key.privateKey, network);
+     *   },
+     *   transaction,
+     *   network
+     * );
+    },
+
+    /**
+     * Enables biometrics for the current session
+     *
+     * This function is specifically for enabling biometrics on screens without password.
+     * It forces biometric authentication and executes the callback upon success.
+     * Unlike verifyActionWithBiometrics, this function always requires biometric
+     * authentication and does not fall back to password-based authentication nor access biometric password from storage or route params to verify it.
+     *
+     * @template T - The return type of the callback function
+     * @param {(biometricPassword?: string) => Promise<T>} callback - The function to execute after successful biometric authentication
+     * @returns {Promise<T>} The result of the callback function
+     *
+     * @example
+     * // Enable biometrics during onboarding
+     * await enableBiometrics(async (biometricPassword: string) => {
+     *   setIsBiometricsEnabled(true);
+     *   navigation.navigate('MainScreen');
+     *   return Promise.resolve();
+     * });
+     */
+    enableBiometrics: async <T>(
+      callback: (biometricPassword?: string) => Promise<T>,
+    ): Promise<T> => {
+      try {
+        const biometryType = await Keychain.getSupportedBiometryType();
+
+        if (!biometryType) {
+          throw new Error("No biometry type found");
+        }
+
+        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+            "authStore.fingerprint.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.FACE]: t(
+            "authStore.faceBiometrics.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        };
+
+        // Get the stored password from biometric storage
+        const storedData = await biometricDataStorage.getItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          {
+            title: title[biometryType],
+            cancel: t("common.cancel"),
+          },
+        );
+        if (!storedData || !storedData.password) {
+          throw new Error(
+            "No stored password found for biometric authentication",
+          );
+        }
+
+        // Execute the callback function
+        return await callback(storedData.password);
+      } catch (error) {
+        logger.error(
+          "enableBiometrics",
+          "Biometric authentication failed",
+          error,
+        );
+        throw error;
+      }
+    },
+
+    /**
+     * Verifies an action with biometric authentication
+     *
+     * This function handles biometric authentication for sensitive actions.
+     * It retrieves the stored password from biometric storage and passes it to the callback.
+     * If biometrics are disabled or unavailable, it falls back to calling the callback
+     * with an undefined password, allowing the action to proceed without biometric verification and letting the caller handle password management.
+     *
+     * @template T - The return type of the callback function
+     * @template P - The parameter types for the callback function
+     * @param {(password?: string, ...args: P) => Promise<T>} callback - The function to execute after successful biometric authentication
+     * @param {...P} args - Additional arguments to pass to the callback function
+     * @returns {Promise<T>} The result of the callback function
+     *
+     * @example
+     * // Example 1: Simple action verification
+     * await verifyActionWithBiometrics(async (password: string) => {
+     *   const key = await getKeyFromKeyManager(password);
+     *   return await performAction(key);
+     * });
+     *
+     * // Example 2: Action with additional parameters
+     * await verifyActionWithBiometrics(
+     *   async (password: string, transaction: Transaction) => {
+     *     const key = await getKeyFromKeyManager(password);
+     *     return await signTransaction(transaction, key.privateKey);
+     *   },
+     *   transaction
+     * );
+     *
+     * // Example 3: Action with multiple additional parameters
+     * await verifyActionWithBiometrics(
+     *   async (password: string, transaction: Transaction, network: string) => {
+     *     const key = await getKeyFromKeyManager(password);
+     *     return await signTransaction(transaction, key.privateKey, network);
+     *   },
+     *   transaction,
+     *   network
+     * );
+     */
+    verifyActionWithBiometrics: async <T, P extends unknown[]>(
+      callback: (password?: string, ...args: P) => Promise<T>,
+      ...args: P
+    ): Promise<T> => {
+      try {
+        const rnBiometrics = new ReactNativeBiometrics({
+          allowDeviceCredentials: true,
+        });
+        // Check if biometrics is enabled first
+        const { isBiometricsEnabled } = usePreferencesStore.getState();
+        const { signInMethod } = get();
+
+        // If biometrics is not enabled or user opts to use password, call the callback directly with an empty password
+        if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
+          return await callback(undefined, ...args);
+        }
+
+        // Only check sensor availability and biometry type if biometrics are enabled
+        const isSensorAvailable = await rnBiometrics.isSensorAvailable();
+        if (!isSensorAvailable) {
+          return await callback(undefined, ...args);
+        }
+
+        const biometryType = await Keychain.getSupportedBiometryType();
+        if (!biometryType) {
+          return await callback(undefined, ...args);
+        }
+
+        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+            "authStore.fingerprint.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.FACE]: t(
+            "authStore.faceBiometrics.signInTitle",
+          ),
+          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+        };
+
+        // Get the stored password from biometric storage
+        const storedData = await biometricDataStorage.getItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          {
+            title: title[biometryType],
+            cancel: t("common.cancel"),
+          },
+        );
+
+        if (!storedData || !storedData.password) {
+          throw new Error(
+            "No stored password found for biometric authentication",
+          );
+        }
+
+        // Execute the callback function with the retrieved password
+        return await callback(storedData.password, ...args);
+      } catch (error) {
+        logger.error(
+          "verifyActionWithBiometrics",
+          "Biometric authentication failed",
+          error,
+        );
+        throw error;
+      }
+    },
 
     /**
      * Imports a wallet with the provided credentials
      *
      * @param {ImportWalletParams} params - The wallet import parameters
      */
-    importWallet: (params) => {
-      set((state) => ({ ...state, isLoading: true, error: null }));
+    importWallet: async (params): Promise<boolean> => {
+      set({ isLoading: true, error: null });
 
-      setTimeout(() => {
-        importWallet(params)
-          .then(() => {
-            set({
-              ...initialState,
-              authStatus: AUTH_STATUS.AUTHENTICATED,
-              isLoading: false,
-            });
+      try {
+        await importWallet(params);
+        set({
+          ...initialState,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+          isLoading: false,
+        });
 
-            // Fetch active account after successful wallet import
-            get().fetchActiveAccount();
-          })
-          .catch((error) => {
-            logger.error(
-              "useAuthenticationStore.importWallet",
-              "Import wallet failed",
-              error,
-            );
-
-            set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToImportWallet"),
-              isLoading: false,
-            });
-          });
-      }, 0);
+        // Fetch active account after successful wallet import
+        get().fetchActiveAccount();
+        return true;
+      } catch (error) {
+        logger.error(
+          "useAuthenticationStore.importWallet",
+          "Import wallet failed",
+          error,
+        );
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToImportWallet"),
+          isLoading: false,
+        });
+        return false;
+      }
     },
 
     /**
@@ -1631,6 +2060,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       }
 
       return authStatus;
+    },
+
+    /**
+     * Sets the authentication status
+     *
+     * @param {AuthStatus} authStatus - The authentication status
+     */
+    setAuthStatus: (authStatus: AuthStatus) => {
+      set({ authStatus });
     },
 
     /**
@@ -1837,6 +2275,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
         throw error;
       }
+    },
+
+    devResetAppAuth: () => {
+      if (!__DEV__) {
+        return;
+      }
+
+      set({ ...initialState });
+      dataStorage.clear();
+      get().logout();
+      DevSettings.reload();
+    },
+
+    setSignInMethod: (method: LoginType) => {
+      set({ signInMethod: method });
     },
   };
 });

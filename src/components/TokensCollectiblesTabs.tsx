@@ -66,6 +66,7 @@ interface Props {
  *
  * Features:
  * - Tab switching between Tokens and Collectibles
+ * - Collectibles tab only shown for PUBLIC network
  * - Memoized content rendering for performance
  * - Dynamic tab styling based on active state
  * - Callback support for tab changes and item interactions
@@ -92,6 +93,11 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     const { themeColors } = useColors();
 
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+
+    const shouldHideCollectibles = useMemo(
+      () => hideCollectibles || network !== NETWORKS.PUBLIC,
+      [hideCollectibles, network],
+    );
 
     /**
      * Handles tab switching and triggers the optional onTabChange callback
@@ -199,13 +205,13 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
      */
     const renderContent = useMemo(() => {
       // If collectibles are hidden, we should render tokens content only
-      if (hideCollectibles || activeTab === TabType.TOKENS) {
+      if (shouldHideCollectibles || activeTab === TabType.TOKENS) {
         return renderTokensContent;
       }
 
       return renderCollectiblesContent;
     }, [
-      hideCollectibles,
+      shouldHideCollectibles,
       activeTab,
       renderTokensContent,
       renderCollectiblesContent,
@@ -228,7 +234,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       >
         <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
-            disabled={hideCollectibles}
+            disabled={shouldHideCollectibles}
             className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
           >
@@ -244,7 +250,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             </Text>
           </TouchableOpacity>
 
-          {!hideCollectibles && (
+          {!shouldHideCollectibles && (
             <TouchableOpacity
               className="py-2"
               onPress={() => handleTabChange(TabType.COLLECTIBLES)}

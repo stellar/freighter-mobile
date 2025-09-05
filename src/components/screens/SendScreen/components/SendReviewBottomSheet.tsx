@@ -190,7 +190,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   };
 
   const isLoading = isValidatingMemo || isBuilding;
-  const isDisabled = isRequiredMemoMissing || !transactionXDR || isLoading;
+  const isDisabled = !transactionXDR || isLoading;
 
   /**
    * Renders the confirm button with different states based on memo validation
@@ -211,7 +211,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <View className="flex-1">
-        <Button onPress={onConfirm} tertiary xl disabled={isDisabled}>
+        <Button
+          biometric
+          onPress={() => onConfirm?.()}
+          tertiary
+          xl
+          disabled={isBuilding || !transactionXDR || !!error}
+        >
           {getButtonText()}
         </Button>
       </View>

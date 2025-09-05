@@ -22,6 +22,10 @@
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
     "and": " e ",
+    "yes": "Sim",
+    "allow": "Permitir",
+    "skip": "Pular",
+    "enable": "Habilitar",
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
@@ -166,6 +170,51 @@
     "errorText": "Palavra incorreta selecionada, tente novamente",
     "defaultActionButtonText": "Continuar"
   },
+  "biometricsOnboardingScreen": {
+    "faceId": {
+      "title": "Habilitar Face ID",
+      "description": "Adicione outro nível de segurança ao exigir Face ID para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Face ID?",
+      "promptDescription": "Use Face ID para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "touchId": {
+      "title": "Habilitar Touch ID",
+      "description": "Adicione outro nível de segurança ao exigir Touch ID para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Touch ID?",
+      "promptDescription": "Use Touch ID para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "fingerprint": {
+      "title": "Habilitar Impressão Digital",
+      "description": "Adicione outro nível de segurança ao exigir Impressão Digital para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Impressão Digital?",
+      "promptDescription": "Use Impressão Digital para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "faceBiometrics": {
+      "title": "Habilitar Reconhecimento Facial",
+      "description": "Adicione outro nível de segurança ao exigir Reconhecimento Facial para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Reconhecimento Facial?",
+      "promptDescription": "Use Reconhecimento Facial para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "opticId": {
+      "title": "Habilitar Optic ID",
+      "description": "Adicione outro nível de segurança ao exigir Optic ID para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Optic ID?",
+      "promptDescription": "Use Optic ID para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    },
+    "iris": {
+      "title": "Habilitar Iris",
+      "description": "Adicione outro nível de segurança ao exigir Iris para desbloquear sua carteira ou aprovar transações.",
+      "promptTitle": "Habilitar Iris?",
+      "promptDescription": "Use Iris para fazer login e aprovar transações de forma segura.",
+      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+    }
+  },
+
   "importWalletScreen": {
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
@@ -177,7 +226,14 @@
     "description": "Digite a senha para desbloquear o Freighter",
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
-    "forgotPasswordButtonText": "Esqueci minha senha"
+    "forgotPasswordButtonText": "Esqueci minha senha",
+    "useFaceIdInstead": "Usar Face ID ao invés",
+    "useFingerprintInstead": "Usar Impressão Digital ao invés",
+    "useFaceRecognitionInstead": "Usar Reconhecimento Facial ao invés",
+    "useTouchIdInstead": "Usar Touch ID ao invés",
+    "useOpticIdInstead": "Usar Optic ID ao invés",
+    "useIrisInstead": "Usar Iris ao invés",
+    "enterPasswordInstead": "Usar senha ao invés"
   },
   "onboarding": {
     "continue": "Continuar",
@@ -284,7 +340,43 @@
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta"
     },
-    "account": "Conta {{number}}"
+    "account": "Conta {{number}}",
+    "faceId": {
+      "disableTitle": "Confirmar para desabilitar Face ID",
+      "disableSubtitle": "Desabilitar Face ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Face ID para fazer login e aprovar transações de forma segura."
+    },
+    "touchId": {
+      "disableTitle": "Confirmar para desabilitar Touch ID",
+      "disableSubtitle": "Desabilitar Touch ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Touch ID para fazer login e aprovar transações de forma segura."
+    },
+    "faceBiometrics": {
+      "disableTitle": "Confirmar para desabilitar Reconhecimento Facial",
+      "disableSubtitle": "Desabilitar Reconhecimento Facial diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Reconhecimento Facial para fazer login e aprovar transações de forma segura."
+    },
+    "fingerprint": {
+      "disableTitle": "Confirmar para desabilitar Impressão Digital",
+      "disableSubtitle": "Desabilitar Impressão Digital diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Impressão Digital para fazer login e aprovar transações de forma segura."
+    },
+    "opticId": {
+      "disableTitle": "Confirmar para desabilitar Optic ID",
+      "disableSubtitle": "Desabilitar Optic ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Optic ID para fazer login e aprovar transações de forma segura."
+    },
+    "iris": {
+      "disableTitle": "Confirmar para desabilitar Iris",
+      "disableSubtitle": "Desabilitar Iris diminui a segurança. Você pode reabilitá-lo nas Configurações.",
+      "signInTitle": "Confirmar para prosseguir",
+      "signInSubtitle": "Use Iris para fazer login e aprovar transações de forma segura."
+    }
   },
   "balancesList": {
     "title": "Tokens",
@@ -314,7 +406,12 @@
     "traits": "Características do Colecionável",
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
-    "viewOnStellarExpert": "Ver no stellar.expert"
+    "viewOnStellarExpert": "Ver no stellar.expert",
+    "removeCollectible": "Remover colecionável",
+    "saveToPhotos": "Salvar na galeria",
+    "imageSavedToPhotos": "Imagem salva na galeria",
+    "imageSaveFailed": "Falha ao salvar imagem na galeria",
+    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
@@ -326,7 +423,24 @@
     "addressNoSpaces": "Endereço não pode conter espaços",
     "invalidTokenId": "ID do token inválido",
     "tokenIdNoSpaces": "O ID do token não pode conter espaços",
-    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui."
+    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
+    "toastSuccess": "Colecionável adicionado com sucesso",
+    "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
+    "alreadyInWallet": "Este colecionável já está na sua carteira"
+  },
+  "collectibles": {
+    "errors": {
+      "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
+      "notOwnedByUser": "Parece que este colecionável não é seu.",
+      "failedToAdd": "Falha ao adicionar colecionável",
+      "failedToRemove": "Falha ao remover colecionável",
+      "invalidAddressOrTokenId": "Certifique-se de que o endereço da coleção e o ID do token estão corretos."
+    },
+    "fallbacks": {
+      "tokenName": "Token #{{tokenId}}",
+      "unknownTrait": "Desconhecido",
+      "descriptionUnavailable": "Descrição indisponível"
+    }
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"
@@ -414,7 +528,8 @@
     "recents": "Recentes",
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
-    "invalidAddress": "Endereço Stellar inválido"
+    "invalidAddress": "Endereço Stellar inválido",
+    "scanQRCodeText": "Escanear um QR Code do Freighter"
   },
   "swapScreen": {
     "swapFrom": "Trocar de",
@@ -597,6 +712,7 @@
   "transactionReviewScreen": {
     "title": "Você está enviando",
     "previousSend": "1 envio anterior",
+    "previousSends": "{{count}} envios anteriores",
     "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível"
   },
   "transactionProcessingScreen": {
@@ -673,15 +789,15 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receber XLM",
+    "title": "Receber fundos",
     "copyButton": "Copiar endereço",
     "helperText": "Digitalize o código QR ou \n copie seu endereço",
     "bottomSheet": {
-      "title": "Receber XLM",
+      "title": "QR Code",
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
   },
-  "scanQRCodeScreen": {
+  "walletConnect": {
     "title": "Escaneie para Conectar",
     "scanWCQrCode": "Escaneie um código QR do WalletConnect",
     "connectWithWalletConnect": "Cole um URI do WalletConnect",
@@ -690,14 +806,22 @@
     "pairingError": "Falha ao parear",
     "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
-  "buyXLMScreen": {
-    "title": "Adicionar XLM",
+  "qrCodeScannerScreen": {
+    "title": "Escanear para enviar"
+  },
+  "addFundsScreen": {
+    "title": "Adicionar fundos",
     "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
+      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira.",
+      "subDescription": "Compre facilmente com a Coinbase ou envie XLM de outra carteira."
     },
-    "actions": {
+    "transferFromAnotherAccount": {
       "title": "Transferir de outra conta",
       "description": "Receber fundos de outra carteira"
+    },
+    "buyWithCoinbase": {
+      "title": "Comprar com Coinbase",
+      "description": "Transferir de Coinbase & outras opções"
     }
   },
   "importSecretKeyScreen": {
@@ -711,7 +835,49 @@
   },
   "securityScreen": {
     "title": "Segurança",
-    "showRecoveryPhrase": "Mostrar frase de recuperação"
+    "showRecoveryPhrase": "Mostrar frase de recuperação",
+    "faceId": {
+      "title": "Autenticação Face ID",
+      "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Face ID",
+      "disableAlertTitle": "Desabilitar Face ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Face ID?"
+    },
+    "fingerprint": {
+      "title": "Autenticação por Impressão Digital",
+      "description": "Habilite a autenticação por Impressão Digital para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Impressão Digital",
+      "disableAlertTitle": "Desabilitar Impressão Digital?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Impressão Digital?"
+    },
+    "touchId": {
+      "title": "Autenticação Touch ID",
+      "description": "Habilite a autenticação Touch ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Touch ID",
+      "disableAlertTitle": "Desabilitar Touch ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Touch ID?"
+    },
+    "faceBiometrics": {
+      "title": "Autenticação por Reconhecimento Facial",
+      "description": "Habilite a autenticação por Reconhecimento Facial para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Reconhecimento Facial",
+      "disableAlertTitle": "Desabilitar Reconhecimento Facial?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Reconhecimento Facial?"
+    },
+    "opticId": {
+      "title": "Autenticação Optic ID",
+      "description": "Habilite a autenticação Optic ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Optic ID",
+      "disableAlertTitle": "Desabilitar Optic ID?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Optic ID?"
+    },
+    "iris": {
+      "title": "Autenticação Iris",
+      "description": "Habilite a autenticação Iris para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
+      "toggleTitle": "Habilitar Iris",
+      "disableAlertTitle": "Desabilitar Iris?",
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?"
+    }
   },
   "showRecoveryPhraseScreen": {
     "title": "Mostrar Frase de Recuperação",
@@ -782,6 +948,7 @@
   },
   "analytics": {
     "debug": {
+      "resetApp": "Reiniciar Estado da Aplicação",
       "title": "📊 Debug Analytics",
       "status": "Status",
       "enabled": "✅ Habilitado",

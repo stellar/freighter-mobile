@@ -153,7 +153,9 @@ export const Banner: React.FC<BannerProps> = ({
       className={`px-[16px] py-[12px] rounded-[16px] w-full ${backgroundClass} ${className}`}
     >
       <View className="flex-row items-center justify-between">
-        <View className={`flex-row items-center ${!showChevron ? "justify-center" : ""} flex-1 gap-[8px]`}>
+        <View
+          className={`flex-row items-center ${!showChevron ? "justify-center" : ""} flex-1 gap-[8px]`}
+        >
           {getDefaultIcon()}
           <Text sm color={textColor}>
             {text}

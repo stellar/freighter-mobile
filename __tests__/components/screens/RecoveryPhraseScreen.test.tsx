@@ -2,7 +2,11 @@ import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { fireEvent, render } from "@testing-library/react-native";
 import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
-import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import {
+  AUTH_STACK_ROUTES,
+  AuthStackParamList,
+  RootStackParamList,
+} from "config/routes";
 import React from "react";
 import StellarHDWallet from "stellar-hd-wallet";
 
@@ -16,14 +20,34 @@ jest.mock(
 );
 
 const mockCopyToClipboard = jest.fn();
-jest.mock("hooks/useClipboard", () => ({
-  useClipboard: () => ({
+jest.mock("hooks/useSecureClipboard", () => ({
+  useSecureClipboard: () => ({
     copyToClipboard: mockCopyToClipboard,
+    getClipboardText: jest.fn(),
+    clearClipboard: jest.fn(),
   }),
 }));
 
 jest.mock("providers/ToastProvider", () => ({
   useToast: () => ({ showToast: jest.fn() }),
+}));
+
+// Mock the useBiometrics hook
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: () => ({
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
+  }),
 }));
 
 jest.mock("stellar-hd-wallet", () => ({
@@ -56,7 +80,15 @@ jest.mock("ducks/auth", () => ({
     signUp: mockSignUp,
     error: null,
     isLoading: false,
+    setSignInMethod: jest.fn(),
   })),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
+  }),
 }));
 
 const mockNavigation = {
@@ -70,7 +102,7 @@ const mockRoute = {
 };
 
 type RecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList,
+  AuthStackParamList & RootStackParamList,
   typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
 >;
 

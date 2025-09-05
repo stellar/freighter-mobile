@@ -1,6 +1,8 @@
 import { BUTTON_THEME } from "components/sds/Button/theme";
 import { Text, TextSize } from "components/sds/Typography";
+import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
+import { useBiometrics } from "hooks/useBiometrics";
 import React from "react";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
@@ -12,6 +14,7 @@ export const ButtonVariants = {
   TERTIARY: "tertiary",
   DESTRUCTIVE: "destructive",
   ERROR: "error",
+  MINIMAL: "minimal",
 } as const;
 
 export const ButtonSizes = {
@@ -33,6 +36,7 @@ type VariantProps = {
   tertiary?: boolean;
   destructive?: boolean;
   error?: boolean;
+  minimal?: boolean;
 };
 
 type SizeProps = {
@@ -133,6 +137,7 @@ const getVariant = (
   if (props.tertiary) return ButtonVariants.TERTIARY;
   if (props.destructive) return ButtonVariants.DESTRUCTIVE;
   if (props.error) return ButtonVariants.ERROR;
+  if (props.minimal) return ButtonVariants.MINIMAL;
   return defaultVariant;
 };
 
@@ -201,6 +206,28 @@ const getSize = (
  * </Button>
  * ```
  *
+ * @example
+ * With biometric authentication:
+ * ```tsx
+ * <Button
+ *   biometric={true}
+ *   onPress={() => handleConfirm()}
+ * >
+ *   Confirm with Biometrics
+ * </Button>
+ * ```
+ *
+ * @example
+ * With biometric authentication:
+ * ```tsx
+ * <Button
+ *   biometric={true}
+ *   onPress={() => handleConfirm()}
+ * >
+ *   Confirm with Biometrics
+ * </Button>
+ * ```
+ *
  * @param {ButtonProps} props - The component props
  * @param {ButtonVariant} [props.variant] - Explicit variant value (overrides shorthand props)
  * @param {ButtonSize} [props.size] - Explicit size value (overrides shorthand props)
@@ -210,6 +237,7 @@ const getSize = (
  * @param {boolean} [props.isFullWidth=false] - Makes button fill container width
  * @param {boolean} [props.disabled=false] - Disables button interactions
  * @param {boolean} [props.squared=false] - Uses squared corners when true, rounded when false
+ * @param {boolean} [props.biometric=false] - Enables biometric authentication for the onPress action
  * @param {() => void} [props.onPress] - Handler for press events
  * @param {string} [props.testID] - Test ID for testing
  *
@@ -232,11 +260,13 @@ interface ButtonProps extends VariantProps, SizeProps {
   children?: string | React.ReactNode;
   icon?: React.ReactNode;
   iconPosition?: IconPosition;
+  iconColor?: string;
   isLoading?: boolean;
   isFullWidth?: boolean;
   disabled?: boolean;
   squared?: boolean;
-  onPress?: () => void | Promise<void>;
+  biometric?: boolean;
+  onPress?: (...args: unknown[]) => void | Promise<void>;
   testID?: string;
 }
 
@@ -250,16 +280,51 @@ export const Button = ({
   isFullWidth = false,
   disabled = false,
   squared = false,
+  biometric = false,
   onPress,
   testID,
+  iconColor,
   ...props
 }: ButtonProps) => {
+  const { verifyActionWithBiometrics } = useAuthenticationStore();
+  const { getBiometricButtonIcon } = useBiometrics();
+
   const disabledState = isLoading || disabled;
   const resolvedVariant = getVariant(
     { variant, ...props },
     ButtonVariants.PRIMARY,
   );
   const resolvedSize = getSize({ size, ...props }, ButtonSizes.MEDIUM);
+
+  // Handle biometric authentication
+  const handlePress = React.useCallback(() => {
+    if (!onPress) return;
+
+    if (biometric) {
+      verifyActionWithBiometrics(async (...args: unknown[]) => {
+        await onPress(...args);
+        return Promise.resolve();
+      });
+    } else {
+      onPress();
+    }
+  }, [onPress, biometric, verifyActionWithBiometrics]);
+
+  // Determine icon to display
+  const resolvedIcon = React.useMemo(() => {
+    if (biometric) {
+      return getBiometricButtonIcon(iconColor);
+    }
+    return icon;
+  }, [biometric, icon, getBiometricButtonIcon, iconColor]);
+
+  // Determine icon position for biometric buttons
+  const resolvedIconPosition = React.useMemo(() => {
+    if (biometric) {
+      return IconPosition.LEFT;
+    }
+    return iconPosition;
+  }, [biometric, iconPosition]);
 
   const renderIcon = (position: IconPosition) => {
     if (isLoading && position === IconPosition.RIGHT) {
@@ -274,8 +339,8 @@ export const Button = ({
       );
     }
 
-    if (icon && iconPosition === position) {
-      return <IconContainer position={position}>{icon}</IconContainer>;
+    if (resolvedIcon && resolvedIconPosition === position) {
+      return <IconContainer position={position}>{resolvedIcon}</IconContainer>;
     }
 
     return null;
@@ -288,7 +353,7 @@ export const Button = ({
       isFullWidth={isFullWidth}
       disabled={disabledState}
       squared={squared}
-      onPress={onPress}
+      onPress={handlePress}
       testID={testID}
     >
       {renderIcon(IconPosition.LEFT)}

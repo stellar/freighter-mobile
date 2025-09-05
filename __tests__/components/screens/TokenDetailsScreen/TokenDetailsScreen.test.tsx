@@ -31,6 +31,14 @@ jest.mock("hooks/useGetActiveAccount", () => ({
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     network: "testnet",
+    setSignInMethod: jest.fn(),
+  }),
+  getLoginType: jest.fn((biometryType) => {
+    if (!biometryType) return "password";
+    if (biometryType === "FaceID" || biometryType === "Face") return "face";
+    if (biometryType === "TouchID" || biometryType === "Fingerprint")
+      return "fingerprint";
+    return "password";
   }),
 }));
 

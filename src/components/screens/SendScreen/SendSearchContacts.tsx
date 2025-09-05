@@ -9,18 +9,26 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { QRCodeSource } from "config/constants";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+} from "config/routes";
+import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useEffect, useState } from "react";
+import { useRightHeaderButton } from "hooks/useRightHeader";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
-  SendPaymentStackParamList,
+  RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
 
@@ -42,6 +50,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const [address, setAddress] = useState("");
   const { saveRecipientAddress } = useTransactionSettingsStore();
 
+  const { clearQRData } = useQRDataStore();
+
   const {
     recentAddresses,
     searchResults,
@@ -60,38 +70,61 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient();
   }, [loadRecentAddresses, resetSendRecipient]);
 
+  // Clear QR data when component unmounts
+  useEffect(() => () => clearQRData(), [clearQRData]);
+
   /**
    * Handles search input changes and updates suggestions
    *
    * @param {string} text - The search text entered by user
    */
-  const handleSearch = (text: string) => {
-    setAddress(text);
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    searchAddress(text);
-  };
+  const handleSearch = useCallback(
+    (text: string) => {
+      setAddress(text);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      searchAddress(text);
+    },
+    [searchAddress],
+  );
 
   /**
    * Handles when a contact or address is selected
    *
    * @param {string} contactAddress - The selected contact address
    */
-  const handleContactPress = (contactAddress: string) => {
-    if (recentAddresses.some((c) => c.address === contactAddress)) {
-      analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
-    }
-    // Save to both stores for different purposes
-    // Send store is for contact management
-    setDestinationAddress(contactAddress);
-    // Transaction settings store is for the transaction flow
-    saveRecipientAddress(contactAddress);
+  const handleContactPress = useCallback(
+    (contactAddress: string) => {
+      if (recentAddresses.some((c) => c.address === contactAddress)) {
+        analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
+      }
+      // Save to both stores for different purposes
+      // Send store is for contact management
+      setDestinationAddress(contactAddress);
+      // Transaction settings store is for the transaction flow
+      saveRecipientAddress(contactAddress);
 
-    navigation.goBack();
-  };
+      navigation.goBack();
+    },
+    [recentAddresses, setDestinationAddress, saveRecipientAddress, navigation],
+  );
 
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
+
+  const handleOpenQRScanner = () => {
+    // Navigate to the root navigator's QR scanner screen
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+      source: QRCodeSource.ADDRESS_INPUT,
+    });
+  };
+
+  // Set up the QR code button in the header
+  useRightHeaderButton({
+    onPress: handleOpenQRScanner,
+    icon: Icon.Scan,
+    iconSize: 20,
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

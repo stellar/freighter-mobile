@@ -3,6 +3,7 @@ import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { getAppVersion } from "helpers/version";
 import { t } from "i18next";
+import { BIOMETRY_TYPE } from "react-native-keychain";
 
 export const APP_VERSION = getAppVersion();
 
@@ -17,6 +18,9 @@ export const TOGGLE_ANIMATION_DURATION = 400;
 export const DEFAULT_PRESS_DELAY = 100;
 
 export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
+
+// This is used to prevent flickering while refreshing lists with "pull to refresh" action
+export const DEFAULT_REFRESH_DELAY = 1000;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
@@ -223,9 +227,15 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * ACTIVE_ACCOUNT The active account is the account that is currently being used.
  * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
+ *
  * CUSTOM_TOKEN_LIST The custom token list is used to keep track of all the custom soroban tokens stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
  * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
+ *
+ * COLLECTIBLES_LIST The collectibles list is used to keep track of all the collectibles stored in the key manager.
+ * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
+ * The COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
+ *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  * */
@@ -233,10 +243,12 @@ export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
+  COLLECTIBLES_LIST = "collectiblesList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
+  HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
 }
 
 /**
@@ -249,6 +261,17 @@ export enum STORAGE_KEYS {
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+}
+
+/**
+ * Biometric storage keys.
+ *
+ * BIOMETRIC_PASSWORD The biometric password is used to store the biometric protected password.
+ * This key is used to securely store the user's password in the device's secure storage
+ * (Keychain on iOS, Keystore on Android) for biometric authentication.
+ * */
+export enum BIOMETRIC_STORAGE_KEYS {
+  BIOMETRIC_PASSWORD = "biometricPassword",
 }
 
 export enum TRANSACTION_WARNING {
@@ -289,3 +312,73 @@ export const BROWSER_CONSTANTS = {
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
 } as const;
+
+/**
+ * Biometric login types for authentication
+ *
+ * These types represent the different authentication methods available to users:
+ * - FACE: Face ID or face recognition authentication
+ * - FINGERPRINT: Touch ID or fingerprint authentication
+ * - PASSWORD: Traditional password-based authentication
+ *
+ * The type is determined by the device's biometric capabilities and user preferences.
+ */
+export enum LoginType {
+  FACE = "face",
+  FINGERPRINT = "fingerprint",
+  PASSWORD = "password",
+}
+
+/**
+ * Array of biometry types that correspond to Face ID authentication
+ *
+ * This includes both the specific Face ID type and the generic face biometry type
+ */
+export const FACE_ID_BIOMETRY_TYPES = [
+  BIOMETRY_TYPE.FACE_ID,
+  BIOMETRY_TYPE.FACE,
+];
+
+/**
+ * Array of biometry types that correspond to fingerprint authentication
+ *
+ * This includes both Touch ID (iOS) and generic fingerprint types to support
+ */
+export const FINGERPRINT_BIOMETRY_TYPES = [
+  BIOMETRY_TYPE.FINGERPRINT,
+  BIOMETRY_TYPE.TOUCH_ID,
+];
+
+/**
+ * QR Code Context Constants
+ *
+ * Defines the different contexts/sources where QR code scanning can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum QRCodeSource {
+  /** For scanning addresses in Send flow */
+  ADDRESS_INPUT = "address_input",
+  /** For scanning WalletConnect URIs */
+  WALLET_CONNECT = "wallet_connect",
+  /** For scanning wallet import data */
+  IMPORT_WALLET = "import_wallet",
+}
+
+/**
+ * Type for QR code source values
+ */
+export type QRCodeSourceType = `${QRCodeSource}`;
+
+/**
+ * Helper function to check if a string is a valid QR code source
+ */
+export const isValidQRCodeSource = (
+  source: string,
+): source is QRCodeSourceType =>
+  Object.values(QRCodeSource).includes(source as QRCodeSource);
+
+/**
+ * Helper function to get the default QR code source
+ */
+export const getDefaultQRCodeSource = (): QRCodeSource =>
+  QRCodeSource.ADDRESS_INPUT;

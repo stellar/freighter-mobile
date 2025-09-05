@@ -165,11 +165,13 @@ const DappConnectionBottomSheetContent: React.FC<
         {cancelButton}
         <View className="flex-1">
           <Button
+            biometric
             tertiary
             xl
             isFullWidth
-            onPress={onConnection}
+            onPress={() => onConnection()}
             isLoading={isConnecting}
+            disabled={isConnecting}
           >
             {t("dappConnectionBottomSheetContent.connect")}
           </Button>

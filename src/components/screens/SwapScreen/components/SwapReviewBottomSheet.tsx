@@ -330,7 +330,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
         <View className="flex-1">
           <Button
-            onPress={handleConfirmSwap}
+            biometric
+            onPress={() => handleConfirmSwap()}
             tertiary
             xl
             disabled={!transactionXDR || isBuilding}

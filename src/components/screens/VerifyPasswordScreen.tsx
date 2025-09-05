@@ -2,10 +2,10 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import {
   MANAGE_WALLETS_ROUTES,
-  ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
+  ManageWalletsStackParamList,
 } from "config/routes";
-import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useState } from "react";
 
