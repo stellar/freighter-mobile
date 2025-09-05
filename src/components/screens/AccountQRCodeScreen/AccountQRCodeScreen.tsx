@@ -64,15 +64,12 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
       (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
     );
 
-    // If the scan route is already in the stack, go back to it
+    // If the scan route is already in the stack, pop to it
     // Otherwise, navigate to it
     if (scanRouteIndex !== -1) {
-      // Calculate how many screens to go back
-      const currentIndex = routes.length - 1;
-      const stepsBack = currentIndex - scanRouteIndex;
-      for (let i = 0; i < stepsBack; i++) {
-        navigation.goBack();
-      }
+      navigation.popTo(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+        source: QRCodeSource.WALLET_CONNECT,
+      });
     } else {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
         source: QRCodeSource.WALLET_CONNECT,
