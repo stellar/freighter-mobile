@@ -1,21 +1,25 @@
+import { CollectibleImage } from "components/CollectibleImage";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
-import { Collectible, Collection } from "ducks/collectibles";
+import {
+  DEFAULT_PADDING,
+  DEFAULT_PRESS_DELAY,
+  DEFAULT_REFRESH_DELAY,
+} from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
+import {
+  Collectible,
+  Collection,
+  useCollectiblesStore,
+} from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
-import React, { useCallback, useMemo, useEffect } from "react";
-import {
-  TouchableOpacity,
-  View,
-  FlatList,
-  Image,
-  RefreshControl,
-} from "react-native";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
+import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
  * Props for the CollectiblesGrid component
@@ -55,22 +59,41 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({ onCollectiblePress }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
+    const { account } = useGetActiveAccount();
+    const { network } = useAuthenticationStore();
     const { collections, isLoading, error, fetchCollectibles } =
-      useCollectibles();
+      useCollectiblesStore();
+
+    // Local state for managing refresh UI only
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Fetch collectibles when component mounts
     useEffect(() => {
-      fetchCollectibles();
-    }, [fetchCollectibles]);
+      if (account?.publicKey && network) {
+        fetchCollectibles({ publicKey: account.publicKey, network });
+      }
+    }, [fetchCollectibles, account?.publicKey, network]);
 
     const handleRefresh = useCallback(() => {
-      fetchCollectibles();
-    }, [fetchCollectibles]);
+      if (account?.publicKey && network) {
+        setIsRefreshing(true);
+
+        // Start fetching collectibles immediately
+        fetchCollectibles({ publicKey: account.publicKey, network });
+
+        // Add a minimum delay to prevent UI flickering
+        new Promise((resolve) => {
+          setTimeout(resolve, DEFAULT_REFRESH_DELAY);
+        }).finally(() => {
+          setIsRefreshing(false);
+        });
+      }
+    }, [fetchCollectibles, account?.publicKey, network]);
 
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
         <TouchableOpacity
-          className="w-[165px] h-[165px] rounded-2xl overflow-hidden items-center justify-center mr-6 bg-background-tertiary"
+          className="w-[165px] h-[165px] rounded-2xl overflow-hidden mr-6"
           delayPressIn={DEFAULT_PRESS_DELAY}
           onPress={() =>
             onCollectiblePress?.({
@@ -79,22 +102,10 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             })
           }
         >
-          {/* Placeholder icon for when the image is not loaded */}
-          <View className="absolute z-1">
-            <Icon.Image01 size={45} color={themeColors.text.secondary} />
-          </View>
-
-          {/* NFT image */}
-          <View className="absolute z-10 w-full h-full">
-            <Image
-              source={{ uri: item.image }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-          </View>
+          <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
         </TouchableOpacity>
       ),
-      [onCollectiblePress, themeColors.text.secondary],
+      [onCollectiblePress],
     );
 
     const renderCollection = useCallback(
@@ -139,7 +150,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             ListFooterComponent={DefaultListFooter}
             refreshControl={
               <RefreshControl
-                refreshing={isLoading}
+                refreshing={isRefreshing}
                 tintColor={themeColors.secondary}
                 onRefresh={handleRefresh}
               />
@@ -162,7 +173,10 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
       if (error) {
         return (
-          <View className="flex-1 pt-4">
+          <View
+            className="flex-1 pt-4"
+            style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+          >
             <Text md secondary>
               {t("collectiblesGrid.error")}
             </Text>
@@ -181,6 +195,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     }, [
       collections,
       isLoading,
+      isRefreshing,
       error,
       t,
       themeColors.text.secondary,

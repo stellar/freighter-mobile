@@ -77,6 +77,9 @@ jest.mock("@react-navigation/native", () => {
     return mockRef;
   };
 
+  // Make sure createNavigationContainerRef is available
+  createNavigationContainerRef.mockRef = mockRef;
+
   return {
     __esModule: true,
     ...originalModule,
@@ -159,6 +162,15 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("helpers/getOsLanguage", () =>
   jest.fn().mockImplementationOnce(() => "en"),
 );
+
+// Mock stellarExpert service to avoid import issues
+jest.mock("services/stellarExpert", () => ({
+  searchToken: jest.fn(async () => ({
+    _embedded: {
+      records: [],
+    },
+  })),
+}));
 
 // Mock react-native-bootsplash
 jest.mock("react-native-bootsplash", () => ({
@@ -312,5 +324,91 @@ jest.mock("react-native-permissions", () => ({
     IOS: {
       APP_TRACKING_TRANSPARENCY: "app-tracking-transparency",
     },
+    ANDROID: {
+      READ_MEDIA_IMAGES: "android.permission.READ_MEDIA_IMAGES",
+      READ_MEDIA_VIDEO: "android.permission.READ_MEDIA_VIDEO",
+      READ_EXTERNAL_STORAGE: "android.permission.READ_EXTERNAL_STORAGE",
+    },
   },
+  RESULTS: {
+    GRANTED: "granted",
+    DENIED: "denied",
+    BLOCKED: "blocked",
+    UNAVAILABLE: "unavailable",
+  },
+  check: jest.fn(() => Promise.resolve("granted")),
+  request: jest.fn(() => Promise.resolve("granted")),
+  checkMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  requestMultiple: jest.fn(() =>
+    Promise.resolve(["granted", "granted", "granted"]),
+  ),
+  openSettings: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("@react-native-camera-roll/camera-roll", () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(() => Promise.resolve()),
+    getPhotos: jest.fn(() => Promise.resolve({ edges: [] })),
+    deletePhotos: jest.fn(() => Promise.resolve()),
+  },
+}));
+
+jest.mock("@dr.pogodin/react-native-fs", () => ({
+  DocumentDirectoryPath: "/mock/documents/path",
+  downloadFile: jest.fn(() => ({
+    promise: Promise.resolve({ statusCode: 200 }),
+  })),
+  exists: jest.fn(() => Promise.resolve(true)),
+  unlink: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock react-native-fast-opencv
+jest.mock("react-native-fast-opencv", () => ({
+  BorderTypes: {
+    BORDER_DEFAULT: 0,
+  },
+  DataTypes: {
+    CV_8U: 0,
+  },
+  ObjectType: {
+    Mat: "Mat",
+    Size: "Size",
+    Point: "Point",
+  },
+  OpenCV: {
+    base64ToMat: jest.fn((base64) => ({
+      // Mock Mat object
+      empty: jest.fn(() => false),
+    })),
+    createObject: jest.fn((type, ...args) => ({
+      type,
+      args,
+    })),
+    invoke: jest.fn((method, ...args) => {
+      // Mock OpenCV method invocation
+      if (method === "GaussianBlur") {
+        return true;
+      }
+      return true;
+    }),
+    toJSValue: jest.fn((obj) => ({
+      base64: "mock-blurred-base64-data",
+    })),
+    clearBuffers: jest.fn(),
+  },
+}));
+
+// Mock Sentry for Jest tests
+jest.mock("@sentry/react-native", () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  addBreadcrumb: jest.fn(),
+  setContext: jest.fn(),
+  setUser: jest.fn(),
+  setTag: jest.fn(),
+  setExtra: jest.fn(),
+  wrap: jest.fn((component) => component), // Return component as-is for testing
 }));

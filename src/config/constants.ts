@@ -18,6 +18,9 @@ export const DEFAULT_PRESS_DELAY = 100;
 
 export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
 
+// This is used to prevent flickering while refreshing lists with "pull to refresh" action
+export const DEFAULT_REFRESH_DELAY = 1000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
@@ -223,9 +226,15 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * ACTIVE_ACCOUNT The active account is the account that is currently being used.
  * ACCOUNT_LIST The account list is used to keep track of all the accounts stored in the key manager.
+ *
  * CUSTOM_TOKEN_LIST The custom token list is used to keep track of all the custom soroban tokens stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CustomToken[] } } @see CustomTokenStorage
  * The CUSTOM_TOKEN_LIST is not removed during the logout process. It is used to keep the custom tokens even after the user logs out, since the API does not store custom tokens.
+ *
+ * COLLECTIBLES_LIST The collectibles list is used to keep track of all the collectibles stored in the key manager.
+ * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
+ * The COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
+ *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  * */
@@ -233,6 +242,7 @@ export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
   ACCOUNT_LIST = "accountList",
   CUSTOM_TOKEN_LIST = "customTokenList",
+  COLLECTIBLES_LIST = "collectiblesList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
@@ -270,6 +280,14 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading
   SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
   SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
+  // BLUR STRNGTH NEEDS TO BE ODD NUMBERS, IE 15, 25, 35, 55, 75, 95, etc.
+  SCREENSHOT_BLUR_STRENGTH: {
+    LIGHT: 15,
+    MEDIUM: 25,
+    STRONG: 35,
+    VERY_STRONG: 55,
+    EXTREMELY_STRONG: 151,
+  },
   TAB_OPEN_ANIMATION_DURATION: 200,
   TAB_CLOSE_ANIMATION_DURATION: 200,
   TAB_SWITCH_SPINNER_DELAY: 500,
@@ -281,3 +299,37 @@ export const BROWSER_CONSTANTS = {
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
 } as const;
+
+/**
+ * QR Code Context Constants
+ *
+ * Defines the different contexts/sources where QR code scanning can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum QRCodeSource {
+  /** For scanning addresses in Send flow */
+  ADDRESS_INPUT = "address_input",
+  /** For scanning WalletConnect URIs */
+  WALLET_CONNECT = "wallet_connect",
+  /** For scanning wallet import data */
+  IMPORT_WALLET = "import_wallet",
+}
+
+/**
+ * Type for QR code source values
+ */
+export type QRCodeSourceType = `${QRCodeSource}`;
+
+/**
+ * Helper function to check if a string is a valid QR code source
+ */
+export const isValidQRCodeSource = (
+  source: string,
+): source is QRCodeSourceType =>
+  Object.values(QRCodeSource).includes(source as QRCodeSource);
+
+/**
+ * Helper function to get the default QR code source
+ */
+export const getDefaultQRCodeSource = (): QRCodeSource =>
+  QRCodeSource.ADDRESS_INPUT;

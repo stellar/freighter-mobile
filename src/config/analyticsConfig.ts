@@ -131,6 +131,9 @@ export enum AnalyticsEvent {
   BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
   BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
   BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
+
+  // Onramp Events
+  COINBASE_ONRAMP_OPENED = "coinbase onramp: opened",
 }
 
 /**

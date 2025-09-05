@@ -6,7 +6,6 @@ import {
   KeyMetadata,
   KeyStore,
 } from "@stellar/typescript-wallet-sdk-km";
-import { logger } from "config/logger";
 import { debug } from "helpers/debug";
 import {
   ReactNativeKeychainFacade,
@@ -68,11 +67,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
       this.keyStore.configure(params);
       return Promise.resolve();
     } catch (e) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.configure",
-        "Failed to configure keychain store",
-        e,
-      );
       return Promise.reject(e);
     }
   }
@@ -94,10 +88,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     }
 
     if (usedKeys.length) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.storeKeys",
-        `Some keys already exist in keychain: ${usedKeys.map((k) => k.id).join(", ")}`,
-      );
       return Promise.reject(
         `Some keys were already stored in the keystore: ${usedKeys
           .map((k) => k.id)
@@ -133,10 +123,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     }
 
     if (notFoundKeys.length) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.updateKeys",
-        `Some keys not found in keychain: ${notFoundKeys.map((k) => k.id).join(", ")}`,
-      );
       return Promise.reject(
         `Some keys couldn't be found in the keystore: ${notFoundKeys
           .map((k) => k.id)
@@ -163,10 +149,6 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     debug(`Loading key ${id} from keychain`);
     const key = await this.keyStore.getKey(id);
     if (!key) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.loadKey",
-        `Key ${id} not found in keychain`,
-      );
       return Promise.reject(id);
     }
 
@@ -182,19 +164,11 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
     debug(`Removing key ${id} from keychain`);
     const hasKey = await this.keyStore.hasKey(id);
     if (!hasKey) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.removeKey",
-        `Key ${id} not found in keychain`,
-      );
       return Promise.reject(id);
     }
 
     const key = await this.keyStore.getKey(id);
     if (!key) {
-      logger.error(
-        "ReactNativeKeychainKeyStore.removeKey",
-        `Key ${id} could not be retrieved from keychain`,
-      );
       return Promise.reject(id);
     }
     const metadata: KeyMetadata = getKeyMetadata(key);

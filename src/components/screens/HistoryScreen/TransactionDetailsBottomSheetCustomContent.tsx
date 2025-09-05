@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { List, ListItemProps } from "components/List";
 import {
   renderActionIcon,
   renderIconComponent,
@@ -22,12 +23,12 @@ import { formatDate } from "helpers/date";
 import { formatTokenAmount, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useMemo } from "react";
 import { Linking, View } from "react-native";
 import { analytics } from "services/analytics";
 
 interface TransactionDetailsBottomSheetCustomContentProps {
-  transactionDetails: TransactionDetails | null;
+  transactionDetails: TransactionDetails;
 }
 
 /**
@@ -38,10 +39,6 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
 > = ({ transactionDetails }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-
-  if (!transactionDetails) {
-    return null;
-  }
 
   const fee = stroopToXlm(transactionDetails.fee).toString();
   const formattedDate = formatDate({
@@ -58,6 +55,66 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       : "0";
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
   const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
+  const detailItems = useMemo(
+    () =>
+      [
+        {
+          icon: <Icon.ClockCheck size={16} themeColor="gray" />,
+          titleComponent: (
+            <Text md secondary>
+              {t("history.transactionDetails.status")}
+            </Text>
+          ),
+          trailingContent: (
+            <Text
+              md
+              secondary
+              color={
+                isSuccess
+                  ? themeColors.status.success
+                  : themeColors.status.error
+              }
+            >
+              {isSuccess
+                ? t("history.transactionDetails.statusSuccess")
+                : t("history.transactionDetails.statusFailed")}
+            </Text>
+          ),
+        },
+        transactionDetails.transactionType === TransactionType.SWAP
+          ? {
+              icon: <Icon.Divide03 size={16} themeColor="gray" />,
+              titleComponent: (
+                <Text md secondary>
+                  {t("history.transactionDetails.rate")}
+                </Text>
+              ),
+              trailingContent: <Text>{swapRateText}</Text>,
+            }
+          : undefined,
+        {
+          icon: <Icon.Route size={16} themeColor="gray" />,
+          titleComponent: (
+            <Text md secondary>
+              {t("history.transactionDetails.fee")}
+            </Text>
+          ),
+          trailingContent: (
+            <Text>{formatTokenAmount(fee, NATIVE_TOKEN_CODE)}</Text>
+          ),
+        },
+        // filter out undefined entries for non-swaps in order to keep detail order.
+      ].filter(Boolean),
+    [
+      fee,
+      isSuccess,
+      swapRateText,
+      t,
+      themeColors.status.error,
+      themeColors.status.success,
+      transactionDetails.transactionType,
+    ],
+  ) as ListItemProps[];
 
   return (
     <View className="flex-1 justify-center gap-6">
@@ -109,54 +166,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         />
       )}
 
-      <View className="flex-1 justify-center bg-background-primary rounded-2xl p-6 gap-3 border border-border-primary">
-        <View className="flex-row justify-between">
-          <View className="flex-row items-center justify-center gap-2">
-            <Icon.ClockCheck size={16} color={themeColors.foreground.primary} />
-            <Text md secondary medium numberOfLines={1}>
-              {t("history.transactionDetails.status")}
-            </Text>
-          </View>
-          <Text
-            md
-            primary
-            numberOfLines={1}
-            color={
-              isSuccess ? themeColors.status.success : themeColors.status.error
-            }
-          >
-            {isSuccess
-              ? t("history.transactionDetails.statusSuccess")
-              : t("history.transactionDetails.statusFailed")}
-          </Text>
-        </View>
-
-        {transactionDetails.transactionType === TransactionType.SWAP && (
-          <View className="flex-row justify-between">
-            <View className="flex-row items-center justify-center gap-2">
-              <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
-              <Text md secondary medium numberOfLines={1}>
-                {t("history.transactionDetails.rate")}
-              </Text>
-            </View>
-            <Text md primary numberOfLines={1}>
-              {swapRateText}
-            </Text>
-          </View>
-        )}
-
-        <View className="flex-row justify-between">
-          <View className="flex-row items-center justify-center gap-2">
-            <Icon.Route size={16} color={themeColors.foreground.primary} />
-            <Text md secondary medium numberOfLines={1}>
-              {t("history.transactionDetails.fee")}
-            </Text>
-          </View>
-          <Text md primary numberOfLines={1}>
-            {formatTokenAmount(fee, NATIVE_TOKEN_CODE)}
-          </Text>
-        </View>
-      </View>
+      <List variant="secondary" items={detailItems} />
       <Button
         isFullWidth
         tertiary

@@ -112,15 +112,15 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receive XLM",
+    "title": "Receive funds",
     "copyButton": "Copy address",
     "helperText": "Scan the QR code or \ncopy your address",
     "bottomSheet": {
-      "title": "Receive XLM",
+      "title": "QR Code",
       "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
     }
   },
-  "scanQRCodeScreen": {
+  "walletConnect": {
     "title": "Scan to Connect",
     "scanWCQrCode": "Scan a WalletConnect QR code",
     "connectWithWalletConnect": "Paste a WalletConnect URI",
@@ -129,14 +129,21 @@
     "pairingError": "Failed to pair",
     "invalidUriError": "Please enter a valid QR Code URI"
   },
-  "buyXLMScreen": {
-    "title": "Add XLM",
+  "qrCodeScannerScreen": {
+    "title": "Scan to send"
+  },
+  "addFundsScreen": {
+    "title": "Add funds",
     "bottomSheet": {
       "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
     },
-    "actions": {
+    "transferFromAnotherAccount": {
       "title": "Transfer from another account",
       "description": "Receive funds from another wallet"
+    },
+    "buyWithCoinbase": {
+      "title": "Buy with Coinbase",
+      "description": "Transfer from Coinbase & other options"
     }
   },
   "changeNetworkScreen": {
@@ -342,7 +349,12 @@
     "traits": "Collectible Traits",
     "view": "View",
     "refreshMetadata": "Refresh metadata",
-    "viewOnStellarExpert": "View on stellar.expert"
+    "viewOnStellarExpert": "View on stellar.expert",
+    "removeCollectible": "Remove collectible",
+    "saveToPhotos": "Save to photos",
+    "imageSavedToPhotos": "Image saved to photos",
+    "imageSaveFailed": "Failed to save image to photos",
+    "imageSaveAttempted": "Save attempted, check your photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -354,7 +366,24 @@
     "addressNoSpaces": "Address cannot contain spaces",
     "invalidTokenId": "Invalid token ID",
     "tokenIdNoSpaces": "Token ID cannot contain spaces",
-    "description": "If a collectible is missing from your wallet, you can manually add it here."
+    "description": "If a collectible is missing from your wallet, you can manually add it here.",
+    "toastSuccess": "Successfully added collectible",
+    "toastError": "Error adding collectible. {{errorMessage}}",
+    "alreadyInWallet": "This collectible is already in your wallet"
+  },
+  "collectibles": {
+    "errors": {
+      "collectionNotFound": "Collection not found for the given address.",
+      "notOwnedByUser": "It appears this collectible is not owned by you.",
+      "failedToAdd": "Failed to add collectible",
+      "failedToRemove": "Failed to remove collectible",
+      "invalidAddressOrTokenId": "Please make sure the collection address and token ID are correct."
+    },
+    "fallbacks": {
+      "tokenName": "Token #{{tokenId}}",
+      "unknownTrait": "Unknown",
+      "descriptionUnavailable": "Description unavailable"
+    }
   },
   "friendbotButton": {
     "title": "Fund with Friendbot"
@@ -442,7 +471,8 @@
     "recents": "Recents",
     "suggestions": "Suggestions",
     "cannotSendToSelf": "Cannot send to yourself",
-    "invalidAddress": "Invalid Stellar address"
+    "invalidAddress": "Invalid Stellar address",
+    "scanQRCodeText": "Scan a Freighter QR Code"
   },
   "swapScreen": {
     "swapFrom": "Swap from",

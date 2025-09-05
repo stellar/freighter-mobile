@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -7,13 +8,13 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
-import { useCollectibles } from "hooks/useCollectibles";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
-import { Image, Linking, ScrollView, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -65,7 +66,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { getCollectible, isLoading: isCollectiblesLoading } =
-      useCollectibles();
+      useCollectiblesStore();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -85,6 +86,8 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     useCollectibleDetailsHeader({
       collectionAddress,
       collectibleName: collectible?.name,
+      collectibleImage: collectible?.image,
+      tokenId,
     });
 
     /**
@@ -140,7 +143,9 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
      *
      * @param {string} url - The external URL to open
      */
-    const handleViewInBrowser = useCallback(async (url: string) => {
+    const handleViewInBrowser = useCallback(async (url?: string) => {
+      if (!url) return;
+
       try {
         await Linking.openURL(url);
       } catch (error) {
@@ -186,20 +191,11 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           contentContainerStyle={{ paddingBottom: pxValue(40) }}
         >
           {/* Collectible Image */}
-          <View className="w-[354px] h-[354px] rounded-[32px] overflow-hidden items-center justify-center bg-background-tertiary mt-2 mb-6">
-            {/* Placeholder icon for when the image is not loaded */}
-            <View className="absolute z-1">
-              <Icon.Image01 size={90} color={themeColors.text.secondary} />
-            </View>
-
-            {/* NFT image */}
-            <View className="absolute z-10 w-full h-full">
-              <Image
-                source={{ uri: collectible.image }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            </View>
+          <View className="w-[354px] h-[354px] rounded-[32px] overflow-hidden mt-2 mb-6">
+            <CollectibleImage
+              imageUri={collectible.image}
+              placeholderIconSize={90}
+            />
           </View>
 
           {/* Basic Information */}
@@ -208,42 +204,46 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           </View>
 
           {/* Description */}
-          <View className="mb-6 bg-background-tertiary rounded-2xl p-4">
-            <View className="mb-3">
-              <Text md medium secondary>
-                {t("collectibleDetails.description")}
+          {collectible.description && (
+            <View className="mb-6 bg-background-tertiary rounded-2xl p-4">
+              <View className="mb-3">
+                <Text md medium secondary>
+                  {t("collectibleDetails.description")}
+                </Text>
+              </View>
+              <Text md medium>
+                {collectible.description}
               </Text>
             </View>
-            <Text md medium>
-              {collectible.description}
-            </Text>
-          </View>
+          )}
 
           {/* Collectible Traits */}
-          <View className="mb-6 bg-background-tertiary rounded-2xl px-4 pt-4 pb-1">
-            <View className="mb-3">
-              <Text md medium secondary>
-                {t("collectibleDetails.traits")}
-              </Text>
-            </View>
-            <View className="flex-row flex-wrap justify-between">
-              {collectible.traits.map((trait) => (
-                <View
-                  key={`${trait.name}-${trait.value}`}
-                  className="bg-background-secondary rounded-2xl p-4 w-[48%] mb-3 items-center justify-center"
-                >
-                  <Text sm medium textAlign="center">
-                    {trait.value}
-                  </Text>
-                  <View className="mt-1">
-                    <Text sm secondary textAlign="center">
-                      {trait.name}
+          {collectible.traits && collectible.traits?.length > 0 && (
+            <View className="mb-6 bg-background-tertiary rounded-2xl px-4 pt-4 pb-1">
+              <View className="mb-3">
+                <Text md medium secondary>
+                  {t("collectibleDetails.traits")}
+                </Text>
+              </View>
+              <View className="flex-row flex-wrap justify-between">
+                {collectible.traits?.map((trait) => (
+                  <View
+                    key={`${trait.name}-${trait.value}`}
+                    className="bg-background-secondary rounded-2xl p-4 w-[48%] mb-3 items-center justify-center"
+                  >
+                    <Text sm medium textAlign="center">
+                      {trait.value}
                     </Text>
+                    <View className="mt-1">
+                      <Text sm secondary textAlign="center">
+                        {trait.name}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          )}
         </ScrollView>
 
         {/* View in browser button */}

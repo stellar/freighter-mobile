@@ -76,7 +76,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId } = route.params;
+  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -88,6 +88,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     recipientAddress,
     selectedTokenId,
     saveSelectedTokenId,
+    saveRecipientAddress,
     saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
@@ -99,6 +100,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveSelectedTokenId(tokenId);
     }
   }, [tokenId, saveSelectedTokenId]);
+
+  useEffect(() => {
+    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
+      saveRecipientAddress(routeRecipientAddress);
+    }
+  }, [routeRecipientAddress, saveRecipientAddress]);
 
   const {
     buildTransaction,
@@ -312,7 +319,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       logger.error(
         "TransactionAmountScreen",
         "Failed to build transaction:",
-        error instanceof Error ? error.message : String(error),
+        error,
       );
     }
   }, [
@@ -363,7 +370,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         logger.error(
           "TransactionAmountScreen",
           "Transaction submission failed:",
-          error instanceof Error ? error.message : String(error),
+          error,
         );
 
         analytics.trackTransactionError({
@@ -492,7 +499,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[32px] max-xs:py-[16px] px-[24px] max-xs:px-[16px] items-center">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
               <Display
                 xl
