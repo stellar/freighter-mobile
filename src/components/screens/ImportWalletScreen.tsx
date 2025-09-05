@@ -7,6 +7,7 @@ import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
+import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
@@ -24,6 +25,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { biometryType } = useBiometrics();
   const { storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const [isImporting, setIsImporting] = useState(false);
 
   const { password } = route.params;
@@ -76,7 +78,13 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
   return (
     <OnboardLayout
-      icon={<Icon.Download01 circle />}
+      icon={
+        <Icon.Download01
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("importWalletScreen.title")}
       defaultActionButtonText={t("importWalletScreen.defaultActionButtonText")}
       onPressDefaultActionButton={handleContinue}

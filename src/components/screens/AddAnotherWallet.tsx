@@ -10,6 +10,7 @@ import {
   ManageWalletsStackParamList,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -23,6 +24,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useRightHeaderButton({
@@ -50,7 +52,13 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
           className="bg-background-tertiary rounded-2xl p-5"
           onPress={handleCreateAccount}
         >
-          <Icon.PlusCircle themeColor="lime" size={20} withBackground />
+          <Icon.PlusCircle
+            themeColor="lilac"
+            size={20}
+            circle
+            circleBackground={themeColors.lilac[3]}
+            circleBorder={themeColors.lilac[6]}
+          />
           <View className="h-2" />
           <Text md primary medium>
             {t("addAnotherWalletScreen.actions.createNewWallet")}
@@ -64,7 +72,13 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
           className="bg-background-tertiary rounded-2xl p-5 mt-7"
           onPress={handleImportSecretKey}
         >
-          <Icon.Download01 themeColor="pink" size={20} withBackground />
+          <Icon.Download01
+            themeColor="lilac"
+            size={20}
+            circle
+            circleBackground={themeColors.lilac[3]}
+            circleBorder={themeColors.lilac[6]}
+          />
           <View className="h-2" />
           <Text md primary medium>
             {t("addAnotherWalletScreen.actions.importSecretKey")}

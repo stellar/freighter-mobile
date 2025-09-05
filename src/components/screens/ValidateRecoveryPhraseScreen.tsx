@@ -138,7 +138,13 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   return (
     <OnboardLayout
-      icon={<Icon.Passcode circle />}
+      icon={
+        <Icon.Passcode
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("validateRecoveryPhraseScreen.title", {
         number: selectedIndexes[roundIndex] + 1,
       })}

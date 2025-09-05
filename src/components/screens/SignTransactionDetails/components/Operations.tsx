@@ -108,7 +108,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.destination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={destination} size="sm" />
+              <Avatar publicAddress={destination} size="sm" hasDarkBackground />
               <Text>{truncateAddress(destination)}</Text>
             </View>
           ),
@@ -133,7 +133,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.destination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={destination} size="sm" />
+              <Avatar publicAddress={destination} size="sm" hasDarkBackground />
               <Text>{truncateAddress(destination)}</Text>
             </View>
           ),
@@ -174,7 +174,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.destination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={destination} size="sm" />
+              <Avatar publicAddress={destination} size="sm" hasDarkBackground />
               <Text>{truncateAddress(destination)}</Text>
             </View>
           ),
@@ -222,7 +222,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.destination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={destination} size="sm" />
+              <Avatar publicAddress={destination} size="sm" hasDarkBackground />
               <Text>{truncateAddress(destination)}</Text>
             </View>
           ),
@@ -381,7 +381,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.inflationDestination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={inflationDest} size="sm" />
+              <Avatar
+                publicAddress={inflationDest}
+                size="sm"
+                hasDarkBackground
+              />
               <Text>{truncateAddress(inflationDest)}</Text>
             </View>
           ),
@@ -500,7 +504,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.trustor"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={trustor} size="sm" />
+              <Avatar publicAddress={trustor} size="sm" hasDarkBackground />
               <Text>{truncateAddress(trustor)}</Text>
             </View>
           ),
@@ -528,7 +532,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.destination"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={destination} size="sm" />
+              <Avatar publicAddress={destination} size="sm" hasDarkBackground />
               <Text>{truncateAddress(destination)}</Text>
             </View>
           ),
@@ -650,7 +654,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.from"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={from} size="sm" />
+              <Avatar publicAddress={from} size="sm" hasDarkBackground />
               <Text>{truncateAddress(from)}</Text>
             </View>
           ),
@@ -681,7 +685,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           title: t("signTransactionDetails.operations.trustor"),
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
-              <Avatar publicAddress={trustor} size="sm" />
+              <Avatar publicAddress={trustor} size="sm" hasDarkBackground />
               <Text>{truncateAddress(trustor)}</Text>
             </View>
           ),
@@ -878,7 +882,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             title: t("signTransactionDetails.operations.account"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <Avatar publicAddress={account} size="sm" />
+                <Avatar publicAddress={account} size="sm" hasDarkBackground />
                 <Text>{truncateAddress(account)}</Text>
               </View>
             ),
@@ -916,7 +920,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             title: t("signTransactionDetails.operations.account"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <Avatar publicAddress={account} size="sm" />
+                <Avatar publicAddress={account} size="sm" hasDarkBackground />
                 <Text>{truncateAddress(account)}</Text>
               </View>
             ),
@@ -936,7 +940,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             title: t("signTransactionDetails.operations.seller"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <Avatar publicAddress={seller} size="sm" />
+                <Avatar publicAddress={seller} size="sm" hasDarkBackground />
                 <Text>{truncateAddress(seller)}</Text>
               </View>
             ),
@@ -961,7 +965,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             title: t("signTransactionDetails.operations.account"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <Avatar publicAddress={account} size="sm" />
+                <Avatar publicAddress={account} size="sm" hasDarkBackground />
                 <Text>{truncateAddress(account)}</Text>
               </View>
             ),
@@ -1010,7 +1014,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             title: t("signTransactionDetails.operations.account"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <Avatar publicAddress={account} size="sm" />
+                <Avatar publicAddress={account} size="sm" hasDarkBackground />
                 <Text>{truncateAddress(account)}</Text>
               </View>
             ),

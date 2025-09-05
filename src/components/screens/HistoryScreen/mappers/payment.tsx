@@ -157,8 +157,8 @@ export const PaymentTransactionDetailsContent: React.FC<{
           {truncateAddress(transactionDetails.paymentDetails?.to ?? "")}
         </Text>
         <Avatar
+          hasDarkBackground
           publicAddress={transactionDetails.paymentDetails?.to ?? ""}
-          hasBorder
           size={AvatarSizes.LARGE}
         />
       </View>

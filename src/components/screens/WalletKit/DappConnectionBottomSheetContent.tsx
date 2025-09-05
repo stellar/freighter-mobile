@@ -78,8 +78,7 @@ const DappConnectionBottomSheetContent: React.FC<
             <Avatar
               size="sm"
               publicAddress={account?.publicKey ?? ""}
-              hasBorder={false}
-              hasBackground={false}
+              hasDarkBackground
             />
             <Text md primary>
               {account?.accountName}

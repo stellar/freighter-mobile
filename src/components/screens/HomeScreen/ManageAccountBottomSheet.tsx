@@ -42,17 +42,16 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
       <BottomSheetAdaptiveContainer
         bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
         header={
-          <View className="flex-row items-center justify-between w-full">
-            <TouchableOpacity onPress={handleCloseModal}>
+          <View className="flex-row items-center justify-center relative w-full">
+            <TouchableOpacity
+              onPress={handleCloseModal}
+              className="absolute left-0"
+            >
               <Icon.X color={themeColors.base[1]} />
             </TouchableOpacity>
             <Text md primary semiBold>
               {t("home.manageAccount.title")}
             </Text>
-            {/* Add a ghost icon here so the title remains centered */}
-            <View className="opacity-0">
-              <Icon.X />
-            </View>
           </View>
         }
       >

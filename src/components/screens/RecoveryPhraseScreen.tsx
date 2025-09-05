@@ -16,6 +16,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
+import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
@@ -88,6 +89,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { error, isLoading, signUp, clearError, storeBiometricPassword } =
     useAuthenticationStore();
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { copyToClipboard } = useSecureClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { biometryType } = useBiometrics();
@@ -164,7 +166,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   return (
     <>
       <OnboardLayout
-        icon={<Icon.ShieldTick circle />}
+        icon={
+          <Icon.ShieldTick
+            circle
+            circleBackground={themeColors.lilac[3]}
+            circleBorder={themeColors.lilac[6]}
+          />
+        }
         title={t("recoveryPhraseScreen.title")}
         isLoading={isLoading}
         footerNoteText={t("recoveryPhraseScreen.footerNoteText")}

@@ -139,7 +139,8 @@
   "addFundsScreen": {
     "title": "Add funds",
     "bottomSheet": {
-      "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
+      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet.",
+      "subDescription": "Buy easily with Coinbase, or send XLM from another wallet."
     },
     "transferFromAnotherAccount": {
       "title": "Transfer from another account",

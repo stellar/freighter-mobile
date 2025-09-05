@@ -5,6 +5,7 @@ import { Input } from "components/sds/Input";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useState } from "react";
 
 type ConfirmPasswordScreenProps = NativeStackScreenProps<
@@ -19,6 +20,7 @@ export const ConfirmPasswordScreen: React.FC<ConfirmPasswordScreenProps> = ({
   const { password, isImporting } = route.params;
   const [confirmPasswordValue, setConfirmPasswordValue] = useState("");
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   const canContinue = useMemo(
     () =>
@@ -48,7 +50,13 @@ export const ConfirmPasswordScreen: React.FC<ConfirmPasswordScreenProps> = ({
 
   return (
     <OnboardLayout
-      icon={<Icon.PasscodeLock circle />}
+      icon={
+        <Icon.PasscodeLock
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("confirmPasswordScreen.title")}
       isDefaultActionButtonDisabled={!canContinue}
       defaultActionButtonText={t(

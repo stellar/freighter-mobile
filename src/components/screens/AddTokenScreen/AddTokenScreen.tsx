@@ -13,6 +13,7 @@ import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import {
@@ -31,7 +32,7 @@ import { useManageTokens } from "hooks/useManageTokens";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
@@ -189,8 +190,34 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       <View className="flex-1 justify-between">
         <BottomSheet
           modalRef={moreInfoBottomSheetModalRef}
-          title={t("manageTokensScreen.moreInfo.title")}
-          description={`${t("manageTokensScreen.moreInfo.block1")}\n\n${t("manageTokensScreen.moreInfo.block2")}`}
+          customContent={
+            <View className="gap-4">
+              <View className="flex-row justify-between items-center">
+                <View className="size-10 rounded-lg items-center justify-center bg-lilac-3 border border-lilac-6">
+                  <Icon.Coins01 themeColor="lilac" />
+                </View>
+                <TouchableOpacity
+                  onPress={() => moreInfoBottomSheetModalRef.current?.dismiss()}
+                  className="size-10 items-center justify-center rounded-full bg-gray-3"
+                >
+                  <Icon.X color={themeColors.gray[9]} />
+                </TouchableOpacity>
+              </View>
+              <View>
+                <Text xl medium>
+                  {t("manageTokensScreen.moreInfo.title")}
+                </Text>
+                <View className="h-4" />
+                <Text md medium secondary>
+                  {t("manageTokensScreen.moreInfo.block1")}
+                </Text>
+                <View className="h-4" />
+                <Text md medium secondary>
+                  {t("manageTokensScreen.moreInfo.block2")}
+                </Text>
+              </View>
+            </View>
+          }
           handleCloseModal={() =>
             moreInfoBottomSheetModalRef.current?.dismiss()
           }

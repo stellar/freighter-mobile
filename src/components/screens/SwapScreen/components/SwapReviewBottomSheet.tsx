@@ -219,7 +219,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
                   {account?.accountName ||
                     truncateAddress(publicKey ?? "", 4, 4)}
                 </Text>
-                <Avatar size="sm" publicAddress={publicKey ?? ""} />
+                <Avatar
+                  size="sm"
+                  publicAddress={publicKey ?? ""}
+                  hasDarkBackground
+                />
               </View>
             ),
           },

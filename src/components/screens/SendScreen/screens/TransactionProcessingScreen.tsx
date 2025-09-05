@@ -177,7 +177,11 @@ const TransactionProcessingScreen: React.FC<
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <Avatar size="lg" publicAddress={recipientAddress} />
+                <Avatar
+                  size="lg"
+                  publicAddress={recipientAddress}
+                  hasDarkBackground
+                />
               </View>
 
               <View className="items-center">

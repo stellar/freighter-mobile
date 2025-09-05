@@ -5,6 +5,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 
 type RecoveryPhraseAlertScreenProps = NativeStackScreenProps<
@@ -17,6 +18,7 @@ export const RecoveryPhraseAlertScreen: React.FC<
 > = ({ navigation, route }) => {
   const { password } = route.params;
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   const handleContinue = () => {
     navigation.navigate(AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN, {
@@ -26,7 +28,13 @@ export const RecoveryPhraseAlertScreen: React.FC<
 
   return (
     <OnboardLayout
-      icon={<Icon.ShieldTick circle />}
+      icon={
+        <Icon.ShieldTick
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("recoveryPhraseAlertScreen.title")}
       defaultActionButtonText={t(
         "recoveryPhraseAlertScreen.defaultActionButtonText",
