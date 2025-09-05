@@ -12,8 +12,6 @@ declare module "react-native-config" {
     WALLET_KIT_MT_URL: string;
     WALLET_KIT_MT_ICON: string;
     WALLET_KIT_MT_REDIRECT_NATIVE: string;
-    INDEXER_URL: string;
-    INDEXER_V2_URL: string;
   }
   const Config: NativeConfig;
   export default Config;
