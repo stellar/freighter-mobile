@@ -233,13 +233,17 @@ export const BiometricsOnboardingScreen: React.FC<
   }, [route.params, signUp, navigation]);
 
   const handleSkipPress = useCallback(async () => {
-    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(true);
+    }); // throw it out of the event loop to avoid react batching the state update
     await handleSkip();
     setIsProcessing(false);
   }, [handleSkip]);
 
   const handleEnableBiometricsPress = useCallback(async () => {
-    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(true);
+    }); // throw it out of the event loop to avoid react batching the state update
     await enableBiometrics();
     setIsProcessing(false);
   }, [enableBiometrics]);

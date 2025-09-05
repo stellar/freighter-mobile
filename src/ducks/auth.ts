@@ -1607,12 +1607,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         set({
           ...initialState,
           isLoading: false,
+          authStatus: AUTH_STATUS.AUTHENTICATED,
         });
         // Fetch active account after successful signup
         await get().fetchActiveAccount();
-        set({
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
       } catch (error) {
         logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
         set({
