@@ -6,6 +6,7 @@ import {
 } from "@dr.pogodin/react-native-fs";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 import { logger, normalizeError } from "config/logger";
+import { isAndroid } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
@@ -55,7 +56,6 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
   return "jpg";
 };
 
-// TODO: use normalizeError when PR #318 is merged
 const hasAndroidPermission = async () => {
   const permissions =
     Number(Platform.Version) >= 33
@@ -129,7 +129,7 @@ const deleteTempFile = async (filePath: string): Promise<void> => {
 const useDeviceStorage = () => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();
-  
+
   const saveToPhotos = useCallback(
     async (imageUrl: string, imageName: string) => {
       let tempFilePath: string | null = null;
