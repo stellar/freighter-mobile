@@ -60,7 +60,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
 
     return (
       <>
-        <Avatar size="lg" publicAddress={address} />
+        <Avatar size="lg" publicAddress={address} hasDarkBackground />
         <View className="flex-col ml-4 flex-1">
           <Text medium numberOfLines={1}>
             {name || slicedAddress}

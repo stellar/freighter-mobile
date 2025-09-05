@@ -112,8 +112,7 @@ describe("Avatar", () => {
       );
 
       const avatar = getByTestId("stellar-avatar");
-      expect(avatar.props.className).toContain("bg-background-primary");
-      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("bg-background-tertiary");
       expect(avatar.props.className).toContain("rounded-full");
     });
 
@@ -127,8 +126,7 @@ describe("Avatar", () => {
       );
 
       const avatar = getByTestId("initials-avatar");
-      expect(avatar.props.className).toContain("bg-background-primary");
-      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("bg-background-tertiary");
 
       const initials = getByText("JD");
       expect(initials.props.style).toEqual(
@@ -142,8 +140,7 @@ describe("Avatar", () => {
       );
 
       const avatar = getByTestId("default-avatar");
-      expect(avatar.props.className).toContain("bg-background-primary");
-      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).toContain("bg-background-tertiary");
       expect(avatar.props.className).toContain("rounded-full");
 
       const icon = getByTestId("SvgMock");
@@ -233,14 +230,13 @@ describe("Avatar", () => {
   });
 
   describe("Border handling", () => {
-    it("renders with border by default", () => {
+    it("renders without border by default", () => {
       const { getByTestId } = renderWithProviders(
         <Avatar size={AvatarSizes.MEDIUM} testID="border-avatar" />,
       );
 
       const avatar = getByTestId("border-avatar");
-      expect(avatar.props.className).toContain("border");
-      expect(avatar.props.className).toContain("border-border-primary");
+      expect(avatar.props.className).not.toContain("border");
     });
 
     it("renders without border when hasBorder is false", () => {
