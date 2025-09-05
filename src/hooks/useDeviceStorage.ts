@@ -134,7 +134,7 @@ const useDeviceStorage = () => {
       let tempFilePath: string | null = null;
 
       // Check only for android because the react-native-camera-roll already handles iOS
-      if (Platform.OS === "android" && !(await hasAndroidPermission())) {
+      if (isAndroid && !(await hasAndroidPermission())) {
         return;
       }
 
