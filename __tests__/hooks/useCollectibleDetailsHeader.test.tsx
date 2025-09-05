@@ -31,9 +31,31 @@ jest.mock("ducks/auth", () => ({
   }),
 }));
 
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: () => ({
+    account: {
+      publicKey: "test-public-key",
+    },
+  }),
+}));
+
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({
     fetchCollectibles: jest.fn(),
+    getCollectible: jest.fn(() => ({
+      name: "Test Collectible",
+      collectionName: "Test Collection",
+      tokenId: "123",
+      image: "https://example.com/image.jpg",
+      description: "Test description",
+      traits: [
+        { name: "Color", value: "Blue" },
+        { name: "Rarity", value: "Common" },
+      ],
+      externalUrl: "https://example.com",
+    })),
+    isLoading: false,
   }),
 }));
 
@@ -75,6 +97,7 @@ describe("useCollectibleDetailsHeader", () => {
   const defaultParams = {
     collectionAddress: "test-collection-address",
     collectibleName: "Test NFT",
+    tokenId: "test-token-id",
   };
 
   it("should return handler functions", () => {
@@ -84,6 +107,7 @@ describe("useCollectibleDetailsHeader", () => {
 
     expect(result.current).toEqual({
       handleRefreshMetadata: expect.any(Function),
+      handleRemoveCollectible: expect.any(Function),
       handleViewOnStellarExpert: expect.any(Function),
       handleSaveToPhotos: expect.any(Function),
     });
@@ -111,6 +135,7 @@ describe("useCollectibleDetailsHeader", () => {
       useCollectibleDetailsHeader({
         collectionAddress: "test-collection",
         collectibleName: undefined,
+        tokenId: "test-token-id",
       }),
     );
 
@@ -147,11 +172,13 @@ describe("useCollectibleDetailsHeader", () => {
     expect(Platform.select).toHaveBeenCalledWith({
       ios: {
         refreshMetadata: "arrow.clockwise",
+        removeCollectible: "trash",
         viewOnStellarExpert: "link",
         saveToPhotos: "square.and.arrow.down",
       },
       android: {
         refreshMetadata: "refresh",
+        removeCollectible: "delete",
         viewOnStellarExpert: "link",
         saveToPhotos: "place_item",
       },

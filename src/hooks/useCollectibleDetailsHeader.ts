@@ -6,6 +6,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useDeviceStorage from "hooks/useDeviceStorage";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useLayoutEffect, useMemo, useCallback } from "react";
 import { Linking, Platform } from "react-native";
@@ -14,6 +15,7 @@ interface UseCollectibleDetailsHeaderProps {
   collectionAddress: string;
   collectibleName?: string;
   collectibleImage?: string;
+  tokenId: string;
 }
 
 /**
@@ -40,11 +42,13 @@ export const useCollectibleDetailsHeader = ({
   collectionAddress,
   collectibleName,
   collectibleImage,
+  tokenId,
 }: UseCollectibleDetailsHeaderProps) => {
   const navigation = useNavigation();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
-  const { fetchCollectibles } = useCollectiblesStore();
+  const { account } = useGetActiveAccount();
+  const { fetchCollectibles, removeCollectible } = useCollectiblesStore();
   const { saveToPhotos } = useDeviceStorage();
 
   /**
@@ -63,7 +67,9 @@ export const useCollectibleDetailsHeader = ({
    */
   const handleRefreshMetadata = useCallback(async () => {
     try {
-      await fetchCollectibles();
+      if (account?.publicKey && network) {
+        await fetchCollectibles({ publicKey: account.publicKey, network });
+      }
     } catch (error) {
       logger.error(
         "useCollectibleDetailsHeader",
@@ -71,7 +77,7 @@ export const useCollectibleDetailsHeader = ({
         error,
       );
     }
-  }, [fetchCollectibles]);
+  }, [fetchCollectibles, account?.publicKey, network]);
 
   /**
    * Handles opening the collectible on stellar.expert explorer.
@@ -92,6 +98,39 @@ export const useCollectibleDetailsHeader = ({
   }, [network, collectionAddress]);
 
   /**
+   * Handles removing the collectible from the wallet.
+   * Removes the collectible from local storage and navigates back.
+   */
+  const handleRemoveCollectible = useCallback(async () => {
+    try {
+      if (account?.publicKey && network) {
+        await removeCollectible({
+          publicKey: account.publicKey,
+          network,
+          contractId: collectionAddress,
+          tokenId,
+        });
+
+        // Navigate back after successful removal
+        navigation.goBack();
+      }
+    } catch (error) {
+      logger.error(
+        "useCollectibleDetailsHeader",
+        "Failed to remove collectible:",
+        error,
+      );
+    }
+  }, [
+    removeCollectible,
+    account?.publicKey,
+    network,
+    collectionAddress,
+    tokenId,
+    navigation,
+  ]);
+
+  /**
    * Platform-specific system icons for the context menu actions.
    */
   const systemIcons = useMemo(
@@ -101,11 +140,13 @@ export const useCollectibleDetailsHeader = ({
           refreshMetadata: "arrow.clockwise", // Circular arrow for refresh
           viewOnStellarExpert: "link", // Link/chain icon
           saveToPhotos: "square.and.arrow.down", // Save to photos icon
+          removeCollectible: "trash", // Trash icon for removal
         },
         android: {
           refreshMetadata: "refresh", // Refresh icon (Material)
           viewOnStellarExpert: "link", // Link icon (Material)
           saveToPhotos: "place_item", // Save to photos icon (Material)
+          removeCollectible: "delete", // Delete icon (Material)
         },
       }),
     [],
@@ -145,6 +186,18 @@ export const useCollectibleDetailsHeader = ({
             },
           ]
         : []),
+      // Only show remove collectible in development mode for
+      // testing purposes
+      ...(__DEV__
+        ? [
+            {
+              title: t("collectibleDetails.removeCollectible"),
+              systemIcon: systemIcons?.removeCollectible,
+              onPress: handleRemoveCollectible,
+              destructive: true, // Mark as destructive action
+            },
+          ]
+        : []),
     ],
     [
       t,
@@ -153,6 +206,7 @@ export const useCollectibleDetailsHeader = ({
       handleViewOnStellarExpert,
       handleSaveToPhotos,
       collectibleImage,
+      handleRemoveCollectible,
     ],
   );
 
@@ -167,5 +221,6 @@ export const useCollectibleDetailsHeader = ({
     handleRefreshMetadata,
     handleViewOnStellarExpert,
     handleSaveToPhotos,
+    handleRemoveCollectible,
   };
 };

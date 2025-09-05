@@ -315,6 +315,7 @@
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
     "viewOnStellarExpert": "Ver no stellar.expert",
+    "removeCollectible": "Remover colecionável",
     "saveToPhotos": "Salvar na galeria",
     "imageSavedToPhotos": "Imagem salva na galeria",
     "imageSaveFailed": "Falha ao salvar imagem na galeria",
@@ -330,7 +331,24 @@
     "addressNoSpaces": "Endereço não pode conter espaços",
     "invalidTokenId": "ID do token inválido",
     "tokenIdNoSpaces": "O ID do token não pode conter espaços",
-    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui."
+    "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
+    "toastSuccess": "Colecionável adicionado com sucesso",
+    "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
+    "alreadyInWallet": "Este colecionável já está na sua carteira"
+  },
+  "collectibles": {
+    "errors": {
+      "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
+      "notOwnedByUser": "Parece que este colecionável não é seu.",
+      "failedToAdd": "Falha ao adicionar colecionável",
+      "failedToRemove": "Falha ao remover colecionável",
+      "invalidAddressOrTokenId": "Certifique-se de que o endereço da coleção e o ID do token estão corretos."
+    },
+    "fallbacks": {
+      "tokenName": "Token #{{tokenId}}",
+      "unknownTrait": "Desconhecido",
+      "descriptionUnavailable": "Descrição indisponível"
+    }
   },
   "friendbotButton": {
     "title": "Adicionar saldo com Friendbot"

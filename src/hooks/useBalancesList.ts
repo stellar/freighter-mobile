@@ -1,4 +1,4 @@
-import { NETWORKS } from "config/constants";
+import { DEFAULT_REFRESH_DELAY, NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { getTokenType } from "helpers/balances";
@@ -89,7 +89,7 @@ export const useBalancesList = ({
 
     // Add a minimum spinner delay to prevent flickering
     new Promise((resolve) => {
-      setTimeout(resolve, 1000);
+      setTimeout(resolve, DEFAULT_REFRESH_DELAY);
     }).finally(() => {
       setIsRefreshing(false);
     });
