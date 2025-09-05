@@ -5,7 +5,6 @@ import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useTokenActions } from "hooks/useTokenActions";
 import React, { useState } from "react";
@@ -40,7 +39,6 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyTokenAddress } = useTokenActions();
-  const { getBiometricButtonIcon } = useBiometrics();
   const { tokenCode } = formatTokenIdentifier(token.id);
 
   const showRemoveTokenAlert = () => {
@@ -93,10 +91,10 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
         confirmText={t("common.remove")}
         cancelText={t("common.cancel")}
         onConfirm={handleRemoveTokenClick}
-        confirmButtonIcon={getBiometricButtonIcon(themeColors.white)}
         confirmButtonIconPosition={IconPosition.LEFT}
         isLoading={isRemovingToken}
         destructive
+        biometricConfirm
       />
     </ContextMenuButton>
   );

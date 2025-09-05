@@ -36,6 +36,8 @@ interface ConfirmationModalProps {
   confirmButtonIcon?: React.ReactNode;
   /** Whether to use destructive styling for the confirm button */
   confirmButtonIconPosition?: IconPosition;
+  /** Whether to use biometric confirmation for the confirm button */
+  biometricConfirm?: boolean;
 }
 
 /**
@@ -123,6 +125,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   cancelButtonIconPosition,
   confirmButtonIcon,
   confirmButtonIconPosition,
+  biometricConfirm = false,
 }) => {
   const handleCancel = () => {
     if (onCancel) {
@@ -170,6 +173,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             isFullWidth
             onPress={handleConfirm}
             isLoading={isLoading}
+            biometric={biometricConfirm}
           >
             {confirmText}
           </Button>
