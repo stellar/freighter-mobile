@@ -44,7 +44,7 @@ import {
   SwapStackNavigator,
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -65,9 +65,8 @@ export const RootNavigator = () => {
     >();
   const { authStatus, getAuthStatus } = useAuthenticationStore();
   const [initializing, setInitializing] = useState(true);
-  const hasSeenFaceIdOnboardingRef = useRef(false);
   const { t } = useAppTranslation();
-  const { checkBiometrics } = useBiometrics();
+  const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
@@ -84,10 +83,14 @@ export const RootNavigator = () => {
       if (authStatus === AUTH_STATUS.AUTHENTICATED) {
         setTimeout(() => {
           dataStorage
-            .getItem(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING)
-            .then(async (hasSeenFaceIdOnboardingStorage) => {
+            .getItem(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN)
+            .then(async (hasSeenBiometricsEnableScreenStorage) => {
               const type = await checkBiometrics();
-              if (hasSeenFaceIdOnboardingStorage !== "true" && !!type) {
+              if (
+                !isBiometricsEnabled &&
+                hasSeenBiometricsEnableScreenStorage !== "true" &&
+                !!type
+              ) {
                 navigation.navigate(
                   AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
                   {
@@ -105,10 +108,10 @@ export const RootNavigator = () => {
     });
   }, [
     getAuthStatus,
-    hasSeenFaceIdOnboardingRef,
     navigation,
     authStatus,
     checkBiometrics,
+    isBiometricsEnabled,
   ]);
 
   // Make the stack re-render when auth status changes
@@ -219,17 +222,15 @@ export const RootNavigator = () => {
               headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
             }}
           />
-          {!hasSeenFaceIdOnboardingRef.current && (
-            <RootStack.Screen
-              name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
-              component={BiometricsOnboardingScreen}
-              options={{
-                headerShown: true,
-                header: (props) => <CustomNavigationHeader {...props} />,
-                headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-              }}
-            />
-          )}
+          <RootStack.Screen
+            name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
+            component={BiometricsOnboardingScreen}
+            options={{
+              headerShown: true,
+              header: (props) => <CustomNavigationHeader {...props} />,
+              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+            }}
+          />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
         <RootStack.Screen

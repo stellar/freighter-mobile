@@ -1458,7 +1458,7 @@ const selectAccount = async (publicKey: string): Promise<void> => {
 const clearBiometricsData = async (): Promise<void> => {
   usePreferencesStore.getState().setIsBiometricsEnabled(false);
   await Promise.all([
-    dataStorage.remove(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING),
+    dataStorage.remove(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN),
     biometricDataStorage.clear(),
   ]);
 };

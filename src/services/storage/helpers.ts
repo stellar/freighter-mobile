@@ -25,7 +25,7 @@ const clearNonSensitiveData = async (): Promise<void> => {
         STORAGE_KEYS.ACTIVE_NETWORK,
         STORAGE_KEYS.CUSTOM_TOKEN_LIST,
         STORAGE_KEYS.COLLECTIBLES_LIST,
-        STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+        STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
       ].includes(key),
   );
 

@@ -246,10 +246,9 @@ export enum STORAGE_KEYS {
   COLLECTIBLES_LIST = "collectiblesList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
-  FACE_ID_ENABLED = "faceIdEnabled",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
-  HAS_SEEN_FACE_ID_ONBOARDING = "hasSeenFaceIdOnboarding",
+  HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
 }
 
 /**

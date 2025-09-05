@@ -144,7 +144,7 @@ export const BiometricsOnboardingScreen: React.FC<
     if (route.params.postOnboarding) {
       await enableBiometricsAction(async () => {
         await dataStorage.setItem(
-          STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+          STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
           "true",
         );
         setIsBiometricsEnabled(true);
@@ -167,7 +167,7 @@ export const BiometricsOnboardingScreen: React.FC<
     try {
       enableBiometricsAction(async (biometricPassword) => {
         await dataStorage.setItem(
-          STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
+          STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
           "true",
         );
         await signUp({
@@ -178,7 +178,6 @@ export const BiometricsOnboardingScreen: React.FC<
         return Promise.resolve();
       });
 
-      // Track analytics for successful completion
       analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     } catch (error) {
       logger.error(
@@ -186,7 +185,6 @@ export const BiometricsOnboardingScreen: React.FC<
         "Failed to complete authentication with biometrics",
         error,
       );
-      // Handle error appropriately
     }
   }, [
     route.params,
@@ -199,7 +197,10 @@ export const BiometricsOnboardingScreen: React.FC<
   const handleSkip = useCallback(async () => {
     setIsProcessing(true);
     const { password, mnemonicPhrase } = route.params;
-    await dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING, "true");
+    await dataStorage.setItem(
+      STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
+      "true",
+    );
 
     if (route.params.postOnboarding) {
       navigation.goBack();
