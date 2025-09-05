@@ -23,7 +23,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { View, Image, Platform } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
@@ -132,6 +132,7 @@ export const BiometricsOnboardingScreen: React.FC<
   const { themeColors } = useColors();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Check if this is the pre-authentication flow (new) or post-authentication flow (existing)
 
@@ -154,7 +155,11 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     if (!mnemonicPhrase || !password) {
-      logger.error("BiometricsOnboardingScreen", "Missing mnemonic phrase");
+      logger.error(
+        "BiometricsOnboardingScreen",
+        "Missing mnemonic phrase",
+        "mnemonicPhrase or password is missing",
+      );
       return;
     }
 
@@ -164,12 +169,11 @@ export const BiometricsOnboardingScreen: React.FC<
           STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING,
           "true",
         );
-        signUp({
+        await signUp({
           mnemonicPhrase,
           password: biometricPassword ?? password,
         });
         setIsBiometricsEnabled(true);
-
         return Promise.resolve();
       });
 
@@ -191,7 +195,8 @@ export const BiometricsOnboardingScreen: React.FC<
     navigation,
   ]);
 
-  const handleSkip = async () => {
+  const handleSkip = useCallback(async () => {
+    setIsProcessing(true);
     const { password, mnemonicPhrase } = route.params;
     await dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_FACE_ID_ONBOARDING, "true");
 
@@ -204,12 +209,13 @@ export const BiometricsOnboardingScreen: React.FC<
       logger.error(
         "BiometricsOnboardingScreen",
         "Missing mnemonic phrase or password",
+        "mnemonicPhrase or password is missing",
       );
       return;
     }
 
     try {
-      signUp({
+      await signUp({
         mnemonicPhrase,
         password,
       });
@@ -224,7 +230,19 @@ export const BiometricsOnboardingScreen: React.FC<
       );
       // Handle error appropriately
     }
-  };
+  }, [route.params, signUp, navigation]);
+
+  const handleSkipPress = useCallback(async () => {
+    setIsProcessing(true);
+    await handleSkip();
+    setIsProcessing(false);
+  }, [handleSkip]);
+
+  const handleEnableBiometricsPress = useCallback(async () => {
+    setIsProcessing(true);
+    await enableBiometrics();
+    setIsProcessing(false);
+  }, [enableBiometrics]);
 
   const iconContainerDimensions = {
     width: pxValue(104),
@@ -359,10 +377,11 @@ export const BiometricsOnboardingScreen: React.FC<
       defaultActionButtonIconPosition={IconPosition.LEFT}
       defaultActionButtonText={t("common.enable")}
       secondaryActionButtonText={t("common.skip")}
-      onPressSecondaryActionButton={handleSkip}
-      onPressDefaultActionButton={enableBiometrics}
-      isLoading={isLoading}
-      isDefaultActionButtonDisabled={isLoading}
+      onPressSecondaryActionButton={handleSkipPress}
+      onPressDefaultActionButton={handleEnableBiometricsPress}
+      isLoading={isLoading || isProcessing}
+      isDefaultActionButtonDisabled={isLoading || isProcessing}
+      isSecondaryActionButtonDisabled={isLoading || isProcessing}
     >
       <View className="pr-8">
         <Text secondary md>

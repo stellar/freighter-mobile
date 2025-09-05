@@ -79,7 +79,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const mockSignUp = jest.fn();
+const mockSignUp = jest.fn(() => Promise.resolve());
 let mockIsLoading = false;
 let mockError: string | null = null;
 

@@ -270,7 +270,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => void;
+  signUp: (params: SignUpParams) => Promise<void>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
@@ -1606,42 +1606,31 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * Signs up a new user with the provided credentials
      *
      * @param {SignUpParams} params - The signup parameters
+     * @returns {Promise<void>}
      */
-    signUp: (params) => {
+    signUp: async (params): Promise<void> => {
       set((state) => ({ ...state, isLoading: true, error: null }));
-      setTimeout(() => {
-        signUp(params)
-          .then(() => {
-            set({
-              ...initialState,
-              isLoading: false,
-            });
-
-            // Fetch active account after successful signup
-            get()
-              .fetchActiveAccount()
-              .then(() => {
-                set({
-                  authStatus: AUTH_STATUS.AUTHENTICATED,
-                });
-              });
-          })
-          .catch((error) => {
-            logger.error(
-              "useAuthenticationStore.signUp",
-              "Sign up failed",
-              error,
-            );
-
-            set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToSignUp"),
-              isLoading: false,
-            });
-          });
-      }, 0);
+      try {
+        await signUp(params);
+        set({
+          ...initialState,
+          isLoading: false,
+        });
+        // Fetch active account after successful signup
+        await get().fetchActiveAccount();
+        set({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      } catch (error) {
+        logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : t("authStore.error.failedToSignUp"),
+          isLoading: false,
+        });
+      }
     },
 
     /**

@@ -24,6 +24,7 @@ interface OnboardLayoutProps {
   onPressClipboardButton?: () => Promise<void>;
   isLoading?: boolean;
   secondaryActionButtonText?: string;
+  isSecondaryActionButtonDisabled?: boolean;
   onPressSecondaryActionButton?: () => void | Promise<void>;
   defaultActionButtonIcon?: React.ReactNode;
   defaultActionButtonIconPosition?: IconPosition;
@@ -73,6 +74,7 @@ interface DefaultFooterProps {
   isLoading?: boolean;
   defaultActionButtonIcon?: React.ReactNode;
   defaultActionButtonIconPosition?: IconPosition;
+  isSecondaryActionButtonDisabled?: boolean;
 }
 
 /**
@@ -100,6 +102,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
   onPressDefaultActionButton,
   isDefaultActionButtonDisabled,
   secondaryActionButtonText,
+  isSecondaryActionButtonDisabled,
   onPressSecondaryActionButton,
   defaultActionButtonText = t("onboarding.continue"),
   hasClipboardButton = false,
@@ -137,7 +140,7 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
       <Button
         secondary
         lg
-        disabled={isLoading}
+        disabled={isLoading || isSecondaryActionButtonDisabled}
         testID="secondary-action-button"
         onPress={onPressSecondaryActionButton}
       >
@@ -190,6 +193,7 @@ export const OnboardLayout = ({
   onPressClipboardButton,
   isLoading,
   secondaryActionButtonText,
+  isSecondaryActionButtonDisabled,
   onPressSecondaryActionButton,
   defaultActionButtonIcon,
   defaultActionButtonIconPosition,
@@ -222,6 +226,7 @@ export const OnboardLayout = ({
               isLoading={isLoading}
               defaultActionButtonIcon={defaultActionButtonIcon}
               defaultActionButtonIconPosition={defaultActionButtonIconPosition}
+              isSecondaryActionButtonDisabled={isSecondaryActionButtonDisabled}
             />
           )}
         </FooterContainer>

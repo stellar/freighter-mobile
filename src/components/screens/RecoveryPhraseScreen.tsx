@@ -122,9 +122,9 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
       signUp({
         password,
         mnemonicPhrase: recoveryPhrase,
+      }).then(() => {
+        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
-
-      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     }
 
     skipModalRef.current?.dismiss();

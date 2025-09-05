@@ -82,10 +82,10 @@ export const ValidateRecoveryPhraseScreen: React.FC<
       signUp({
         password,
         mnemonicPhrase: recoveryPhrase,
+      }).then(() => {
+        analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
+        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
-
-      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
-      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
     }
   }, [
     password,
