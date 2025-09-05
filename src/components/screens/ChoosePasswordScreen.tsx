@@ -5,6 +5,7 @@ import { Input } from "components/sds/Input";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React, { useState } from "react";
 
 type ChoosePasswordScreenProps = NativeStackScreenProps<
@@ -19,6 +20,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   const { isImporting } = route.params;
   const [password, setPassword] = useState("");
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   const handleContinue = () => {
     navigation.navigate(AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN, {
@@ -33,7 +35,13 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
 
   return (
     <OnboardLayout
-      icon={<Icon.PasscodeLock circle />}
+      icon={
+        <Icon.PasscodeLock
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("choosePasswordScreen.title")}
       isDefaultActionButtonDisabled={!canContinue}
       defaultActionButtonText={t(

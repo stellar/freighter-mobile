@@ -153,7 +153,7 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
         publicAddress={
           transactionDetails.createAccountDetails?.accountPublicKey ?? ""
         }
-        hasBorder
+        hasDarkBackground
         size={AvatarSizes.LARGE}
       />
     </View>

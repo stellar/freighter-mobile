@@ -12,6 +12,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
@@ -83,6 +84,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { error, isLoading, signUp, clearError } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+  const { themeColors } = useColors();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
 
   useEffect(() => {
@@ -137,7 +139,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   return (
     <>
       <OnboardLayout
-        icon={<Icon.ShieldTick circle />}
+        icon={
+          <Icon.ShieldTick
+            circle
+            circleBackground={themeColors.lilac[3]}
+            circleBorder={themeColors.lilac[6]}
+          />
+        }
         title={t("recoveryPhraseScreen.title")}
         isLoading={isLoading}
         footerNoteText={t("recoveryPhraseScreen.footerNoteText")}

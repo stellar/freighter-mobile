@@ -6,6 +6,7 @@ import { Textarea } from "components/sds/Textarea";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
@@ -21,6 +22,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     useAuthenticationStore();
   const [recoveryPhrase, setRecoveryPhrase] = useState("");
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
 
   useEffect(() => {
     clearError();
@@ -40,7 +42,13 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
   return (
     <OnboardLayout
-      icon={<Icon.Download01 circle />}
+      icon={
+        <Icon.Download01
+          circle
+          circleBackground={themeColors.lilac[3]}
+          circleBorder={themeColors.lilac[6]}
+        />
+      }
       title={t("importWalletScreen.title")}
       defaultActionButtonText={t("importWalletScreen.defaultActionButtonText")}
       onPressDefaultActionButton={handleContinue}

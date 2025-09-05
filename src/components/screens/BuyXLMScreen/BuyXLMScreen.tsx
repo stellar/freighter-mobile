@@ -10,6 +10,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -21,6 +22,7 @@ type BuyXLMScreenProps = NativeStackScreenProps<
 
 const BuyXLMScreen: React.FC<BuyXLMScreenProps> = ({ navigation, route }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { isUnfunded } = route.params;
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -31,8 +33,34 @@ const BuyXLMScreen: React.FC<BuyXLMScreenProps> = ({ navigation, route }) => {
   return (
     <BaseLayout insets={{ top: false }}>
       <BottomSheet
-        title={t("buyXLMScreen.title")}
-        description={t("buyXLMScreen.bottomSheet.description")}
+        customContent={
+          <View className="gap-4">
+            <View className="flex-row justify-between items-center">
+              <View className="size-10 rounded-lg items-center justify-center bg-lilac-3 border border-lilac-6">
+                <Icon.Plus themeColor="lilac" />
+              </View>
+              <TouchableOpacity
+                onPress={() => bottomSheetModalRef.current?.dismiss()}
+                className="size-10 items-center justify-center rounded-full bg-gray-3"
+              >
+                <Icon.X color={themeColors.gray[9]} />
+              </TouchableOpacity>
+            </View>
+            <View>
+              <Text xl medium>
+                {t("buyXLMScreen.title")}
+              </Text>
+              <View className="h-4" />
+              <Text md medium secondary>
+                {t("buyXLMScreen.bottomSheet.description")}
+              </Text>
+              <View className="h-4" />
+              <Text md medium secondary>
+                {t("buyXLMScreen.bottomSheet.subDescription")}
+              </Text>
+            </View>
+          </View>
+        }
         modalRef={bottomSheetModalRef}
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
@@ -47,9 +75,14 @@ const BuyXLMScreen: React.FC<BuyXLMScreenProps> = ({ navigation, route }) => {
           }
         >
           <Icon.QrCode01
-            themeColor={isUnfunded ? "lilac" : "mint"}
             size={21.3}
-            withBackground
+            circle
+            circleBackground={
+              isUnfunded ? themeColors.lilac[3] : themeColors.mint[3]
+            }
+            circleBorder={
+              isUnfunded ? themeColors.lilac[6] : themeColors.mint[6]
+            }
           />
           <View>
             <Text md medium>

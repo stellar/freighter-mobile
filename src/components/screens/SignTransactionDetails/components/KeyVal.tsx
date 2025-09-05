@@ -152,7 +152,9 @@ export const KeyValueWithPublicKey = ({
 }: KeyValueWithPublicKeyProps) => (
   <KeyValueListItem
     operationKey={operationKey}
-    operationValue={<Avatar publicAddress={operationValue} size="sm" />}
+    operationValue={
+      <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
+    }
   />
 );
 
@@ -180,7 +182,9 @@ export const PathList = ({ paths }: PathListProps) => (
         {issuer ? (
           <KeyValueListItem
             operationKey={t("signTransactionDetails.operations.issuer")}
-            operationValue={<Avatar publicAddress={issuer} size="sm" />}
+            operationValue={
+              <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
+            }
           />
         ) : null}
       </View>

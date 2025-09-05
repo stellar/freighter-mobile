@@ -626,7 +626,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
           publicAddress={
             transactionDetails.contractDetails?.transferDetails?.to ?? ""
           }
-          hasBorder
+          hasDarkBackground
           size={AvatarSizes.LARGE}
         />
       </View>

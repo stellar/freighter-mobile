@@ -69,6 +69,8 @@ export interface AvatarBaseProps {
   hasBorder?: boolean;
   /** Whether to show background */
   hasBackground?: boolean;
+  /** Whether to show on dark background */
+  hasDarkBackground?: boolean;
   /** Whether to show selected indicator */
   isSelected?: boolean;
 }
@@ -109,6 +111,7 @@ interface AvatarWrapperProps {
   testID?: string;
   hasBorder?: boolean;
   hasBackground?: boolean;
+  hasDarkBackground?: boolean;
   isSelected?: boolean;
   children: React.ReactNode;
 }
@@ -116,8 +119,9 @@ interface AvatarWrapperProps {
 const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
   size,
   testID,
-  hasBorder = true,
+  hasBorder = false,
   hasBackground = true,
+  hasDarkBackground = false,
   isSelected = false,
   children,
 }) => {
@@ -133,12 +137,19 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
     return classes[size];
   };
 
-  const getContainerClasses = () =>
-    `relative z-10 ${getSizeClasses()} rounded-full ${
+  const getContainerClasses = () => {
+    let bgClass = "";
+    if (hasBackground) {
+      bgClass = "bg-background-tertiary";
+    }
+    if (hasDarkBackground) {
+      bgClass = "bg-background-primary";
+    }
+
+    return `relative z-10 ${getSizeClasses()} rounded-full ${
       hasBorder ? "border border-border-primary" : ""
-    } ${isSelected ? "border-primary" : ""} ${
-      hasBackground ? "bg-background-primary" : ""
-    }`;
+    } ${isSelected ? "border-primary" : ""} ${bgClass}`;
+  };
 
   const getContentClasses = () =>
     "w-full h-full rounded-full overflow-hidden justify-center items-center";
@@ -151,7 +162,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
       xl: "w-6 h-6",
     };
 
-    return `absolute z-20 -bottom-1 ${indicatorSizeClasses[size]} rounded-full bg-primary justify-center items-center`;
+    return `absolute z-20 -bottom-1 right-0 ${indicatorSizeClasses[size]} rounded-full bg-primary justify-center items-center`;
   };
 
   return (
@@ -200,8 +211,9 @@ export const Avatar: React.FC<AvatarProps> = ({
   publicAddress,
   userName,
   testID,
-  hasBorder = true,
+  hasBorder = false,
   hasBackground = true,
+  hasDarkBackground = false,
   isSelected = false,
 }) => {
   const { themeColors } = useColors();
@@ -238,6 +250,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         hasBorder={hasBorder}
         isSelected={isSelected}
         hasBackground={hasBackground}
+        hasDarkBackground={hasDarkBackground}
       >
         <View className="justify-center items-center">
           <Canvas
@@ -277,6 +290,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       hasBorder={hasBorder}
       isSelected={isSelected}
       hasBackground={hasBackground}
+      hasDarkBackground={hasDarkBackground}
     >
       <Icon.User01
         size={AVATAR_DIMENSIONS[size].iconSize}
@@ -292,6 +306,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       hasBorder={hasBorder}
       isSelected={isSelected}
       hasBackground={hasBackground}
+      hasDarkBackground={hasDarkBackground}
     >
       <Text bold secondary size={size}>
         {initials}

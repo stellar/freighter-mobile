@@ -2367,6 +2367,8 @@ export const Icons = {
  * @property {() => void} [onPress] - Function to call when the icon is pressed
  * @property {'mint' | 'lime' | 'gold' | 'navy' | 'teal' | 'red' | 'amber' | 'pink' | 'lilac' | 'green'} [themeColor] - Theme color to use for the icon. Uses variant 9 for the icon color
  * @property {boolean} [withBackground] - When true and themeColor is set, adds a background using variant 3 of the theme color
+ * @property {string} [circleBackground] - Background color for circle container
+ * @property {string} [circleBorder] - Border color for circle container
  */
 export interface IconProps {
   name?: keyof typeof Icons;
@@ -2389,6 +2391,7 @@ export interface IconProps {
     | "gray";
   withBackground?: boolean;
   circleBackground?: string;
+  circleBorder?: string;
 }
 
 /**
@@ -2432,6 +2435,7 @@ const IconComponent: React.FC<IconProps> = ({
   themeColor,
   withBackground,
   circleBackground,
+  circleBorder,
 }) => {
   const IconSvg = name ? Icons[name] : null;
   const { themeColors } = useColors();
@@ -2459,6 +2463,9 @@ const IconComponent: React.FC<IconProps> = ({
           height: pxValue(size * 1.5),
           ...(circleBackground && {
             backgroundColor: circleBackground,
+          }),
+          ...(circleBorder && {
+            borderColor: circleBorder,
           }),
         }}
       >

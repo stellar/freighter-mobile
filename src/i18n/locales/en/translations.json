@@ -130,9 +130,10 @@
     "invalidUriError": "Please enter a valid QR Code URI"
   },
   "buyXLMScreen": {
-    "title": "Add XLM",
+    "title": "Add Funds",
     "bottomSheet": {
-      "description": "You need at least 1 XLM to have an account on Stellar. Add Stellar Lumens (XLM) easily transferring from another wallet to this wallet."
+      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet.",
+      "subDescription": "Buy easily with Coinbase, or send XLM from another wallet."
     },
     "actions": {
       "title": "Transfer from another account",

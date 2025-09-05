@@ -273,8 +273,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             <Avatar
               size="sm"
               publicAddress={account?.publicKey ?? ""}
-              hasBorder={false}
-              hasBackground={false}
+              hasDarkBackground
             />
             <Text md primary>
               {account?.accountName}
@@ -368,7 +367,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           </View>
           <View className="w-full flex-row items-center gap-[16px]">
-            <Avatar size="lg" publicAddress={recipientAddress} />
+            <Avatar
+              size="lg"
+              publicAddress={recipientAddress}
+              hasDarkBackground
+            />
             <View className="flex-1">
               <Text xl medium>
                 {slicedAddress}
