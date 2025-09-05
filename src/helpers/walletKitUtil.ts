@@ -27,7 +27,6 @@ import {
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
-import { Linking } from "react-native";
 import { analytics } from "services/analytics";
 
 /** Supported Stellar RPC methods for WalletKit */
@@ -164,24 +163,13 @@ export const approveSessionProposal = async ({
       namespaces: approvedNamespaces,
     });
 
-    const dappScheme = session.peer.metadata.redirect?.native;
-
-    if (dappScheme) {
-      // We should probably only open URL here if the session was initiated by a deep-link, in
-      // which case it would make sense to redirect users back to the external dapp website.
-      // In case the session was initiated by a QR code, we should show a toast/info-box letting
-      // the user know that they can manually return to the DApp since they are probably handling
-      // the dApp session in a desktop browser or another device.
-      Linking.openURL(dappScheme);
-    } else {
-      showToast({
-        title: t("walletKit.connectionSuccessfull", {
-          dappName: session.peer.metadata.name,
-        }),
-        message: t("walletKit.returnToBrowser"),
-        variant: "success",
-      });
-    }
+    showToast({
+      title: t("walletKit.connectionSuccessfull", {
+        dappName: session.peer.metadata.name,
+      }),
+      message: t("walletKit.returnToBrowser"),
+      variant: "success",
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : t("common.unknownError");
