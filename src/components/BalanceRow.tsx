@@ -4,7 +4,6 @@ import {
   DEFAULT_PRESS_DELAY,
   POSITIVE_PRICE_CHANGE_THRESHOLD,
 } from "config/constants";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
@@ -13,6 +12,7 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
+import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
 import { TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
@@ -62,6 +62,7 @@ interface BalanceRowProps {
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   balance,
 }) => {
+  const { themeColors } = useColors();
   const isLP = isLiquidityPool(balance);
   const width = isLP ? 20 : 115;
 
@@ -79,8 +80,8 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
               balance.percentagePriceChange24h?.gte(
                 POSITIVE_PRICE_CHANGE_THRESHOLD,
               )
-                ? THEME.colors.status.success
-                : THEME.colors.text.secondary
+                ? themeColors.status.success
+                : themeColors.text.secondary
             }
           >
             {formatPercentageAmount(balance.percentagePriceChange24h)}

@@ -1,7 +1,6 @@
 import { render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import * as balancesHelpers from "helpers/balances";
 import React from "react";
@@ -12,6 +11,21 @@ jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
 }));
 
+// Mock the useColors hook
+jest.mock("hooks/useColors", () => ({
+  __esModule: true,
+  default: () => ({
+    themeColors: {
+      status: {
+        success: "#30a46c",
+      },
+      text: {
+        secondary: "#a0a0a0",
+      },
+    },
+  }),
+}));
+
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
   formatTokenAmount: jest.fn((amount) => amount.toString()),
@@ -19,7 +33,9 @@ jest.mock("helpers/formatAmount", () => ({
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";
     const isNegative = amount.isLessThan(0);
-    return `${isNegative ? "-" : "+"}${amount.abs().toString()}%`;
+    const formattedNumber = amount.abs().toFixed(2);
+
+    return `${isNegative ? "-" : "+"}${formattedNumber}%`;
   }),
 }));
 
@@ -100,31 +116,48 @@ describe("BalanceRow", () => {
       expect(getByText("--")).toBeTruthy();
     });
 
-    it("should use correct color for positive price change", () => {
-      const { getByText } = render(
+    it("should use success color for positive price changes at or above threshold", () => {
+      const { getByText: getByTextAbove } = render(
         <DefaultRightContent balance={mockBalance} />,
       );
+      const priceChangeElementAbove = getByTextAbove("+0.02%");
 
-      const priceChangeElement = getByText("+0.02%");
-      expect(priceChangeElement.props.style.color).toBe(
-        THEME.colors.status.success,
+      expect(priceChangeElementAbove.props.style.color).toBe("#30a46c");
+
+      const balanceAtThreshold = {
+        ...mockBalance,
+        percentagePriceChange24h: new BigNumber("0.01"),
+      };
+      const { getByText: getByTextAt } = render(
+        <DefaultRightContent balance={balanceAtThreshold} />,
       );
+      const priceChangeElementAt = getByTextAt("+0.01%");
+
+      expect(priceChangeElementAt.props.style.color).toBe("#30a46c");
     });
 
-    it("should use correct color for negative price change", () => {
+    it("should use secondary color for negative price changes and positive changes below threshold", () => {
       const balanceWithNegativeChange = {
         ...mockBalance,
         percentagePriceChange24h: new BigNumber("-0.02"),
       };
-
-      const { getByText } = render(
+      const { getByText: getByTextNegative } = render(
         <DefaultRightContent balance={balanceWithNegativeChange} />,
       );
+      const priceChangeElementNegative = getByTextNegative("-0.02%");
 
-      const priceChangeElement = getByText("-0.02%");
-      expect(priceChangeElement.props.style.color).toBe(
-        THEME.colors.text.secondary,
+      expect(priceChangeElementNegative.props.style.color).toBe("#a0a0a0");
+
+      const balanceBelowThreshold = {
+        ...mockBalance,
+        percentagePriceChange24h: new BigNumber("0.004"),
+      };
+      const { getByText: getByTextBelow } = render(
+        <DefaultRightContent balance={balanceBelowThreshold} />,
       );
+      const priceChangeElementBelow = getByTextBelow("+0.00%");
+
+      expect(priceChangeElementBelow.props.style.color).toBe("#a0a0a0");
     });
 
     it("should adjust width for liquidity pool tokens", () => {
