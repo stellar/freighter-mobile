@@ -63,6 +63,16 @@ jest.mock("hooks/useGetActiveAccount", () => ({
   }),
 }));
 
+// Mock the useGetActiveAccount hook
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: () => ({
+    account: {
+      publicKey: "test-public-key",
+    },
+  }),
+}));
+
 // Mock the useCollectiblesStore hook
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({

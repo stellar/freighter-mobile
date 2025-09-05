@@ -422,6 +422,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     return AUTH_STATUS.AUTHENTICATED;
   } catch (error) {
     logger.error("validateAuth", "Failed to validate auth", error);
+
     return AUTH_STATUS.NOT_AUTHENTICATED;
   }
 };
@@ -637,8 +638,7 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
 
     return hashKeyObj;
   } catch (error) {
-    logger.error("generateHashKey", "Failed to generate hash key", error);
-    throw new Error("Failed to generate hash key");
+    throw new Error(`Failed to generate hash key: ${String(error)}`);
   }
 };
 
@@ -711,12 +711,7 @@ const createTemporaryStore = async (input: {
       encryptedData,
     );
   } catch (error) {
-    logger.error(
-      "createTemporaryStore",
-      "Failed to create temporary store",
-      error,
-    );
-    throw new Error("Failed to create temporary store");
+    throw new Error(`Failed to create temporary store: ${String(error)}`);
   }
 };
 
@@ -1230,9 +1225,6 @@ const importWallet = async ({
     analytics.trackAccountScreenImportAccountFail(
       error instanceof Error ? error.message : String(error),
     );
-
-    logger.error("importWallet", "Failed to import wallet", error);
-
     // Clean up any partial data on error
     await clearAllData();
 
