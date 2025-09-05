@@ -347,7 +347,11 @@
     "view": "View",
     "refreshMetadata": "Refresh metadata",
     "viewOnStellarExpert": "View on stellar.expert",
-    "removeCollectible": "Remove collectible"
+    "removeCollectible": "Remove collectible",
+    "saveToPhotos": "Save to photos",
+    "imageSavedToPhotos": "Image saved to photos",
+    "imageSaveFailed": "Failed to save image to photos",
+    "imageSaveAttempted": "Save attempted, check your photos"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",

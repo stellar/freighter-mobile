@@ -86,6 +86,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     useCollectibleDetailsHeader({
       collectionAddress,
       collectibleName: collectible?.name,
+      collectibleImage: collectible?.image,
       tokenId,
     });
 

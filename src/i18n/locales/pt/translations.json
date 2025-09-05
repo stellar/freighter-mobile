@@ -315,7 +315,11 @@
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
     "viewOnStellarExpert": "Ver no stellar.expert",
-    "removeCollectible": "Remover colecionável"
+    "removeCollectible": "Remover colecionável",
+    "saveToPhotos": "Salvar na galeria",
+    "imageSavedToPhotos": "Imagem salva na galeria",
+    "imageSaveFailed": "Falha ao salvar imagem na galeria",
+    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
