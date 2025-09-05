@@ -3,6 +3,9 @@ import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
 import { SecureClipboardService } from "services/SecureClipboardService";
 
+// Default 30 seconds
+const DEFAULT_AUTO_CLEAR_TIMEOUT_MS = 30_000;
+
 interface SecureCopyToClipboardOptions {
   /** Whether to hide the toast notification (default: false) */
   hideNotification?: boolean;
@@ -69,7 +72,8 @@ export const useSecureClipboard = (): UseSecureClipboardResult => {
     (text: string, options: SecureCopyToClipboardOptions = {}) => {
       try {
         // Copy to clipboard with security enhancements and native expiration
-        const expirationMs = options.autoClearTimeout ?? 30000; // Default 30 seconds
+        const expirationMs =
+          options.autoClearTimeout ?? DEFAULT_AUTO_CLEAR_TIMEOUT_MS;
         SecureClipboardService.copyToClipboard(text, expirationMs);
 
         // Show notification if not hidden
