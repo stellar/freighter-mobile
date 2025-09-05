@@ -32,6 +32,7 @@ module.exports = {
       "react-native-view-shot",
       "react-native-webview",
       "react-native-fast-opencv",
+      "react-native-inappbrowser-reborn",
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],

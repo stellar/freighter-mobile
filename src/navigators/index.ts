@@ -1,5 +1,5 @@
 export { AuthNavigator } from "./AuthNavigator";
-export { BuyXLMStackNavigator } from "./BuyXLMNavigator";
+export { AddFundsStackNavigator } from "./AddFundsNavigator";
 export { ManageTokensStackNavigator } from "./ManageTokensNavigator";
 export { ManageWalletsStackNavigator } from "./ManageWalletsNavigator";
 export { SendPaymentStackNavigator } from "./SendPaymentNavigator";

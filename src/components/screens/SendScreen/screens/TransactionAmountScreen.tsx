@@ -76,7 +76,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId } = route.params;
+  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -88,6 +88,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     recipientAddress,
     selectedTokenId,
     saveSelectedTokenId,
+    saveRecipientAddress,
     saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
@@ -99,6 +100,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveSelectedTokenId(tokenId);
     }
   }, [tokenId, saveSelectedTokenId]);
+
+  useEffect(() => {
+    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
+      saveRecipientAddress(routeRecipientAddress);
+    }
+  }, [routeRecipientAddress, saveRecipientAddress]);
 
   const {
     buildTransaction,

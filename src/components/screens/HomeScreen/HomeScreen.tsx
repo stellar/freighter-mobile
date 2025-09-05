@@ -16,7 +16,7 @@ import {
   MAIN_TAB_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
-  BUY_XLM_ROUTES,
+  ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
 } from "config/routes";
@@ -96,7 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const navigateToBuyXLM = useCallback(() => {
       // Navigation analytics already tracked by useNavigationAnalytics
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-        screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+        screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
         params: { isUnfunded: !isFunded },
       });
     }, [navigation, isFunded]);
