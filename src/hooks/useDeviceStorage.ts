@@ -129,6 +129,7 @@ const deleteTempFile = async (filePath: string): Promise<void> => {
 const useDeviceStorage = () => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();
+  
   const saveToPhotos = useCallback(
     async (imageUrl: string, imageName: string) => {
       let tempFilePath: string | null = null;
