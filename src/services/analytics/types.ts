@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { QRCodeSource } from "config/constants";
 
 // -----------------------------------------------------------------------------
 // CORE TYPES
@@ -44,7 +45,7 @@ export interface TransactionErrorEvent {
 }
 
 export interface QRScanEvent {
-  context: "wallet_connect" | "address_input" | "import_wallet";
+  context: QRCodeSource;
   timeToScan?: number;
   error?: string;
 }

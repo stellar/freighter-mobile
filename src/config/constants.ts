@@ -299,3 +299,37 @@ export const BROWSER_CONSTANTS = {
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
 } as const;
+
+/**
+ * QR Code Context Constants
+ *
+ * Defines the different contexts/sources where QR code scanning can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum QRCodeSource {
+  /** For scanning addresses in Send flow */
+  ADDRESS_INPUT = "address_input",
+  /** For scanning WalletConnect URIs */
+  WALLET_CONNECT = "wallet_connect",
+  /** For scanning wallet import data */
+  IMPORT_WALLET = "import_wallet",
+}
+
+/**
+ * Type for QR code source values
+ */
+export type QRCodeSourceType = `${QRCodeSource}`;
+
+/**
+ * Helper function to check if a string is a valid QR code source
+ */
+export const isValidQRCodeSource = (
+  source: string,
+): source is QRCodeSourceType =>
+  Object.values(QRCodeSource).includes(source as QRCodeSource);
+
+/**
+ * Helper function to get the default QR code source
+ */
+export const getDefaultQRCodeSource = (): QRCodeSource =>
+  QRCodeSource.ADDRESS_INPUT;

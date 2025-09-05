@@ -2,7 +2,11 @@ import { NavigationContainer, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  RootStackParamList,
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+} from "config/routes";
 import * as sendDuck from "ducks/sendRecipient";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
@@ -81,8 +85,13 @@ jest.mock("ducks/sendRecipient", () => ({
   useSendRecipientStore: getSendStoreMock(),
 }));
 
+// Mock the useRightHeader hook to avoid navigation.setOptions issues
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderButton: jest.fn(),
+}));
+
 type SendSearchContactsNavigationProp = NativeStackNavigationProp<
-  SendPaymentStackParamList,
+  RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
 
@@ -98,6 +107,20 @@ const mockNavigation = {
   navigate: mockNavigate,
   goBack: mockGoBack,
   setOptions: mockSetOptions,
+  canGoBack: jest.fn(),
+  dispatch: jest.fn(),
+  getId: jest.fn(),
+  getParent: jest.fn(),
+  getState: jest.fn(),
+  isFocused: jest.fn(),
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
+  push: jest.fn(),
+  pop: jest.fn(),
+  reset: jest.fn(),
+  replace: jest.fn(),
+  popToTop: jest.fn(),
+  setParams: jest.fn(),
 } as unknown as SendSearchContactsNavigationProp;
 
 const mockRoute = {

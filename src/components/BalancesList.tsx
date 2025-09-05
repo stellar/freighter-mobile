@@ -7,7 +7,7 @@ import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
 import {
-  BUY_XLM_ROUTES,
+  ADD_FUNDS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
@@ -162,7 +162,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
             lg
             onPress={() =>
               navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-                screen: BUY_XLM_ROUTES.BUY_XLM_SCREEN,
+                screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
                 params: { isUnfunded: true },
               })
             }

@@ -315,7 +315,11 @@
     "view": "Visualizar",
     "refreshMetadata": "Atualizar metadados",
     "viewOnStellarExpert": "Ver no stellar.expert",
-    "removeCollectible": "Remover colecionável"
+    "removeCollectible": "Remover colecionável",
+    "saveToPhotos": "Salvar na galeria",
+    "imageSavedToPhotos": "Imagem salva na galeria",
+    "imageSaveFailed": "Falha ao salvar imagem na galeria",
+    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
@@ -432,7 +436,8 @@
     "recents": "Recentes",
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
-    "invalidAddress": "Endereço Stellar inválido"
+    "invalidAddress": "Endereço Stellar inválido",
+    "scanQRCodeText": "Escanear um QR Code do Freighter"
   },
   "swapScreen": {
     "swapFrom": "Trocar de",
@@ -691,15 +696,16 @@
     }
   },
   "accountQRCodeScreen": {
-    "title": "Receber XLM",
+    "title": "Receber fundos",
     "copyButton": "Copiar endereço",
+    "helpButton": "Ajuda",
     "helperText": "Digitalize o código QR ou \n copie seu endereço",
     "bottomSheet": {
-      "title": "Receber XLM",
+      "title": "QR Code",
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
   },
-  "scanQRCodeScreen": {
+  "walletConnect": {
     "title": "Escaneie para Conectar",
     "scanWCQrCode": "Escaneie um código QR do WalletConnect",
     "connectWithWalletConnect": "Cole um URI do WalletConnect",
@@ -708,14 +714,21 @@
     "pairingError": "Falha ao parear",
     "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
-  "buyXLMScreen": {
-    "title": "Adicionar XLM",
+  "qrCodeScannerScreen": {
+    "title": "Escanear para enviar"
+  },
+  "addFundsScreen": {
+    "title": "Adicionar fundos",
     "bottomSheet": {
       "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
     },
-    "actions": {
+    "transferFromAnotherAccount": {
       "title": "Transferir de outra conta",
       "description": "Receber fundos de outra carteira"
+    },
+    "buyWithCoinbase": {
+      "title": "Comprar com Coinbase",
+      "description": "Transferir de Coinbase & outras opções"
     }
   },
   "importSecretKeyScreen": {

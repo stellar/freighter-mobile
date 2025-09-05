@@ -5,6 +5,12 @@ import { Platform } from "react-native";
 // Create mock for navigation
 const mockSetOptions = jest.fn();
 
+// Mock the useToast hook
+const mockShowToast = jest.fn();
+jest.mock("providers/ToastProvider", () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
 // Mock all dependencies
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
@@ -103,6 +109,7 @@ describe("useCollectibleDetailsHeader", () => {
       handleRefreshMetadata: expect.any(Function),
       handleRemoveCollectible: expect.any(Function),
       handleViewOnStellarExpert: expect.any(Function),
+      handleSaveToPhotos: expect.any(Function),
     });
   });
 
@@ -167,11 +174,13 @@ describe("useCollectibleDetailsHeader", () => {
         refreshMetadata: "arrow.clockwise",
         removeCollectible: "trash",
         viewOnStellarExpert: "link",
+        saveToPhotos: "square.and.arrow.down",
       },
       android: {
         refreshMetadata: "refresh",
         removeCollectible: "delete",
         viewOnStellarExpert: "link",
+        saveToPhotos: "place_item",
       },
     });
   });
