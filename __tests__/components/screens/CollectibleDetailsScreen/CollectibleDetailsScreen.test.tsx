@@ -9,25 +9,6 @@ jest.mock("react-native/Libraries/Linking/Linking", () => ({
   openURL: jest.fn(),
 }));
 
-// Mock the useCollectibles hook
-jest.mock("hooks/useCollectibles", () => ({
-  useCollectibles: () => ({
-    getCollectible: jest.fn(() => ({
-      collectionAddress: "test-collection",
-      collectionName: "Test Collection",
-      tokenId: "123",
-      name: "Test NFT",
-      image: "https://example.com/image.jpg",
-      description: "A test NFT description",
-      externalUrl: "https://example.com/nft",
-      traits: [
-        { name: "Color", value: "Blue" },
-        { name: "Rarity", value: "Common" },
-      ],
-    })),
-  }),
-}));
-
 // Mock the useAppTranslation hook
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
@@ -72,10 +53,33 @@ jest.mock("ducks/auth", () => ({
   }),
 }));
 
+// Mock the useGetActiveAccount hook
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: () => ({
+    account: {
+      publicKey: "test-public-key",
+    },
+  }),
+}));
+
 // Mock the useCollectiblesStore hook
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({
     fetchCollectibles: jest.fn(),
+    getCollectible: jest.fn(() => ({
+      name: "Test Collectible",
+      collectionName: "Test Collection",
+      tokenId: "123",
+      image: "https://example.com/image.jpg",
+      description: "Test description",
+      traits: [
+        { name: "Color", value: "Blue" },
+        { name: "Rarity", value: "Common" },
+      ],
+      externalUrl: "https://example.com",
+    })),
+    isLoading: false,
   }),
 }));
 
@@ -136,10 +140,10 @@ describe("CollectibleDetailsScreen", () => {
     );
 
     // Check if the collectible name is displayed
-    expect(getByText("Test NFT")).toBeTruthy();
+    expect(getByText("Test Collectible")).toBeTruthy();
 
     // Check if the description is displayed
-    expect(getByText("A test NFT description")).toBeTruthy();
+    expect(getByText("Test description")).toBeTruthy();
 
     // Check if traits are displayed
     expect(getByText("Blue")).toBeTruthy();
@@ -164,7 +168,7 @@ describe("CollectibleDetailsScreen", () => {
     const viewButton = getByText("collectibleDetails.view");
     fireEvent.press(viewButton);
 
-    expect(mockOpenURL).toHaveBeenCalledWith("https://example.com/nft");
+    expect(mockOpenURL).toHaveBeenCalledWith("https://example.com");
   });
 
   it("sets navigation title to collectible name", () => {
@@ -176,7 +180,7 @@ describe("CollectibleDetailsScreen", () => {
     );
 
     expect(mockNavigationObject.setOptions).toHaveBeenCalledWith({
-      headerTitle: "Test NFT",
+      headerTitle: "Test Collectible",
     });
   });
 });

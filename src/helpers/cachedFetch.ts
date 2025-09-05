@@ -21,9 +21,7 @@ export const cachedFetch = async <T>(
       const directoryLookupJSON = JSON.parse(directoryLookup);
       directoryLookup = directoryLookupJSON;
     } catch (e) {
-      logger.error("cachedFetch", "JSON parse error", {
-        error: e as string,
-      });
+      logger.error("cachedFetch", "JSON parse error", e);
     }
   }
 
@@ -35,9 +33,7 @@ export const cachedFetch = async <T>(
       await dataStorage.setItem(storageKey, JSON.stringify(directoryLookup));
       await dataStorage.setItem(cachedDateId, time.toString());
     } catch (e) {
-      logger.error("cachedFetch", "Error fetching data", {
-        error: e as string,
-      });
+      logger.error("cachedFetch", "Error fetching data", e);
     }
   }
 

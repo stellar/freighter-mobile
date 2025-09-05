@@ -34,6 +34,7 @@ export const reactNativeKeychainStorage: PersistentStorage = {
         `Error retrieving key from keychain: ${key}`,
         error,
       );
+
       return null;
     }
   },
@@ -50,11 +51,6 @@ export const reactNativeKeychainStorage: PersistentStorage = {
         service: `${DEFAULT_SERVICE}_${key}`,
       });
     } catch (error) {
-      logger.error(
-        "reactNativeKeychainStorage.setItem",
-        `Error storing key in keychain: ${key}`,
-        error,
-      );
       throw new Error(`Failed to store item in keychain: ${key}`);
     }
   },
