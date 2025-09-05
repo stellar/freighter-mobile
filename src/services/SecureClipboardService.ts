@@ -1,6 +1,7 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { logger } from "config/logger";
-import { NativeModules, Platform } from "react-native";
+import { isAndroid, isIOS } from "helpers/device";
+import { NativeModules } from "react-native";
 // Import local types
 import type { SecureClipboardNative } from "types/SecureClipboardNative";
 
@@ -31,8 +32,7 @@ export class SecureClipboardService {
     expirationMs: number = 0,
   ): Promise<void> {
     try {
-      if (Platform.OS === "android" || Platform.OS === "ios") {
-        // Always use sensitive flag for secure clipboard service
+      if (isAndroid || isIOS) {
         await SecureClipboardModule.setString(text, expirationMs);
       } else {
         // Fallback to standard clipboard for other platforms
@@ -54,7 +54,7 @@ export class SecureClipboardService {
    */
   static async clearClipboard(): Promise<void> {
     try {
-      if (Platform.OS === "android" || Platform.OS === "ios") {
+      if (isAndroid || isIOS) {
         await SecureClipboardModule.clearString();
       } else {
         Clipboard.setString("");
@@ -75,7 +75,7 @@ export class SecureClipboardService {
    */
   static async getClipboardText(): Promise<string> {
     try {
-      if (Platform.OS === "android" || Platform.OS === "ios") {
+      if (isAndroid || isIOS) {
         return await SecureClipboardModule.getString();
       }
       return await Clipboard.getString();
