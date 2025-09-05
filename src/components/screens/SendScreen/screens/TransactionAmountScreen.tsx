@@ -76,7 +76,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId } = route.params;
+  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -88,6 +88,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     recipientAddress,
     selectedTokenId,
     saveSelectedTokenId,
+    saveRecipientAddress,
     saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
@@ -99,6 +100,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveSelectedTokenId(tokenId);
     }
   }, [tokenId, saveSelectedTokenId]);
+
+  useEffect(() => {
+    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
+      saveRecipientAddress(routeRecipientAddress);
+    }
+  }, [routeRecipientAddress, saveRecipientAddress]);
 
   const {
     buildTransaction,
@@ -548,28 +555,29 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             {selectedBalance && (
               <BalanceRow
+                isSingleRow
+                onPress={navigateToSelectTokenScreen}
                 balance={selectedBalance}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
                     size="sm"
                     variant="ghost"
-                    onPress={navigateToSelectTokenScreen}
                   />
                 }
-                isSingleRow
               />
             )}
           </View>
           <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
             <ContactRow
+              isSingleRow
+              onPress={navigateToSelectContactScreen}
               address={recipientAddress}
               rightElement={
                 <IconButton
                   Icon={Icon.ChevronRight}
                   size="sm"
                   variant="ghost"
-                  onPress={navigateToSelectContactScreen}
                 />
               }
             />

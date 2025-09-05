@@ -286,6 +286,7 @@ import CodeSnippet02 from "assets/icons/code-snippet-02.svg";
 import CodeSquare01 from "assets/icons/code-square-01.svg";
 import CodeSquare02 from "assets/icons/code-square-02.svg";
 import Codepen from "assets/icons/codepen.svg";
+import CoinbaseLogo from "assets/icons/coinbase-logo.svg";
 import Coins01 from "assets/icons/coins-01.svg";
 import Coins02 from "assets/icons/coins-02.svg";
 import Coins03 from "assets/icons/coins-03.svg";
@@ -1471,6 +1472,7 @@ export const Icons = {
   CodeSquare01,
   CodeSquare02,
   Codepen,
+  CoinbaseLogo,
   Coins01,
   Coins02,
   Coins03,

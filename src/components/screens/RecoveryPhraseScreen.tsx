@@ -16,7 +16,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
-import { useClipboard } from "hooks/useClipboard";
+import { useSecureClipboard } from "hooks/useSecureClipboard";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
@@ -88,7 +88,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { error, isLoading, signUp, clearError, storeBiometricPassword } =
     useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { copyToClipboard } = useClipboard();
+  const { copyToClipboard } = useSecureClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { biometryType } = useBiometrics();
   useEffect(() => {

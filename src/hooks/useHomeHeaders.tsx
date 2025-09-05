@@ -7,6 +7,7 @@ import ContextMenuButton from "components/ContextMenuButton";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import Icon from "components/sds/Icon";
+import { QRCodeSource } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   MainTabStackParamList,
@@ -48,7 +49,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         }),
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-            showNavigationAsCloseButton: true,
+            showNavigationAsCloseButton: false,
           }),
       },
     ],
@@ -93,7 +94,9 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         position="right"
         icon={Icon.Scan}
         onPress={() =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN)
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+            source: QRCodeSource.WALLET_CONNECT,
+          })
         }
       />
     ),

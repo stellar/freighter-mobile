@@ -6,6 +6,7 @@ import {
 import * as Sentry from "@sentry/react-native";
 import { initializeSentryLogger } from "config/logger";
 import { RootStackParamList } from "config/routes";
+import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
 import i18n from "i18n";
@@ -17,7 +18,6 @@ import { WalletKitProvider } from "providers/WalletKitProvider";
 import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, StatusBar } from "react-native";
-import Config from "react-native-config";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getUserId } from "services/analytics/user";
@@ -34,12 +34,8 @@ export const App = (): React.JSX.Element => {
   // initialize sentry here but we enhance the configuration
   // in RootNavigator once the user is authenticated
   useEffect(() => {
-    const initializeSentry = async () => {
-      Sentry.init({
-        dsn: Config.SENTRY_DSN,
-        sendDefaultPii: false,
-        spotlight: __DEV__,
-      });
+    const initSentry = async () => {
+      initializeSentry();
 
       const userId = await getUserId();
 
@@ -48,7 +44,7 @@ export const App = (): React.JSX.Element => {
       initializeSentryLogger();
     };
 
-    initializeSentry();
+    initSentry();
   }, []);
 
   return (

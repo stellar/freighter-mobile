@@ -24,7 +24,7 @@ import {
   RootStackParamList,
   SettingsStackParamList,
   SendPaymentStackParamList,
-  BuyXLMStackParamList,
+  AddFundsStackParamList,
   ManageTokensStackParamList,
   AUTH_STACK_ROUTES,
   AuthStackParamList,
@@ -36,7 +36,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import {
   AuthNavigator,
-  BuyXLMStackNavigator,
+  AddFundsStackNavigator,
   ManageTokensStackNavigator,
   ManageWalletsStackNavigator,
   SendPaymentStackNavigator,
@@ -54,8 +54,8 @@ const RootStack = createNativeStackNavigator<
     SettingsStackParamList &
     ManageWalletsStackParamList &
     SendPaymentStackParamList &
-    BuyXLMStackParamList &
-    AuthStackParamList
+    AuthStackParamList &
+    AddFundsStackParamList
 >();
 
 export const RootNavigator = () => {
@@ -173,6 +173,9 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
             component={ScanQRCodeScreen}
+            options={{
+              headerShown: false,
+            }}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
@@ -186,7 +189,7 @@ export const RootNavigator = () => {
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
-            component={BuyXLMStackNavigator}
+            component={AddFundsStackNavigator}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}

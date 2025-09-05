@@ -33,8 +33,8 @@ setup_permissions([
   # 'Microphone',
   # 'Motion',
   # 'Notifications',
-  # 'PhotoLibrary',
-  # 'PhotoLibraryAddOnly',
+  'PhotoLibrary',
+  'PhotoLibraryAddOnly',
   # 'Reminders',
   # 'Siri',
   # 'SpeechRecognition',
@@ -49,6 +49,10 @@ end
 
 target 'freighter-mobile' do
   config = use_native_modules!
+
+  # Manual linking for freighter-rn-secure-clipboard
+  # SecureClipboard is now part of the main project
+  pod 'SecureClipboard', :path => './'
 
   use_react_native!(
     :path => config[:reactNativePath],
