@@ -11,7 +11,7 @@ export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
-export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.01);
+export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.0099999);
 
 export const TOGGLE_ANIMATION_DURATION = 400;
 
