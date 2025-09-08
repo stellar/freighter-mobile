@@ -10,6 +10,7 @@ import { isAndroid } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
+import { Platform } from "react-native";
 import { PERMISSIONS, RESULTS, check, request } from "react-native-permissions";
 
 /**
@@ -51,17 +52,19 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
 };
 
 const hasAndroidPermission = async () => {
-  const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+  if (Number(Platform.Version) <= 33) {
+    const status = await check(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
 
-  if (status) {
-    return true;
+    if (status === RESULTS.GRANTED) {
+      return true;
+    }
+
+    const requestStatus = await request(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
+
+    return requestStatus === RESULTS.GRANTED;
   }
 
-  const requestStatus = await request(
-    PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
-  );
-
-  return requestStatus === RESULTS.GRANTED;
+  return true;
 };
 
 /**
@@ -155,7 +158,7 @@ const useDeviceStorage = () => {
 
           showToast({
             title: t("collectibleDetails.imageSaveAttempted"),
-            variant: "error",
+            variant: "warning",
           });
         })
         .finally(() => {
@@ -164,7 +167,7 @@ const useDeviceStorage = () => {
             if (tempFilePath) {
               deleteTempFile(tempFilePath);
             }
-          }, 1000);
+          }, 5000);
         });
     },
     [showToast, t],
