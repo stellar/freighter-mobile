@@ -10,13 +10,7 @@ import { isAndroid } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
-import { Platform } from "react-native";
-import {
-  checkMultiple,
-  requestMultiple,
-  PERMISSIONS,
-  RESULTS,
-} from "react-native-permissions";
+import { PERMISSIONS, RESULTS, check, request } from "react-native-permissions";
 
 /**
  * Extracts file extension from URL and validates it's a supported image format
@@ -57,28 +51,17 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
 };
 
 const hasAndroidPermission = async () => {
-  const permissions =
-    Number(Platform.Version) >= 33
-      ? [
-          PERMISSIONS.ANDROID.READ_MEDIA_IMAGES,
-          PERMISSIONS.ANDROID.READ_MEDIA_VIDEO,
-        ]
-      : [PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE];
+  const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
 
-  const statuses = await checkMultiple(permissions);
-  const allGranted = permissions.every(
-    (permission) => statuses[permission] === RESULTS.GRANTED,
-  );
-
-  if (allGranted) {
+  if (status) {
     return true;
   }
 
-  const requestStatuses = await requestMultiple(permissions);
-
-  return permissions.every(
-    (permission) => requestStatuses[permission] === RESULTS.GRANTED,
+  const requestStatus = await request(
+    PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
   );
+
+  return requestStatus === RESULTS.GRANTED;
 };
 
 /**
