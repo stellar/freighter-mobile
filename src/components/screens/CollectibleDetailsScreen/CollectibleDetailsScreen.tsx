@@ -6,6 +6,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -14,7 +15,10 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import useColors from "hooks/useColors";
 import React, { useMemo, useCallback } from "react";
-import { Linking, ScrollView, View } from "react-native";
+import { Dimensions, Linking, ScrollView, View } from "react-native";
+
+// Get window width once at module level for better performance
+const { width: windowWidth } = Dimensions.get("window");
 
 type CollectibleDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -191,7 +195,10 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           contentContainerStyle={{ paddingBottom: pxValue(40) }}
         >
           {/* Collectible Image */}
-          <View className="w-[354px] h-[354px] rounded-[32px] overflow-hidden mt-2 mb-6">
+          <View
+            className="w-full rounded-[32px] overflow-hidden mt-2 mb-6"
+            style={{ height: windowWidth - 2 * pxValue(DEFAULT_PADDING) }}
+          >
             <CollectibleImage
               imageUri={collectible.image}
               placeholderIconSize={90}
