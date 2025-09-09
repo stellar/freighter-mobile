@@ -131,7 +131,8 @@
     "inputPlaceholder": "WalletConnect URI",
     "connect": "Connect",
     "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid QR Code URI"
+    "invalidUriError": "Please enter a valid QR Code URI",
+    "invalidQrScanUriError": "Invalid WalletConnect Address"
   },
   "qrCodeScannerScreen": {
     "title": "Scan to send"
