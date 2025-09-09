@@ -18,7 +18,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
@@ -66,13 +66,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
-
-    // Fetch collectibles when component mounts
-    useEffect(() => {
-      if (account?.publicKey && network) {
-        fetchCollectibles({ publicKey: account.publicKey, network });
-      }
-    }, [fetchCollectibles, account?.publicKey, network]);
 
     const handleRefresh = useCallback(() => {
       if (account?.publicKey && network) {
@@ -150,7 +143,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             ListFooterComponent={DefaultListFooter}
             refreshControl={
               <RefreshControl
-                refreshing={isRefreshing}
+                refreshing={isRefreshing || isLoading}
                 tintColor={themeColors.secondary}
                 onRefresh={handleRefresh}
               />

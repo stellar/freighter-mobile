@@ -10,6 +10,7 @@ import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { px, pxValue } from "helpers/dimensions";
+import { useFetchCollectibles } from "hooks/useFetchCollectibles";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -72,6 +73,12 @@ export const TabNavigator = () => {
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({
     publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
+
+  // Fetch collectibles when component mounts or when publicKey/network changes
+  useFetchCollectibles({
+    publicKey,
     network: networkDetails.network,
   });
 
