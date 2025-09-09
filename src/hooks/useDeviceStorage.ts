@@ -72,10 +72,12 @@ const hasAndroidPermission = async (): Promise<boolean> => {
       );
     }
     const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+
     return status === RESULTS.GRANTED;
   };
 
   const hasPermission = await getCheckPermissionPromise();
+
   if (hasPermission) {
     return true;
   }
@@ -93,6 +95,7 @@ const hasAndroidPermission = async (): Promise<boolean> => {
       );
     }
     const status = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+
     return status === RESULTS.GRANTED;
   };
 
@@ -167,10 +170,6 @@ const useDeviceStorage = () => {
 
         return;
       }
-
-      // if (isAndroid) {
-      //   CameraRoll.saveAsset(tempFilePath);
-      // }
 
       CameraRoll.saveAsset(tempFilePath)
         .then((image) => {
