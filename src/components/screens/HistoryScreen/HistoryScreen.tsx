@@ -1,11 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { useFocusEffect } from "@react-navigation/native";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { usePreferencesStore } from "ducks/preferences";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import React, { useCallback, useMemo } from "react";
@@ -25,40 +23,34 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
     () => mapNetworkToNetworkDetails(network),
     [network],
   );
-  const { isHideDustEnabled } = usePreferencesStore();
-  const { historyData, fetchData, status } = useGetHistoryData(
-    account?.publicKey ?? "",
+  const {
+    historyData,
+    fetchData,
+    isLoading,
+    error,
+    isRefreshing,
+    isNavigationRefresh,
+  } = useGetHistoryData({
+    publicKey: account?.publicKey ?? "",
     networkDetails,
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      const loadHistory = async () => {
-        if (!account?.publicKey) {
-          return;
-        }
-
-        await fetchData({
-          isRefresh: false,
-          isHideDustEnabled,
-        });
-      };
-
-      loadHistory();
-    }, [account?.publicKey, network, isHideDustEnabled]),
-  );
+    tokenId: undefined,
+    shouldPoll: true,
+  });
 
   const handleRefresh = useCallback(() => {
-    fetchData({ isRefresh: true, isHideDustEnabled });
+    fetchData({ isRefresh: true });
   }, [fetchData]);
 
   return (
     <HistoryList
       historyData={historyData}
-      status={status}
+      isLoading={isLoading}
+      error={error}
       publicKey={account?.publicKey ?? ""}
       networkDetails={networkDetails}
       onRefresh={handleRefresh}
+      isRefreshing={isRefreshing}
+      isNavigationRefresh={isNavigationRefresh}
       className="pt-5"
     />
   );

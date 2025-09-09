@@ -2,6 +2,7 @@
 import { Horizon, Asset as SdkToken } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
+import { useHistoryStore } from "ducks/history";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
@@ -226,4 +227,15 @@ export const filterOperationsByToken = (
   return operations.filter((operation) =>
     operationInvolvesToken(operation, targetToken, networkDetails),
   );
+};
+
+/**
+ * Marks the history store to refresh data when the user navigates to history screen
+ * This is typically called after completing a transaction (send/swap) to ensure
+ * the latest transaction appears in the history with a smooth UX
+ */
+export const markHistoryForRefreshAfterTransaction = () => {
+  const { markForRefreshAfterNavigation } = useHistoryStore.getState();
+
+  markForRefreshAfterNavigation();
 };

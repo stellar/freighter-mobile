@@ -90,7 +90,7 @@
       "notNow": "Not now"
     },
     "hideDust": {
-      "title": "Hide small payments",
+      "title": "Hide received payments smaller than 0.1 XLM",
       "description": "Hide payments smaller than 0.1 XLM"
     },
     "memoValidation": {

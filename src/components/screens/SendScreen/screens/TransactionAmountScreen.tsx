@@ -35,6 +35,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { markHistoryForRefreshAfterTransaction } from "helpers/history";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -387,6 +388,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
+
+    // Mark history to refresh when user navigates to history screen
+    markHistoryForRefreshAfterTransaction();
 
     navigation.reset({
       index: 0,
