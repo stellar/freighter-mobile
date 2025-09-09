@@ -11,7 +11,7 @@ import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { Linking, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, TouchableOpacity, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -128,12 +128,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex flex-col gap-6 mt-4">
-        <List items={topListItems} />
-        <List items={midListItems} />
-        <List items={bottomListItems} />
-        <DeleteAccountButton />
-      </View>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View className="flex flex-col gap-6 mt-4">
+          <List items={topListItems} />
+          <List items={midListItems} />
+          <List items={bottomListItems} />
+          <DeleteAccountButton />
+        </View>
+      </ScrollView>
     </BaseLayout>
   );
 };
