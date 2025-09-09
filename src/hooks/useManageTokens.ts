@@ -45,7 +45,6 @@ export interface RemoveTokenParams {
   tokenId?: string;
   tokenRecord?: FormattedSearchTokenRecord;
   tokenType?: TokenTypeWithCustomToken;
-  onComplete?: () => void;
 }
 
 /**
@@ -212,7 +211,7 @@ export const useManageTokens = ({
   };
 
   const removeToken = async (input: RemoveTokenParams) => {
-    const { tokenId, tokenRecord, tokenType, onComplete } = input;
+    const { tokenId, tokenRecord, tokenType } = input;
 
     let tokenCode: string;
     let tokenIssuer: string;
@@ -322,9 +321,6 @@ export const useManageTokens = ({
     } finally {
       setIsRemovingToken(false);
       showToast(toastOptions);
-
-      // Execute onComplete callback if provided
-      onComplete?.();
 
       // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
       setTimeout(() => {

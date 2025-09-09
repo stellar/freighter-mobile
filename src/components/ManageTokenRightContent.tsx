@@ -1,13 +1,10 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import ConfirmationModal from "components/ConfirmationModal";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
-import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useTokenActions } from "hooks/useTokenActions";
-import React, { useState } from "react";
+import React from "react";
 import { Platform } from "react-native";
 
 const icons = Platform.select({
@@ -26,30 +23,16 @@ type ManageTokenRightContentProps = {
     isNative: boolean;
     id: string;
   };
-  handleRemoveToken: (onComplete: () => void) => void;
-  isRemovingToken: boolean;
+  handleRemoveToken: () => void;
 };
 
 const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
   token,
   handleRemoveToken,
-  isRemovingToken,
 }) => {
-  const [modalVisible, setModalVisible] = useState(false);
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyTokenAddress } = useTokenActions();
-  const { tokenCode } = formatTokenIdentifier(token.id);
-
-  const showRemoveTokenAlert = () => {
-    setModalVisible(true);
-  };
-
-  const handleRemoveTokenClick = () => {
-    handleRemoveToken(() => setModalVisible(false));
-    // The modal will be closed by the callback when removal is complete
-    // No need to set modalVisible to false immediately
-  };
 
   const menuActions: MenuItem[] = [
     {
@@ -68,9 +51,8 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
     {
       title: t("common.remove"),
       systemIcon: icons!.removeToken,
-      onPress: () => showRemoveTokenAlert(),
+      onPress: handleRemoveToken,
       destructive: true,
-      disabled: token.isNative,
     },
   ];
 
@@ -81,21 +63,6 @@ const ManageTokenRightContent: React.FC<ManageTokenRightContentProps> = ({
       }}
     >
       <Icon.DotsHorizontal color={themeColors.foreground.primary} />
-      <ConfirmationModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={t("manageTokenRightContent.removeTokenModal.title", {
-          tokenCode,
-        })}
-        message={t("manageTokenRightContent.removeTokenModal.message")}
-        confirmText={t("common.remove")}
-        cancelText={t("common.cancel")}
-        onConfirm={handleRemoveTokenClick}
-        confirmButtonIconPosition={IconPosition.LEFT}
-        isLoading={isRemovingToken}
-        destructive
-        biometricConfirm
-      />
     </ContextMenuButton>
   );
 };

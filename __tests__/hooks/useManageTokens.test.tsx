@@ -362,7 +362,7 @@ describe("useManageTokens", () => {
       expect(result.current.isRemovingToken).toBe(false);
     });
 
-    it("should successfully remove an token trustline and call onComplete", async () => {
+    it("should successfully remove an token trustline", async () => {
       const { result } = renderHook(() =>
         useManageTokens({
           network: mockNetwork,
@@ -374,14 +374,12 @@ describe("useManageTokens", () => {
       await act(async () => {
         await result.current.removeToken({
           tokenRecord: mockToken,
-          onComplete: mockOnComplete,
         });
       });
 
       expect(mockBuildChangeTrustTx).toHaveBeenCalled();
       expect(mockSignTransaction).toHaveBeenCalled();
       expect(mockSubmitTx).toHaveBeenCalled();
-      expect(mockOnComplete).toHaveBeenCalled();
       expect(mockOnSuccess).toHaveBeenCalled();
     });
 

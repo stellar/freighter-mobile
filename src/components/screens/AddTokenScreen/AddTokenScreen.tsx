@@ -9,6 +9,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
 import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
+import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -58,6 +59,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const [isScanning, setIsScanning] = useState(false);
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const addTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -175,15 +177,33 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     handleConfirmTokenAddition();
   }, [handleConfirmTokenAddition]);
 
-  const handleRemoveToken = useCallback(
-    (token: FormattedSearchTokenRecord) => {
-      removeToken({
-        tokenRecord: token,
-        tokenType: token.tokenType,
-      });
-    },
-    [removeToken],
-  );
+  const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
+    setSelectedToken(token);
+    removeTokenBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleConfirmTokenRemoval = useCallback(async () => {
+    if (!selectedToken) {
+      return;
+    }
+
+    analytics.trackRemoveTokenConfirmed(selectedToken.tokenCode);
+
+    await removeToken({
+      tokenRecord: selectedToken,
+      tokenType: selectedToken.tokenType,
+    });
+
+    removeTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedToken, removeToken]);
+
+  const handleCancelTokenRemoval = useCallback(() => {
+    if (selectedToken) {
+      analytics.trackRemoveTokenRejected(selectedToken.tokenCode);
+    }
+
+    removeTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedToken]);
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
@@ -247,6 +267,23 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
           }
         />
         <BottomSheet
+          modalRef={removeTokenBottomSheetModalRef}
+          handleCloseModal={() => {
+            removeTokenBottomSheetModalRef.current?.dismiss();
+          }}
+          analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
+          shouldCloseOnPressBackdrop={!!selectedToken}
+          customContent={
+            <RemoveTokenBottomSheetContent
+              token={selectedToken}
+              account={account}
+              onCancel={handleCancelTokenRemoval}
+              onRemoveToken={handleConfirmTokenRemoval}
+              isRemovingToken={isRemovingToken}
+            />
+          }
+        />
+        <BottomSheet
           modalRef={securityWarningBottomSheetModalRef}
           handleCloseModal={() =>
             securityWarningBottomSheetModalRef.current?.dismiss()
@@ -292,7 +329,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                   token={token}
                   handleAddToken={() => handleAddToken(token)}
                   handleRemoveToken={() => handleRemoveToken(token)}
-                  isRemovingToken={isRemovingToken}
                   isScanningToken={isScanning}
                 />
               ))

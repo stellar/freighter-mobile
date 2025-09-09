@@ -11,7 +11,6 @@ interface SimpleBalancesListProps {
   network: NETWORKS;
   rightSectionWidth?: number;
   handleRemoveToken: (input: RemoveTokenParams) => void;
-  isRemovingToken: boolean;
 }
 
 /**
@@ -34,7 +33,6 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   network,
   rightSectionWidth,
   handleRemoveToken,
-  isRemovingToken,
 }) => {
   const { balanceItems } = useBalancesList({
     publicKey,
@@ -62,14 +60,12 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
                 id: item.id,
                 isNative: item.id === NATIVE_TOKEN_CODE,
               }}
-              handleRemoveToken={(onComplete) =>
+              handleRemoveToken={() =>
                 handleRemoveToken({
                   tokenId: item.id,
                   tokenType: item.tokenType,
-                  onComplete,
                 })
               }
-              isRemovingToken={isRemovingToken}
             />
           }
           rightSectionWidth={rightSectionWidth}
