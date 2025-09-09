@@ -312,15 +312,6 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         publicKey,
       });
 
-      if (collectiblesContracts.length === 0) {
-        // No collectibles to fetch, set empty state
-        set({
-          collections: [],
-          isLoading: false,
-        });
-        return;
-      }
-
       // Transform local storage data to API format
       const contracts = collectiblesContracts.map((contract) => ({
         id: contract.contractId,
