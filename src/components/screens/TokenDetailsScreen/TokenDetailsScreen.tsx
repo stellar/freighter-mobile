@@ -15,6 +15,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
+import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
@@ -129,11 +130,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
-          <View className="flex-1">
-            <Button tertiary lg isFullWidth onPress={handleSwapPress}>
-              {t("tokenDetailsScreen.swap")}
-            </Button>
-          </View>
+          {!isIOS && (
+            <View className="flex-1">
+              <Button tertiary lg isFullWidth onPress={handleSwapPress}>
+                {t("tokenDetailsScreen.swap")}
+              </Button>
+            </View>
+          )}
           <View className="flex-1">
             <Button tertiary lg isFullWidth onPress={handleSendPress}>
               {t("tokenDetailsScreen.send")}
