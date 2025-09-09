@@ -68,7 +68,9 @@
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
     "about": "Sobre",
-    "security": "Segurança"
+    "security": "Segurança",
+    "deleteAccount": "Excluir conta",
+    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso."
   },
   "preferences": {
     "anonymousDataSharing": {
