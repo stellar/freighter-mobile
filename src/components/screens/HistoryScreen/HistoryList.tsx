@@ -13,11 +13,15 @@ import { TransactionDetailsBottomSheetCustomContent } from "components/screens/H
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { NetworkDetails } from "config/constants";
-import { HookStatus } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
-import { HistorySection } from "hooks/useGetHistoryData";
+import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshControl, SectionList, View } from "react-native";
+import {
+  RefreshControl,
+  SectionList,
+  View,
+  SectionListData,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -28,17 +32,15 @@ interface Operation {
   [key: string]: any;
 }
 
-interface HistoryData {
-  balances: any;
-  history: HistorySection[];
-}
-
 interface HistoryListProps {
   historyData: HistoryData | null;
-  status: HookStatus;
+  isLoading: boolean;
+  error: string | null;
   publicKey: string;
   networkDetails: NetworkDetails;
   onRefresh: () => void;
+  isRefreshing?: boolean;
+  isNavigationRefresh?: boolean;
   ListHeaderComponent?: React.ReactElement;
   ignoreTopInset?: boolean;
   noHorizontalPadding?: boolean;
@@ -50,10 +52,13 @@ interface HistoryListProps {
  */
 const HistoryList: React.FC<HistoryListProps> = ({
   historyData,
-  status,
+  isLoading,
+  error,
   publicKey,
   networkDetails,
   onRefresh,
+  isRefreshing = false,
+  isNavigationRefresh = false,
   ListHeaderComponent,
   ignoreTopInset = false,
   noHorizontalPadding = false,
@@ -63,6 +68,20 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const sectionListRef = useRef<SectionList>(null);
+
+  // Custom refresh indicator for navigation refreshes
+  const CustomRefreshIndicator = useCallback(() => {
+    if (!isNavigationRefresh) return null;
+
+    return (
+      <View className="bg-white/80 backdrop-blur-sm">
+        <View className="flex-row justify-center items-center py-3">
+          <Spinner size="small" />
+        </View>
+      </View>
+    );
+  }, [isNavigationRefresh]);
 
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
@@ -79,7 +98,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   }, [transactionDetails]);
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: { title: string } }) => (
+    ({ section }: { section: SectionListData<Operation> }) => (
       <MonthHeader month={section.title} />
     ),
     [],
@@ -113,18 +132,18 @@ const HistoryList: React.FC<HistoryListProps> = ({
     right: !noHorizontalPadding,
   };
 
-  if (status === HookStatus.LOADING || status === HookStatus.IDLE) {
+  if (isLoading) {
     return (
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
         <HistoryWrapper>
-          <Spinner testID="spinner" />
+          <Spinner size="small" testID="spinner" />
         </HistoryWrapper>
       </BaseLayout>
     );
   }
 
-  if (status === HookStatus.ERROR) {
+  if (error) {
     return (
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
@@ -145,7 +164,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         {ListHeaderComponent}
         <HistoryWrapper
           text={t("history.emptyState.title")}
-          isLoading={status === HookStatus.REFRESHING}
+          isLoading={isRefreshing}
           refreshFunction={onRefresh}
         />
       </BaseLayout>
@@ -166,42 +185,39 @@ const HistoryList: React.FC<HistoryListProps> = ({
         }
       />
 
-      <SectionList
-        sections={sections}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        stickySectionHeadersEnabled={false}
-        alwaysBounceVertical={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={status === HookStatus.REFRESHING}
-            onRefresh={onRefresh}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-        ListHeaderComponent={ListHeaderComponent}
-        ListFooterComponent={DefaultListFooter}
-        className={className}
-        ListEmptyComponent={
-          <View className="flex-1 items-center justify-center px-2 gap-4">
-            <Text lg primary semiBold>
-              {t("history.emptyState.title")}
-            </Text>
-            <Button
-              primary
-              lg
-              isLoading={status === HookStatus.REFRESHING}
-              onPress={onRefresh}
-            >
-              {status === HookStatus.REFRESHING
-                ? t("history.refreshing")
-                : t("history.refresh")}
-            </Button>
-          </View>
-        }
-      />
+      <View className="flex-1 relative">
+        <CustomRefreshIndicator />
+        <SectionList
+          ref={sectionListRef}
+          sections={sections}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          stickySectionHeadersEnabled={false}
+          alwaysBounceVertical={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing && !isNavigationRefresh}
+              onRefresh={onRefresh}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          ListHeaderComponent={ListHeaderComponent}
+          ListFooterComponent={DefaultListFooter}
+          className={className}
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center px-2 gap-4">
+              <Text lg primary semiBold>
+                {t("history.emptyState.title")}
+              </Text>
+              <Button primary lg isLoading={isRefreshing} onPress={onRefresh}>
+                {isRefreshing ? t("history.refreshing") : t("history.refresh")}
+              </Button>
+            </View>
+          }
+        />
+      </View>
     </BaseLayout>
   );
 };

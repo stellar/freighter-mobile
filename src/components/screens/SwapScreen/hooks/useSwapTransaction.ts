@@ -12,6 +12,7 @@ import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { markHistoryForRefreshAfterTransaction } from "helpers/history";
 import { useState } from "react";
 import { analytics } from "services/analytics";
 
@@ -137,6 +138,9 @@ export const useSwapTransaction = ({
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
+
+    // Mark history to refresh when user navigates to history screen
+    markHistoryForRefreshAfterTransaction();
 
     navigation.reset({
       index: 0,
