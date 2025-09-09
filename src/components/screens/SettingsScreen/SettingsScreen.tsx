@@ -24,9 +24,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const appVersion = getAppVersionAndBuildNumber();
   const { themeColors } = useColors();
 
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     logout();
-  };
+  }, [logout]);
+
+  const handleDeleteAccount = React.useCallback(() => {
+    // Pass "true" here so we can wipe all data and navigate to the welcome screen
+    // the same the app does when users tap on "Forgot password"
+    logout(true);
+  }, [logout]);
 
   const topListItems = [
     {
@@ -109,9 +115,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     },
   ];
 
-  const DeleteAccountButton = () => (
+  const DeleteAccountButton = ({ onPress }: { onPress: () => void }) => (
     <View className="bg-background-secondary rounded-[12px] p-4 gap-4">
-      <TouchableOpacity className="flex-row items-center gap-3">
+      <TouchableOpacity
+        className="flex-row items-center gap-3"
+        onPress={onPress}
+      >
         <Icon.Trash01 color={themeColors.status.error} />
         <Text md semiBold color={themeColors.status.error}>
           {t("settings.deleteAccount")}*
@@ -137,7 +146,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           <List items={topListItems} />
           <List items={midListItems} />
           <List items={bottomListItems} />
-          <DeleteAccountButton />
+          <DeleteAccountButton onPress={handleDeleteAccount} />
         </View>
       </ScrollView>
     </BaseLayout>
