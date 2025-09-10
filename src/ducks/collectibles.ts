@@ -303,7 +303,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     publicKey: string;
     network: string;
   }) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true });
 
     try {
       // Retrieve collectible contracts from local storage
@@ -379,6 +379,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       set({
         collections: transformedCollections,
         isLoading: false,
+        error: null,
       });
     } catch (error) {
       set({
