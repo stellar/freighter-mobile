@@ -11,14 +11,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
 import { Platform } from "react-native";
-import {
-  PERMISSIONS,
-  RESULTS,
-  check,
-  checkMultiple,
-  request,
-  requestMultiple,
-} from "react-native-permissions";
+import { PERMISSIONS, RESULTS, check, request } from "react-native-permissions";
 
 /**
  * Extracts file extension from URL and validates it's a supported image format
@@ -58,21 +51,15 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
   return "jpg";
 };
 
-const hasAndroidPermission = async (): Promise<boolean> => {
+const hasAndroidWritePermission = async (): Promise<boolean> => {
   const getCheckPermissionPromise = async (): Promise<boolean> => {
+    // For Android 13+ (API 33+), we don't need any special permissions to save to camera roll
     if (Number(Platform.Version) >= 33) {
-      const statuses = await checkMultiple([
-        PERMISSIONS.ANDROID.READ_MEDIA_IMAGES,
-        PERMISSIONS.ANDROID.READ_MEDIA_VIDEO,
-      ]);
-
-      return (
-        statuses[PERMISSIONS.ANDROID.READ_MEDIA_IMAGES] === RESULTS.GRANTED &&
-        statuses[PERMISSIONS.ANDROID.READ_MEDIA_VIDEO] === RESULTS.GRANTED
-      );
+      return true;
     }
-    const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
 
+    // For Android 12 and below, we need WRITE_EXTERNAL_STORAGE permission
+    const status = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
     return status === RESULTS.GRANTED;
   };
 
@@ -83,19 +70,13 @@ const hasAndroidPermission = async (): Promise<boolean> => {
   }
 
   const getRequestPermissionPromise = async (): Promise<boolean> => {
+    // For Android 13+ (API 33+), no permission needed
     if (Number(Platform.Version) >= 33) {
-      const statuses = await requestMultiple([
-        PERMISSIONS.ANDROID.READ_MEDIA_IMAGES,
-        PERMISSIONS.ANDROID.READ_MEDIA_VIDEO,
-      ]);
-
-      return (
-        statuses[PERMISSIONS.ANDROID.READ_MEDIA_IMAGES] === RESULTS.GRANTED &&
-        statuses[PERMISSIONS.ANDROID.READ_MEDIA_VIDEO] === RESULTS.GRANTED
-      );
+      return true;
     }
-    const status = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
 
+    // For Android 12 and below, request WRITE_EXTERNAL_STORAGE permission
+    const status = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
     return status === RESULTS.GRANTED;
   };
 
@@ -113,7 +94,9 @@ const downloadImageToTemp = async (
   imageName: string,
 ): Promise<string> => {
   const extension = getImageExtensionFromUrl(imageUrl);
-  const fileName = `${imageName}_${Date.now()}.${extension}`;
+  // Sanitize imageName: remove spaces and special characters, allow only alphanumeric, dash, and underscore
+  const sanitizedImageName = imageName.replace(/[^a-zA-Z0-9-_]/g, "_");
+  const fileName = `${sanitizedImageName}_${Date.now()}.${extension}`;
   const localFilePath = `${DocumentDirectoryPath}/${fileName}`;
 
   const downloadResult = await downloadFile({
@@ -156,7 +139,7 @@ const useDeviceStorage = () => {
       let tempFilePath: string | null = null;
 
       // Check only for android because the react-native-camera-roll already handles iOS
-      if (isAndroid && !(await hasAndroidPermission())) {
+      if (isAndroid && !(await hasAndroidWritePermission())) {
         return;
       }
 
