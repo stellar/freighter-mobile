@@ -40,7 +40,7 @@ const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
     shouldPoll: false,
   });
 
-  const { removeToken } = useManageTokens({
+  const { removeToken, isRemovingToken } = useManageTokens({
     network,
     account,
     onSuccess: handleRefresh,
@@ -91,6 +91,7 @@ const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
           publicKey={account?.publicKey ?? ""}
           network={network}
           handleRemoveToken={removeToken}
+          isRemovingToken={isRemovingToken}
         />
         <View className="h-4" />
         <Button

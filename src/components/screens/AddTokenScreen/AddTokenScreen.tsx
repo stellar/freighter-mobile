@@ -7,6 +7,7 @@ import Spinner from "components/Spinner";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
+import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveXlmBottomSheet";
 import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
@@ -205,6 +206,36 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     removeTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedToken]);
 
+  const renderRemoveBottomSheet = () => {
+    if (selectedToken && selectedToken.issuer === "XLM") {
+      return (
+        <CannotRemoveXlmBottomSheet
+          onDismiss={() => {
+            removeTokenBottomSheetModalRef.current?.dismiss();
+          }}
+        />
+      );
+    }
+
+    if (selectedToken) {
+      <RemoveTokenBottomSheetContent
+        token={{
+          issuer: selectedToken.issuer,
+          tokenCode: selectedToken.tokenCode,
+          tokenType: selectedToken.tokenType!,
+        }}
+        account={account}
+        onCancel={handleCancelTokenRemoval}
+        onRemoveToken={handleConfirmTokenRemoval}
+        isRemovingToken={isRemovingToken}
+      />;
+    }
+
+    /* eslint-disable react/jsx-no-useless-fragment */
+    return <></>;
+    /* eslint-enable react/jsx-no-useless-fragment */
+  };
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
@@ -273,15 +304,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
           }}
           analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
           shouldCloseOnPressBackdrop={!!selectedToken}
-          customContent={
-            <RemoveTokenBottomSheetContent
-              token={selectedToken}
-              account={account}
-              onCancel={handleCancelTokenRemoval}
-              onRemoveToken={handleConfirmTokenRemoval}
-              isRemovingToken={isRemovingToken}
-            />
-          }
+          customContent={renderRemoveBottomSheet()}
         />
         <BottomSheet
           modalRef={securityWarningBottomSheetModalRef}

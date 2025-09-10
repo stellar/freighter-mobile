@@ -507,7 +507,11 @@
       "remove": "Remove"
     },
     "removeTokenError": "Error removing token {{tokenCode}}",
-    "removeTokenSuccess": "{{tokenCode}} successfully removed"
+    "removeTokenSuccess": "{{tokenCode}} successfully removed",
+    "cantRemoveXlm": {
+      "title": "Can’t remove XLM",
+      "description": "XLM is the native asset of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+    }
   },
   "addTokenScreen": {
     "title": "Add a token",

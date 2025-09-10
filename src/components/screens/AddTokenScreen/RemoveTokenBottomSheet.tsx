@@ -8,8 +8,9 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
+  NativeToken,
+  NonNativeToken,
   TokenTypeWithCustomToken,
-  FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
@@ -19,8 +20,15 @@ import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { View } from "react-native";
 
+type TokenDetails = {
+  issuer: string;
+  tokenCode: string;
+  tokenType: string;
+  domain?: string;
+};
+
 type RemoveTokenBottomSheetContentProps = {
-  token: FormattedSearchTokenRecord | null;
+  token: TokenDetails | null;
   account: ActiveAccount | null;
   onCancel: () => void;
   onRemoveToken: () => void;
@@ -39,8 +47,12 @@ const RemoveTokenBottomSheetContent: React.FC<
   const listItems = useMemo(() => {
     if (!token) return [];
 
-    const handleCopyTokenAddress = () => {
-      copyToClipboard(token.issuer, {
+    const tokenContractId = new Asset(token.tokenCode, token.issuer).contractId(
+      networkPassphrase,
+    );
+
+    const handleCopyTokenAddress = (contractAddress: string) => {
+      copyToClipboard(contractAddress, {
         notificationMessage: t("common.copied"),
       });
     };
@@ -74,15 +86,11 @@ const RemoveTokenBottomSheetContent: React.FC<
         trailingContent: (
           <View
             className="flex-row items-center gap-2"
-            onTouchEnd={handleCopyTokenAddress}
+            onTouchEnd={() => handleCopyTokenAddress(tokenContractId)}
           >
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             <Text md primary>
-              {truncateAddress(
-                new Asset(token.tokenCode, token.issuer).contractId(
-                  networkPassphrase,
-                ),
-              )}
+              {truncateAddress(tokenContractId)}
             </Text>
           </View>
         ),
@@ -106,18 +114,24 @@ const RemoveTokenBottomSheetContent: React.FC<
     return null;
   }
 
+  const iconTokenProp =
+    token.issuer === "XLM"
+      ? ({
+          type: "native",
+          code: token.issuer,
+        } as NativeToken)
+      : ({
+          type: token.tokenType as TokenTypeWithCustomToken,
+          code: token.tokenCode,
+          issuer: {
+            key: token.issuer,
+          },
+        } as NonNativeToken);
+
   return (
     <View className="flex-1 justify-center items-center mt-8">
       <View>
-        <TokenIcon
-          token={{
-            type: token.tokenType as TokenTypeWithCustomToken,
-            code: token.tokenCode,
-            issuer: {
-              key: token.issuer,
-            },
-          }}
-        />
+        <TokenIcon token={iconTokenProp} />
       </View>
 
       <View className="mt-4" />
