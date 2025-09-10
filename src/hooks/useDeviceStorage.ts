@@ -10,7 +10,15 @@ import { isAndroid } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
-import { PERMISSIONS, RESULTS, check, request } from "react-native-permissions";
+import { Platform } from "react-native";
+import {
+  PERMISSIONS,
+  RESULTS,
+  check,
+  checkMultiple,
+  request,
+  requestMultiple,
+} from "react-native-permissions";
 
 /**
  * Extracts file extension from URL and validates it's a supported image format
@@ -50,18 +58,48 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
   return "jpg";
 };
 
-const hasAndroidPermission = async () => {
-  const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+const hasAndroidPermission = async (): Promise<boolean> => {
+  const getCheckPermissionPromise = async (): Promise<boolean> => {
+    if (Number(Platform.Version) >= 33) {
+      const statuses = await checkMultiple([
+        PERMISSIONS.ANDROID.READ_MEDIA_IMAGES,
+        PERMISSIONS.ANDROID.READ_MEDIA_VIDEO,
+      ]);
 
-  if (status) {
+      return (
+        statuses[PERMISSIONS.ANDROID.READ_MEDIA_IMAGES] === RESULTS.GRANTED &&
+        statuses[PERMISSIONS.ANDROID.READ_MEDIA_VIDEO] === RESULTS.GRANTED
+      );
+    }
+    const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+
+    return status === RESULTS.GRANTED;
+  };
+
+  const hasPermission = await getCheckPermissionPromise();
+
+  if (hasPermission) {
     return true;
   }
 
-  const requestStatus = await request(
-    PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
-  );
+  const getRequestPermissionPromise = async (): Promise<boolean> => {
+    if (Number(Platform.Version) >= 33) {
+      const statuses = await requestMultiple([
+        PERMISSIONS.ANDROID.READ_MEDIA_IMAGES,
+        PERMISSIONS.ANDROID.READ_MEDIA_VIDEO,
+      ]);
 
-  return requestStatus === RESULTS.GRANTED;
+      return (
+        statuses[PERMISSIONS.ANDROID.READ_MEDIA_IMAGES] === RESULTS.GRANTED &&
+        statuses[PERMISSIONS.ANDROID.READ_MEDIA_VIDEO] === RESULTS.GRANTED
+      );
+    }
+    const status = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+
+    return status === RESULTS.GRANTED;
+  };
+
+  return getRequestPermissionPromise();
 };
 
 /**
@@ -155,7 +193,7 @@ const useDeviceStorage = () => {
 
           showToast({
             title: t("collectibleDetails.imageSaveAttempted"),
-            variant: "error",
+            variant: "warning",
           });
         })
         .finally(() => {
@@ -164,7 +202,7 @@ const useDeviceStorage = () => {
             if (tempFilePath) {
               deleteTempFile(tempFilePath);
             }
-          }, 1000);
+          }, 5000);
         });
     },
     [showToast, t],

@@ -1,16 +1,20 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
+import DeleteAccountBottomSheet from "components/screens/SettingsScreen/DeleteAccountBottomSheet";
 import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
 import { FREIGHTER_BASE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
-import { Linking, View } from "react-native";
+import React, { useRef } from "react";
+import { Linking, ScrollView, TouchableOpacity, View } from "react-native";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -22,10 +26,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const appVersion = getAppVersionAndBuildNumber();
   const { themeColors } = useColors();
+  const deleteAccountModalRef = useRef<BottomSheetModal>(null);
 
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     logout();
-  };
+  }, [logout]);
+
+  const handleDeleteAccount = React.useCallback(() => {
+    deleteAccountModalRef.current?.present();
+  }, []);
+
+  const confirmDeleteAccount = React.useCallback(() => {
+    // Pass "true" here so we can wipe all data and navigate to the welcome screen
+    // the same the app does when users tap on "Forgot password"
+    logout(true);
+  }, [logout]);
+
+  const cancelDeleteAccount = React.useCallback(() => {
+    deleteAccountModalRef.current?.dismiss();
+  }, []);
 
   const topListItems = [
     {
@@ -108,13 +127,53 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     },
   ];
 
+  const DeleteAccountButton = ({ onPress }: { onPress: () => void }) => (
+    <View className="bg-background-secondary rounded-[12px] p-4 gap-4">
+      <TouchableOpacity
+        className="flex-row items-center gap-3"
+        onPress={onPress}
+      >
+        <Icon.Trash01 color={themeColors.status.error} />
+        <Text md semiBold color={themeColors.status.error}>
+          {t("settings.deleteAccount")}*
+        </Text>
+      </TouchableOpacity>
+
+      <View className="h-[1px] bg-border-primary" />
+
+      <Text xs secondary>
+        *{t("settings.deleteAccountDisclaimer")}
+      </Text>
+    </View>
+  );
+
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex flex-col gap-6 mt-4">
-        <List items={topListItems} />
-        <List items={midListItems} />
-        <List items={bottomListItems} />
-      </View>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View className="flex flex-col gap-6 mt-4">
+          <List items={topListItems} />
+          <List items={midListItems} />
+          <List items={bottomListItems} />
+          <DeleteAccountButton onPress={handleDeleteAccount} />
+        </View>
+      </ScrollView>
+
+      <BottomSheet
+        modalRef={deleteAccountModalRef}
+        handleCloseModal={cancelDeleteAccount}
+        customContent={
+          <DeleteAccountBottomSheet
+            onCancel={cancelDeleteAccount}
+            onConfirm={confirmDeleteAccount}
+          />
+        }
+        shouldCloseOnPressBackdrop
+        enablePanDownToClose
+      />
     </BaseLayout>
   );
 };

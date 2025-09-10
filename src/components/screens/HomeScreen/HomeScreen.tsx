@@ -22,6 +22,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { isIOS } from "helpers/device";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -224,12 +225,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               disabled={hasZeroBalance}
               onPress={handleSendPress}
             />
-            <IconButton
-              Icon={Icon.RefreshCw02}
-              title={t("home.swap")}
-              disabled={hasZeroBalance}
-              onPress={handleSwapPress}
-            />
+            {!isIOS && (
+              <IconButton
+                Icon={Icon.RefreshCw02}
+                title={t("home.swap")}
+                disabled={hasZeroBalance}
+                onPress={handleSwapPress}
+              />
+            )}
             <IconButton
               Icon={Icon.Copy01}
               title={t("home.copy")}

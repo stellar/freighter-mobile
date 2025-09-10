@@ -69,7 +69,11 @@
     "help": "Help",
     "feedback": "Share Feedback",
     "about": "About",
-    "security": "Security"
+    "security": "Security",
+    "deleteAccount": "Delete account",
+    "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and can not be deleted. However you can remove any account from your Freighter App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
+    "deleteAccountConfirmTitle": "Are you sure?",
+    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
   },
   "preferences": {
     "anonymousDataSharing": {

@@ -10,6 +10,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -92,6 +93,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
+    const isCollectiblesLoading = useCollectiblesStore(
+      (state) => state.isLoading,
+    );
+
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
     const shouldHideCollectibles = useMemo(
@@ -155,6 +160,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             ios: "plus.rectangle.on.rectangle",
             android: "add_box",
           }),
+          disabled: isCollectiblesLoading,
           onPress: () =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN),
         },
@@ -162,7 +168,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
       // Reverse the array for iOS to match Android behavior
       return isIOS ? actions.reverse() : actions;
-    }, [t, navigation]);
+    }, [t, navigation, isCollectiblesLoading]);
 
     /**
      * Renders the tokens/balances list content
