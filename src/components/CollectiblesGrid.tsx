@@ -18,7 +18,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
@@ -132,72 +132,61 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       [renderCollectibleItem, themeColors.text.secondary],
     );
 
-    const renderContent = useMemo(() => {
-      if (collections.length > 0) {
-        return (
-          <FlatList
-            data={collections}
-            renderItem={renderCollection}
-            keyExtractor={(collection) => collection.collectionAddress}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={DefaultListFooter}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing || isLoading}
-                tintColor={themeColors.secondary}
-                onRefresh={handleRefresh}
-              />
-            }
-          />
-        );
-      }
-
-      if (isLoading) {
-        return (
-          <View className="flex-1 items-center justify-center mb-10">
-            <Spinner
-              testID="collectibles-grid-spinner"
-              size="large"
-              color={themeColors.secondary}
-            />
-          </View>
-        );
-      }
-
-      if (error) {
-        return (
-          <View
-            className="flex-1 pt-4"
-            style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-          >
-            <Text md secondary>
-              {t("collectiblesGrid.error")}
-            </Text>
-          </View>
-        );
-      }
-
+    // During initial loading, show spinner without refresh capability
+    if (isLoading && !isRefreshing) {
       return (
-        <View className="flex-row items-center justify-center pt-5 gap-2">
-          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-          <Text md medium secondary>
-            {t("collectiblesGrid.empty")}
-          </Text>
+        <View className="flex-1 items-center justify-center mb-10">
+          <Spinner
+            testID="collectibles-grid-spinner"
+            size="large"
+            color={themeColors.secondary}
+          />
         </View>
       );
-    }, [
-      collections,
-      isLoading,
-      isRefreshing,
-      error,
-      t,
-      themeColors.text.secondary,
-      themeColors.secondary,
-      renderCollection,
-      handleRefresh,
-    ]);
+    }
 
-    return <View className="flex-1">{renderContent}</View>;
+    // For all other states, wrap content in FlatList with RefreshControl
+    return (
+      <FlatList
+        data={collections}
+        renderItem={renderCollection}
+        keyExtractor={(collection) => collection.collectionAddress}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            tintColor={themeColors.secondary}
+            onRefresh={handleRefresh}
+          />
+        }
+        ListFooterComponent={DefaultListFooter}
+        ListEmptyComponent={
+          <View className="flex-1">
+            {error ? (
+              <View
+                className="pt-4"
+                style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+              >
+                <Text md secondary>
+                  {t("collectiblesGrid.error")}
+                </Text>
+              </View>
+            ) : (
+              <View
+                className="flex-row items-center justify-center pt-5 gap-2"
+                style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+              >
+                <Icon.Grid01 size={20} color={themeColors.text.secondary} />
+                <Text md medium secondary>
+                  {t("collectiblesGrid.empty")}
+                </Text>
+              </View>
+            )}
+          </View>
+        }
+      />
+    );
   },
 );
 
