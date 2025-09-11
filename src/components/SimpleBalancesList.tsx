@@ -92,7 +92,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
       "issuer" in selectedToken.token
         ? selectedToken.token.issuer.key
         : "XLM";
-    if (selectedToken && selectedTokenIssuer === "XLM" && !isLpShare) {
+    if (selectedToken && selectedTokenIssuer === NATIVE_TOKEN_CODE && !isLpShare) {
       return (
         <CannotRemoveXlmBottomSheet
           type="native"
