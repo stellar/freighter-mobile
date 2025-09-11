@@ -470,7 +470,15 @@
       "remove": "Remover"
     },
     "removeTokenError": "Erro ao remover token {{tokenCode}}",
-    "removeTokenSuccess": "{{tokenCode}} removido com sucesso"
+    "removeTokenSuccess": "{{tokenCode}} removido com sucesso",
+    "cantRemoveXlm": {
+      "title": "Não é possível remover XLM",
+      "description": "O XLM é o ativo nativo da rede Stellar e não pode ser removido. Ele é necessário para manter sua conta e pagar as taxas de transação."
+    },
+    "cantRemoveBalance": {
+      "title": "O token ainda possui saldo",
+      "description": "Você ainda não pode remover este token. Para remover uma trustline, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
+    }
   },
   "addTokenScreen": {
     "title": "Adicionar um token",
