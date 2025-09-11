@@ -22,7 +22,7 @@ interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   rightSectionWidth?: number;
-  handleRemoveToken: (input: RemoveTokenParams) => void;
+  handleRemoveToken: (input: RemoveTokenParams) => Promise<void>;
   isRemovingToken: boolean;
 }
 
@@ -58,14 +58,14 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     shouldPoll: false,
   });
 
-  const handleConfirmTokenRemoval = useCallback(() => {
+  const handleConfirmTokenRemoval = useCallback(async () => {
     if (!selectedToken) {
       return;
     }
 
     analytics.trackRemoveTokenConfirmed(selectedToken.tokenCode);
 
-    handleRemoveToken({
+    await handleRemoveToken({
       tokenId: selectedToken.id,
       tokenType: selectedToken.tokenType,
     });

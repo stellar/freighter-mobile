@@ -107,7 +107,7 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );
@@ -121,7 +121,7 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );
@@ -135,7 +135,7 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );
@@ -152,7 +152,7 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );
@@ -162,13 +162,13 @@ describe("SimpleBalancesList", () => {
     expect(scrollView.props.alwaysBounceVertical).toBe(false);
   });
 
-  it('should render "cannot remove XLM" BottomSheet for XLM when removing is attempted', () => {
+  it("should render \"cannot remove XLM\" BottomSheet for XLM when removing is attempted", () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );
@@ -181,13 +181,13 @@ describe("SimpleBalancesList", () => {
     );
   });
 
-  it('should render "token still has a balance" BottomSheet for tokens with balances when removing is attempted', () => {
+  it("should render \"token still has a balance\" BottomSheet for tokens with balances when removing is attempted", () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
+        handleRemoveToken={() => Promise.resolve()}
         isRemovingToken={false}
       />,
     );

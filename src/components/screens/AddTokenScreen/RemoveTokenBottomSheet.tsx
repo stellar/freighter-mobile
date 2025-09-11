@@ -31,7 +31,7 @@ type RemoveTokenBottomSheetContentProps = {
   token: TokenDetails | null;
   account: ActiveAccount | null;
   onCancel: () => void;
-  onRemoveToken: () => void;
+  onRemoveToken: () => Promise<void>;
   isRemovingToken: boolean;
 };
 
@@ -184,7 +184,7 @@ const RemoveTokenBottomSheetContent: React.FC<
             tertiary
             xl
             isFullWidth
-            onPress={() => onRemoveToken()}
+            onPress={onRemoveToken}
             isLoading={isRemovingToken}
           >
             {t("addTokenScreen.removeTokenButton")}
