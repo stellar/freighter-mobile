@@ -3,7 +3,7 @@ import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ManageTokenRightContent from "components/ManageTokenRightContent";
-import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
+import CannotRemoveXlmBottomSheet, { CannotRemoveType } from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
@@ -95,7 +95,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     if (selectedToken && selectedTokenIssuer === NATIVE_TOKEN_CODE && !isLpShare) {
       return (
         <CannotRemoveXlmBottomSheet
-          type="native"
+          type={CannotRemoveType.native}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
@@ -110,7 +110,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     if (hasBalance || isLpShare) {
       return (
         <CannotRemoveXlmBottomSheet
-          type="has-balance"
+          type={CannotRemoveType.hasBalance}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}

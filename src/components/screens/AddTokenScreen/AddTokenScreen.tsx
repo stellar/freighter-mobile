@@ -8,7 +8,7 @@ import Spinner from "components/Spinner";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
-import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
+import CannotRemoveXlmBottomSheet, { CannotRemoveType } from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
 import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
@@ -212,7 +212,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     if (selectedToken && selectedToken.issuer === "XLM") {
       return (
         <CannotRemoveXlmBottomSheet
-          type="native"
+          type={CannotRemoveType.native}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
@@ -231,7 +231,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     if (hasBalance) {
       return (
         <CannotRemoveXlmBottomSheet
-          type="has-balance"
+          type={CannotRemoveType.hasBalance}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}

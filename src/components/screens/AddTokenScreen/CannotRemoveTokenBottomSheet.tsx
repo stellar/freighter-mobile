@@ -4,8 +4,13 @@ import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
 
+export enum CannotRemoveType {
+  hasBalance = "has-balance",
+  native = "native",
+}
+
 type CannotRemoveXlmBottomSheetProps = {
-  type: "has-balance" | "native";
+  type: CannotRemoveType;
   onDismiss: () => unknown;
 };
 
@@ -16,12 +21,12 @@ const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
   const { t } = useAppTranslation();
 
   const title =
-    type === "has-balance"
+    type === CannotRemoveType.hasBalance
       ? t("manageTokensScreen.cantRemoveBalance.title")
       : t("manageTokensScreen.cantRemoveXlm.title");
 
   const description =
-    type === "has-balance"
+    type === CannotRemoveType.hasBalance
       ? t("manageTokensScreen.cantRemoveBalance.description")
       : t("manageTokensScreen.cantRemoveXlm.description");
 
