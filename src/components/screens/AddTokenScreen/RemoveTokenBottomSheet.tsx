@@ -71,7 +71,7 @@ const RemoveTokenBottomSheetContent: React.FC<
               hasBorder={false}
               hasBackground={false}
             />
-            <Text md primary>
+            <Text>
               {account?.accountName}
             </Text>
           </View>
