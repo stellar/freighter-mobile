@@ -89,7 +89,7 @@ const RemoveTokenBottomSheetContent: React.FC<
             onTouchEnd={() => handleCopyTokenAddress(tokenContractId)}
           >
             <Icon.Copy01 size={16} themeColor="gray" />
-            <Text md primary>
+            <Text>
               {truncateAddress(tokenContractId)}
             </Text>
           </View>
