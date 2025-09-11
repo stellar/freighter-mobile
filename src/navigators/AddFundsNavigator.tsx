@@ -22,6 +22,8 @@ export const AddFundsStackNavigator = () => {
     <AddFundsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
+        animation: "slide_from_bottom",
+        animationTypeForReplace: "push",
       }}
     >
       <AddFundsStack.Screen

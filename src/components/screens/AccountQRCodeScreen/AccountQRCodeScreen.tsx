@@ -45,10 +45,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     if (showNavigationAsCloseButton) {
       navigation.setOptions({
         headerLeft: () => (
-          <CustomHeaderButton
-            icon={Icon.X}
-            onPress={() => navigation.popToTop()}
-          />
+          <CustomHeaderButton icon={Icon.X} onPress={() => navigation.pop()} />
         ),
       });
     }
@@ -67,7 +64,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     // If the scan route is already in the stack, pop to it
     // Otherwise, navigate to it
     if (scanRouteIndex !== -1) {
-      navigation.popTo(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+      navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
         source: QRCodeSource.WALLET_CONNECT,
       });
     } else {
