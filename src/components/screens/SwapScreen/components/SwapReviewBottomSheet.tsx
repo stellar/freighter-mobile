@@ -18,6 +18,7 @@ import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -31,11 +32,13 @@ import { TouchableOpacity, View } from "react-native";
 type SwapReviewBottomSheetProps = {
   onCancel?: () => void;
   onConfirm?: () => void;
+  onSettingsPress?: () => void;
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   onCancel,
   onConfirm,
+  onSettingsPress,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -181,7 +184,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
           <View className="w-[40px] flex items-center">
             <Icon.ChevronDownDouble
-              size={16}
+              size={pxValue(16)}
               color={themeColors.foreground.secondary}
             />
           </View>
@@ -206,7 +209,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         items={[
           {
             icon: (
-              <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+              <Icon.Wallet01
+                size={pxValue(16)}
+                color={themeColors.foreground.primary}
+              />
             ),
             titleComponent: (
               <Text md secondary color={THEME.colors.text.secondary}>
@@ -230,7 +236,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           {
             icon: (
               <Icon.BarChart05
-                size={16}
+                size={pxValue(16)}
                 color={themeColors.foreground.primary}
               />
             ),
@@ -253,7 +259,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           {
             icon: (
               <Icon.InfoCircle
-                size={16}
+                size={pxValue(16)}
                 color={themeColors.foreground.primary}
               />
             ),
@@ -270,7 +276,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           },
           {
             icon: (
-              <Icon.Route size={16} color={themeColors.foreground.primary} />
+              <Icon.Route
+                size={pxValue(16)}
+                color={themeColors.foreground.primary}
+              />
             ),
             titleComponent: (
               <Text md secondary color={THEME.colors.text.secondary}>
@@ -279,7 +288,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             ),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <StellarLogo width={16} height={16} />
+                <StellarLogo width={pxValue(16)} height={pxValue(16)} />
                 <Text md medium>
                   {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
                 </Text>
@@ -289,7 +298,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           {
             icon: (
               <Icon.FileCode02
-                size={16}
+                size={pxValue(16)}
                 color={themeColors.foreground.primary}
               />
             ),
@@ -304,7 +313,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
                 disabled={!transactionXDR}
                 className="flex-row items-center gap-[8px]"
               >
-                <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+                <Icon.Copy01
+                  size={pxValue(16)}
+                  color={themeColors.foreground.primary}
+                />
                 <Text md medium>
                   {transactionXDR
                     ? truncateAddress(transactionXDR, 10, 4)
@@ -323,6 +335,17 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       </View>
 
       <View className="mt-[24px] gap-[12px] flex-row">
+        {onSettingsPress && (
+          <TouchableOpacity
+            onPress={onSettingsPress}
+            className="w-14 h-14 rounded-full border border-gray-6 items-center justify-center"
+          >
+            <Icon.Settings04
+              size={pxValue(24)}
+              color={themeColors.foreground.primary}
+            />
+          </TouchableOpacity>
+        )}
         <View className="flex-1">
           <Button onPress={onCancel} secondary xl>
             {t("common.cancel")}

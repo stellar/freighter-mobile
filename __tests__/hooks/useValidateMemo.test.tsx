@@ -5,8 +5,8 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: { max?: string }) => {
     const translations: Record<string, string> = {
-      "transactionMemoScreen.errors.tooLong": `Memo too long (max ${params?.max} bytes)`,
-      "transactionMemoScreen.errors.invalid": "Invalid memo",
+      "transactionSettings.errors.memo.tooLong": `Memo too long (max ${params?.max} bytes)`,
+      "transactionSettings.errors.memo.invalid": "Invalid memo",
     };
     return translations[key] || key;
   },

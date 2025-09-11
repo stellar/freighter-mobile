@@ -4,7 +4,7 @@ import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React, { useState } from "react";
-import { Platform, TouchableOpacity, TextInput } from "react-native";
+import { Platform, TouchableOpacity, TextInput, View } from "react-native";
 import styled, { css } from "styled-components/native";
 
 // =============================================================================
@@ -126,6 +126,20 @@ const StyledBottomSheetTextInput = styled(BottomSheetTextInput)`
 const SideElement = styled.View<{ marginSide: "left" | "right" }>`
   justify-content: center;
   margin-${({ marginSide }: { marginSide: "left" | "right" }) => marginSide}: ${px(8)};
+`;
+
+const TextExtra = styled.Text<{ $fieldSize: InputSize }>`
+  font-size: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
+    fs(INPUT_SIZES[$fieldSize].fontSize)};
+  color: ${THEME.colors.text.primary};
+  font-family: ${Platform.select({
+    ios: "Inter-Variable",
+    android: "Inter-Regular",
+  })};
+  font-weight: ${Platform.select({
+    ios: "400",
+    android: "normal",
+  })};
 `;
 
 const FieldNoteWrapper = styled.View`
@@ -271,6 +285,8 @@ interface InputProps {
     | "email-address"
     | "phone-pad";
   isBottomSheetInput?: boolean;
+  inputSuffixDisplay?: string;
+  centered?: boolean;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -297,6 +313,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       testID,
       autoCorrect = true,
       isBottomSheetInput = false,
+      inputSuffixDisplay,
+      centered = false,
       ...props
     },
     ref,
@@ -309,6 +327,24 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       }
 
       Clipboard.setString(value);
+    };
+
+    // Common TextInput props
+    const commonTextInputProps = {
+      ref,
+      testID,
+      placeholder,
+      placeholderTextColor: THEME.colors.text.secondary,
+      value,
+      onChangeText,
+      editable,
+      secureTextEntry: isPassword && !showPassword,
+      autoCorrect,
+      autoFocus: props.autoFocus,
+      $fieldSize: fieldSize,
+      $isDisabled: !editable,
+      selection: !editable && value ? { start: 0, end: 0 } : undefined,
+      ...props,
     };
 
     const getLabelSize = () => ({
@@ -354,28 +390,298 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             <SideElement marginSide="right">{leftElement}</SideElement>
           )}
 
-          <StyledTextInputComponent
-            ref={ref}
-            testID={testID}
-            placeholder={placeholder}
-            placeholderTextColor={THEME.colors.text.secondary}
-            value={value}
-            onChangeText={onChangeText}
-            editable={editable}
-            secureTextEntry={isPassword && !showPassword}
-            autoCorrect={autoCorrect}
-            autoFocus={props.autoFocus}
-            $fieldSize={fieldSize}
-            $hasLeftElement={leftElement || copyButton?.position === "left"}
-            $hasRightElement={
-              rightElement ||
-              copyButton?.position === "right" ||
-              (isPassword && !endButton)
-            }
-            $isDisabled={!editable}
-            selection={!editable && value ? { start: 0, end: 0 } : undefined}
-            {...props}
-          />
+          <View
+            className="flex-1 flex-row items-center relative"
+            style={{
+              justifyContent: centered ? "center" : "flex-start",
+              minHeight: (() => {
+                switch (fieldSize) {
+                  case "sm":
+                    return 32;
+                  case "md":
+                    return 40;
+                  default:
+                    return 48;
+                }
+              })(),
+            }}
+          >
+            {inputSuffixDisplay && (
+              <View
+                className="absolute left-0 right-0 top-0 bottom-0 flex-row items-center"
+                style={{
+                  justifyContent: centered ? "center" : "flex-start",
+                  display: value ? "flex" : "none",
+                }}
+                pointerEvents="none"
+              >
+                <TextExtra $fieldSize={fieldSize}>{value || ""}</TextExtra>
+                <TextExtra $fieldSize={fieldSize}>
+                  {inputSuffixDisplay}
+                </TextExtra>
+              </View>
+            )}
+            <StyledTextInputComponent
+              {...commonTextInputProps}
+              $hasLeftElement={
+                inputSuffixDisplay
+                  ? false
+                  : leftElement || copyButton?.position === "left"
+              }
+              $hasRightElement={
+                inputSuffixDisplay
+                  ? false
+                  : rightElement ||
+                    copyButton?.position === "right" ||
+                    (isPassword && !endButton)
+              }
+              style={{
+                ...(inputSuffixDisplay && {
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: "transparent",
+                  color: "transparent",
+                  paddingRight: 20,
+                  zIndex: 1,
+                }),
+                textAlign: centered ? "center" : "left",
+              }}
+              pointerEvents={inputSuffixDisplay ? "auto" : undefined}
+            />
+          </View>
+
+          {rightElement && (
+            <SideElement marginSide="left">{rightElement}</SideElement>
+          )}
+          {copyButton?.position === "right" && renderCopyButton("right")}
+          {endButton && (
+            <TouchableOpacity
+              onPress={endButton.onPress}
+              disabled={endButton.disabled}
+              testID={testID ? `${testID}-end-button` : undefined}
+            >
+              <ButtonContainer
+                backgroundColor={endButton.backgroundColor}
+                $fieldSize={fieldSize}
+              >
+                {typeof endButton.content === "string" ? (
+                  <Text
+                    md
+                    semiBold
+                    color={endButton.color}
+                    isVerticallyCentered
+                  >
+                    {endButton.content}
+                  </Text>
+                ) : (
+                  endButton.content
+                )}
+              </ButtonContainer>
+            </TouchableOpacity>
+          )}
+        </InputContainer>
+
+        {note && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.text.secondary}>
+              {note}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+        {error && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.status.error}>
+              {error}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+        {success && (
+          <FieldNoteWrapper>
+            <Text sm color={THEME.colors.status.success}>
+              {success}
+            </Text>
+          </FieldNoteWrapper>
+        )}
+      </Container>
+    );
+  },
+);
+
+// =============================================================================
+// TextExtraInput Component
+// =============================================================================
+
+interface TextExtraInputProps
+  extends Omit<InputProps, "inputSuffixDisplay" | "centered"> {
+  inputSuffixDisplay: string;
+  centered?: boolean;
+}
+
+export const TextExtraInput = React.forwardRef<TextInput, TextExtraInputProps>(
+  (
+    {
+      fieldSize = "lg",
+      label,
+      labelSuffix,
+      isLabelUppercase,
+      isError,
+      isPassword,
+      leftElement,
+      rightElement,
+      note,
+      error,
+      success,
+      copyButton,
+      endButton,
+      value = "",
+      onChangeText,
+      placeholder,
+      editable = true,
+      testID,
+      autoCorrect = true,
+      isBottomSheetInput = false,
+      inputSuffixDisplay,
+      centered = false,
+      ...props
+    },
+    ref,
+  ) => {
+    const [showPassword] = useState(false);
+
+    const handleCopy = () => {
+      if (!value) {
+        return;
+      }
+
+      Clipboard.setString(value);
+    };
+
+    // Common TextInput props
+    const commonTextInputProps = {
+      ref,
+      testID,
+      placeholder,
+      placeholderTextColor: THEME.colors.text.secondary,
+      value,
+      onChangeText,
+      editable,
+      secureTextEntry: isPassword && !showPassword,
+      autoCorrect,
+      autoFocus: props.autoFocus,
+      $fieldSize: fieldSize,
+      $isDisabled: !editable,
+      selection: !editable && value ? { start: 0, end: 0 } : undefined,
+      ...props,
+    };
+
+    const getLabelSize = () => ({
+      xs: fieldSize === "sm",
+      sm: fieldSize === "md",
+      md: fieldSize === "lg",
+    });
+
+    const renderCopyButton = (position: "left" | "right") => (
+      <TouchableOpacity onPress={handleCopy}>
+        <SideElement position={position}>
+          <Text sm>{copyButton?.showLabel ? "Copy" : "📋"}</Text>
+        </SideElement>
+      </TouchableOpacity>
+    );
+
+    const StyledTextInputComponent = isBottomSheetInput
+      ? StyledBottomSheetTextInput
+      : StyledTextInput;
+
+    return (
+      <Container $fieldSize={fieldSize}>
+        {label && (
+          <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+            {isLabelUppercase ? label.toString().toUpperCase() : label}
+            {labelSuffix && (
+              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+                {" "}
+                {labelSuffix}
+              </Text>
+            )}
+          </Text>
+        )}
+
+        <InputContainer
+          testID={testID ? `${testID}-container` : undefined}
+          $fieldSize={fieldSize}
+          $isError={Boolean(isError || error)}
+          $isDisabled={!editable}
+        >
+          {copyButton?.position === "left" && renderCopyButton("left")}
+          {leftElement && (
+            <SideElement marginSide="right">{leftElement}</SideElement>
+          )}
+
+          <View
+            className="flex-1 flex-row items-center relative"
+            style={{
+              justifyContent: centered ? "center" : "flex-start",
+              minHeight: (() => {
+                switch (fieldSize) {
+                  case "sm":
+                    return 32;
+                  case "md":
+                    return 40;
+                  default:
+                    return 48;
+                }
+              })(),
+            }}
+          >
+            {inputSuffixDisplay && (
+              <View
+                className="absolute left-0 right-0 top-0 bottom-0 flex-row items-center"
+                style={{
+                  justifyContent: centered ? "center" : "flex-start",
+                  display: value ? "flex" : "none",
+                }}
+                pointerEvents="none"
+              >
+                <TextExtra $fieldSize={fieldSize}>{value || ""}</TextExtra>
+                <TextExtra $fieldSize={fieldSize}>
+                  {inputSuffixDisplay}
+                </TextExtra>
+              </View>
+            )}
+            <StyledTextInputComponent
+              {...commonTextInputProps}
+              $hasLeftElement={
+                inputSuffixDisplay
+                  ? false
+                  : leftElement || copyButton?.position === "left"
+              }
+              $hasRightElement={
+                inputSuffixDisplay
+                  ? false
+                  : rightElement ||
+                    copyButton?.position === "right" ||
+                    (isPassword && !endButton)
+              }
+              style={{
+                ...(inputSuffixDisplay && {
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: "transparent",
+                  color: "transparent",
+                  paddingRight: 20,
+                  zIndex: 1,
+                }),
+                textAlign: centered ? "center" : "left",
+              }}
+              pointerEvents={inputSuffixDisplay ? "auto" : undefined}
+            />
+          </View>
 
           {rightElement && (
             <SideElement marginSide="left">{rightElement}</SideElement>

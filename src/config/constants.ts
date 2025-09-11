@@ -34,6 +34,14 @@ export const DEFAULT_SLIPPAGE = 1;
 export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 
+// Transaction settings
+export enum TransactionSetting {
+  Memo = "memo",
+  Slippage = "slippage",
+  Fee = "fee",
+  Timeout = "timeout",
+}
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;

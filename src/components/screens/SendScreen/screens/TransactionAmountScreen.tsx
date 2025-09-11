@@ -21,7 +21,11 @@ import Icon from "components/sds/Icon";
 import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  FIAT_DECIMALS,
+  TransactionSetting,
+} from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -34,13 +38,14 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useRightHeaderMenu } from "hooks/useRightHeader";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import React, {
@@ -158,7 +163,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleConfirmTransactionSettings = () => {
     transactionSettingsBottomSheetModalRef.current?.dismiss();
-    reviewBottomSheetModalRef.current?.present();
+  };
+
+  const handleOpenSettingsFromReview = () => {
+    transactionSettingsBottomSheetModalRef.current?.present();
   };
 
   const handleCancelTransactionSettings = () => {
@@ -256,38 +264,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
   }, [tokenAmount, spendableBalance, balanceItems, transactionFee, t]);
 
-  const menuActions = useMemo(
-    () => [
-      {
-        title: t("transactionAmountScreen.menu.fee", { fee: transactionFee }),
-        systemIcon: "arrow.trianglehead.swap",
-        onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN);
-        },
-      },
-      {
-        title: t("transactionAmountScreen.menu.timeout", {
-          timeout: transactionTimeout,
-        }),
-        systemIcon: "clock",
-        onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN);
-        },
-      },
-      {
-        title: transactionMemo
-          ? t("transactionAmountScreen.menu.editMemo")
-          : t("common.addMemo"),
-        systemIcon: "text.page",
-        onPress: () => {
-          navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN);
-        },
-      },
-    ],
-    [t, navigation, transactionFee, transactionTimeout, transactionMemo],
-  );
-
-  useRightHeaderMenu({ actions: menuActions });
+  useRightHeaderButton({
+    icon: Icon.Settings04,
+    onPress: () => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    },
+  });
 
   const handleOpenReview = useCallback(async () => {
     try {
@@ -543,7 +525,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 onPress={() => setShowFiatAmount(!showFiatAmount)}
               >
                 <Icon.RefreshCcw03
-                  size={16}
+                  size={pxValue(16)}
                   color={themeColors.text.secondary}
                 />
               </TouchableOpacity>
@@ -637,6 +619,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 ? onConfirmAddMemo
                 : handleTransactionConfirmation
             }
+            onSettingsPress={handleOpenSettingsFromReview}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
             isValidatingMemo={isValidatingMemo}
@@ -658,7 +641,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               <View className="bg-red-3 p-2 rounded-[8px]">
                 <Icon.InfoOctagon
                   color={themeColors.status.error}
-                  size={28}
+                  size={pxValue(28)}
                   withBackground
                 />
               </View>
@@ -687,6 +670,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
         customContent={
           <TransactionSettingsBottomSheet
+            settings={[
+              TransactionSetting.Fee,
+              TransactionSetting.Timeout,
+              TransactionSetting.Memo,
+            ]}
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
           />
