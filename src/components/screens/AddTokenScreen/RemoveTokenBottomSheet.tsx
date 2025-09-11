@@ -115,7 +115,7 @@ const RemoveTokenBottomSheetContent: React.FC<
   }
 
   const iconTokenProp =
-    token.issuer === "XLM"
+    token.issuer === NATIVE_TOKEN_CODE
       ? ({
           type: "native",
           code: token.issuer,
