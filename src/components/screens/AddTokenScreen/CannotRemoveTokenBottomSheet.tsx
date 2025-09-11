@@ -45,7 +45,7 @@ const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
           {title}
         </Text>
         <View className="h-4" />
-        <Text md medium secondary>
+        <Text secondary>
           {description}
         </Text>
         <View className="h-4" />
