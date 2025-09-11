@@ -18,7 +18,7 @@ const icons = Platform.select({
   },
 });
 
-type ManageTokenRightContentProps = {
+export type ManageTokenRightContentProps = {
   token: {
     isNative: boolean;
     id: string;

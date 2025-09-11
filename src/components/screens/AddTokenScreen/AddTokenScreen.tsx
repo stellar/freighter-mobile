@@ -2,12 +2,13 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
-import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveXlmBottomSheet";
+import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
 import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
@@ -24,6 +25,7 @@ import {
 } from "config/routes";
 import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { getTokenIdentifier } from "helpers/balances";
 import { useBlockaidToken } from "hooks/blockaid/useBlockaidToken";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -206,10 +208,30 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     removeTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedToken]);
 
-  const renderRemoveBottomSheet = () => {
+  const renderRemoveBottomSheet = useCallback(() => {
     if (selectedToken && selectedToken.issuer === "XLM") {
       return (
         <CannotRemoveXlmBottomSheet
+          type="native"
+          onDismiss={() => {
+            removeTokenBottomSheetModalRef.current?.dismiss();
+          }}
+        />
+      );
+    }
+
+    const tokenBalance = balanceItems.find(
+      (balance) =>
+        getTokenIdentifier(balance) ===
+        `${selectedToken?.tokenCode}:${selectedToken?.issuer}`,
+    );
+    const hasBalance =
+      tokenBalance && tokenBalance.total.isGreaterThan(new BigNumber(0));
+
+    if (hasBalance) {
+      return (
+        <CannotRemoveXlmBottomSheet
+          type="has-balance"
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
@@ -218,23 +240,33 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     }
 
     if (selectedToken) {
-      <RemoveTokenBottomSheetContent
-        token={{
-          issuer: selectedToken.issuer,
-          tokenCode: selectedToken.tokenCode,
-          tokenType: selectedToken.tokenType!,
-        }}
-        account={account}
-        onCancel={handleCancelTokenRemoval}
-        onRemoveToken={handleConfirmTokenRemoval}
-        isRemovingToken={isRemovingToken}
-      />;
+      return (
+        <RemoveTokenBottomSheetContent
+          token={{
+            issuer: selectedToken.issuer,
+            tokenCode: selectedToken.tokenCode,
+            tokenType: selectedToken.tokenType!,
+          }}
+          account={account}
+          onCancel={handleCancelTokenRemoval}
+          onRemoveToken={handleConfirmTokenRemoval}
+          isRemovingToken={isRemovingToken}
+        />
+      );
     }
 
     /* eslint-disable react/jsx-no-useless-fragment */
     return <></>;
     /* eslint-enable react/jsx-no-useless-fragment */
-  };
+  }, [
+    account,
+    balanceItems,
+    handleCancelTokenRemoval,
+    handleConfirmTokenRemoval,
+    isRemovingToken,
+    removeTokenBottomSheetModalRef,
+    selectedToken,
+  ]);
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>

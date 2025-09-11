@@ -1,11 +1,13 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ManageTokenRightContent from "components/ManageTokenRightContent";
-import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveXlmBottomSheet";
+import CannotRemoveXlmBottomSheet from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { RemoveTokenParams } from "hooks/useManageTokens";
@@ -79,20 +81,36 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     removeTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedToken]);
 
-  if (!balanceItems.length) {
-    return null;
-  }
-
-  const renderBottomSheet = () => {
+  const renderBottomSheet = useCallback(() => {
+    const isLpShare = selectedToken
+      ? selectedToken.tokenType ===
+        TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+      : false;
     const selectedTokenIssuer =
       selectedToken &&
       "token" in selectedToken &&
       "issuer" in selectedToken.token
         ? selectedToken.token.issuer.key
         : "XLM";
-    if (selectedToken && selectedTokenIssuer === "XLM") {
+    if (selectedToken && selectedTokenIssuer === "XLM" && !isLpShare) {
       return (
         <CannotRemoveXlmBottomSheet
+          type="native"
+          onDismiss={() => {
+            removeTokenBottomSheetModalRef.current?.dismiss();
+          }}
+        />
+      );
+    }
+
+    const hasBalance = selectedToken
+      ? selectedToken?.total.isGreaterThan(new BigNumber(0))
+      : false;
+
+    if (hasBalance || isLpShare) {
+      return (
+        <CannotRemoveXlmBottomSheet
+          type="has-balance"
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
@@ -101,23 +119,36 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     }
 
     if (selectedToken && selectedTokenIssuer) {
-      <RemoveTokenBottomSheetContent
-        token={{
-          issuer: selectedTokenIssuer,
-          tokenCode: selectedToken.tokenCode!,
-          tokenType: selectedToken.tokenType,
-        }}
-        account={account}
-        onCancel={handleCancelTokenRemoval}
-        onRemoveToken={handleConfirmTokenRemoval}
-        isRemovingToken={isRemovingToken}
-      />;
+      return (
+        <RemoveTokenBottomSheetContent
+          token={{
+            issuer: selectedTokenIssuer,
+            tokenCode: selectedToken.tokenCode!,
+            tokenType: selectedToken.tokenType,
+          }}
+          account={account}
+          onCancel={handleCancelTokenRemoval}
+          onRemoveToken={handleConfirmTokenRemoval}
+          isRemovingToken={isRemovingToken}
+        />
+      );
     }
 
     /* eslint-disable react/jsx-no-useless-fragment */
     return <></>;
     /* eslint-enable react/jsx-no-useless-fragment */
-  };
+  }, [
+    account,
+    handleCancelTokenRemoval,
+    handleConfirmTokenRemoval,
+    isRemovingToken,
+    removeTokenBottomSheetModalRef,
+    selectedToken,
+  ]);
+
+  if (!balanceItems.length) {
+    return null;
+  }
 
   return (
     <ScrollView

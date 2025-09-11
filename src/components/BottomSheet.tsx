@@ -37,7 +37,7 @@ const Icons = {
   },
 } as const;
 
-type BottomSheetProps = {
+export type BottomSheetProps = {
   title?: string;
   description?: string;
   modalRef: React.RefObject<BottomSheetModal | null>;

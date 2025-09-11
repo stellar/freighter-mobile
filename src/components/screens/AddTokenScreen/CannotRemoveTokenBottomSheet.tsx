@@ -6,14 +6,27 @@ import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type CannotRemoveXlmBottomSheetProps = {
+  type: "has-balance" | "native";
   onDismiss: () => unknown;
 };
 
 const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
+  type,
   onDismiss,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+
+  const title =
+    type === "has-balance"
+      ? t("manageTokensScreen.cantRemoveBalance.title")
+      : t("manageTokensScreen.cantRemoveXlm.title");
+
+  const description =
+    type === "has-balance"
+      ? t("manageTokensScreen.cantRemoveBalance.description")
+      : t("manageTokensScreen.cantRemoveXlm.description");
+
   return (
     <View className="gap-4">
       <View className="flex-row justify-between items-center">
@@ -28,12 +41,12 @@ const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
         </TouchableOpacity>
       </View>
       <View>
-        <Text xl medium>
-          {t("manageTokensScreen.cantRemoveXlm.title")}
+        <Text xl medium testID="bottom-sheet-content-title">
+          {title}
         </Text>
         <View className="h-4" />
         <Text md medium secondary>
-          {t("manageTokensScreen.cantRemoveXlm.description")}
+          {description}
         </Text>
         <View className="h-4" />
       </View>

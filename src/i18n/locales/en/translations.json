@@ -511,6 +511,10 @@
     "cantRemoveXlm": {
       "title": "Can’t remove XLM",
       "description": "XLM is the native asset of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+    },
+    "cantRemoveBalance": {
+      "title": "Token still has a balance",
+      "description": "You can’t remove this token yet. To remove a trustline, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
     }
   },
   "addTokenScreen": {
