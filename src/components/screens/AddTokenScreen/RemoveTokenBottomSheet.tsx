@@ -135,7 +135,7 @@ const RemoveTokenBottomSheetContent: React.FC<
       </View>
 
       <View className="mt-4" />
-      <Text lg primary>
+      <Text lg>
         {token.tokenCode}
       </Text>
 
