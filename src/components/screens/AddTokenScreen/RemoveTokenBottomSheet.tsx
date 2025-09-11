@@ -88,7 +88,7 @@ const RemoveTokenBottomSheetContent: React.FC<
             className="flex-row items-center gap-2"
             onTouchEnd={() => handleCopyTokenAddress(tokenContractId)}
           >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            <Icon.Copy01 size={16} themeColor="gray" />
             <Text md primary>
               {truncateAddress(tokenContractId)}
             </Text>
