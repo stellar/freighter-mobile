@@ -10,6 +10,7 @@ import {
   AddFundsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
+import { getScreenOptionsWithCloseButton } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
@@ -37,13 +38,9 @@ export const AddFundsStackNavigator = () => {
       <AddFundsStack.Screen
         name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
         component={AccountQRCodeScreen}
-        options={{
-          headerTitle: t("accountQRCodeScreen.title"),
-          // Let's explicitly set the left header button as the "arrow left" icon
-          // here so that it becomes more clear on why it could be set to the "X"
-          // icon on the AccountQRCodeScreen component itself.
-          headerLeft: () => <CustomHeaderButton icon={Icon.ArrowLeft} />,
-        }}
+        options={getScreenOptionsWithCloseButton(
+          t("accountQRCodeScreen.title"),
+        )}
       />
     </AddFundsStack.Navigator>
   );

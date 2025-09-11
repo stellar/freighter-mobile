@@ -39,7 +39,7 @@ export const SettingsStackNavigator = () => {
     <SettingsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
-        ...resetNestedNavigationOptions(),
+        ...resetNestedNavigationOptions(t("settings.title")),
       }}
     >
       <SettingsStack.Screen

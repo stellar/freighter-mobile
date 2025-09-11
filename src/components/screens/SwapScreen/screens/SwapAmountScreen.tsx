@@ -332,7 +332,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="flex-none items-center py-[24px] max-xs:py-[8px] px-6">
+        <View className="flex-none items-center py-[8px] max-xs:py-[8px] px-6 mt-[8px] max-xs:mt-[-16px]">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -416,7 +416,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         </View>
 
-        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
+        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[8px]">
           <View className="flex-row gap-[8px]">
             <View className="flex-1">
               <Button secondary onPress={() => handlePercentagePress(25)}>
@@ -442,7 +442,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <View className="flex-1 justify-center">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="mb-4 max-xs:mb-0">
+          <View className="mb-4 max-xs:mb-[-8px]">
             <Button
               tertiary
               onPress={handleMainButtonPress}

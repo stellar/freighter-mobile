@@ -30,7 +30,6 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   getStackBottomNavigateOptions,
-  getScreenOptionsWithCustomHeader,
   getScreenOptionsNoHeader,
   getScreenOptionsWithCloseButton,
 } from "helpers/navigationOptions";
@@ -173,7 +172,7 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
             component={AccountQRCodeScreen}
-            options={getScreenOptionsWithCustomHeader(
+            options={getScreenOptionsWithCloseButton(
               t("accountQRCodeScreen.title"),
             )}
           />

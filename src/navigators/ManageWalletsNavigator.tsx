@@ -46,7 +46,7 @@ export const ManageWalletsStackNavigator = () => {
       <ManageWalletsStack.Screen
         name={MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN}
         component={ImportSecretKeyScreen}
-        options={resetNestedNavigationOptions()}
+        options={resetNestedNavigationOptions(t("importSecretKeyScreen.title"))}
       />
     </ManageWalletsStack.Navigator>
   );
