@@ -332,7 +332,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="flex-none items-center py-[24px] max-xs:py-[16px px-6">
+        <View className="flex-none items-center py-[24px] max-xs:py-[8px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
               xl
@@ -419,22 +419,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         <View className="flex-1 justify-between mt-[24px] max-xs:mt-[16px]">
           <View className="flex-row gap-[8px]">
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(25)}>
+              <Button secondary onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(50)}>
+              <Button secondary onPress={() => handlePercentagePress(50)}>
                 {t("transactionAmountScreen.percentageButtons.fifty")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(75)}>
+              <Button secondary onPress={() => handlePercentagePress(75)}>
                 {t("transactionAmountScreen.percentageButtons.seventyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(100)}>
+              <Button secondary onPress={() => handlePercentagePress(100)}>
                 {t("transactionAmountScreen.percentageButtons.max")}
               </Button>
             </View>
@@ -442,10 +442,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <View className="flex-1 justify-center">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="mb-4">
+          <View className="mb-4 max-xs:mb-0">
             <Button
               tertiary
-              xl
               onPress={handleMainButtonPress}
               disabled={isButtonDisabled}
               isLoading={isLoadingPath || isBuilding}

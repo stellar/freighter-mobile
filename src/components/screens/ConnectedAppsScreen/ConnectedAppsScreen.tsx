@@ -53,7 +53,7 @@ const EmptyState: React.FC<{
         {t("connectedApps.noConnectedDapps")}
       </Text>
 
-      <Button lg secondary onPress={handleGoToDiscover}>
+      <Button xl secondary onPress={handleGoToDiscover}>
         {t("connectedApps.goToDiscover")}
       </Button>
     </View>

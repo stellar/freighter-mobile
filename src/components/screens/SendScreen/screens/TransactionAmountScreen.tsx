@@ -498,8 +498,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
+        <View className="items-center gap-[12px] max-xs:gap-[4px]">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[4px] px-[16px] max-xs:px-[12px] items-center max-xs:mt-[0px]">
             {showFiatAmount ? (
               <Display
                 xl
@@ -514,7 +514,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 {formatFiatAmount(fiatAmount)}
               </Display>
             ) : (
-              <View className="flex-row items-center gap-[4px]">
+              <View className="flex-row items-center gap-[4px] max-xs:gap-[2px]">
                 <Display
                   xl
                   medium
@@ -586,22 +586,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         <View className="flex-1 items-center mt-[24px] max-xs:mt-[12px] gap-[24px] max-xs:gap-[12px]">
           <View className="flex-row gap-[8px] max-xs:gap-[4px]">
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(25)}>
+              <Button secondary xl onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(50)}>
+              <Button secondary xl onPress={() => handlePercentagePress(50)}>
                 {t("transactionAmountScreen.percentageButtons.fifty")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(75)}>
+              <Button secondary xl onPress={() => handlePercentagePress(75)}>
                 {t("transactionAmountScreen.percentageButtons.seventyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(100)}>
+              <Button secondary xl onPress={() => handlePercentagePress(100)}>
                 {t("transactionAmountScreen.percentageButtons.max")}
               </Button>
             </View>

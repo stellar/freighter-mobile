@@ -154,7 +154,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <View className="flex-1">
           <Button
             secondary
-            lg
             icon={cancelButtonIcon}
             iconPosition={cancelButtonIconPosition}
             isFullWidth
@@ -166,7 +165,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         </View>
         <View className="flex-1">
           <Button
-            lg
             icon={confirmButtonIcon}
             iconPosition={confirmButtonIconPosition}
             destructive={destructive}

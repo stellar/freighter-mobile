@@ -62,7 +62,7 @@ const CustomContent: React.FC<{
       <View className="gap-3">
         <Button
           tertiary
-          lg
+          xl
           isFullWidth
           onPress={() => {
             onAddXLM();
@@ -71,7 +71,7 @@ const CustomContent: React.FC<{
         >
           {t("welcomeBanner.addXLM")}
         </Button>
-        <Button secondary lg isFullWidth onPress={onDismiss}>
+        <Button secondary xl isFullWidth onPress={onDismiss}>
           {t("welcomeBanner.doThisLater")}
         </Button>
       </View>

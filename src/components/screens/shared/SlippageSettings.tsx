@@ -160,11 +160,11 @@ const SlippageSettings: React.FC<SlippageSettingsProps> = ({
         </View>
 
         <View className="gap-3">
-          <Button secondary lg onPress={handleSetDefault}>
+          <Button secondary xl onPress={handleSetDefault}>
             {t("slippageScreen.setDefault")}
           </Button>
 
-          <Button tertiary lg onPress={handleSave} disabled={!isValidToSave()}>
+          <Button tertiary xl onPress={handleSave} disabled={!isValidToSave()}>
             {t("common.done")}
           </Button>
         </View>

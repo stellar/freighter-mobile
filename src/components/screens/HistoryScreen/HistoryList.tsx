@@ -191,7 +191,6 @@ const HistoryList: React.FC<HistoryListProps> = ({
             </Text>
             <Button
               primary
-              lg
               isLoading={status === HookStatus.REFRESHING}
               onPress={onRefresh}
             >

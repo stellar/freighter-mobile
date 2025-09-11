@@ -115,7 +115,6 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
     {hasClipboardButton && (
       <Button
         secondary
-        lg
         isFullWidth
         testID="clipboard-button"
         onPress={onPressClipboardButton as () => void}
@@ -126,7 +125,6 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
     )}
     <Button
       tertiary
-      lg
       testID="default-action-button"
       isLoading={isLoading}
       onPress={onPressDefaultActionButton}
@@ -139,7 +137,6 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
     {secondaryActionButtonText && (
       <Button
         secondary
-        lg
         disabled={isLoading || isSecondaryActionButtonDisabled}
         testID="secondary-action-button"
         onPress={onPressSecondaryActionButton}

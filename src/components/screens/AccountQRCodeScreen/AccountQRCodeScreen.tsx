@@ -124,7 +124,6 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
         <View className="items-center justify-center gap-[32px]">
           <Button
             secondary
-            lg
             icon={
               <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             }

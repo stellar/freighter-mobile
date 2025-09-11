@@ -319,7 +319,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
       {transactionHash && (
         <Button
           tertiary
-          lg
           onPress={handleViewOnExplorer}
           icon={
             <Icon.LinkExternal01
