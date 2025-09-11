@@ -41,7 +41,7 @@ const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
         </TouchableOpacity>
       </View>
       <View>
-        <Text xl medium testID="bottom-sheet-content-title">
+        <Text xl testID="bottom-sheet-content-title">
           {title}
         </Text>
         <View className="h-4" />
