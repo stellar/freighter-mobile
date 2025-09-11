@@ -80,7 +80,7 @@ const RemoveTokenBottomSheetContent: React.FC<
       },
       {
         icon: (
-          <Icon.CodeCircle01 size={16} color={themeColors.foreground.primary} />
+          <Icon.CodeCircle01 size={16} themeColor="gray" />
         ),
         title: t("tokenAddress"),
         trailingContent: (
