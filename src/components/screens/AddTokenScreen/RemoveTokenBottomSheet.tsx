@@ -60,7 +60,7 @@ const RemoveTokenBottomSheetContent: React.FC<
     const items = [
       {
         icon: (
-          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+          <Icon.Wallet01 size={16} themeColor="gray" />
         ),
         title: t("wallet"),
         trailingContent: (
