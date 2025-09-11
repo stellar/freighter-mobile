@@ -477,7 +477,7 @@
     },
     "cantRemoveBalance": {
       "title": "O token ainda possui saldo",
-      "description": "Você ainda não pode remover este token. Para remover uma trustline, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
+      "description": "Você ainda não pode remover este token. Para remover uma token, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
     }
   },
   "addTokenScreen": {

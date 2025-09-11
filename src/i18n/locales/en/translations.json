@@ -514,7 +514,7 @@
     },
     "cantRemoveBalance": {
       "title": "Token still has a balance",
-      "description": "You can’t remove this token yet. To remove a trustline, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
+      "description": "You can’t remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
     }
   },
   "addTokenScreen": {

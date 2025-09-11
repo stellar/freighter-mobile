@@ -6,7 +6,10 @@ import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { mapNetworkToNetworkDetails } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+} from "config/constants";
 import {
   NativeToken,
   NonNativeToken,
@@ -59,9 +62,7 @@ const RemoveTokenBottomSheetContent: React.FC<
 
     const items = [
       {
-        icon: (
-          <Icon.Wallet01 size={16} themeColor="gray" />
-        ),
+        icon: <Icon.Wallet01 size={16} themeColor="gray" />,
         title: t("wallet"),
         trailingContent: (
           <View className="flex-row items-center gap-2">
@@ -71,17 +72,13 @@ const RemoveTokenBottomSheetContent: React.FC<
               hasBorder={false}
               hasBackground={false}
             />
-            <Text>
-              {account?.accountName}
-            </Text>
+            <Text>{account?.accountName}</Text>
           </View>
         ),
         titleColor: themeColors.text.secondary,
       },
       {
-        icon: (
-          <Icon.CodeCircle01 size={16} themeColor="gray" />
-        ),
+        icon: <Icon.CodeCircle01 size={16} themeColor="gray" />,
         title: t("tokenAddress"),
         trailingContent: (
           <View
@@ -89,9 +86,7 @@ const RemoveTokenBottomSheetContent: React.FC<
             onTouchEnd={() => handleCopyTokenAddress(tokenContractId)}
           >
             <Icon.Copy01 size={16} themeColor="gray" />
-            <Text>
-              {truncateAddress(tokenContractId)}
-            </Text>
+            <Text>{truncateAddress(tokenContractId)}</Text>
           </View>
         ),
         titleColor: themeColors.text.secondary,
@@ -103,7 +98,6 @@ const RemoveTokenBottomSheetContent: React.FC<
     token,
     account?.publicKey,
     account?.accountName,
-    themeColors.foreground.primary,
     themeColors.text.secondary,
     t,
     copyToClipboard,
@@ -135,9 +129,7 @@ const RemoveTokenBottomSheetContent: React.FC<
       </View>
 
       <View className="mt-4" />
-      <Text lg>
-        {token.tokenCode}
-      </Text>
+      <Text lg>{token.tokenCode}</Text>
 
       <View className="mt-1" />
       {token.domain && (
