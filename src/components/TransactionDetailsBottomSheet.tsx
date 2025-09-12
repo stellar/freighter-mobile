@@ -287,7 +287,7 @@ const TransactionDetailsBottomSheet: React.FC<
       {transactionHash && (
         <Button
           tertiary
-          lg
+          xl
           onPress={handleViewOnExplorer}
           icon={
             <Icon.LinkExternal01

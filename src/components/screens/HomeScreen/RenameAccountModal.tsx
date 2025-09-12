@@ -79,7 +79,6 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
         <View className="flex-1">
           <Button
             secondary
-            lg
             isFullWidth
             onPress={() => setModalVisible(false)}
             disabled={isRenamingAccount}
@@ -89,7 +88,6 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
         </View>
         <View className="flex-1">
           <Button
-            lg
             tertiary
             isFullWidth
             onPress={() => handleRenameAccount(accountName.trim())}

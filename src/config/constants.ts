@@ -11,7 +11,7 @@ export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
-export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.01);
+export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.0099999);
 
 export const TOGGLE_ANIMATION_DURATION = 400;
 
@@ -370,6 +370,46 @@ export enum QRCodeSource {
  * Type for QR code source values
  */
 export type QRCodeSourceType = `${QRCodeSource}`;
+
+/**
+ * QR Code validation result types
+ */
+export enum QRCodeType {
+  STELLAR_ADDRESS = "stellar_address",
+  UNKNOWN = "unknown",
+}
+
+/**
+ * QR Code validation error types
+ */
+export enum QRCodeError {
+  SELF_SEND = "self_send",
+  INVALID_FORMAT = "invalid_format",
+}
+
+/**
+ * QR Code validation result interface
+ */
+
+/**
+ * Biometrics Enable Screen Source Constants
+ *
+ * Defines the different sources/contexts where the biometrics enable screen can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum BiometricsSource {
+  /** For importing an existing wallet */
+  IMPORT_WALLET = "import_wallet",
+  /** For new user onboarding flow */
+  ONBOARDING = "onboarding",
+  /** For post-onboarding flow (existing users) */
+  POST_ONBOARDING = "post_onboarding",
+}
+
+/**
+ * Type for biometrics source values
+ */
+export type BiometricsSourceType = `${BiometricsSource}`;
 
 /**
  * Helper function to check if a string is a valid QR code source

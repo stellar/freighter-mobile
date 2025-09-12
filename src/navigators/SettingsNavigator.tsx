@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
@@ -12,8 +11,11 @@ import BiometricsSettingsScreen from "components/screens/SettingsScreen/Security
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
-import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
+import {
+  getScreenBottomNavigateOptions,
+  resetNestedNavigationOptions,
+} from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import React from "react";
@@ -37,15 +39,13 @@ export const SettingsStackNavigator = () => {
     <SettingsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
+        ...resetNestedNavigationOptions(t("settings.title")),
       }}
     >
       <SettingsStack.Screen
         name={SETTINGS_ROUTES.SETTINGS_SCREEN}
         component={SettingsScreen}
-        options={{
-          headerTitle: t("settings.title"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-        }}
+        options={getScreenBottomNavigateOptions(t("settings.title"))}
       />
       <SettingsStack.Screen
         name={SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN}

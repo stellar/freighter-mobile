@@ -1,5 +1,10 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NETWORKS, QRCodeSource, SWAP_SELECTION_TYPES } from "config/constants";
+import {
+  BiometricsSource,
+  NETWORKS,
+  QRCodeSource,
+  SWAP_SELECTION_TYPES,
+} from "config/constants";
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -181,7 +186,7 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
     password?: string;
     mnemonicPhrase?: string;
-    postOnboarding?: boolean;
+    source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {

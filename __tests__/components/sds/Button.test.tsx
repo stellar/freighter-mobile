@@ -214,7 +214,7 @@ describe("Button", () => {
       const button = getByTestId("test-button");
 
       expect(button.props.style).toMatchObject({
-        height: pxValue(BUTTON_THEME.height.md),
+        height: pxValue(BUTTON_THEME.height.xl),
       });
     });
   });
