@@ -371,6 +371,26 @@ export enum QRCodeSource {
 export type QRCodeSourceType = `${QRCodeSource}`;
 
 /**
+ * QR Code validation result types
+ */
+export enum QRCodeType {
+  STELLAR_ADDRESS = "stellar_address",
+  UNKNOWN = "unknown",
+}
+
+/**
+ * QR Code validation error types
+ */
+export enum QRCodeError {
+  SELF_SEND = "self_send",
+  INVALID_FORMAT = "invalid_format",
+}
+
+/**
+ * QR Code validation result interface
+ */
+
+/**
  * Helper function to check if a string is a valid QR code source
  */
 export const isValidQRCodeSource = (

@@ -97,12 +97,12 @@ const FeeSettings: React.FC<FeeSettingsProps> = ({
           </View>
         </View>
         <View className="gap-4 mb-4">
-          <Button secondary lg onPress={handleSetRecommended}>
+          <Button secondary xl onPress={handleSetRecommended}>
             {t("transactionFeeScreen.setRecommended")}
           </Button>
           <Button
             tertiary
-            lg
+            xl
             onPress={handleSave}
             disabled={!!error || !localFee}
           >

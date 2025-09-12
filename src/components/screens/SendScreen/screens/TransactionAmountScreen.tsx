@@ -18,7 +18,6 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
@@ -34,6 +33,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -43,6 +43,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import { useToast } from "providers/ToastProvider";
 import React, {
   useCallback,
   useEffect,
@@ -136,6 +137,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const deviceSize = useDeviceSize();
+  const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
@@ -238,11 +242,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     const currentTokenAmount = BigNumber(tokenAmount);
 
     if (!hasXLMForFees(balanceItems, transactionFee)) {
-      setAmountError(
-        t("transactionAmountScreen.errors.insufficientXlmForFees", {
+      const errorMessage = t(
+        "transactionAmountScreen.errors.insufficientXlmForFees",
+        {
+          fee: transactionFee,
+        },
+      );
+      setAmountError(errorMessage);
+      showToast({
+        variant: "error",
+        title: t("transactionAmountScreen.errors.insufficientXlmForFees", {
           fee: transactionFee,
         }),
-      );
+        toastId: "insufficient-xlm-for-fees",
+        duration: 3000,
+      });
       return;
     }
 
@@ -250,11 +264,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       spendableBalance &&
       currentTokenAmount.isGreaterThan(spendableBalance)
     ) {
-      setAmountError(t("transactionAmountScreen.errors.amountTooHigh"));
+      const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
+      setAmountError(errorMessage);
+      showToast({
+        variant: "error",
+        title: t("transactionAmountScreen.errors.amountTooHigh"),
+        toastId: "amount-too-high",
+        duration: 3000,
+      });
     } else {
       setAmountError(null);
     }
-  }, [tokenAmount, spendableBalance, balanceItems, transactionFee, t]);
+  }, [
+    tokenAmount,
+    spendableBalance,
+    balanceItems,
+    transactionFee,
+    t,
+    showToast,
+  ]);
 
   const menuActions = useMemo(
     () => [
@@ -502,7 +530,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
               <Display
-                xl
+                size={isSmallScreen ? "lg" : "xl"}
                 medium
                 adjustsFontSizeToFit
                 numberOfLines={1}
@@ -516,7 +544,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display
-                  xl
+                  size={isSmallScreen ? "lg" : "xl"}
                   medium
                   adjustsFontSizeToFit
                   numberOfLines={1}
@@ -549,10 +577,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          {amountError && (
-            <Notification variant="error" message={amountError} />
-          )}
-          <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
+          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
             {selectedBalance && (
               <BalanceRow
                 isSingleRow
@@ -568,7 +593,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               />
             )}
           </View>
-          <View className="rounded-[16px] py-[12px] max-xs:py-[8px] px-[16px] bg-background-tertiary">
+          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
             <ContactRow
               isSingleRow
               onPress={navigateToSelectContactScreen}
@@ -583,25 +608,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
         </View>
-        <View className="flex-1 items-center mt-[24px] max-xs:mt-[12px] gap-[24px] max-xs:gap-[12px]">
-          <View className="flex-row gap-[8px] max-xs:gap-[4px]">
+        <View className="flex-1 items-center mt-[24px] gap-[24px]">
+          <View className="flex-row gap-[8px]">
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(25)}>
+              <Button secondary xl onPress={() => handlePercentagePress(25)}>
                 {t("transactionAmountScreen.percentageButtons.twentyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(50)}>
+              <Button secondary xl onPress={() => handlePercentagePress(50)}>
                 {t("transactionAmountScreen.percentageButtons.fifty")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(75)}>
+              <Button secondary xl onPress={() => handlePercentagePress(75)}>
                 {t("transactionAmountScreen.percentageButtons.seventyFive")}
               </Button>
             </View>
             <View className="flex-1">
-              <Button secondary lg onPress={() => handlePercentagePress(100)}>
+              <Button secondary xl onPress={() => handlePercentagePress(100)}>
                 {t("transactionAmountScreen.percentageButtons.max")}
               </Button>
             </View>
@@ -609,7 +634,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="w-full mt-auto mb-4 max-xs:mb-2">
+          <View className="w-full mt-auto mb-4">
             <Button
               tertiary
               xl

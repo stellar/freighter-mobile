@@ -10,6 +10,7 @@ import { isAndroid } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback } from "react";
+import { Platform } from "react-native";
 import { PERMISSIONS, RESULTS, check, request } from "react-native-permissions";
 
 /**
@@ -50,18 +51,36 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
   return "jpg";
 };
 
-const hasAndroidPermission = async () => {
-  const status = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+const hasAndroidWritePermission = async (): Promise<boolean> => {
+  const getCheckPermissionPromise = async (): Promise<boolean> => {
+    // For Android 13+ (API 33+), we don't need any special permissions to save to camera roll
+    if (Number(Platform.Version) >= 33) {
+      return true;
+    }
 
-  if (status) {
+    // For Android 12 and below, we need WRITE_EXTERNAL_STORAGE permission
+    const status = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+    return status === RESULTS.GRANTED;
+  };
+
+  const hasPermission = await getCheckPermissionPromise();
+
+  if (hasPermission) {
     return true;
   }
 
-  const requestStatus = await request(
-    PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
-  );
+  const getRequestPermissionPromise = async (): Promise<boolean> => {
+    // For Android 13+ (API 33+), no permission needed
+    if (Number(Platform.Version) >= 33) {
+      return true;
+    }
 
-  return requestStatus === RESULTS.GRANTED;
+    // For Android 12 and below, request WRITE_EXTERNAL_STORAGE permission
+    const status = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+    return status === RESULTS.GRANTED;
+  };
+
+  return getRequestPermissionPromise();
 };
 
 /**
@@ -75,7 +94,9 @@ const downloadImageToTemp = async (
   imageName: string,
 ): Promise<string> => {
   const extension = getImageExtensionFromUrl(imageUrl);
-  const fileName = `${imageName}_${Date.now()}.${extension}`;
+  // Sanitize imageName: remove spaces and special characters, allow only alphanumeric, dash, and underscore
+  const sanitizedImageName = imageName.replace(/[^a-zA-Z0-9-_]/g, "_");
+  const fileName = `${sanitizedImageName}_${Date.now()}.${extension}`;
   const localFilePath = `${DocumentDirectoryPath}/${fileName}`;
 
   const downloadResult = await downloadFile({
@@ -118,7 +139,7 @@ const useDeviceStorage = () => {
       let tempFilePath: string | null = null;
 
       // Check only for android because the react-native-camera-roll already handles iOS
-      if (isAndroid && !(await hasAndroidPermission())) {
+      if (isAndroid && !(await hasAndroidWritePermission())) {
         return;
       }
 
@@ -155,7 +176,7 @@ const useDeviceStorage = () => {
 
           showToast({
             title: t("collectibleDetails.imageSaveAttempted"),
-            variant: "error",
+            variant: "warning",
           });
         })
         .finally(() => {
@@ -164,7 +185,7 @@ const useDeviceStorage = () => {
             if (tempFilePath) {
               deleteTempFile(tempFilePath);
             }
-          }, 1000);
+          }, 5000);
         });
     },
     [showToast, t],

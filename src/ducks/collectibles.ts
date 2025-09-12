@@ -303,7 +303,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
     publicKey: string;
     network: string;
   }) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true });
 
     try {
       // Retrieve collectible contracts from local storage
@@ -311,15 +311,6 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         network,
         publicKey,
       });
-
-      if (collectiblesContracts.length === 0) {
-        // No collectibles to fetch, set empty state
-        set({
-          collections: [],
-          isLoading: false,
-        });
-        return;
-      }
 
       // Transform local storage data to API format
       const contracts = collectiblesContracts.map((contract) => ({
@@ -388,6 +379,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       set({
         collections: transformedCollections,
         isLoading: false,
+        error: null,
       });
     } catch (error) {
       set({

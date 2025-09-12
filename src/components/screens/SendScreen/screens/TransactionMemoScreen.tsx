@@ -47,7 +47,7 @@ const TransactionMemoScreen: React.FC<TransactionMemoScreenProps> = ({
           />
         </View>
         <View className="mt-4 mb-4 gap-4">
-          <Button tertiary lg onPress={handleSave} disabled={!!error}>
+          <Button tertiary xl onPress={handleSave} disabled={!!error}>
             {t("common.save")}
           </Button>
         </View>

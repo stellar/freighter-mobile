@@ -5,8 +5,6 @@ import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
-import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
@@ -16,7 +14,6 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
-import Icon from "components/sds/Icon";
 import { STORAGE_KEYS } from "config/constants";
 import {
   ManageWalletsStackParamList,
@@ -31,6 +28,11 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import {
+  getStackBottomNavigateOptions,
+  getScreenOptionsNoHeader,
+  getScreenBottomNavigateOptions,
+} from "helpers/navigationOptions";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -75,6 +77,7 @@ export const RootNavigator = () => {
   useEffect(() => {
     const initializeApp = async () => {
       await getAuthStatus();
+
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     };
@@ -147,14 +150,17 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
             component={ManageTokensStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
             component={ManageWalletsStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
             component={SettingsStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
@@ -167,69 +173,46 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
             component={AccountQRCodeScreen}
-            options={{
-              headerTitle: t("accountQRCodeScreen.title"),
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-            }}
+            options={getScreenBottomNavigateOptions(
+              t("accountQRCodeScreen.title"),
+            )}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
             component={ScanQRCodeScreen}
-            options={{
-              headerShown: false,
-            }}
+            options={getScreenOptionsNoHeader()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
             component={ConnectedAppsScreen}
-            options={{
-              headerTitle: t("connectedApps.title"),
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-            }}
+            options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
             component={AddFundsStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
             component={TokenDetailsScreen}
-            options={{
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-            }}
+            options={getScreenBottomNavigateOptions("")}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
             component={CollectibleDetailsScreen}
-            options={{
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-            }}
+            options={getScreenBottomNavigateOptions("")}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
             component={AddCollectibleScreen}
-            options={{
-              headerTitle: t("addCollectibleScreen.title"),
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-            }}
+            options={getScreenBottomNavigateOptions(
+              t("addCollectibleScreen.title"),
+            )}
           />
           <RootStack.Screen
             name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
             component={BiometricsOnboardingScreen}
-            options={{
-              headerShown: true,
-              header: (props) => <CustomNavigationHeader {...props} />,
-              headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-            }}
+            options={getScreenBottomNavigateOptions("")}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (

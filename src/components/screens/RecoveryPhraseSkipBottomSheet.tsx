@@ -59,22 +59,10 @@ const CustomContent: React.FC<CustomContentProps> = ({
       </View>
 
       <View className="gap-3">
-        <Button
-          tertiary
-          lg
-          isFullWidth
-          onPress={onConfirm}
-          isLoading={isLoading}
-        >
+        <Button tertiary isFullWidth onPress={onConfirm} isLoading={isLoading}>
           {t("recoverySkipModal.confirm")}
         </Button>
-        <Button
-          secondary
-          lg
-          isFullWidth
-          onPress={onDismiss}
-          disabled={isLoading}
-        >
+        <Button secondary isFullWidth onPress={onDismiss} disabled={isLoading}>
           {t("recoverySkipModal.cancel")}
         </Button>
       </View>

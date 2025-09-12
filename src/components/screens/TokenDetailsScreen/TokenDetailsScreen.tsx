@@ -15,6 +15,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
@@ -40,6 +41,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
   const { isHideDustEnabled } = usePreferencesStore();
+  const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -100,7 +102,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="flex-1 gap-8 mt-5">
+      <View className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4">
         <TokenBalanceHeader
           tokenId={tokenId}
           tokenSymbol={tokenSymbol}
@@ -117,7 +119,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           networkDetails={networkDetails}
           onRefresh={handleRefresh}
           ListHeaderComponent={
-            <View className="mb-6">
+            <View className="mb-6 max-xs:mb-0">
               <Text md medium secondary>
                 {t("tokenDetailsScreen.listHeader", {
                   tokenName: displayTitle,
@@ -129,13 +131,15 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
+          {swapEnabled && (
+            <View className="flex-1">
+              <Button tertiary xl isFullWidth onPress={handleSwapPress}>
+                {t("tokenDetailsScreen.swap")}
+              </Button>
+            </View>
+          )}
           <View className="flex-1">
-            <Button tertiary lg isFullWidth onPress={handleSwapPress}>
-              {t("tokenDetailsScreen.swap")}
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button tertiary lg isFullWidth onPress={handleSendPress}>
+            <Button tertiary xl isFullWidth onPress={handleSendPress}>
               {t("tokenDetailsScreen.send")}
             </Button>
           </View>

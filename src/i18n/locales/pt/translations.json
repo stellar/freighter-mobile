@@ -68,7 +68,11 @@
     "help": "Ajuda",
     "feedback": "Compartilhar Feedback",
     "about": "Sobre",
-    "security": "Segurança"
+    "security": "Segurança",
+    "deleteAccount": "Excluir conta",
+    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
+    "deleteAccountConfirmTitle": "Tem certeza?",
+    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
   },
   "preferences": {
     "anonymousDataSharing": {
@@ -245,6 +249,7 @@
   "connectedApps": {
     "title": "Aplicativos Conectados",
     "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "noConnectedDappsNoDiscover": "Nenhum aplicativo conectado.",
     "goToDiscover": "Ir para o Discover",
     "disconnectAllSessions": "Desconectar todos"
   },
@@ -804,7 +809,8 @@
     "inputPlaceholder": "URI do WalletConnect",
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido",
+    "invalidQrScanUriError": "Endereço WalletConnect Inválido"
   },
   "qrCodeScannerScreen": {
     "title": "Escanear para enviar"

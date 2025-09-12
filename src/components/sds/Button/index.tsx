@@ -184,13 +184,13 @@ const getSize = (
  * // Small
  * <Button sm>Small Button</Button>
  *
- * // Medium (default)
+ * // Medium
  * <Button md>Medium Button</Button>
  *
  * // Large
  * <Button lg>Large Button</Button>
  *
- * // Extra Large
+ * // Extra Large (default)
  * <Button xl>Extra Large Button</Button>
  * ```
  *
@@ -250,9 +250,9 @@ const getSize = (
  *
  * Size shorthands (alternative to size prop):
  * - sm - Small buttons (32px height)
- * - md - Medium buttons (40px height, default)
+ * - md - Medium buttons (40px height)
  * - lg - Large buttons (48px height)
- * - xl - Extra Large buttons (50px height)
+ * - xl - Extra Large buttons (50px height, default)
  */
 interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;
@@ -294,7 +294,7 @@ export const Button = ({
     { variant, ...props },
     ButtonVariants.PRIMARY,
   );
-  const resolvedSize = getSize({ size, ...props }, ButtonSizes.MEDIUM);
+  const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
 
   // Handle biometric authentication
   const handlePress = React.useCallback(() => {
