@@ -3,7 +3,9 @@ import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import ManageTokenRightContent from "components/ManageTokenRightContent";
-import CannotRemoveXlmBottomSheet, { CannotRemoveType } from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
+import CannotRemoveTokenBottomSheet, {
+  CannotRemoveType,
+} from "components/screens/AddTokenScreen/CannotRemoveTokenBottomSheet";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
@@ -81,7 +83,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
     removeTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedToken]);
 
-  const renderBottomSheet = useCallback(() => {
+  const getBottomSheetCustomContent = useCallback(() => {
     const isLpShare = selectedToken
       ? selectedToken.tokenType ===
         TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
@@ -91,10 +93,14 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
       "token" in selectedToken &&
       "issuer" in selectedToken.token
         ? selectedToken.token.issuer.key
-        : "XLM";
-    if (selectedToken && selectedTokenIssuer === NATIVE_TOKEN_CODE && !isLpShare) {
+        : NATIVE_TOKEN_CODE;
+    if (
+      selectedToken &&
+      selectedTokenIssuer === NATIVE_TOKEN_CODE &&
+      !isLpShare
+    ) {
       return (
-        <CannotRemoveXlmBottomSheet
+        <CannotRemoveTokenBottomSheet
           type={CannotRemoveType.native}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
@@ -109,7 +115,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
 
     if (hasBalance || isLpShare) {
       return (
-        <CannotRemoveXlmBottomSheet
+        <CannotRemoveTokenBottomSheet
           type={CannotRemoveType.hasBalance}
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
@@ -182,7 +188,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
         }}
         analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
         shouldCloseOnPressBackdrop={!!selectedToken}
-        customContent={renderBottomSheet()}
+        customContent={getBottomSheetCustomContent()}
       />
     </ScrollView>
   );

@@ -4,6 +4,7 @@
   "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
+  "tokenAddress": "Endereço do Token",
   "common": {
     "edit": "Editar",
     "close": "Fechar",
@@ -453,6 +454,7 @@
     "title": "Gerenciar tokens",
     "hiddenTokens": "Tokens ocultos",
     "addTokenButton": "Adicionar um token",
+    "removeTokenButton": "Aprovar",
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Tokens",
@@ -490,8 +492,10 @@
     "native": "Nativo",
     "onYourList": "Na sua lista",
     "addToken": "Adicionar token",
+    "removeToken": "Remover token",
     "approveTrustline": "Aprovar Trustline",
     "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o token à sua conta.",
+    "removeDisclaimer": "Remover o token de ser exibido e usado com este endereço de carteira",
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",

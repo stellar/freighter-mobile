@@ -9,15 +9,14 @@ export enum CannotRemoveType {
   native = "native",
 }
 
-type CannotRemoveXlmBottomSheetProps = {
+type CannotRemoveTokenBottomSheetProps = {
   type: CannotRemoveType;
   onDismiss: () => unknown;
 };
 
-const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
-  type,
-  onDismiss,
-}) => {
+const CannotRemoveTokenBottomSheet: React.FC<
+  CannotRemoveTokenBottomSheetProps
+> = ({ type, onDismiss }) => {
   const { t } = useAppTranslation();
 
   const title =
@@ -50,4 +49,4 @@ const CannotRemoveXlmBottomSheet: React.FC<CannotRemoveXlmBottomSheetProps> = ({
   );
 };
 
-export default CannotRemoveXlmBottomSheet;
+export default CannotRemoveTokenBottomSheet;
