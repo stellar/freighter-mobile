@@ -77,6 +77,7 @@ export const RootNavigator = () => {
   useEffect(() => {
     const initializeApp = async () => {
       await getAuthStatus();
+
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     };

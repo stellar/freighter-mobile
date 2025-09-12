@@ -22,7 +22,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
-import { isIOS } from "helpers/device";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -63,6 +63,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isFunded,
       isLoading: isLoadingBalances,
     } = useBalancesStore();
+    const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
     const hasTokens = useMemo(
       () => Object.keys(balances).length > 0,
@@ -225,7 +226,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               disabled={hasZeroBalance}
               onPress={handleSendPress}
             />
-            {!isIOS && (
+            {swapEnabled && (
               <IconButton
                 Icon={Icon.RefreshCw02}
                 title={t("home.swap")}

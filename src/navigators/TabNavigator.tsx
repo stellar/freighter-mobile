@@ -9,6 +9,7 @@ import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchCollectibles } from "hooks/useFetchCollectibles";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
@@ -69,6 +70,7 @@ export const TabNavigator = () => {
     [activeNetwork],
   );
   const { fetchProtocols } = useProtocolsStore();
+  const { discover_enabled: discoverEnabled } = useRemoteConfigStore();
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({
@@ -125,10 +127,12 @@ export const TabNavigator = () => {
         component={HistoryScreen}
       />
       <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
-      <MainTab.Screen
-        name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
-        component={DiscoveryScreen}
-      />
+      {discoverEnabled && (
+        <MainTab.Screen
+          name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
+          component={DiscoveryScreen}
+        />
+      )}
     </MainTab.Navigator>
   );
 };
