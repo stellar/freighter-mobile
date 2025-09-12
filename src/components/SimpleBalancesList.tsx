@@ -10,9 +10,10 @@ import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/Rem
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { getIssuerFromIdentifier } from "helpers/balances";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { RemoveTokenParams } from "hooks/useManageTokens";
+import { useManageToken } from "hooks/useManageToken";
 import React, { useCallback, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { analytics } from "services/analytics";
@@ -24,8 +25,6 @@ interface SimpleBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   rightSectionWidth?: number;
-  handleRemoveToken: (input: RemoveTokenParams) => Promise<void>;
-  isRemovingToken: boolean;
 }
 
 /**
@@ -47,33 +46,31 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   publicKey,
   network,
   rightSectionWidth,
-  handleRemoveToken,
-  isRemovingToken,
 }) => {
   const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { account } = useGetActiveAccount();
   const [selectedToken, setSelectedToken] = useState<Balance | null>(null);
 
-  const { balanceItems } = useBalancesList({
+  const { balanceItems, handleRefresh } = useBalancesList({
     publicKey,
     network,
     shouldPoll: false,
   });
 
-  const handleConfirmTokenRemoval = useCallback(async () => {
-    if (!selectedToken) {
-      return;
-    }
-
-    analytics.trackRemoveTokenConfirmed(selectedToken.tokenCode);
-
-    await handleRemoveToken({
-      tokenId: selectedToken.id,
-      tokenType: selectedToken.tokenType,
-    });
-
-    removeTokenBottomSheetModalRef.current?.dismiss();
-  }, [selectedToken, handleRemoveToken]);
+  const { removeToken, isRemovingToken } = useManageToken({
+    token: selectedToken
+      ? {
+          type: selectedToken.tokenType,
+          code: selectedToken.tokenCode!,
+          id: selectedToken.id,
+          issuer: getIssuerFromIdentifier(selectedToken.id),
+        }
+      : null,
+    network,
+    account,
+    bottomSheetRefRemove: removeTokenBottomSheetModalRef,
+    onSuccess: handleRefresh,
+  });
 
   const handleCancelTokenRemoval = useCallback(() => {
     if (selectedToken) {
@@ -134,7 +131,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}
-          onRemoveToken={handleConfirmTokenRemoval}
+          onRemoveToken={removeToken}
           isRemovingToken={isRemovingToken}
         />
       );
@@ -146,7 +143,7 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   }, [
     account,
     handleCancelTokenRemoval,
-    handleConfirmTokenRemoval,
+    removeToken,
     isRemovingToken,
     removeTokenBottomSheetModalRef,
     selectedToken,

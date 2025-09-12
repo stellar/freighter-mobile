@@ -34,7 +34,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useManageTokens } from "hooks/useManageTokens";
+import { useManageToken } from "hooks/useManageToken";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -114,10 +114,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   }, [handleRefresh, resetSearch]);
 
   const { addToken, removeToken, isAddingToken, isRemovingToken } =
-    useManageTokens({
+    useManageToken({
+      token: selectedToken
+        ? {
+            type: selectedToken.tokenType,
+            code: selectedToken.tokenCode,
+            issuer: selectedToken.issuer,
+            decimals: selectedToken.decimals,
+            name: selectedToken.name,
+          }
+        : null,
       network,
       account,
       onSuccess: resetPageState,
+      bottomSheetRefAdd: addTokenBottomSheetModalRef,
+      bottomSheetRefRemove: removeTokenBottomSheetModalRef,
     });
 
   useRightHeaderButton({
@@ -152,18 +163,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     [scanToken],
   );
 
-  const handleConfirmTokenAddition = useCallback(async () => {
-    if (!selectedToken) {
-      return;
-    }
-
-    analytics.trackAddTokenConfirmed(selectedToken.tokenCode);
-
-    await addToken(selectedToken);
-
-    addTokenBottomSheetModalRef.current?.dismiss();
-  }, [selectedToken, addToken]);
-
   const handleCancelTokenAddition = useCallback(() => {
     if (selectedToken) {
       analytics.trackAddTokenRejected(selectedToken.tokenCode);
@@ -179,28 +178,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const handleProceedAnyway = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleConfirmTokenAddition();
-  }, [handleConfirmTokenAddition]);
+    addToken();
+  }, [addToken]);
 
   const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
     setSelectedToken(token);
     removeTokenBottomSheetModalRef.current?.present();
   }, []);
-
-  const handleConfirmTokenRemoval = useCallback(async () => {
-    if (!selectedToken) {
-      return;
-    }
-
-    analytics.trackRemoveTokenConfirmed(selectedToken.tokenCode);
-
-    await removeToken({
-      tokenRecord: selectedToken,
-      tokenType: selectedToken.tokenType,
-    });
-
-    removeTokenBottomSheetModalRef.current?.dismiss();
-  }, [selectedToken, removeToken]);
 
   const handleCancelTokenRemoval = useCallback(() => {
     if (selectedToken) {
@@ -251,7 +235,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}
-          onRemoveToken={handleConfirmTokenRemoval}
+          onRemoveToken={removeToken}
           isRemovingToken={isRemovingToken}
         />
       );
@@ -264,7 +248,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     account,
     balanceItems,
     handleCancelTokenRemoval,
-    handleConfirmTokenRemoval,
+    removeToken,
     isRemovingToken,
     removeTokenBottomSheetModalRef,
     selectedToken,
@@ -322,9 +306,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
               onAddToken={
                 isTokenMalicious || isTokenSuspicious
                   ? handleSecurityWarning
-                  : handleConfirmTokenAddition
+                  : addToken
               }
-              proceedAnywayAction={handleConfirmTokenAddition}
+              proceedAnywayAction={addToken}
               isAddingToken={isAddingToken}
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}

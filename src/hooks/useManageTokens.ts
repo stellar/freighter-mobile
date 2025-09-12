@@ -32,10 +32,7 @@ interface UseManageTokensProps {
 }
 
 interface UseManageTokensReturn {
-  addToken: (
-    token: FormattedSearchTokenRecord,
-    onComplete?: () => void,
-  ) => Promise<void>;
+  addToken: (token: AddTokenParams, onComplete?: () => void) => Promise<void>;
   removeToken: (input: RemoveTokenParams) => Promise<void>;
   isAddingToken: boolean;
   isRemovingToken: boolean;
@@ -44,6 +41,14 @@ interface UseManageTokensReturn {
 export interface RemoveTokenParams {
   tokenId?: string;
   tokenRecord?: FormattedSearchTokenRecord;
+  tokenType?: TokenTypeWithCustomToken;
+}
+
+export interface AddTokenParams {
+  issuer: string;
+  name?: string;
+  decimals?: number;
+  tokenCode: string;
   tokenType?: TokenTypeWithCustomToken;
 }
 
@@ -104,10 +109,7 @@ export const useManageTokens = ({
 
   const { publicKey, privateKey } = account;
 
-  const addToken = async (
-    token: FormattedSearchTokenRecord,
-    onComplete?: () => void,
-  ) => {
+  const addToken = async (token: AddTokenParams, onComplete?: () => void) => {
     if (!token) {
       return;
     }
