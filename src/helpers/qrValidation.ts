@@ -1,3 +1,4 @@
+import { QRCodeType, QRCodeError } from "config/constants";
 import { logger } from "config/logger";
 import { isValidStellarAddress } from "helpers/stellar";
 
@@ -61,36 +62,43 @@ export const isValidStellarAddressForQR = (address: string): boolean =>
   isValidStellarAddress(address);
 
 /**
- * Determines the type of QR code content and validates it accordingly
+ * Validates QR code content for wallet address (send flow specific)
+ * Checks if the content is a valid Stellar address and handles self-send detection
  *
  * @param content The QR code content to validate
+ * @param currentUserPublicKey Optional current user's public key for self-send detection
  * @returns Object with validation result and detected type
  */
-export const validateQRCodeContent = (content: string) => {
+export const validateQRCodeWalletAddress = (
+  content: string,
+  currentUserPublicKey?: string,
+) => {
   const trimmedContent = content.trim();
-
-  // Check if it's a WalletConnect URI
-  if (isValidWalletConnectURI(trimmedContent)) {
-    return {
-      isValid: true,
-      type: "walletconnect" as const,
-      content: trimmedContent,
-    };
-  }
 
   // Check if it's a Stellar address
   if (isValidStellarAddressForQR(trimmedContent)) {
+    // Check for self-send if current user's public key is provided
+    if (currentUserPublicKey && trimmedContent === currentUserPublicKey) {
+      return {
+        isValid: false,
+        type: QRCodeType.STELLAR_ADDRESS,
+        content: trimmedContent,
+        error: QRCodeError.SELF_SEND,
+      };
+    }
+
     return {
       isValid: true,
-      type: "stellar_address" as const,
+      type: QRCodeType.STELLAR_ADDRESS,
       content: trimmedContent,
     };
   }
 
-  // Not a recognized valid format
+  // Not a valid Stellar address
   return {
     isValid: false,
-    type: "unknown" as const,
+    type: QRCodeType.UNKNOWN,
     content: trimmedContent,
+    error: QRCodeError.INVALID_FORMAT,
   };
 };

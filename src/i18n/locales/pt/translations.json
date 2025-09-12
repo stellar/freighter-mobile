@@ -808,7 +808,8 @@
     "inputPlaceholder": "URI do WalletConnect",
     "connect": "Conectar",
     "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido",
+    "invalidQrScanUriError": "Endereço WalletConnect Inválido"
   },
   "qrCodeScannerScreen": {
     "title": "Escanear para enviar"
