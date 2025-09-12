@@ -2,6 +2,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { userEvent, screen, waitFor } from "@testing-library/react-native";
 import { ValidateRecoveryPhraseScreen } from "components/screens/ValidateRecoveryPhraseScreen";
+import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES } from "config/routes";
 import type { AuthStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -287,6 +288,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
         {
           password: "test-password",
           mnemonicPhrase: mockRoute.params.recoveryPhrase,
+          source: BiometricsSource.ONBOARDING,
         },
       );
     });

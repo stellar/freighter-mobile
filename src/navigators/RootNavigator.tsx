@@ -17,7 +17,7 @@ import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import Icon from "components/sds/Icon";
-import { STORAGE_KEYS } from "config/constants";
+import { BiometricsSource, STORAGE_KEYS } from "config/constants";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -94,7 +94,7 @@ export const RootNavigator = () => {
                 navigation.navigate(
                   AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
                   {
-                    postOnboarding: true,
+                    source: BiometricsSource.POST_ONBOARDING,
                   },
                 );
               }

@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Textarea } from "components/sds/Textarea";
+import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -49,6 +50,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
             navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
               password,
               mnemonicPhrase: recoveryPhrase,
+              source: BiometricsSource.IMPORT_WALLET,
             });
           });
         } else {

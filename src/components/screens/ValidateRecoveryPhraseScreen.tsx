@@ -6,7 +6,7 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { VALIDATION_WORDS_PER_ROW } from "config/constants";
+import { BiometricsSource, VALIDATION_WORDS_PER_ROW } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -75,6 +75,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
           password,
           mnemonicPhrase: recoveryPhrase,
+          source: BiometricsSource.ONBOARDING,
         });
       });
     } else {

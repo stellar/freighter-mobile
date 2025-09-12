@@ -391,6 +391,26 @@ export enum QRCodeError {
  */
 
 /**
+ * Biometrics Enable Screen Source Constants
+ *
+ * Defines the different sources/contexts where the biometrics enable screen can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum BiometricsSource {
+  /** For importing an existing wallet */
+  IMPORT_WALLET = "import_wallet",
+  /** For new user onboarding flow */
+  ONBOARDING = "onboarding",
+  /** For post-onboarding flow (existing users) */
+  POST_ONBOARDING = "post_onboarding",
+}
+
+/**
+ * Type for biometrics source values
+ */
+export type BiometricsSourceType = `${BiometricsSource}`;
+
+/**
  * Helper function to check if a string is a valid QR code source
  */
 export const isValidQRCodeSource = (
