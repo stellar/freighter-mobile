@@ -10,7 +10,10 @@ import {
   AddFundsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
-import { getScreenOptionsWithCloseButton } from "helpers/navigationOptions";
+import {
+  getScreenBottomNavigateOptions,
+  getStackBottomNavigateOptions,
+} from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
@@ -23,8 +26,7 @@ export const AddFundsStackNavigator = () => {
     <AddFundsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
-        animation: "slide_from_bottom",
-        animationTypeForReplace: "push",
+        ...getStackBottomNavigateOptions(),
       }}
     >
       <AddFundsStack.Screen
@@ -38,9 +40,7 @@ export const AddFundsStackNavigator = () => {
       <AddFundsStack.Screen
         name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
         component={AccountQRCodeScreen}
-        options={getScreenOptionsWithCloseButton(
-          t("accountQRCodeScreen.title"),
-        )}
+        options={getScreenBottomNavigateOptions(t("accountQRCodeScreen.title"))}
       />
     </AddFundsStack.Navigator>
   );

@@ -5,23 +5,6 @@ import Icon from "components/sds/Icon";
 import React from "react";
 
 /**
- * Common navigation options for screens that slide from bottom
- */
-export const getScreenBottomNavigateOptions = (
-  title: string,
-  showCloseButton: boolean = true,
-): NativeStackNavigationOptions => ({
-  headerTitle: title,
-  headerShown: true,
-  header: (props) => <CustomNavigationHeader {...props} />,
-  headerLeft: showCloseButton
-    ? () => <CustomHeaderButton icon={Icon.X} />
-    : undefined,
-  animation: "slide_from_bottom",
-  animationTypeForReplace: "push",
-});
-
-/**
  * Common navigation options for stack navigators that slide from bottom
  */
 export const getStackBottomNavigateOptions =
@@ -29,6 +12,19 @@ export const getStackBottomNavigateOptions =
     animation: "slide_from_bottom",
     animationTypeForReplace: "push",
   });
+
+/**
+ * Common navigation options for screens that slide from bottom
+ */
+export const getScreenBottomNavigateOptions = (
+  title: string,
+): NativeStackNavigationOptions => ({
+  headerTitle: title,
+  headerShown: true,
+  header: (props) => <CustomNavigationHeader {...props} />,
+  headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+  ...getStackBottomNavigateOptions(),
+});
 
 /**
  * Reset navigation options to default (no custom animation)
@@ -52,8 +48,7 @@ export const getScreenOptionsWithCustomHeader = (
   headerTitle: title,
   headerShown: true,
   header: (props) => <CustomNavigationHeader {...props} />,
-  animation: "slide_from_bottom",
-  animationTypeForReplace: "push",
+  ...getStackBottomNavigateOptions(),
 });
 
 /**
@@ -61,20 +56,5 @@ export const getScreenOptionsWithCustomHeader = (
  */
 export const getScreenOptionsNoHeader = (): NativeStackNavigationOptions => ({
   headerShown: false,
-  animation: "slide_from_bottom",
-  animationTypeForReplace: "push",
-});
-
-/**
- * Navigation options for screens with close button and custom title
- */
-export const getScreenOptionsWithCloseButton = (
-  title: string,
-): NativeStackNavigationOptions => ({
-  headerTitle: title,
-  headerShown: true,
-  header: (props) => <CustomNavigationHeader {...props} />,
-  headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
-  animation: "slide_from_bottom",
-  animationTypeForReplace: "push",
+  ...getStackBottomNavigateOptions(),
 });

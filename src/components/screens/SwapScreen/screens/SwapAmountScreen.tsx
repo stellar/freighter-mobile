@@ -11,7 +11,6 @@ import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapT
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Notification } from "components/sds/Notification";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_DECIMALS, SWAP_SELECTION_TYPES } from "config/constants";
@@ -26,12 +25,14 @@ import {
   isAmountSpendable,
   hasXLMForFees,
 } from "helpers/balances";
+import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
+import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text as RNText, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
@@ -58,6 +59,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const deviceSize = useDeviceSize();
+  const isSmallScreen = deviceSize === DeviceSize.XS;
 
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -107,11 +111,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
 
     if (!hasXLMForFees(balanceItems, swapFee)) {
-      setAmountError(
-        t("swapScreen.errors.insufficientXlmForFees", {
+      const errorMessage = t("swapScreen.errors.insufficientXlmForFees", {
+        fee: swapFee,
+      });
+      setAmountError(errorMessage);
+      showToast({
+        variant: "error",
+        title: t("swapScreen.errors.insufficientXlmForFees", {
           fee: swapFee,
         }),
-      );
+        toastId: "insufficient-xlm-for-fees",
+        duration: 3000,
+      });
       return;
     }
 
@@ -123,12 +134,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         transactionFee: swapFee,
       })
     ) {
-      setAmountError(
-        t("swapScreen.errors.insufficientBalance", {
+      const errorMessage = t("swapScreen.errors.insufficientBalance", {
+        amount: spendableAmount?.toFixed() || "0",
+        symbol: sourceTokenSymbol,
+      });
+      setAmountError(errorMessage);
+      showToast({
+        variant: "error",
+        title: t("swapScreen.errors.insufficientBalance", {
           amount: spendableAmount?.toFixed() || "0",
           symbol: sourceTokenSymbol,
         }),
-      );
+        toastId: "insufficient-balance",
+        duration: 3000,
+      });
     } else {
       setAmountError(null);
     }
@@ -141,6 +160,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapFee,
     sourceBalance,
     balanceItems,
+    showToast,
   ]);
 
   useSwapPathFinding({
@@ -283,7 +303,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         error,
       );
 
-      setSwapError(t("swapScreen.errors.failedToSetupTransaction"));
+      const errorMessage = t("swapScreen.errors.failedToSetupTransaction");
+      setSwapError(errorMessage);
+      showToast({
+        variant: "error",
+        title: t("swapScreen.errors.failedToSetupTransaction"),
+        toastId: "failed-to-setup-transaction",
+        duration: 3000,
+      });
     }
   };
 
@@ -294,7 +321,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       executeSwap().catch((error) => {
         logger.error("SwapAmountScreen", "Swap transaction failed:", error);
 
-        setSwapError(t("swapScreen.errors.swapTransactionFailed"));
+        const errorMessage = t("swapScreen.errors.swapTransactionFailed");
+        setSwapError(errorMessage);
+        showToast({
+          variant: "error",
+          title: t("swapScreen.errors.swapTransactionFailed"),
+          toastId: "swap-transaction-failed",
+          duration: 3000,
+        });
       });
     }, 100);
   };
@@ -332,10 +366,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1">
-        <View className="flex-none items-center py-[8px] max-xs:py-[8px] px-6 mt-[8px] max-xs:mt-[-16px]">
+        <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
-              xl
+              size={isSmallScreen ? "lg" : "xl"}
               medium
               adjustsFontSizeToFit
               numberOfLines={1}
@@ -348,13 +382,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             </Display>
           </View>
         </View>
-
-        {(amountError || pathError || swapError) && (
-          <Notification
-            variant="error"
-            message={amountError || pathError || swapError || ""}
-          />
-        )}
 
         <View className="flex-none gap-3 mt-[16px]">
           <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
@@ -416,7 +443,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           </View>
         </View>
 
-        <View className="flex-1 justify-between mt-[24px] max-xs:mt-[8px]">
+        <View className="flex-1 items-center mt-[24px] gap-[24px]">
           <View className="flex-row gap-[8px]">
             <View className="flex-1">
               <Button secondary onPress={() => handlePercentagePress(25)}>
@@ -439,10 +466,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               </Button>
             </View>
           </View>
-          <View className="flex-1 justify-center">
+          <View className="w-full">
             <NumericKeyboard onPress={handleAmountChange} />
           </View>
-          <View className="mb-4 max-xs:mb-[-8px]">
+          <View className="w-full mt-auto mb-4">
             <Button
               tertiary
               onPress={handleMainButtonPress}

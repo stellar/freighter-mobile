@@ -31,7 +31,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
-  getScreenOptionsWithCloseButton,
+  getScreenBottomNavigateOptions,
 } from "helpers/navigationOptions";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -172,7 +172,7 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
             component={AccountQRCodeScreen}
-            options={getScreenOptionsWithCloseButton(
+            options={getScreenBottomNavigateOptions(
               t("accountQRCodeScreen.title"),
             )}
           />
@@ -184,7 +184,7 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
             component={ConnectedAppsScreen}
-            options={getScreenOptionsWithCloseButton(t("connectedApps.title"))}
+            options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
@@ -194,24 +194,24 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
             component={TokenDetailsScreen}
-            options={getScreenOptionsWithCloseButton("")}
+            options={getScreenBottomNavigateOptions("")}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
             component={CollectibleDetailsScreen}
-            options={getScreenOptionsWithCloseButton("")}
+            options={getScreenBottomNavigateOptions("")}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
             component={AddCollectibleScreen}
-            options={getScreenOptionsWithCloseButton(
+            options={getScreenBottomNavigateOptions(
               t("addCollectibleScreen.title"),
             )}
           />
           <RootStack.Screen
             name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
             component={BiometricsOnboardingScreen}
-            options={getScreenOptionsWithCloseButton("")}
+            options={getScreenBottomNavigateOptions("")}
           />
         </RootStack.Group>
       ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
