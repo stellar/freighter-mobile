@@ -6,6 +6,7 @@ export interface RecoveryPhraseInputProps
   extends Omit<TextareaProps, "value" | "onChangeText"> {
   value: string;
   onChangeText: (text: string) => void;
+  showMasked?: boolean;
 }
 
 /**
@@ -54,6 +55,7 @@ const maskCompletedWords = (phrase: string): string => {
 export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   value,
   onChangeText,
+  showMasked = true,
   onFocus,
   onBlur,
   ...restProps
@@ -70,6 +72,10 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   );
 
   const displayValue = useMemo(() => {
+    if (!showMasked) {
+      return normalizedValue;
+    }
+
     // Always mask if it's a pasted value (detected by significant length increase)
     if (
       lastPastedValue &&
@@ -85,7 +91,7 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
 
     // Otherwise, mask the text
     return maskRecoveryPhrase(normalizedValue);
-  }, [normalizedValue, isFocused, isTyping, lastPastedValue]);
+  }, [normalizedValue, showMasked, isFocused, isTyping, lastPastedValue]);
 
   const handleTextChange = useCallback(
     (text: string) => {

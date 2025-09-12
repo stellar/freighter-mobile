@@ -3,12 +3,15 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { RecoveryPhraseInput } from "components/sds/RecoveryPhraseInput";
+import { Text } from "components/sds/Typography";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
+import { View, Pressable } from "react-native";
 
 type ImportWalletScreenProps = NativeStackScreenProps<
   AuthStackParamList,
@@ -27,6 +30,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [isImporting, setIsImporting] = useState(false);
+  const [showMasked, setShowMasked] = useState(true);
 
   const { password } = route.params;
 
@@ -76,6 +80,25 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     setRecoveryPhrase(clipboardText);
   };
 
+  const handleToggleMasked = useCallback(() => {
+    setShowMasked((prev) => !prev);
+  }, []);
+
+  const IconComponent = showMasked ? Icon.EyeOff : Icon.Eye;
+  const pressableNote = (
+    <Pressable onPress={handleToggleMasked} className="flex-row items-center">
+      <IconComponent
+        size={pxValue(20)}
+        color={themeColors.foreground.primary}
+      />
+      <View className="ml-2">
+        <Text sm color={themeColors.foreground.primary}>
+          {t("importWalletScreen.textAreaNote")}
+        </Text>
+      </View>
+    </Pressable>
+  );
+
   return (
     <OnboardLayout
       icon={
@@ -96,10 +119,11 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       <RecoveryPhraseInput
         fieldSize="lg"
         placeholder={t("importWalletScreen.textAreaPlaceholder")}
-        note={t("importWalletScreen.textAreaNote")}
+        note={pressableNote}
         value={recoveryPhrase}
         onChangeText={setRecoveryPhrase}
         error={error}
+        showMasked={showMasked}
       />
     </OnboardLayout>
   );
