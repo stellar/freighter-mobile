@@ -159,7 +159,6 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
           <Button
             biometric
             tertiary
-            lg
             onPress={handleShowRecoveryPhrase}
             testID="show-recovery-phrase-button"
             isLoading={isLoading}

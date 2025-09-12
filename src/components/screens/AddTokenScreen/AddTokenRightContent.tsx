@@ -20,7 +20,6 @@ const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
     <Button
       secondary
       squared
-      lg
       testID="add-token-button"
       icon={
         <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />

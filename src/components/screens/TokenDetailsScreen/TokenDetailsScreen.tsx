@@ -101,7 +101,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="flex-1 gap-8 mt-5">
+      <View className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4">
         <TokenBalanceHeader
           tokenId={tokenId}
           tokenSymbol={tokenSymbol}
@@ -118,7 +118,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           networkDetails={networkDetails}
           onRefresh={handleRefresh}
           ListHeaderComponent={
-            <View className="mb-6">
+            <View className="mb-6 max-xs:mb-0">
               <Text md medium secondary>
                 {t("tokenDetailsScreen.listHeader", {
                   tokenName: displayTitle,
@@ -132,13 +132,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         <View className="flex-row gap-3">
           {!isIOS && (
             <View className="flex-1">
-              <Button tertiary lg isFullWidth onPress={handleSwapPress}>
+              <Button tertiary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}
               </Button>
             </View>
           )}
           <View className="flex-1">
-            <Button tertiary lg isFullWidth onPress={handleSendPress}>
+            <Button tertiary xl isFullWidth onPress={handleSendPress}>
               {t("tokenDetailsScreen.send")}
             </Button>
           </View>

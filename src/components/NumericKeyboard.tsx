@@ -14,7 +14,7 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
       <View
-        className="h-[48px] max-xs:h-[32px] items-center justify-center rounded-[12px]"
+        className="h-[48px] max-xs:h-[28px] items-center justify-center rounded-[12px]"
         onTouchEnd={() => onPress(typeof content === "string" ? content : "")}
       >
         {typeof content === "string" ? (

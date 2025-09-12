@@ -50,7 +50,6 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
         <View className="mb-4">
           <Button
             secondary
-            lg
             onPress={handleCopyToClipboard}
             testID="copy-to-clipboard-button"
             icon={
@@ -63,7 +62,6 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
 
         <Button
           tertiary
-          lg
           onPress={() => navigation.popToTop()}
           testID="done-button"
         >

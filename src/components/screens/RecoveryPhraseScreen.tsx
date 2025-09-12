@@ -56,7 +56,6 @@ const Footer: React.FC<{
     <StyledFooterButtonContainer>
       <Button
         tertiary
-        lg
         isFullWidth
         testID="continue-button"
         onPress={onPressContinue}
@@ -66,7 +65,6 @@ const Footer: React.FC<{
       </Button>
       <Button
         secondary
-        lg
         testID="skip-button"
         isLoading={isLoading}
         onPress={onPressSkip}
@@ -196,7 +194,6 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         </RecoveryPhraseContainer>
         <Button
           secondary
-          lg
           isFullWidth
           onPress={handleCopy}
           icon={<Icon.Copy01 size={16} color={PALETTE.dark.gray["09"]} />}
