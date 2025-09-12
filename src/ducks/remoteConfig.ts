@@ -9,6 +9,7 @@ const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 interface FeatureFlagsData {
   swap_enabled: boolean;
   discover_enabled: boolean;
+  onramp_enabled: boolean;
 }
 
 interface FeatureFlagsParams {
@@ -19,7 +20,7 @@ interface RemoteConfigState {
   // Feature flags
   swap_enabled: boolean;
   discover_enabled: boolean;
-
+  onramp_enabled: boolean;
   // Actions
   fetchFeatureFlags: () => Promise<void>;
   initFetchFeatureFlagsPoll: () => void;
@@ -28,6 +29,7 @@ interface RemoteConfigState {
 const INITIAL_REMOTE_CONFIG_STATE = {
   swap_enabled: isAndroid,
   discover_enabled: isAndroid,
+  onramp_enabled: isAndroid,
 };
 
 let featureFlagsPollInterval: NodeJS.Timeout | null = null;
