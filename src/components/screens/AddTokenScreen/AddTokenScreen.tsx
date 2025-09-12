@@ -229,6 +229,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       return (
         <RemoveTokenBottomSheetContent
           token={{
+            domain: selectedToken.domain,
             issuer: selectedToken.issuer,
             tokenCode: selectedToken.tokenCode,
             tokenType: selectedToken.tokenType!,
