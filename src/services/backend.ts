@@ -39,8 +39,7 @@ export const freighterBackend = createApiService({
   baseURL: Config.FREIGHTER_BACKEND_URL,
 });
 export const freighterBackendV2 = createApiService({
-  // baseURL: Config.FREIGHTER_BACKEND_V2_URL,
-  baseURL: "https://freighter-backend-v2-stg.stellar.org/api/v1",
+  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
