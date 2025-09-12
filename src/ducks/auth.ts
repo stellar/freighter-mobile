@@ -1499,10 +1499,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       } catch (error) {
         logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
         set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.invalidMnemonicPhrase"),
+          error: t("authStore.error.invalidMnemonicPhrase"),
         });
         return false;
       } finally {
