@@ -6,6 +6,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BiometricsSource } from "config/constants";
 import {
   AUTH_STACK_ROUTES,
   AuthStackParamList,
@@ -115,6 +116,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
           password,
           mnemonicPhrase: recoveryPhrase,
+          source: BiometricsSource.ONBOARDING,
         });
       });
     } else {
