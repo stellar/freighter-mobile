@@ -8,6 +8,7 @@ import { initializeSentryLogger } from "config/logger";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
@@ -26,6 +27,7 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export const App = (): React.JSX.Element => {
   const { onStateChange } = useNavigationAnalytics();
+  const { initFetchFeatureFlagsPoll } = useRemoteConfigStore();
 
   useEffect(() => {
     Appearance.setColorScheme("dark");
@@ -46,6 +48,10 @@ export const App = (): React.JSX.Element => {
 
     initSentry();
   }, []);
+
+  useEffect(() => {
+    initFetchFeatureFlagsPoll();
+  }, [initFetchFeatureFlagsPoll]);
 
   return (
     <GestureHandlerRootView>

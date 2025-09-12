@@ -28,7 +28,6 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
@@ -67,7 +66,6 @@ export const RootNavigator = () => {
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
   const { authStatus, getAuthStatus } = useAuthenticationStore();
-  const { fetchFeatureFlags } = useRemoteConfigStore();
   const [initializing, setInitializing] = useState(true);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
@@ -78,7 +76,7 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      await Promise.all([getAuthStatus(), fetchFeatureFlags()]);
+      await getAuthStatus();
 
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
@@ -113,7 +111,6 @@ export const RootNavigator = () => {
     });
   }, [
     getAuthStatus,
-    fetchFeatureFlags,
     navigation,
     authStatus,
     checkBiometrics,

@@ -4,6 +4,8 @@ import { Platform } from "react-native";
 import { freighterBackendV2 } from "services/backend";
 import { create } from "zustand";
 
+const ONE_HOUR_IN_MS = 60 * 60 * 1000;
+
 interface FeatureFlagsData {
   swap_enabled: boolean;
   discover_enabled: boolean;
@@ -20,12 +22,16 @@ interface RemoteConfigState {
 
   // Actions
   fetchFeatureFlags: () => Promise<void>;
+  initFetchFeatureFlagsPoll: () => void;
 }
 
 const INITIAL_REMOTE_CONFIG_STATE = {
   swap_enabled: isAndroid,
   discover_enabled: isAndroid,
 };
+
+let featureFlagsPollInterval: NodeJS.Timeout | null = null;
+let isPollingStarted = false;
 
 export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
   ...INITIAL_REMOTE_CONFIG_STATE,
@@ -65,5 +71,24 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
         error,
       );
     }
+  },
+
+  initFetchFeatureFlagsPoll: () => {
+    if (isPollingStarted) {
+      return;
+    }
+
+    if (featureFlagsPollInterval) {
+      clearInterval(featureFlagsPollInterval);
+    }
+
+    isPollingStarted = true;
+
+    // Fetch immediately on start
+    get().fetchFeatureFlags();
+
+    featureFlagsPollInterval = setInterval(() => {
+      get().fetchFeatureFlags();
+    }, ONE_HOUR_IN_MS);
   },
 }));
