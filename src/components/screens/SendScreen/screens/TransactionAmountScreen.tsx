@@ -527,7 +527,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[4px] px-[16px] max-xs:px-[12px] items-center">
+          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
               <Display
                 size={isSmallScreen ? "lg" : "xl"}
@@ -593,7 +593,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               />
             )}
           </View>
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
+          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
             <ContactRow
               isSingleRow
               onPress={navigateToSelectContactScreen}
