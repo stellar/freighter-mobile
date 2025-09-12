@@ -53,6 +53,7 @@ interface BrowserTabsState {
   tabs: BrowserTab[];
   activeTabId: string | null;
   showTabOverview: boolean;
+  activeWebViewIds: string[]; // Track which tabs have active WebViews
   addTab: (url?: string) => string; // Return the tab ID
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
@@ -64,6 +65,9 @@ interface BrowserTabsState {
   loadScreenshots: () => Promise<void>;
   cleanupScreenshots: () => Promise<void>;
   setShowTabOverview: (show: boolean) => void;
+  registerWebView: (tabId: string) => void;
+  unregisterWebView: (tabId: string) => void;
+  getWebViewDisposalCandidates: () => string[];
 }
 
 export const useBrowserTabsStore = create<BrowserTabsState>()(
@@ -72,6 +76,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       tabs: [],
       activeTabId: null,
       showTabOverview: false,
+      activeWebViewIds: [],
 
       addTab: (url = BROWSER_CONSTANTS.HOMEPAGE_URL) => {
         const newTab: BrowserTab = {
@@ -116,6 +121,10 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
           return {
             tabs: newTabs,
             activeTabId: newActiveTabId,
+            // Remove the tab from active WebView tracking
+            activeWebViewIds: state.activeWebViewIds.filter(
+              (id) => id !== tabId,
+            ),
           };
         });
 
@@ -141,7 +150,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       },
 
       closeAllTabs: () => {
-        set({ tabs: [], activeTabId: null });
+        set({ tabs: [], activeTabId: null, activeWebViewIds: [] });
         get().cleanupScreenshots();
       },
 
@@ -219,6 +228,65 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         const state = get();
         const activeTabIds = state.tabs.map((tab) => tab.id);
         await pruneScreenshots(activeTabIds);
+      },
+
+      registerWebView: (tabId: string) => {
+        set((state) => {
+          const { activeWebViewIds } = state;
+
+          // If WebView is already registered, don't add it again
+          if (activeWebViewIds.includes(tabId)) {
+            return state;
+          }
+
+          const newActiveWebViewIds = [...activeWebViewIds, tabId];
+
+          // If we exceed the limit, we need to dispose of the oldest WebViews
+          if (
+            newActiveWebViewIds.length > BROWSER_CONSTANTS.MAX_ACTIVE_WEBVIEWS
+          ) {
+            // Keep only the most recent WebViews (including the new one)
+            const excessCount =
+              newActiveWebViewIds.length -
+              BROWSER_CONSTANTS.MAX_ACTIVE_WEBVIEWS;
+            const disposalCandidates = newActiveWebViewIds.slice(
+              0,
+              excessCount,
+            );
+
+            // Remove disposal candidates from the active list
+            const filteredWebViewIds = newActiveWebViewIds.filter(
+              (id) => !disposalCandidates.includes(id),
+            );
+
+            return {
+              ...state,
+              activeWebViewIds: filteredWebViewIds,
+            };
+          }
+
+          return {
+            ...state,
+            activeWebViewIds: newActiveWebViewIds,
+          };
+        });
+      },
+
+      unregisterWebView: (tabId: string) => {
+        set((state) => ({
+          ...state,
+          activeWebViewIds: state.activeWebViewIds.filter((id) => id !== tabId),
+        }));
+      },
+
+      getWebViewDisposalCandidates: () => {
+        const state = get();
+        const { activeWebViewIds, tabs } = state;
+
+        // Return tab IDs that have WebViews but are not in the active list
+        return tabs
+          .filter((tab) => !activeWebViewIds.includes(tab.id))
+          .map((tab) => tab.id);
       },
     }),
     {
