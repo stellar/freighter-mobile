@@ -1,14 +1,47 @@
+import { fireEvent, renderHook } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
+import { BottomSheetProps } from "components/BottomSheet";
+import { ManageTokenRightContentProps } from "components/ManageTokenRightContent";
 import { SimpleBalancesList } from "components/SimpleBalancesList";
+import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
+import { TouchableOpacity, View } from "react-native";
+
+const MockTouchable = TouchableOpacity;
+const MockText = Text;
+const MockView = View;
 
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(),
 }));
+
+jest.mock(
+  "components/ManageTokenRightContent",
+  () =>
+    ({ token, handleRemoveToken }: ManageTokenRightContentProps) => (
+      <MockTouchable
+        testID={`remove-token-button-${token.id}`}
+        onPress={() => {
+          handleRemoveToken();
+        }}
+      >
+        <MockText>Remove</MockText>
+      </MockTouchable>
+    ),
+);
+
+jest.mock(
+  "components/BottomSheet",
+  () =>
+    ({ customContent }: BottomSheetProps) => (
+      <MockView>{customContent}</MockView>
+    ),
+);
 
 describe("SimpleBalancesList", () => {
   const mockBalanceItems = [
@@ -74,8 +107,6 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
-        isRemovingToken={false}
       />,
     );
 
@@ -88,8 +119,6 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
-        isRemovingToken={false}
       />,
     );
 
@@ -102,8 +131,6 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
-        isRemovingToken={false}
       />,
     );
 
@@ -119,13 +146,45 @@ describe("SimpleBalancesList", () => {
       <SimpleBalancesList
         publicKey={testPublicKey}
         network={NETWORKS.TESTNET}
-        handleRemoveToken={() => {}}
-        isRemovingToken={false}
       />,
     );
 
     const scrollView = getByTestId("simple-balances-list");
     expect(scrollView.props.showsVerticalScrollIndicator).toBe(false);
     expect(scrollView.props.alwaysBounceVertical).toBe(false);
+  });
+
+  it('should render "cannot remove XLM" BottomSheet for XLM when removing is attempted', () => {
+    const { result } = renderHook(() => useAppTranslation());
+    const { getByTestId } = renderWithProviders(
+      <SimpleBalancesList
+        publicKey={testPublicKey}
+        network={NETWORKS.TESTNET}
+      />,
+    );
+
+    fireEvent.press(
+      getByTestId(`remove-token-button-${mockBalanceItems[0].id}`),
+    );
+    expect(getByTestId("bottom-sheet-content-title")).toHaveTextContent(
+      result.current.t("manageTokensScreen.cantRemoveXlm.title"),
+    );
+  });
+
+  it('should render "token still has a balance" BottomSheet for tokens with balances when removing is attempted', () => {
+    const { result } = renderHook(() => useAppTranslation());
+    const { getByTestId } = renderWithProviders(
+      <SimpleBalancesList
+        publicKey={testPublicKey}
+        network={NETWORKS.TESTNET}
+      />,
+    );
+
+    fireEvent.press(
+      getByTestId(`remove-token-button-${mockBalanceItems[1].id}`),
+    );
+    expect(getByTestId("bottom-sheet-content-title")).toHaveTextContent(
+      result.current.t("manageTokensScreen.cantRemoveBalance.title"),
+    );
   });
 });

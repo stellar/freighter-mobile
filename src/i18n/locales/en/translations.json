@@ -4,6 +4,7 @@
   "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
+  "tokenAddress": "Token Address",
   "common": {
     "edit": "Edit",
     "close": "Close",
@@ -490,6 +491,7 @@
     "title": "Manage tokens",
     "hiddenTokens": "Hidden tokens",
     "addTokenButton": "Add a token",
+    "removeTokenButton": "Approve",
     "tokenAddressCopied": "Token address copied!",
     "moreInfo": {
       "title": "Manage Tokens",
@@ -507,11 +509,20 @@
       "remove": "Remove"
     },
     "removeTokenError": "Error removing token {{tokenCode}}",
-    "removeTokenSuccess": "{{tokenCode}} successfully removed"
+    "removeTokenSuccess": "{{tokenCode}} successfully removed",
+    "cantRemoveXlm": {
+      "title": "Can’t remove XLM",
+      "description": "XLM is the native asset of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+    },
+    "cantRemoveBalance": {
+      "title": "Token still has a balance",
+      "description": "You can’t remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
+    }
   },
   "addTokenScreen": {
     "title": "Add a token",
     "addTokenButton": "Approve",
+    "removeTokenButton": "Approve",
     "searchPlaceholder": "Search token name or address",
     "pasteFromClipboard": "Paste from clipboard",
     "tokenAddressCopied": "Token address copied!",
@@ -519,8 +530,10 @@
     "native": "Native",
     "onYourList": "On your list",
     "addToken": "Add token",
+    "removeToken": "Remove token",
     "approveTrustline": "Approve Trustline",
     "disclaimer": "Allow token to be displayed in your wallet. This does not add the token to your account.",
+    "removeDisclaimer": "Remove token from being displayed and used with this wallet address",
     "confirmTrust": "Only confirm if you trust this token",
     "maliciousToken": "This token was flagged as malicious",
     "suspiciousToken": "This token was flagged as suspicious",

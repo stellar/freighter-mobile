@@ -1,4 +1,5 @@
 import { BigNumber } from "bignumber.js";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   ClassicBalance,
   NonNativeToken,
@@ -15,6 +16,7 @@ import {
   getTokenPriceFromBalance,
   calculateSpendableAmount,
   isAmountSpendable,
+  getIssuerFromIdentifier,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -424,6 +426,28 @@ describe("balances helpers", () => {
         transactionFee: "0.00001",
       });
       expect(isValid).toBe(false);
+    });
+  });
+
+  describe("getIssuerFromIdentifier", () => {
+    it("should return empty string for native token identifier", () => {
+      const identifier = NATIVE_TOKEN_CODE;
+      const issuer = getIssuerFromIdentifier(identifier);
+      expect(issuer).toBe("");
+    });
+
+    it("should return the issuer for non-native token identifier", () => {
+      const identifier =
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+      const issuer = getIssuerFromIdentifier(identifier);
+      expect(issuer).toBe(
+        "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      );
+    });
+
+    it("should return empty string for empty identifier", () => {
+      const issuer = getIssuerFromIdentifier("");
+      expect(issuer).toBe("");
     });
   });
 });

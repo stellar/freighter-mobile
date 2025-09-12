@@ -32,10 +32,7 @@ interface UseManageTokensProps {
 }
 
 interface UseManageTokensReturn {
-  addToken: (
-    token: FormattedSearchTokenRecord,
-    onComplete?: () => void,
-  ) => Promise<void>;
+  addToken: (token: AddTokenParams, onComplete?: () => void) => Promise<void>;
   removeToken: (input: RemoveTokenParams) => Promise<void>;
   isAddingToken: boolean;
   isRemovingToken: boolean;
@@ -45,7 +42,14 @@ export interface RemoveTokenParams {
   tokenId?: string;
   tokenRecord?: FormattedSearchTokenRecord;
   tokenType?: TokenTypeWithCustomToken;
-  onComplete?: () => void;
+}
+
+export interface AddTokenParams {
+  issuer: string;
+  name?: string;
+  decimals?: number;
+  tokenCode: string;
+  tokenType?: TokenTypeWithCustomToken;
 }
 
 /**
@@ -105,10 +109,7 @@ export const useManageTokens = ({
 
   const { publicKey, privateKey } = account;
 
-  const addToken = async (
-    token: FormattedSearchTokenRecord,
-    onComplete?: () => void,
-  ) => {
+  const addToken = async (token: AddTokenParams, onComplete?: () => void) => {
     if (!token) {
       return;
     }
@@ -212,7 +213,7 @@ export const useManageTokens = ({
   };
 
   const removeToken = async (input: RemoveTokenParams) => {
-    const { tokenId, tokenRecord, tokenType, onComplete } = input;
+    const { tokenId, tokenRecord, tokenType } = input;
 
     let tokenCode: string;
     let tokenIssuer: string;
@@ -322,9 +323,6 @@ export const useManageTokens = ({
     } finally {
       setIsRemovingToken(false);
       showToast(toastOptions);
-
-      // Execute onComplete callback if provided
-      onComplete?.();
 
       // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
       setTimeout(() => {

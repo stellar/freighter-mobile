@@ -4,6 +4,7 @@
   "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
+  "tokenAddress": "Endereço do Token",
   "common": {
     "edit": "Editar",
     "close": "Fechar",
@@ -454,6 +455,7 @@
     "title": "Gerenciar tokens",
     "hiddenTokens": "Tokens ocultos",
     "addTokenButton": "Adicionar um token",
+    "removeTokenButton": "Aprovar",
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Tokens",
@@ -471,11 +473,20 @@
       "remove": "Remover"
     },
     "removeTokenError": "Erro ao remover token {{tokenCode}}",
-    "removeTokenSuccess": "{{tokenCode}} removido com sucesso"
+    "removeTokenSuccess": "{{tokenCode}} removido com sucesso",
+    "cantRemoveXlm": {
+      "title": "Não é possível remover XLM",
+      "description": "O XLM é o ativo nativo da rede Stellar e não pode ser removido. Ele é necessário para manter sua conta e pagar as taxas de transação."
+    },
+    "cantRemoveBalance": {
+      "title": "O token ainda possui saldo",
+      "description": "Você ainda não pode remover este token. Para remover uma token, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
+    }
   },
   "addTokenScreen": {
     "title": "Adicionar um token",
     "addTokenButton": "Aprovar",
+    "removeTokenButton": "Aprovar",
     "searchPlaceholder": "Pesquisar nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
@@ -483,8 +494,10 @@
     "native": "Nativo",
     "onYourList": "Na sua lista",
     "addToken": "Adicionar token",
+    "removeToken": "Remover token",
     "approveTrustline": "Aprovar Trustline",
     "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o token à sua conta.",
+    "removeDisclaimer": "Remover o token de ser exibido e usado com este endereço de carteira",
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",

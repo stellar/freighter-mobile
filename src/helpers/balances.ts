@@ -510,3 +510,29 @@ export const hasXLMForFees = (
   // Check if XLM balance is sufficient for transaction fees
   return xlmBalance.total.isGreaterThanOrEqualTo(new BigNumber(transactionFee));
 };
+
+/**
+ * Returns the issuer address from a token identifier string
+ *
+ * This function returns issuer from token identifier strings.
+ *
+ * @param {identifier} string - See getTokenIdentifier, identifier - code:issuer
+ * @returns {string} String representing the issuer of the identifier
+ *
+ * @example
+ * // Check if user has enough XLM for fees
+ * const hasEnoughXLM = hasXLMForFees(balanceItems, "0.00001");
+ */
+export const getIssuerFromIdentifier = (
+  identifier: ReturnType<typeof getTokenIdentifier>,
+) => {
+  const delimeter = ":";
+  if (!identifier.includes(delimeter)) {
+    return "";
+  }
+
+  /* eslint-disable */
+  const [_, issuer] = identifier.split(delimeter);
+  /* eslint-enable */
+  return issuer;
+};
