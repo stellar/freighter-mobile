@@ -11,6 +11,7 @@ export const getStackBottomNavigateOptions =
   (): NativeStackNavigationOptions => ({
     animation: "slide_from_bottom",
     animationTypeForReplace: "push",
+    animationDuration: 300, // 300ms for balance snappy and feel like slide_from_right/default - Native slide_from_right is ca. 350ms
   });
 
 /**
