@@ -287,6 +287,7 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_RECENT_TABS: 20,
   MAX_SCREENSHOTS_STORED: 100,
+  MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
   SCREENSHOT_QUALITY: 0.5,
   SCREENSHOT_WIDTH: 400,
