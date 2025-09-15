@@ -8,7 +8,7 @@ import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
-import { normalizeAndTrimText } from "helpers/recoveryPhrase";
+import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
@@ -80,7 +80,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
   const onPressPasteFromClipboard = async () => {
     const clipboardText = await Clipboard.getString();
-    setRecoveryPhrase(normalizeAndTrimText(clipboardText));
+    setRecoveryPhrase(normalizeAndTrimRecoveryPhrase(clipboardText));
   };
 
   const handleToggleMasked = useCallback(() => {
