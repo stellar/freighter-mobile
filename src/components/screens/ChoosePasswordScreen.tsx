@@ -19,6 +19,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
 }) => {
   const { isImporting } = route.params;
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -55,11 +56,29 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
       <Input
         autoCapitalize="none"
         isPassword
+        secureTextEntry={!showPassword}
         placeholder={t("choosePasswordScreen.passwordInputPlaceholder")}
         fieldSize="lg"
         note={t("choosePasswordScreen.passwordNote")}
         value={password}
         onChangeText={setPassword}
+        rightElement={
+          showPassword ? (
+            <Icon.EyeOff
+              testID="eye-icon-off"
+              size={16}
+              color={themeColors.foreground.primary}
+              onPress={() => setShowPassword(false)}
+            />
+          ) : (
+            <Icon.Eye
+              testID="eye-icon"
+              size={16}
+              color={themeColors.foreground.primary}
+              onPress={() => setShowPassword(true)}
+            />
+          )
+        }
       />
     </OnboardLayout>
   );

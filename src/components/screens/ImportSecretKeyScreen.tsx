@@ -96,14 +96,14 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               placeholder={t("importSecretKeyScreen.secretKeyPlaceholder")}
               rightElement={
                 showSecretKey ? (
-                  <Icon.Eye
-                    size={20}
+                  <Icon.EyeOff
+                    size={16}
                     color={themeColors.foreground.primary}
                     onPress={() => setShowSecretKey(false)}
                   />
                 ) : (
-                  <Icon.EyeOff
-                    size={20}
+                  <Icon.Eye
+                    size={16}
                     color={themeColors.foreground.primary}
                     onPress={() => setShowSecretKey(true)}
                   />
@@ -133,14 +133,14 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
               placeholder={t("importSecretKeyScreen.passwordPlaceholder")}
               rightElement={
                 showPassword ? (
-                  <Icon.Eye
-                    size={20}
+                  <Icon.EyeOff
+                    size={16}
                     color={themeColors.foreground.primary}
                     onPress={() => setShowPassword(false)}
                   />
                 ) : (
-                  <Icon.EyeOff
-                    size={20}
+                  <Icon.Eye
+                    size={16}
                     color={themeColors.foreground.primary}
                     onPress={() => setShowPassword(true)}
                   />
