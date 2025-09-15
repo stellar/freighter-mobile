@@ -28,6 +28,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       activeWebViewIds,
       registerWebView,
       unregisterWebView,
+      getWebViewDisposalCandidates,
     } = useBrowserTabsStore();
     const { themeColors } = useColors();
 
@@ -100,6 +101,66 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       [unregisterWebView],
     );
 
+    /**
+     * Properly disposes of WebView instances to prevent memory leaks
+     * @param tabIds - Array of tab IDs to dispose
+     */
+    const disposeWebViews = useCallback((tabIds: string[]) => {
+      tabIds.forEach((tabId) => {
+        const webViewInstance = webViewRefs.current[tabId];
+
+        if (webViewInstance) {
+          try {
+            // Stop loading and clear cache
+            webViewInstance.stopLoading?.();
+            webViewInstance.clearCache?.(true); // true = clear everything including cookies
+            webViewInstance.clearHistory?.();
+          } catch (error) {
+            logger.warn(
+              "WebViewContainer",
+              `Failed to dispose WebView for tab ${tabId}`,
+              error,
+            );
+          }
+        }
+
+        // Clear ViewShot ref
+        viewShotRefs.current[tabId] = null;
+        webViewRefs.current[tabId] = null;
+
+        // Clear any pending timeouts
+        if (quickCaptureTimeouts.current[tabId]) {
+          clearTimeout(quickCaptureTimeouts.current[tabId]);
+          delete quickCaptureTimeouts.current[tabId];
+        }
+        if (finalCaptureTimeouts.current[tabId]) {
+          clearTimeout(finalCaptureTimeouts.current[tabId]);
+          delete finalCaptureTimeouts.current[tabId];
+        }
+        if (scrollCaptureTimeouts.current[tabId]) {
+          clearTimeout(scrollCaptureTimeouts.current[tabId]);
+          delete scrollCaptureTimeouts.current[tabId];
+        }
+
+        logger.info("WebViewContainer", `Disposed WebView for tab ${tabId}`);
+      });
+    }, []);
+
+    /**
+     * Checks for and disposes excess WebViews when limit is exceeded
+     */
+    const checkAndDisposeExcessWebViews = useCallback(() => {
+      const disposalCandidates = getWebViewDisposalCandidates();
+      if (Array.isArray(disposalCandidates) && disposalCandidates.length > 0) {
+        logger.debug(
+          "WebViewContainer",
+          `Disposing ${disposalCandidates.length} excess WebViews`,
+          disposalCandidates,
+        );
+        disposeWebViews(disposalCandidates);
+      }
+    }, [disposeWebViews, getWebViewDisposalCandidates]);
+
     // Show spinner when switching tabs
     useEffect(() => {
       if (!activeTabId) {
@@ -123,6 +184,29 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
 
       return () => clearTimeout(timer);
     }, [activeTabId, fadeLoadingAnim]);
+
+    useEffect(() => {
+      checkAndDisposeExcessWebViews();
+    }, [activeWebViewIds, checkAndDisposeExcessWebViews]);
+
+    // Cleanup WebViews when tabs are closed
+    useEffect(() => {
+      const currentTabIds = tabs.map((tab) => tab.id);
+      const previousTabIds = Object.keys(webViewRefs.current);
+
+      const closedTabIds = previousTabIds.filter(
+        (tabId) => !currentTabIds.includes(tabId),
+      );
+
+      if (closedTabIds.length > 0) {
+        logger.info(
+          "WebViewContainer",
+          `Cleaning up WebViews for closed tabs: ${closedTabIds.join(", ")}`,
+        );
+
+        disposeWebViews(closedTabIds);
+      }
+    }, [tabs, disposeWebViews]);
 
     const captureScreenshot = useCallback(
       async (tabId: string) => {

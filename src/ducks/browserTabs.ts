@@ -279,6 +279,10 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         }));
       },
 
+      /**
+       * Gets WebView disposal candidates and triggers disposal
+       * @returns Array of tab IDs that should be disposed
+       */
       getWebViewDisposalCandidates: () => {
         const state = get();
         const { activeWebViewIds, tabs } = state;
