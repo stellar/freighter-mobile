@@ -71,6 +71,14 @@ export const trackAddTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.ADD_TOKEN_REJECTED, { asset: token });
 };
 
+export const trackRemoveTokenConfirmed = (token?: string): void => {
+  track(AnalyticsEvent.REMOVE_TOKEN_CONFIRMED, { asset: token });
+};
+
+export const trackRemoveTokenRejected = (token?: string): void => {
+  track(AnalyticsEvent.REMOVE_TOKEN_REJECTED, { asset: token });
+};
+
 // -----------------------------------------------------------------------------
 // ACCOUNT MANAGEMENT ANALYTICS
 // -----------------------------------------------------------------------------

@@ -23,6 +23,8 @@ import {
   trackQRScanError,
   trackAddTokenConfirmed,
   trackAddTokenRejected,
+  trackRemoveTokenConfirmed,
+  trackRemoveTokenRejected,
   trackAccountScreenImportAccountFail,
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
@@ -58,6 +60,8 @@ export interface AnalyticsInstance {
   // Token management analytics
   readonly trackAddTokenConfirmed: typeof trackAddTokenConfirmed;
   readonly trackAddTokenRejected: typeof trackAddTokenRejected;
+  readonly trackRemoveTokenConfirmed: typeof trackRemoveTokenConfirmed;
+  readonly trackRemoveTokenRejected: typeof trackRemoveTokenRejected;
 
   // Account management analytics
   readonly trackAccountScreenImportAccountFail: typeof trackAccountScreenImportAccountFail;
@@ -112,6 +116,8 @@ export const analytics: AnalyticsInstance = {
   trackQRScanError,
   trackAddTokenConfirmed,
   trackAddTokenRejected,
+  trackRemoveTokenConfirmed,
+  trackRemoveTokenRejected,
   trackAccountScreenImportAccountFail,
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
