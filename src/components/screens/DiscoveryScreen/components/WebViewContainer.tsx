@@ -296,7 +296,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
           return (
             <View
               key={tab.id}
-              className={`absolute inset-0 ${isActive ? "opacity-100" : "opacity-0"}`}
+              className={`absolute inset-0 ${isActive ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
             >
               {isHomepage ? (
                 <DiscoveryHomepage tabId={tab.id} />
