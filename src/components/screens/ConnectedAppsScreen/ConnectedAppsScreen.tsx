@@ -18,7 +18,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 
 type ConnectedAppsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -135,13 +135,13 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 pt-3">
         {/* Connected Dapps Section */}
-        <View className="mb-6">
+        <ScrollView className="mb-6">
           {connectedDapps.length > 0 ? (
             <List items={connectedDapps} variant="secondary" />
           ) : (
             <EmptyState navigation={navigation} />
           )}
-        </View>
+        </ScrollView>
 
         {/* Disconnect All Button - Fixed at bottom */}
         {connectedDapps.length > 0 && (
