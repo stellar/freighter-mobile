@@ -75,7 +75,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             />
           ))}
         </BottomSheetScrollView>
-        <Button tertiary isFullWidth lg onPress={onPressAddAnotherWallet}>
+        <Button tertiary isFullWidth xl onPress={onPressAddAnotherWallet}>
           {t("home.manageAccount.addWallet")}
         </Button>
       </BottomSheetAdaptiveContainer>

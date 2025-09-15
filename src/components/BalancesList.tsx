@@ -159,7 +159,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <Button
             isFullWidth
             tertiary
-            lg
+            xl
             onPress={() =>
               navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
                 screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,

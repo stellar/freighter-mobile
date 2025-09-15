@@ -136,7 +136,8 @@
     "inputPlaceholder": "WalletConnect URI",
     "connect": "Connect",
     "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid QR Code URI"
+    "invalidUriError": "Please enter a valid QR Code URI",
+    "invalidQrScanUriError": "Invalid WalletConnect Address"
   },
   "qrCodeScannerScreen": {
     "title": "Scan to send"
@@ -285,6 +286,7 @@
   "connectedApps": {
     "title": "Connected Apps",
     "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
     "disconnectAllSessions": "Disconnect all"
   },

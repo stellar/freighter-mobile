@@ -170,7 +170,6 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       <Button
         isFullWidth
         tertiary
-        lg
         icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
         onPress={() => {
           analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);

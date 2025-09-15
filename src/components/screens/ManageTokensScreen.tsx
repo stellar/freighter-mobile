@@ -81,7 +81,6 @@ const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
         <View className="h-4" />
         <Button
           tertiary
-          lg
           testID="default-action-button"
           onPress={() => {
             navigation.navigate(MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN);

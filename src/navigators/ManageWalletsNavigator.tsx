@@ -10,6 +10,10 @@ import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
 } from "config/routes";
+import {
+  getStackBottomNavigateOptions,
+  resetNestedNavigationOptions,
+} from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
@@ -23,6 +27,7 @@ export const ManageWalletsStackNavigator = () => {
     <ManageWalletsStack.Navigator
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
+        ...getStackBottomNavigateOptions(),
       }}
     >
       <ManageWalletsStack.Screen
@@ -36,16 +41,12 @@ export const ManageWalletsStackNavigator = () => {
       <ManageWalletsStack.Screen
         name={MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN}
         component={VerifyPasswordScreen}
-        options={{
-          headerTitle: t("verifyPasswordScreen.title"),
-        }}
+        options={resetNestedNavigationOptions(t("verifyPasswordScreen.title"))}
       />
       <ManageWalletsStack.Screen
         name={MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN}
         component={ImportSecretKeyScreen}
-        options={{
-          headerTitle: "",
-        }}
+        options={resetNestedNavigationOptions(t("importSecretKeyScreen.title"))}
       />
     </ManageWalletsStack.Navigator>
   );

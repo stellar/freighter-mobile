@@ -383,7 +383,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
         <View className="h-4" />
         <Button
           secondary
-          lg
           testID="paste-from-clipboard-button"
           onPress={handlePasteFromClipboard}
           icon={
