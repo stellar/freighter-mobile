@@ -4,33 +4,27 @@ import React from "react";
 
 describe("RecoveryPhraseInput", () => {
   it("should mask recovery phrase when not focused", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
     const recoveryPhrase =
       "abandon ability able about above absent absorb abstract absurd abuse access accident";
 
     const { getByDisplayValue } = render(
-      <RecoveryPhraseInput
-        value={recoveryPhrase}
-        onChangeText={mockOnChangeText}
-      />,
+      <RecoveryPhraseInput value={recoveryPhrase} setValue={mockSetValue} />,
     );
 
-    // When not focused, should show masked version
+    // When showMasked is true (default), should show masked version
     const maskedValue =
       "******* ******* **** ***** ***** ****** ****** ******** ****** ***** ****** ********";
     expect(getByDisplayValue(maskedValue)).toBeTruthy();
   });
 
   it("should detect paste by length increase and mask immediately", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
     const longPhrase =
       "abandon ability able about above absent absorb abstract absurd abuse access accident";
 
     const { getByDisplayValue } = render(
-      <RecoveryPhraseInput
-        value={longPhrase}
-        onChangeText={mockOnChangeText}
-      />,
+      <RecoveryPhraseInput value={longPhrase} setValue={mockSetValue} />,
     );
 
     // Should show masked version due to paste detection
@@ -39,40 +33,50 @@ describe("RecoveryPhraseInput", () => {
     expect(getByDisplayValue(maskedValue)).toBeTruthy();
   });
 
-  it("should mask completed words but show current word when focused and typing", () => {
-    const mockOnChangeText = jest.fn();
+  it("should mask text when showMasked is true", () => {
+    const mockSetValue = jest.fn();
     const recoveryPhrase = "abandon ability able";
 
-    const { getByDisplayValue, getByTestId } = render(
+    const { getByDisplayValue } = render(
       <RecoveryPhraseInput
         value={recoveryPhrase}
-        onChangeText={mockOnChangeText}
+        setValue={mockSetValue}
+        showMasked
         testID="masked-input"
       />,
     );
 
-    const input = getByTestId("masked-input");
-
-    // Focus the input to trigger typing state
-    fireEvent(input, "focus");
-
-    // Simulate typing by changing text
-    fireEvent.changeText(input, recoveryPhrase);
-
-    // When focused and typing, should mask completed words but show current word
-    const expectedValue = "******* ******* able";
+    // When showMasked is true, should show masked version
+    const expectedValue = "******* ******* ****";
     expect(getByDisplayValue(expectedValue)).toBeTruthy();
   });
 
+  it("should show actual text when showMasked is false", () => {
+    const mockSetValue = jest.fn();
+    const recoveryPhrase = "abandon ability able";
+
+    const { getByDisplayValue } = render(
+      <RecoveryPhraseInput
+        value={recoveryPhrase}
+        setValue={mockSetValue}
+        showMasked={false}
+        testID="masked-input"
+      />,
+    );
+
+    // When showMasked is false, should show actual text
+    expect(getByDisplayValue(recoveryPhrase)).toBeTruthy();
+  });
+
   it("should normalize text to lowercase and remove accents", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
     const inputWithAccents = "café naïve résumé";
     const expectedNormalized = "cafe naive resume";
 
     const { getByTestId } = render(
       <RecoveryPhraseInput
         value=""
-        onChangeText={mockOnChangeText}
+        setValue={mockSetValue}
         testID="masked-input"
       />,
     );
@@ -80,18 +84,15 @@ describe("RecoveryPhraseInput", () => {
     const input = getByTestId("masked-input");
     fireEvent.changeText(input, inputWithAccents);
 
-    expect(mockOnChangeText).toHaveBeenCalledWith(expectedNormalized);
+    expect(mockSetValue).toHaveBeenCalledWith(expectedNormalized);
   });
 
   it("should preserve spaces between words in masked display", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
     const recoveryPhrase = "word1 word2 word3";
 
     const { getByDisplayValue } = render(
-      <RecoveryPhraseInput
-        value={recoveryPhrase}
-        onChangeText={mockOnChangeText}
-      />,
+      <RecoveryPhraseInput value={recoveryPhrase} setValue={mockSetValue} />,
     );
 
     // Should show asterisks with spaces between words
@@ -99,66 +100,56 @@ describe("RecoveryPhraseInput", () => {
     expect(getByDisplayValue(maskedValue)).toBeTruthy();
   });
 
-  it("should show single word when typing", () => {
-    const mockOnChangeText = jest.fn();
+  it("should handle single word input", () => {
+    const mockSetValue = jest.fn();
     const singleWord = "abandon";
 
-    const { getByDisplayValue, getByTestId } = render(
+    const { getByDisplayValue } = render(
       <RecoveryPhraseInput
         value={singleWord}
-        onChangeText={mockOnChangeText}
+        setValue={mockSetValue}
         testID="masked-input"
       />,
     );
 
-    const input = getByTestId("masked-input");
-
-    // Focus the input to trigger typing state
-    fireEvent(input, "focus");
-
-    // Simulate typing by changing text
-    fireEvent.changeText(input, singleWord);
-
-    // When typing a single word, should show the actual word
-    expect(getByDisplayValue(singleWord)).toBeTruthy();
+    // Should show masked version by default
+    const maskedValue = "*******";
+    expect(getByDisplayValue(maskedValue)).toBeTruthy();
   });
 
   it("should handle focus and blur events", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
     const recoveryPhrase = "abandon ability able";
 
     const { getByDisplayValue, getByTestId } = render(
       <RecoveryPhraseInput
         value={recoveryPhrase}
-        onChangeText={mockOnChangeText}
+        setValue={mockSetValue}
         testID="masked-input"
       />,
     );
 
     const input = getByTestId("masked-input");
 
-    // Initially should show fully masked version when not focused
-    const fullyMaskedValue = "******* ******* ****";
-    expect(getByDisplayValue(fullyMaskedValue)).toBeTruthy();
+    // Should show masked version by default
+    const maskedValue = "******* ******* ****";
+    expect(getByDisplayValue(maskedValue)).toBeTruthy();
 
-    // Focus should trigger typing state - show partial masking
+    // Focus and blur should not change the display behavior
     fireEvent(input, "focus");
-    fireEvent.changeText(input, recoveryPhrase);
-    const partialMaskedValue = "******* ******* able";
-    expect(getByDisplayValue(partialMaskedValue)).toBeTruthy();
+    expect(getByDisplayValue(maskedValue)).toBeTruthy();
 
-    // Blur should return to fully masked state
     fireEvent(input, "blur");
-    expect(getByDisplayValue(fullyMaskedValue)).toBeTruthy();
+    expect(getByDisplayValue(maskedValue)).toBeTruthy();
   });
 
   it("should handle empty input", () => {
-    const mockOnChangeText = jest.fn();
+    const mockSetValue = jest.fn();
 
     const { getByTestId } = render(
       <RecoveryPhraseInput
         value=""
-        onChangeText={mockOnChangeText}
+        setValue={mockSetValue}
         testID="masked-input"
       />,
     );
@@ -166,6 +157,6 @@ describe("RecoveryPhraseInput", () => {
     const input = getByTestId("masked-input");
     fireEvent.changeText(input, "");
 
-    expect(mockOnChangeText).toHaveBeenCalledWith("");
+    expect(mockSetValue).toHaveBeenCalledWith("");
   });
 });

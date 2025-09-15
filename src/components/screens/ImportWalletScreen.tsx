@@ -8,6 +8,7 @@ import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
+import { normalizeAndTrimText } from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
@@ -31,7 +32,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [isImporting, setIsImporting] = useState(false);
-  const [showMasked, setShowMasked] = useState(false);
+  const [showMasked, setShowMasked] = useState(true);
 
   const { password } = route.params;
 
@@ -79,7 +80,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
   const onPressPasteFromClipboard = async () => {
     const clipboardText = await Clipboard.getString();
-    setRecoveryPhrase(clipboardText);
+    setRecoveryPhrase(normalizeAndTrimText(clipboardText));
   };
 
   const handleToggleMasked = useCallback(() => {
@@ -123,7 +124,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         placeholder={t("importWalletScreen.textAreaPlaceholder")}
         note={pressableNote}
         value={recoveryPhrase}
-        onChangeText={setRecoveryPhrase}
+        setValue={setRecoveryPhrase}
         error={error}
         showMasked={showMasked}
       />

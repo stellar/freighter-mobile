@@ -1,183 +1,76 @@
 import { Textarea, TextareaProps } from "components/sds/Textarea";
-import React, {
-  useCallback,
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
-} from "react";
-import { NativeSyntheticEvent, TextInputFocusEventData } from "react-native";
+import { normalizeAndTrimText, normalizeText } from "helpers/recoveryPhrase";
+import React, { useState, useEffect } from "react";
 
 export interface RecoveryPhraseInputProps
   extends Omit<TextareaProps, "value" | "onChangeText"> {
   value: string;
-  onChangeText: (text: string) => void;
   showMasked?: boolean;
+  setValue: (text: string) => void;
 }
-
-const FINISH_TYPING_DELAY_MS = 1500;
-
-/**
- * Normalizes text by converting to lowercase and removing accents
- */
-const normalizeText = (text: string): string =>
-  text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
-    .replace(/\s+/g, " ")
-    .trim(); // Normalize spaces and trim
-
-/**
- * Masks a recovery phrase by replacing each word with asterisks
- * while preserving spaces between words
- */
-const maskRecoveryPhrase = (phrase: string): string => {
-  if (!phrase.trim()) return phrase;
-
-  return phrase
-    .split(" ")
-    .map((word) => (word ? "*".repeat(word.length) : ""))
-    .join(" ");
-};
-
-/**
- * Masks completed words but shows the current word being typed
- */
-const maskCompletedWords = (phrase: string): string => {
-  if (!phrase.trim()) return phrase;
-
-  const words = phrase.split(" ");
-  const lastWordIndex = words.length - 1;
-
-  return words
-    .map((word, index) => {
-      if (!word) return "";
-      // Show the last word (current word being typed), mask all others
-      if (index === lastWordIndex) {
-        return word;
-      }
-      return "*".repeat(word.length);
-    })
-    .join(" ");
-};
 
 export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   value,
-  onChangeText,
   showMasked = true,
   onFocus,
   onBlur,
+  setValue,
   ...restProps
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const [internalValue, setInternalValue] = useState(value);
-  const [isTyping, setIsTyping] = useState(false);
-  const [lastPastedValue, setLastPastedValue] = useState("");
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Mask function (customize as needed)
+  const maskText = (text: string) => text.replace(/\S/g, "*"); // replace every non-space with *
 
-  const normalizedValue = useMemo(() => {
-    const normalized = normalizeText(internalValue);
-    setInternalValue(normalized);
-    return normalized;
-  }, [internalValue]);
-
-  const displayValue = useMemo(() => {
-    if (!showMasked) {
-      return normalizedValue;
-    }
-
-    // Always mask if it's a pasted value (detected by significant length increase)
-    if (
-      lastPastedValue &&
-      normalizedValue.length > lastPastedValue.length + 10
-    ) {
-      return maskRecoveryPhrase(normalizedValue);
-    }
-
-    // If typing and focused, mask completed words but show current word
-    if (isTyping && isFocused) {
-      return maskCompletedWords(normalizedValue);
-    }
-
-    // Otherwise, mask the text
-    return maskRecoveryPhrase(normalizedValue);
-  }, [normalizedValue, showMasked, isFocused, isTyping, lastPastedValue]);
-
-  const handleTextChange = useCallback(
-    (text: string) => {
-      const normalized = normalizeText(text);
-      setInternalValue(normalized);
-      onChangeText(normalized);
-
-      // Detect if this looks like a paste (significant length increase or multiple words)
-      const wordCount = normalized.trim().split(/\s+/).length;
-      const previousWordCount = internalValue.trim().split(/\s+/).length;
-
-      if (
-        normalized.length > internalValue.length + 10 ||
-        wordCount > previousWordCount + 2 // safety margin, not checking specific 12 or 24 words
-      ) {
-        setLastPastedValue(internalValue);
-        setIsTyping(false);
-      } else {
-        setIsTyping(true);
-
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-
-        typingTimeoutRef.current = setTimeout(() => {
-          setIsTyping(false);
-        }, FINISH_TYPING_DELAY_MS);
-      }
-    },
-    [onChangeText, internalValue],
+  const [actualValue, setActualValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(
+    showMasked ? maskText(value) : value,
   );
 
-  const handleFocus = useCallback(
-    (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
-      setIsFocused(true);
-      if (onFocus) {
-        onFocus(e);
-      }
-    },
-    [onFocus],
-  );
-
-  const handleBlur = useCallback(
-    (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
-      setIsFocused(false);
-      setIsTyping(false);
-      if (onBlur) {
-        onBlur(e);
-      }
-    },
-    [onBlur],
-  );
-
+  // Update internal state when value prop changes
   useEffect(() => {
-    if (value !== internalValue) {
-      setInternalValue(value);
-    }
-  }, [value, internalValue]);
+    setActualValue(value);
+    setDisplayValue(showMasked ? maskText(value) : value);
+  }, [value, showMasked]);
 
-  useEffect(
-    () => () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    },
-    [],
-  );
+  const handleChangeText = (newMaskedValue: string) => {
+    if (!newMaskedValue) {
+      setActualValue("");
+      setDisplayValue("");
+      setValue("");
+      return;
+    }
+
+    const isPaste =
+      newMaskedValue.length > actualValue.length + 10 ||
+      newMaskedValue.split(" ").length > actualValue.split(" ").length + 2; // safety margin, not checking specific 12 or 24 words
+
+    if (isPaste) {
+      const normalizedPaste = normalizeAndTrimText(newMaskedValue);
+      setActualValue(normalizedPaste);
+      setDisplayValue(maskText(normalizedPaste));
+      setValue(normalizedPaste);
+      return;
+    }
+
+    if (newMaskedValue.length > displayValue.length) {
+      const addedChar = newMaskedValue[newMaskedValue.length - 1];
+      const newValue = normalizeText(actualValue + addedChar);
+      setActualValue(newValue);
+      setValue(newValue);
+    } else {
+      const newValue = normalizeText(actualValue.slice(0, -1));
+      setActualValue(newValue);
+      setValue(newValue);
+    }
+
+    // Always update displayValue from actualValue
+    setDisplayValue(maskText(newMaskedValue));
+  };
 
   return (
     <Textarea
       {...restProps}
-      value={displayValue}
-      onChangeText={handleTextChange}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
+      value={showMasked ? displayValue : actualValue}
+      onChangeText={handleChangeText}
       autoComplete="off"
       autoCorrect={false}
       autoCapitalize="none"
