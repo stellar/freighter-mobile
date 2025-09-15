@@ -31,9 +31,7 @@ export const SENTRY_CONFIG = {
  * When analytics are enabled: Full context including connectivity info and public key
  * When analytics are disabled: Minimal context for debugging without tracking user behavior
  */
-const buildSentryContext = (
-  respectAnalyticsPreference = true,
-): Record<string, unknown> => {
+const buildSentryContext = (): Record<string, unknown> => {
   const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
   const { connectionType, effectiveType } = useNetworkStore.getState();
   const { network, account } = useAuthenticationStore.getState();
@@ -49,7 +47,7 @@ const buildSentryContext = (
   };
 
   // If analytics are disabled and we should respect that preference, return minimal context
-  if (respectAnalyticsPreference && !analyticsEnabled) {
+  if (!analyticsEnabled) {
     return baseContext;
   }
 
@@ -69,15 +67,28 @@ const buildSentryContext = (
 };
 
 /**
- * Sets up Sentry context based on current app state and user preferences
+ * Updates Sentry context and tags based on current app state
+ * This should be called whenever relevant state changes (auth, analytics, etc.)
  */
+export const updateSentryContext = (): void => {
+  const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
+  const { account } = useAuthenticationStore.getState();
+
+  Sentry.setContext("appContext", buildSentryContext());
+
+  // Update tags based on analytics preferences
+  if (analyticsEnabled && account?.publicKey) {
+    Sentry.setTag("publicKey", account.publicKey);
+  } else {
+    // Remove the tag if analytics are disabled or no account
+    Sentry.setTag("publicKey", undefined);
+  }
+};
 
 /**
  * Initialize Sentry with privacy-conscious configuration
  */
 export const initializeSentry = (): void => {
-  const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
-
   Sentry.init({
     dsn: SENTRY_CONFIG.DSN,
     sendDefaultPii: false,
@@ -90,11 +101,11 @@ export const initializeSentry = (): void => {
 
     beforeSend(event) {
       // Update context on each event to ensure freshness
-      // Note: beforeSend is synchronous, so we can't await updateSentryContext
-      // Context will be updated on next async call
       Sentry.setContext("appContext", buildSentryContext());
 
       // Additional PII scrubbing based on analytics preferences
+      const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
+
       if (!analyticsEnabled && event.contexts?.appContext) {
         // When analytics disabled, keep only minimal context fields
         const minimalContext: Record<string, unknown> = {};
@@ -112,4 +123,7 @@ export const initializeSentry = (): void => {
       return event;
     },
   });
+
+  // Set initial context and tags
+  updateSentryContext();
 };
