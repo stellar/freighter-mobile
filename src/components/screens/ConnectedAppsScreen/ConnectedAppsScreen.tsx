@@ -135,7 +135,11 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 pt-3">
         {/* Connected Dapps Section */}
-        <ScrollView className="mb-6">
+        <ScrollView
+          className="mb-6"
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={false}
+        >
           {connectedDapps.length > 0 ? (
             <List items={connectedDapps} variant="secondary" />
           ) : (
