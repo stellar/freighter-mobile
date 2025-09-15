@@ -182,14 +182,14 @@
   "choosePasswordScreen": {
     "title": "Choose a Password",
     "passwordInputPlaceholder": "Type your password",
-    "passwordNote": "Minimum 8 characters",
+    "passwordNote": "Must be at least 8 characters long",
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
   },
   "confirmPasswordScreen": {
     "title": "Confirm Password",
     "passwordInputPlaceholder": "Confirm your password",
-    "passwordNote": "Minimum 8 characters",
+    "passwordNote": "Must be at least 8 characters long",
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
   },
@@ -279,7 +279,7 @@
   "onboarding": {
     "continue": "Continue",
     "typePassword": "Type your password",
-    "typePasswordNote": "Minimum 8 characters",
+    "typePasswordNote": "Must be at least 8 characters long",
     "pasteFromClipboard": "Paste from clipboard",
     "doThisLaterButtonText": "Do this later"
   },

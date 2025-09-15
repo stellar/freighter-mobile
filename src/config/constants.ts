@@ -35,7 +35,7 @@ export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 32;
+export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
