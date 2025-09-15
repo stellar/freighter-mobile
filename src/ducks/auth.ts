@@ -1881,6 +1881,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           },
         );
         if (!storedData || !storedData.password) {
+          set({ isLoading: false });
           throw new Error(
             "No stored password found for biometric authentication",
           );
@@ -1894,6 +1895,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           "Biometric authentication failed",
           error,
         );
+        set({ isLoading: false });
         throw error;
       }
     },
@@ -1989,6 +1991,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         );
 
         if (!storedData || !storedData.password) {
+          set({ isLoading: false });
           throw new Error(
             "No stored password found for biometric authentication",
           );
@@ -2002,6 +2005,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           "Biometric authentication failed",
           error,
         );
+        set({ isLoading: false });
         throw error;
       }
     },

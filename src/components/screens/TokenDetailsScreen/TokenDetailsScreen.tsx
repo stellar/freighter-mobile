@@ -15,7 +15,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
-import { isIOS } from "helpers/device";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
@@ -41,6 +41,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
   const { isHideDustEnabled } = usePreferencesStore();
+  const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -130,7 +131,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
-          {!isIOS && (
+          {swapEnabled && (
             <View className="flex-1">
               <Button tertiary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}

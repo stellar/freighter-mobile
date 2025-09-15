@@ -1,9 +1,10 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RecoveryPhraseInput } from "components/RecoveryPhraseInput";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
-import { RecoveryPhraseInput } from "components/sds/RecoveryPhraseInput";
 import { Text } from "components/sds/Typography";
+import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
@@ -30,7 +31,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [isImporting, setIsImporting] = useState(false);
-  const [showMasked, setShowMasked] = useState(true);
+  const [showMasked, setShowMasked] = useState(false);
 
   const { password } = route.params;
 
@@ -53,6 +54,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
             navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
               password,
               mnemonicPhrase: recoveryPhrase,
+              source: BiometricsSource.IMPORT_WALLET,
             });
           });
         } else {

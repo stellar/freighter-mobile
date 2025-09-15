@@ -1,5 +1,5 @@
 import { render, fireEvent } from "@testing-library/react-native";
-import { RecoveryPhraseInput } from "components/sds/RecoveryPhraseInput";
+import { RecoveryPhraseInput } from "components/RecoveryPhraseInput";
 import React from "react";
 
 describe("RecoveryPhraseInput", () => {

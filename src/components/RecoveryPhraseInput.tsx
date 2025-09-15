@@ -1,5 +1,11 @@
 import { Textarea, TextareaProps } from "components/sds/Textarea";
-import React, { useCallback, useMemo, useState, useRef } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 import { NativeSyntheticEvent, TextInputFocusEventData } from "react-native";
 
 export interface RecoveryPhraseInputProps
@@ -9,6 +15,8 @@ export interface RecoveryPhraseInputProps
   showMasked?: boolean;
 }
 
+const FINISH_TYPING_DELAY_MS = 1500;
+
 /**
  * Normalizes text by converting to lowercase and removing accents
  */
@@ -16,7 +24,9 @@ const normalizeText = (text: string): string =>
   text
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, ""); // Remove diacritical marks
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+    .replace(/\s+/g, " ")
+    .trim(); // Normalize spaces and trim
 
 /**
  * Masks a recovery phrase by replacing each word with asterisks
@@ -66,10 +76,11 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   const [lastPastedValue, setLastPastedValue] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const normalizedValue = useMemo(
-    () => normalizeText(internalValue),
-    [internalValue],
-  );
+  const normalizedValue = useMemo(() => {
+    const normalized = normalizeText(internalValue);
+    setInternalValue(normalized);
+    return normalized;
+  }, [internalValue]);
 
   const displayValue = useMemo(() => {
     if (!showMasked) {
@@ -118,7 +129,7 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
 
         typingTimeoutRef.current = setTimeout(() => {
           setIsTyping(false);
-        }, 1500);
+        }, FINISH_TYPING_DELAY_MS);
       }
     },
     [onChangeText, internalValue],
@@ -145,13 +156,13 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
     [onBlur],
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (value !== internalValue) {
       setInternalValue(value);
     }
   }, [value, internalValue]);
 
-  React.useEffect(
+  useEffect(
     () => () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);

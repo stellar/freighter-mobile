@@ -10,7 +10,11 @@ import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { FACE_ID_BIOMETRY_TYPES, STORAGE_KEYS } from "config/constants";
+import {
+  BiometricsSource,
+  FACE_ID_BIOMETRY_TYPES,
+  STORAGE_KEYS,
+} from "config/constants";
 import { logger } from "config/logger";
 import {
   AUTH_STACK_ROUTES,
@@ -127,6 +131,7 @@ export const BiometricsOnboardingScreen: React.FC<
   const {
     isLoading,
     signUp,
+    importWallet,
     enableBiometrics: enableBiometricsAction,
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
@@ -139,9 +144,9 @@ export const BiometricsOnboardingScreen: React.FC<
 
   const enableBiometrics = useCallback(async () => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
-    const { password, mnemonicPhrase } = route.params;
+    const { password, mnemonicPhrase, source } = route.params;
 
-    if (route.params.postOnboarding) {
+    if (source === BiometricsSource.POST_ONBOARDING) {
       await enableBiometricsAction(async () => {
         await dataStorage.setItem(
           STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
@@ -165,15 +170,25 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      enableBiometricsAction(async (biometricPassword) => {
+      await enableBiometricsAction(async (biometricPassword) => {
         await dataStorage.setItem(
           STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
           "true",
         );
-        await signUp({
-          mnemonicPhrase,
-          password: biometricPassword ?? password,
-        });
+
+        // Use importWallet for import flow, signUp for onboarding flow
+        if (source === BiometricsSource.IMPORT_WALLET) {
+          await importWallet({
+            mnemonicPhrase,
+            password: biometricPassword ?? password,
+          });
+        } else {
+          await signUp({
+            mnemonicPhrase,
+            password: biometricPassword ?? password,
+          });
+        }
+
         setIsBiometricsEnabled(true);
         return Promise.resolve();
       });
@@ -190,19 +205,20 @@ export const BiometricsOnboardingScreen: React.FC<
     route.params,
     setIsBiometricsEnabled,
     signUp,
+    importWallet,
     enableBiometricsAction,
     navigation,
   ]);
 
   const handleSkip = useCallback(async () => {
     setIsProcessing(true);
-    const { password, mnemonicPhrase } = route.params;
+    const { password, mnemonicPhrase, source } = route.params;
     await dataStorage.setItem(
       STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
       "true",
     );
 
-    if (route.params.postOnboarding) {
+    if (source === BiometricsSource.POST_ONBOARDING) {
       navigation.goBack();
       return;
     }
@@ -217,10 +233,18 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      await signUp({
-        mnemonicPhrase,
-        password,
-      });
+      // Use importWallet for import flow, signUp for onboarding flow
+      if (source === BiometricsSource.IMPORT_WALLET) {
+        await importWallet({
+          mnemonicPhrase,
+          password,
+        });
+      } else {
+        await signUp({
+          mnemonicPhrase,
+          password,
+        });
+      }
 
       // Track analytics for successful completion
       analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
@@ -232,7 +256,7 @@ export const BiometricsOnboardingScreen: React.FC<
       );
       // Handle error appropriately
     }
-  }, [route.params, signUp, navigation]);
+  }, [route.params, signUp, importWallet, navigation]);
 
   const handleSkipPress = useCallback(async () => {
     setTimeout(() => {

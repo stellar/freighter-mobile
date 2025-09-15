@@ -285,6 +285,7 @@
   "connectedApps": {
     "title": "Connected Apps",
     "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
     "disconnectAllSessions": "Disconnect all"
   },
