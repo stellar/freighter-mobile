@@ -95,4 +95,38 @@ describe("ChoosePasswordScreen", () => {
       ),
     ).toBeTruthy();
   });
+
+  it("masks password input by default", () => {
+    const { getByPlaceholderText } = renderWithProviders(
+      <ChoosePasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "" } } as never}
+      />,
+    );
+
+    const passwordInput = getByPlaceholderText("Type your password");
+    expect(passwordInput.props.secureTextEntry).toBe(true);
+  });
+
+  it("toggles password visibility when tapping the Eye icon", () => {
+    const { getByPlaceholderText, getByTestId } = renderWithProviders(
+      <ChoosePasswordScreen
+        navigation={{ navigate: mockNavigate } as never}
+        route={{ params: { password: "" } } as never}
+      />,
+    );
+
+    const passwordInput = getByPlaceholderText("Type your password");
+    expect(passwordInput.props.secureTextEntry).toBe(true);
+
+    const showIcon = getByTestId("eye-icon");
+    fireEvent.press(showIcon);
+
+    expect(passwordInput.props.secureTextEntry).toBe(false);
+
+    const hideIcon = getByTestId("eye-icon-off");
+    fireEvent.press(hideIcon);
+
+    expect(passwordInput.props.secureTextEntry).toBe(true);
+  });
 });

@@ -14,7 +14,6 @@ type TokenItemProps = {
   token: FormattedSearchTokenRecord;
   handleAddToken: () => void;
   handleRemoveToken: () => void;
-  isRemovingToken: boolean;
   isScanningToken: boolean;
 };
 
@@ -22,7 +21,6 @@ const TokenItem: React.FC<TokenItemProps> = ({
   token,
   handleAddToken,
   handleRemoveToken,
-  isRemovingToken,
   isScanningToken,
 }) => {
   const { isSuspicious, isMalicious } = {
@@ -69,7 +67,6 @@ const TokenItem: React.FC<TokenItemProps> = ({
             id: `${token.tokenCode}:${token.issuer}`,
           }}
           handleRemoveToken={handleRemoveToken}
-          isRemovingToken={isRemovingToken}
         />
       ) : (
         <AddTokenRightContent

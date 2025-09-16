@@ -7,7 +7,6 @@ import { isHomepageUrl } from "helpers/browser";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import { Freeze } from "react-freeze";
 import { View, Animated } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { WebView, WebViewNavigation } from "react-native-webview";
@@ -21,7 +20,16 @@ interface WebViewContainerProps {
 // Memoize to avoid unnecessary expensive re-renders
 const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
   ({ webViewRef, onNavigationStateChange, onShouldStartLoadWithRequest }) => {
-    const { tabs, isTabActive, updateTab, activeTabId } = useBrowserTabsStore();
+    const {
+      tabs,
+      isTabActive,
+      updateTab,
+      activeTabId,
+      activeWebViewIds,
+      registerWebView,
+      unregisterWebView,
+      getWebViewDisposalCandidates,
+    } = useBrowserTabsStore();
     const { themeColors } = useColors();
 
     const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +62,105 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       }
     }, []);
 
+    /**
+     * Determines if a WebView should be rendered based on WebView limit management
+     * @description Always render active tab, or if it's in the active WebView list
+     * @param tabId - The tab ID to check
+     * @returns true if the WebView should be rendered, false otherwise
+     */
+    const shouldRenderWebView = useCallback(
+      (tabId: string) => isTabActive(tabId) || activeWebViewIds.includes(tabId),
+      [isTabActive, activeWebViewIds],
+    );
+
+    /**
+     * Handles WebView registration when a WebView is mounted
+     * @param tabId - The tab ID to register
+     */
+    const handleWebViewMount = useCallback(
+      (tabId: string) => {
+        const tab = tabs.find((t) => t.id === tabId);
+        const isHomepage = tab ? isHomepageUrl(tab.url) : false;
+
+        // Don't register homepage as it doesn't use WebView
+        if (!isHomepage) {
+          registerWebView(tabId);
+        }
+      },
+      [tabs, registerWebView],
+    );
+
+    /**
+     * Handles WebView unregistration when a WebView is unmounted
+     * @param tabId - The tab ID to unregister
+     */
+    const handleWebViewUnmount = useCallback(
+      (tabId: string) => {
+        unregisterWebView(tabId);
+      },
+      [unregisterWebView],
+    );
+
+    /**
+     * Properly disposes of WebView instances to prevent memory leaks
+     * @param tabIds - Array of tab IDs to dispose
+     */
+    const disposeWebViews = useCallback((tabIds: string[]) => {
+      tabIds.forEach((tabId) => {
+        const webViewInstance = webViewRefs.current[tabId];
+
+        if (webViewInstance) {
+          try {
+            // Stop loading and clear cache
+            webViewInstance.stopLoading?.();
+            webViewInstance.clearCache?.(true); // true = clear everything including cookies
+            webViewInstance.clearHistory?.();
+          } catch (error) {
+            logger.warn(
+              "WebViewContainer",
+              `Failed to dispose WebView for tab ${tabId}`,
+              error,
+            );
+          }
+        }
+
+        // Clear ViewShot ref
+        viewShotRefs.current[tabId] = null;
+        webViewRefs.current[tabId] = null;
+
+        // Clear any pending timeouts
+        if (quickCaptureTimeouts.current[tabId]) {
+          clearTimeout(quickCaptureTimeouts.current[tabId]);
+          delete quickCaptureTimeouts.current[tabId];
+        }
+        if (finalCaptureTimeouts.current[tabId]) {
+          clearTimeout(finalCaptureTimeouts.current[tabId]);
+          delete finalCaptureTimeouts.current[tabId];
+        }
+        if (scrollCaptureTimeouts.current[tabId]) {
+          clearTimeout(scrollCaptureTimeouts.current[tabId]);
+          delete scrollCaptureTimeouts.current[tabId];
+        }
+
+        logger.info("WebViewContainer", `Disposed WebView for tab ${tabId}`);
+      });
+    }, []);
+
+    /**
+     * Checks for and disposes excess WebViews when limit is exceeded
+     */
+    const checkAndDisposeExcessWebViews = useCallback(() => {
+      const disposalCandidates = getWebViewDisposalCandidates();
+      if (Array.isArray(disposalCandidates) && disposalCandidates.length > 0) {
+        logger.debug(
+          "WebViewContainer",
+          `Disposing ${disposalCandidates.length} excess WebViews`,
+          disposalCandidates,
+        );
+        disposeWebViews(disposalCandidates);
+      }
+    }, [disposeWebViews, getWebViewDisposalCandidates]);
+
     // Show spinner when switching tabs
     useEffect(() => {
       if (!activeTabId) {
@@ -77,6 +184,29 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
 
       return () => clearTimeout(timer);
     }, [activeTabId, fadeLoadingAnim]);
+
+    useEffect(() => {
+      checkAndDisposeExcessWebViews();
+    }, [activeWebViewIds, checkAndDisposeExcessWebViews]);
+
+    // Cleanup WebViews when tabs are closed
+    useEffect(() => {
+      const currentTabIds = tabs.map((tab) => tab.id);
+      const previousTabIds = Object.keys(webViewRefs.current);
+
+      const closedTabIds = previousTabIds.filter(
+        (tabId) => !currentTabIds.includes(tabId),
+      );
+
+      if (closedTabIds.length > 0) {
+        logger.info(
+          "WebViewContainer",
+          `Cleaning up WebViews for closed tabs: ${closedTabIds.join(", ")}`,
+        );
+
+        disposeWebViews(closedTabIds);
+      }
+    }, [tabs, disposeWebViews]);
 
     const captureScreenshot = useCallback(
       async (tabId: string) => {
@@ -160,88 +290,95 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       <View className="flex-1">
         {tabs.map((tab) => {
           const isActive = isTabActive(tab.id);
+          const isHomepage = isHomepageUrl(tab.url);
+          const shouldRender = isHomepage || shouldRenderWebView(tab.id);
 
           return (
-            <Freeze key={tab.id} freeze={!isActive}>
-              {isHomepageUrl(tab.url) ? (
+            <View
+              key={tab.id}
+              className={`absolute inset-0 ${isActive ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+            >
+              {isHomepage ? (
                 <DiscoveryHomepage tabId={tab.id} />
               ) : (
-                <View
-                  className={`absolute inset-0 ${isActive ? "opacity-100" : "opacity-0"}`}
-                >
-                  <ViewShot
-                    ref={(ref) => {
-                      viewShotRefs.current[tab.id] = ref;
-                    }}
-                    options={{
-                      format: BROWSER_CONSTANTS.SCREENSHOT_FORMAT,
-                      quality: BROWSER_CONSTANTS.SCREENSHOT_QUALITY,
-                      width: BROWSER_CONSTANTS.SCREENSHOT_WIDTH,
-                      height: BROWSER_CONSTANTS.SCREENSHOT_HEIGHT,
-                      result: "data-uri",
-                    }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                    }}
-                  >
-                    <WebView
-                      userAgent={BROWSER_CONSTANTS.DISCOVERY_USER_AGENT}
-                      allowsLinkPreview={false}
-                      javaScriptEnabled
-                      domStorageEnabled
-                      startInLoadingState
-                      injectedJavaScriptBeforeContentLoaded={`
-                        window.stellar = {
-                          provider: 'freighter',
-                          platform: 'mobile',
-                          version: '${APP_VERSION}'
-                        };
-                      `}
+                shouldRender && (
+                  <View className="flex-1">
+                    <ViewShot
                       ref={(ref) => {
-                        webViewRefs.current[tab.id] = ref;
-                        if (isActive) {
-                          // eslint-disable-next-line no-param-reassign
-                          webViewRef.current = ref;
-                        }
-
-                        // Clear WebView cache whenever a WebView is about to render
-                        // This ensures we always render from a fresh state but without affecting cookies
-                        if (ref) {
-                          clearWebViewCache(ref);
-                        }
+                        viewShotRefs.current[tab.id] = ref;
                       }}
-                      source={{ uri: tab.url }}
-                      onLoadEnd={() => handleLoadEnd(tab.id)}
-                      onScroll={() => handleScroll(tab.id)}
-                      allowsBackForwardNavigationGestures={isActive}
-                      onNavigationStateChange={
-                        isActive ? onNavigationStateChange : undefined
-                      }
-                      onShouldStartLoadWithRequest={
-                        isActive ? onShouldStartLoadWithRequest : () => true
-                      }
-                    />
-                  </ViewShot>
-
-                  {/* Loading spinner overlay for smoother tab transition */}
-                  {isActive && isLoading && (
-                    <Animated.View
-                      className="absolute inset-0 justify-center items-center z-[50] pointer-events-none"
+                      options={{
+                        format: BROWSER_CONSTANTS.SCREENSHOT_FORMAT,
+                        quality: BROWSER_CONSTANTS.SCREENSHOT_QUALITY,
+                        width: BROWSER_CONSTANTS.SCREENSHOT_WIDTH,
+                        height: BROWSER_CONSTANTS.SCREENSHOT_HEIGHT,
+                        result: "data-uri",
+                      }}
                       style={{
-                        backgroundColor: "rgba(0, 0, 0, 0.3)",
-                        opacity: fadeLoadingAnim,
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                       }}
                     >
-                      <Spinner size="small" color={themeColors.gray[10]} />
-                    </Animated.View>
-                  )}
-                </View>
+                      <WebView
+                        userAgent={BROWSER_CONSTANTS.DISCOVERY_USER_AGENT}
+                        allowsLinkPreview={false}
+                        javaScriptEnabled
+                        domStorageEnabled
+                        startInLoadingState
+                        injectedJavaScriptBeforeContentLoaded={`
+                          window.stellar = {
+                            provider: 'freighter',
+                            platform: 'mobile',
+                            version: '${APP_VERSION}'
+                          };
+                        `}
+                        ref={(ref) => {
+                          webViewRefs.current[tab.id] = ref;
+                          if (isActive) {
+                            // eslint-disable-next-line no-param-reassign
+                            webViewRef.current = ref;
+                          }
+
+                          // Clear WebView cache whenever a WebView is about to render
+                          // This ensures we always render from a fresh state but without affecting cookies
+                          if (ref) {
+                            clearWebViewCache(ref);
+                          }
+                        }}
+                        source={{ uri: tab.url }}
+                        onLoadEnd={() => handleLoadEnd(tab.id)}
+                        onScroll={() => handleScroll(tab.id)}
+                        allowsBackForwardNavigationGestures={isActive}
+                        onNavigationStateChange={
+                          isActive ? onNavigationStateChange : undefined
+                        }
+                        onShouldStartLoadWithRequest={
+                          isActive ? onShouldStartLoadWithRequest : () => true
+                        }
+                        onLoadStart={() => handleWebViewMount(tab.id)}
+                        onError={() => handleWebViewUnmount(tab.id)}
+                      />
+                    </ViewShot>
+
+                    {/* Loading spinner overlay for smoother tab transition */}
+                    {isActive && isLoading && (
+                      <Animated.View
+                        className="absolute inset-0 justify-center items-center z-[50] pointer-events-none"
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.3)",
+                          opacity: fadeLoadingAnim,
+                        }}
+                      >
+                        <Spinner size="small" color={themeColors.gray[10]} />
+                      </Animated.View>
+                    )}
+                  </View>
+                )
               )}
-            </Freeze>
+            </View>
           );
         })}
       </View>
