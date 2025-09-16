@@ -8,7 +8,7 @@ import {
   HookStatus,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { Icon, useTokenIconsStore } from "ducks/tokenIcons";
+import { Icon } from "ducks/tokenIcons";
 import {
   formatTokenIdentifier,
   getTokenIdentifier,
@@ -21,7 +21,10 @@ import { useState } from "react";
 import { handleContractLookup } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
 import { SecurityLevel } from "services/blockaid/constants";
-import { assessTokenSecurity } from "services/blockaid/helper";
+import {
+  assessTokenSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 import { searchToken } from "services/stellarExpert";
 
 interface UseTokenLookupProps {
@@ -42,8 +45,6 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
-
-  const { cacheTokenIcons } = useTokenIconsStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
   const groupTokensBySecurityLevel = (
@@ -91,6 +92,7 @@ export const useTokenLookup = ({
         isSuspicious: securityInfo.isSuspicious,
         isMalicious: securityInfo.isMalicious,
         securityLevel: securityInfo.level,
+        securityWarnings: extractSecurityWarnings(scanResult),
       };
     });
 
@@ -117,12 +119,22 @@ export const useTokenLookup = ({
       | SearchTokenResponse["_embedded"]["records"]
       | FormattedSearchTokenRecord[],
     userBalances: (PricedBalance & { id: string })[],
+    icons: Record<string, Icon> = {},
   ): FormattedSearchTokenRecord[] =>
     rawSearchResults.map((result) => {
       if ("tokenCode" in result) {
         // came from freighter-backend
+        const tokenIdentifier = getTokenIdentifier({
+          type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          code: result.tokenCode,
+          issuer: {
+            key: result.issuer,
+          },
+        });
+        const iconUrl = icons[tokenIdentifier]?.imageUrl;
         return {
           ...result,
+          iconUrl,
           hasTrustline: hasExistingTrustline(
             userBalances,
             result.tokenCode,
@@ -133,11 +145,20 @@ export const useTokenLookup = ({
 
       // came from stellar.expert
       const [tokenCode, issuer] = result.asset.split("-");
+      const tokenIdentifier = getTokenIdentifier({
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code: tokenCode,
+        issuer: {
+          key: issuer,
+        },
+      });
+      const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
       return {
         tokenCode,
         domain: result.domain ?? "",
         hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        iconUrl,
         issuer: issuer ?? "",
         isNative: result.asset === NATIVE_TOKEN_CODE,
         tokenType: getTokenType(`${tokenCode}:${issuer}`),
@@ -155,6 +176,7 @@ export const useTokenLookup = ({
       setStatus(HookStatus.LOADING);
 
       let resJson;
+      let icons = {} as Record<string, Icon> | undefined;
 
       if (isContractId(searchTerm)) {
         const lookupResult = await handleContractLookup(
@@ -173,7 +195,7 @@ export const useTokenLookup = ({
         resJson = response && response._embedded && response._embedded.records;
 
         // Cache icons from stellar expert results so that TokenIcon can render them
-        const icons = resJson?.reduce(
+        icons = resJson?.reduce(
           (prev, curr) => {
             const tokenIdentifier = getTokenIdentifier({
               type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
@@ -193,10 +215,6 @@ export const useTokenLookup = ({
           },
           {} as Record<string, Icon>,
         );
-
-        if (icons) {
-          cacheTokenIcons({ icons });
-        }
       }
 
       if (!resJson) {
@@ -207,6 +225,7 @@ export const useTokenLookup = ({
       const formattedRecords = formatTokensFromSearchResults(
         resJson,
         balanceItems,
+        icons,
       );
 
       if (formattedRecords.length > 0 && isMainnet(network)) {

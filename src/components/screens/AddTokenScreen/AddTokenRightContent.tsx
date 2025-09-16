@@ -6,12 +6,10 @@ import React from "react";
 
 type AddTokenRightContentProps = {
   handleAddToken: () => void;
-  isScanningToken: boolean;
 };
 
 const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
   handleAddToken,
-  isScanningToken,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -26,8 +24,6 @@ const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
       }
       iconPosition={IconPosition.RIGHT}
       onPress={handleAddToken}
-      disabled={isScanningToken}
-      isLoading={isScanningToken}
     >
       {t("common.add")}
     </Button>

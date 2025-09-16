@@ -42,7 +42,7 @@ const getSecurityLevel = (resultType: string): SecurityLevel =>
  * Creates security assessment with proper i18n translation
  * Ensures user-facing messages are properly localized
  */
-const createSecurityAssessment = (
+export const createSecurityAssessment = (
   level: SecurityLevel,
   messageKey?: string,
   fallbackMessage?: string,

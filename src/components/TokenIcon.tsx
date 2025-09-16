@@ -21,6 +21,8 @@ interface TokenIconProps {
   size?: TokenSize;
   /** Optional custom background color */
   backgroundColor?: string;
+
+  iconUrl?: string;
 }
 
 /**
@@ -52,6 +54,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   token: tokenProp,
   size = "lg",
   backgroundColor,
+  iconUrl,
 }) => {
   const icons = useTokenIconsStore((state) => state.icons);
   const { t } = useTranslation();
@@ -131,7 +134,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
     const tokenIdentifier = getTokenIdentifier(token);
     const icon = icons[tokenIdentifier];
-    const imageUrl = icon?.imageUrl || "";
+    const imageUrl = iconUrl || icon?.imageUrl;
 
     // If we have a specific icon, use it
     if (imageUrl) {
@@ -165,7 +168,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   // Classic tokens (and SACs): show icon if available, otherwise show token initials
   const tokenIdentifier = getTokenIdentifier(token);
   const icon = icons[tokenIdentifier];
-  const imageUrl = icon?.imageUrl || "";
+  const imageUrl = iconUrl || icon?.imageUrl;
 
   const maxLetters = size === "sm" ? 1 : 2;
   const tokenInitials = token.code?.slice(0, maxLetters) || "";

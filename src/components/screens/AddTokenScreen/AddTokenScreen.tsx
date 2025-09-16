@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
@@ -20,7 +19,6 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import {
   MANAGE_TOKENS_ROUTES,
   ManageTokensStackParamList,
@@ -28,7 +26,6 @@ import {
 import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { getTokenIdentifier } from "helpers/balances";
-import { useBlockaidToken } from "hooks/blockaid/useBlockaidToken";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -41,10 +38,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTokenSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
+import { createSecurityAssessment } from "services/blockaid/helper";
 
 type AddTokenScreenProps = NativeStackScreenProps<
   ManageTokensStackParamList,
@@ -58,10 +52,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { getClipboardText } = useClipboard();
   const [selectedToken, setSelectedToken] =
     useState<FormattedSearchTokenRecord | null>(null);
-  const [scannedToken, setScannedToken] = useState<
-    Blockaid.TokenScanResponse | undefined
-  >(undefined);
-  const [isScanning, setIsScanning] = useState(false);
+  const [scannedToken, setScannedToken] = useState(
+    createSecurityAssessment(SecurityLevel.SAFE),
+  );
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const addTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -80,14 +73,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       balanceItems,
     });
 
-  const { scanToken } = useBlockaidToken();
-
-  const securityAssessment = useMemo(
-    () => assessTokenSecurity(scannedToken),
-    [scannedToken],
-  );
-  const isTokenMalicious = securityAssessment.isMalicious;
-  const isTokenSuspicious = securityAssessment.isSuspicious;
+  const isTokenMalicious = scannedToken.isMalicious;
+  const isTokenSuspicious = scannedToken.isSuspicious;
+  const securityWarnings = selectedToken?.securityWarnings || [];
 
   const securitySeverity = useMemo(() => {
     if (isTokenMalicious) return SecurityLevel.MALICIOUS;
@@ -95,18 +83,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
 
     return undefined;
   }, [isTokenMalicious, isTokenSuspicious]);
-
-  const securityWarnings = useMemo(() => {
-    if (isTokenMalicious || isTokenSuspicious) {
-      const warnings = extractSecurityWarnings(scannedToken);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [isTokenMalicious, isTokenSuspicious, scannedToken]);
 
   const resetPageState = useCallback(() => {
     handleRefresh();
@@ -139,29 +115,15 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     getClipboardText().then(handleSearch);
   }, [getClipboardText, handleSearch]);
 
-  const handleAddToken = useCallback(
-    (token: FormattedSearchTokenRecord) => {
-      setSelectedToken(token);
-      setIsScanning(true);
-      setScannedToken(undefined);
-
-      scanToken(token.tokenCode, token.issuer)
-        .then((scanResult) => {
-          setScannedToken(scanResult);
-        })
-        .catch(() => {
-          setScannedToken(undefined);
-        })
-        .finally(() => {
-          setIsScanning(false);
-        });
-
-      setTimeout(() => {
-        addTokenBottomSheetModalRef.current?.present();
-      }, DEFAULT_BLOCKAID_SCAN_DELAY);
-    },
-    [scanToken],
-  );
+  const handleAddToken = useCallback((token: FormattedSearchTokenRecord) => {
+    setSelectedToken(token);
+    setScannedToken({
+      isMalicious: token?.isMalicious || false,
+      isSuspicious: token?.isSuspicious || false,
+      level: token?.securityLevel || SecurityLevel.SAFE,
+    });
+    addTokenBottomSheetModalRef.current?.present();
+  }, []);
 
   const handleCancelTokenAddition = useCallback(() => {
     if (selectedToken) {
@@ -298,7 +260,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             addTokenBottomSheetModalRef.current?.dismiss();
           }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY}
-          shouldCloseOnPressBackdrop={!isScanning && !!selectedToken}
+          shouldCloseOnPressBackdrop={!!selectedToken}
           customContent={
             <AddTokenBottomSheetContent
               token={selectedToken}
@@ -371,7 +333,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                   token={token}
                   handleAddToken={() => handleAddToken(token)}
                   handleRemoveToken={() => handleRemoveToken(token)}
-                  isScanningToken={isScanning}
                 />
               ))
             ) : (
