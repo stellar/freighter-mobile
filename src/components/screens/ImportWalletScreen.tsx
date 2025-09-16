@@ -87,7 +87,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     setShowMasked((prev) => !prev);
   }, []);
 
-  const IconComponent = showMasked ? Icon.EyeOff : Icon.Eye;
+  const IconComponent = showMasked ? Icon.Eye : Icon.EyeOff;
   const pressableNote = (
     <Pressable onPress={handleToggleMasked} className="flex-row items-center">
       <IconComponent
