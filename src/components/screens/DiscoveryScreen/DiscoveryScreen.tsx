@@ -214,6 +214,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     ],
   );
 
+  const handleCloseAllTabs = useCallback(() => {
+    browserActions.handleCloseAllTabs();
+    handleNewTabFromOverview();
+  }, [browserActions, handleNewTabFromOverview]);
+
   if (!activeTab) {
     return (
       <BaseLayout>
@@ -283,6 +288,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           onClose={handleHideTabs}
           onSwitchTab={handleSwitchTab}
           onCloseTab={handleCloseSpecificTab}
+          onCloseAllTabs={handleCloseAllTabs}
           newTabId={newTabId}
         />
       </Animated.View>

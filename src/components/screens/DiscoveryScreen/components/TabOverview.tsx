@@ -1,6 +1,6 @@
-import { DefaultListFooter } from "components/DefaultListFooter";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -11,6 +11,7 @@ import {
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 import { View, TouchableOpacity, FlatList } from "react-native";
 
@@ -49,13 +50,23 @@ interface TabOverviewProps {
   onNewTab: () => void;
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
+  onCloseAllTabs: () => void;
   newTabId?: string | null;
 }
 
 // Memoize to avoid unnecessary expensive re-renders
 const TabOverview: React.FC<TabOverviewProps> = React.memo(
-  ({ onClose, onNewTab, onSwitchTab, onCloseTab, newTabId }) => {
+  ({
+    onClose,
+    onNewTab,
+    onSwitchTab,
+    onCloseTab,
+    onCloseAllTabs,
+    newTabId,
+  }) => {
     const { tabs, isTabActive } = useBrowserTabsStore();
+    const { t } = useAppTranslation();
+    const { themeColors } = useColors();
 
     // Filter out the specific new tab being added to prevent showing
     // its preview while it's being added so we have a smoother UI transition
@@ -77,9 +88,24 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
           numColumns={2}
           columnWrapperStyle={{
             justifyContent: "space-between",
-            marginBottom: pxValue(14),
+            marginBottom: pxValue(16),
           }}
-          ListFooterComponent={DefaultListFooter}
+          ListFooterComponent={
+            <View className="mx-auto mt-3 mb-1">
+              <Button
+                secondary
+                icon={
+                  <Icon.XCircle
+                    color={themeColors.foreground.primary}
+                    size={18}
+                  />
+                }
+                onPress={onCloseAllTabs}
+              >
+                {t("discovery.closeAllTabs")}
+              </Button>
+            </View>
+          }
           contentContainerStyle={{ padding: pxValue(DEFAULT_PADDING) }}
           keyExtractor={(tab) => tab.id}
           renderItem={({ item: tab }) => (
