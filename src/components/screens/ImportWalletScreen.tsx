@@ -45,12 +45,12 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
+        const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
+        if (!isValidMnemonicPhrase) {
+          setIsImporting(false);
+          return;
+        }
         if (biometryType) {
-          const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
-          if (!isValidMnemonicPhrase) {
-            setIsImporting(false);
-            return;
-          }
           storeBiometricPassword(password).then(() => {
             navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
               password,
