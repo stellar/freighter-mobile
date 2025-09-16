@@ -28,7 +28,7 @@ const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-row items-center justify-between px-6 py-4 border-b border-border-primary">
+    <View className="flex-row items-center justify-between px-6 py-4">
       <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
       <Text lg semiBold>
         {tabsCount > 1

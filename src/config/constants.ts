@@ -308,8 +308,8 @@ export const BROWSER_CONSTANTS = {
   TAB_SWITCH_SPINNER_DELAY: 500,
   TAB_SWITCH_SPINNER_DURATION: 200,
   TAB_PREVIEW_FAVICON_SIZE: 32,
-  TAB_PREVIEW_CLOSE_ICON_SIZE: 12,
-  TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
+  TAB_PREVIEW_CLOSE_ICON_SIZE: 14,
+  TAB_PREVIEW_TILE_SIZE: "w-[47.7%] h-[202px]",
 
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
