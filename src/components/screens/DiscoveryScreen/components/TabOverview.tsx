@@ -9,6 +9,7 @@ import {
   DEFAULT_PRESS_DELAY,
 } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -74,6 +75,11 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
       ? tabs.filter((tab) => tab.id !== newTabId)
       : tabs;
 
+    // Check if we should show the "Close all tabs" button
+    // Hide it if there's only 1 tab and it's the homepage
+    const shouldShowCloseAllButton =
+      tabs.length > 1 || (tabs.length === 1 && !isHomepageUrl(tabs[0]?.url));
+
     return (
       <View className="relative flex-1">
         <TabOverviewHeader
@@ -91,20 +97,22 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
             marginBottom: pxValue(16),
           }}
           ListFooterComponent={
-            <View className="mx-auto mt-3 mb-1">
-              <Button
-                secondary
-                icon={
-                  <Icon.XCircle
-                    color={themeColors.foreground.primary}
-                    size={18}
-                  />
-                }
-                onPress={onCloseAllTabs}
-              >
-                {t("discovery.closeAllTabs")}
-              </Button>
-            </View>
+            shouldShowCloseAllButton ? (
+              <View className="mx-auto mt-3 mb-1">
+                <Button
+                  secondary
+                  icon={
+                    <Icon.XCircle
+                      color={themeColors.foreground.primary}
+                      size={18}
+                    />
+                  }
+                  onPress={onCloseAllTabs}
+                >
+                  {t("discovery.closeAllTabs")}
+                </Button>
+              </View>
+            ) : null
           }
           contentContainerStyle={{ padding: pxValue(DEFAULT_PADDING) }}
           keyExtractor={(tab) => tab.id}
