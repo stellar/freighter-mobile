@@ -6,4 +6,4 @@ export const normalizeRecoveryPhrase = (text: string): string =>
     .replace(/\s+/g, " ");
 
 export const normalizeAndTrimRecoveryPhrase = (text: string): string =>
-  normalizeRecoveryPhrase(text).trim().replace(/\n/g, " ");
+  normalizeRecoveryPhrase(text).replace(/\n/g, " ").trim();
