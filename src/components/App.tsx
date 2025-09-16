@@ -10,6 +10,7 @@ import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
+import { useSentryContext } from "hooks/useSentryContext";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
 import { AuthCheckProvider } from "providers/AuthCheckProvider";
@@ -28,6 +29,8 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 export const App = (): React.JSX.Element => {
   const { onStateChange } = useNavigationAnalytics();
   const { initFetchFeatureFlagsPoll } = useRemoteConfigStore();
+
+  useSentryContext();
 
   useEffect(() => {
     Appearance.setColorScheme("dark");
