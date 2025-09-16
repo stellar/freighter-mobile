@@ -1,5 +1,6 @@
 import { fireEvent } from "@testing-library/react-native";
 import { ConfirmPasswordScreen } from "components/screens/ConfirmPasswordScreen";
+import Icon from "components/sds/Icon";
 import { AUTH_STACK_ROUTES } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -123,8 +124,9 @@ describe("ConfirmPasswordScreen", () => {
     expect(passwordInput.props.secureTextEntry).toBe(true);
   });
 
+  /* eslint-disable @typescript-eslint/naming-convention */
   it("toggles password visibility when tapping the Eye icon", () => {
-    const { getByPlaceholderText, getByTestId } = renderWithProviders(
+    const { getByPlaceholderText, UNSAFE_getByType } = renderWithProviders(
       <ConfirmPasswordScreen
         navigation={{ navigate: mockNavigate } as never}
         route={{ params: { password: "" } } as never}
@@ -134,14 +136,15 @@ describe("ConfirmPasswordScreen", () => {
     const passwordInput = getByPlaceholderText("Confirm your password");
     expect(passwordInput.props.secureTextEntry).toBe(true);
 
-    const showIcon = getByTestId("eye-icon");
+    const showIcon = UNSAFE_getByType(Icon.Eye);
     fireEvent.press(showIcon);
 
     expect(passwordInput.props.secureTextEntry).toBe(false);
 
-    const hideIcon = getByTestId("eye-icon-off");
+    const hideIcon = UNSAFE_getByType(Icon.EyeOff);
     fireEvent.press(hideIcon);
 
     expect(passwordInput.props.secureTextEntry).toBe(true);
   });
+  /* eslint-enable @typescript-eslint/naming-convention */
 });
