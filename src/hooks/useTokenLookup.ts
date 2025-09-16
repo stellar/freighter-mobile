@@ -17,7 +17,7 @@ import {
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
 import useDebounce from "hooks/useDebounce";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { handleContractLookup } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -40,6 +40,7 @@ export const useTokenLookup = ({
   publicKey,
   balanceItems,
 }: UseTokenLookupProps) => {
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<
     FormattedSearchTokenRecord[]
@@ -165,9 +166,15 @@ export const useTokenLookup = ({
       };
     });
 
-  const debouncedSearch = useDebounce(() => {
+  const debouncedSearch = useDebounce((term: string) => {
     const performSearch = async () => {
-      if (!searchTerm) {
+      // Cancel previous request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const { signal } = controller;
+
+      if (!term) {
         setStatus(HookStatus.IDLE);
         setSearchResults([]);
         return;
@@ -178,43 +185,54 @@ export const useTokenLookup = ({
       let resJson;
       let icons = {} as Record<string, Icon> | undefined;
 
-      if (isContractId(searchTerm)) {
+      if (isContractId(term)) {
         const lookupResult = await handleContractLookup(
-          searchTerm,
+          term,
           network,
           publicKey,
+          signal,
         ).catch(() => {
+          if (signal.aborted) return null;
           setStatus(HookStatus.ERROR);
           return null;
         });
 
+        if (signal.aborted) return;
         resJson = lookupResult ? [lookupResult] : [];
       } else {
-        const response = await searchToken(searchTerm, network);
+        try {
+          const response = await searchToken(searchTerm, network, signal);
+          if (signal.aborted) return;
 
-        resJson = response && response._embedded && response._embedded.records;
+          resJson =
+            response && response._embedded && response._embedded.records;
 
-        // Cache icons from stellar expert results so that TokenIcon can render them
-        icons = resJson?.reduce(
-          (prev, curr) => {
-            const tokenIdentifier = getTokenIdentifier({
-              type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-              code: curr.tomlInfo?.code,
-              issuer: {
-                key: curr.tomlInfo?.issuer,
-              },
-            });
-            const icon = {
-              imageUrl: curr.tomlInfo?.image,
-              network,
-            };
+          // Cache icons from stellar expert results so that TokenIcon can render them
+          icons = resJson?.reduce(
+            (prev, curr) => {
+              const tokenIdentifier = getTokenIdentifier({
+                type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+                code: curr.tomlInfo?.code,
+                issuer: {
+                  key: curr.tomlInfo?.issuer,
+                },
+              });
+              const icon = {
+                imageUrl: curr.tomlInfo?.image,
+                network,
+              };
 
-            // eslint-disable-next-line no-param-reassign
-            prev[tokenIdentifier] = icon;
-            return prev;
-          },
-          {} as Record<string, Icon>,
-        );
+              // eslint-disable-next-line no-param-reassign
+              prev[tokenIdentifier] = icon;
+              return prev;
+            },
+            {} as Record<string, Icon>,
+          );
+        } catch (error) {
+          if (signal.aborted) return;
+          setStatus(HookStatus.ERROR);
+          return;
+        }
       }
 
       if (!resJson) {
@@ -236,7 +254,10 @@ export const useTokenLookup = ({
               : token.tokenCode,
           );
 
-          const bulkScanResult = await scanBulkTokens({ addressList, network });
+          const bulkScanResult = await scanBulkTokens(
+            { addressList, network },
+            signal,
+          );
           const enhancedSearchResults = enhanceWithSecurityInfo(
             formattedRecords,
             bulkScanResult,
@@ -245,6 +266,7 @@ export const useTokenLookup = ({
             enhancedSearchResults,
           );
 
+          if (signal.aborted) return;
           setSearchResults(groupedSearchResults);
         } catch (error) {
           // If security scan fails, mark tokens as suspicious since we can't verify their safety
@@ -260,6 +282,7 @@ export const useTokenLookup = ({
             fallbackSearchResults,
           );
 
+          if (signal.aborted) return;
           setSearchResults(groupedFallbackResults);
         }
       } else {
@@ -279,20 +302,20 @@ export const useTokenLookup = ({
 
       setStatus(HookStatus.SUCCESS);
     };
-
     performSearch();
-  });
+  }, 150);
 
   const handleSearch = (text: string) => {
-    if (text === searchTerm) {
+    setSearchTerm(text);
+    if (text === searchTerm || text.length < 3) {
       return;
     }
 
-    setSearchTerm(text);
-    debouncedSearch();
+    debouncedSearch(text);
   };
 
   const resetSearch = () => {
+    abortControllerRef.current?.abort();
     setStatus(HookStatus.IDLE);
     setSearchResults([]);
     setSearchTerm("");

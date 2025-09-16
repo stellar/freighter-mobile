@@ -378,6 +378,7 @@ export const getTokenDetails = async ({
   contractId,
   publicKey,
   network,
+  signal,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
@@ -389,6 +390,7 @@ export const getTokenDetails = async ({
           pub_key: publicKey,
           network,
         },
+        signal,
       },
     );
 
@@ -399,7 +401,7 @@ export const getTokenDetails = async ({
     return response.data;
   } catch (error) {
     if ((error as AxiosError).status === 400) {
-      // That means the contract is not a SAC token.
+      // That means the contract is not SEP-41 compliant.
       return null;
     }
 
@@ -592,6 +594,7 @@ export const handleContractLookup = async (
   contractId: string,
   network: NETWORKS,
   publicKey?: string,
+  signal?: AbortSignal,
 ): Promise<FormattedSearchTokenRecord | null> => {
   const nativeContractDetails = getNativeContractDetails(network);
 
@@ -610,6 +613,7 @@ export const handleContractLookup = async (
     contractId,
     publicKey: publicKey ?? "",
     network,
+    signal,
   });
 
   if (!tokenDetails) {

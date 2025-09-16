@@ -76,6 +76,7 @@ export interface RequestConfig extends Omit<AxiosRequestConfig, "baseURL"> {
    * });
    */
   retry?: RetryConfig;
+  signal?: AbortSignal;
 }
 
 /**
@@ -183,7 +184,10 @@ export function createApiService(options: ApiServiceOptions) {
   const executeWithRetry = async <T>(
     requestFn: () => Promise<T>,
     retryOptions?: RetryConfig,
+    signal?: AbortSignal,
   ): Promise<T> => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
     if (!retryOptions || retryOptions.retries <= 0) {
       return requestFn();
     }
@@ -198,6 +202,7 @@ export function createApiService(options: ApiServiceOptions) {
       try {
         return await requestFn();
       } catch (error) {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
         attempts++;
         lastError = error;
 

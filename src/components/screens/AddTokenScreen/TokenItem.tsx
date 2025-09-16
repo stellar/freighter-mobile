@@ -7,7 +7,7 @@ import {
   TokenTypeWithCustomToken,
   FormattedSearchTokenRecord,
 } from "config/types";
-import React from "react";
+import React, { memo } from "react";
 import { View } from "react-native";
 
 type TokenItemProps = {
@@ -73,4 +73,4 @@ const TokenItem: React.FC<TokenItemProps> = ({
     </View>
   );
 };
-export default TokenItem;
+export default memo(TokenItem);

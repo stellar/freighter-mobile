@@ -13,7 +13,11 @@ const stellarExpertApiPublic = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.PUBLIC),
 });
 
-export const searchToken = async (token: string, network: NETWORKS) => {
+export const searchToken = async (
+  token: string,
+  network: NETWORKS,
+  signal?: AbortSignal,
+) => {
   const stellarExpertApi =
     network === NETWORKS.TESTNET
       ? stellarExpertApiTestnet
@@ -24,6 +28,7 @@ export const searchToken = async (token: string, network: NETWORKS) => {
       params: {
         search: token,
       },
+      signal,
     });
 
     if (!response.data || !response.data._embedded) {
@@ -32,6 +37,9 @@ export const searchToken = async (token: string, network: NETWORKS) => {
 
     return response.data;
   } catch (error) {
+    if (error instanceof Error && error.message === "canceled") {
+      return null;
+    }
     logger.error("stellarExpert", "Error searching token", error);
 
     return null;

@@ -292,6 +292,7 @@ export interface GetTokenDetailsParams {
   publicKey: string;
   network: NETWORKS;
   shouldFetchBalance?: boolean;
+  signal?: AbortSignal;
 }
 
 export type FormattedSearchTokenRecord = {
