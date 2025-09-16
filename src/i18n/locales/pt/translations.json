@@ -142,17 +142,19 @@
       "privacyPolicy": "política de privacidade"
     }
   },
+  "passwordInput": {
+    "passwordNote": "Deve ter pelo menos 8 caracteres"
+  },
   "choosePasswordScreen": {
     "title": "Escolha uma Senha",
     "passwordInputPlaceholder": "Digite sua senha",
-    "passwordNote": "Deve ter pelo menos 8 caracteres.",
     "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
+    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro.",
+    "passwordTooLong": "Deve ter menos de 2048 caracteres"
   },
   "confirmPasswordScreen": {
     "title": "Confirmar Senha",
     "passwordInputPlaceholder": "Confirme sua senha",
-    "passwordNote": "Deve ter pelo menos 8 caracteres.",
     "defaultActionButtonText": "Continuar",
     "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
   },

@@ -179,17 +179,19 @@
       "privacyPolicy": "privacy policy"
     }
   },
+  "passwordInput": {
+    "passwordNote": "Must be at least 8 characters long"
+  },
   "choosePasswordScreen": {
     "title": "Choose a Password",
     "passwordInputPlaceholder": "Type your password",
-    "passwordNote": "Must be at least 8 characters long",
     "defaultActionButtonText": "Continue",
-    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
+    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place.",
+    "passwordTooLong": "Must be less than 2048 characters"
   },
   "confirmPasswordScreen": {
     "title": "Confirm Password",
     "passwordInputPlaceholder": "Confirm your password",
-    "passwordNote": "Must be at least 8 characters long",
     "defaultActionButtonText": "Continue",
     "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
   },

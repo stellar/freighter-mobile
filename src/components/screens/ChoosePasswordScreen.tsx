@@ -20,6 +20,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   const { isImporting } = route.params;
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -59,9 +60,17 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
         secureTextEntry={!showPassword}
         placeholder={t("choosePasswordScreen.passwordInputPlaceholder")}
         fieldSize="lg"
-        note={t("choosePasswordScreen.passwordNote")}
+        note={t("passwordInput.passwordNote")}
+        error={error}
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(text) => {
+          setPassword(text);
+          if (text.length > PASSWORD_MAX_LENGTH) {
+            setError(t("choosePasswordScreen.passwordTooLong"));
+          } else {
+            setError(null);
+          }
+        }}
         rightElement={
           showPassword ? (
             <Icon.EyeOff
