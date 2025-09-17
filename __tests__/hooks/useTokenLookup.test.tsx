@@ -223,4 +223,74 @@ describe("useTokenLookup", () => {
     expect(result.current.searchResults).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
   });
+
+  it("should return formatted search results for a valid term", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+
+    await flushPromises();
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults.length).toBeGreaterThan(0);
+
+    const usdcResult = result.current.searchResults.find(
+      (t) => t.tokenCode === "USDC",
+    );
+    expect(usdcResult).toBeDefined();
+    expect(usdcResult?.hasTrustline).toBe(true);
+  });
+
+  it("should handle request cancellation correctly", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSearch("test");
+    });
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+
+    await flushPromises();
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    const tokens = result.current.searchResults.map((t) => t.tokenCode);
+    expect(tokens).toContain("USDC");
+    expect(tokens).not.toContain("FOO");
+  });
+
+  it("should handle contract ID search", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSearch(
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+      );
+    });
+
+    await flushPromises();
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults[0].tokenCode).toBe("TOKEN");
+  });
 });

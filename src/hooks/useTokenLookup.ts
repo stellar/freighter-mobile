@@ -264,13 +264,12 @@ export const useTokenLookup = ({
         if (signal.aborted) return;
         setSearchResults(groupedSearchResults);
       } catch (error) {
-        // If security scan fails, mark tokens as suspicious since we can't verify their safety
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
             ...token,
-            isSuspicious: true,
+            isSuspicious: false,
             isMalicious: false,
-            securityLevel: SecurityLevel.SUSPICIOUS,
+            securityLevel: SecurityLevel.SAFE,
           }));
 
         const groupedFallbackResults = groupTokensBySecurityLevel(

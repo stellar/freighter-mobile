@@ -392,7 +392,6 @@ export const SimpleButton = ({
   );
   const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
 
-  // Handle biometric authentication
   const handlePress = React.useCallback(() => {
     if (!onPress) return;
 
@@ -402,7 +401,6 @@ export const SimpleButton = ({
   // Determine icon to display
   const resolvedIcon = React.useMemo(() => icon, [icon]);
 
-  // Determine icon position for biometric buttons
   const resolvedIconPosition = React.useMemo(
     () => iconPosition,
     [iconPosition],

@@ -66,13 +66,12 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     shouldPoll: false,
   });
   const { themeColors } = useColors();
-  const stableBalanceItems = useMemo(() => balanceItems, [balanceItems]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const { searchResults, status, handleSearch, resetSearch } = useTokenLookup({
     network,
     publicKey: account?.publicKey,
-    balanceItems: stableBalanceItems,
+    balanceItems,
   });
 
   const isTokenMalicious = scannedToken.isMalicious;
@@ -170,7 +169,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       );
     }
 
-    const tokenBalance = stableBalanceItems.find(
+    const tokenBalance = balanceItems.find(
       (balance) =>
         getTokenIdentifier(balance) ===
         `${selectedToken?.tokenCode}:${selectedToken?.issuer}`,
@@ -211,7 +210,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     /* eslint-enable react/jsx-no-useless-fragment */
   }, [
     account,
-    stableBalanceItems,
+    balanceItems,
     handleCancelTokenRemoval,
     removeToken,
     isRemovingToken,

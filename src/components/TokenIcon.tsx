@@ -21,7 +21,7 @@ interface TokenIconProps {
   size?: TokenSize;
   /** Optional custom background color */
   backgroundColor?: string;
-
+  /** Optional icon URL, takes precedence over cache */
   iconUrl?: string;
 }
 

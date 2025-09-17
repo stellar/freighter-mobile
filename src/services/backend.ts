@@ -32,7 +32,7 @@ import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import Config from "react-native-config";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isRequestCanceled } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
 export const freighterBackend = createApiService({
@@ -405,11 +405,13 @@ export const getTokenDetails = async ({
       return null;
     }
 
-    logger.error(
-      "backendApi.getTokenDetails",
-      "Error fetching token details",
-      error,
-    );
+    if (!isRequestCanceled(error)) {
+      logger.error(
+        "backendApi.getTokenDetails",
+        "Error fetching token details",
+        error,
+      );
+    }
 
     return null;
   }
