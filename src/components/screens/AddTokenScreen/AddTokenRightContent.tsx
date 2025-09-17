@@ -1,8 +1,8 @@
-import { Button, IconPosition } from "components/sds/Button";
+import { IconPosition, SimpleButton } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { memo } from "react";
 
 type AddTokenRightContentProps = {
   handleAddToken: () => void;
@@ -15,7 +15,7 @@ const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
   const { themeColors } = useColors();
 
   return (
-    <Button
+    <SimpleButton
       secondary
       squared
       testID="add-token-button"
@@ -26,8 +26,8 @@ const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
       onPress={handleAddToken}
     >
       {t("common.add")}
-    </Button>
+    </SimpleButton>
   );
 };
 
-export default AddTokenRightContent;
+export default memo(AddTokenRightContent);

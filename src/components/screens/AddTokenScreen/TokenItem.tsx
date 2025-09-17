@@ -12,8 +12,8 @@ import { View } from "react-native";
 
 type TokenItemProps = {
   token: FormattedSearchTokenRecord;
-  handleAddToken: () => void;
-  handleRemoveToken: () => void;
+  handleAddToken: (token: FormattedSearchTokenRecord) => void;
+  handleRemoveToken: (token: FormattedSearchTokenRecord) => void;
 };
 
 const TokenItem: React.FC<TokenItemProps> = ({
@@ -65,12 +65,17 @@ const TokenItem: React.FC<TokenItemProps> = ({
             isNative: token.isNative,
             id: `${token.tokenCode}:${token.issuer}`,
           }}
-          handleRemoveToken={handleRemoveToken}
+          handleRemoveToken={() => handleRemoveToken(token)}
         />
       ) : (
-        <AddTokenRightContent handleAddToken={handleAddToken} />
+        <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
       )}
     </View>
   );
 };
-export default memo(TokenItem);
+export default memo(
+  TokenItem,
+  (prev, next) =>
+    prev.token.tokenCode === next.token.tokenCode &&
+    prev.token.issuer === next.token.issuer,
+);

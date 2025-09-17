@@ -30,6 +30,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageToken } from "hooks/useManageToken";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -65,13 +66,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     shouldPoll: false,
   });
   const { themeColors } = useColors();
+  const stableBalanceItems = useMemo(() => balanceItems, [balanceItems]);
 
-  const { searchTerm, searchResults, status, handleSearch, resetSearch } =
-    useTokenLookup({
-      network,
-      publicKey: account?.publicKey,
-      balanceItems,
-    });
+  const [searchTerm, setSearchTerm] = useState("");
+  const { searchResults, status, handleSearch, resetSearch } = useTokenLookup({
+    network,
+    publicKey: account?.publicKey,
+    balanceItems: stableBalanceItems,
+  });
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -168,7 +170,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       );
     }
 
-    const tokenBalance = balanceItems.find(
+    const tokenBalance = stableBalanceItems.find(
       (balance) =>
         getTokenIdentifier(balance) ===
         `${selectedToken?.tokenCode}:${selectedToken?.issuer}`,
@@ -209,13 +211,27 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     /* eslint-enable react/jsx-no-useless-fragment */
   }, [
     account,
-    balanceItems,
+    stableBalanceItems,
     handleCancelTokenRemoval,
     removeToken,
     isRemovingToken,
     removeTokenBottomSheetModalRef,
     selectedToken,
   ]);
+
+  const debouncedHandleSearch = useDebounce((text: string) => {
+    handleSearch(text);
+  }, 200);
+
+  const handleAddTokenMemo = useCallback(
+    (token: FormattedSearchTokenRecord) => () => handleAddToken(token),
+    [handleAddToken],
+  );
+
+  const handleRemoveTokenMemo = useCallback(
+    (token: FormattedSearchTokenRecord) => () => handleRemoveToken(token),
+    [handleRemoveToken],
+  );
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
@@ -310,7 +326,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
         <Input
           placeholder={t("addTokenScreen.searchPlaceholder")}
           value={searchTerm}
-          onChangeText={handleSearch}
+          onChangeText={(text: string) => {
+            setSearchTerm(text);
+            debouncedHandleSearch(text);
+          }}
           fieldSize="lg"
           autoCapitalize="none"
           autoCorrect={false}
@@ -331,8 +350,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                 <TokenItem
                   key={`${token.tokenCode}:${token.issuer}`}
                   token={token}
-                  handleAddToken={() => handleAddToken(token)}
-                  handleRemoveToken={() => handleRemoveToken(token)}
+                  handleAddToken={handleAddTokenMemo}
+                  handleRemoveToken={handleRemoveTokenMemo}
                 />
               ))
             ) : (

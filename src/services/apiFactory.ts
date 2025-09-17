@@ -186,7 +186,7 @@ export function createApiService(options: ApiServiceOptions) {
     retryOptions?: RetryConfig,
     signal?: AbortSignal,
   ): Promise<T> => {
-    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    if (signal?.aborted) throw new axios.CanceledError("canceled");
 
     if (!retryOptions || retryOptions.retries <= 0) {
       return requestFn();
@@ -202,7 +202,7 @@ export function createApiService(options: ApiServiceOptions) {
       try {
         return await requestFn();
       } catch (error) {
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        if (signal?.aborted) throw new axios.CanceledError("canceled");
         attempts++;
         lastError = error;
 
@@ -391,4 +391,18 @@ export function createApiService(options: ApiServiceOptions) {
       return instance;
     },
   };
+}
+
+export function isRequestCanceled(error: unknown): boolean {
+  // Axios <1 style
+  if (axios.isCancel(error)) return true;
+
+  // Axios >=1 + AbortController style
+  return (
+    (error instanceof DOMException && error.name === "CanceledError") ||
+    (typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      error.message === "canceled")
+  );
 }
