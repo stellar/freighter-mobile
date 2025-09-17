@@ -12,12 +12,13 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 
 type ConnectedAppsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -29,6 +30,7 @@ const EmptyState: React.FC<{
 }> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { discover_enabled: discoverEnabled } = useRemoteConfigStore();
 
   const handleGoToDiscover = () => {
     navigation.reset({
@@ -49,13 +51,21 @@ const EmptyState: React.FC<{
     <View className="w-full items-center bg-background-tertiary rounded-2xl px-4 py-6 gap-3">
       <Icon.NotificationBox size={24} color={themeColors.foreground.primary} />
 
-      <Text md secondary medium textAlign="center">
-        {t("connectedApps.noConnectedDapps")}
-      </Text>
+      {discoverEnabled ? (
+        <>
+          <Text md secondary medium textAlign="center">
+            {t("connectedApps.noConnectedDapps")}
+          </Text>
 
-      <Button lg secondary onPress={handleGoToDiscover}>
-        {t("connectedApps.goToDiscover")}
-      </Button>
+          <Button xl secondary onPress={handleGoToDiscover}>
+            {t("connectedApps.goToDiscover")}
+          </Button>
+        </>
+      ) : (
+        <Text md secondary medium textAlign="center">
+          {t("connectedApps.noConnectedDappsNoDiscover")}
+        </Text>
+      )}
     </View>
   );
 };
@@ -125,13 +135,17 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 pt-3">
         {/* Connected Dapps Section */}
-        <View className="mb-6">
+        <ScrollView
+          className="mb-6"
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={false}
+        >
           {connectedDapps.length > 0 ? (
             <List items={connectedDapps} variant="secondary" />
           ) : (
             <EmptyState navigation={navigation} />
           )}
-        </View>
+        </ScrollView>
 
         {/* Disconnect All Button - Fixed at bottom */}
         {connectedDapps.length > 0 && (

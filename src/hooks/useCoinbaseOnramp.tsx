@@ -1,7 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
-import { isAndroid } from "helpers/device";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useEffect, useState } from "react";
 import Config from "react-native-config";
@@ -21,8 +20,6 @@ const getCoinbaseUrl = ({ sessionToken, token }: GetCoinBaseUrlParams) => {
 interface UseCoinbaseOnrampParams {
   token?: string;
 }
-
-const isCoinbaseOnrampAvailable = (): boolean => isAndroid;
 
 function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
   const [isLoading, setIsLoading] = useState(false);
@@ -67,11 +64,6 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       return;
     }
 
-    // Check if Coinbase onramp is available on this platform
-    if (!isCoinbaseOnrampAvailable()) {
-      throw new Error("Coinbase onramp is not available");
-    }
-
     setIsLoading(true);
 
     try {
@@ -92,8 +84,7 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
   return {
     openCoinbaseUrl,
     isLoading,
-    isAvailable: isCoinbaseOnrampAvailable(),
   };
 }
 
-export { useCoinbaseOnramp, isCoinbaseOnrampAvailable };
+export { useCoinbaseOnramp };

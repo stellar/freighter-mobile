@@ -13,10 +13,8 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useManageTokens } from "hooks/useManageTokens";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -34,17 +32,6 @@ const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { handleRefresh } = useBalancesList({
-    publicKey: account?.publicKey ?? "",
-    network,
-    shouldPoll: false,
-  });
-
-  const { removeToken, isRemovingToken } = useManageTokens({
-    network,
-    account,
-    onSuccess: handleRefresh,
-  });
 
   useRightHeaderButton({
     onPress: () => bottomSheetModalRef.current?.present(),
@@ -90,13 +77,10 @@ const ManageTokensScreen: React.FC<ManageTokensScreenProps> = ({
         <SimpleBalancesList
           publicKey={account?.publicKey ?? ""}
           network={network}
-          handleRemoveToken={removeToken}
-          isRemovingToken={isRemovingToken}
         />
         <View className="h-4" />
         <Button
           tertiary
-          lg
           testID="default-action-button"
           onPress={() => {
             navigation.navigate(MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN);

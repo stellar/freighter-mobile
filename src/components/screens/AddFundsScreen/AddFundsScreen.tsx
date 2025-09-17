@@ -9,6 +9,7 @@ import {
   AddFundsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCoinbaseOnramp } from "hooks/useCoinbaseOnramp";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -27,9 +28,10 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
   const { t } = useAppTranslation();
   const { isUnfunded } = route.params;
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { openCoinbaseUrl, isLoading, isAvailable } = useCoinbaseOnramp({
+  const { openCoinbaseUrl, isLoading } = useCoinbaseOnramp({
     ...(isUnfunded ? { token: "XLM" } : {}),
   });
+  const { onramp_enabled: onRampEnabled } = useRemoteConfigStore();
 
   useRightHeaderButton({
     onPress: () => bottomSheetModalRef.current?.present(),
@@ -48,7 +50,7 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
       <View className="flex-1 justify-start align-start pt-5">
-        {isAvailable && (
+        {onRampEnabled && (
           <View className="items-center mt-5 w-full">
             <TouchableOpacity
               className={`bg-background-tertiary rounded-2xl p-5 w-full gap-[12px] ${isLoading ? "opacity-50" : ""}`}

@@ -33,7 +33,7 @@ const HistoryWrapper: React.FC<HistoryWrapperProps> = ({
           </Text>
         )}
         {refreshFunction && (
-          <Button primary lg isLoading={isLoading} onPress={refreshFunction}>
+          <Button primary xl isLoading={isLoading} onPress={refreshFunction}>
             {isLoading ? t("history.refreshing") : t("history.refresh")}
           </Button>
         )}

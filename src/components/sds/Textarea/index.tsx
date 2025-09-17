@@ -233,9 +233,13 @@ export const Textarea: React.FC<TextareaProps> = ({
 
       {note && (
         <FieldNoteWrapper>
-          <Text sm color={THEME.colors.text.secondary}>
-            {note}
-          </Text>
+          {typeof note === "string" ? (
+            <Text sm color={THEME.colors.text.secondary}>
+              {note}
+            </Text>
+          ) : (
+            note
+          )}
         </FieldNoteWrapper>
       )}
       {error && (

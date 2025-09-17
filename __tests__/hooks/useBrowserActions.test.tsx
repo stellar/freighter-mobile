@@ -65,6 +65,7 @@ describe("useBrowserActions", () => {
   };
 
   const mockStore = {
+    tabs: [],
     activeTabId: "tab-123",
     goToPage: jest.fn(),
     closeTab: jest.fn(),
@@ -268,9 +269,8 @@ describe("useBrowserActions", () => {
       const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
 
       const actions = result.current.contextMenuActions;
-      expect(actions).toHaveLength(2);
+      expect(actions).toHaveLength(1);
       // The order might be different due to iOS/Android platform differences
-      expect(actions.map((a) => a.title)).toContain("discovery.closeAllTabs");
       expect(actions.map((a) => a.title)).toContain("discovery.closeThisTab");
     });
 

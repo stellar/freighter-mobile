@@ -8,6 +8,7 @@ import { isValidWalletConnectURI } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import { useToast } from "providers/ToastProvider";
 import React, { useState, useCallback, useEffect } from "react";
 import { analytics } from "services/analytics";
 
@@ -92,12 +93,14 @@ interface QRCodeScreenReturn {
 export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
+  const { showToast } = useToast();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [manualInput, setManualInput] = useState("");
   const [error, setError] = useState("");
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
 
   const {
     scannedData,
@@ -179,10 +182,26 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
   // Handle QR code scanning
   const handleQRCodeScanned = useCallback(
     (data: string) => {
-      // Set the scanned data in the store so the useEffect can process it
-      setScannedData(data, QRCodeSource.WALLET_CONNECT);
+      // Validate that the scanned data is a valid WalletConnect URI
+      if (isValidWalletConnectURI(data)) {
+        // Reset error code since we have a valid different code
+        setLastErrorCode(null);
+        // Set the scanned data in the store so the useEffect can process it
+        setScannedData(data, QRCodeSource.WALLET_CONNECT);
+        return;
+      }
+
+      // Handle invalid format error - only show if different code
+      if (lastErrorCode !== data) {
+        showToast({
+          variant: "error",
+          title: t("walletConnect.invalidQrScanUriError"),
+          duration: 3000,
+        });
+        setLastErrorCode(data);
+      }
     },
-    [setScannedData],
+    [setScannedData, showToast, t, lastErrorCode],
   );
 
   // Handle manual input changes
@@ -227,17 +246,13 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
       storedSource === QRCodeSource.WALLET_CONNECT &&
       !isConsumed
     ) {
-      // Validate that the scanned data is a valid WalletConnect URI
-      if (isValidWalletConnectURI(scannedData)) {
-        setManualInput(scannedData);
-        setError(""); // Clear any previous errors
-        // Track analytics
-        analytics.trackQRScanSuccess(QRCodeSource.WALLET_CONNECT);
-        // Automatically connect when a valid WalletConnect URI is scanned
-        // Call handleConnect directly with the scanned data instead of relying on manualInput state
-        handleConnect(scannedData);
-      }
-      // For scanned QR codes, don't show errors - just ignore invalid ones silently
+      // Data is already validated in handleQRCodeScanned, so we can process it directly
+      setManualInput(scannedData);
+      setError(""); // Clear any previous errors
+      // Track analytics
+      analytics.trackQRScanSuccess(QRCodeSource.WALLET_CONNECT);
+      // Automatically connect when a valid WalletConnect URI is scanned
+      handleConnect(scannedData);
       // Always clear the QR data to allow continuous scanning
       clearQRData();
     }

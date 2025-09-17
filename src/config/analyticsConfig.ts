@@ -48,6 +48,7 @@ export enum AnalyticsEvent {
   VIEW_MANAGE_CONNECTED_APPS = "loaded screen: manage connected apps",
   VIEW_MANAGE_TOKENS = "loaded screen: manage assets",
   VIEW_ADD_TOKEN = "loaded screen: add asset",
+  VIEW_REMOVE_TOKEN = "loaded screen: remove asset",
   VIEW_MANAGE_WALLETS = "loaded screen: manage wallets",
   VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
   VIEW_BUY_XLM = "loaded screen: add fund",
@@ -97,6 +98,8 @@ export enum AnalyticsEvent {
   TOKEN_MANAGEMENT_FAIL = "manage asset: error",
   ADD_TOKEN_CONFIRMED = "add token: confirmed",
   ADD_TOKEN_REJECTED = "add token: rejected",
+  REMOVE_TOKEN_CONFIRMED = "remove token: confirmed",
+  REMOVE_TOKEN_REJECTED = "remove token: rejected",
   MANAGE_TOKEN_LISTS_MODIFY = "manage asset list: modify asset list",
 
   // Trustline Error Events

@@ -208,18 +208,18 @@ const CustomContent: React.FC<{
           <Text lg medium>
             {t("analytics.debug.actions")}
           </Text>
-          <Button secondary sm onPress={handleRefresh} isFullWidth>
+          <Button secondary xl onPress={handleRefresh} isFullWidth>
             {t("analytics.debug.refresh")}
           </Button>
           <Button
             secondary
-            sm
+            xl
             onPress={handleSimulateSessionExpiry}
             isFullWidth
           >
             {t("analytics.debug.simulateSessionExpiry")}
           </Button>
-          <Button secondary sm onPress={handleResetApp} isFullWidth>
+          <Button secondary xl onPress={handleResetApp} isFullWidth>
             {t("analytics.debug.resetApp")}
           </Button>
         </View>

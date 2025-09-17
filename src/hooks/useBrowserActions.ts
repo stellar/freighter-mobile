@@ -16,7 +16,7 @@ import { WebView } from "react-native-webview";
 export const useBrowserActions = (
   webViewRef: React.RefObject<WebView | null>,
 ) => {
-  const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
+  const { tabs, activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
 
   const { t } = useAppTranslation();
@@ -116,15 +116,19 @@ export const useBrowserActions = (
     // If on homepage, only show close actions
     if (isOnHomepage) {
       const homepageActions = [
-        {
-          title: t("discovery.closeAllTabs"),
-          systemIcon: Platform.select({
-            ios: "xmark.circle.fill",
-            android: "close",
-          }),
-          onPress: handleCloseAllTabs,
-          destructive: true,
-        },
+        ...(tabs.length > 1
+          ? [
+              {
+                title: t("discovery.closeAllTabs"),
+                systemIcon: Platform.select({
+                  ios: "xmark.circle.fill",
+                  android: "close",
+                }),
+                onPress: handleCloseAllTabs,
+                destructive: true,
+              },
+            ]
+          : []),
         {
           title: t("discovery.closeThisTab"),
           systemIcon: Platform.select({
@@ -188,6 +192,7 @@ export const useBrowserActions = (
     return isIOS ? allActions.reverse() : allActions;
   }, [
     isOnHomepage,
+    tabs.length,
     t,
     handleOpenInBrowser,
     handleShare,

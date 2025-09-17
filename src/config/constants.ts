@@ -11,7 +11,7 @@ export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
-export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.01);
+export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.0099999);
 
 export const TOGGLE_ANIMATION_DURATION = 400;
 
@@ -35,7 +35,7 @@ export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 32;
+export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
@@ -287,6 +287,7 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_RECENT_TABS: 20,
   MAX_SCREENSHOTS_STORED: 100,
+  MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
   SCREENSHOT_QUALITY: 0.5,
   SCREENSHOT_WIDTH: 400,
@@ -307,8 +308,8 @@ export const BROWSER_CONSTANTS = {
   TAB_SWITCH_SPINNER_DELAY: 500,
   TAB_SWITCH_SPINNER_DURATION: 200,
   TAB_PREVIEW_FAVICON_SIZE: 32,
-  TAB_PREVIEW_CLOSE_ICON_SIZE: 12,
-  TAB_PREVIEW_TILE_SIZE: "w-[48%] h-64",
+  TAB_PREVIEW_CLOSE_ICON_SIZE: 14,
+  TAB_PREVIEW_TILE_SIZE: "w-[47.7%] h-[202px]",
 
   // dApps work differently depending on the user agent, let's use the below for consistent behavior
   DISCOVERY_USER_AGENT: `Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 FreighterMobile/${APP_VERSION}`,
@@ -369,6 +370,46 @@ export enum QRCodeSource {
  * Type for QR code source values
  */
 export type QRCodeSourceType = `${QRCodeSource}`;
+
+/**
+ * QR Code validation result types
+ */
+export enum QRCodeType {
+  STELLAR_ADDRESS = "stellar_address",
+  UNKNOWN = "unknown",
+}
+
+/**
+ * QR Code validation error types
+ */
+export enum QRCodeError {
+  SELF_SEND = "self_send",
+  INVALID_FORMAT = "invalid_format",
+}
+
+/**
+ * QR Code validation result interface
+ */
+
+/**
+ * Biometrics Enable Screen Source Constants
+ *
+ * Defines the different sources/contexts where the biometrics enable screen can be used.
+ * This helps maintain type safety and avoid loose strings throughout the app.
+ */
+export enum BiometricsSource {
+  /** For importing an existing wallet */
+  IMPORT_WALLET = "import_wallet",
+  /** For new user onboarding flow */
+  ONBOARDING = "onboarding",
+  /** For post-onboarding flow (existing users) */
+  POST_ONBOARDING = "post_onboarding",
+}
+
+/**
+ * Type for biometrics source values
+ */
+export type BiometricsSourceType = `${BiometricsSource}`;
 
 /**
  * Helper function to check if a string is a valid QR code source

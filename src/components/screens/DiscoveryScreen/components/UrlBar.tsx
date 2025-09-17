@@ -26,7 +26,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
 
     return (
       <View
-        className="flex-row items-center gap-3 border-b border-border-primary"
+        className="flex-row items-center gap-3"
         style={{
           paddingHorizontal: pxValue(DEFAULT_PADDING),
           paddingBottom: pxValue(13),

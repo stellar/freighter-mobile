@@ -67,12 +67,12 @@ const TimeoutSettings: React.FC<TimeoutSettingsProps> = ({
           />
         </View>
         <View className="gap-4 mb-4">
-          <Button secondary lg onPress={handleSetRecommended}>
+          <Button secondary xl onPress={handleSetRecommended}>
             {t("transactionTimeoutScreen.setRecommended")}
           </Button>
           <Button
             tertiary
-            lg
+            xl
             onPress={handleSave}
             disabled={!!error || !localTimeout}
           >

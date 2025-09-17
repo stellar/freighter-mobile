@@ -1,7 +1,7 @@
 import {
   isValidWalletConnectURI,
   isValidStellarAddressForQR,
-  validateQRCodeContent,
+  validateQRCodeWalletAddress,
 } from "helpers/qrValidation";
 import { isValidStellarAddress } from "helpers/stellar";
 
@@ -119,34 +119,12 @@ describe("QR Validation", () => {
     });
   });
 
-  describe("validateQRCodeContent", () => {
-    it("should identify and validate WalletConnect URIs", () => {
-      // Test WalletConnect v1 format
-      const wcV1URI =
-        "wc:12345678-1234-1234-1234-123456789abc@2?bridge=https%3A%2F%2Fbridge.walletconnect.org&key=abc123def456";
-
-      const v1Result = validateQRCodeContent(wcV1URI);
-
-      expect(v1Result.isValid).toBe(true);
-      expect(v1Result.type).toBe("walletconnect");
-      expect(v1Result.content).toBe(wcV1URI);
-
-      // Test WalletConnect v2 format
-      const wcV2URI =
-        "wc:b90698bedbc7da879e3c079e7d1275fef9c4ae7f46b24327f1e0082a3b21b625@2?relay-protocol=irn&symKey=535e8d8e9989fccf40925e8488c5cf6dc4c9b6582edb914222d9e340e0e76e3c";
-
-      const v2Result = validateQRCodeContent(wcV2URI);
-
-      expect(v2Result.isValid).toBe(true);
-      expect(v2Result.type).toBe("walletconnect");
-      expect(v2Result.content).toBe(wcV2URI);
-    });
-
+  describe("validateQRCodeWalletAddress", () => {
     it("should identify and validate Stellar addresses", () => {
       const stellarAddress = validEd25519;
 
       mockedIsValidStellarAddress.mockReturnValueOnce(true);
-      const result = validateQRCodeContent(stellarAddress);
+      const result = validateQRCodeWalletAddress(stellarAddress);
 
       expect(result.isValid).toBe(true);
       expect(result.type).toBe("stellar_address");
@@ -154,45 +132,82 @@ describe("QR Validation", () => {
       expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(stellarAddress);
     });
 
+    it("should detect self-send when current user public key is provided", () => {
+      const stellarAddress = validEd25519;
+      const currentUserPublicKey = stellarAddress; // Same as the address being validated
+
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = validateQRCodeWalletAddress(
+        stellarAddress,
+        currentUserPublicKey,
+      );
+
+      expect(result.isValid).toBe(false);
+      expect(result.type).toBe("stellar_address");
+      expect(result.content).toBe(stellarAddress);
+      expect(result.error).toBe("self_send");
+      expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(stellarAddress);
+    });
+
+    it("should not detect self-send when current user public key is different", () => {
+      const stellarAddress = validEd25519;
+      const currentUserPublicKey =
+        "GDIFFERENTADDRESS123456789012345678901234567890123456789012345678901234567890";
+
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = validateQRCodeWalletAddress(
+        stellarAddress,
+        currentUserPublicKey,
+      );
+
+      expect(result.isValid).toBe(true);
+      expect(result.type).toBe("stellar_address");
+      expect(result.content).toBe(stellarAddress);
+      expect(result.error).toBeUndefined();
+      expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(stellarAddress);
+    });
+
     it("should reject unknown content types", () => {
       const unknownContent = "invalid-qr-content";
 
       mockedIsValidStellarAddress.mockReturnValueOnce(false);
-      const result = validateQRCodeContent(unknownContent);
+      const result = validateQRCodeWalletAddress(unknownContent);
 
       expect(result.isValid).toBe(false);
       expect(result.type).toBe("unknown");
       expect(result.content).toBe(unknownContent);
+      expect(result.error).toBe("invalid_format");
       expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(unknownContent);
     });
 
     it("should handle empty and whitespace content", () => {
       mockedIsValidStellarAddress.mockReturnValue(false);
-      const emptyResult = validateQRCodeContent("");
+      const emptyResult = validateQRCodeWalletAddress("");
 
       expect(emptyResult.isValid).toBe(false);
       expect(emptyResult.type).toBe("unknown");
       expect(emptyResult.content).toBe(""); // trimmed content
+      expect(emptyResult.error).toBe("invalid_format");
 
       mockedIsValidStellarAddress.mockReturnValue(false);
-      const whitespaceResult = validateQRCodeContent("   ");
+      const whitespaceResult = validateQRCodeWalletAddress("   ");
 
       expect(whitespaceResult.isValid).toBe(false);
       expect(whitespaceResult.type).toBe("unknown");
       expect(whitespaceResult.content).toBe(""); // trimmed content (whitespace removed)
+      expect(whitespaceResult.error).toBe("invalid_format");
     });
 
     it("should trim content but preserve original for validation", () => {
-      const wcURIWithSpaces =
-        "  wc:12345678-1234-1234-1234-123456789abc@2?bridge=https%3A%2F%2Fbridge.walletconnect.org&key=abc123def456  ";
+      const stellarAddressWithSpaces = `  ${validEd25519}  `;
 
-      const result = validateQRCodeContent(wcURIWithSpaces);
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = validateQRCodeWalletAddress(stellarAddressWithSpaces);
 
       expect(result.isValid).toBe(true);
-      expect(result.type).toBe("walletconnect");
-      expect(result.content).toBe(
-        "wc:12345678-1234-1234-1234-123456789abc@2?bridge=https%3A%2F%2Fbridge.walletconnect.org&key=abc123def456",
-      );
+      expect(result.type).toBe("stellar_address");
+      expect(result.content).toBe(validEd25519); // trimmed content
+      expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(validEd25519);
     });
   });
 });
