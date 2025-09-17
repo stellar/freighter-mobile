@@ -77,7 +77,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <View className="bg-white/80 backdrop-blur-sm">
         <View className="flex-row justify-center items-center py-3">
-          <Spinner size="small" />
+          <Spinner size="large" />
         </View>
       </View>
     );
@@ -137,7 +137,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
         <HistoryWrapper>
-          <Spinner size="small" testID="spinner" />
+          <Spinner size="large" testID="spinner" />
         </HistoryWrapper>
       </BaseLayout>
     );

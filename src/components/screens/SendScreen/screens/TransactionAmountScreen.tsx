@@ -29,13 +29,13 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
-import { markHistoryForRefreshAfterTransaction } from "helpers/history";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -417,7 +417,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetTransaction();
 
     // Mark history to refresh when user navigates to history screen
-    markHistoryForRefreshAfterTransaction();
+    useHistoryStore.getState().markForRefreshAfterNavigation();
 
     navigation.reset({
       index: 0,

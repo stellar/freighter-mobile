@@ -95,8 +95,8 @@
       "notNow": "Not now"
     },
     "hideDust": {
-      "title": "Hide received payments smaller than 0.1 XLM",
-      "description": "Hide payments smaller than 0.1 XLM"
+      "title": "Hide small payments",
+      "description": "Hide received payments smaller than 0.1 XLM"
     },
     "memoValidation": {
       "title": "Verification with stellar.expert",
