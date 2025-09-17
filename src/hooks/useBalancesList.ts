@@ -58,8 +58,6 @@ export const useBalancesList = ({
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Polling is now handled centrally in TabNavigator
-
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
 

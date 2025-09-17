@@ -25,7 +25,6 @@ interface UseGetHistoryDataReturn {
  * Hook for managing history data using the centralized history store
  *
  * This hook provides a clean interface for components to access history data
- * while leveraging the centralized store for state management.
  * Polling is handled centrally in TabNavigator for consistent behavior.
  *
  * @param publicKey - The account public key
@@ -88,8 +87,6 @@ function useGetHistoryData({
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
-
-  // Polling is now handled centrally in TabNavigator
 
   const fetchData = useCallback(
     async (params?: { isRefresh?: boolean; isBackgroundRefresh?: boolean }) => {
