@@ -82,6 +82,7 @@ interface HistoryState {
   isLoading: boolean;
   error: string | null;
   shouldRefreshAfterNavigation: boolean;
+  isFetching: boolean; // Track if a fetch is currently in progress
   fetchAccountHistory: (params: {
     publicKey: string;
     network: NETWORKS;
@@ -181,6 +182,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   isLoading: false,
   error: null,
   shouldRefreshAfterNavigation: false,
+  isFetching: false,
 
   fetchAccountHistory: async (params) => {
     try {
@@ -188,6 +190,18 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         logger.warn("fetchAccountHistory", "No public key provided");
         return;
       }
+
+      // Prevent duplicate concurrent requests
+      if (get().isFetching) {
+        logger.info(
+          "fetchAccountHistory",
+          "Request already in progress, skipping",
+        );
+
+        return;
+      }
+
+      set({ isFetching: true });
 
       // Only show loading spinner for initial loads, not background refreshes
       if (!params.isBackgroundRefresh) {
@@ -218,6 +232,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         rawHistoryData,
         isLoading: false,
         error: null,
+        isFetching: false,
       });
     } catch (error) {
       const errorMessage =
@@ -226,6 +241,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       set({
         error: errorMessage,
         isLoading: false,
+        isFetching: false,
       });
 
       logger.error("fetchAccountHistory", "Error fetching history:", error);
