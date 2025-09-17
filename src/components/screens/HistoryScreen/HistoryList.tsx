@@ -202,7 +202,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
             />
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
           ListHeaderComponent={ListHeaderComponent}
           ListFooterComponent={DefaultListFooter}
           className={className}
