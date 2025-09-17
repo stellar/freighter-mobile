@@ -223,12 +223,12 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   }, 200);
 
   const handleAddTokenMemo = useCallback(
-    (token: FormattedSearchTokenRecord) => () => handleAddToken(token),
+    (token: FormattedSearchTokenRecord) => handleAddToken(token),
     [handleAddToken],
   );
 
   const handleRemoveTokenMemo = useCallback(
-    (token: FormattedSearchTokenRecord) => () => handleRemoveToken(token),
+    (token: FormattedSearchTokenRecord) => handleRemoveToken(token),
     [handleRemoveToken],
   );
 
