@@ -182,7 +182,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
-    shouldPoll: false,
   });
 
   const selectedBalance = balanceItems.find(

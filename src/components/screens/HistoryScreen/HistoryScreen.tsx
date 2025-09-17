@@ -34,7 +34,6 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
     publicKey: account?.publicKey ?? "",
     networkDetails,
     tokenId: undefined,
-    shouldPoll: true,
   });
 
   const handleRefresh = useCallback(() => {

@@ -7,7 +7,6 @@ interface UseGetHistoryDataProps {
   publicKey: string;
   networkDetails: NetworkDetails;
   tokenId?: string;
-  shouldPoll?: boolean;
 }
 
 interface UseGetHistoryDataReturn {
@@ -26,20 +25,18 @@ interface UseGetHistoryDataReturn {
  * Hook for managing history data using the centralized history store
  *
  * This hook provides a clean interface for components to access history data
- * while leveraging the centralized store for state management and polling.
- * Follows the same pattern as useBalancesList for consistent behavior.
+ * while leveraging the centralized store for state management.
+ * Polling is handled centrally in TabNavigator for consistent behavior.
  *
  * @param publicKey - The account public key
  * @param networkDetails - Network configuration details
  * @param tokenId - Optional token ID for filtering operations
- * @param shouldPoll - Whether to enable automatic polling (default: true)
  * @returns Object containing history data, status, and fetch function
  */
 function useGetHistoryData({
   publicKey,
   networkDetails,
   tokenId,
-  shouldPoll = true,
 }: UseGetHistoryDataProps): UseGetHistoryDataReturn {
   const {
     rawHistoryData,
@@ -48,8 +45,6 @@ function useGetHistoryData({
     shouldRefreshAfterNavigation,
     fetchAccountHistory,
     getFilteredHistoryData,
-    startPolling,
-    stopPolling,
     clearRefreshAfterNavigation,
   } = useHistoryStore();
 
@@ -94,26 +89,7 @@ function useGetHistoryData({
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Handle polling - only start after initial load is complete
-  useEffect(() => {
-    if (shouldPoll && hasAttemptedInitialLoad && publicKey) {
-      startPolling({
-        publicKey,
-        network: networkDetails.network,
-      });
-
-      return () => stopPolling();
-    }
-
-    return undefined;
-  }, [
-    publicKey,
-    networkDetails.network,
-    shouldPoll,
-    startPolling,
-    stopPolling,
-    hasAttemptedInitialLoad,
-  ]);
+  // Polling is now handled centrally in TabNavigator
 
   const fetchData = useCallback(
     async (params?: { isRefresh?: boolean; isBackgroundRefresh?: boolean }) => {

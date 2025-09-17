@@ -48,7 +48,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId: undefined,
-        shouldPoll: true,
       }),
     );
 
@@ -62,53 +61,7 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     });
   });
 
-  it("should start polling when hook is initialized and shouldPoll is true", async () => {
-    renderHook(() =>
-      useGetHistoryData({
-        publicKey: mockPublicKey,
-        networkDetails: PUBLIC_NETWORK_DETAILS,
-        tokenId: undefined,
-        shouldPoll: true,
-      }),
-    );
-
-    // Wait for the initial fetch to complete
-    await waitFor(() => {
-      expect(mockFetchAccountHistory).toHaveBeenCalled();
-    });
-
-    // Then check that polling started
-    await waitFor(() => {
-      expect(mockStartPolling).toHaveBeenCalledWith({
-        publicKey: mockPublicKey,
-        network: PUBLIC_NETWORK_DETAILS.network,
-      });
-    });
-  });
-
-  it("should stop polling when hook is unmounted", async () => {
-    const { unmount } = renderHook(() =>
-      useGetHistoryData({
-        publicKey: mockPublicKey,
-        networkDetails: PUBLIC_NETWORK_DETAILS,
-        tokenId: undefined,
-        shouldPoll: true,
-      }),
-    );
-
-    // Wait for the initial fetch to complete and polling to start
-    await waitFor(() => {
-      expect(mockFetchAccountHistory).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      expect(mockStartPolling).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    expect(mockStopPolling).toHaveBeenCalled();
-  });
+  // Polling is now handled centrally in TabNavigator, so these tests are no longer relevant
 
   it("should call fetchAccountHistory with tokenId when provided", async () => {
     const tokenId = "test-token-id";
@@ -118,7 +71,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId,
-        shouldPoll: true,
       }),
     );
 
@@ -132,18 +84,7 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     });
   });
 
-  it("should not start polling when shouldPoll is false", () => {
-    renderHook(() =>
-      useGetHistoryData({
-        publicKey: mockPublicKey,
-        networkDetails: PUBLIC_NETWORK_DETAILS,
-        tokenId: undefined,
-        shouldPoll: false,
-      }),
-    );
-
-    expect(mockStartPolling).not.toHaveBeenCalled();
-  });
+  // Polling is now handled centrally in TabNavigator, so this test is no longer relevant
 
   it("should handle background refresh correctly", async () => {
     const { result } = renderHook(() =>
@@ -151,7 +92,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId: undefined,
-        shouldPoll: true,
       }),
     );
 
@@ -176,7 +116,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId: undefined,
-        shouldPoll: true,
       }),
     );
 
@@ -197,7 +136,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId: undefined,
-        shouldPoll: true,
       }),
     );
 
@@ -218,7 +156,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
         publicKey: mockPublicKey,
         networkDetails: PUBLIC_NETWORK_DETAILS,
         tokenId: undefined,
-        shouldPoll: true,
       }),
     );
 

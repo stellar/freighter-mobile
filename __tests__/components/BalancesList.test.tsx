@@ -195,7 +195,6 @@ describe("BalancesList", () => {
     expect(useBalancesList).toHaveBeenCalledWith({
       publicKey: testPublicKey,
       network: NETWORKS.TESTNET,
-      shouldPoll: true,
     });
   });
 });

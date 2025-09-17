@@ -58,7 +58,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
   const {
     transactionXDR,

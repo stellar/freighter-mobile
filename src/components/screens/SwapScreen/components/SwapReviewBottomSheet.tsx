@@ -111,7 +111,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
 
   const sourceBalance = useMemo(

@@ -218,15 +218,6 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-
-      logger.info(
-        "fetchAccountHistory",
-        "Raw history data fetched successfully",
-        {
-          operationsCount: rawOperations.length,
-          publicKey: params.publicKey,
-        },
-      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to fetch history";

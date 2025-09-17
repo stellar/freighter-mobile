@@ -64,7 +64,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     publicKey: account?.publicKey ?? "",
     networkDetails,
     tokenId,
-    shouldPoll: true,
   });
 
   useLayoutEffect(() => {
