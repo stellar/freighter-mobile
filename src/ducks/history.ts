@@ -150,7 +150,7 @@ const createHistorySections = (
       const year = date.getFullYear();
       const monthYear = `${month}:${year}`;
 
-      const lastSection = sections.length > 0 && sections[sections.length - 1];
+      const lastSection = sections[sections.length - 1];
 
       // Create first section if none exist
       if (!lastSection) {
@@ -195,17 +195,18 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       }
 
       const { fetchAccountBalances, getBalances } = useBalancesStore.getState();
-
-      await fetchAccountBalances({
-        publicKey: params.publicKey,
-        network: params.network,
-      });
-
       const networkDetails = mapNetworkToNetworkDetails(params.network);
-      const rawOperations = await getAccountHistory({
-        publicKey: params.publicKey,
-        networkDetails,
-      });
+
+      const [, rawOperations] = await Promise.all([
+        fetchAccountBalances({
+          publicKey: params.publicKey,
+          network: params.network,
+        }),
+        getAccountHistory({
+          publicKey: params.publicKey,
+          networkDetails,
+        }),
+      ]);
 
       const balances = getBalances();
       const rawHistoryData: RawHistoryData = {
