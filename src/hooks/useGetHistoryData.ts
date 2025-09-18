@@ -41,16 +41,15 @@ function useGetHistoryData({
     rawHistoryData,
     isLoading,
     error,
-    shouldRefreshAfterNavigation,
+    hasRecentTransaction,
+    isFetching,
     fetchAccountHistory,
     getFilteredHistoryData,
-    clearRefreshAfterNavigation,
   } = useHistoryStore();
 
   const [isMounting, setIsMounting] = useState(true);
   const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isNavigationRefresh, setIsNavigationRefresh] = useState(false);
   const { isHideDustEnabled } = usePreferencesStore();
 
   const historyData = useMemo(() => {
@@ -104,10 +103,6 @@ function useGetHistoryData({
           isBackgroundRefresh,
         });
       } finally {
-        // Clear navigation refresh state immediately when data is ready
-        setIsNavigationRefresh(false);
-        clearRefreshAfterNavigation();
-
         if (isRefresh) {
           // Add a minimum spinner delay only for native RefreshControl to prevent flickering
           setTimeout(() => {
@@ -116,47 +111,24 @@ function useGetHistoryData({
         }
       }
     },
-    [
-      fetchAccountHistory,
-      publicKey,
-      networkDetails.network,
-      clearRefreshAfterNavigation,
-    ],
+    [fetchAccountHistory, publicKey, networkDetails.network],
   );
-
-  // Handle navigation refresh
-  useEffect(() => {
-    if (
-      shouldRefreshAfterNavigation &&
-      hasAttemptedInitialLoad &&
-      !isMounting
-    ) {
-      setIsNavigationRefresh(true);
-      fetchData({ isRefresh: true, isBackgroundRefresh: true });
-    }
-  }, [
-    shouldRefreshAfterNavigation,
-    hasAttemptedInitialLoad,
-    isMounting,
-    fetchData,
-  ]);
 
   // Only show error if we're not in the initial loading state and there is an error
   const shouldShowError = !isMounting && hasAttemptedInitialLoad && error;
 
   // Only show full-screen loading when there's no existing data and we're loading for the first time
   const shouldShowFullScreenLoading =
-    (isLoading || isMounting) &&
-    !isRefreshing &&
-    !rawHistoryData &&
-    !shouldRefreshAfterNavigation;
+    (isLoading || isMounting) && !isRefreshing && !rawHistoryData;
+
+  const shouldShowRefreshIndicator = hasRecentTransaction && isFetching;
 
   return {
     historyData,
     error: shouldShowError ? error : null,
     isLoading: shouldShowFullScreenLoading,
     isRefreshing,
-    isNavigationRefresh: isNavigationRefresh || shouldRefreshAfterNavigation,
+    isNavigationRefresh: shouldShowRefreshIndicator,
     fetchData,
   };
 }

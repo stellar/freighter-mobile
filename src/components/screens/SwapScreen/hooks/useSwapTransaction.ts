@@ -56,7 +56,7 @@ export const useSwapTransaction = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
-  const { markForRefreshAfterNavigation } = useHistoryStore();
+  const { fetchAccountHistory } = useHistoryStore();
 
   const setupSwapTransaction = async () => {
     if (
@@ -140,8 +140,14 @@ export const useSwapTransaction = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
 
-    // Mark history to refresh when user navigates to history screen
-    markForRefreshAfterNavigation();
+    if (account?.publicKey) {
+      fetchAccountHistory({
+        publicKey: account.publicKey,
+        network,
+        isBackgroundRefresh: true,
+        hasRecentTransaction: true,
+      });
+    }
 
     navigation.reset({
       index: 0,

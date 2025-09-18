@@ -14,19 +14,18 @@ jest.mock("ducks/balances", () => ({
 const mockFetchAccountHistory = jest.fn().mockResolvedValue(undefined);
 const mockStartPolling = jest.fn();
 const mockStopPolling = jest.fn();
-const mockClearRefreshAfterNavigation = jest.fn();
 
 jest.mock("ducks/history", () => ({
   useHistoryStore: () => ({
     rawHistoryData: null,
     isLoading: false,
     error: null,
-    shouldRefreshAfterNavigation: false,
+    hasRecentTransaction: false,
+    isFetching: false,
     fetchAccountHistory: mockFetchAccountHistory,
     getFilteredHistoryData: jest.fn(() => null),
     startPolling: mockStartPolling,
     stopPolling: mockStopPolling,
-    clearRefreshAfterNavigation: mockClearRefreshAfterNavigation,
   }),
 }));
 
@@ -39,7 +38,6 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     mockFetchAccountHistory.mockClear();
     mockStartPolling.mockClear();
     mockStopPolling.mockClear();
-    mockClearRefreshAfterNavigation.mockClear();
   });
 
   it("should call fetchAccountHistory with correct parameters", async () => {

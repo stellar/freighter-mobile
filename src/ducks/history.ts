@@ -72,6 +72,8 @@ export interface HistoryData {
  * @property {RawHistoryData | null} rawHistoryData - The raw history data from backend
  * @property {boolean} isLoading - Indicates if history data is currently being fetched
  * @property {string | null} error - Error message if fetch failed, null otherwise
+ * @property {boolean} hasRecentTransaction - Flag indicating if there's a recent transaction that should trigger refresh indicator
+ * @property {boolean} isFetching - Tracks if a fetch operation is currently in progress (prevents duplicate requests)
  * @property {Function} fetchAccountHistory - Function to fetch account history from the backend
  * @property {Function} getFilteredHistoryData - Function to get filtered history data for specific token
  * @property {Function} startPolling - Function to start polling for history updates
@@ -81,12 +83,13 @@ interface HistoryState {
   rawHistoryData: RawHistoryData | null;
   isLoading: boolean;
   error: string | null;
-  shouldRefreshAfterNavigation: boolean;
-  isFetching: boolean; // Track if a fetch is currently in progress
+  hasRecentTransaction: boolean;
+  isFetching: boolean;
   fetchAccountHistory: (params: {
     publicKey: string;
     network: NETWORKS;
     isBackgroundRefresh?: boolean;
+    hasRecentTransaction?: boolean;
   }) => Promise<void>;
   getFilteredHistoryData: (params: {
     publicKey: string;
@@ -95,8 +98,6 @@ interface HistoryState {
   }) => HistoryData | null;
   startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
   stopPolling: () => void;
-  markForRefreshAfterNavigation: () => void;
-  clearRefreshAfterNavigation: () => void;
 }
 
 /**
@@ -181,7 +182,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   rawHistoryData: null,
   isLoading: false,
   error: null,
-  shouldRefreshAfterNavigation: false,
+  hasRecentTransaction: false,
   isFetching: false,
 
   fetchAccountHistory: async (params) => {
@@ -202,6 +203,10 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       }
 
       set({ isFetching: true });
+
+      if (params.hasRecentTransaction) {
+        set({ hasRecentTransaction: true });
+      }
 
       // Only show loading spinner for initial loads, not background refreshes
       if (!params.isBackgroundRefresh) {
@@ -233,6 +238,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         isLoading: false,
         error: null,
         isFetching: false,
+        // Clear hasRecentTransaction after successful fetch
+        hasRecentTransaction: false,
       });
     } catch (error) {
       const errorMessage =
@@ -306,16 +313,5 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       logger.info("stopPolling", "History polling stopped");
     }
-  },
-  markForRefreshAfterNavigation: () => {
-    set({ shouldRefreshAfterNavigation: true });
-
-    logger.info(
-      "markForRefreshAfterNavigation",
-      "Marked history for refresh after navigation",
-    );
-  },
-  clearRefreshAfterNavigation: () => {
-    set({ shouldRefreshAfterNavigation: false });
   },
 }));
