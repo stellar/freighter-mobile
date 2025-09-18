@@ -96,6 +96,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTransactionSettingsStore();
 
   const { resetSendRecipient } = useSendRecipientStore();
+  const { markForRefreshAfterNavigation } = useHistoryStore();
 
   useEffect(() => {
     if (tokenId) {
@@ -417,7 +418,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetTransaction();
 
     // Mark history to refresh when user navigates to history screen
-    useHistoryStore.getState().markForRefreshAfterNavigation();
+    markForRefreshAfterNavigation();
 
     navigation.reset({
       index: 0,

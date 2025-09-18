@@ -56,6 +56,7 @@ export const useSwapTransaction = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
+  const { markForRefreshAfterNavigation } = useHistoryStore();
 
   const setupSwapTransaction = async () => {
     if (
@@ -140,7 +141,7 @@ export const useSwapTransaction = ({
     setIsProcessing(false);
 
     // Mark history to refresh when user navigates to history screen
-    useHistoryStore.getState().markForRefreshAfterNavigation();
+    markForRefreshAfterNavigation();
 
     navigation.reset({
       index: 0,
