@@ -9,6 +9,7 @@ import { View } from "react-native";
 
 interface BottomSheetAdaptiveContainerProps {
   header?: React.ReactNode;
+  footer?: React.ReactNode;
   children: React.ReactNode;
   sheetMaxHeightRatio?: number;
   topPaddingPx?: number;
@@ -50,6 +51,7 @@ const BottomSheetAdaptiveContainer: React.FC<
   BottomSheetAdaptiveContainerProps
 > = ({
   header,
+  footer,
   children,
   sheetMaxHeightRatio = BOTTOM_SHEET_MAX_HEIGHT_RATIO,
   topPaddingPx = BOTTOM_SHEET_CONTENT_TOP_PADDING,
@@ -57,7 +59,7 @@ const BottomSheetAdaptiveContainer: React.FC<
   contentGapPx = BOTTOM_SHEET_CONTENT_GAP,
 }) => {
   const [headerHeight, setHeaderHeight] = useState(0);
-
+  const [footerHeight, setFooterHeight] = useState(0);
   const maxContentHeight = useMemo(
     () =>
       calculateScrollableMaxHeight({
@@ -65,8 +67,15 @@ const BottomSheetAdaptiveContainer: React.FC<
         sheetMaxHeightRatio,
         topPaddingPx,
         bottomPaddingPx,
+        footerHeightPx: footerHeight,
       }),
-    [headerHeight, bottomPaddingPx, sheetMaxHeightRatio, topPaddingPx],
+    [
+      headerHeight,
+      bottomPaddingPx,
+      sheetMaxHeightRatio,
+      topPaddingPx,
+      footerHeight,
+    ],
   );
 
   return (
@@ -83,7 +92,22 @@ const BottomSheetAdaptiveContainer: React.FC<
         </View>
       ) : null}
 
-      <View style={{ maxHeight: maxContentHeight }}>{children}</View>
+      <View
+        style={{
+          maxHeight: maxContentHeight,
+        }}
+      >
+        {children}
+      </View>
+
+      {footer ? (
+        <View
+          className="w-full"
+          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+        >
+          {footer}
+        </View>
+      ) : null}
     </View>
   );
 };
