@@ -63,7 +63,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
   const { themeColors } = useColors();
 

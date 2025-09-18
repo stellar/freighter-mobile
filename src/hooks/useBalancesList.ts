@@ -19,14 +19,12 @@ interface UseBalancesListResult {
 interface UseBalancesListProps {
   publicKey: string;
   network: NETWORKS;
-  shouldPoll?: boolean;
   searchTerm?: string;
 }
 
 export const useBalancesList = ({
   publicKey,
   network,
-  shouldPoll = true,
   searchTerm,
 }: UseBalancesListProps): UseBalancesListResult => {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -39,8 +37,6 @@ export const useBalancesList = ({
     error: balancesError,
     isFunded,
     fetchAccountBalances,
-    startPolling,
-    stopPolling,
   } = useBalancesStore();
 
   const noBalances = Object.keys(pricedBalances).length === 0;
@@ -61,22 +57,6 @@ export const useBalancesList = ({
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
-
-  // Handle polling
-  useEffect(() => {
-    if (shouldPoll && hasAttemptedInitialLoad) {
-      startPolling({ publicKey, network });
-      return () => stopPolling();
-    }
-    return undefined;
-  }, [
-    publicKey,
-    network,
-    shouldPoll,
-    startPolling,
-    stopPolling,
-    hasAttemptedInitialLoad,
-  ]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);

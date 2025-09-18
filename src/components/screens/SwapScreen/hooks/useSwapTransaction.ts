@@ -10,6 +10,7 @@ import {
 } from "config/routes";
 import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useHistoryStore } from "ducks/history";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useState } from "react";
@@ -55,6 +56,7 @@ export const useSwapTransaction = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
+  const { fetchAccountHistory } = useHistoryStore();
 
   const setupSwapTransaction = async () => {
     if (
@@ -137,6 +139,15 @@ export const useSwapTransaction = ({
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
+
+    if (account?.publicKey) {
+      fetchAccountHistory({
+        publicKey: account.publicKey,
+        network,
+        isBackgroundRefresh: true,
+        hasRecentTransaction: true,
+      });
+    }
 
     navigation.reset({
       index: 0,

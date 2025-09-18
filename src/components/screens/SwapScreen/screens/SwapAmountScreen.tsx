@@ -66,7 +66,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
 
   const {

@@ -96,7 +96,7 @@
     },
     "hideDust": {
       "title": "Ocultar pagamentos pequenos",
-      "description": "Ocultar pagamentos menores que 0,1 XLM"
+      "description": "Ocultar pagamentos recebidos menores que 0,1 XLM"
     },
     "memoValidation": {
       "title": "Verificação com stellar.expert",
@@ -344,6 +344,7 @@
       "failedToImportWallet": "Falha ao importar carteira",
       "failedToLoadAccount": "Falha ao carregar conta",
       "invalidPassword": "Senha inválida. Por favor, tente novamente.",
+      "invalidMnemonicPhrase": "Frase inválida - as palavras devem estar na ordem correta, em minúsculas e separadas por espaços",
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta"

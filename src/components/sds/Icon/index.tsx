@@ -1181,7 +1181,7 @@ import { THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 export const Icons = {
   ActivityHeart,
@@ -2453,13 +2453,13 @@ const IconComponent: React.FC<IconProps> = ({
   }
 
   const iconElement = (
-    <Pressable testID={testID} onPress={onPress}>
-      <IconSvg
-        width={px(size)}
-        height={px(size)}
-        color={themeColor ? themeColors[themeColor][9] : color}
-      />
-    </Pressable>
+    <IconSvg
+      width={px(size)}
+      height={px(size)}
+      color={themeColor ? themeColors[themeColor][9] : color}
+      testID={testID}
+      onPress={onPress}
+    />
   );
 
   if (circle) {

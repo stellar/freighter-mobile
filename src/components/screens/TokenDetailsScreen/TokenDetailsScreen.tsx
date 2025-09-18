@@ -14,13 +14,12 @@ import {
   SEND_PAYMENT_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { usePreferencesStore } from "ducks/preferences";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import useTokenDetails from "hooks/useTokenDetails";
-import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useCallback, useLayoutEffect, useMemo } from "react";
 import { View, Dimensions } from "react-native";
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
@@ -40,7 +39,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
-  const { isHideDustEnabled } = usePreferencesStore();
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -55,11 +53,18 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     [network],
   );
 
-  const { historyData, fetchData, status } = useGetHistoryData(
-    account?.publicKey ?? "",
+  const {
+    historyData,
+    fetchData,
+    isLoading,
+    error,
+    isRefreshing,
+    isNavigationRefresh,
+  } = useGetHistoryData({
+    publicKey: account?.publicKey ?? "",
     networkDetails,
     tokenId,
-  );
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -67,23 +72,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   }, [navigation, displayTitle]);
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      if (!account?.publicKey) {
-        return;
-      }
-
-      await fetchData({
-        isRefresh: false,
-        isHideDustEnabled,
-      });
-    };
-
-    loadHistory();
-  }, [account?.publicKey, network, tokenId]);
-
   const handleRefresh = useCallback(() => {
-    fetchData({ isRefresh: true, isHideDustEnabled });
+    fetchData({ isRefresh: true });
   }, [fetchData]);
 
   const handleSwapPress = () => {
@@ -114,10 +104,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           ignoreTopInset
           noHorizontalPadding
           historyData={historyData}
-          status={status}
+          isLoading={isLoading}
+          error={error}
           publicKey={account?.publicKey ?? ""}
           networkDetails={networkDetails}
           onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          isNavigationRefresh={isNavigationRefresh}
           ListHeaderComponent={
             <View className="mb-6 max-xs:mb-0">
               <Text md medium secondary>

@@ -29,6 +29,7 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -95,6 +96,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTransactionSettingsStore();
 
   const { resetSendRecipient } = useSendRecipientStore();
+  const { fetchAccountHistory } = useHistoryStore();
 
   useEffect(() => {
     if (tokenId) {
@@ -181,7 +183,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { balanceItems } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
-    shouldPoll: false,
   });
 
   const selectedBalance = balanceItems.find(
@@ -415,6 +416,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
+
+    if (account?.publicKey) {
+      fetchAccountHistory({
+        publicKey: account.publicKey,
+        network,
+        isBackgroundRefresh: true,
+        hasRecentTransaction: true,
+      });
+    }
 
     navigation.reset({
       index: 0,

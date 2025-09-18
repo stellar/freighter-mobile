@@ -1,6 +1,6 @@
-import { DefaultListFooter } from "components/DefaultListFooter";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -9,8 +9,10 @@ import {
   DEFAULT_PRESS_DELAY,
 } from "config/constants";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import React from "react";
 import { View, TouchableOpacity, FlatList } from "react-native";
 
@@ -28,7 +30,7 @@ const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-row items-center justify-between px-6 py-4 border-b border-border-primary">
+    <View className="flex-row items-center justify-between px-6 py-4">
       <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
       <Text lg semiBold>
         {tabsCount > 1
@@ -49,19 +51,34 @@ interface TabOverviewProps {
   onNewTab: () => void;
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
+  onCloseAllTabs: () => void;
   newTabId?: string | null;
 }
 
 // Memoize to avoid unnecessary expensive re-renders
 const TabOverview: React.FC<TabOverviewProps> = React.memo(
-  ({ onClose, onNewTab, onSwitchTab, onCloseTab, newTabId }) => {
+  ({
+    onClose,
+    onNewTab,
+    onSwitchTab,
+    onCloseTab,
+    onCloseAllTabs,
+    newTabId,
+  }) => {
     const { tabs, isTabActive } = useBrowserTabsStore();
+    const { t } = useAppTranslation();
+    const { themeColors } = useColors();
 
     // Filter out the specific new tab being added to prevent showing
     // its preview while it's being added so we have a smoother UI transition
     const displayTabs = newTabId
       ? tabs.filter((tab) => tab.id !== newTabId)
       : tabs;
+
+    // Check if we should show the "Close all tabs" button
+    // Hide it if there's only 1 tab and it's the homepage
+    const shouldShowCloseAllButton =
+      tabs.length > 1 || (tabs.length === 1 && !isHomepageUrl(tabs[0]?.url));
 
     return (
       <View className="relative flex-1">
@@ -77,9 +94,26 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
           numColumns={2}
           columnWrapperStyle={{
             justifyContent: "space-between",
-            marginBottom: pxValue(14),
+            marginBottom: pxValue(16),
           }}
-          ListFooterComponent={DefaultListFooter}
+          ListFooterComponent={
+            shouldShowCloseAllButton ? (
+              <View className="mx-auto mt-3 mb-1">
+                <Button
+                  secondary
+                  icon={
+                    <Icon.XCircle
+                      color={themeColors.foreground.primary}
+                      size={18}
+                    />
+                  }
+                  onPress={onCloseAllTabs}
+                >
+                  {t("discovery.closeAllTabs")}
+                </Button>
+              </View>
+            ) : null
+          }
           contentContainerStyle={{ padding: pxValue(DEFAULT_PADDING) }}
           keyExtractor={(tab) => tab.id}
           renderItem={({ item: tab }) => (

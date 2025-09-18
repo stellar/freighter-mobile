@@ -75,8 +75,8 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
 
     return (
       <View
-        className={`w-full h-full rounded-lg bg-background-secondary overflow-hidden relative ${
-          isActive ? "border-2 border-primary" : "border border-border-primary"
+        className={`w-full h-full rounded-[16px] bg-background-secondary overflow-hidden relative ${
+          isActive ? "border-[2px] border-primary" : ""
         }`}
       >
         {renderPreviewContent}
@@ -84,11 +84,11 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
         {/* Close button */}
         <TouchableOpacity
           onPress={onClose}
-          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background-tertiary justify-center items-center"
+          className="absolute top-3 right-3 w-6 h-6 rounded-full border-[1px] border-border-primary bg-background-primary justify-center items-center"
         >
           <Icon.X
             size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
-            color={themeColors.base[1]}
+            color={themeColors.foreground.primary}
           />
         </TouchableOpacity>
       </View>
