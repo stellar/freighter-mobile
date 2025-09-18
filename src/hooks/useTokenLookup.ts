@@ -267,9 +267,9 @@ export const useTokenLookup = ({
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
             ...token,
-            isSuspicious: false,
+            isSuspicious: true,
             isMalicious: false,
-            securityLevel: SecurityLevel.SAFE,
+            securityLevel: SecurityLevel.SUSPICIOUS,
           }));
 
         const groupedFallbackResults = groupTokensBySecurityLevel(
