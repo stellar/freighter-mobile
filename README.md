@@ -1,4 +1,6 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/stellar/freighter-mobile)
+<a href="https://deepwiki.com/stellar/freighter-mobile"><img height="24" alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
+<a href="https://play.google.com/store/apps/details?id=org.stellar.freighterwallet"><img height="24" alt="Get app on Google Play" src="https://github.com/user-attachments/assets/67fa5ac5-b77e-4019-8bc0-4cc9d43dc69b" /></a>
+<a href="https://apps.apple.com/app/freighter/id6743947720"><img height="24" alt="Get app on App Store" src="https://github.com/user-attachments/assets/2b002c9f-4ec5-49f2-8f4d-d04b7e4cd34a" /></a>
 
 ## Quick Start Dev Environment Setup
 
