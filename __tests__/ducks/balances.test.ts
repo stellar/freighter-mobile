@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
@@ -6,11 +7,15 @@ import {
   ClassicBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
+  BalanceMap,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
+import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
+
+import { beningTokenScan } from "../../__mocks__/blockaid-response";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
@@ -35,11 +40,18 @@ jest.mock("ducks/prices", () => ({
   },
 }));
 
+jest.mock("services/blockaid/api", () => ({
+  scanBulkTokens: jest.fn(),
+}));
+
 describe("balances duck", () => {
   const mockFetchBalances = fetchBalances as jest.MockedFunction<
     typeof fetchBalances
   >;
   const mockGetItem = jest.fn();
+  const mockScanBulkTokens = scanBulkTokens as jest.MockedFunction<
+    typeof scanBulkTokens
+  >;
 
   // Helper function to create a mock prices store state
   const createMockPricesStore = (
@@ -351,6 +363,83 @@ describe("balances duck", () => {
       expect(
         result.current.pricedBalances.XLM.percentagePriceChange24h,
       ).toBeUndefined();
+    });
+
+    it("should update scanResults state on successful scan", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      const mockScanResponse = {
+        results: {
+          "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+            beningTokenScan,
+        },
+      };
+
+      mockScanBulkTokens.mockResolvedValueOnce(mockScanResponse);
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
+      expect(result.current.scanResults).toEqual(mockScanResponse.results);
+    });
+
+    it("should retain existing scan results in failure case", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(mockScanBulkTokens).toHaveBeenCalled();
+      // keeps previous scan state in error case
+      expect(result.current.scanResults).toEqual({
+        "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          beningTokenScan,
+      });
+    });
+
+    it("should batch scans in chunks of 20 tokens by default", async () => {
+      const manyBalances = {} as BalanceMap;
+      for (let i = 0; i < 25; i++) {
+        manyBalances[`TOKEN${i}:ISSUER${i}`] = {
+          ...mockTokenBalance,
+          token: {
+            ...mockTokenBalance.token,
+            code: `TOKEN${i}`,
+            issuer: { key: `ISSUER${i}` },
+          },
+        };
+      }
+
+      mockFetchBalances.mockResolvedValueOnce({ balances: manyBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: {} }),
+      );
+
+      mockScanBulkTokens.mockResolvedValue({ results: {} });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      // Should call scan twice (20 + 5)
+      expect(mockScanBulkTokens).toHaveBeenCalledTimes(2);
     });
   });
 });
