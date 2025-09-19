@@ -13,6 +13,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
   SendReviewBottomSheet,
+  SendReviewFooter,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -151,10 +152,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     xdr: transactionXDR ?? "",
   });
 
-  const onConfirmAddMemo = () => {
+  const onConfirmAddMemo = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
-  };
+  }, []);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -363,7 +364,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     scanTransaction,
   ]);
 
-  const handleTransactionConfirmation = () => {
+  const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
 
@@ -410,7 +411,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     processTransaction();
     saveMemo("");
-  };
+  }, [
+    account,
+    selectedBalance,
+    signTransaction,
+    network,
+    submitTransaction,
+    saveMemo,
+  ]);
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
@@ -465,6 +473,35 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
   ]);
+
+  const handleCancelReview = useCallback(() => {
+    reviewBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const footerProps = useMemo(
+    () => ({
+      onCancel: handleCancelReview,
+      onConfirm: isRequiredMemoMissing
+        ? onConfirmAddMemo
+        : handleTransactionConfirmation,
+      isRequiredMemoMissing,
+      isMalicious: transactionSecurityAssessment.isMalicious,
+      isSuspicious: transactionSecurityAssessment.isSuspicious,
+    }),
+    [
+      handleCancelReview,
+      isRequiredMemoMissing,
+      transactionSecurityAssessment.isMalicious,
+      transactionSecurityAssessment.isSuspicious,
+      onConfirmAddMemo,
+      handleTransactionConfirmation,
+    ],
+  );
+
+  const renderFooterComponent = useCallback(
+    () => <SendReviewFooter {...footerProps} />,
+    [footerProps],
+  );
 
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
@@ -646,30 +683,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           </View>
         </View>
       </View>
-
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
+        scrollable
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onBannerPress={onBannerPress}
-            onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
-            onConfirm={
-              isRequiredMemoMissing
-                ? onConfirmAddMemo
-                : handleTransactionConfirmation
-            }
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
-            isValidatingMemo={isValidatingMemo}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
             signTransactionDetails={signTransactionDetails}
           />
         }
+        renderFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
@@ -717,7 +748,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           />
         }
       />
-
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
