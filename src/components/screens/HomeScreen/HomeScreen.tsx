@@ -22,7 +22,9 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useWalletKitStore } from "ducks/walletKit";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -31,8 +33,19 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  TouchableOpacity,
+  View,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -54,6 +67,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
 
+    // Refresh state
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     const { t } = useAppTranslation();
     const { copyToClipboard } = useClipboard();
 
@@ -62,7 +78,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       balances,
       isFunded,
       isLoading: isLoadingBalances,
+      fetchAccountBalances,
     } = useBalancesStore();
+    const { fetchCollectibles } = useCollectiblesStore();
+    const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
     const hasTokens = useMemo(
@@ -181,6 +200,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       analyticsDebugBottomSheetRef.current?.dismiss();
     }, []);
 
+    const handleRefresh = useCallback(async () => {
+      if (!account?.publicKey) return;
+
+      // throw it out of the loop for instant state update
+      setTimeout(() => setIsRefreshing(true));
+
+      try {
+        await Promise.all([
+          fetchAccountBalances({
+            publicKey: account.publicKey,
+            network,
+          }),
+          fetchCollectibles({
+            publicKey: account.publicKey,
+            network,
+          }),
+          Promise.resolve(fetchActiveSessions(account.publicKey, network)),
+        ]);
+      } finally {
+        setIsRefreshing(false);
+      }
+    }, [
+      account?.publicKey,
+      network,
+      fetchAccountBalances,
+      fetchCollectibles,
+      fetchActiveSessions,
+    ]);
+
     return (
       <BaseLayout
         insets={{ bottom: false, top: false, left: false, right: false }}
@@ -197,60 +245,74 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           bottomSheetRef={manageAccountsBottomSheetRef}
         />
 
-        <View className="pt-8 w-full items-center">
-          <View className="flex-col gap-3 items-center">
-            <TouchableOpacity onPress={handleManageAccountsPress}>
-              <View className="flex-row items-center gap-2">
-                <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
-                <Text>{account?.accountName ?? t("home.title")}</Text>
-                <Icon.ChevronDown
-                  size={16}
-                  color={themeColors.foreground.primary}
-                />
-              </View>
-            </TouchableOpacity>
-            <Display lg medium>
-              {formattedBalance}
-            </Display>
-          </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => {
+                handleRefresh();
+              }}
+              tintColor={themeColors.secondary}
+            />
+          }
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          <View className="pt-8 w-full items-center">
+            <View className="flex-col gap-3 items-center">
+              <TouchableOpacity onPress={handleManageAccountsPress}>
+                <View className="flex-row items-center gap-2">
+                  <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+                  <Text>{account?.accountName ?? t("home.title")}</Text>
+                  <Icon.ChevronDown
+                    size={16}
+                    color={themeColors.foreground.primary}
+                  />
+                </View>
+              </TouchableOpacity>
+              <Display lg medium>
+                {formattedBalance}
+              </Display>
+            </View>
 
-          <View className="flex-row gap-[24px] items-center justify-center my-8">
-            <IconButton
-              Icon={Icon.Plus}
-              title={t("home.buy")}
-              onPress={navigateToBuyXLM}
-            />
-            <IconButton
-              Icon={Icon.ArrowUp}
-              title={t("home.send")}
-              disabled={hasZeroBalance}
-              onPress={handleSendPress}
-            />
-            {swapEnabled && (
+            <View className="flex-row gap-[24px] items-center justify-center my-8">
               <IconButton
-                Icon={Icon.RefreshCw02}
-                title={t("home.swap")}
-                disabled={hasZeroBalance}
-                onPress={handleSwapPress}
+                Icon={Icon.Plus}
+                title={t("home.buy")}
+                onPress={navigateToBuyXLM}
               />
-            )}
-            <IconButton
-              Icon={Icon.Copy01}
-              title={t("home.copy")}
-              onPress={() => handleCopyAddress(account?.publicKey)}
-            />
+              <IconButton
+                Icon={Icon.ArrowUp}
+                title={t("home.send")}
+                disabled={hasZeroBalance}
+                onPress={handleSendPress}
+              />
+              {swapEnabled && (
+                <IconButton
+                  Icon={Icon.RefreshCw02}
+                  title={t("home.swap")}
+                  disabled={hasZeroBalance}
+                  onPress={handleSwapPress}
+                />
+              )}
+              <IconButton
+                Icon={Icon.Copy01}
+                title={t("home.copy")}
+                onPress={() => handleCopyAddress(account?.publicKey)}
+              />
+            </View>
           </View>
-        </View>
 
-        <View className="w-full border-b mb-4 border-border-primary" />
+          <View className="w-full border-b mb-4 border-border-primary" />
 
-        <TokensCollectiblesTabs
-          showTokensSettings={hasTokens}
-          publicKey={account?.publicKey ?? ""}
-          network={network}
-          onTokenPress={handleTokenPress}
-          onCollectiblePress={handleCollectiblePress}
-        />
+          <TokensCollectiblesTabs
+            showTokensSettings={hasTokens}
+            publicKey={account?.publicKey ?? ""}
+            network={network}
+            onTokenPress={handleTokenPress}
+            onCollectiblePress={handleCollectiblePress}
+          />
+        </ScrollView>
 
         {/* Analytics Debug - Development Only */}
         <AnalyticsDebugBottomSheet
