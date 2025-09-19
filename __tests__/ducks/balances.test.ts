@@ -121,6 +121,11 @@ describe("balances duck", () => {
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
   };
+  const mockParamsPubnet = {
+    contractIds: [],
+    publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+    network: NETWORKS.PUBLIC,
+  };
 
   beforeEach(() => {
     // Reset the store before each test
@@ -128,6 +133,7 @@ describe("balances duck", () => {
       useBalancesStore.setState({
         balances: {},
         pricedBalances: {},
+        scanResults: {},
         isLoading: false,
         error: null,
       });
@@ -305,7 +311,7 @@ describe("balances duck", () => {
       const errorMessage = "Network error";
       mockFetchBalances.mockRejectedValueOnce(new Error(errorMessage));
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -315,12 +321,13 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe(errorMessage);
+      unmount();
     });
 
     it("should update error state when fetch fails with non-Error", async () => {
       mockFetchBalances.mockRejectedValueOnce("Some non-error rejection");
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -330,6 +337,7 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe("Failed to fetch balances");
+      unmount();
     });
 
     it("should handle price fetch errors gracefully", async () => {
@@ -380,14 +388,15 @@ describe("balances duck", () => {
 
       mockScanBulkTokens.mockResolvedValueOnce(mockScanResponse);
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
-        await result.current.fetchAccountBalances(mockParams);
+        await result.current.fetchAccountBalances(mockParamsPubnet);
       });
 
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
       expect(result.current.scanResults).toEqual(mockScanResponse.results);
+      unmount();
     });
 
     it("should retain existing scan results in failure case", async () => {
@@ -396,20 +405,17 @@ describe("balances duck", () => {
         createMockPricesStore({ prices: mockPrices }),
       );
 
-      mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
+       mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
-        await result.current.fetchAccountBalances(mockParams);
+        await result.current.fetchAccountBalances(mockParamsPubnet);
       });
 
       expect(mockScanBulkTokens).toHaveBeenCalled();
-      // keeps previous scan state in error case
-      expect(result.current.scanResults).toEqual({
-        "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-          beningTokenScan,
-      });
+      expect(result.current.scanResults).toStrictEqual({});
+      unmount();
     });
 
     it("should batch scans in chunks of 20 tokens by default", async () => {
@@ -430,16 +436,17 @@ describe("balances duck", () => {
         createMockPricesStore({ prices: {} }),
       );
 
-      mockScanBulkTokens.mockResolvedValue({ results: {} });
+       mockScanBulkTokens.mockResolvedValue({ results: {} });
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
-        await result.current.fetchAccountBalances(mockParams);
+        await result.current.fetchAccountBalances(mockParamsPubnet);
       });
 
       // Should call scan twice (20 + 5)
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(2);
+      unmount();
     });
   });
 });

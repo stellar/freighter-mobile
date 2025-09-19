@@ -13,6 +13,7 @@ import {
   isLiquidityPool,
   sortBalances,
 } from "helpers/balances";
+import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
@@ -211,6 +212,15 @@ const scanBalances = async (
   network: NETWORKS,
   batchSize = 20,
 ) => {
+  if (!isMainnet(network)) {
+    return Promise.resolve({
+      results: {} as Record<
+        string,
+        Blockaid.TokenBulk.TokenBulkScanResponse.Results
+      >,
+      error: null,
+    });
+  }
   try {
     const entries = Object.entries(balances); // [tokenIdentifier, Balance][]
 
