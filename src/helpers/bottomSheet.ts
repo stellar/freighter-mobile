@@ -10,7 +10,6 @@ export interface BottomSheetMaxHeightOptions {
   sheetMaxHeightRatio?: number;
   topPaddingPx?: number;
   bottomPaddingPx?: number;
-  footerHeightPx?: number;
 }
 
 export const DEFAULT_SHEET_MAX_HEIGHT_RATIO = 0.9;
@@ -23,16 +22,12 @@ export const calculateScrollableMaxHeight = (
     sheetMaxHeightRatio = BOTTOM_SHEET_MAX_HEIGHT_RATIO,
     topPaddingPx = BOTTOM_SHEET_CONTENT_TOP_PADDING,
     bottomPaddingPx = BOTTOM_SHEET_CONTENT_BOTTOM_PADDING,
-    footerHeightPx = 0,
   } = options;
 
   const windowHeight = Dimensions.get("window").height;
 
   const availableHeight =
-    windowHeight * sheetMaxHeightRatio -
-    headerHeightPx -
-    topPaddingPx -
-    footerHeightPx;
+    windowHeight * sheetMaxHeightRatio - headerHeightPx - topPaddingPx;
 
   const maxHeight = Math.max(0, availableHeight - bottomPaddingPx);
 
