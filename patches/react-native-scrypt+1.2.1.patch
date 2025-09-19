@@ -9,4 +9,16 @@ index dac9cc5..417a7a0 100644
 -    compile 'com.facebook.react:react-native:+'
 +    implementation 'com.facebook.react:react-native:+'
  }
+
+diff --git a/node_modules/react-native-scrypt/android/src/main/jni/Application.mk b/node_modules/react-native-scrypt/android/src/main/jni/Application.mk
+index 1234567..7654321 100644
+--- a/node_modules/react-native-scrypt/android/src/main/jni/Application.mk
++++ b/node_modules/react-native-scrypt/android/src/main/jni/Application.mk
+@@ -1,4 +1,7 @@
+ APP_PLATFORM := android-19
  
++# Support 16KB page size
++APP_SUPPORT_FLEXIBLE_PAGE_SIZES := true
++
+ APP_ABI := all
+
