@@ -247,11 +247,7 @@ export const useTokenLookup = ({
       try {
         const addressList = formattedRecords
           .filter((record) => record.issuer)
-          .map((token) =>
-            token.issuer
-              ? `${token.tokenCode}-${token.issuer}`
-              : token.tokenCode,
-          );
+          .map((token) => `${token.tokenCode}-${token.issuer}`);
 
         const bulkScanResult = await scanBulkTokens(
           { addressList, network },
