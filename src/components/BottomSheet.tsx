@@ -4,7 +4,10 @@ import {
   BottomSheetModal,
   BottomSheetModalProps,
   BottomSheetView,
+  BottomSheetScrollView,
+  BottomSheetFooter,
 } from "@gorhom/bottom-sheet";
+import { BottomSheetDefaultFooterProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetFooter/types";
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -12,7 +15,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { track } from "services/analytics/core";
@@ -54,6 +57,8 @@ export type BottomSheetProps = {
   useInsetsBottomPadding?: boolean;
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
+  renderFooterComponent?: () => React.ReactNode;
+  scrollable?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -73,10 +78,13 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   useInsetsBottomPadding = true,
   analyticsEvent,
   analyticsProps,
+  renderFooterComponent = undefined,
+  scrollable = false,
 }) => {
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : null;
   const insets = useSafeAreaInsets();
+  const [footerHeight, setFooterHeight] = useState(0);
 
   // Track bottom-sheet open exactly once per presentation
   const hasTrackedRef = useRef(false);
@@ -121,64 +129,116 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [analyticsEvent, analyticsProps, bottomSheetModalProps],
   );
 
+  const renderContent = useCallback(
+    () =>
+      customContent || (
+        <>
+          {IconData && (
+            <View className="flex-row items-center justify-between">
+              <View>
+                {React.createElement(Icon[IconData.icon], {
+                  size: 25,
+                  themeColor: IconData.color,
+                  withBackground: true,
+                })}
+              </View>
+              <TouchableOpacity onPress={handleCloseModal}>
+                <Icon.X color={themeColors.base[1]} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View className="flex-row items-center justify-between">
+            <Text xl medium>
+              {title}
+            </Text>
+            {!IconData && (
+              <TouchableOpacity onPress={handleCloseModal}>
+                <Icon.X color={themeColors.base[1]} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <View className="h-px bg-gray-8" />
+          <Text md medium secondary>
+            {description}
+          </Text>
+        </>
+      ),
+    [
+      customContent,
+      IconData,
+      handleCloseModal,
+      themeColors.base,
+      title,
+      description,
+    ],
+  );
+
+  const handleFooterLayout = useCallback(
+    (event: { nativeEvent: { layout: { height: number } } }) => {
+      const { height } = event.nativeEvent.layout;
+      setFooterHeight(height);
+    },
+    [],
+  );
+
+  const renderFooterWithLayout = useCallback(
+    (props: BottomSheetDefaultFooterProps) => {
+      if (!renderFooterComponent) return null;
+
+      return (
+        <BottomSheetFooter {...props}>
+          <View onLayout={handleFooterLayout}>{renderFooterComponent()}</View>
+        </BottomSheetFooter>
+      );
+    },
+    [renderFooterComponent, handleFooterLayout],
+  );
+
   return (
     <BottomSheetModal
       ref={modalRef}
       enablePanDownToClose={enablePanDownToClose}
       enableContentPanningGesture={enableContentPanningGesture}
       enableDynamicSizing={enableDynamicSizing}
-      snapPoints={snapPoints}
       enableOverDrag={false}
+      snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
+      footerComponent={renderFooterWithLayout}
       backgroundStyle={{
         backgroundColor: themeColors.background.primary,
       }}
       {...bottomSheetModalProps}
       onChange={handleChange}
     >
-      <BottomSheetView
-        className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
-        style={{
-          paddingBottom: useInsetsBottomPadding
-            ? insets.bottom + pxValue(DEFAULT_PADDING)
-            : 0,
-        }}
-        {...bottomSheetViewProps}
-      >
-        {customContent || (
-          <>
-            {IconData && (
-              <View className="flex-row items-center justify-between">
-                <View>
-                  {React.createElement(Icon[IconData.icon], {
-                    size: 25,
-                    themeColor: IconData.color,
-                    withBackground: true,
-                  })}
-                </View>
-                <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X color={themeColors.base[1]} />
-                </TouchableOpacity>
-              </View>
-            )}
-            <View className="flex-row items-center justify-between">
-              <Text xl medium>
-                {title}
-              </Text>
-              {!IconData && (
-                <TouchableOpacity onPress={handleCloseModal}>
-                  <Icon.X color={themeColors.base[1]} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <View className="h-px bg-gray-8" />
-            <Text md medium secondary>
-              {description}
-            </Text>
-          </>
-        )}
-      </BottomSheetView>
+      {scrollable ? (
+        <BottomSheetScrollView
+          className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+          showsVerticalScrollIndicator={false}
+          style={{
+            paddingBottom: useInsetsBottomPadding
+              ? insets.bottom + pxValue(DEFAULT_PADDING)
+              : 0,
+          }}
+          {...bottomSheetViewProps}
+        >
+          {renderContent()}
+          {/* workaround to add the fother height to the bottom sheet, as it's not included as part of the library calcs */}
+          {footerHeight > 0 && <View style={{ height: footerHeight }} />}
+        </BottomSheetScrollView>
+      ) : (
+        <BottomSheetView
+          className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+          style={{
+            paddingBottom: useInsetsBottomPadding
+              ? insets.bottom + pxValue(DEFAULT_PADDING)
+              : 0,
+          }}
+          {...bottomSheetViewProps}
+        >
+          {renderContent()}
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 };
