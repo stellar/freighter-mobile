@@ -1,4 +1,4 @@
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
@@ -25,9 +25,10 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
   selectedBalance?: PricedBalance;
-  tokenAmount: string;
+  tokenAmountInternal: string;
   onCancel?: () => void;
   onConfirm?: () => void;
+  onSettingsPress?: () => void;
   /**
    * Indicates if a required memo is missing from the transaction
    * When true, shows a warning banner and may disable transaction confirmation
@@ -66,9 +67,10 @@ type SendReviewBottomSheetProps = {
  */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
-  tokenAmount,
+  tokenAmountInternal,
   onCancel,
   onConfirm,
+  onSettingsPress,
   isRequiredMemoMissing,
   isValidatingMemo,
   onBannerPress,
@@ -142,17 +144,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           {t("transactionAmountScreen.details.memo")}
         </Text>
         {isRequiredMemoMissing && (
-          <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+          <Icon.AlertTriangle size={16} themeColor="red" />
         )}
       </View>
     );
-  }, [
-    isBuilding,
-    isRequiredMemoMissing,
-    t,
-    themeColors.status.error,
-    themeColors.text.secondary,
-  ]);
+  }, [isBuilding, isRequiredMemoMissing, t, themeColors.text.secondary]);
 
   /**
    * Renders a warning banner for the following cases:
@@ -352,12 +348,15 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               <TokenIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
-                  {formatTokenAmount(tokenAmount, selectedBalance.tokenCode)}
+                  {formatTokenAmount(
+                    tokenAmountInternal,
+                    selectedBalance.tokenCode,
+                  )}
                 </Text>
                 <Text md medium secondary>
                   {selectedBalance.currentPrice
                     ? formatFiatAmount(
-                        new BigNumber(tokenAmount).times(
+                        new BigNumber(tokenAmountInternal).times(
                           selectedBalance.currentPrice,
                         ),
                       )
@@ -391,9 +390,18 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       {signTransactionDetails && (
         <SignTransactionDetails data={signTransactionDetails} />
       )}
+
       <View
         className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[4px]`}
       >
+        {onSettingsPress && (
+          <TouchableOpacity
+            onPress={onSettingsPress}
+            className="w-[46px] h-[46px] rounded-full border border-gray-6 items-center justify-center"
+          >
+            <Icon.Settings04 size={24} themeColor="gray" />
+          </TouchableOpacity>
+        )}
         {renderButtons()}
       </View>
     </View>

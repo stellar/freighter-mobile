@@ -5,9 +5,9 @@ import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeo
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
-      "transactionTimeoutScreen.errors.required": "Timeout is required",
-      "transactionTimeoutScreen.errors.invalid": "Invalid timeout value",
-      "transactionTimeoutScreen.errors.greaterThanZero":
+      "transactionSettings.errors.timeout.required": "Timeout is required",
+      "transactionSettings.errors.timeout.invalid": "Invalid timeout value",
+      "transactionSettings.errors.timeout.greaterThanZero":
         "Timeout must be greater than zero",
     };
     return translations[key] || key;

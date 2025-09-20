@@ -102,17 +102,11 @@ export const SEND_PAYMENT_ROUTES = {
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
   TRANSACTION_AMOUNT_SCREEN: "TransactionAmountScreen",
-  TRANSACTION_MEMO_SCREEN: "TransactionMemoScreen",
-  TRANSACTION_TIMEOUT_SCREEN: "TransactionTimeoutScreen",
-  TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
 } as const;
 
 export const SWAP_ROUTES = {
   SWAP_SCREEN: "SwapScreen",
   SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
-  SWAP_FEE_SCREEN: "SwapFeeScreen",
-  SWAP_TIMEOUT_SCREEN: "SwapTimeoutScreen",
-  SWAP_SLIPPAGE_SCREEN: "SwapSlippageScreen",
 } as const;
 
 /**
@@ -245,9 +239,6 @@ export type SendPaymentStackParamList = {
     tokenId: string;
     recipientAddress?: string;
   };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };
 
 export type SwapStackParamList = {
@@ -258,7 +249,4 @@ export type SwapStackParamList = {
     tokenId: string;
     tokenSymbol: string;
   };
-  [SWAP_ROUTES.SWAP_FEE_SCREEN]: undefined;
-  [SWAP_ROUTES.SWAP_TIMEOUT_SCREEN]: undefined;
-  [SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN]: undefined;
 };

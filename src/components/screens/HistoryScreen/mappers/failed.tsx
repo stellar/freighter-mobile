@@ -34,9 +34,7 @@ export const mapFailedTransactionHistoryItem = ({
     <Icon.Wallet03 size={26} circle color={themeColors.foreground.primary} />
   );
 
-  const ActionIconComponent = (
-    <Icon.XCircle size={16} color={themeColors.status.error} />
-  );
+  const ActionIconComponent = <Icon.XCircle size={16} themeColor="red" />;
 
   const transactionDetails: TransactionDetails = {
     operation,

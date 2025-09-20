@@ -13,7 +13,10 @@ import { logger } from "config/logger";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { formatTokenAmount } from "helpers/formatAmount";
+import {
+  formatTokenAmount,
+  parseLocaleNumberToBigNumber,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, {
@@ -61,6 +64,14 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
       headerShown: false,
     });
   }, [navigation]);
+
+  useEffect(
+    () => () =>
+      navigation.setOptions({
+        headerShown: true,
+      }),
+    [navigation],
+  );
 
   useEffect(() => {
     if (transactionError) {
@@ -111,7 +122,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           <Icon.CheckCircle size={48} color={themeColors.status.success} />
         );
       case SwapStatus.FAILED:
-        return <Icon.XCircle size={48} color={themeColors.status.error} />;
+        return <Icon.XCircle size={48} themeColor="red" />;
       case SwapStatus.SWAPPING:
       default:
         return <Spinner size="large" color={themeColors.base[1]} />;
@@ -130,7 +141,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   const displayData = useMemo(() => {
     const defaultData = {
-      sourceAmount,
+      sourceAmount: parseLocaleNumberToBigNumber(sourceAmount).toString(),
       sourceToken,
       destinationAmount,
       destinationToken,

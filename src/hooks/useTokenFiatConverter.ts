@@ -1,6 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { parseLocaleNumberToBigNumber } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
 
@@ -9,7 +10,8 @@ interface UseTokenFiatConverterProps {
 }
 
 interface UseTokenFiatConverterResult {
-  tokenAmount: string;
+  tokenAmount: string; // Display value (locale-formatted)
+  tokenAmountInternal: string; // Internal value (dot notation)
   fiatAmount: string;
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
@@ -32,6 +34,7 @@ export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
+  const [tokenAmountInternal, setTokenAmountInternal] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
@@ -41,12 +44,18 @@ export const useTokenFiatConverter = ({
     [selectedBalance?.currentPrice],
   );
 
+  // Update internal value when token amount changes
+  useEffect(() => {
+    const internalAmount = parseLocaleNumberToBigNumber(tokenAmount).toString();
+    setTokenAmountInternal(internalAmount);
+  }, [tokenAmount]);
+
   // Update fiat amount when token amount changes
   useEffect(() => {
     if (!showFiatAmount) {
-      const parsedTokenAmount = new BigNumber(tokenAmount);
-      if (parsedTokenAmount.isFinite()) {
-        const newFiatAmount = tokenPrice.multipliedBy(parsedTokenAmount);
+      const bnTokenAmount = parseLocaleNumberToBigNumber(tokenAmount);
+      if (bnTokenAmount.isFinite()) {
+        const newFiatAmount = tokenPrice.multipliedBy(bnTokenAmount);
         setFiatAmount(newFiatAmount.toFixed(FIAT_DECIMALS));
       } else {
         setFiatAmount("0");
@@ -57,11 +66,11 @@ export const useTokenFiatConverter = ({
   // Update token amount when fiat amount changes
   useEffect(() => {
     if (showFiatAmount) {
-      const parsedFiatAmount = new BigNumber(fiatAmount);
-      if (parsedFiatAmount.isFinite()) {
+      const bnFiatAmount = parseLocaleNumberToBigNumber(fiatAmount);
+      if (bnFiatAmount.isFinite()) {
         const newTokenAmount = tokenPrice.isZero()
           ? new BigNumber(0)
-          : parsedFiatAmount.dividedBy(tokenPrice);
+          : bnFiatAmount.dividedBy(tokenPrice);
         setTokenAmount(newTokenAmount.toFixed(DEFAULT_DECIMALS));
       } else {
         setTokenAmount("0");
@@ -84,6 +93,7 @@ export const useTokenFiatConverter = ({
 
   return {
     tokenAmount,
+    tokenAmountInternal,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,

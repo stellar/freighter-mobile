@@ -145,7 +145,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         />
         {isMalicious && (
           <View className="absolute -bottom-1 -right-1 rounded-full p-1 z-10 bg-red-3">
-            <Icon.AlertCircle size={12} color={themeColors.status.error} />
+            <Icon.AlertCircle size={12} themeColor="red" />
           </View>
         )}
       </View>

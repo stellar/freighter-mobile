@@ -3,6 +3,7 @@ import { BigNumber } from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { parseLocaleNumberToBigNumber } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -33,7 +34,8 @@ interface SwapState {
   destinationTokenId: string;
   sourceTokenSymbol: string;
   destinationTokenSymbol: string;
-  sourceAmount: string;
+  sourceAmount: string; // Display value (locale formatted)
+  sourceAmountInternal: string; // Internal value (dot notation)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
@@ -62,6 +64,7 @@ const initialState = {
   sourceTokenSymbol: "",
   destinationTokenSymbol: "",
   sourceAmount: "0",
+  sourceAmountInternal: "0",
   destinationAmount: "0",
   pathResult: null,
   isLoadingPath: false,
@@ -141,7 +144,11 @@ export const useSwapStore = create<SwapState>((set) => ({
   setDestinationToken: (tokenId, tokenSymbol) =>
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
-  setSourceAmount: (amount) => set({ sourceAmount: amount }),
+  setSourceAmount: (amount) => {
+    // Convert locale-formatted amount to dot notation for internal use
+    const internalAmount = parseLocaleNumberToBigNumber(amount).toString();
+    set({ sourceAmount: amount, sourceAmountInternal: internalAmount });
+  },
 
   findSwapPath: async (params) => {
     const {
