@@ -1,5 +1,5 @@
 PODS:
-  - amplitude-react-native (1.4.13):
+  - amplitude-react-native (1.5.10):
     - React-Core
   - boost (1.84.0)
   - ComputableLayout (0.7.0):
@@ -1481,7 +1481,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-skia (2.0.0-next.1):
+  - react-native-skia (2.2.18):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1942,7 +1942,7 @@ PODS:
     - Yoga
   - RNInAppBrowser (3.7.0):
     - React-Core
-  - RNKeychain (9.2.3):
+  - RNKeychain (10.0.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2220,11 +2220,11 @@ PODS:
     - React-Core
   - Sentry/HybridSDK (8.53.2)
   - SocketRocket (0.7.1)
-  - VisionCamera (4.6.4):
-    - VisionCamera/Core (= 4.6.4)
-    - VisionCamera/React (= 4.6.4)
-  - VisionCamera/Core (4.6.4)
-  - VisionCamera/React (4.6.4):
+  - VisionCamera (4.7.2):
+    - VisionCamera/Core (= 4.7.2)
+    - VisionCamera/React (= 4.7.2)
+  - VisionCamera/Core (4.7.2)
+  - VisionCamera/React (4.7.2):
     - React-Core
   - Yoga (0.0.0)
 
@@ -2545,7 +2545,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  amplitude-react-native: d0039a3ce502eb441ba818af1b8c8ba710ef16e7
+  amplitude-react-native: 3cb683ed634168cd4c90fe0b0113802c2b5ed540
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   ComputableLayout: c50faffac4ed9f8f05b0ce5e6f3a60df1f6042c8
   ContextMenuAuxiliaryPreview: 20be0be795b783b68f8792732eed4bed9f202c1c
@@ -2601,7 +2601,7 @@ SPEC CHECKSUMS:
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-randombytes: 3c8f3e89d12487fd03a2f966c288d495415fc116
   react-native-safe-area-context: 0f14bce545abcdfbff79ce2e3c78c109f0be283e
-  react-native-skia: 4c820a868d2646e9fe7cb1bafaa3eecae5fd9f78
+  react-native-skia: c8733d6fd1ed8462141143504d7ddbd9d450efee
   react-native-view-shot: a38d952d5c7103b79a67c8aa82da95f98be6e5c2
   react-native-webview: 80ef603d1df42e24fdde765686fbb9b8a6ecd554
   React-NativeModulesApple: 88433b6946778bea9c153e27b671de15411bf225
@@ -2639,7 +2639,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: d863506092aef7e7af3a1c350c913d867d795047
   RNGestureHandler: dcb1b1db024f3744b03af56d132f4f72c4c27195
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
-  RNKeychain: 8d45ee314f242a6fb81fa9677ed8e0bf39dcecc3
+  RNKeychain: 455cc7002480eac3d24f67b4329ec80c7d901edc
   RNPermissions: 36fb7e846b835767290bd5b758ed0135c84a498e
   RNReanimated: 04813c30d3c04044c32c60379945b71e0c6c950f
   RNScreens: b32d0d59b53acb574fa795a9343591ef4e7ab7c2
@@ -2649,7 +2649,7 @@ SPEC CHECKSUMS:
   SecureClipboard: d70b94194e1ca2a2b70accae112881295b8d5032
   Sentry: 59993bffde4a1ac297ba6d268dc4bbce068d7c1b
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  VisionCamera: 7aaae584148bbc250e81b5662e45a7f25c18be2e
+  VisionCamera: 891edb31806dd3a239c8a9d6090d6ec78e11ee80
   Yoga: afd04ff05ebe0121a00c468a8a3c8080221cb14c
 
 PODFILE CHECKSUM: 428cf5dce9f6ce2832ba5d68db705ab05200adf4
