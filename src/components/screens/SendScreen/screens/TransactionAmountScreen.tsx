@@ -330,10 +330,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } = useTransactionSettingsStore.getState();
 
         // Use internal value (already in dot notation) for transaction building
-        const normalizedTokenAmount = tokenAmount;
 
         const finalXDR = await buildTransaction({
-          tokenAmount: normalizedTokenAmount,
+          tokenAmount: tokenAmountInternal,
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo,
@@ -367,7 +366,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       }
     },
     [
-      tokenAmount,
+      tokenAmountInternal,
       selectedBalance,
       network,
       publicKey,
@@ -511,7 +510,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <TransactionProcessingScreen
         key={selectedTokenId}
         onClose={handleProcessingScreenClose}
-        transactionAmount={tokenAmount}
+        transactionAmount={tokenAmountInternal}
         selectedBalance={selectedBalance}
       />
     );
