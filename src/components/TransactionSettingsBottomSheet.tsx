@@ -18,6 +18,11 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import {
+  formatNumberForLocale,
+  getLocaleDecimalSeparator,
+  parseLocaleNumber,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -152,14 +157,18 @@ const TransactionSettingsBottomSheet: React.FC<
   }, []);
   const handleUpdateSlippage = useCallback(
     (step: number) => {
-      const currentValue = parseFloat(localSlippage) || 0;
+      const currentValue = parseLocaleNumber(localSlippage) || 0;
       const newValue = Math.max(0, Math.min(MAX_SLIPPAGE, currentValue + step));
       const roundedValue = Math.round(newValue * 100) / 100;
       const isWholeNumber = roundedValue % 1 === 0;
       const finalValue = isWholeNumber
         ? Math.round(roundedValue)
         : roundedValue;
-      updateSlippage(finalValue.toString());
+      const decimalSeparator = getLocaleDecimalSeparator();
+      const formattedValue = finalValue
+        .toString()
+        .replace(".", decimalSeparator);
+      updateSlippage(formattedValue);
     },
     [localSlippage, updateSlippage],
   );
@@ -207,8 +216,9 @@ const TransactionSettingsBottomSheet: React.FC<
   const settingSaveCallbacks = {
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
-      saveSlippage(parseFloat(localSlippage)),
-    [TransactionSetting.Fee]: () => saveFee(parseFloat(localFee).toString()),
+      saveSlippage(parseLocaleNumber(localSlippage)),
+    [TransactionSetting.Fee]: () =>
+      saveFee(parseLocaleNumber(localFee).toString()),
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
   };
 
@@ -281,7 +291,7 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(-STEP_SIZE_PERCENT)}
-              disabled={(parseFloat(localSlippage) || 0) <= MIN_SLIPPAGE}
+              disabled={(parseLocaleNumber(localSlippage) || 0) <= MIN_SLIPPAGE}
             />
           </View>
 
@@ -305,7 +315,7 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(STEP_SIZE_PERCENT)}
-              disabled={(parseFloat(localSlippage) || 0) >= MAX_SLIPPAGE}
+              disabled={(parseLocaleNumber(localSlippage) || 0) >= MAX_SLIPPAGE}
             />
           </View>
         </View>
@@ -338,7 +348,11 @@ const TransactionSettingsBottomSheet: React.FC<
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={() => setLocalFee(recommendedFee || MIN_TRANSACTION_FEE)}
+            onPress={() =>
+              setLocalFee(
+                formatNumberForLocale(recommendedFee || MIN_TRANSACTION_FEE),
+              )
+            }
           >
             <Text sm medium color={themeColors.lilac[11]}>
               {t("transactionSettings.resetFee")}
@@ -353,7 +367,7 @@ const TransactionSettingsBottomSheet: React.FC<
             leftElement={<Icon.Route size={16} themeColor="gray" />}
             onChangeText={handleFeeChange}
             keyboardType="numeric"
-            placeholder={MIN_TRANSACTION_FEE}
+            placeholder={formatNumberForLocale(MIN_TRANSACTION_FEE)}
             error={feeError}
             note={
               <View className="flex-row items-center gap-2 mt-2">

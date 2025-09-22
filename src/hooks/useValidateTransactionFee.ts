@@ -1,5 +1,9 @@
 import BigNumber from "bignumber.js";
 import { MIN_TRANSACTION_FEE } from "config/constants";
+import {
+  formatNumberForLocale,
+  parseLocaleNumberToBigNumber,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useState } from "react";
 
@@ -17,7 +21,7 @@ export const useValidateTransactionFee = (fee: string) => {
       return;
     }
 
-    const feeValue = new BigNumber(fee);
+    const feeValue = parseLocaleNumberToBigNumber(fee);
     const minFee = new BigNumber(MIN_TRANSACTION_FEE);
 
     if (feeValue.isNaN()) {
@@ -28,7 +32,7 @@ export const useValidateTransactionFee = (fee: string) => {
     if (feeValue.isLessThan(minFee)) {
       setError(
         t("transactionSettings.errors.fee.tooLow", {
-          min: MIN_TRANSACTION_FEE,
+          min: formatNumberForLocale(MIN_TRANSACTION_FEE),
         }),
       );
       return;

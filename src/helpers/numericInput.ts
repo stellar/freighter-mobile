@@ -1,23 +1,24 @@
-import { getDecimalSeparator } from "helpers/localeNumericInput";
+import { getLocaleDecimalSeparator } from "helpers/formatAmount";
 
 /**
  * Formats a numeric input based on user key presses (digits, decimal point, delete).
  *
  * Allows one decimal point and limits digits after the decimal based on `maxDecimals`.
- * Uses locale-aware decimal separator.
+ * Uses the device's locale decimal separator for consistency.
  *
- * @param {string} prevValue - The current value in the input field (e.g., "123.45")
- * @param {string} key - The key pressed ("0"-"9", ".", or "" for delete)
+ * @param {string} prevValue - The current value in the input field (e.g., "123.45" or "123,45")
+ * @param {string} key - The key pressed ("0"-"9", ".", ",", or "" for delete)
  * @param {number} maxDecimals - The maximum number of decimal places allowed (e.g., 7 for XLM)
+ * @param {string} [locale] - Optional locale override; uses device locale by default
  * @returns {string} The newly formatted value
  */
 export const formatNumericInput = (
   prevValue: string,
   key: string,
   maxDecimals: number = 7, // Default to 7 for Stellar
+  locale?: string,
 ): string => {
-  const decimalSeparator = getDecimalSeparator();
-
+  const decimalSeparator = getLocaleDecimalSeparator(locale);
   // Handle delete key
   if (key === "") {
     // Reset to "0" if deleting the last digit/decimal or if the result is empty
@@ -25,8 +26,8 @@ export const formatNumericInput = (
     return newValue === "" ? "0" : newValue;
   }
 
-  // Handle decimal point key
-  if (key === "." || key === decimalSeparator) {
+  // Handle decimal point key (accept both "." and "," but use locale-appropriate separator)
+  if (key === "." || key === ",") {
     // Allow only one decimal point
     if (prevValue.includes(decimalSeparator)) {
       return prevValue;

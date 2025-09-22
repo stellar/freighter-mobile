@@ -1,4 +1,5 @@
 import { MAX_SLIPPAGE, MIN_SLIPPAGE } from "config/constants";
+import { parseLocaleNumber } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useState } from "react";
 
@@ -16,7 +17,7 @@ export const useValidateSlippage = (slippage: string) => {
       return;
     }
 
-    const numValue = parseFloat(slippage);
+    const numValue = parseLocaleNumber(slippage);
 
     if (Number.isNaN(numValue)) {
       setError(t("transactionSettings.errors.slippage.invalidNumber"));

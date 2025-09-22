@@ -31,16 +31,18 @@ const convertToBigNumber = (
  * Formats a numeric value as a human-readable token amount with optional token code
  *
  * This function formats numbers with thousand separators and appropriate decimal places
- * for displaying token amounts in the UI.
+ * for displaying token amounts in the UI. Uses the device's locale for consistent
+ * decimal and thousands separators.
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format
  * @param {string} [code] - Optional token code to append to the formatted amount
+ * @param {string} [locale] - Optional locale override; uses device locale by default
  * @returns {string} Formatted token amount string with optional token code
  *
  * @example
- * formatTokenAmount(1234.56); // Returns "1,234.56"
- * formatTokenAmount("1234.56789"); // Returns "1,234.56789"
- * formatTokenAmount(1234.56, "XLM"); // Returns "1,234.56 XLM"
+ * formatTokenAmount(1234.56); // Returns "1,234.56" (en-US) or "1.234,56" (de-DE)
+ * formatTokenAmount("1234.56789"); // Returns "1,234.56789" (en-US) or "1.234,56789" (de-DE)
+ * formatTokenAmount(1234.56, "XLM"); // Returns "1,234.56 XLM" (en-US) or "1.234,56 XLM" (de-DE)
  */
 export const formatTokenAmount = (
   amount: string | number | { toString: () => string },
@@ -67,25 +69,29 @@ export const formatTokenAmount = (
  * Formats a numeric value as a currency amount in USD
  *
  * This function formats numbers as USD currency values with the $ symbol,
- * thousand separators, and exactly 2 decimal places.
+ * thousand separators, and exactly 2 decimal places. Uses the device's locale
+ * for consistent number formatting.
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format as currency
- * @returns {string} Formatted currency string (e.g., "$1,234.56")
+ * @param {string} [locale] - Optional locale override; uses device locale by default
+ * @returns {string} Formatted currency string (e.g., "$1,234.56" or "1.234,56 $")
  *
  * @example
- * formatFiatAmount(1234.56); // Returns "$1,234.56"
- * formatFiatAmount("1234.5"); // Returns "$1,234.50"
- * formatFiatAmount(0.1); // Returns "$0.10"
+ * formatFiatAmount(1234.56); // Returns "$1,234.56" (en-US) or "1.234,56 $" (de-DE)
+ * formatFiatAmount("1234.5"); // Returns "$1,234.50" (en-US) or "1.234,50 $" (de-DE)
+ * formatFiatAmount(0.1); // Returns "$0.10" (en-US) or "0,10 $" (de-DE)
  */
 export const formatFiatAmount = (
   amount: string | number | { toString: () => string },
+  locale?: string,
 ) => {
   // Convert input to a number
   const numericAmount =
     typeof amount === "number" ? amount : parseFloat(amount.toString());
+  const deviceLocale = locale || getOSLocale();
 
-  // Format as USD currency with 2 decimal places
-  return new Intl.NumberFormat(getOSLocale(), {
+  // Format as USD currency with 2 decimal places using device locale
+  return new Intl.NumberFormat(deviceLocale, {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,

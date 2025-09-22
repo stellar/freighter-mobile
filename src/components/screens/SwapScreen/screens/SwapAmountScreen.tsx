@@ -32,6 +32,10 @@ import {
   hasXLMForFees,
 } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
+import {
+  formatBigNumberForLocale,
+  formatNumberForLocale,
+} from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -79,6 +83,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenId,
     sourceTokenSymbol,
     sourceAmount,
+    sourceAmountInternal,
     destinationAmount,
     pathResult,
     isLoadingPath,
@@ -140,14 +145,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       })
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
-        amount: spendableAmount ? spendableAmount.toString() : "0",
+        amount: spendableAmount ? formatNumberForLocale(spendableAmount) : "0",
         symbol: sourceTokenSymbol,
       });
       setAmountError(errorMessage);
       showToast({
         variant: "error",
         title: t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount ? spendableAmount.toString() : "0",
+          amount: spendableAmount
+            ? formatNumberForLocale(spendableAmount)
+            : "0",
           symbol: sourceTokenSymbol,
         }),
         toastId: "insufficient-balance",
@@ -171,7 +178,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   useSwapPathFinding({
     sourceBalance,
     destinationBalance,
-    sourceAmount,
+    sourceAmount: sourceAmountInternal,
     swapSlippage,
     network,
     publicKey: account?.publicKey,
@@ -186,7 +193,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceToken,
     destinationToken,
   } = useSwapTransaction({
-    sourceAmount,
+    sourceAmount: sourceAmountInternal,
     sourceBalance,
     destinationBalance,
     pathResult,
@@ -199,7 +206,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? isBuilding ||
       !!amountError ||
       !!pathError ||
-      new BigNumber(sourceAmount).isLessThanOrEqualTo(0) ||
+      new BigNumber(sourceAmountInternal).isLessThanOrEqualTo(0) ||
       !pathResult
     : false;
 
@@ -264,7 +271,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       handleSetMax();
     } else {
       const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-      setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+      // Use locale-aware formatting for the amount
+      setSourceAmount(
+        formatBigNumberForLocale(targetAmount, {
+          decimalPlaces: DEFAULT_DECIMALS,
+          useGrouping: false,
+        }),
+      );
     }
   };
 
