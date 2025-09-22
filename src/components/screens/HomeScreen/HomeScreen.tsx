@@ -241,6 +241,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
         {/* avoid nested VirtualizedLists, due to undefined scroll behavior. top content is balances, and footer is the tabs with their own scrollable content */}
         <FlatList
+          testID="home-screen-flatlist"
           data={[]} // Empty data array since we only use header and footer
           renderItem={() => null} // No items to render
           showsVerticalScrollIndicator={false}
