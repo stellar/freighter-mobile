@@ -1,65 +1,23 @@
 import { I18nManager, Platform, Settings } from "react-native";
 
-// Supported locales for the app
-const SUPPORTED_LOCALES = ["en", "pt", "en-US", "pt-BR"];
-const FALLBACK_LOCALE = "en-US";
-const FALLBACK_LANGUAGE = "en";
-
-/**
- * Gets the fallback language code
- * @returns {string} The fallback language code
- */
-export const getFallbackLanguage = (): string => FALLBACK_LANGUAGE;
-
-/**
- * Gets the fallback locale identifier
- * @returns {string} The fallback locale identifier
- */
-export const getFallbackLocale = (): string => FALLBACK_LOCALE;
-
-/**
- * Normalizes and validates a locale, falling back to supported locales
- */
-function normalizeLocale(locale: string): string {
-  if (!locale) return FALLBACK_LOCALE;
-
-  // Check if the exact locale is supported
-  if (SUPPORTED_LOCALES.includes(locale)) {
-    return locale;
-  }
-
-  // Try to find a supported locale by language code
-  const languageCode = locale.split("-")[0];
-  const supportedLanguage = SUPPORTED_LOCALES.find((supported) =>
-    supported.startsWith(languageCode),
-  );
-
-  if (supportedLanguage) {
-    return supportedLanguage;
-  }
-
-  // Fallback to default
-  return FALLBACK_LOCALE;
-}
-
 /**
  * Retrieves the current operating system locale identifier
  *
  * This function detects the device's full locale setting and returns it as a locale identifier
- * (e.g., 'en-US', 'pt-BR'). Only supported locales are returned, with fallback to 'en-US'.
+ * (e.g., 'en-US', 'fr-FR', 'de-DE'). This is used for locale-aware number formatting.
  * Normalizes locale format from native modules (en_US) to BCP 47 format (en-US).
  *
- * @returns {string} Supported locale identifier or 'en-US' as fallback
+ * @returns {string} Full locale identifier or 'en-US' as fallback
  *
  * @example
  * // Get the user's OS locale
- * const locale = getOSLocale(); // Returns 'en-US', 'pt-BR', or 'en-US' for unsupported locales
+ * const locale = getOSLocale(); // Returns 'en-US', 'de-DE', etc.
  *
  * // Use for number formatting
  * const formatted = number.toLocaleString(locale);
  */
 export function getOSLocale(): string {
-  let locale = FALLBACK_LOCALE; // fallback
+  let locale = "en-US"; // fallback
 
   if (Platform.OS === "android") {
     const androidLocale = I18nManager.getConstants().localeIdentifier;
@@ -80,17 +38,15 @@ export function getOSLocale(): string {
 
   // Normalize locale format: convert underscores to hyphens for BCP 47 compliance
   // e.g., "en_US" -> "en-US", "de_DE" -> "de-DE"
-
-  // Return a supported locale or fallback
-  return normalizeLocale(locale.replace(/_/g, "-"));
+  return locale.replace(/_/g, "-");
 }
 
 /**
  * Retrieves the current operating system language as a two-letter language code
  *
  * This function detects the device's language setting and returns it as an ISO 639-1
- * two-letter language code (e.g., 'en', 'pt'). Only supported languages are returned,
- * with fallback to 'en'.
+ * two-letter language code (e.g., 'en', 'fr', 'ja'). The implementation varies by platform
+ * to accommodate the different ways Android and iOS expose language settings.
  *
  * @returns {string} Two-letter language code or 'en' as fallback
  *

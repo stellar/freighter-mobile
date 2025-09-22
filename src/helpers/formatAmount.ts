@@ -94,13 +94,12 @@ const convertToBigNumber = (
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format
  * @param {string} [code] - Optional token code to append to the formatted amount
- * @param {string} [locale] - Optional locale override (currently unused, kept for compatibility)
  * @returns {string} Formatted token amount string with optional token code
  *
  * @example
- * formatTokenAmount(1234.56); // Returns "1,234.56" (en-US) or "1.234,56" (de-DE)
- * formatTokenAmount("1234.56789"); // Returns "1,234.56789" (en-US) or "1.234,56789" (de-DE)
- * formatTokenAmount(1234.56, "XLM"); // Returns "1,234.56 XLM" (en-US) or "1.234,56 XLM" (de-DE)
+ * formatTokenAmount(1234.56); // Returns "1,234.56" (based on device settings)
+ * formatTokenAmount("1234.56789"); // Returns "1,234.56789" (based on device settings)
+ * formatTokenAmount(1234.56, "XLM"); // Returns "1,234.56 XLM" (based on device settings)
  */
 export const formatTokenAmount = (
   amount: string | number | { toString: () => string },
@@ -132,13 +131,12 @@ export const formatTokenAmount = (
  * for consistent number formatting based on device settings.
  *
  * @param {string | number | { toString: () => string }} amount - The amount to format as currency
- * @param {string} [locale] - Optional locale override (currently unused, kept for compatibility)
  * @returns {string} Formatted currency string (e.g., "$1,234.56" or "1.234,56 $")
  *
  * @example
- * formatFiatAmount(1234.56); // Returns "$1,234.56" (en-US) or "1.234,56 $" (de-DE)
- * formatFiatAmount("1234.5"); // Returns "$1,234.50" (en-US) or "1.234,50 $" (de-DE)
- * formatFiatAmount(0.1); // Returns "$0.10" (en-US) or "0,10 $" (de-DE)
+ * formatFiatAmount(1234.56); // Returns "$1,234.56" (based on device settings)
+ * formatFiatAmount("1234.5"); // Returns "$1,234.50" (based on device settings)
+ * formatFiatAmount(0.1); // Returns "$0.10" (based on device settings)
  */
 export const formatFiatAmount = (
   amount: string | number | { toString: () => string },
@@ -170,7 +168,6 @@ export const formatFiatAmount = (
  * Uses react-native-localize for consistent decimal separator formatting.
  *
  * @param {string | number | { toString: () => string }} [amount] - The amount to format as percentage
- * @param {string} [locale] - Optional locale override (currently unused, kept for compatibility)
  * @returns {string} Formatted percentage string with sign (e.g., "+1.23%" or "-1.23%")
  *
  * @example
@@ -293,10 +290,10 @@ export const parseDisplayNumberToBigNumber = (
  * @returns {string} Formatted number with display-appropriate decimal separator
  *
  * @example
- * formatNumberForDisplay("0.00001"); // Returns "0.00001" (en-US) or "0,00001" (de-DE)
- * formatNumberForDisplay("1.5"); // Returns "1.5" (en-US) or "1,5" (de-DE)
- * formatNumberForDisplay("123.456"); // Returns "123.456" (en-US) or "123,456" (de-DE)
- * formatNumberForDisplay(new BigNumber("1.5")); // Returns "1.5" (en-US) or "1,5" (de-DE)
+ * formatNumberForDisplay("0.00001"); // Returns "0.00001" (based on device settings)
+ * formatNumberForDisplay("1.5"); // Returns "1.5" (based on device settings)
+ * formatNumberForDisplay("123.456"); // Returns "123.456" (based on device settings)
+ * formatNumberForDisplay(new BigNumber("1.5")); // Returns "1.5" (based on device settings)
  */
 export const formatNumberForDisplay = (
   numericValue: string | BigNumber,
@@ -342,9 +339,9 @@ export const formatNumberForDisplay = (
  * @returns {string} Formatted number with display-appropriate decimal separator
  *
  * @example
- * formatBigNumberForDisplay(new BigNumber("1234.56789")); // Returns "1234.56789" (en-US) or "1234,56789" (de-DE)
- * formatBigNumberForDisplay(new BigNumber("1234.56789"), { decimalPlaces: 2 }); // Returns "1234.57" (en-US) or "1234,57" (de-DE)
- * formatBigNumberForDisplay(new BigNumber("1234.56"), { useGrouping: true }); // Returns "1,234.56" (en-US) or "1.234,56" (de-DE)
+ * formatBigNumberForDisplay(new BigNumber("1234.56789")); // Returns "1234.56789" (based on device settings)
+ * formatBigNumberForDisplay(new BigNumber("1234.56789"), { decimalPlaces: 2 }); // Returns "1234.57" (based on device settings)
+ * formatBigNumberForDisplay(new BigNumber("1234.56"), { useGrouping: true }); // Returns "1,234.56" (based on device settings)
  */
 export const formatBigNumberForDisplay = (
   bigNumberValue: BigNumber,
