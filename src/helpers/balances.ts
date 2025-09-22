@@ -1,5 +1,5 @@
 import { Asset as SdkToken, StrKey } from "@stellar/stellar-sdk";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
   BASE_RESERVE,
@@ -17,7 +17,6 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
-import { parseLocaleNumberToBigNumber } from "helpers/formatAmount";
 
 interface GetTokenPriceFromBalanceParams {
   prices: TokenPricesMap;
@@ -414,7 +413,7 @@ export const isAmountSpendable = ({
   subentryCount = 0,
   transactionFee = "0.00001",
 }: IsAmountSpendableParams): boolean => {
-  const amountBN = parseLocaleNumberToBigNumber(amount);
+  const amountBN = new BigNumber(amount);
   const spendableAmount = calculateSpendableAmount({
     balance,
     subentryCount,

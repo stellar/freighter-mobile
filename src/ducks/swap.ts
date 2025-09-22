@@ -1,9 +1,8 @@
 import { Horizon } from "@stellar/stellar-sdk";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { parseLocaleNumberToBigNumber } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -146,7 +145,7 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   setSourceAmount: (amount) => {
     // Convert locale-formatted amount to dot notation for internal use
-    const internalAmount = parseLocaleNumberToBigNumber(amount).toString();
+    const internalAmount = new BigNumber(amount).toString();
     set({ sourceAmount: amount, sourceAmountInternal: internalAmount });
   },
 

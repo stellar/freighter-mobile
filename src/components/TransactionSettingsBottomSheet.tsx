@@ -18,11 +18,6 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import {
-  parseLocaleNumber,
-  getLocaleDecimalSeparator,
-  formatNumberForLocale,
-} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -97,14 +92,10 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(
-    formatNumberForLocale(fee ?? recommendedFee),
-  );
+  const [localFee, setLocalFee] = useState(fee ?? recommendedFee);
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
-  const [localSlippage, setLocalSlippage] = useState(
-    slippage.toString().replace(".", getLocaleDecimalSeparator()),
-  );
+  const [localSlippage, setLocalSlippage] = useState(slippage.toString());
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
@@ -161,18 +152,14 @@ const TransactionSettingsBottomSheet: React.FC<
   }, []);
   const handleUpdateSlippage = useCallback(
     (step: number) => {
-      const currentValue = parseLocaleNumber(localSlippage) || 0;
+      const currentValue = parseFloat(localSlippage) || 0;
       const newValue = Math.max(0, Math.min(MAX_SLIPPAGE, currentValue + step));
       const roundedValue = Math.round(newValue * 100) / 100;
       const isWholeNumber = roundedValue % 1 === 0;
       const finalValue = isWholeNumber
         ? Math.round(roundedValue)
         : roundedValue;
-      const decimalSeparator = getLocaleDecimalSeparator();
-      const formattedValue = finalValue
-        .toString()
-        .replace(".", decimalSeparator);
-      updateSlippage(formattedValue);
+      updateSlippage(finalValue.toString());
     },
     [localSlippage, updateSlippage],
   );
@@ -220,9 +207,8 @@ const TransactionSettingsBottomSheet: React.FC<
   const settingSaveCallbacks = {
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
-      saveSlippage(parseLocaleNumber(localSlippage)),
-    [TransactionSetting.Fee]: () =>
-      saveFee(parseLocaleNumber(localFee).toString()),
+      saveSlippage(parseFloat(localSlippage)),
+    [TransactionSetting.Fee]: () => saveFee(parseFloat(localFee).toString()),
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
   };
 
@@ -295,7 +281,7 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(-STEP_SIZE_PERCENT)}
-              disabled={(parseLocaleNumber(localSlippage) || 0) <= MIN_SLIPPAGE}
+              disabled={(parseFloat(localSlippage) || 0) <= MIN_SLIPPAGE}
             />
           </View>
 
@@ -319,7 +305,7 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(STEP_SIZE_PERCENT)}
-              disabled={(parseLocaleNumber(localSlippage) || 0) >= MAX_SLIPPAGE}
+              disabled={(parseFloat(localSlippage) || 0) >= MAX_SLIPPAGE}
             />
           </View>
         </View>
@@ -352,11 +338,7 @@ const TransactionSettingsBottomSheet: React.FC<
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={() =>
-              setLocalFee(
-                formatNumberForLocale(recommendedFee || MIN_TRANSACTION_FEE),
-              )
-            }
+            onPress={() => setLocalFee(recommendedFee || MIN_TRANSACTION_FEE)}
           >
             <Text sm medium color={themeColors.lilac[11]}>
               {t("transactionSettings.resetFee")}
@@ -371,7 +353,7 @@ const TransactionSettingsBottomSheet: React.FC<
             leftElement={<Icon.Route size={16} themeColor="gray" />}
             onChangeText={handleFeeChange}
             keyboardType="numeric"
-            placeholder={formatNumberForLocale(MIN_TRANSACTION_FEE)}
+            placeholder={MIN_TRANSACTION_FEE}
             error={feeError}
             note={
               <View className="flex-row items-center gap-2 mt-2">

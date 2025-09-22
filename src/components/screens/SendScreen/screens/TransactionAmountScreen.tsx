@@ -39,11 +39,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import {
-  formatFiatAmount,
-  formatBigNumberForLocale,
-  formatTokenAmount,
-} from "helpers/formatAmount";
+import { formatFiatAmount, formatTokenAmount } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -243,21 +239,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     if (showFiatAmount) {
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
       const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Use locale-aware formatting for fiat amount
-      setFiatAmount(
-        formatBigNumberForLocale(calculatedFiatAmount, {
-          decimalPlaces: FIAT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Use standard formatting for fiat amount
+      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
     } else {
-      // Use locale-aware formatting for token amount
-      setTokenAmount(
-        formatBigNumberForLocale(targetAmount, {
-          decimalPlaces: DEFAULT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Use standard formatting for token amount
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 

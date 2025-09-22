@@ -1,6 +1,6 @@
 import { TransactionBuilder } from "@stellar/stellar-sdk";
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
@@ -14,11 +14,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTransactionDate } from "helpers/date";
-import {
-  formatTokenAmount,
-  formatFiatAmount,
-  parseLocaleNumberToBigNumber,
-} from "helpers/formatAmount";
+import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -158,8 +154,7 @@ const TransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  const normalizedTransactionAmount =
-    parseLocaleNumberToBigNumber(transactionAmount);
+  const normalizedTransactionAmount = new BigNumber(transactionAmount);
 
   return (
     <View className="gap-[24px]">

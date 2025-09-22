@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
@@ -31,11 +32,6 @@ import {
   hasXLMForFees,
 } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import {
-  formatBigNumberForLocale,
-  formatNumberForLocale,
-  parseLocaleNumberToBigNumber,
-} from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -145,16 +141,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       })
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
-        amount: spendableAmount ? formatNumberForLocale(spendableAmount) : "0",
+        amount: spendableAmount ? spendableAmount.toString() : "0",
         symbol: sourceTokenSymbol,
       });
       setAmountError(errorMessage);
       showToast({
         variant: "error",
         title: t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount
-            ? formatNumberForLocale(spendableAmount)
-            : "0",
+          amount: spendableAmount ? spendableAmount.toString() : "0",
           symbol: sourceTokenSymbol,
         }),
         toastId: "insufficient-balance",
@@ -206,9 +200,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? isBuilding ||
       !!amountError ||
       !!pathError ||
-      parseLocaleNumberToBigNumber(sourceAmountInternal).isLessThanOrEqualTo(
-        0,
-      ) ||
+      new BigNumber(sourceAmountInternal).isLessThanOrEqualTo(0) ||
       !pathResult
     : false;
 
@@ -261,13 +253,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (spendableAmount) {
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
 
-      // Use locale-aware formatting for the max amount
-      setSourceAmount(
-        formatBigNumberForLocale(spendableAmount, {
-          decimalPlaces: DEFAULT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Use standard formatting for the max amount
+      setSourceAmount(spendableAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 
@@ -278,13 +265,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       handleSetMax();
     } else {
       const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-      // Use locale-aware formatting for the amount
-      setSourceAmount(
-        formatBigNumberForLocale(targetAmount, {
-          decimalPlaces: DEFAULT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Use standard formatting for the amount
+      setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 

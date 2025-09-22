@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
@@ -13,10 +14,7 @@ import { logger } from "config/logger";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import {
-  formatTokenAmount,
-  parseLocaleNumberToBigNumber,
-} from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, {
@@ -141,7 +139,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   const displayData = useMemo(() => {
     const defaultData = {
-      sourceAmount: parseLocaleNumberToBigNumber(sourceAmount).toString(),
+      sourceAmount: new BigNumber(sourceAmount).toString(),
       sourceToken,
       destinationAmount,
       destinationToken,

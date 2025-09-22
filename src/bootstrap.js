@@ -10,8 +10,5 @@
 // XHR polyfill for React Native - fixes Stellar SDK compatibility issues
 require("./polyfills/xhr");
 
-// Intl polyfill for React Native - fixes Intl compatibility issues on iOS
-require("./polyfills/intl");
-
 // Export nothing - this file is used only for side effects
 module.exports = {};
