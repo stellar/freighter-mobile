@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { getOSLocale } from "helpers/getOsLanguage";
 
 /**
  * Converts various input types to a BigNumber instance for consistent handling of numeric values
@@ -47,7 +48,7 @@ export const formatTokenAmount = (
 ) => {
   const bnAmount = convertToBigNumber(amount);
 
-  const formatter = new Intl.NumberFormat("en-US", {
+  const formatter = new Intl.NumberFormat(getOSLocale(), {
     useGrouping: true,
     minimumFractionDigits: 2, // Always show at least 2 decimal places
     maximumFractionDigits: 20, // Support high precision if needed
@@ -82,7 +83,7 @@ export const formatFiatAmount = (
     typeof amount === "number" ? amount : parseFloat(amount.toString());
 
   // Format as USD currency with 2 decimal places
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(getOSLocale(), {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
@@ -115,7 +116,7 @@ export const formatPercentageAmount = (
   const bnAmount = convertToBigNumber(amount);
 
   // Format the number with exactly 2 decimal places
-  const formatter = new Intl.NumberFormat("en-US", {
+  const formatter = new Intl.NumberFormat(getOSLocale(), {
     useGrouping: false,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

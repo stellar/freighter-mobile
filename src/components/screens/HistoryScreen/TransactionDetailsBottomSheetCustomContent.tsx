@@ -40,7 +40,10 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
 
-  const fee = stroopToXlm(transactionDetails.fee).toString();
+  const fee = formatTokenAmount(
+    stroopToXlm(transactionDetails.fee),
+    NATIVE_TOKEN_CODE,
+  );
 
   const formattedDate = formatDate({
     date: transactionDetails?.operation.created_at ?? "",
@@ -100,9 +103,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
               {t("history.transactionDetails.fee")}
             </Text>
           ),
-          trailingContent: (
-            <Text>{formatTokenAmount(fee, NATIVE_TOKEN_CODE)}</Text>
-          ),
+          trailingContent: <Text>{fee}</Text>,
         },
         // filter out undefined entries for non-swaps in order to keep detail order.
       ].filter(Boolean),

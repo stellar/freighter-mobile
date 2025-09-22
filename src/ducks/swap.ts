@@ -33,7 +33,8 @@ interface SwapState {
   destinationTokenId: string;
   sourceTokenSymbol: string;
   destinationTokenSymbol: string;
-  sourceAmount: string;
+  sourceAmount: string; // Display value (locale formatted)
+  sourceAmountInternal: string; // Internal value (dot notation)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
@@ -62,6 +63,7 @@ const initialState = {
   sourceTokenSymbol: "",
   destinationTokenSymbol: "",
   sourceAmount: "0",
+  sourceAmountInternal: "0",
   destinationAmount: "0",
   pathResult: null,
   isLoadingPath: false,
@@ -142,7 +144,9 @@ export const useSwapStore = create<SwapState>((set) => ({
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
   setSourceAmount: (amount) => {
-    set({ sourceAmount: amount });
+    // Convert locale-formatted amount to dot notation for internal use
+    const internalAmount = new BigNumber(amount).toString();
+    set({ sourceAmount: amount, sourceAmountInternal: internalAmount });
   },
 
   findSwapPath: async (params) => {

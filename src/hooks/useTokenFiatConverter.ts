@@ -9,7 +9,8 @@ interface UseTokenFiatConverterProps {
 }
 
 interface UseTokenFiatConverterResult {
-  tokenAmount: string;
+  tokenAmount: string; // Display value (locale-formatted)
+  tokenAmountInternal: string; // Internal value (dot notation)
   fiatAmount: string;
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
@@ -32,6 +33,7 @@ export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
+  const [tokenAmountInternal, setTokenAmountInternal] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
@@ -40,6 +42,12 @@ export const useTokenFiatConverter = ({
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
+
+  // Update internal value when token amount changes
+  useEffect(() => {
+    const internalAmount = new BigNumber(tokenAmount).toString();
+    setTokenAmountInternal(internalAmount);
+  }, [tokenAmount]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {
@@ -84,6 +92,7 @@ export const useTokenFiatConverter = ({
 
   return {
     tokenAmount,
+    tokenAmountInternal,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,

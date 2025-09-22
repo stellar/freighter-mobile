@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
@@ -138,7 +139,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   const displayData = useMemo(() => {
     const defaultData = {
-      sourceAmount,
+      sourceAmount: new BigNumber(sourceAmount).toString(),
       sourceToken,
       destinationAmount,
       destinationToken,

@@ -315,9 +315,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } = useTransactionSettingsStore.getState();
 
         // Use internal value (already in dot notation) for transaction building
+        const normalizedTokenAmount = tokenAmount;
 
         const finalXDR = await buildTransaction({
-          tokenAmount,
+          tokenAmount: normalizedTokenAmount,
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo,
@@ -666,7 +667,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenAmount={tokenAmount}
+            tokenAmountInternal={tokenAmount}
             onBannerPress={onBannerPress}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={

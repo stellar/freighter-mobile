@@ -10,5 +10,8 @@
 // XHR polyfill for React Native - fixes Stellar SDK compatibility issues
 require("./polyfills/xhr");
 
+// Intl polyfill for React Native - provides locale-aware number formatting
+require("./polyfills/intl");
+
 // Export nothing - this file is used only for side effects
 module.exports = {};

@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
@@ -139,14 +140,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       })
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
-        amount: spendableAmount?.toFixed() || "0",
+        amount: spendableAmount ? spendableAmount.toString() : "0",
         symbol: sourceTokenSymbol,
       });
       setAmountError(errorMessage);
       showToast({
         variant: "error",
         title: t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount?.toFixed() || "0",
+          amount: spendableAmount ? spendableAmount.toString() : "0",
           symbol: sourceTokenSymbol,
         }),
         toastId: "insufficient-balance",
@@ -198,7 +199,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? isBuilding ||
       !!amountError ||
       !!pathError ||
-      Number(sourceAmount) <= 0 ||
+      new BigNumber(sourceAmount).isLessThanOrEqualTo(0) ||
       !pathResult
     : false;
 
@@ -252,7 +253,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
 
       // Use standard formatting for the max amount
-      setSourceAmount(spendableAmount.toString());
+      setSourceAmount(spendableAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 

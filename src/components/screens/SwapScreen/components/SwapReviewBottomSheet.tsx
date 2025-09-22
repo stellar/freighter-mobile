@@ -18,6 +18,7 @@ import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -265,7 +266,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             ),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <StellarLogo width={16} height={16} />
+                <StellarLogo width={pxValue(16)} height={pxValue(16)} />
                 <Text md medium>
                   {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
                 </Text>

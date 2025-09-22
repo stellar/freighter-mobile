@@ -25,7 +25,7 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type SendReviewBottomSheetProps = {
   selectedBalance?: PricedBalance;
-  tokenAmount: string;
+  tokenAmountInternal: string;
   onCancel?: () => void;
   onConfirm?: () => void;
   onSettingsPress?: () => void;
@@ -67,7 +67,7 @@ type SendReviewBottomSheetProps = {
  */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedBalance,
-  tokenAmount,
+  tokenAmountInternal,
   onCancel,
   onConfirm,
   onSettingsPress,
@@ -348,12 +348,15 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               <TokenIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
-                  {formatTokenAmount(tokenAmount, selectedBalance.tokenCode)}
+                  {formatTokenAmount(
+                    tokenAmountInternal,
+                    selectedBalance.tokenCode,
+                  )}
                 </Text>
                 <Text md medium secondary>
                   {selectedBalance.currentPrice
                     ? formatFiatAmount(
-                        new BigNumber(tokenAmount).times(
+                        new BigNumber(tokenAmountInternal).times(
                           selectedBalance.currentPrice,
                         ),
                       )

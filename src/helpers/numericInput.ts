@@ -1,7 +1,10 @@
+import { getDecimalSeparator } from "helpers/localeNumericInput";
+
 /**
  * Formats a numeric input based on user key presses (digits, decimal point, delete).
  *
  * Allows one decimal point and limits digits after the decimal based on `maxDecimals`.
+ * Uses locale-aware decimal separator.
  *
  * @param {string} prevValue - The current value in the input field (e.g., "123.45")
  * @param {string} key - The key pressed ("0"-"9", ".", or "" for delete)
@@ -13,6 +16,8 @@ export const formatNumericInput = (
   key: string,
   maxDecimals: number = 7, // Default to 7 for Stellar
 ): string => {
+  const decimalSeparator = getDecimalSeparator();
+
   // Handle delete key
   if (key === "") {
     // Reset to "0" if deleting the last digit/decimal or if the result is empty
@@ -21,16 +26,16 @@ export const formatNumericInput = (
   }
 
   // Handle decimal point key
-  if (key === ".") {
+  if (key === "." || key === decimalSeparator) {
     // Allow only one decimal point
-    if (prevValue.includes(".")) {
+    if (prevValue.includes(decimalSeparator)) {
       return prevValue;
     }
     // Add "0" if decimal is the first key pressed or input is empty
     if (prevValue === "0" || prevValue === "") {
-      return "0.";
+      return `0${decimalSeparator}`;
     }
-    return `${prevValue}.`;
+    return `${prevValue}${decimalSeparator}`;
   }
 
   // Handle digit keys ("0" - "9")
@@ -40,7 +45,7 @@ export const formatNumericInput = (
       return key; // Replace "0" with the new digit
     }
 
-    const decimalPointIndex = prevValue.indexOf(".");
+    const decimalPointIndex = prevValue.indexOf(decimalSeparator);
 
     // If a decimal point exists, check decimal length limit
     if (decimalPointIndex !== -1) {
