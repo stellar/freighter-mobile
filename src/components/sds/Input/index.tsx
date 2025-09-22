@@ -148,53 +148,6 @@ const ButtonContainer = styled.View<
   justify-content: center;
 `;
 
-// =============================================================================
-// COMPLETELY SEPARATE SUFFIX DISPLAY COMPONENT
-// =============================================================================
-
-interface SuffixInputProps {
-  id?: string;
-  testID?: string;
-  fieldSize?: InputSize;
-  label?: string | React.ReactNode;
-  labelSuffix?: string | React.ReactNode;
-  isLabelUppercase?: boolean;
-  isError?: boolean;
-  leftElement?: React.JSX.Element;
-  rightElement?: React.JSX.Element;
-  note?: string | React.ReactNode;
-  error?: string | React.ReactNode;
-  success?: string | React.ReactNode;
-  copyButton?: {
-    position: "left" | "right";
-    showLabel?: boolean;
-  };
-  endButton?: {
-    content: string | React.ReactNode;
-    onPress: () => void;
-    disabled?: boolean;
-    color?: string;
-    backgroundColor?: string;
-  };
-  value?: string;
-  onChangeText?: (text: string) => void;
-  placeholder?: string;
-  editable?: boolean;
-  autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  autoCorrect?: boolean;
-  autoFocus?: boolean;
-  keyboardType?:
-    | "default"
-    | "number-pad"
-    | "decimal-pad"
-    | "numeric"
-    | "email-address"
-    | "phone-pad";
-  isBottomSheetInput?: boolean;
-  inputSuffixDisplay: string;
-  centered?: boolean;
-}
-
 const SuffixDisplayContainer = styled.View<{ $fieldSize: InputSize }>`
   flex: 1;
   flex-direction: row;
@@ -219,7 +172,7 @@ const SuffixText = styled.Text<{ $fieldSize: InputSize }>`
   })};
 `;
 
-const SuffixInput = React.forwardRef<TextInput, SuffixInputProps>(
+const SuffixInput = React.forwardRef<TextInput, InputProps>(
   (
     {
       fieldSize = "lg",
@@ -404,10 +357,6 @@ const SuffixInput = React.forwardRef<TextInput, SuffixInputProps>(
     );
   },
 );
-
-// =============================================================================
-// ORIGINAL INPUT COMPONENT (UNCHANGED FROM MAIN BRANCH)
-// =============================================================================
 
 interface InputProps {
   id?: string;

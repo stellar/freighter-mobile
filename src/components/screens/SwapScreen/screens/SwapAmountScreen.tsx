@@ -263,7 +263,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       handleSetMax();
     } else {
       const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-      // Use standard formatting for the amount
       setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
