@@ -62,7 +62,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
 
-    // Refresh state
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const { t } = useAppTranslation();
@@ -302,20 +301,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   onPress={() => handleCopyAddress(account?.publicKey)}
                 />
               </View>
+              <View className="w-full border-b mb-4 border-border-primary" />
             </View>
           }
           ListFooterComponent={
-            <>
-              <View className="w-full border-b mb-4 border-border-primary" />
-
-              <TokensCollectiblesTabs
-                showTokensSettings={hasTokens}
-                publicKey={account?.publicKey ?? ""}
-                network={network}
-                onTokenPress={handleTokenPress}
-                onCollectiblePress={handleCollectiblePress}
-              />
-            </>
+            <TokensCollectiblesTabs
+              showTokensSettings={hasTokens}
+              publicKey={account?.publicKey ?? ""}
+              network={network}
+              onTokenPress={handleTokenPress}
+              onCollectiblePress={handleCollectiblePress}
+            />
           }
         />
 

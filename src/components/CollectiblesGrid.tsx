@@ -109,7 +109,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       [renderCollectibleItem, themeColors.text.secondary],
     );
 
-    // During initial loading, show spinner
+    // only show spinner on initial load, as spinner is shown in the parent component
     if (isLoading && !isMounted) {
       return (
         <View className="flex-1 items-center justify-center mb-10">
@@ -122,7 +122,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
-    // For all other states, wrap content in FlatList with RefreshControl
     return (
       <FlatList
         data={collections}
