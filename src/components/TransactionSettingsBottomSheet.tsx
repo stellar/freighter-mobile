@@ -18,7 +18,10 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { formatNumberForLocale, parseLocaleNumber } from "helpers/formatAmount";
+import {
+  formatNumberForDisplay,
+  parseDisplayNumber,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -26,8 +29,11 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
+
+// Constants
+const STEP_SIZE_PERCENT = 0.5;
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -98,38 +104,11 @@ const TransactionSettingsBottomSheet: React.FC<
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(slippage.toString());
 
-  // Display values (locale-formatted)
-  const [localFeeDisplay, setLocalFeeDisplay] = useState(
-    formatNumberForLocale(localFee),
-  );
-  const [localTimeoutDisplay, setLocalTimeoutDisplay] = useState(
-    formatNumberForLocale(localTimeout),
-  );
-  const [localSlippageDisplay, setLocalSlippageDisplay] = useState(
-    formatNumberForLocale(localSlippage),
-  );
-
-  // Keep display values in sync with internal values
-  useEffect(() => {
-    setLocalFeeDisplay(formatNumberForLocale(localFee));
-  }, [localFee]);
-
-  useEffect(() => {
-    setLocalTimeoutDisplay(formatNumberForLocale(localTimeout));
-  }, [localTimeout]);
-
-  useEffect(() => {
-    setLocalSlippageDisplay(formatNumberForLocale(localSlippage));
-  }, [localSlippage]);
-
   // Validation hooks - use internal values for validation
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
-
-  // Constants
-  const STEP_SIZE_PERCENT = 0.5;
 
   // Callback functions
   const saveMemo = useCallback(
@@ -188,9 +167,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleSlippageTextChange = useCallback((text: string) => {
     const numericValue = text.replace("%", "");
-    // Convert from locale input to internal dot notation
-    const internalValue = parseLocaleNumber(numericValue).toString();
-    setLocalSlippage(internalValue);
+    setLocalSlippage(numericValue);
   }, []);
 
   const handleMemoChange = useCallback((text: string) => {
@@ -198,15 +175,11 @@ const TransactionSettingsBottomSheet: React.FC<
   }, []);
 
   const handleFeeChange = useCallback((text: string) => {
-    // Convert from locale input to internal dot notation
-    const internalValue = parseLocaleNumber(text).toString();
-    setLocalFee(internalValue);
+    setLocalFee(text);
   }, []);
 
   const handleTimeoutChange = useCallback((text: string) => {
-    // Convert from locale input to internal dot notation
-    const internalValue = parseLocaleNumber(text).toString();
-    setLocalTimeout(internalValue);
+    setLocalTimeout(text);
   }, []);
 
   const getLocalizedCongestionLevel = useCallback(
@@ -236,9 +209,11 @@ const TransactionSettingsBottomSheet: React.FC<
   const settingSaveCallbacks = {
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
-      saveSlippage(parseFloat(localSlippage)),
-    [TransactionSetting.Fee]: () => saveFee(localFee),
-    [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
+      saveSlippage(parseFloat(parseDisplayNumber(localSlippage).toString())),
+    [TransactionSetting.Fee]: () =>
+      saveFee(parseDisplayNumber(localFee).toString()),
+    [TransactionSetting.Timeout]: () =>
+      saveTimeout(Number(parseDisplayNumber(localTimeout).toString())),
   };
 
   const handleConfirm = () => {
@@ -319,7 +294,7 @@ const TransactionSettingsBottomSheet: React.FC<
               isBottomSheetInput
               fieldSize="lg"
               placeholder={t("transactionSettings.slippagePlaceholder")}
-              value={localSlippageDisplay}
+              value={localSlippage}
               onChangeText={handleSlippageTextChange}
               keyboardType="numeric"
               error={slippageError}
@@ -342,13 +317,11 @@ const TransactionSettingsBottomSheet: React.FC<
     ),
     [
       localSlippage,
-      localSlippageDisplay,
       slippageError,
       t,
       themeColors.lilac,
       handleUpdateSlippage,
       handleSlippageTextChange,
-      STEP_SIZE_PERCENT,
     ],
   );
 
@@ -380,11 +353,11 @@ const TransactionSettingsBottomSheet: React.FC<
           <Input
             isBottomSheetInput
             fieldSize="lg"
-            value={localFeeDisplay}
+            value={localFee}
             leftElement={<Icon.Route size={16} themeColor="gray" />}
             onChangeText={handleFeeChange}
             keyboardType="numeric"
-            placeholder={formatNumberForLocale(MIN_TRANSACTION_FEE)}
+            placeholder={formatNumberForDisplay(MIN_TRANSACTION_FEE)}
             error={feeError}
             note={
               <View className="flex-row items-center gap-2 mt-2">
@@ -410,7 +383,7 @@ const TransactionSettingsBottomSheet: React.FC<
       </View>
     ),
     [
-      localFeeDisplay,
+      localFee,
       feeError,
       t,
       themeColors.lilac,
@@ -439,7 +412,7 @@ const TransactionSettingsBottomSheet: React.FC<
           fieldSize="lg"
           leftElement={<Icon.ClockRefresh size={16} themeColor="gray" />}
           placeholder={t("transactionSettings.timeoutPlaceholder")}
-          value={localTimeoutDisplay}
+          value={localTimeout}
           onChangeText={handleTimeoutChange}
           keyboardType="numeric"
           error={timeoutError}
@@ -451,7 +424,7 @@ const TransactionSettingsBottomSheet: React.FC<
         />
       </View>
     ),
-    [localTimeoutDisplay, timeoutError, t, handleTimeoutChange],
+    [localTimeout, timeoutError, t, handleTimeoutChange],
   );
 
   const bottomSheetsConfig = [

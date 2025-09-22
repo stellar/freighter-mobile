@@ -1,12 +1,15 @@
 import BigNumber from "bignumber.js";
 import { MIN_TRANSACTION_FEE } from "config/constants";
-import { formatNumberForLocale } from "helpers/formatAmount";
+import {
+  formatNumberForDisplay,
+  parseDisplayNumber,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useState } from "react";
 
 /**
  * Hook to validate a transaction fee
- * Expects internal dot notation value (e.g., "0.00001" not "0,00001")
+ * Accepts locale-formatted input (e.g., "0,00001" or "0.00001")
  * Returns error message if invalid
  */
 export const useValidateTransactionFee = (fee: string) => {
@@ -14,29 +17,33 @@ export const useValidateTransactionFee = (fee: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!fee) {
+    if (!fee || fee.trim() === "") {
       setError(t("transactionSettings.errors.fee.required"));
       return;
     }
 
-    const feeValue = new BigNumber(fee);
-    const minFee = new BigNumber(MIN_TRANSACTION_FEE);
+    try {
+      const feeValue = new BigNumber(parseDisplayNumber(fee));
+      const minFee = new BigNumber(MIN_TRANSACTION_FEE);
 
-    if (feeValue.isNaN()) {
+      if (feeValue.isNaN()) {
+        setError(t("transactionSettings.errors.fee.invalid"));
+        return;
+      }
+
+      if (feeValue.isLessThan(minFee)) {
+        setError(
+          t("transactionSettings.errors.fee.tooLow", {
+            min: formatNumberForDisplay(MIN_TRANSACTION_FEE),
+          }),
+        );
+        return;
+      }
+
+      setError(null);
+    } catch (parseError) {
       setError(t("transactionSettings.errors.fee.invalid"));
-      return;
     }
-
-    if (feeValue.isLessThan(minFee)) {
-      setError(
-        t("transactionSettings.errors.fee.tooLow", {
-          min: formatNumberForLocale(MIN_TRANSACTION_FEE),
-        }),
-      );
-      return;
-    }
-
-    setError(null);
   }, [fee, t]);
 
   return { error };

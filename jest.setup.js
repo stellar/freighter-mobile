@@ -492,3 +492,30 @@ jest.mock("@sentry/react-native", () => ({
   setExtra: jest.fn(),
   wrap: jest.fn((component) => component), // Return component as-is for testing
 }));
+
+// Mock react-native-localize
+const mockGetNumberFormatSettings = jest.fn(() => ({
+  decimalSeparator: ".",
+  groupingSeparator: ",",
+}));
+
+jest.mock("react-native-localize", () => ({
+  getNumberFormatSettings: mockGetNumberFormatSettings,
+  getLocales: jest.fn(() => [
+    {
+      countryCode: "US",
+      languageTag: "en-US",
+      languageCode: "en",
+      isRTL: false,
+    },
+  ]),
+  getCurrencies: jest.fn(() => ["USD"]),
+  getTimeZone: jest.fn(() => "America/New_York"),
+  uses24HourClock: jest.fn(() => false),
+  usesMetricSystem: jest.fn(() => false),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+}));
+
+// Export the mock function so tests can modify it
+global.mockGetNumberFormatSettings = mockGetNumberFormatSettings;

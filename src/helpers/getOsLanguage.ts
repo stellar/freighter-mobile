@@ -96,10 +96,9 @@ export function getOSLocale(): string {
  *
  * @example
  * // Get the user's OS language
- * const language = getOSLanguage(); // Returns 'en', 'pt', or 'en' for unsupported languages
+ * const language = getOSLanguage(); // Returns 'en', 'fr', etc.
  *
  * // Use the language for localization
- * const message = language === 'pt' ? 'Olá' : 'Hello';
  */
 function getOSLanguage(): string {
   const locale = getOSLocale();

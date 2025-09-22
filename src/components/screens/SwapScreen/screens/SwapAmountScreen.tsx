@@ -33,8 +33,8 @@ import {
 } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import {
-  formatBigNumberForLocale,
-  parseLocaleNumberToBigNumber,
+  formatBigNumberForDisplay,
+  parseDisplayNumberToBigNumber,
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -146,7 +146,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
         amount: spendableAmount
-          ? formatBigNumberForLocale(spendableAmount, {
+          ? formatBigNumberForDisplay(spendableAmount, {
               decimalPlaces: DEFAULT_DECIMALS,
               useGrouping: false,
             })
@@ -158,7 +158,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         variant: "error",
         title: t("swapScreen.errors.insufficientBalance", {
           amount: spendableAmount
-            ? formatBigNumberForLocale(spendableAmount, {
+            ? formatBigNumberForDisplay(spendableAmount, {
                 decimalPlaces: DEFAULT_DECIMALS,
                 useGrouping: false,
               })
@@ -265,7 +265,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       DEFAULT_DECIMALS,
     );
     // Convert locale-formatted input to internal dot notation
-    const internalAmount = parseLocaleNumberToBigNumber(newAmount);
+    const internalAmount = parseDisplayNumberToBigNumber(newAmount);
     setSourceAmount(internalAmount.toString());
   };
 

@@ -1,4 +1,4 @@
-import { getLocaleDecimalSeparator } from "helpers/formatAmount";
+import { getNumberFormatSettings } from "react-native-localize";
 
 /**
  * Formats a numeric input based on user key presses (digits, decimal point, delete).
@@ -16,9 +16,8 @@ export const formatNumericInput = (
   prevValue: string,
   key: string,
   maxDecimals: number = 7, // Default to 7 for Stellar
-  locale?: string,
 ): string => {
-  const decimalSeparator = getLocaleDecimalSeparator(locale);
+  const { decimalSeparator } = getNumberFormatSettings();
   // Handle delete key
   if (key === "") {
     // Reset to "0" if deleting the last digit/decimal or if the result is empty

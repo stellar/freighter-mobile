@@ -1,9 +1,9 @@
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import { getLocaleDecimalSeparator } from "helpers/formatAmount";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
+import { getNumberFormatSettings } from "react-native-localize";
 
 interface NumericKeyboardProps {
   onPress: (value: string) => void;
@@ -11,7 +11,7 @@ interface NumericKeyboardProps {
 
 const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const { themeColors } = useColors();
-  const decimalSeparator = getLocaleDecimalSeparator();
+  const { decimalSeparator } = getNumberFormatSettings();
 
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">

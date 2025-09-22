@@ -7,7 +7,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { formatBigNumberForLocale } from "helpers/formatAmount";
+import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -150,7 +150,7 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   setSourceAmount: (amount) => {
     // Expect internal dot notation input, convert to display format
-    const displayAmount = formatBigNumberForLocale(new BigNumber(amount), {
+    const displayAmount = formatBigNumberForDisplay(new BigNumber(amount), {
       decimalPlaces: DEFAULT_DECIMALS,
       useGrouping: false,
     });

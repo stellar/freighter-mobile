@@ -2,8 +2,8 @@ import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import {
-  formatBigNumberForLocale,
-  parseLocaleNumber,
+  formatBigNumberForDisplay,
+  parseDisplayNumber,
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
@@ -50,7 +50,7 @@ export const useTokenFiatConverter = ({
   // Update display value when internal value changes
   useEffect(() => {
     setTokenAmountDisplay(
-      formatBigNumberForLocale(new BigNumber(tokenAmount), {
+      formatBigNumberForDisplay(new BigNumber(tokenAmount), {
         decimalPlaces: DEFAULT_DECIMALS,
         useGrouping: false,
       }),
@@ -95,7 +95,7 @@ export const useTokenFiatConverter = ({
       const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
       // Convert locale-formatted input to internal dot notation
       const internalAmount =
-        parseLocaleNumber(newAmount).toFixed(FIAT_DECIMALS);
+        parseDisplayNumber(newAmount).toFixed(FIAT_DECIMALS);
       setFiatAmount(internalAmount);
     } else {
       const newAmount = formatNumericInput(
@@ -105,7 +105,7 @@ export const useTokenFiatConverter = ({
       );
       // Convert locale-formatted input to internal dot notation
       const internalAmount =
-        parseLocaleNumber(newAmount).toFixed(DEFAULT_DECIMALS);
+        parseDisplayNumber(newAmount).toFixed(DEFAULT_DECIMALS);
       setTokenAmount(internalAmount);
     }
   };
