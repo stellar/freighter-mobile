@@ -50,7 +50,10 @@ export const formatTransactionDate = (
 
   if (!includeTime) {
     // Simple format for history lists: "Dec 13"
-    return dateObj.toDateString().split(" ").slice(1, 3).join(" ");
+    return dateObj.toLocaleDateString(getOSLocale(), {
+      month: "short",
+      day: "numeric",
+    });
   }
 
   // Comprehensive format for transaction details: "Dec 13, 2023 · 2:30pm"
