@@ -97,10 +97,14 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(fee ?? recommendedFee);
+  const [localFee, setLocalFee] = useState(
+    formatNumberForLocale(fee ?? recommendedFee),
+  );
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
-  const [localSlippage, setLocalSlippage] = useState(slippage.toString());
+  const [localSlippage, setLocalSlippage] = useState(
+    slippage.toString().replace(".", getLocaleDecimalSeparator()),
+  );
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
