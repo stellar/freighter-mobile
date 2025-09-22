@@ -284,7 +284,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
               }}
             >
               <SuffixText $fieldSize={fieldSize}>{value || ""}</SuffixText>
-              <SuffixText $fieldSize={fieldSize}>
+              <SuffixText $fieldSize={fieldSize} style={{ marginRight: px(4) }}>
                 {inputSuffixDisplay}
               </SuffixText>
             </View>
@@ -297,7 +297,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
               $isDisabled={!editable}
               style={{
                 position: "absolute",
-                left: 0,
+                left: -8,
                 right: 0,
                 top: 0,
                 bottom: 0,
