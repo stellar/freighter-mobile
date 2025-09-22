@@ -154,8 +154,6 @@ const TransactionDetailsBottomSheet: React.FC<
     );
   };
 
-  const normalizedTransactionAmount = new BigNumber(transactionAmount);
-
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
@@ -184,7 +182,7 @@ const TransactionDetailsBottomSheet: React.FC<
             <Text md medium secondary>
               {selectedBalance?.currentPrice
                 ? formatFiatAmount(
-                    new BigNumber(normalizedTransactionAmount).times(
+                    new BigNumber(transactionAmount).times(
                       selectedBalance.currentPrice,
                     ),
                   )
