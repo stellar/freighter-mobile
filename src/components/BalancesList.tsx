@@ -182,6 +182,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   return (
     <ListWrapper>
       <FlatList
+        nestedScrollEnabled
         testID="balances-list"
         showsVerticalScrollIndicator={false}
         ListFooterComponent={DefaultListFooter}

@@ -40,12 +40,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  TouchableOpacity,
-  View,
-  ScrollView,
-  RefreshControl,
-} from "react-native";
+import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -245,7 +240,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           bottomSheetRef={manageAccountsBottomSheetRef}
         />
 
-        <ScrollView
+        {/* avoid nested VirtualizedLists, due to undefined behavior, so top content is balances, and footer is the tabs */}
+        <FlatList
+          data={[]} // Empty data array since we only use header and footer
+          renderItem={() => null} // No items to render
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -257,62 +255,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             />
           }
           contentContainerStyle={{ flexGrow: 1 }}
-        >
-          <View className="pt-8 w-full items-center">
-            <View className="flex-col gap-3 items-center">
-              <TouchableOpacity onPress={handleManageAccountsPress}>
-                <View className="flex-row items-center gap-2">
-                  <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
-                  <Text>{account?.accountName ?? t("home.title")}</Text>
-                  <Icon.ChevronDown
-                    size={16}
-                    color={themeColors.foreground.primary}
-                  />
-                </View>
-              </TouchableOpacity>
-              <Display lg medium>
-                {formattedBalance}
-              </Display>
-            </View>
+          ListHeaderComponent={
+            <View className="pt-8 w-full items-center">
+              <View className="flex-col gap-3 items-center">
+                <TouchableOpacity onPress={handleManageAccountsPress}>
+                  <View className="flex-row items-center gap-2">
+                    <Avatar
+                      size="sm"
+                      publicAddress={account?.publicKey ?? ""}
+                    />
+                    <Text>{account?.accountName ?? t("home.title")}</Text>
+                    <Icon.ChevronDown
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                  </View>
+                </TouchableOpacity>
+                <Display lg medium>
+                  {formattedBalance}
+                </Display>
+              </View>
 
-            <View className="flex-row gap-[24px] items-center justify-center my-8">
-              <IconButton
-                Icon={Icon.Plus}
-                title={t("home.buy")}
-                onPress={navigateToBuyXLM}
-              />
-              <IconButton
-                Icon={Icon.ArrowUp}
-                title={t("home.send")}
-                disabled={hasZeroBalance}
-                onPress={handleSendPress}
-              />
-              {swapEnabled && (
+              <View className="flex-row gap-[24px] items-center justify-center my-8">
                 <IconButton
-                  Icon={Icon.RefreshCw02}
-                  title={t("home.swap")}
-                  disabled={hasZeroBalance}
-                  onPress={handleSwapPress}
+                  Icon={Icon.Plus}
+                  title={t("home.buy")}
+                  onPress={navigateToBuyXLM}
                 />
-              )}
-              <IconButton
-                Icon={Icon.Copy01}
-                title={t("home.copy")}
-                onPress={() => handleCopyAddress(account?.publicKey)}
-              />
+                <IconButton
+                  Icon={Icon.ArrowUp}
+                  title={t("home.send")}
+                  disabled={hasZeroBalance}
+                  onPress={handleSendPress}
+                />
+                {swapEnabled && (
+                  <IconButton
+                    Icon={Icon.RefreshCw02}
+                    title={t("home.swap")}
+                    disabled={hasZeroBalance}
+                    onPress={handleSwapPress}
+                  />
+                )}
+                <IconButton
+                  Icon={Icon.Copy01}
+                  title={t("home.copy")}
+                  onPress={() => handleCopyAddress(account?.publicKey)}
+                />
+              </View>
             </View>
-          </View>
+          }
+          ListFooterComponent={
+            <>
+              <View className="w-full border-b mb-4 border-border-primary" />
 
-          <View className="w-full border-b mb-4 border-border-primary" />
-
-          <TokensCollectiblesTabs
-            showTokensSettings={hasTokens}
-            publicKey={account?.publicKey ?? ""}
-            network={network}
-            onTokenPress={handleTokenPress}
-            onCollectiblePress={handleCollectiblePress}
-          />
-        </ScrollView>
+              <TokensCollectiblesTabs
+                showTokensSettings={hasTokens}
+                publicKey={account?.publicKey ?? ""}
+                network={network}
+                onTokenPress={handleTokenPress}
+                onCollectiblePress={handleCollectiblePress}
+              />
+            </>
+          }
+        />
 
         {/* Analytics Debug - Development Only */}
         <AnalyticsDebugBottomSheet
