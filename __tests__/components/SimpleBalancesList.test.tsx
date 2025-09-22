@@ -153,7 +153,7 @@ describe("SimpleBalancesList", () => {
     expect(scrollView.props.alwaysBounceVertical).toBe(false);
   });
 
-  it('should render "cannot remove XLM" BottomSheet for XLM when removing is attempted', () => {
+  it("should render \"cannot remove XLM\" BottomSheet for XLM when removing is attempted", () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
@@ -170,7 +170,7 @@ describe("SimpleBalancesList", () => {
     );
   });
 
-  it('should render "token still has a balance" BottomSheet for tokens with balances when removing is attempted', () => {
+  it("should render \"token still has a balance\" BottomSheet for tokens with balances when removing is attempted", () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
