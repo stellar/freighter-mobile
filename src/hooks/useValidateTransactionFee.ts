@@ -1,14 +1,12 @@
 import BigNumber from "bignumber.js";
 import { MIN_TRANSACTION_FEE } from "config/constants";
-import {
-  formatNumberForLocale,
-  parseLocaleNumberToBigNumber,
-} from "helpers/formatAmount";
+import { formatNumberForLocale } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useState } from "react";
 
 /**
  * Hook to validate a transaction fee
+ * Expects internal dot notation value (e.g., "0.00001" not "0,00001")
  * Returns error message if invalid
  */
 export const useValidateTransactionFee = (fee: string) => {
@@ -21,7 +19,7 @@ export const useValidateTransactionFee = (fee: string) => {
       return;
     }
 
-    const feeValue = parseLocaleNumberToBigNumber(fee);
+    const feeValue = new BigNumber(fee);
     const minFee = new BigNumber(MIN_TRANSACTION_FEE);
 
     if (feeValue.isNaN()) {

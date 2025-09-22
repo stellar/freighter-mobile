@@ -13,10 +13,7 @@ import { logger } from "config/logger";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import {
-  formatTokenAmount,
-  parseLocaleNumberToBigNumber,
-} from "helpers/formatAmount";
+import { formatTokenAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, {
@@ -141,7 +138,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   const displayData = useMemo(() => {
     const defaultData = {
-      sourceAmount: parseLocaleNumberToBigNumber(sourceAmount).toString(),
+      sourceAmount,
       sourceToken,
       destinationAmount,
       destinationToken,

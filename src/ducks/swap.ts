@@ -1,9 +1,13 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { parseLocaleNumberToBigNumber } from "helpers/formatAmount";
+import { formatBigNumberForLocale } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -34,8 +38,8 @@ interface SwapState {
   destinationTokenId: string;
   sourceTokenSymbol: string;
   destinationTokenSymbol: string;
-  sourceAmount: string; // Display value (locale formatted)
-  sourceAmountInternal: string; // Internal value (dot notation)
+  sourceAmount: string; // Internal value (dot notation)
+  sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
@@ -64,7 +68,7 @@ const initialState = {
   sourceTokenSymbol: "",
   destinationTokenSymbol: "",
   sourceAmount: "0",
-  sourceAmountInternal: "0",
+  sourceAmountDisplay: "0",
   destinationAmount: "0",
   pathResult: null,
   isLoadingPath: false,
@@ -145,9 +149,12 @@ export const useSwapStore = create<SwapState>((set) => ({
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
   setSourceAmount: (amount) => {
-    // Convert locale-formatted amount to dot notation for internal use
-    const internalAmount = parseLocaleNumberToBigNumber(amount).toString();
-    set({ sourceAmount: amount, sourceAmountInternal: internalAmount });
+    // Expect internal dot notation input, convert to display format
+    const displayAmount = formatBigNumberForLocale(new BigNumber(amount), {
+      decimalPlaces: DEFAULT_DECIMALS,
+      useGrouping: false,
+    });
+    set({ sourceAmount: amount, sourceAmountDisplay: displayAmount });
   },
 
   findSwapPath: async (params) => {

@@ -39,11 +39,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import {
-  formatFiatAmount,
-  formatBigNumberForLocale,
-  formatTokenAmount,
-} from "helpers/formatAmount";
+import { formatFiatAmount, formatTokenAmount } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -207,11 +203,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const {
     tokenAmount,
-    tokenAmountInternal,
+    tokenAmountDisplay,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
-    handleAmountChange,
+    handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
   } = useTokenFiatConverter({ selectedBalance });
@@ -243,21 +239,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     if (showFiatAmount) {
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
       const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Use locale-aware formatting for fiat amount
-      setFiatAmount(
-        formatBigNumberForLocale(calculatedFiatAmount, {
-          decimalPlaces: FIAT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Set raw internal value (dot notation)
+      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
     } else {
-      // Use locale-aware formatting for token amount
-      setTokenAmount(
-        formatBigNumberForLocale(targetAmount, {
-          decimalPlaces: DEFAULT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
+      // Set raw internal value (dot notation)
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 
@@ -332,7 +318,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         // Use internal value (already in dot notation) for transaction building
 
         const finalXDR = await buildTransaction({
-          tokenAmount: tokenAmountInternal,
+          tokenAmount,
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo,
@@ -366,7 +352,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       }
     },
     [
-      tokenAmountInternal,
+      tokenAmount,
       selectedBalance,
       network,
       publicKey,
@@ -510,7 +496,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <TransactionProcessingScreen
         key={selectedTokenId}
         onClose={handleProcessingScreenClose}
-        transactionAmount={tokenAmountInternal}
+        transactionAmount={tokenAmount}
         selectedBalance={selectedBalance}
       />
     );
@@ -580,7 +566,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     ? { primary: true }
                     : { secondary: true })}
                 >
-                  {tokenAmount}{" "}
+                  {tokenAmountDisplay}{" "}
                   <RNText style={{ color: themeColors.text.secondary }}>
                     {selectedBalance?.tokenCode}
                   </RNText>
@@ -590,10 +576,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
-                  ? formatTokenAmount(
-                      tokenAmountInternal,
-                      selectedBalance?.tokenCode,
-                    )
+                  ? formatTokenAmount(tokenAmount, selectedBalance?.tokenCode)
                   : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity
@@ -662,7 +645,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             </View>
           </View>
           <View className="w-full">
-            <NumericKeyboard onPress={handleAmountChange} />
+            <NumericKeyboard onPress={handleDisplayAmountChange} />
           </View>
           <View className="w-full mt-auto mb-4">
             <Button
@@ -684,7 +667,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenAmountInternal={tokenAmountInternal}
+            tokenAmount={tokenAmount}
             onBannerPress={onBannerPress}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={
