@@ -4,7 +4,14 @@ import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import React, { useState } from "react";
-import { Platform, TouchableOpacity, TextInput, View } from "react-native";
+import {
+  Platform,
+  TouchableOpacity,
+  TextInput,
+  View,
+  StyleProp,
+  TextStyle,
+} from "react-native";
 import styled, { css } from "styled-components/native";
 
 // =============================================================================
@@ -195,7 +202,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
       autoCorrect = true,
       isBottomSheetInput = false,
       inputSuffixDisplay,
-      centeredInputSuffix = false,
+      centered = false,
       ...props
     },
     ref,
@@ -272,7 +279,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
                 flex: 1,
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: centeredInputSuffix ? "center" : "flex-start",
+                justifyContent: centered ? "center" : "flex-start",
                 display: value ? "flex" : "none",
               }}
             >
@@ -296,7 +303,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
                 bottom: 0,
                 backgroundColor: "transparent",
                 color: "transparent",
-                textAlign: centeredInputSuffix ? "center" : "left",
+                textAlign: centered ? "center" : "left",
               }}
             />
           </SuffixDisplayContainer>
@@ -440,6 +447,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
  * @param {boolean} [props.centered] - Whether to center the text alignment within the input field
  */
 interface InputProps {
+  style?: StyleProp<TextStyle>;
   id?: string;
   testID?: string;
   fieldSize?: InputSize;
@@ -483,7 +491,7 @@ interface InputProps {
   /** Text to display as suffix after the input value (e.g., "XLM") */
   inputSuffixDisplay?: string;
   /** Whether to center the text alignment within the input field */
-  centeredInputSuffix?: boolean;
+  centered?: boolean;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -510,7 +518,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       autoCorrect = true,
       isBottomSheetInput = false,
       inputSuffixDisplay,
-      centeredInputSuffix = false,
+      centered = false,
+      style,
       ...props
     },
     ref,
@@ -542,7 +551,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           autoCorrect={autoCorrect}
           isBottomSheetInput={isBottomSheetInput}
           inputSuffixDisplay={inputSuffixDisplay}
-          centeredInputSuffix={centeredInputSuffix}
+          centered={centered}
+          style={style}
           {...props}
         />
       );
@@ -621,6 +631,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             }
             $isDisabled={!editable}
             selection={!editable && value ? { start: 0, end: 0 } : undefined}
+            style={[style, centered && { textAlign: "center" }]}
             {...props}
           />
 
