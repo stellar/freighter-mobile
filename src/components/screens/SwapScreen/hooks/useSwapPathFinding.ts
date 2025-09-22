@@ -1,4 +1,3 @@
-import { BigNumber } from "bignumber.js";
 import { DEFAULT_DEBOUNCE_DELAY, NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useSwapStore } from "ducks/swap";
@@ -31,21 +30,19 @@ export const useSwapPathFinding = ({
 }: UseSwapPathFindingParams) => {
   const { findSwapPath, clearPath } = useSwapStore();
 
-  const sourceAmountBN = new BigNumber(sourceAmount);
-
   const debouncedFindSwapPath = useDebounce(() => {
     if (
       sourceBalance &&
       destinationBalance &&
       sourceAmount &&
-      sourceAmountBN.isGreaterThan(0) &&
+      Number(sourceAmount) > 0 &&
       !amountError &&
       publicKey
     ) {
       findSwapPath({
         sourceBalance,
         destinationBalance,
-        sourceAmount: sourceAmountBN.toString(),
+        sourceAmount,
         slippage: swapSlippage,
         network,
         publicKey,

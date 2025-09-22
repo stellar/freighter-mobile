@@ -1,47 +1,6 @@
 import { I18nManager, Platform, Settings } from "react-native";
 
 /**
- * Retrieves the current operating system locale identifier
- *
- * This function detects the device's full locale setting and returns it as a locale identifier
- * (e.g., 'en-US', 'fr-FR', 'de-DE'). This is used for locale-aware number formatting.
- * Normalizes locale format from native modules (en_US) to BCP 47 format (en-US).
- *
- * @returns {string} Full locale identifier or 'en-US' as fallback
- *
- * @example
- * // Get the user's OS locale
- * const locale = getOSLocale(); // Returns 'en-US', 'de-DE', etc.
- *
- * // Use for number formatting
- * const formatted = number.toLocaleString(locale);
- */
-export function getOSLocale(): string {
-  let locale = "en-US"; // fallback
-
-  if (Platform.OS === "android") {
-    const androidLocale = I18nManager.getConstants().localeIdentifier;
-    if (androidLocale) {
-      locale = androidLocale;
-    }
-  }
-
-  if (Platform.OS === "ios") {
-    const deviceLanguage =
-      (Settings.get("AppleLocale") as string) ||
-      (Settings.get("AppleLanguages") as string[])[0];
-
-    if (deviceLanguage) {
-      locale = deviceLanguage;
-    }
-  }
-
-  // Normalize locale format: convert underscores to hyphens for BCP 47 compliance
-  // e.g., "en_US" -> "en-US", "de_DE" -> "de-DE"
-  return locale.replace(/_/g, "-");
-}
-
-/**
  * Retrieves the current operating system language as a two-letter language code
  *
  * This function detects the device's language setting and returns it as an ISO 639-1
@@ -58,9 +17,28 @@ export function getOSLocale(): string {
  * const message = language === 'fr' ? 'Bonjour' : 'Hello';
  */
 function getOSLanguage(): string {
-  const locale = getOSLocale();
-  // Extract language code from locale (e.g., 'en-US' -> 'en')
-  return locale.substring(0, 2);
+  let language = "en"; // fallback
+
+  if (Platform.OS === "android") {
+    const androidLocale = I18nManager.getConstants().localeIdentifier;
+    if (androidLocale) {
+      // Extract language code from locale (e.g., 'en-US' -> 'en')
+      language = androidLocale.substring(0, 2);
+    }
+  }
+
+  if (Platform.OS === "ios") {
+    const deviceLanguage =
+      (Settings.get("AppleLocale") as string) ||
+      (Settings.get("AppleLanguages") as string[])[0];
+
+    if (deviceLanguage) {
+      // Extract language code from locale (e.g., 'en-US' -> 'en')
+      language = deviceLanguage.substring(0, 2);
+    }
+  }
+
+  return language;
 }
 
 export default getOSLanguage;

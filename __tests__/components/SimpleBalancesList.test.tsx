@@ -12,13 +12,6 @@ import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
-// Mock the OS locale detection for consistent test behavior
-jest.mock("helpers/getOsLanguage", () => ({
-  __esModule: true,
-  default: () => "en", // Mock default export (getOSLanguage)
-  getOSLocale: () => "en-US", // Mock named export (getOSLocale)
-}));
-
 const MockTouchable = TouchableOpacity;
 const MockText = Text;
 const MockView = View;
@@ -160,7 +153,7 @@ describe("SimpleBalancesList", () => {
     expect(scrollView.props.alwaysBounceVertical).toBe(false);
   });
 
-  it("should render \"cannot remove XLM\" BottomSheet for XLM when removing is attempted", () => {
+  it('should render "cannot remove XLM" BottomSheet for XLM when removing is attempted', () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
@@ -177,7 +170,7 @@ describe("SimpleBalancesList", () => {
     );
   });
 
-  it("should render \"token still has a balance\" BottomSheet for tokens with balances when removing is attempted", () => {
+  it('should render "token still has a balance" BottomSheet for tokens with balances when removing is attempted', () => {
     const { result } = renderHook(() => useAppTranslation());
     const { getByTestId } = renderWithProviders(
       <SimpleBalancesList
