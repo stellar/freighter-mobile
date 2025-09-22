@@ -240,7 +240,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           bottomSheetRef={manageAccountsBottomSheetRef}
         />
 
-        {/* avoid nested VirtualizedLists, due to undefined behavior, so top content is balances, and footer is the tabs */}
+        {/* avoid nested VirtualizedLists, due to undefined scroll behavior. top content is balances, and footer is the tabs with their own scrollable content */}
         <FlatList
           data={[]} // Empty data array since we only use header and footer
           renderItem={() => null} // No items to render
