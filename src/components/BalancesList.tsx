@@ -190,7 +190,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         renderItem={({ item }) => (
           <BalanceRow
             balance={item}
-            scanResult={scanResults[item.id]}
+            scanResult={scanResults[item.id.replace(":", "-")]}
             onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
             rightContent={
               renderRightContent ? renderRightContent(item) : undefined

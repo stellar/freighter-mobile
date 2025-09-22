@@ -1,9 +1,13 @@
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable react-hooks/exhaustive-deps */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
@@ -16,11 +20,17 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import useTokenDetails from "hooks/useTokenDetails";
-import React, { useCallback, useLayoutEffect, useMemo } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { View, Dimensions } from "react-native";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import {
+  assessTokenSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -40,6 +50,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
+  const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
     tokenId,
@@ -66,6 +77,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   });
 
+  const { scanResults } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+  });
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: displayTitle,
@@ -89,6 +105,27 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       params: { tokenId },
     });
   };
+  const scanResult = scanResults[tokenId.replace(":", "-")];
+  const { isMalicious, isSuspicious } = assessTokenSecurity(scanResult);
+
+  const securityWarnings = useMemo(() => {
+    if (isMalicious || isSuspicious) {
+      const warnings = extractSecurityWarnings(scanResult);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [isMalicious, isSuspicious, scanResult]);
+
+  const securitySeverity = useMemo(() => {
+    if (isMalicious) return SecurityLevel.MALICIOUS;
+    if (isSuspicious) return SecurityLevel.SUSPICIOUS;
+
+    return undefined;
+  }, [isMalicious, isSuspicious]);
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
@@ -99,7 +136,19 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           actualTokenSymbol={actualTokenDetails?.symbol}
           tokenName={actualTokenDetails?.name}
         />
-
+        {(isMalicious || isSuspicious) && (
+          <Banner
+            variant={isSuspicious ? "warning" : "error"}
+            text={
+              isMalicious
+                ? t("transactionAmountScreen.errors.malicious")
+                : t("transactionAmountScreen.errors.suspicious")
+            }
+            onPress={() =>
+              securityWarningBottomSheetModalRef.current?.present()
+            }
+          />
+        )}
         <HistoryList
           ignoreTopInset
           noHorizontalPadding
@@ -142,6 +191,23 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           style={{ width }}
         />
       </View>
+      <BottomSheet
+        modalRef={securityWarningBottomSheetModalRef}
+        handleCloseModal={() =>
+          securityWarningBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={securityWarnings}
+            onClose={() =>
+              securityWarningBottomSheetModalRef.current?.dismiss()
+            }
+            severity={securitySeverity}
+            securityContext={SecurityContext.TOKEN}
+            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+          />
+        }
+      />
     </BaseLayout>
   );
 };
