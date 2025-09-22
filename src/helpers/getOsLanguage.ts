@@ -3,6 +3,19 @@ import { I18nManager, Platform, Settings } from "react-native";
 // Supported locales for the app
 const SUPPORTED_LOCALES = ["en", "pt", "en-US", "pt-BR"];
 const FALLBACK_LOCALE = "en-US";
+const FALLBACK_LANGUAGE = "en";
+
+/**
+ * Gets the fallback language code
+ * @returns {string} The fallback language code
+ */
+export const getFallbackLanguage = (): string => FALLBACK_LANGUAGE;
+
+/**
+ * Gets the fallback locale identifier
+ * @returns {string} The fallback locale identifier
+ */
+export const getFallbackLocale = (): string => FALLBACK_LOCALE;
 
 /**
  * Normalizes and validates a locale, falling back to supported locales
@@ -76,20 +89,20 @@ export function getOSLocale(): string {
  * Retrieves the current operating system language as a two-letter language code
  *
  * This function detects the device's language setting and returns it as an ISO 639-1
- * two-letter language code (e.g., 'en', 'fr', 'ja'). The implementation varies by platform
- * to accommodate the different ways Android and iOS expose language settings.
+ * two-letter language code (e.g., 'en', 'pt'). Only supported languages are returned,
+ * with fallback to 'en'.
  *
  * @returns {string} Two-letter language code or 'en' as fallback
  *
  * @example
  * // Get the user's OS language
- * const language = getOSLanguage(); // Returns 'en', 'fr', etc.
+ * const language = getOSLanguage(); // Returns 'en', 'pt', or 'en' for unsupported languages
  *
  * // Use the language for localization
- * const message = language === 'fr' ? 'Bonjour' : 'Hello';
+ * const message = language === 'pt' ? 'Olá' : 'Hello';
  */
 function getOSLanguage(): string {
-  const locale = "en-US";
+  const locale = getOSLocale();
   // Extract language code from locale (e.g., 'en-US' -> 'en')
   return locale.substring(0, 2);
 }
