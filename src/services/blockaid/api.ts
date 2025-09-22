@@ -59,6 +59,7 @@ export const scanToken = async (
 
 export const scanBulkTokens = async (
   params: ScanBulkTokensParams,
+  signal?: AbortSignal,
 ): Promise<Blockaid.TokenBulkScanResponse> => {
   const { addressList, network } = params;
 
@@ -73,10 +74,9 @@ export const scanBulkTokens = async (
       .join("&");
     const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
 
-    const response =
-      await freighterBackend.get<
-        BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
-      >(endpoint);
+    const response = await freighterBackend.get<
+      BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
+    >(endpoint, { signal });
 
     if (response.data.error) {
       throw new Error(response.data.error);

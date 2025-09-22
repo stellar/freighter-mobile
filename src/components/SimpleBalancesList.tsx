@@ -54,7 +54,6 @@ export const SimpleBalancesList: React.FC<SimpleBalancesListProps> = ({
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey,
     network,
-    shouldPoll: false,
   });
 
   const { removeToken, isRemovingToken } = useManageToken({

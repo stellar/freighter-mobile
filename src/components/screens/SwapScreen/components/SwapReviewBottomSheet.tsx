@@ -105,7 +105,6 @@ const SwapReviewBottomSheet = () => {
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
 
   const sourceBalance = useMemo(

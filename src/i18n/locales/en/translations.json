@@ -96,7 +96,7 @@
     },
     "hideDust": {
       "title": "Hide small payments",
-      "description": "Hide payments smaller than 0.1 XLM"
+      "description": "Hide received payments smaller than 0.1 XLM"
     },
     "memoValidation": {
       "title": "Verification with stellar.expert",

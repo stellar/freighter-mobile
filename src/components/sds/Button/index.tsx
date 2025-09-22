@@ -369,3 +369,83 @@ export const Button = ({
     </StyledButton>
   );
 };
+
+export const SimpleButton = ({
+  variant,
+  size,
+  children,
+  icon,
+  iconPosition = IconPosition.RIGHT,
+  isLoading = false,
+  isFullWidth = false,
+  disabled = false,
+  squared = false,
+  onPress,
+  testID,
+  iconColor,
+  ...props
+}: ButtonProps) => {
+  const disabledState = isLoading || disabled;
+  const resolvedVariant = getVariant(
+    { variant, ...props },
+    ButtonVariants.PRIMARY,
+  );
+  const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
+
+  const handlePress = React.useCallback(() => {
+    if (!onPress) return;
+
+    onPress();
+  }, [onPress]);
+
+  // Determine icon to display
+  const resolvedIcon = React.useMemo(() => icon, [icon]);
+
+  const resolvedIconPosition = React.useMemo(
+    () => iconPosition,
+    [iconPosition],
+  );
+
+  const renderIcon = (position: IconPosition) => {
+    if (isLoading && position === IconPosition.RIGHT) {
+      return (
+        <IconContainer position={IconPosition.RIGHT}>
+          <ActivityIndicator
+            testID="button-loading-indicator"
+            size="small"
+            color={getTextColor(resolvedVariant, disabledState)}
+          />
+        </IconContainer>
+      );
+    }
+
+    if (resolvedIcon && resolvedIconPosition === position) {
+      return <IconContainer position={position}>{resolvedIcon}</IconContainer>;
+    }
+
+    return null;
+  };
+
+  return (
+    <StyledButton
+      variant={resolvedVariant}
+      size={resolvedSize}
+      isFullWidth={isFullWidth}
+      disabled={disabledState}
+      squared={squared}
+      onPress={handlePress}
+      testID={testID}
+    >
+      {renderIcon(IconPosition.LEFT)}
+      <Text
+        size={getFontSize(resolvedSize)}
+        weight="semiBold"
+        color={getTextColor(resolvedVariant, disabledState)}
+        isVerticallyCentered
+      >
+        {children}
+      </Text>
+      {renderIcon(IconPosition.RIGHT)}
+    </StyledButton>
+  );
+};

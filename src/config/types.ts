@@ -1,6 +1,8 @@
 import { AssetType as TokenType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
+import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityWarning } from "services/blockaid/helper";
 
 export type Account = {
   id: string;
@@ -290,12 +292,14 @@ export interface GetTokenDetailsParams {
   publicKey: string;
   network: NETWORKS;
   shouldFetchBalance?: boolean;
+  signal?: AbortSignal;
 }
 
 export type FormattedSearchTokenRecord = {
   tokenCode: string;
   domain: string;
   hasTrustline: boolean;
+  iconUrl?: string;
   issuer: string;
   isNative: boolean;
   tokenType?: TokenTypeWithCustomToken;
@@ -303,7 +307,8 @@ export type FormattedSearchTokenRecord = {
   decimals?: number;
   isSuspicious?: boolean;
   isMalicious?: boolean;
-  securityLevel?: string;
+  securityLevel?: SecurityLevel;
+  securityWarnings?: SecurityWarning[];
 };
 
 /**

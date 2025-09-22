@@ -97,7 +97,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     isRefreshing,
     isFunded,
     handleRefresh,
-  } = useBalancesList({ publicKey, network, shouldPoll: true, searchTerm });
+  } = useBalancesList({ publicKey, network, searchTerm });
 
   // Filter out excluded tokens
   const balanceItems = React.useMemo(
