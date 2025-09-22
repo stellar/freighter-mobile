@@ -680,6 +680,3 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     );
   },
 );
-
-// Export both components
-export { SuffixInput };
