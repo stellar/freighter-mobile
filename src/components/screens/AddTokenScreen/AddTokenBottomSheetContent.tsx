@@ -1,3 +1,4 @@
+import { Asset } from "@stellar/stellar-sdk";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
@@ -7,7 +8,11 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { NETWORKS, NETWORK_NAMES } from "config/constants";
+import {
+  NETWORKS,
+  NETWORK_NAMES,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import {
   TokenTypeWithCustomToken,
   FormattedSearchTokenRecord,
@@ -45,9 +50,14 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
   const listItems = useMemo(() => {
     if (!token) return [];
+
+    const tokenContractId = new Asset(token.tokenCode, token.issuer).contractId(
+      networkPassphrase,
+    );
 
     const items = [
       {
@@ -70,10 +80,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         ),
         titleColor: themeColors.text.secondary,
       },
-    ];
-
-    if (!isMalicious && !isSuspicious) {
-      items.push({
+      {
         icon: <Icon.Globe01 size={16} color={themeColors.foreground.primary} />,
         title: t("network"),
         trailingContent: (
@@ -84,17 +91,14 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           </Text>
         ),
         titleColor: themeColors.text.secondary,
-      });
-    }
-
-    if (isMalicious || isSuspicious) {
-      items.push({
+      },
+      {
         icon: <Icon.Circle size={16} color={themeColors.foreground.primary} />,
         title: t("addTokenScreen.tokenAddress"),
         trailingContent: (
           <TouchableOpacity
             onPress={() => {
-              copyToClipboard(token.issuer);
+              copyToClipboard(tokenContractId);
             }}
             className="flex-row items-center gap-2"
           >
@@ -102,22 +106,21 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
               <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             </View>
             <Text md primary>
-              {truncateAddress(token.issuer, 7, 0)}
+              {truncateAddress(tokenContractId)}
             </Text>
           </TouchableOpacity>
         ),
         titleColor: themeColors.text.secondary,
-      });
-    }
+      },
+    ];
 
     return items;
   }, [
     token,
     account?.publicKey,
     account?.accountName,
-    isMalicious,
-    isSuspicious,
     network,
+    networkPassphrase,
     themeColors.foreground.primary,
     themeColors.text.secondary,
     t,
