@@ -295,7 +295,7 @@ const TransactionSettingsBottomSheet: React.FC<
               keyboardType="numeric"
               error={slippageError}
               inputSuffixDisplay="%"
-              centered
+              centeredInputSuffix
             />
           </View>
 
