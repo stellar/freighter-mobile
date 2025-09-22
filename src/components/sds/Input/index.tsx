@@ -195,7 +195,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
       autoCorrect = true,
       isBottomSheetInput = false,
       inputSuffixDisplay,
-      centered = false,
+      centeredInputSuffix = false,
       ...props
     },
     ref,
@@ -272,7 +272,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
                 flex: 1,
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: centered ? "center" : "flex-start",
+                justifyContent: centeredInputSuffix ? "center" : "flex-start",
                 display: value ? "flex" : "none",
               }}
             >
@@ -296,7 +296,7 @@ const SuffixInput = React.forwardRef<TextInput, InputProps>(
                 bottom: 0,
                 backgroundColor: "transparent",
                 color: "transparent",
-                textAlign: centered ? "center" : "left",
+                textAlign: centeredInputSuffix ? "center" : "left",
               }}
             />
           </SuffixDisplayContainer>
@@ -483,7 +483,7 @@ interface InputProps {
   /** Text to display as suffix after the input value (e.g., "XLM") */
   inputSuffixDisplay?: string;
   /** Whether to center the text alignment within the input field */
-  centered?: boolean;
+  centeredInputSuffix?: boolean;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -510,7 +510,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       autoCorrect = true,
       isBottomSheetInput = false,
       inputSuffixDisplay,
-      centered = false,
+      centeredInputSuffix = false,
       ...props
     },
     ref,
@@ -542,7 +542,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           autoCorrect={autoCorrect}
           isBottomSheetInput={isBottomSheetInput}
           inputSuffixDisplay={inputSuffixDisplay}
-          centered={centered}
+          centeredInputSuffix={centeredInputSuffix}
           {...props}
         />
       );
@@ -621,9 +621,6 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             }
             $isDisabled={!editable}
             selection={!editable && value ? { start: 0, end: 0 } : undefined}
-            style={{
-              textAlign: centered ? "center" : "left",
-            }}
             {...props}
           />
 
