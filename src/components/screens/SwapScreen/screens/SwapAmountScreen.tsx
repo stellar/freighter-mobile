@@ -79,7 +79,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenId,
     sourceTokenSymbol,
     sourceAmount,
-    sourceAmountInternal,
     destinationAmount,
     pathResult,
     isLoadingPath,
@@ -172,7 +171,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   useSwapPathFinding({
     sourceBalance,
     destinationBalance,
-    sourceAmount: sourceAmountInternal,
+    sourceAmount,
     swapSlippage,
     network,
     publicKey: account?.publicKey,
@@ -187,7 +186,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceToken,
     destinationToken,
   } = useSwapTransaction({
-    sourceAmount: sourceAmountInternal,
+    sourceAmount,
     sourceBalance,
     destinationBalance,
     pathResult,
@@ -200,7 +199,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? isBuilding ||
       !!amountError ||
       !!pathError ||
-      new BigNumber(sourceAmountInternal).isLessThanOrEqualTo(0) ||
+      new BigNumber(sourceAmount).isLessThanOrEqualTo(0) ||
       !pathResult
     : false;
 

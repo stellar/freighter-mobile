@@ -12,6 +12,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -107,7 +108,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
         <View className="items-center w-full">
           {/* NOTE: using png logo for now because it wasnt rendering the svg correctly */}
           <QRCode
-            size={210}
+            size={pxValue(210)}
             logo={logos.freighter2d}
             value={account?.publicKey ?? ""}
             quietZone={6}

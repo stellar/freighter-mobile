@@ -203,7 +203,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const {
     tokenAmount,
-    tokenAmountInternal,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
@@ -316,7 +315,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } = useTransactionSettingsStore.getState();
 
         // Use internal value (already in dot notation) for transaction building
-        const normalizedTokenAmount = tokenAmountInternal;
+        const normalizedTokenAmount = tokenAmount;
 
         const finalXDR = await buildTransaction({
           tokenAmount: normalizedTokenAmount,
@@ -353,7 +352,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       }
     },
     [
-      tokenAmountInternal,
+      tokenAmount,
       selectedBalance,
       network,
       publicKey,
@@ -577,10 +576,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
-                  ? formatTokenAmount(
-                      tokenAmountInternal,
-                      selectedBalance?.tokenCode,
-                    )
+                  ? formatTokenAmount(tokenAmount, selectedBalance?.tokenCode)
                   : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity
@@ -671,7 +667,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
-            tokenAmountInternal={tokenAmountInternal}
+            tokenAmount={tokenAmount}
             onBannerPress={onBannerPress}
             onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={

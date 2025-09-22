@@ -28,7 +28,9 @@ describe("useValidateTransactionFee", () => {
   it("should return tooLow error for fee less than minimum", () => {
     const invalidFee = new BigNumber(MIN_TRANSACTION_FEE).minus(1).toString();
     const { result } = renderHook(() => useValidateTransactionFee(invalidFee));
-    expect(result.current.error).toBe("Fee must be at least 0.00001");
+    expect(result.current.error).toBe(
+      `Fee must be at least ${MIN_TRANSACTION_FEE}`,
+    );
   });
 
   it("should return null error for fee equal to minimum", () => {
@@ -56,7 +58,9 @@ describe("useValidateTransactionFee", () => {
 
     const invalidFee = new BigNumber(MIN_TRANSACTION_FEE).minus(1).toString();
     rerender({ fee: invalidFee });
-    expect(result.current.error).toBe("Fee must be at least 0.00001");
+    expect(result.current.error).toBe(
+      `Fee must be at least ${MIN_TRANSACTION_FEE}`,
+    );
 
     rerender({ fee: String(MIN_TRANSACTION_FEE) });
     expect(result.current.error).toBeNull();

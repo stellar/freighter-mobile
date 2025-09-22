@@ -19,13 +19,6 @@ import {
   getIssuerFromIdentifier,
 } from "helpers/balances";
 
-// Mock getOsLanguage module
-jest.mock("helpers/getOsLanguage", () => ({
-  __esModule: true,
-  default: () => "en",
-  getOSLocale: () => "en-US",
-}));
-
 describe("balances helpers", () => {
   // Sample test data
   const nativeBalance: NativeBalance = {

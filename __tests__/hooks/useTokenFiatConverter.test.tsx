@@ -4,11 +4,6 @@ import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 
-// Mock the OS locale detection for consistent test behavior
-jest.mock("helpers/getOsLanguage", () => ({
-  getOSLocale: () => "en-US", // Use US locale for tests
-}));
-
 // Helper to create mock balance data
 const createMockPricedBalance = (
   total: number | string,

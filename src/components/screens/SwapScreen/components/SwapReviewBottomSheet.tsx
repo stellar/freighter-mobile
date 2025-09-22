@@ -47,7 +47,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
 
   const {
-    sourceAmountInternal,
+    sourceAmount,
     destinationAmount,
     pathResult,
     sourceTokenSymbol,
@@ -133,7 +133,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,
-    amount: pathResult?.sourceAmount || sourceAmountInternal,
+    amount: pathResult?.sourceAmount || sourceAmount,
     balanceItems,
   });
 
@@ -172,7 +172,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             <TokenIcon token={sourceToken} />
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(sourceAmountInternal, sourceTokenSymbol)}
+                {formatTokenAmount(sourceAmount, sourceTokenSymbol)}
               </Text>
               <Text md medium secondary>
                 {sourceTokenFiatAmount}
