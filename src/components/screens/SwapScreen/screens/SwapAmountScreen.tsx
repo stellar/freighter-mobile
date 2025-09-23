@@ -90,6 +90,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
     setSourceAmount,
+    setSourceAmountDisplay,
     resetSwap,
   } = useSwapStore();
 
@@ -263,9 +264,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       key,
       DEFAULT_DECIMALS,
     );
+    // Update display value immediately to preserve formatting
+    setSourceAmountDisplay(newAmount);
     // Convert locale-formatted input to internal dot notation
     const internalAmount = parseDisplayNumberToBigNumber(newAmount);
-    setSourceAmount(internalAmount.toString());
+    // Update internal value for calculations, preserving display value
+    setSourceAmount(internalAmount.toString(), true);
   };
 
   const handleSetMax = () => {
@@ -371,7 +375,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return (
       <SwapProcessingScreen
         onClose={handleProcessingScreenClose}
-        sourceAmount={sourceAmountDisplay}
+        sourceAmount={sourceAmount}
         sourceToken={sourceToken}
         destinationAmount={destinationAmount || "0"}
         destinationToken={destinationToken}

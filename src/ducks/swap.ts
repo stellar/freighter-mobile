@@ -49,7 +49,8 @@ interface SwapState {
 
   setSourceToken: (tokenId: string, tokenSymbol: string) => void;
   setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
-  setSourceAmount: (amount: string) => void;
+  setSourceAmount: (amount: string, preserveDisplay?: boolean) => void;
+  setSourceAmountDisplay: (displayAmount: string) => void;
   findSwapPath: (params: {
     sourceBalance: PricedBalance;
     destinationBalance: PricedBalance;
@@ -148,13 +149,22 @@ export const useSwapStore = create<SwapState>((set) => ({
   setDestinationToken: (tokenId, tokenSymbol) =>
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
-  setSourceAmount: (amount) => {
+  setSourceAmount: (amount, preserveDisplay = false) => {
     // Expect internal dot notation input, convert to display format
-    const displayAmount = formatBigNumberForDisplay(new BigNumber(amount), {
-      decimalPlaces: DEFAULT_DECIMALS,
-      useGrouping: false,
-    });
-    set({ sourceAmount: amount, sourceAmountDisplay: displayAmount });
+    if (!preserveDisplay) {
+      const displayAmount = formatBigNumberForDisplay(new BigNumber(amount), {
+        decimalPlaces: DEFAULT_DECIMALS,
+        useGrouping: false,
+      });
+      set({ sourceAmount: amount, sourceAmountDisplay: displayAmount });
+    } else {
+      set({ sourceAmount: amount });
+    }
+  },
+
+  setSourceAmountDisplay: (displayAmount) => {
+    // Update only the display value, preserve internal value
+    set({ sourceAmountDisplay: displayAmount });
   },
 
   findSwapPath: async (params) => {
