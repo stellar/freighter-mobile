@@ -1,5 +1,12 @@
 import { I18nManager, Platform, Settings } from "react-native";
 
+const SUPPORTED_LOCALES = ["en-US", "pt-BR"];
+
+export const isSupportedLocale = (locale: string): boolean => {
+  return SUPPORTED_LOCALES.includes(locale);
+  return SUPPORTED_LOCALES.includes(locale);
+};
+
 /**
  * Retrieves the current operating system locale identifier
  *
@@ -33,6 +40,10 @@ export function getOSLocale(): string {
 
     if (deviceLanguage) {
       locale = deviceLanguage;
+    }
+
+    if (!isSupportedLocale(locale)) {
+      locale = "en-US";
     }
   }
 
