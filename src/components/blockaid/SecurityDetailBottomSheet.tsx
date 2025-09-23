@@ -7,8 +7,9 @@ import { Text } from "components/sds/Typography";
 import { BLOCKAID_FEEDBACK_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { View, Linking } from "react-native";
+import { View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
@@ -59,9 +60,10 @@ export const SecurityDetailBottomSheet: React.FC<
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const handleFeedback = () => {
-    Linking.openURL(BLOCKAID_FEEDBACK_URL); // TODO: update this to use the backend feedback instead
+    openInAppBrowser(BLOCKAID_FEEDBACK_URL); // TODO: update this to use the backend feedback instead
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;

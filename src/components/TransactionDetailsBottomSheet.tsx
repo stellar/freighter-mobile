@@ -21,8 +21,9 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useEffect, useState } from "react";
-import { View, Linking } from "react-native";
+import { View } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 /**
@@ -50,6 +51,7 @@ const TransactionDetailsBottomSheet: React.FC<
   const { copyToClipboard } = useClipboard();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const { recipientAddress, selectedTokenId, transactionMemo, transactionFee } =
     useTransactionSettingsStore();
@@ -134,7 +136,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
-    Linking.openURL(explorerUrl).catch((err) =>
+    openInAppBrowser(explorerUrl).catch((err) =>
       logger.error(
         "[Linking - openURL]",
         "Error opening transaction explorer:",

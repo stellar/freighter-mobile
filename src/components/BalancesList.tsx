@@ -16,8 +16,9 @@ import { PricedBalance } from "config/types";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode } from "react";
-import { FlatList, Linking, RefreshControl } from "react-native";
+import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -79,6 +80,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   excludeTokenIds = [],
 }) => {
   const { t } = useAppTranslation();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   // Always call the hook, but handle navigation context errors gracefully
   let navigation: NavigationProp<RootStackParamList> | null = null;
@@ -139,7 +141,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <Notification
             variant="primary"
             onPress={() => {
-              Linking.openURL(CREATE_ACCOUNT_TUTORIAL_URL);
+              openInAppBrowser(CREATE_ACCOUNT_TUTORIAL_URL);
             }}
             customContent={
               <NotificationContent>
