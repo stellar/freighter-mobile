@@ -4,11 +4,11 @@ import { useWindowDimensions } from "react-native";
  * Device size breakpoints matching NativeWind's responsive breakpoints
  */
 export const DEVICE_SIZE_BREAKPOINTS = {
-  xs: 475, // max-xs breakpoint
-  sm: 640, // max-sm breakpoint
-  md: 768, // max-md breakpoint
-  lg: 1024, // max-lg breakpoint
-  xl: 1280, // max-xl breakpoint
+  xs: 375, // max-xs breakpoint - very small devices
+  sm: 480, // max-sm breakpoint - small phones
+  md: 640, // max-md breakpoint - medium phones and small tablets
+  lg: 768, // max-lg breakpoint - large phones and tablets
+  xl: 1024, // max-xl breakpoint - large tablets and desktops
 } as const;
 
 /**
@@ -50,8 +50,7 @@ export enum DeviceSize {
  */
 export const useDeviceSize = (): DeviceSize => {
   const { width } = useWindowDimensions();
-
-  if (width < DEVICE_SIZE_BREAKPOINTS.xs) {
+  if (width <= DEVICE_SIZE_BREAKPOINTS.xs) {
     return DeviceSize.XS;
   }
   if (width < DEVICE_SIZE_BREAKPOINTS.sm) {
