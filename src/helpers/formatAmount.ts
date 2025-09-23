@@ -313,7 +313,7 @@ export const formatNumberForDisplay = (
     return formatNumber(parsedValue, {
       useGrouping: false, // Don't add thousands separators for constants
       minimumFractionDigits: 0,
-      maximumFractionDigits: 20, // Support high precision
+      maximumFractionDigits: 7,
     });
   } catch (error) {
     // Fallback: manually replace dot with locale decimal separator
