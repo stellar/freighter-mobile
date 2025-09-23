@@ -76,6 +76,7 @@ const useInAppBrowser = () => {
       } catch (error) {
         // Fallback to system browser if InAppBrowser fails
         Linking.openURL(url);
+        throw error;
       }
     },
     [isAvailable, getThemeOptions],
