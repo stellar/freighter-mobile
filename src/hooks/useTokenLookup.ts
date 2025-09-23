@@ -245,9 +245,9 @@ export const useTokenLookup = ({
 
     if (formattedRecords.length > 0 && isMainnet(network)) {
       try {
-        const addressList = formattedRecords.map((token) =>
-          token.issuer ? `${token.tokenCode}-${token.issuer}` : token.tokenCode,
-        );
+        const addressList = formattedRecords
+          .filter((record) => record.issuer)
+          .map((token) => `${token.tokenCode}-${token.issuer}`);
 
         const bulkScanResult = await scanBulkTokens(
           { addressList, network },
