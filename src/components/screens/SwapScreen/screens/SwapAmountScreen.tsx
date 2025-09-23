@@ -62,7 +62,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
-  const { isBuilding, resetTransaction } = useTransactionBuilderStore();
+  const { isBuilding, resetTransaction, transactionHash } =
+    useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -91,6 +92,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
     setSourceAmount,
     setSourceAmountDisplay,
+
     resetSwap,
   } = useSwapStore();
 
@@ -142,7 +144,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         balance: sourceBalance,
         subentryCount: account?.subentryCount,
         transactionFee: swapFee,
-      })
+      }) &&
+      !transactionHash
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
         amount: spendableAmount
@@ -178,6 +181,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     t,
     account?.subentryCount,
     swapFee,
+    transactionHash,
     sourceBalance,
     balanceItems,
     showToast,
