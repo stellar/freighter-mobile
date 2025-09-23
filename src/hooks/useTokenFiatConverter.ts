@@ -6,7 +6,7 @@ import {
   parseDisplayNumber,
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
@@ -41,20 +41,25 @@ export const useTokenFiatConverter = ({
   const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
+  // Track if user is actively typing to prevent display value from being overwritten
+  const isTypingRef = useRef(false);
+
   // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
 
-  // Update display value when internal value changes
+  // Update display value when internal value changes (only when not actively typing)
   useEffect(() => {
-    setTokenAmountDisplay(
-      formatBigNumberForDisplay(new BigNumber(tokenAmount), {
-        decimalPlaces: DEFAULT_DECIMALS,
-        useGrouping: false,
-      }),
-    );
+    if (!isTypingRef.current) {
+      setTokenAmountDisplay(
+        formatBigNumberForDisplay(new BigNumber(tokenAmount), {
+          decimalPlaces: DEFAULT_DECIMALS,
+          useGrouping: false,
+        }),
+      );
+    }
   }, [tokenAmount]);
 
   // Update fiat amount when token amount changes
@@ -91,9 +96,13 @@ export const useTokenFiatConverter = ({
    * @param {string} key - The key pressed (number or empty string for delete)
    */
   const handleDisplayAmountChange = (key: string) => {
+    // Set typing flag to prevent display value from being overwritten
+    isTypingRef.current = true;
+
     if (showFiatAmount) {
       const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
-      // Convert locale-formatted input to internal dot notation
+      // Update display value immediately to preserve formatting
+      setFiatAmount(newAmount);
       const internalAmount =
         parseDisplayNumber(newAmount).toFixed(FIAT_DECIMALS);
       setFiatAmount(internalAmount);
@@ -103,11 +112,17 @@ export const useTokenFiatConverter = ({
         key,
         DEFAULT_DECIMALS,
       );
-      // Convert locale-formatted input to internal dot notation
+      // Update display value immediately to preserve formatting
+      setTokenAmountDisplay(newAmount);
       const internalAmount =
         parseDisplayNumber(newAmount).toFixed(DEFAULT_DECIMALS);
       setTokenAmount(internalAmount);
     }
+
+    // Reset typing flag after a short delay
+    setTimeout(() => {
+      isTypingRef.current = false;
+    }, 100);
   };
 
   return {
