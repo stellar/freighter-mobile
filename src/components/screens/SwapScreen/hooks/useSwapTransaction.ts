@@ -66,11 +66,8 @@ export const useSwapTransaction = ({
     // Get fresh settings values each time the function is called
     const { swapFee, swapTimeout } = useSwapSettingsStore.getState();
 
-    // sourceAmount is already in dot notation (internal format)
-    const normalizedSourceAmount = sourceAmount;
-
     const transactionXDR = await buildSwapTransaction({
-      sourceAmount: normalizedSourceAmount,
+      sourceAmount,
       sourceBalance,
       destinationBalance,
       path: pathResult.path,

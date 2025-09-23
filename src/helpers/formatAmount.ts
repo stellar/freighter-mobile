@@ -12,7 +12,7 @@ const getFormatSettings = () => {
 /**
  * Formats a number using react-native-localize settings
  */
-const formatNumberWithLocale = (
+const formatNumber = (
   value: number,
   options: {
     useGrouping?: boolean;
@@ -113,7 +113,7 @@ export const formatTokenAmount = (
     ? amountString.split(".")[1].length
     : 0;
 
-  const formattedAmount = formatNumberWithLocale(bnAmount.toNumber(), {
+  const formattedAmount = formatNumber(bnAmount.toNumber(), {
     useGrouping: true,
     minimumFractionDigits: 2, // Always show at least 2 decimal places
     maximumFractionDigits: Math.max(2, decimalPlaces), // Use actual precision, minimum 2
@@ -146,7 +146,7 @@ export const formatFiatAmount = (
     typeof amount === "number" ? amount : parseFloat(amount.toString());
 
   // Format as USD currency with 2 decimal places using react-native-localize
-  const formattedAmount = formatNumberWithLocale(numericAmount, {
+  const formattedAmount = formatNumber(numericAmount, {
     useGrouping: true,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -186,7 +186,7 @@ export const formatPercentageAmount = (
   const bnAmount = convertToBigNumber(amount);
 
   // Format the number with exactly 2 decimal places using react-native-localize
-  const formattedNumber = formatNumberWithLocale(bnAmount.toNumber(), {
+  const formattedNumber = formatNumber(bnAmount.toNumber(), {
     useGrouping: false,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -310,7 +310,7 @@ export const formatNumberForDisplay = (
       return valueAsString; // Return original if not a valid number
     }
 
-    return formatNumberWithLocale(parsedValue, {
+    return formatNumber(parsedValue, {
       useGrouping: false, // Don't add thousands separators for constants
       minimumFractionDigits: 0,
       maximumFractionDigits: 20, // Support high precision
@@ -370,7 +370,7 @@ export const formatBigNumberForDisplay = (
       return valueString;
     }
 
-    return formatNumberWithLocale(numericValue, {
+    return formatNumber(numericValue, {
       useGrouping,
       minimumFractionDigits: 0,
       maximumFractionDigits: decimalPlaces ?? actualDecimalPlaces,
