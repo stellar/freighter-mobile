@@ -240,9 +240,8 @@ const scanBalances = async (
             : tokenIdentifier,
         );
 
-      /* eslint-disable no-await-in-loop */
-      const { results } = await scanBulkTokens({ addressList, network });
-      /* eslint-enable no-await-in-loop */
+      /* eslint-disable-next-line no-await-in-loop */
+      const { results } = await scanBulkTokens({ addressList, network })
 
       set((state) => ({
         scanResults: {
