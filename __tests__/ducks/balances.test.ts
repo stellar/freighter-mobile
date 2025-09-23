@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
@@ -6,11 +7,15 @@ import {
   ClassicBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
+  BalanceMap,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
+import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
+
+import { beningTokenScan } from "../../__mocks__/blockaid-response";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
@@ -35,11 +40,18 @@ jest.mock("ducks/prices", () => ({
   },
 }));
 
+jest.mock("services/blockaid/api", () => ({
+  scanBulkTokens: jest.fn(),
+}));
+
 describe("balances duck", () => {
   const mockFetchBalances = fetchBalances as jest.MockedFunction<
     typeof fetchBalances
   >;
   const mockGetItem = jest.fn();
+  const mockScanBulkTokens = scanBulkTokens as jest.MockedFunction<
+    typeof scanBulkTokens
+  >;
 
   // Helper function to create a mock prices store state
   const createMockPricesStore = (
@@ -109,6 +121,11 @@ describe("balances duck", () => {
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
   };
+  const mockParamsPubnet = {
+    contractIds: [],
+    publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+    network: NETWORKS.PUBLIC,
+  };
 
   beforeEach(() => {
     // Reset the store before each test
@@ -116,6 +133,7 @@ describe("balances duck", () => {
       useBalancesStore.setState({
         balances: {},
         pricedBalances: {},
+        scanResults: {},
         isLoading: false,
         error: null,
       });
@@ -293,7 +311,7 @@ describe("balances duck", () => {
       const errorMessage = "Network error";
       mockFetchBalances.mockRejectedValueOnce(new Error(errorMessage));
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -303,12 +321,13 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe(errorMessage);
+      unmount();
     });
 
     it("should update error state when fetch fails with non-Error", async () => {
       mockFetchBalances.mockRejectedValueOnce("Some non-error rejection");
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -318,6 +337,7 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe("Failed to fetch balances");
+      unmount();
     });
 
     it("should handle price fetch errors gracefully", async () => {
@@ -351,6 +371,82 @@ describe("balances duck", () => {
       expect(
         result.current.pricedBalances.XLM.percentagePriceChange24h,
       ).toBeUndefined();
+    });
+
+    it("should update scanResults state on successful scan", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      const mockScanResponse = {
+        results: {
+          "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+            beningTokenScan,
+        },
+      };
+
+      mockScanBulkTokens.mockResolvedValueOnce(mockScanResponse);
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
+      expect(result.current.scanResults).toEqual(mockScanResponse.results);
+      unmount();
+    });
+
+    it("should retain existing scan results in failure case", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+       mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockScanBulkTokens).toHaveBeenCalled();
+      expect(result.current.scanResults).toStrictEqual({});
+      unmount();
+    });
+
+    it("should batch scans in chunks of 20 tokens by default", async () => {
+      const manyBalances = {} as BalanceMap;
+      for (let i = 0; i < 25; i++) {
+        manyBalances[`TOKEN${i}:ISSUER${i}`] = {
+          ...mockTokenBalance,
+          token: {
+            ...mockTokenBalance.token,
+            code: `TOKEN${i}`,
+            issuer: { key: `ISSUER${i}` },
+          },
+        };
+      }
+
+      mockFetchBalances.mockResolvedValueOnce({ balances: manyBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: {} }),
+      );
+
+       mockScanBulkTokens.mockResolvedValue({ results: {} });
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      // Should call scan twice (20 + 5)
+      expect(mockScanBulkTokens).toHaveBeenCalledTimes(2);
+      unmount();
     });
   });
 });
