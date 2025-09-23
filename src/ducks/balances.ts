@@ -224,10 +224,7 @@ const scanBalances = async (
   try {
     const entries = Object.entries(balances); // [tokenIdentifier, Balance][]
 
-    const scanResults = {} as Record<
-      string,
-      Blockaid.TokenBulk.TokenBulkScanResponse.Results
-    >;
+    const scanResults: Record<string, Blockaid.TokenBulk.TokenBulkScanResponse.Results> = {};
     for (let i = 0; i < entries.length; i += batchSize) {
       const batchEntries = entries.slice(i, i + batchSize);
 
