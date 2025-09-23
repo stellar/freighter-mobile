@@ -119,6 +119,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetTransaction,
     isBuilding,
     transactionXDR,
+    transactionHash,
   } = useTransactionBuilderStore();
 
   // Reset everything on unmount
@@ -271,7 +272,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     if (
       spendableBalance &&
-      currentTokenAmount.isGreaterThan(spendableBalance)
+      currentTokenAmount.isGreaterThan(spendableBalance) &&
+      !transactionHash
     ) {
       const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
       setAmountError(errorMessage);
@@ -289,6 +291,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     spendableBalance,
     balanceItems,
     transactionFee,
+    transactionHash,
     t,
     showToast,
   ]);

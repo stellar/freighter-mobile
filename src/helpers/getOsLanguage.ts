@@ -41,15 +41,17 @@ export function getOSLocale(): string {
     if (deviceLanguage) {
       locale = deviceLanguage;
     }
-
-    if (!isSupportedLocale(locale)) {
-      locale = "en-US";
-    }
   }
 
   // Normalize locale format: convert underscores to hyphens for BCP 47 compliance
   // e.g., "en_US" -> "en-US", "de_DE" -> "de-DE"
-  return locale.replace(/_/g, "-");
+  const normalizedLocale = locale.replace(/_/g, "-");
+
+  if (!isSupportedLocale(normalizedLocale)) {
+    return "en-US";
+  }
+
+  return normalizedLocale;
 }
 
 /**
