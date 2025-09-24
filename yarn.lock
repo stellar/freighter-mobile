@@ -33,56 +33,35 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-client-common@npm:^1.2.5":
-  version: 1.2.5
-  resolution: "@amplitude/analytics-client-common@npm:1.2.5"
-  dependencies:
-    "@amplitude/analytics-connector": "npm:^1.5.0"
-    "@amplitude/analytics-core": "npm:^1.2.7"
-    "@amplitude/analytics-types": "npm:^1.3.5"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/a7b52821b738312bf7e012215cfaf7205d3286ee76c069b24121a67685413c5ca343c2b1ead11008551737e644a6a75c1b79e034987db112027d4482ef0f3171
-  languageName: node
-  linkType: hard
-
-"@amplitude/analytics-connector@npm:^1.5.0":
+"@amplitude/analytics-connector@npm:^1.6.4":
   version: 1.6.4
   resolution: "@amplitude/analytics-connector@npm:1.6.4"
   checksum: 10c0/b084180029e48c011fffc47301462fc2db06830421348ca5fdf235fb6d30e4c0309161eb4392350bc00ab2bf7537306f18b9dfffa9998f70db2b6f31470f0e88
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:^1.2.7":
-  version: 1.2.7
-  resolution: "@amplitude/analytics-core@npm:1.2.7"
+"@amplitude/analytics-core@npm:^2.24.0":
+  version: 2.24.0
+  resolution: "@amplitude/analytics-core@npm:2.24.0"
   dependencies:
-    "@amplitude/analytics-types": "npm:^1.3.5"
+    "@amplitude/analytics-connector": "npm:^1.6.4"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/3956d66e2ab39c872eb17fe06508fb100abb4544ad1d6644c56f3e126b32eceb1ac9cd9c6b818c76a8ff6f04695bc312124ceb392b328a61d0b2eb55c7e779ea
+  checksum: 10c0/0856a04e87129d594a79d8e91463d5a616a6fe05b5d7c0ac69f4bcdb7ce942ab4e7aa76818182135f2b4ecaf078549dc6e06b9b0066ff19629e83568fac8a4c3
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-react-native@npm:^1.4.13":
-  version: 1.4.13
-  resolution: "@amplitude/analytics-react-native@npm:1.4.13"
+"@amplitude/analytics-react-native@npm:^1.5.10":
+  version: 1.5.10
+  resolution: "@amplitude/analytics-react-native@npm:1.5.10"
   dependencies:
-    "@amplitude/analytics-client-common": "npm:^1.2.5"
-    "@amplitude/analytics-core": "npm:^1.2.7"
-    "@amplitude/analytics-types": "npm:^1.3.5"
+    "@amplitude/analytics-core": "npm:^2.24.0"
     "@amplitude/ua-parser-js": "npm:^0.7.31"
     "@react-native-async-storage/async-storage": "npm:^1.17.11"
     tslib: "npm:^2.4.1"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/2225dd35f3a84d4997fc1708c1bc792257fe1576e34b195f40a510c63156dedbc45510931b50a859de9528836bc4cefd2bb40f11bf0fb9fd0bb47a4b7b2f397a
-  languageName: node
-  linkType: hard
-
-"@amplitude/analytics-types@npm:^1.3.5":
-  version: 1.3.5
-  resolution: "@amplitude/analytics-types@npm:1.3.5"
-  checksum: 10c0/a85fe99d513bce82db8206c2f71750e710c105000e475c2870fdb2408a6db4d1dfba0fc56c7a7a1a4a56541b56576fa779d94a179464af1ae4fb0f396130a0c8
+  checksum: 10c0/89f4e85b1f519e3e174d8cfaf24af4e57318a87a9488b0a57aa3552573bb58182ebc62364d9237da7bdde108678fcfbee1a4590344d8e067a0edc0e81f2b9d17
   languageName: node
   linkType: hard
 
@@ -3898,24 +3877,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@shopify/react-native-skia@npm:^2.0.0-next.1":
-  version: 2.0.0-next.1
-  resolution: "@shopify/react-native-skia@npm:2.0.0-next.1"
+"@shopify/react-native-skia@npm:^2.2.18":
+  version: 2.2.18
+  resolution: "@shopify/react-native-skia@npm:2.2.18"
   dependencies:
-    canvaskit-wasm: "npm:0.39.1"
+    canvaskit-wasm: "npm:0.40.0"
     react-reconciler: "npm:0.31.0"
   peerDependencies:
     react: ">=19.0"
     react-native: ">=0.78"
-    react-native-reanimated: ">=3.0.0"
+    react-native-reanimated: ">=3.19.1"
   peerDependenciesMeta:
     react-native:
       optional: true
     react-native-reanimated:
       optional: true
   bin:
-    setup-skia-web: ./scripts/setup-canvaskit.js
-  checksum: 10c0/0706a092093de35492f69f030fe40c1b987bc4206ed5639a4168ae6f896f57caafdfe7d16e862f1d41585a32612510a03175debc487c4b35b7f087443b768c30
+    setup-skia-web: scripts/setup-canvaskit.js
+  checksum: 10c0/00e08b333d628657f46c119a395f6f272aa713acdddc3a51953d671f64b772f33c14f9fdb02bb024b8d5e4d21325e10d61f61c981ebf923558f75244de9e59e4
   languageName: node
   linkType: hard
 
@@ -6436,12 +6415,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"canvaskit-wasm@npm:0.39.1":
-  version: 0.39.1
-  resolution: "canvaskit-wasm@npm:0.39.1"
+"canvaskit-wasm@npm:0.40.0":
+  version: 0.40.0
+  resolution: "canvaskit-wasm@npm:0.40.0"
   dependencies:
     "@webgpu/types": "npm:0.1.21"
-  checksum: 10c0/0ae60ae5c430aaa88152f3a20f40fc9a6debb15714a2ce1bdebef93005ec6d5e72e0316b91ab637f50aab220dd8694101abac497209bcf16788d00db78f5a898
+  checksum: 10c0/dde817c0ef979a67afad4ac3adf31c03133af2592efec17f715a98508fdf801104fbf05af29723fb39b4d8b2798ce5306bb3cb5c062209d9d90a750430f3361d
   languageName: node
   linkType: hard
 
@@ -8873,7 +8852,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "freighter-mobile@workspace:."
   dependencies:
-    "@amplitude/analytics-react-native": "npm:^1.4.13"
+    "@amplitude/analytics-react-native": "npm:^1.5.10"
     "@babel/core": "npm:^7.26.9"
     "@babel/preset-env": "npm:^7.26.9"
     "@babel/runtime": "npm:^7.26.10"
@@ -8900,7 +8879,7 @@ __metadata:
     "@react-navigation/native-stack": "npm:^7.2.0"
     "@reown/walletkit": "npm:^1.2.6"
     "@sentry/react-native": "npm:^7.0.1"
-    "@shopify/react-native-skia": "npm:^2.0.0-next.1"
+    "@shopify/react-native-skia": "npm:^2.2.18"
     "@stablelib/base64": "npm:^2.0.1"
     "@stablelib/utf8": "npm:^2.0.1"
     "@stellar/stellar-sdk": "npm:^14.0.0"
@@ -8970,7 +8949,7 @@ __metadata:
     react-native-inappbrowser-reborn: "npm:^3.7.0"
     react-native-ios-context-menu: "npm:3.1.0"
     react-native-ios-utilities: "npm:5.1.2"
-    react-native-keychain: "npm:^9.2.3"
+    react-native-keychain: "npm:^10.0.0"
     react-native-level-fs: "npm:^3.0.0"
     react-native-localize: "npm:^3.5.2"
     react-native-permissions: "npm:^5.4.2"
@@ -8984,7 +8963,7 @@ __metadata:
     react-native-svg: "npm:^15.12.0"
     react-native-svg-transformer: "npm:^1.5.0"
     react-native-view-shot: "npm:^4.0.3"
-    react-native-vision-camera: "npm:^4.6.4"
+    react-native-vision-camera: "npm:^4.7.2"
     react-native-webview: "npm:^13.15.0"
     react-test-renderer: "npm:19.0.0"
     readable-stream: "npm:1.0.33"
@@ -14015,10 +13994,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-keychain@npm:^9.2.3":
-  version: 9.2.3
-  resolution: "react-native-keychain@npm:9.2.3"
-  checksum: 10c0/aba1cb083e3703f9ca5ad755eee6303eed19dc8f56ff144bd828d5770086ff9c4fe2f30ce42d94b88d9ffdbbb14e4363907d3d740e8abee2dfe3c2b5baa603bf
+"react-native-keychain@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "react-native-keychain@npm:10.0.0"
+  checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
   languageName: node
   linkType: hard
 
@@ -14210,9 +14189,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-vision-camera@npm:^4.6.4":
-  version: 4.6.4
-  resolution: "react-native-vision-camera@npm:4.6.4"
+"react-native-vision-camera@npm:^4.7.2":
+  version: 4.7.2
+  resolution: "react-native-vision-camera@npm:4.7.2"
   peerDependencies:
     "@shopify/react-native-skia": "*"
     react: "*"
@@ -14226,7 +14205,7 @@ __metadata:
       optional: true
     react-native-worklets-core:
       optional: true
-  checksum: 10c0/e626763b481ad435bb72632d275cfb0e9b415ce29efa0239c2575d626cb9096cd1be27fb004741bc57ae1c25ab4e70d70583f30a5471a00ddda5cb84519ed42a
+  checksum: 10c0/1d6dd49991f5b9481c0724bd8353a38af7eb05e5277b4a27bbeb0885c1cd01c86f92a0126ec7e0a2d19b50c7f583c12f0a301de831de328dc5a0b33bc88bd0b7
   languageName: node
   linkType: hard
 

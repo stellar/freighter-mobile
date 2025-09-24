@@ -74,4 +74,5 @@ export enum ValidationSeverity {
 export enum SecurityContext {
   SITE = "site",
   TRANSACTION = "transaction",
+  TOKEN = "token",
 }

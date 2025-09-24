@@ -91,6 +91,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
 
   const {
     balanceItems: allBalanceItems,
+    scanResults,
     isLoading,
     error,
     noBalances,
@@ -189,6 +190,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         renderItem={({ item }) => (
           <BalanceRow
             balance={item}
+            scanResult={scanResults[item.id.replace(":", "-")]}
             onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
             rightContent={
               renderRightContent ? renderRightContent(item) : undefined
