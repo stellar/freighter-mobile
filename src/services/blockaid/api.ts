@@ -36,9 +36,11 @@ export const scanToken = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
-    >(
-      `${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${encodeURIComponent(address)}`,
-    );
+    >(BLOCKAID_ENDPOINTS.SCAN_TOKEN, {
+      params: {
+        address,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -69,15 +71,14 @@ export const scanBulkTokens = async (
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    // Build URL with query parameters for bulk scanning
-    const queryParams = addressList
-      .map((address) => `asset_ids=${encodeURIComponent(address)}`)
-      .join("&");
-    const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
-
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
-    >(endpoint, { signal });
+    >(BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS, {
+      params: {
+        asset_ids: addressList,
+      },
+      signal,
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -108,7 +109,11 @@ export const scanSite = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.SiteScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${encodeURIComponent(url)}`);
+    >(BLOCKAID_ENDPOINTS.SCAN_SITE, {
+      params: {
+        url,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -139,7 +144,7 @@ export const scanTransaction = async (
     }
 
     const transactionParams = {
-      url: encodeURIComponent(url),
+      url,
       tx_xdr: xdr,
       network,
     };

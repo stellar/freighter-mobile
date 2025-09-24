@@ -109,9 +109,12 @@ describe("Blockaid API Service", () => {
 
         await scanToken({ tokenCode, tokenIssuer, network });
 
-        expect(mockGet).toHaveBeenCalledWith(
-          "/scan-asset?address=USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-        );
+        expect(mockGet).toHaveBeenCalledWith("/scan-asset", {
+          params: {
+            address:
+              "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        });
       });
     });
 
@@ -128,9 +131,11 @@ describe("Blockaid API Service", () => {
 
         await scanSite({ url, network });
 
-        expect(mockGet).toHaveBeenCalledWith(
-          "/scan-dapp?url=https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
-        );
+        expect(mockGet).toHaveBeenCalledWith("/scan-dapp", {
+          params: {
+            url: "https://app.stellarx.com/markets?asset=USDC",
+          },
+        });
       });
     });
 
@@ -151,10 +156,16 @@ describe("Blockaid API Service", () => {
 
         await scanBulkTokens({ addressList, network });
 
-        expect(mockGet).toHaveBeenCalledWith(
-          "/scan-asset-bulk?asset_ids=XLM&asset_ids=USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&asset_ids=TEST-GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
-          { signal: undefined },
-        );
+        expect(mockGet).toHaveBeenCalledWith("/scan-asset-bulk", {
+          params: {
+            asset_ids: [
+              "XLM",
+              "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+              "TEST-GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+            ],
+          },
+          signal: undefined,
+        });
       });
     });
 
@@ -173,7 +184,7 @@ describe("Blockaid API Service", () => {
         await scanTransaction({ url, xdr, network });
 
         expect(mockPost).toHaveBeenCalledWith("/scan-tx", {
-          url: "https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
+          url: "https://app.stellarx.com/markets?asset=USDC",
           tx_xdr: xdr,
           network,
         });
@@ -194,9 +205,11 @@ describe("Blockaid API Service", () => {
 
       await scanSite({ url, network });
 
-      expect(mockGet).toHaveBeenCalledWith(
-        "/scan-dapp?url=https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
-      );
+      expect(mockGet).toHaveBeenCalledWith("/scan-dapp", {
+        params: {
+          url: "https://app.stellarx.com/markets?asset=USDC",
+        },
+      });
     });
 
     it("should handle complex URLs with multiple parameters", async () => {
@@ -212,9 +225,11 @@ describe("Blockaid API Service", () => {
 
       await scanSite({ url, network });
 
-      expect(mockGet).toHaveBeenCalledWith(
-        "/scan-dapp?url=https%3A%2F%2Fexample.com%2Fpath%3Fparam1%3Dvalue1%26param2%3Dvalue2%26param3%3Dvalue3",
-      );
+      expect(mockGet).toHaveBeenCalledWith("/scan-dapp", {
+        params: {
+          url: "https://example.com/path?param1=value1&param2=value2&param3=value3",
+        },
+      });
     });
   });
 
@@ -231,7 +246,10 @@ describe("Blockaid API Service", () => {
 
       await scanBulkTokens({ addressList, network });
 
-      expect(mockGet).toHaveBeenCalledWith("/scan-asset-bulk?", {
+      expect(mockGet).toHaveBeenCalledWith("/scan-asset-bulk", {
+        params: {
+          asset_ids: [],
+        },
         signal: undefined,
       });
     });
