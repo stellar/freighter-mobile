@@ -1,3 +1,4 @@
+import { StellarTransactionScanResponse } from "@blockaid/client/resources/index.mjs";
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
@@ -8,6 +9,7 @@ import {
   calculateMinimumReceived,
 } from "components/screens/SwapScreen/helpers";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -27,15 +29,20 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState, useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type SwapReviewBottomSheetProps = {
   onCancel?: () => void;
   onConfirm?: () => void;
+  onBannerPress?: () => void;
+  scanResult: StellarTransactionScanResponse | undefined
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   onCancel,
   onConfirm,
+  onBannerPress,
+  scanResult,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -98,6 +105,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       setStableMinimumReceived(currentMinimumReceived);
     }
   }, [currentMinimumReceived]);
+
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(scanResult),
+    [scanResult],
+  );
+  const { isSuspicious } = transactionSecurityAssessment;
+  const bannerText = isSuspicious ? t("transactionAmountScreen.errors.suspicious") : t("transactionAmountScreen.errors.malicious");
 
   const handleCopyXdr = () => {
     if (transactionXDR) {
@@ -198,6 +212,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           </View>
         </View>
       </View>
+
+      <Banner
+        className="mt-[24px]"
+        variant={isSuspicious ? "warning" : "error"}
+        text={bannerText}
+        onPress={onBannerPress}
+      />
 
       <List
         variant="secondary"

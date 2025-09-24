@@ -1,3 +1,4 @@
+import { StellarTransactionScanResponse } from "@blockaid/client/resources/index.mjs";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
 import { NETWORKS } from "config/constants";
@@ -13,6 +14,7 @@ import { ActiveAccount } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import { useState } from "react";
 import { analytics } from "services/analytics";
 
@@ -39,6 +41,7 @@ interface UseSwapTransactionResult {
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
+  transactionScanResult: StellarTransactionScanResponse | undefined
 }
 
 export const useSwapTransaction = ({
@@ -54,9 +57,11 @@ export const useSwapTransaction = ({
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [transactionScanResult, setTransactionScanResult] = useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
+  const { scanTransaction } = useBlockaidTransaction();
 
   const setupSwapTransaction = async () => {
     if (
@@ -84,6 +89,8 @@ export const useSwapTransaction = ({
     if (!transactionXDR) {
       throw new Error("Failed to build swap transaction");
     }
+    const scanResult = await scanTransaction(transactionXDR, "internal");
+    setTransactionScanResult(scanResult);
   };
 
   const executeSwap = async () => {
@@ -174,5 +181,6 @@ export const useSwapTransaction = ({
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
+    transactionScanResult,
   };
 };

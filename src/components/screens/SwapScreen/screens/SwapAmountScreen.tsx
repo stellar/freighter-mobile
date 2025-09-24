@@ -4,6 +4,7 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapReviewBottomSheet } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
@@ -36,6 +37,8 @@ import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text as RNText, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
+import { assessTransactionSecurity, extractSecurityWarnings } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -57,6 +60,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSecurityWarningBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -179,6 +184,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
+    transactionScanResult,
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
@@ -199,6 +205,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       Number(sourceAmount) <= 0 ||
       !pathResult
     : false;
+
+  console.log({
+    destinationBalance,
+    isBuilding,
+    amountError,
+    pathError,
+    sourceAmount,
+    pathResult,
+    isButtonDisabled,
+  })
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
@@ -350,6 +366,52 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [resetSwap, resetTransaction, resetToDefaults],
   );
 
+  const handleCancelSecurityWarning = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+  };
+
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(transactionScanResult),
+    [transactionScanResult],
+  );
+
+  const transactionSecurityWarnings = useMemo(() => {
+    if (
+      transactionSecurityAssessment.isMalicious ||
+      transactionSecurityAssessment.isSuspicious
+    ) {
+      const warnings = extractSecurityWarnings(transactionScanResult);
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        return warnings;
+      }
+    }
+
+    return [];
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    transactionScanResult,
+  ]);
+
+  const transactionSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious)
+      return SecurityLevel.MALICIOUS;
+    if (transactionSecurityAssessment.isSuspicious)
+      return SecurityLevel.SUSPICIOUS;
+
+    return undefined;
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+  ]);
+
+  const handleConfirmAnyway = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    handleConfirmSwap();
+  };
+
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -472,7 +534,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             <Button
               tertiary
               onPress={handleMainButtonPress}
-              disabled={isButtonDisabled}
+              disabled={false}
               isLoading={isLoadingPath || isBuilding}
             >
               {destinationBalance
@@ -488,12 +550,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={() =>
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
-        snapPoints={["90%"]}
+        snapPoints={["95%"]}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleConfirmSwap}
+            scanResult={transactionScanResult}
+            onBannerPress={() => transactionSecurityWarningBottomSheetModalRef.current?.present()}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSecurityWarningBottomSheetModalRef}
+        handleCloseModal={handleCancelSecurityWarning}
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={transactionSecurityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnyway}
+            onClose={handleCancelSecurityWarning}
+            severity={transactionSecuritySeverity}
+            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
           />
         }
       />
