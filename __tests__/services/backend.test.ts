@@ -5,16 +5,11 @@
  * - URL parameter encoding tests
  * - Protocol filtering logic tests
  */
-import { Networks } from "@stellar/stellar-sdk";
-import { NETWORKS, NETWORK_NAMES, NETWORK_URLS } from "config/constants";
+import { NETWORKS } from "config/constants";
 import {
   freighterBackend,
   freighterBackendV2,
   fetchBalances,
-  getContractSpecs,
-  getTokenDetails,
-  isSacContractExecutable,
-  getIndexerAccountHistory,
   fetchProtocols,
   fetchCollectibles,
 } from "services/backend";
@@ -117,110 +112,6 @@ describe("Backend Service", () => {
 
         expect(mockGet).toHaveBeenCalledWith(
           `/account-balances/${encodeURIComponent(publicKey)}?network=${network}`,
-        );
-      });
-    });
-
-    describe("getContractSpecs", () => {
-      it("should encode contract ID in URL path", async () => {
-        const contractId =
-          "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON";
-        const networkDetails = {
-          network: NETWORKS.PUBLIC,
-          networkName: NETWORK_NAMES.PUBLIC,
-          networkUrl: NETWORK_URLS.PUBLIC,
-          networkPassphrase: Networks.PUBLIC,
-        };
-
-        mockGet.mockResolvedValue({
-          data: { data: { definitions: {} } },
-          status: 200,
-          statusText: "OK",
-        });
-
-        await getContractSpecs({ contractId, networkDetails });
-
-        expect(mockGet).toHaveBeenCalledWith(
-          `/contract-spec/${encodeURIComponent(contractId)}`,
-          { params: { network: NETWORKS.PUBLIC } },
-        );
-      });
-    });
-
-    describe("getTokenDetails", () => {
-      it("should encode contract ID in URL path", async () => {
-        const contractId =
-          "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON";
-        const publicKey =
-          "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH";
-        const network = NETWORKS.PUBLIC;
-
-        mockGet.mockResolvedValue({
-          data: { symbol: "TEST", name: "Test Token", decimals: 7 },
-          status: 200,
-          statusText: "OK",
-        });
-
-        await getTokenDetails({ contractId, publicKey, network });
-
-        expect(mockGet).toHaveBeenCalledWith(
-          `/token-details/${encodeURIComponent(contractId)}`,
-          {
-            params: { pub_key: publicKey, network },
-            signal: undefined,
-          },
-        );
-      });
-    });
-
-    describe("isSacContractExecutable", () => {
-      it("should encode contract ID in URL path", async () => {
-        const contractId =
-          "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON";
-        const network = NETWORKS.PUBLIC;
-
-        mockGet.mockResolvedValue({
-          data: { isSacContract: true },
-          status: 200,
-          statusText: "OK",
-        });
-
-        await isSacContractExecutable(contractId, network);
-
-        expect(mockGet).toHaveBeenCalledWith(
-          `/is-sac-contract/${encodeURIComponent(contractId)}`,
-          { params: { network } },
-        );
-      });
-    });
-
-    describe("getIndexerAccountHistory", () => {
-      it("should encode public key in URL path", async () => {
-        const publicKey =
-          "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH";
-        const networkDetails = {
-          network: NETWORKS.PUBLIC,
-          networkName: NETWORK_NAMES.PUBLIC,
-          networkUrl: NETWORK_URLS.PUBLIC,
-          networkPassphrase: Networks.PUBLIC,
-        };
-
-        mockGet.mockResolvedValue({
-          data: [],
-          status: 200,
-          statusText: "OK",
-        });
-
-        await getIndexerAccountHistory({ publicKey, networkDetails });
-
-        expect(mockGet).toHaveBeenCalledWith(
-          `/account-history/${encodeURIComponent(publicKey)}`,
-          {
-            params: {
-              network: NETWORKS.PUBLIC,
-              is_failed_included: true,
-            },
-          },
         );
       });
     });

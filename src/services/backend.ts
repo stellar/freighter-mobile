@@ -114,7 +114,7 @@ export const getContractSpecs = async ({
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
   const response = await freighterBackend.get<{ data: Record<string, any> }>(
-    `/contract-spec/${encodeURIComponent(contractId)}`,
+    `/contract-spec/${contractId}`,
     {
       params: {
         network: networkDetails.network,
@@ -384,7 +384,7 @@ export const getTokenDetails = async ({
     // TODO: Add verification for custom network.
 
     const response = await freighterBackend.get<TokenDetailsResponse>(
-      `/token-details/${encodeURIComponent(contractId)}`,
+      `/token-details/${contractId}`,
       {
         params: {
           pub_key: publicKey,
@@ -448,7 +448,7 @@ export const isSacContractExecutable = async (
   // TODO: Add verification for custom network.
   try {
     const response = await freighterBackend.get<{ isSacContract: boolean }>(
-      `/is-sac-contract/${encodeURIComponent(contractId)}`,
+      `/is-sac-contract/${contractId}`,
       {
         params: {
           network,
@@ -507,7 +507,7 @@ export const getIndexerAccountHistory = async ({
   try {
     const response = await freighterBackend.get<
       Horizon.ServerApi.OperationRecord[]
-    >(`/account-history/${encodeURIComponent(publicKey)}`, {
+    >(`/account-history/${publicKey}`, {
       params: {
         network: networkDetails.network,
         is_failed_included: true,
