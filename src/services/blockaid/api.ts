@@ -27,7 +27,6 @@ export const scanToken = async (
   params: ScanTokenParams,
 ): Promise<Blockaid.TokenScanResponse> => {
   const { tokenCode, tokenIssuer, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
@@ -37,7 +36,9 @@ export const scanToken = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${address}`);
+    >(
+      `${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${encodeURIComponent(address)}`,
+    );
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -100,7 +101,6 @@ export const scanSite = async (
   params: ScanSiteParams,
 ): Promise<Blockaid.SiteScanResponse> => {
   const { url, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
@@ -108,7 +108,7 @@ export const scanSite = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.SiteScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${url}`);
+    >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${encodeURIComponent(url)}`);
 
     if (response.data.error) {
       throw new Error(response.data.error);

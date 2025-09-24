@@ -114,7 +114,7 @@ export const getContractSpecs = async ({
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
   const response = await freighterBackend.get<{ data: Record<string, any> }>(
-    `/contract-spec/${contractId}`,
+    `/contract-spec/${encodeURIComponent(contractId)}`,
     {
       params: {
         network: networkDetails.network,
@@ -208,7 +208,7 @@ export const fetchBalances = async ({
   }
 
   const { data } = await freighterBackend.get<FetchBalancesResponse>(
-    `/account-balances/${publicKey}?${params.toString()}`,
+    `/account-balances/${encodeURIComponent(publicKey)}?${params.toString()}`,
   );
 
   let bigizedBalances: BalanceMap | undefined;
@@ -384,7 +384,7 @@ export const getTokenDetails = async ({
     // TODO: Add verification for custom network.
 
     const response = await freighterBackend.get<TokenDetailsResponse>(
-      `/token-details/${contractId}`,
+      `/token-details/${encodeURIComponent(contractId)}`,
       {
         params: {
           pub_key: publicKey,
@@ -446,10 +446,9 @@ export const isSacContractExecutable = async (
   network: NETWORKS,
 ) => {
   // TODO: Add verification for custom network.
-
   try {
     const response = await freighterBackend.get<{ isSacContract: boolean }>(
-      `/is-sac-contract/${contractId}`,
+      `/is-sac-contract/${encodeURIComponent(contractId)}`,
       {
         params: {
           network,
@@ -508,7 +507,7 @@ export const getIndexerAccountHistory = async ({
   try {
     const response = await freighterBackend.get<
       Horizon.ServerApi.OperationRecord[]
-    >(`/account-history/${publicKey}`, {
+    >(`/account-history/${encodeURIComponent(publicKey)}`, {
       params: {
         network: networkDetails.network,
         is_failed_included: true,
