@@ -208,7 +208,7 @@ export const fetchBalances = async ({
   }
 
   const { data } = await freighterBackend.get<FetchBalancesResponse>(
-    `/account-balances/${encodeURIComponent(publicKey)}?${params.toString()}`,
+    `/account-balances/${publicKey}?${params.toString()}`,
   );
 
   let bigizedBalances: BalanceMap | undefined;
