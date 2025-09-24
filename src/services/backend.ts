@@ -446,6 +446,7 @@ export const isSacContractExecutable = async (
   network: NETWORKS,
 ) => {
   // TODO: Add verification for custom network.
+
   try {
     const response = await freighterBackend.get<{ isSacContract: boolean }>(
       `/is-sac-contract/${contractId}`,
