@@ -71,14 +71,15 @@ export const scanBulkTokens = async (
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
+    // Build URL with query parameters for bulk scanning
+    const queryParams = addressList
+      .map((address) => `asset_ids=${encodeURIComponent(address)}`)
+      .join("&");
+    const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
+
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
-    >(BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS, {
-      params: {
-        asset_ids: addressList,
-      },
-      signal,
-    });
+    >(endpoint, { signal });
 
     if (response.data.error) {
       throw new Error(response.data.error);

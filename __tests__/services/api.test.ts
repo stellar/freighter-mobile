@@ -7,12 +7,7 @@
  */
 import { NETWORKS } from "config/constants";
 import { freighterBackend } from "services/backend";
-import {
-  scanToken,
-  scanSite,
-  scanBulkTokens,
-  scanTransaction,
-} from "services/blockaid/api";
+import { scanToken, scanSite, scanTransaction } from "services/blockaid/api";
 
 // Mock the API services
 jest.mock("services/apiFactory", () => ({
@@ -139,36 +134,6 @@ describe("Blockaid API Service", () => {
       });
     });
 
-    describe("scanBulkTokens", () => {
-      it("should encode multiple address parameters in query string", async () => {
-        const addressList = [
-          "XLM",
-          "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-          "TEST-GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
-        ];
-        const network = NETWORKS.PUBLIC;
-
-        mockGet.mockResolvedValue({
-          data: { data: { results: [] }, error: null },
-          status: 200,
-          statusText: "OK",
-        });
-
-        await scanBulkTokens({ addressList, network });
-
-        expect(mockGet).toHaveBeenCalledWith("/scan-asset-bulk", {
-          params: {
-            asset_ids: [
-              "XLM",
-              "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-              "TEST-GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
-            ],
-          },
-          signal: undefined,
-        });
-      });
-    });
-
     describe("scanTransaction", () => {
       it("should encode URL parameter in request body", async () => {
         const url = "https://app.stellarx.com/markets?asset=USDC";
@@ -229,28 +194,6 @@ describe("Blockaid API Service", () => {
         params: {
           url: "https://example.com/path?param1=value1&param2=value2&param3=value3",
         },
-      });
-    });
-  });
-
-  describe("Bulk Operations", () => {
-    it("should handle empty address list gracefully", async () => {
-      const addressList: string[] = [];
-      const network = NETWORKS.PUBLIC;
-
-      mockGet.mockResolvedValue({
-        data: { data: { results: [] }, error: null },
-        status: 200,
-        statusText: "OK",
-      });
-
-      await scanBulkTokens({ addressList, network });
-
-      expect(mockGet).toHaveBeenCalledWith("/scan-asset-bulk", {
-        params: {
-          asset_ids: [],
-        },
-        signal: undefined,
       });
     });
   });
