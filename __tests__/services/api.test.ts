@@ -110,7 +110,7 @@ describe("Blockaid API Service", () => {
         await scanToken({ tokenCode, tokenIssuer, network });
 
         expect(mockGet).toHaveBeenCalledWith(
-          `/scan-asset?address=${encodeURIComponent(`${tokenCode}-${tokenIssuer}`)}`,
+          "/scan-asset?address=USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         );
       });
     });
@@ -129,7 +129,7 @@ describe("Blockaid API Service", () => {
         await scanSite({ url, network });
 
         expect(mockGet).toHaveBeenCalledWith(
-          `/scan-dapp?url=${encodeURIComponent(url)}`,
+          "/scan-dapp?url=https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
         );
       });
     });
@@ -151,11 +151,8 @@ describe("Blockaid API Service", () => {
 
         await scanBulkTokens({ addressList, network });
 
-        const expectedParams = addressList
-          .map((addr) => `asset_ids=${encodeURIComponent(addr)}`)
-          .join("&");
         expect(mockGet).toHaveBeenCalledWith(
-          `/scan-asset-bulk?${expectedParams}`,
+          "/scan-asset-bulk?asset_ids=XLM&asset_ids=USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&asset_ids=TEST-GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
           { signal: undefined },
         );
       });
@@ -176,7 +173,7 @@ describe("Blockaid API Service", () => {
         await scanTransaction({ url, xdr, network });
 
         expect(mockPost).toHaveBeenCalledWith("/scan-tx", {
-          url: encodeURIComponent(url),
+          url: "https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
           tx_xdr: xdr,
           network,
         });
@@ -198,7 +195,7 @@ describe("Blockaid API Service", () => {
       await scanSite({ url, network });
 
       expect(mockGet).toHaveBeenCalledWith(
-        `/scan-dapp?url=${encodeURIComponent(url)}`,
+        "/scan-dapp?url=https%3A%2F%2Fapp.stellarx.com%2Fmarkets%3Fasset%3DUSDC",
       );
     });
 
@@ -216,7 +213,7 @@ describe("Blockaid API Service", () => {
       await scanSite({ url, network });
 
       expect(mockGet).toHaveBeenCalledWith(
-        `/scan-dapp?url=${encodeURIComponent(url)}`,
+        "/scan-dapp?url=https%3A%2F%2Fexample.com%2Fpath%3Fparam1%3Dvalue1%26param2%3Dvalue2%26param3%3Dvalue3",
       );
     });
   });
