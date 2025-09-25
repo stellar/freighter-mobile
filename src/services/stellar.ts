@@ -23,8 +23,8 @@ import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
 
 // Retry configuration for transaction submission
-const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
-const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
+export const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
+export const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
 
 interface HorizonError {
   response: {
@@ -70,7 +70,7 @@ export type SubmitTxParams = {
   tx: Transaction | FeeBumpTransaction | string;
 };
 
-const isHorizonError = (val: unknown): val is HorizonError =>
+export const isHorizonError = (val: unknown): val is HorizonError =>
   typeof val === "object" &&
   val !== null &&
   "response" in val &&
