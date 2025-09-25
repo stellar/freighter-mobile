@@ -557,7 +557,7 @@
     "swapFrom": "Trocar de",
     "swapTo": "Trocar para",
     "title": "Trocar",
-    "searchTokenInputPlaceholder": "Pesquisar nome ou endereço do token",
+    "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
     "setMax": "Definir máximo",
     "receive": "Receber",
     "chooseToken": "Escolher token",
