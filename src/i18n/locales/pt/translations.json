@@ -654,7 +654,11 @@
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
       "memoMissing": "Esta transação requer um memo",
       "malicious": "Este endereço foi marcado como malicioso",
-      "suspicious": "Este endereço foi marcado como suspeito"
+      "suspicious": "Este endereço foi marcado como suspeito",
+      "maliciousTransaction": "Esta transação foi marcada como maliciosa",
+      "maliciousAsset": "Um ativo foi marcado como malicioso",
+      "suspiciousTransaction": "Esta transação foi marcada como suspeita",
+      "suspiciousAsset": "Um ativo foi marcado como suspeito"
     },
     "confirmAnyway": "Confirmar mesmo assim"
   },

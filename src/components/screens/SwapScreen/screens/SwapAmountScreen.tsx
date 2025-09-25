@@ -38,7 +38,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text as RNText, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
-import { assessTransactionSecurity, extractSecurityWarnings } from "services/blockaid/helper";
+import {
+  assessTokenSecurity,
+  assessTransactionSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -68,7 +72,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const deviceSize = useDeviceSize();
   const isSmallScreen = deviceSize === DeviceSize.XS;
 
-  const { balanceItems } = useBalancesList({
+  const { balanceItems, scanResults } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
   });
@@ -205,16 +209,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       Number(sourceAmount) <= 0 ||
       !pathResult
     : false;
-
-  console.log({
-    destinationBalance,
-    isBuilding,
-    amountError,
-    pathError,
-    sourceAmount,
-    pathResult,
-    isButtonDisabled,
-  })
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
@@ -375,12 +369,39 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [transactionScanResult],
   );
 
-  const transactionSecurityWarnings = useMemo(() => {
+  const sourceBalanceSecurityAssessment = useMemo(
+    () =>
+      assessTokenSecurity(
+        sourceBalance
+          ? scanResults[sourceBalance.id.replace(":", "-")]
+          : undefined,
+      ),
+    [sourceBalance, scanResults],
+  );
+
+  const destBalanceSecurityAssessment = useMemo(
+    () =>
+      assessTokenSecurity(
+        destinationBalance
+          ? scanResults[destinationBalance.id.replace(":", "-")]
+          : undefined,
+      ),
+    [destinationBalance, scanResults],
+  );
+
+  const securityWarnings = useMemo(() => {
     if (
       transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
+      transactionSecurityAssessment.isSuspicious ||
+      sourceBalanceSecurityAssessment.isMalicious ||
+      sourceBalanceSecurityAssessment.isSuspicious ||
+      destBalanceSecurityAssessment.isMalicious ||
+      destBalanceSecurityAssessment.isSuspicious
     ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
+      const warnings = [
+        ...extractSecurityWarnings(transactionScanResult),
+        ...Object.values(scanResults).map(extractSecurityWarnings),
+      ].flat();
 
       if (Array.isArray(warnings) && warnings.length > 0) {
         return warnings;
@@ -391,7 +412,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    sourceBalanceSecurityAssessment.isMalicious,
+    sourceBalanceSecurityAssessment.isSuspicious,
+    destBalanceSecurityAssessment.isMalicious,
+    destBalanceSecurityAssessment.isSuspicious,
     transactionScanResult,
+    scanResults,
   ]);
 
   const transactionSecuritySeverity = useMemo(() => {
@@ -450,6 +476,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               <BalanceRow
                 isSingleRow
                 balance={sourceBalance}
+                scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
                 onPress={navigateToSelectSourceTokenScreen}
                 rightContent={
                   <IconButton
@@ -467,6 +494,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               <BalanceRow
                 isSingleRow
                 balance={destinationBalance}
+                scanResult={
+                  scanResults[destinationBalance.id.replace(":", "-")]
+                }
                 onPress={navigateToSelectDestinationTokenScreen}
                 rightContent={
                   <IconButton
@@ -534,7 +564,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             <Button
               tertiary
               onPress={handleMainButtonPress}
-              disabled={false}
+              disabled={isButtonDisabled}
               isLoading={isLoadingPath || isBuilding}
             >
               {destinationBalance
@@ -550,14 +580,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={() =>
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
-        snapPoints={["95%"]}
+        snapPoints={["75%"]}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleConfirmSwap}
             scanResult={transactionScanResult}
-            onBannerPress={() => transactionSecurityWarningBottomSheetModalRef.current?.present()}
+            sourceTokenScanResult={
+              sourceBalance
+                ? scanResults[sourceBalance.id.replace(":", "-")]
+                : undefined
+            }
+            destTokenScanResult={
+              destinationBalance
+                ? scanResults[destinationBalance.id.replace(":", "-")]
+                : undefined
+            }
+            onBannerPress={() =>
+              transactionSecurityWarningBottomSheetModalRef.current?.present()
+            }
           />
         }
       />
@@ -566,7 +608,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
-            warnings={transactionSecurityWarnings}
+            warnings={securityWarnings}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
