@@ -60,7 +60,7 @@ export const useTokenFiatConverter = ({
         }),
       );
     }
-  }, [tokenAmount]);
+  }, [tokenAmount, isTypingRef]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {

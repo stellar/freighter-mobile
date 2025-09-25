@@ -40,6 +40,9 @@ type TransactionSettingsBottomSheetProps = {
   onSettingsChange?: () => void;
 };
 
+// Constants
+const STEP_SIZE_PERCENT = 0.5;
+
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
 > = ({ onCancel, onConfirm, context, onSettingsChange }) => {
@@ -116,9 +119,6 @@ const TransactionSettingsBottomSheet: React.FC<
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
 
-  // Constants
-  const STEP_SIZE_PERCENT = 0.5;
-
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
@@ -181,20 +181,28 @@ const TransactionSettingsBottomSheet: React.FC<
     [localSlippage, updateSlippage, decimalSeparator],
   );
 
-  const handleSlippageTextChange = useCallback((text: string) => {
-    const numericValue = text.replace("%", "");
-    setLocalSlippage(numericValue);
-  }, []);
+  const handleSlippageTextChange = useCallback(
+    (text: string) => {
+      const numericValue = text.replace(/[.,]/g, decimalSeparator);
+      setLocalSlippage(numericValue);
+    },
+    [decimalSeparator],
+  );
   const handleMemoChange = useCallback((text: string) => {
     setLocalMemo(text);
   }, []);
 
-  const handleFeeChange = useCallback((text: string) => {
-    setLocalFee(text);
-  }, []);
+  const handleFeeChange = useCallback(
+    (text: string) => {
+      const normalizedText = text.replace(/[.,]/g, decimalSeparator);
+      setLocalFee(normalizedText);
+    },
+    [decimalSeparator],
+  );
 
   const handleTimeoutChange = useCallback((text: string) => {
-    setLocalTimeout(text);
+    const integerOnly = text.replace(/[^\d]/g, "");
+    setLocalTimeout(integerOnly);
   }, []);
 
   const getLocalizedCongestionLevel = useCallback(
@@ -340,7 +348,6 @@ const TransactionSettingsBottomSheet: React.FC<
       themeColors.lilac,
       handleUpdateSlippage,
       handleSlippageTextChange,
-      STEP_SIZE_PERCENT,
       updateSlippage,
     ],
   );
