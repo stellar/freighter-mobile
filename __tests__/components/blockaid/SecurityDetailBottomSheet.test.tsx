@@ -1,8 +1,9 @@
-import { userEvent } from "@testing-library/react-native";
+import { renderHook, userEvent } from "@testing-library/react-native";
 import { SecurityDetailBottomSheet } from "components/blockaid/SecurityDetailBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
+import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
 describe("SecurityDetailBottomSheet", () => {
@@ -114,5 +115,55 @@ describe("SecurityDetailBottomSheet", () => {
 
     // Should show "Suspicious request" for warning
     expect(getByTextWarning(/suspicious request/i)).toBeTruthy();
+  });
+
+  it("renders correct description based on securityContext", () => {
+    const { result } = renderHook(() => useAppTranslation());
+    const tokenContext = renderWithProviders(
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        securityContext={SecurityContext.TOKEN}
+      />,
+    );
+    expect(
+      tokenContext.getByText(result.current.t("securityWarning.token")),
+    ).toBeTruthy();
+
+    const siteContext = renderWithProviders(
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        securityContext={SecurityContext.SITE}
+      />,
+    );
+    expect(
+      siteContext.getByText(
+        result.current.t("securityWarning.unsafeTransaction"),
+      ),
+    ).toBeTruthy();
+
+    const transactionContext = renderWithProviders(
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        securityContext={SecurityContext.TRANSACTION}
+      />,
+    );
+    expect(
+      transactionContext.getByText(
+        result.current.t("securityWarning.unsafeTransaction"),
+      ),
+    ).toBeTruthy();
+  });
+
+  it("renders correctly when onCancel and onProceedAnyway are not provided", () => {
+    const { queryByText } = renderWithProviders(
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        onCancel={undefined}
+        onProceedAnyway={undefined}
+      />,
+    );
+
+    expect(queryByText("Cancel")).toBeNull();
+    expect(queryByText(defaultProps.proceedAnywayText)).toBeNull();
   });
 });

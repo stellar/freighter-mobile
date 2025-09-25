@@ -1,5 +1,59 @@
 import { I18nManager, Platform, Settings } from "react-native";
 
+const SUPPORTED_LOCALES = ["en-US", "pt-BR"];
+
+export const isSupportedLocale = (locale: string): boolean => {
+  return SUPPORTED_LOCALES.includes(locale);
+  return SUPPORTED_LOCALES.includes(locale);
+};
+
+/**
+ * Retrieves the current operating system locale identifier
+ *
+ * This function detects the device's full locale setting and returns it as a locale identifier
+ * (e.g., 'en-US', 'fr-FR', 'de-DE'). This is used for locale-aware number formatting.
+ * Normalizes locale format from native modules (en_US) to BCP 47 format (en-US).
+ *
+ * @returns {string} Full locale identifier or 'en-US' as fallback
+ *
+ * @example
+ * // Get the user's OS locale
+ * const locale = getOSLocale(); // Returns 'en-US', 'de-DE', etc.
+ *
+ * // Use for number formatting
+ * const formatted = number.toLocaleString(locale);
+ */
+export function getOSLocale(): string {
+  let locale = "en-US"; // fallback
+
+  if (Platform.OS === "android") {
+    const androidLocale = I18nManager.getConstants().localeIdentifier;
+    if (androidLocale) {
+      locale = androidLocale;
+    }
+  }
+
+  if (Platform.OS === "ios") {
+    const deviceLanguage =
+      (Settings.get("AppleLocale") as string) ||
+      (Settings.get("AppleLanguages") as string[])[0];
+
+    if (deviceLanguage) {
+      locale = deviceLanguage;
+    }
+  }
+
+  // Normalize locale format: convert underscores to hyphens for BCP 47 compliance
+  // e.g., "en_US" -> "en-US", "de_DE" -> "de-DE"
+  const normalizedLocale = locale.replace(/_/g, "-");
+
+  if (!isSupportedLocale(normalizedLocale)) {
+    return "en-US";
+  }
+
+  return normalizedLocale;
+}
+
 /**
  * Retrieves the current operating system language as a two-letter language code
  *
@@ -14,31 +68,11 @@ import { I18nManager, Platform, Settings } from "react-native";
  * const language = getOSLanguage(); // Returns 'en', 'fr', etc.
  *
  * // Use the language for localization
- * const message = language === 'fr' ? 'Bonjour' : 'Hello';
  */
 function getOSLanguage(): string {
-  let language = "en"; // fallback
-
-  if (Platform.OS === "android") {
-    const androidLocale = I18nManager.getConstants().localeIdentifier;
-    if (androidLocale) {
-      // Extract language code from locale (e.g., 'en-US' -> 'en')
-      language = androidLocale.substring(0, 2);
-    }
-  }
-
-  if (Platform.OS === "ios") {
-    const deviceLanguage =
-      (Settings.get("AppleLocale") as string) ||
-      (Settings.get("AppleLanguages") as string[])[0];
-
-    if (deviceLanguage) {
-      // Extract language code from locale (e.g., 'en-US' -> 'en')
-      language = deviceLanguage.substring(0, 2);
-    }
-  }
-
-  return language;
+  const locale = getOSLocale();
+  // Extract language code from locale (e.g., 'en-US' -> 'en')
+  return locale.substring(0, 2);
 }
 
 export default getOSLanguage;

@@ -515,6 +515,7 @@
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
     "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
+    "token": "Este token não parece seguro pelos seguintes motivos.",
     "cancel": "Cancelar",
     "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",

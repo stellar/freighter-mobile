@@ -18,6 +18,10 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import {
+  parseDisplayNumber,
+  formatNumberForDisplay,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -27,6 +31,7 @@ import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
 import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { getNumberFormatSettings } from "react-native-localize";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -34,6 +39,9 @@ type TransactionSettingsBottomSheetProps = {
   context: TransactionSettingsContext;
   onSettingsChange?: () => void;
 };
+
+// Constants
+const STEP_SIZE_PERCENT = 0.5;
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
@@ -66,6 +74,8 @@ const TransactionSettingsBottomSheet: React.FC<
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  const { decimalSeparator } = getNumberFormatSettings();
+
   // Derived values based on context
   const memo =
     context === TransactionSettingsContext.Swap ? "" : transactionMemo;
@@ -92,19 +102,22 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(fee ?? recommendedFee);
+  const [localFee, setLocalFee] = useState(
+    formatNumberForDisplay(fee ?? recommendedFee),
+  );
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
-  const [localSlippage, setLocalSlippage] = useState(slippage.toString());
+  const [localSlippage, setLocalSlippage] = useState(
+    slippage
+      .toString()
+      .replace(".", getNumberFormatSettings().decimalSeparator),
+  );
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
-
-  // Constants
-  const STEP_SIZE_PERCENT = 0.5;
 
   // Callback functions
   const saveMemo = useCallback(
@@ -150,34 +163,46 @@ const TransactionSettingsBottomSheet: React.FC<
   const updateSlippage = useCallback((value: string) => {
     setLocalSlippage(value);
   }, []);
+
   const handleUpdateSlippage = useCallback(
     (step: number) => {
-      const currentValue = parseFloat(localSlippage) || 0;
+      const currentValue = parseDisplayNumber(localSlippage) || 0;
       const newValue = Math.max(0, Math.min(MAX_SLIPPAGE, currentValue + step));
       const roundedValue = Math.round(newValue * 100) / 100;
       const isWholeNumber = roundedValue % 1 === 0;
       const finalValue = isWholeNumber
         ? Math.round(roundedValue)
         : roundedValue;
-      updateSlippage(finalValue.toString());
+      const formattedValue = finalValue
+        .toString()
+        .replace(".", decimalSeparator);
+      updateSlippage(formattedValue);
     },
-    [localSlippage, updateSlippage],
+    [localSlippage, updateSlippage, decimalSeparator],
   );
 
-  const handleSlippageTextChange = useCallback((text: string) => {
-    const numericValue = text.replace("%", "");
-    setLocalSlippage(numericValue);
-  }, []);
+  const handleSlippageTextChange = useCallback(
+    (text: string) => {
+      const numericValue = text.replace(/[.,]/g, decimalSeparator);
+      setLocalSlippage(numericValue);
+    },
+    [decimalSeparator],
+  );
   const handleMemoChange = useCallback((text: string) => {
     setLocalMemo(text);
   }, []);
 
-  const handleFeeChange = useCallback((text: string) => {
-    setLocalFee(text);
-  }, []);
+  const handleFeeChange = useCallback(
+    (text: string) => {
+      const normalizedText = text.replace(/[.,]/g, decimalSeparator);
+      setLocalFee(normalizedText);
+    },
+    [decimalSeparator],
+  );
 
   const handleTimeoutChange = useCallback((text: string) => {
-    setLocalTimeout(text);
+    const integerOnly = text.replace(/[^\d]/g, "");
+    setLocalTimeout(integerOnly);
   }, []);
 
   const getLocalizedCongestionLevel = useCallback(
@@ -207,8 +232,9 @@ const TransactionSettingsBottomSheet: React.FC<
   const settingSaveCallbacks = {
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
-      saveSlippage(parseFloat(localSlippage)),
-    [TransactionSetting.Fee]: () => saveFee(parseFloat(localFee).toString()),
+      saveSlippage(parseDisplayNumber(localSlippage)),
+    [TransactionSetting.Fee]: () =>
+      saveFee(parseDisplayNumber(localFee).toString()),
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
   };
 
@@ -281,7 +307,9 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(-STEP_SIZE_PERCENT)}
-              disabled={(parseFloat(localSlippage) || 0) <= MIN_SLIPPAGE}
+              disabled={
+                (parseDisplayNumber(localSlippage) || 0) <= MIN_SLIPPAGE
+              }
             />
           </View>
 
@@ -305,7 +333,9 @@ const TransactionSettingsBottomSheet: React.FC<
               size="md"
               variant="secondary"
               onPress={() => handleUpdateSlippage(STEP_SIZE_PERCENT)}
-              disabled={(parseFloat(localSlippage) || 0) >= MAX_SLIPPAGE}
+              disabled={
+                (parseDisplayNumber(localSlippage) || 0) >= MAX_SLIPPAGE
+              }
             />
           </View>
         </View>
@@ -318,7 +348,6 @@ const TransactionSettingsBottomSheet: React.FC<
       themeColors.lilac,
       handleUpdateSlippage,
       handleSlippageTextChange,
-      STEP_SIZE_PERCENT,
       updateSlippage,
     ],
   );
@@ -338,7 +367,11 @@ const TransactionSettingsBottomSheet: React.FC<
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={() => setLocalFee(recommendedFee || MIN_TRANSACTION_FEE)}
+            onPress={() =>
+              setLocalFee(
+                formatNumberForDisplay(recommendedFee || MIN_TRANSACTION_FEE),
+              )
+            }
           >
             <Text sm medium color={themeColors.lilac[11]}>
               {t("transactionSettings.resetFee")}
@@ -353,7 +386,7 @@ const TransactionSettingsBottomSheet: React.FC<
             leftElement={<Icon.Route size={16} themeColor="gray" />}
             onChangeText={handleFeeChange}
             keyboardType="numeric"
-            placeholder={MIN_TRANSACTION_FEE}
+            placeholder={formatNumberForDisplay(MIN_TRANSACTION_FEE)}
             error={feeError}
             note={
               <View className="flex-row items-center gap-2 mt-2">

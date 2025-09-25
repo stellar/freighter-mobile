@@ -101,6 +101,7 @@ describe("BalancesList", () => {
     jest.clearAllMocks();
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: mockBalanceItems,
+      scanResults: {},
       isLoading: false,
       error: null,
       noBalances: false,
@@ -113,6 +114,7 @@ describe("BalancesList", () => {
   it("should show loading state when fetching balances", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: true,
       error: null,
       noBalances: true,
@@ -130,6 +132,7 @@ describe("BalancesList", () => {
   it("should show error state when there is an error loading balances", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: false,
       error: "Failed to load balances",
       noBalances: true,
@@ -147,6 +150,7 @@ describe("BalancesList", () => {
   it("should show empty state with Friendbot button on testnet", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: false,
       error: null,
       noBalances: true,

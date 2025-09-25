@@ -43,7 +43,12 @@ export const initAnalytics = (): void => {
   }
 
   try {
-    amplitude.init(AMPLITUDE_API_KEY);
+    amplitude.init(AMPLITUDE_API_KEY, undefined, {
+      trackingOptions: {
+        carrier: false,
+      },
+      disableCookies: true,
+    });
 
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();

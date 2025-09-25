@@ -31,6 +31,10 @@ import {
   hasXLMForFees,
 } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
+import {
+  formatBigNumberForDisplay,
+  parseDisplayNumberToBigNumber,
+} from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -58,7 +62,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
-  const { isBuilding, resetTransaction } = useTransactionBuilderStore();
+  const { isBuilding, resetTransaction, transactionHash } =
+    useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -78,6 +83,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenId,
     sourceTokenSymbol,
     sourceAmount,
+    sourceAmountDisplay,
     destinationAmount,
     pathResult,
     isLoadingPath,
@@ -85,6 +91,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
     setSourceAmount,
+    setSourceAmountDisplay,
+
     resetSwap,
   } = useSwapStore();
 
@@ -136,17 +144,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         balance: sourceBalance,
         subentryCount: account?.subentryCount,
         transactionFee: swapFee,
-      })
+      }) &&
+      !transactionHash
     ) {
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
-        amount: spendableAmount?.toFixed() || "0",
+        amount: spendableAmount
+          ? formatBigNumberForDisplay(spendableAmount, {
+              decimalPlaces: DEFAULT_DECIMALS,
+              useGrouping: false,
+            })
+          : "0",
         symbol: sourceTokenSymbol,
       });
       setAmountError(errorMessage);
       showToast({
         variant: "error",
         title: t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount?.toFixed() || "0",
+          amount: spendableAmount
+            ? formatBigNumberForDisplay(spendableAmount, {
+                decimalPlaces: DEFAULT_DECIMALS,
+                useGrouping: false,
+              })
+            : "0",
           symbol: sourceTokenSymbol,
         }),
         toastId: "insufficient-balance",
@@ -162,6 +181,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     t,
     account?.subentryCount,
     swapFee,
+    transactionHash,
     sourceBalance,
     balanceItems,
     showToast,
@@ -242,9 +262,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   };
 
-  const handleAmountChange = (key: string) => {
-    const newAmount = formatNumericInput(sourceAmount, key, DEFAULT_DECIMALS);
-    setSourceAmount(newAmount);
+  const handleDisplayAmountChange = (key: string) => {
+    const newAmount = formatNumericInput(
+      sourceAmountDisplay,
+      key,
+      DEFAULT_DECIMALS,
+    );
+    // Update display value immediately to preserve formatting
+    setSourceAmountDisplay(newAmount);
+    // Convert locale-formatted input to internal dot notation
+    const internalAmount = parseDisplayNumberToBigNumber(newAmount);
+    // Update internal value for calculations, preserving display value
+    setSourceAmount(internalAmount.toString(), true);
   };
 
   const handleSetMax = () => {
@@ -370,7 +399,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               numberOfLines={1}
               minimumFontScale={0.6}
             >
-              {sourceAmount}{" "}
+              {sourceAmountDisplay}{" "}
               <RNText style={{ color: themeColors.text.secondary }}>
                 {sourceTokenSymbol}
               </RNText>
@@ -462,7 +491,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             </View>
           </View>
           <View className="w-full">
-            <NumericKeyboard onPress={handleAmountChange} />
+            <NumericKeyboard onPress={handleDisplayAmountChange} />
           </View>
           <View className="w-full mt-auto mb-4">
             <Button

@@ -1,4 +1,6 @@
+import Blockaid from "@blockaid/client";
 import { TokenIcon } from "components/TokenIcon";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
   DEFAULT_PRESS_DELAY,
@@ -14,7 +16,8 @@ import {
 } from "helpers/formatAmount";
 import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
+import { assessTokenSecurity } from "services/blockaid/helper";
 import styled from "styled-components/native";
 
 const BalanceRowContainer = styled.View<{ isSingleRow?: boolean }>`
@@ -52,6 +55,7 @@ const RightSection = styled.View<RightSectionProps>`
 
 interface BalanceRowProps {
   balance: PricedBalance;
+  scanResult?: Blockaid.TokenBulk.TokenBulkScanResponse.Results;
   rightContent?: ReactNode;
   rightSectionWidth?: number;
   onPress?: () => void;
@@ -117,16 +121,30 @@ const renderContent = (
 
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
+  scanResult,
   customTextContent,
   rightContent,
   rightSectionWidth,
   onPress,
   isSingleRow = false,
-}) =>
-  renderContent(
+}) => {
+  const { isMalicious, isSuspicious } = assessTokenSecurity(scanResult);
+  return renderContent(
     <BalanceRowContainer isSingleRow={isSingleRow}>
       <LeftSection>
-        <TokenIcon token={balance} />
+        <View className="relative z-0">
+          <TokenIcon token={balance} />
+          {(isMalicious || isSuspicious) && (
+            <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
+              <Icon.AlertCircle
+                size={8}
+                testID="alert-icon"
+                themeColor={isMalicious ? "red" : "amber"}
+                withBackground
+              />
+            </View>
+          )}
+        </View>
         <TokenTextContainer>
           <Text medium numberOfLines={1}>
             {balance.displayName}
@@ -148,3 +166,4 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
     onPress,
     isSingleRow,
   );
+};

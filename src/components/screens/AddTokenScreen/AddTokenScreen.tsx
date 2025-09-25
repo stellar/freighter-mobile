@@ -38,7 +38,7 @@ import { useTokenLookup } from "hooks/useTokenLookup";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { createSecurityAssessment } from "services/blockaid/helper";
 
 type AddTokenScreenProps = NativeStackScreenProps<
@@ -317,6 +317,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
               severity={securitySeverity}
+              securityContext={SecurityContext.TOKEN}
               proceedAnywayText={t("addTokenScreen.approveAnyway")}
             />
           }
