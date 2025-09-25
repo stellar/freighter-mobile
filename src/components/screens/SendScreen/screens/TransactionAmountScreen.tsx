@@ -305,7 +305,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
-      if (!recipientAddress || !selectedBalance) {
+      const numberTokenAmount = new BigNumber(tokenAmount);
+
+      const hasRequiredParams =
+        recipientAddress &&
+        selectedBalance &&
+        numberTokenAmount.isGreaterThan(0);
+
+      if (!hasRequiredParams) {
         return;
       }
 
