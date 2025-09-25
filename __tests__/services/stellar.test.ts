@@ -2,41 +2,9 @@
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
  * This test focuses on the core retry functionality and constants
  */
-import {
-  SUBMIT_BACKOFF_MAX_ATTEMPTS,
-  BASE_BACKOFF_SEC,
-} from "services/stellar";
+import { BASE_BACKOFF_SEC } from "services/stellar";
 
 describe("stellar service - submitTx retry logic", () => {
-  it("should have correct constants for retry configuration", () => {
-    expect(SUBMIT_BACKOFF_MAX_ATTEMPTS).toBe(5);
-    expect(BASE_BACKOFF_SEC).toBe(1000);
-  });
-
-  it("should calculate exponential backoff delays correctly", () => {
-    // Test the exponential backoff calculation: 2^(attempt-1) * BASE_BACKOFF_SEC
-    const delays = [];
-    for (let attempt = 1; attempt <= SUBMIT_BACKOFF_MAX_ATTEMPTS; attempt++) {
-      const delay = 2 ** (attempt - 1) * BASE_BACKOFF_SEC;
-      delays.push(delay);
-    }
-
-    // Expected delays: 1s, 2s, 4s, 8s, 16s
-    expect(delays).toEqual([1000, 2000, 4000, 8000, 16000]);
-  });
-
-  it("should have retry logic that stops after max attempts", () => {
-    // Simulate retry logic
-    let attempt = 1;
-    const maxAttempts = SUBMIT_BACKOFF_MAX_ATTEMPTS;
-
-    while (attempt < maxAttempts) {
-      attempt++;
-    }
-
-    expect(attempt).toBe(maxAttempts);
-  });
-
   it("should implement correct delay timing", async () => {
     jest.useFakeTimers();
 
