@@ -22,6 +22,10 @@ import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
 
+// Retry configuration for transaction submission
+const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
+const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
+
 interface HorizonError {
   response: {
     status: number;
@@ -115,6 +119,7 @@ export const getSorobanRpcServer = (network: NETWORKS) => {
 
 export const submitTx = async (
   input: SubmitTxParams,
+  attempt: number = 1,
 ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> => {
   const { network, tx } = input;
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
@@ -131,10 +136,16 @@ export const submitTx = async (
     submittedTx = await server.submitTransaction(transaction);
   } catch (e: unknown) {
     if (isHorizonError(e) && e.response.status === 504) {
-      // in case of 504, keep retrying this tx until submission succeeds or we get a different error
+      // in case of 504, retry with exponential backoff up to max attempts
       // https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
       // https://developers.stellar.org/docs/encyclopedia/error-handling
-      return submitTx({ network, tx });
+      if (attempt < SUBMIT_BACKOFF_MAX_ATTEMPTS) {
+        const delay = 2 ** (attempt - 1) * BASE_BACKOFF_SEC; // Exponential backoff: 1s, 2s, 4s, 8s
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), delay);
+        });
+        return submitTx({ network, tx }, attempt + 1);
+      }
     }
     throw e;
   }
