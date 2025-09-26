@@ -7,7 +7,6 @@ import { Text } from "components/sds/Typography";
 import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { pxValue } from "helpers/dimensions";
 import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -90,10 +89,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const IconComponent = showMasked ? Icon.Eye : Icon.EyeOff;
   const pressableNote = (
     <Pressable onPress={handleToggleMasked} className="flex-row items-center">
-      <IconComponent
-        size={pxValue(20)}
-        color={themeColors.foreground.primary}
-      />
+      <IconComponent size={20} themeColor="gray" />
       <View className="ml-2">
         <Text sm color={themeColors.foreground.primary}>
           {t("importWalletScreen.textAreaNote")}

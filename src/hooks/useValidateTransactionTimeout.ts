@@ -12,19 +12,19 @@ export const useValidateTransactionTimeout = (timeout: string) => {
 
   useEffect(() => {
     if (!timeout) {
-      setError(t("transactionTimeoutScreen.errors.required"));
+      setError(t("transactionSettings.errors.timeout.required"));
       return;
     }
 
     const timeoutValue = Number(timeout);
 
     if (Number.isNaN(timeoutValue)) {
-      setError(t("transactionTimeoutScreen.errors.invalid"));
+      setError(t("transactionSettings.errors.timeout.invalid"));
       return;
     }
 
     if (timeoutValue < MIN_TRANSACTION_TIMEOUT) {
-      setError(t("transactionTimeoutScreen.errors.greaterThanZero"));
+      setError(t("transactionSettings.errors.timeout.greaterThanZero"));
       return;
     }
 

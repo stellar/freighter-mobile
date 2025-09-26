@@ -4,6 +4,7 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
+import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapReviewBottomSheet } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
@@ -13,7 +14,11 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_DECIMALS, SWAP_SELECTION_TYPES } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  SWAP_SELECTION_TYPES,
+  TransactionSettingsContext,
+} from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
@@ -31,7 +36,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useRightHeaderMenu } from "hooks/useRightHeader";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text as RNText, TouchableOpacity } from "react-native";
@@ -52,11 +57,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapTimeout, swapSlippage, resetToDefaults } =
-    useSwapSettingsStore();
+  const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -185,9 +190,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationBalance,
     pathResult,
     account,
-    swapFee,
-    swapTimeout,
-    swapSlippage,
     network,
     navigation,
   });
@@ -221,38 +223,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceAmount, pathResult]);
 
-  const menuActions = useMemo(
-    () => [
-      {
-        title: t("swapScreen.menu.fee", { fee: swapFee }),
-        systemIcon: "divide.circle",
-        onPress: () => {
-          navigation.navigate(SWAP_ROUTES.SWAP_FEE_SCREEN);
-        },
-      },
-      {
-        title: t("swapScreen.menu.timeout", {
-          timeout: swapTimeout,
-        }),
-        systemIcon: "clock",
-        onPress: () => {
-          navigation.navigate(SWAP_ROUTES.SWAP_TIMEOUT_SCREEN);
-        },
-      },
-      {
-        title: t("swapScreen.menu.slippage", {
-          slippage: swapSlippage,
-        }),
-        systemIcon: "plusminus.circle",
-        onPress: () => {
-          navigation.navigate(SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN);
-        },
-      },
-    ],
-    [navigation, swapFee, swapSlippage, swapTimeout, t],
-  );
-
-  useRightHeaderMenu({ actions: menuActions });
+  useRightHeaderButton({
+    icon: Icon.Settings04,
+    onPress: () => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    },
+  });
 
   const navigateToSelectDestinationTokenScreen = () => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
@@ -275,6 +251,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (spendableAmount) {
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
 
+      // Use standard formatting for the max amount
       setSourceAmount(spendableAmount.toString());
     }
   };
@@ -290,11 +267,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   };
 
-  const handleOpenReview = async () => {
+  const prepareSwapTransaction = async (shouldOpenReview = false) => {
     try {
       await setupSwapTransaction();
 
-      swapReviewBottomSheetModalRef.current?.present();
+      if (shouldOpenReview) {
+        swapReviewBottomSheetModalRef.current?.present();
+      }
     } catch (error) {
       logger.error(
         "SwapAmountScreen",
@@ -332,9 +311,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }, 100);
   };
 
+  const handleOpenSettings = () => {
+    transactionSettingsBottomSheetModalRef.current?.present();
+  };
+
+  const handleCancelSettings = () => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleConfirmSettings = () => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleSettingsChange = () => {
+    // Settings have changed, rebuild the transaction with new values
+    prepareSwapTransaction(false);
+  };
+
   const handleMainButtonPress = () => {
     if (destinationBalance) {
-      handleOpenReview();
+      prepareSwapTransaction(true);
     } else {
       navigateToSelectDestinationTokenScreen();
     }
@@ -363,7 +359,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }
 
   return (
-    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
+    <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
         <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
@@ -494,6 +490,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleConfirmSwap}
+            onSettingsPress={handleOpenSettings}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={transactionSettingsBottomSheetModalRef}
+        handleCloseModal={() =>
+          transactionSettingsBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <TransactionSettingsBottomSheet
+            context={TransactionSettingsContext.Swap}
+            onCancel={handleCancelSettings}
+            onConfirm={handleConfirmSettings}
+            onSettingsChange={handleSettingsChange}
           />
         }
       />

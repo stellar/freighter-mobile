@@ -26,11 +26,11 @@ export const formatNumericInput = (
     if (prevValue.includes(".")) {
       return prevValue;
     }
-    // Add "0" if "." is the first key pressed or input is empty
+    // Add "0" if decimal is the first key pressed or input is empty
     if (prevValue === "0" || prevValue === "") {
       return "0.";
     }
-    return `${prevValue}.`; // Use template literal
+    return `${prevValue}.`;
   }
 
   // Handle digit keys ("0" - "9")

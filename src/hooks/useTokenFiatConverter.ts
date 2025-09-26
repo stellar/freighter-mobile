@@ -1,4 +1,4 @@
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { formatNumericInput } from "helpers/numericInput";
@@ -44,9 +44,9 @@ export const useTokenFiatConverter = ({
   // Update fiat amount when token amount changes
   useEffect(() => {
     if (!showFiatAmount) {
-      const parsedTokenAmount = new BigNumber(tokenAmount);
-      if (parsedTokenAmount.isFinite()) {
-        const newFiatAmount = tokenPrice.multipliedBy(parsedTokenAmount);
+      const bnTokenAmount = new BigNumber(tokenAmount);
+      if (bnTokenAmount.isFinite()) {
+        const newFiatAmount = tokenPrice.multipliedBy(bnTokenAmount);
         setFiatAmount(newFiatAmount.toFixed(FIAT_DECIMALS));
       } else {
         setFiatAmount("0");
@@ -57,11 +57,11 @@ export const useTokenFiatConverter = ({
   // Update token amount when fiat amount changes
   useEffect(() => {
     if (showFiatAmount) {
-      const parsedFiatAmount = new BigNumber(fiatAmount);
-      if (parsedFiatAmount.isFinite()) {
+      const bnFiatAmount = new BigNumber(fiatAmount);
+      if (bnFiatAmount.isFinite()) {
         const newTokenAmount = tokenPrice.isZero()
           ? new BigNumber(0)
-          : parsedFiatAmount.dividedBy(tokenPrice);
+          : bnFiatAmount.dividedBy(tokenPrice);
         setTokenAmount(newTokenAmount.toFixed(DEFAULT_DECIMALS));
       } else {
         setTokenAmount("0");

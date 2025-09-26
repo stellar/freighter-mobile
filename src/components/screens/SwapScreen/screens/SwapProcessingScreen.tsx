@@ -62,6 +62,14 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     });
   }, [navigation]);
 
+  useEffect(
+    () => () =>
+      navigation.setOptions({
+        headerShown: true,
+      }),
+    [navigation],
+  );
+
   useEffect(() => {
     if (transactionError) {
       setStatus(SwapStatus.FAILED);
@@ -111,7 +119,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           <Icon.CheckCircle size={48} color={themeColors.status.success} />
         );
       case SwapStatus.FAILED:
-        return <Icon.XCircle size={48} color={themeColors.status.error} />;
+        return <Icon.XCircle size={48} themeColor="red" />;
       case SwapStatus.SWAPPING:
       default:
         return <Spinner size="large" color={themeColors.base[1]} />;

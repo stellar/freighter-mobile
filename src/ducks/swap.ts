@@ -1,5 +1,5 @@
 import { Horizon } from "@stellar/stellar-sdk";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
@@ -141,7 +141,9 @@ export const useSwapStore = create<SwapState>((set) => ({
   setDestinationToken: (tokenId, tokenSymbol) =>
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
-  setSourceAmount: (amount) => set({ sourceAmount: amount }),
+  setSourceAmount: (amount) => {
+    set({ sourceAmount: amount });
+  },
 
   findSwapPath: async (params) => {
     const {

@@ -41,6 +41,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const { t } = useAppTranslation();
 
   const fee = stroopToXlm(transactionDetails.fee).toString();
+
   const formattedDate = formatDate({
     date: transactionDetails?.operation.created_at ?? "",
     includeTime: true,

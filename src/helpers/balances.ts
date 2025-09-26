@@ -1,5 +1,5 @@
 import { Asset as SdkToken, StrKey } from "@stellar/stellar-sdk";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
   BASE_RESERVE,
