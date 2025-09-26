@@ -174,18 +174,27 @@ export const PathList = ({ paths }: PathListProps) => (
       >
         <Text>#{index + 1}</Text>
 
-        <KeyValueListItem
-          operationKey={t("signTransactionDetails.operations.tokenCode")}
-          operationValue={code}
-        />
+        <View className="flex-1">
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.operations.tokenCode")}
+            operationValue={code}
+          />
+        </View>
 
         {issuer ? (
-          <KeyValueListItem
-            operationKey={t("signTransactionDetails.operations.issuer")}
-            operationValue={
-              <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
-            }
-          />
+          <View className="flex-1">
+            <KeyValueListItem
+              operationKey={t("signTransactionDetails.operations.issuer")}
+              operationValue={
+                <View className="flex-row">
+                  <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
+                  <View className="ml-2">
+                    <Text>{truncateAddress(issuer, 4, 4)}</Text>
+                  </View>
+                </View>
+              }
+            />
+          </View>
         ) : null}
       </View>
     ))}

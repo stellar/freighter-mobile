@@ -1,6 +1,10 @@
 import Blockaid from "@blockaid/client";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
+import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import {
   formatConversionRate,
   getTokenFromBalance,
@@ -12,6 +16,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
@@ -23,7 +28,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import {
   assessTokenSecurity,
@@ -60,6 +65,19 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     destinationTokenSymbol,
   } = useSwapStore();
   const { transactionXDR, isBuilding } = useTransactionBuilderStore();
+  const transactionDetails = useSignTransactionDetails({
+    xdr: transactionXDR || "",
+  });
+  const signTransactionDetailsBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
+
+  const handleOpenTransactionDetails = () => {
+    signTransactionDetailsBottomSheetModalRef.current?.present();
+  };
+
+  const handleDismiss = () => {
+    signTransactionDetailsBottomSheetModalRef.current?.dismiss();
+  };
 
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
 
@@ -347,12 +365,34 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         ]}
       />
 
-      <TouchableOpacity className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px] mt-[16px]">
+      <TouchableOpacity
+        className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px] mt-[16px]"
+        onPress={handleOpenTransactionDetails}
+      >
         <Icon.List size={16} themeColor="lilac" />
         <Text color={themeColors.lilac[11]}>
           {t("dappRequestBottomSheetContent.transactionDetails")}
         </Text>
       </TouchableOpacity>
+      {transactionDetails && (
+        <BottomSheet
+          modalRef={signTransactionDetailsBottomSheetModalRef}
+          handleCloseModal={() =>
+            signTransactionDetailsBottomSheetModalRef.current?.dismiss()
+          }
+          enableDynamicSizing={false}
+          useInsetsBottomPadding={false}
+          enablePanDownToClose={false}
+          analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+          snapPoints={["90%"]}
+          customContent={
+            <SignTransactionDetailsBottomSheet
+              data={transactionDetails}
+              onDismiss={handleDismiss}
+            />
+          }
+        />
+      )}
 
       <View
         className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[16px]`}
