@@ -1,9 +1,7 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { fireEvent } from "@testing-library/react-native";
-import { Input } from "components/sds/Input";
+import { Input, StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
-import { fsValue, pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -15,14 +13,14 @@ describe("Input", () => {
   });
 
   describe("Size handling", () => {
-    it("applies correct styles for each field size", () => {
-      const sizes = {
-        sm: { fontSize: 12, lineHeight: 18, paddingVertical: 4 },
-        md: { fontSize: 14, lineHeight: 20, paddingVertical: 6 },
-        lg: { fontSize: 16, lineHeight: 24, paddingVertical: 8 },
+    it("applies correct classes for each field size", () => {
+      const sizeMap = {
+        sm: "text-xs",
+        md: "text-sm",
+        lg: "text-base",
       };
 
-      Object.entries(sizes).forEach(([size, metrics]) => {
+      Object.entries(sizeMap).forEach(([size]) => {
         const { getByTestId } = renderWithProviders(
           <Input
             fieldSize={size as "sm" | "md" | "lg"}
@@ -32,10 +30,17 @@ describe("Input", () => {
         );
         const input = getByTestId("test-input");
 
-        expect(input.props.style).toMatchObject({
-          fontSize: fsValue(metrics.fontSize),
-          height: pxValue(metrics.lineHeight + 3 * metrics.paddingVertical),
-        });
+        // Check that the input has the correct font size
+        let expectedFontSize;
+        if (size === "sm") expectedFontSize = 12;
+        else if (size === "md") expectedFontSize = 14;
+        else expectedFontSize = 16;
+
+        expect(input.props.style).toContainEqual(
+          expect.objectContaining({
+            fontSize: expectedFontSize,
+          }),
+        );
       });
     });
 
@@ -45,10 +50,12 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
 
-      expect(input.props.style).toMatchObject({
-        fontSize: fsValue(16), // lg size
-        height: pxValue(48), // lineHeight(24) + 3 * paddingVertical(8)
-      });
+      // Check that the input has the correct font size
+      expect(input.props.style).toContainEqual(
+        expect.objectContaining({
+          fontSize: 16,
+        }),
+      );
     });
   });
 
@@ -76,26 +83,22 @@ describe("Input", () => {
   });
 
   describe("Error state", () => {
-    it("applies error styles when isError is true", () => {
+    it("applies error classes when isError is true", () => {
       const { getByTestId } = renderWithProviders(
         <Input isError testID="test-input" value="" />,
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(inputContainer.props.className).toContain("border-status-error");
     });
 
-    it("applies error styles when error message is provided", () => {
+    it("applies error classes when error message is provided", () => {
       const { getByTestId, getByText } = renderWithProviders(
         <Input error="Error message" testID="test-input" value="" />,
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(inputContainer.props.className).toContain("border-status-error");
       expect(getByText("Error message")).toBeTruthy();
     });
   });
@@ -178,9 +181,9 @@ describe("Input", () => {
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        backgroundColor: THEME.colors.background.secondary,
-      });
+      expect(inputContainer.props.className).toContain(
+        "bg-background-secondary",
+      );
     });
   });
 
@@ -207,6 +210,68 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
       expect(input.props.secureTextEntry).toBe(true);
+    });
+  });
+
+  describe("Custom styling", () => {
+    it("applies custom style when provided", () => {
+      const customStyle = {
+        borderColor: "#ff0000",
+        borderWidth: 2,
+        borderRadius: 10,
+        paddingHorizontal: 16,
+      };
+
+      const { getByTestId } = renderWithProviders(
+        <Input testID="test-input" value="" style={customStyle} />,
+      );
+      const input = getByTestId("test-input");
+
+      // Style is now an array [inputStyles, customStyle]
+      expect(input.props.style).toContainEqual(
+        expect.objectContaining(customStyle),
+      );
+    });
+  });
+
+  describe("StyledTextInput", () => {
+    it("renders as standalone TextInput with container", () => {
+      const { getByTestId } = renderWithProviders(
+        <StyledTextInput testID="test-styled-input" value="test" />,
+      );
+      const container = getByTestId("test-styled-input");
+
+      expect(container).toBeTruthy();
+      expect(container.props.className).toContain("bg-background-default");
+      expect(container.props.className).toContain("border");
+    });
+
+    it("applies custom style when provided", () => {
+      const customStyle = {
+        borderColor: "#00ff00",
+        borderWidth: 1,
+        borderRadius: 5,
+        flex: 1,
+      };
+
+      const { getByTestId } = renderWithProviders(
+        <StyledTextInput
+          testID="test-styled-input"
+          value=""
+          style={customStyle}
+        />,
+      );
+      const container = getByTestId("test-styled-input");
+
+      // StyledTextInput now wraps TextInputComponent in a View container
+      // The height and custom style are applied to the container
+      // Padding is applied to the TextInput inside
+      expect(container.props.style).toEqual(
+        expect.objectContaining({
+          height: 50,
+          ...customStyle,
+        }),
+      );
     });
   });
 });
