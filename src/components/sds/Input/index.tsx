@@ -2,151 +2,180 @@ import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
-import { fs, px } from "helpers/dimensions";
-import React, { useState } from "react";
-import { Platform, TouchableOpacity, TextInput } from "react-native";
-import styled, { css } from "styled-components/native";
+import { isAndroid } from "helpers/device";
+import { pxValue, fsValue } from "helpers/dimensions";
+import React, { useState, useMemo } from "react";
+import {
+  TouchableOpacity,
+  TextInput,
+  View,
+  ViewStyle,
+  TextStyle,
+} from "react-native";
 
 // =============================================================================
 // Constants and types
 // =============================================================================
 
-const INPUT_SIZES = {
-  sm: {
-    fontSize: 12,
-    lineHeight: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    gap: 6,
-    borderRadius: 4,
-  },
-  md: {
-    fontSize: 14,
-    lineHeight: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    gap: 6,
-    borderRadius: 6,
-  },
-  lg: {
-    fontSize: 16,
-    lineHeight: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    gap: 8,
-    borderRadius: 8,
-  },
-} as const;
-
-export type InputSize = keyof typeof INPUT_SIZES;
-
-/**
- * Calculates the input height based on field size
- *
- * @param fieldSize - The size of the input field (sm, md, lg)
- * @returns The pixel height of the input field
- */
-const getInputHeight = (fieldSize: InputSize): string =>
-  px(
-    INPUT_SIZES[fieldSize].lineHeight +
-      3 * INPUT_SIZES[fieldSize].paddingVertical,
-  );
+export type InputSize = "sm" | "md" | "lg";
 
 // =============================================================================
-// Styled components
+// Helper functions for NativeWind classes
 // =============================================================================
 
-interface StyledProps {
-  $fieldSize: InputSize;
-  $isError?: boolean;
-  $isDisabled?: boolean;
-  $hasLeftElement?: boolean;
-  $hasRightElement?: boolean;
-  position?: "left" | "right";
-  $variant?: "error" | "success";
-}
+const getInputContainerClasses = (
+  fieldSize: InputSize,
+  isError?: boolean,
+  isDisabled?: boolean,
+  hasEndButton?: boolean,
+) => {
+  const baseClasses = "flex-row items-center";
+  const backgroundColor = isDisabled
+    ? "bg-background-secondary"
+    : "bg-background-primary";
 
-const Container = styled.View<Pick<StyledProps, "$fieldSize">>`
-  width: 100%;
-  gap: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(INPUT_SIZES[$fieldSize].gap)};
-`;
+  const borderColor = isError ? "border-status-error" : "border-border-primary";
 
-const InputContainer = styled.View<
-  Pick<StyledProps, "$fieldSize" | "$isError" | "$isDisabled">
->`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
-    $isDisabled
-      ? THEME.colors.background.secondary
-      : THEME.colors.background.default};
-  border-width: 1px;
-  border-color: ${({ $isError }: Pick<StyledProps, "$isError">) => {
-    if ($isError) {
-      return THEME.colors.status.error;
-    }
-    return THEME.colors.border.default;
-  }};
-  border-radius: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(INPUT_SIZES[$fieldSize].borderRadius)};
-  padding-horizontal: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(INPUT_SIZES[$fieldSize].paddingHorizontal)};
-`;
+  // Apply borders conditionally - no right border when end button is present
+  const borders = hasEndButton
+    ? `border-t border-b border-l ${borderColor}` // 3 borders when end button is present (no right border)
+    : `border ${borderColor}`; // 4 borders when no end button
 
-const commonInputStyles = css<Pick<StyledProps, "$fieldSize" | "$isDisabled">>`
-  flex: 1;
-  height: ${({ $fieldSize }) => getInputHeight($fieldSize)};
-  font-size: ${({ $fieldSize }) => fs(INPUT_SIZES[$fieldSize].fontSize)};
-  color: ${({ $isDisabled }) =>
-    $isDisabled ? THEME.colors.text.secondary : THEME.colors.text.primary};
-  font-family: ${Platform.select({
-    ios: "Inter-Variable",
-    android: "Inter-Regular",
-  })};
-  font-weight: ${Platform.select({
-    ios: "400",
-    android: "normal",
-  })};
-`;
+  // Add border radius based on field size and end button presence
+  const borderRadius = hasEndButton
+    ? {
+        sm: "rounded-l",
+        md: "rounded-l-md",
+        lg: "rounded-l-lg",
+      }
+    : {
+        sm: "rounded",
+        md: "rounded-md",
+        lg: "rounded-lg",
+      };
 
-export const StyledTextInput = styled.TextInput<
-  Pick<
-    StyledProps,
-    "$fieldSize" | "$hasLeftElement" | "$hasRightElement" | "$isDisabled"
-  >
->`
-  ${commonInputStyles}
-`;
+  return `${baseClasses} ${backgroundColor} ${borders} ${borderRadius[fieldSize]}`;
+};
 
-const StyledBottomSheetTextInput = styled(BottomSheetTextInput)`
-  ${commonInputStyles}
-`;
+// Get iOS-specific input classes
+const getIOSInputClasses = (isDisabled?: boolean) => {
+  const baseClasses = "flex-1";
+  const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
+  const fontFamily = "font-inter-variable";
+  const fontWeight = "font-normal";
+  const textAlign = "text-left";
 
-const SideElement = styled.View<{ marginSide: "left" | "right" }>`
-  justify-content: center;
-  margin-${({ marginSide }: { marginSide: "left" | "right" }) => marginSide}: ${px(8)};
-`;
+  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign}`;
+};
 
-const FieldNoteWrapper = styled.View`
-  margin-top: ${px(4)};
-`;
+// Get Android-specific input classes
+const getAndroidInputClasses = (isDisabled?: boolean) => {
+  const baseClasses = "flex-1";
+  const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
+  const fontFamily = "font-inter-regular";
+  const fontWeight = "font-normal";
+  const textAlign = "text-left";
 
-const ButtonContainer = styled.View<
-  Pick<StyledProps, "$fieldSize" | "$isError"> & { backgroundColor?: string }
->`
-  background-color: ${({
-    backgroundColor,
-  }: Pick<StyledProps, "$isError"> & { backgroundColor?: string }) =>
-    backgroundColor || THEME.colors.background.default};
-  padding: ${px(8)} 0 ${px(8)} ${px(12)};
-  border-left-width: 1px;
-  border-left-color: ${THEME.colors.border.default};
-  height: ${({ $fieldSize }: { $fieldSize: InputSize }) =>
-    getInputHeight($fieldSize)};
-  align-items: center;
-  justify-content: center;
-`;
+  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign}`;
+};
+
+// Get platform-specific input classes
+const getInputClasses = (fieldSize: InputSize, isDisabled?: boolean) =>
+  isAndroid
+    ? getAndroidInputClasses(isDisabled)
+    : getIOSInputClasses(isDisabled);
+
+// Get iOS-specific input styles
+const getIOSInputStyles = (fieldSize: InputSize) => {
+  const fontSizeMap = {
+    sm: fsValue(12),
+    md: fsValue(14),
+    lg: fsValue(16),
+  };
+
+  return {
+    fontSize: fontSizeMap[fieldSize],
+  };
+};
+
+// Get Android-specific input styles
+const getAndroidInputStyles = (fieldSize: InputSize) => {
+  const fontSizeMap = {
+    sm: fsValue(12),
+    md: fsValue(14),
+    lg: fsValue(16),
+  };
+
+  return {
+    fontSize: fontSizeMap[fieldSize],
+    textAlignVertical: "center" as const,
+    includeFontPadding: false,
+    paddingVertical: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+  };
+};
+
+// Get platform-specific input styles
+const getInputStyles = (fieldSize: InputSize) =>
+  isAndroid ? getAndroidInputStyles(fieldSize) : getIOSInputStyles(fieldSize);
+
+const getSideElementClasses = (marginSide: "left" | "right") =>
+  `justify-center items-center ${marginSide === "left" ? "ml-2" : "mr-2"}`;
+
+const getFieldNoteWrapperClasses = () => "mt-1";
+
+const getButtonContainerClasses = (
+  fieldSize: InputSize,
+  backgroundColor?: string,
+  isError?: boolean,
+) => {
+  const bgColor = backgroundColor ? "" : "bg-background-primary";
+  const borderColor = isError ? "border-status-error" : "border-border-primary";
+  const border = `border-l border-t border-b border-r ${borderColor}`; // Only right, top, and bottom borders (flat left)
+
+  // Add border radius for the right side
+  const borderRadius = {
+    sm: "rounded-r",
+    md: "rounded-r-md",
+    lg: "rounded-r-lg",
+  };
+
+  return `${bgColor} ${border} ${borderRadius[fieldSize]} items-center justify-center`;
+};
+
+// Size-specific classes for different field sizes
+const getSizeClasses = (fieldSize: InputSize) => {
+  const paddingMap = {
+    sm: "py-1", // paddingVertical(4)
+    md: "py-1.5", // paddingVertical(6)
+    lg: "py-2", // paddingVertical(8)
+  };
+  return paddingMap[fieldSize];
+};
+
+// Get container height styles to match original implementation exactly
+const getContainerHeightStyles = (fieldSize: InputSize) => {
+  const heightMap = {
+    sm: pxValue(20 + 3 * 4),
+    md: pxValue(22 + 3 * 6),
+    lg: pxValue(26 + 3 * 8),
+  };
+
+  return {
+    height: heightMap[fieldSize],
+  };
+};
+
+// Gap classes for container spacing
+const getGapClasses = (fieldSize: InputSize) => {
+  const gapMap = {
+    sm: "gap-1.5",
+    md: "gap-1.5",
+    lg: "gap-2",
+  };
+  return gapMap[fieldSize];
+};
 
 // =============================================================================
 // Component
@@ -229,6 +258,7 @@ const ButtonContainer = styled.View<
  * @param {string} [props.testID] - Test ID for testing
  * @param {("none" | "sentences" | "words" | "characters")} [props.autoCapitalize] - Text capitalization behavior
  * @param {("default" | "number-pad" | "decimal-pad" | "numeric" | "email-address" | "phone-pad")} [props.keyboardType] - Keyboard type for the input
+ * @param {ViewStyle | TextStyle} [props.style] - Custom style to override default styling
  */
 interface InputProps {
   id?: string;
@@ -257,7 +287,9 @@ interface InputProps {
   };
   value?: string;
   onChangeText?: (text: string) => void;
+  onSubmitEditing?: () => void;
   placeholder?: string;
+  placeholderTextColor?: string;
   secureTextEntry?: boolean;
   editable?: boolean;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
@@ -271,9 +303,170 @@ interface InputProps {
     | "email-address"
     | "phone-pad";
   isBottomSheetInput?: boolean;
+  style?: ViewStyle | TextStyle;
+  selectTextOnFocus?: boolean;
 }
 
-export const Input = React.forwardRef<TextInput, InputProps>(
+// Create a more flexible ref type that can handle both TextInput types
+type InputRef = TextInput | React.ComponentRef<typeof BottomSheetTextInput>;
+
+// =============================================================================
+// Shared TextInput Component
+// =============================================================================
+
+interface TextInputComponentProps {
+  fieldSize?: InputSize;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  placeholder?: string;
+  placeholderTextColor?: string;
+  secureTextEntry?: boolean;
+  editable?: boolean;
+  autoCorrect?: boolean;
+  isBottomSheetInput?: boolean;
+  testID?: string;
+  style?: ViewStyle | TextStyle;
+  ref: React.Ref<InputRef>;
+  onSubmitEditing?: () => void;
+  selectTextOnFocus?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoFocus?: boolean;
+  keyboardType?:
+    | "default"
+    | "number-pad"
+    | "decimal-pad"
+    | "numeric"
+    | "email-address"
+    | "phone-pad";
+  selection?: { start: number; end: number };
+}
+
+const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
+  (
+    {
+      fieldSize,
+      value,
+      onChangeText,
+      placeholder,
+      placeholderTextColor = THEME.colors.text.secondary,
+      secureTextEntry = false,
+      editable = true,
+      autoCorrect = true,
+      isBottomSheetInput = false,
+      testID,
+      style,
+      ...props
+    },
+    ref,
+  ) => {
+    const inputClasses = useMemo(
+      () => getInputClasses(fieldSize || "lg", !editable),
+      [fieldSize, editable],
+    );
+
+    const inputStyles = useMemo(
+      () => getInputStyles(fieldSize || "lg"),
+      [fieldSize],
+    );
+
+    if (isBottomSheetInput) {
+      return (
+        <BottomSheetTextInput
+          ref={
+            ref as React.Ref<React.ComponentRef<typeof BottomSheetTextInput>>
+          }
+          testID={testID}
+          placeholder={placeholder}
+          placeholderTextColor={placeholderTextColor}
+          value={value}
+          onChangeText={onChangeText}
+          editable={editable}
+          secureTextEntry={secureTextEntry}
+          autoCorrect={autoCorrect}
+          className={inputClasses}
+          style={[inputStyles, style]}
+          {...props}
+        />
+      );
+    }
+
+    return (
+      <TextInput
+        ref={ref as React.Ref<TextInput>}
+        testID={testID}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        value={value}
+        onChangeText={onChangeText}
+        editable={editable}
+        secureTextEntry={secureTextEntry}
+        autoCorrect={autoCorrect}
+        className={inputClasses}
+        style={[inputStyles, style]}
+        {...props}
+      />
+    );
+  },
+);
+
+TextInputComponent.displayName = "TextInputComponent";
+
+// =============================================================================
+// StyledTextInput - Standalone TextInput for custom layouts
+// =============================================================================
+
+export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
+  (props, ref) => {
+    const { fieldSize = "lg", style, ...restProps } = props;
+
+    const containerHeightStyles = useMemo(
+      () => getContainerHeightStyles(fieldSize),
+      [fieldSize],
+    );
+
+    const textInputPaddingStyles = useMemo(() => {
+      // Add padding directly to TextInput for better Android compatibility
+      if (fieldSize === "sm")
+        return { paddingLeft: pxValue(10), paddingRight: pxValue(10) };
+      if (fieldSize === "md")
+        return { paddingLeft: pxValue(12), paddingRight: pxValue(12) };
+      return { paddingLeft: pxValue(14), paddingRight: pxValue(14) };
+    }, [fieldSize]);
+
+    const containerStyle = useMemo(
+      () => ({
+        ...containerHeightStyles,
+        ...style,
+      }),
+      [containerHeightStyles, style],
+    );
+
+    const { testID, ...textInputProps } = restProps;
+
+    return (
+      <View
+        testID={testID}
+        className="bg-background-default border border-border-primary rounded"
+        style={containerStyle}
+      >
+        <TextInputComponent
+          ref={ref}
+          fieldSize={fieldSize}
+          style={textInputPaddingStyles}
+          {...textInputProps}
+        />
+      </View>
+    );
+  },
+);
+
+StyledTextInput.displayName = "StyledTextInput";
+
+// =============================================================================
+// Main Input Component
+// =============================================================================
+
+export const Input = React.forwardRef<InputRef, InputProps>(
   (
     {
       fieldSize = "lg",
@@ -317,20 +510,89 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       md: fieldSize === "lg",
     });
 
+    // Memoize classes to avoid recalculation
+    const containerClasses = useMemo(
+      () => `w-full ${getGapClasses(fieldSize)}`,
+      [fieldSize],
+    );
+
+    const inputContainerClasses = useMemo(
+      () =>
+        `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${getSizeClasses(fieldSize)}`,
+      [fieldSize, isError, error, editable, endButton],
+    );
+
+    const sideElementClasses = useMemo(
+      () => getSideElementClasses("right"),
+      [],
+    );
+
+    const leftSideElementClasses = useMemo(
+      () => getSideElementClasses("left"),
+      [],
+    );
+
+    const fieldNoteClasses = useMemo(() => getFieldNoteWrapperClasses(), []);
+
+    const buttonContainerClasses = useMemo(
+      () =>
+        getButtonContainerClasses(
+          fieldSize,
+          endButton?.backgroundColor,
+          Boolean(isError || error),
+        ),
+      [fieldSize, endButton?.backgroundColor, isError, error],
+    );
+
+    // Hardcoded values - no dynamic calculations needed
+
+    // Hardcoded padding classes for container
+    const containerPaddingClasses = useMemo(() => {
+      // Hardcoded padding values based on field size
+      let paddingLeft = "pl-[14px]"; // default lg
+      if (fieldSize === "sm") paddingLeft = "pl-[10px]";
+      else if (fieldSize === "md") paddingLeft = "pl-[12px]";
+
+      let paddingRight = "";
+      // Add right padding when there's no endButton (endButton takes up the right space)
+      if (!endButton) {
+        if (fieldSize === "sm") paddingRight = "pr-[10px]";
+        else if (fieldSize === "md") paddingRight = "pr-[12px]";
+        else paddingRight = "pr-[14px]";
+      }
+
+      return `${paddingLeft} ${paddingRight}`.trim();
+    }, [fieldSize, endButton]);
+
+    const buttonPaddingClasses = useMemo(
+      () => "pt-[8px] pb-[8px] pl-[12px] pr-[12px]",
+      [],
+    );
+
+    const endButtonHeight = useMemo(() => {
+      const heightMap = {
+        sm: pxValue(20 + 3 * 4), // lineHeight(18) + 3 * paddingVertical(4)
+        md: pxValue(22 + 3 * 6), // lineHeight(20) + 3 * paddingVertical(6)
+        lg: pxValue(26 + 3 * 8), // lineHeight(24) + 3 * paddingVertical(8)
+      };
+      return heightMap[fieldSize];
+    }, [fieldSize]);
+
+    const containerHeightStyles = useMemo(
+      () => getContainerHeightStyles(fieldSize),
+      [fieldSize],
+    );
+
     const renderCopyButton = (position: "left" | "right") => (
       <TouchableOpacity onPress={handleCopy}>
-        <SideElement position={position}>
+        <View className={getSideElementClasses(position)}>
           <Text sm>{copyButton?.showLabel ? "Copy" : "📋"}</Text>
-        </SideElement>
+        </View>
       </TouchableOpacity>
     );
 
-    const StyledTextInputComponent = isBottomSheetInput
-      ? StyledBottomSheetTextInput
-      : StyledTextInput;
-
     return (
-      <Container $fieldSize={fieldSize}>
+      <View className={containerClasses}>
         {label && (
           <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
@@ -343,53 +605,54 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           </Text>
         )}
 
-        <InputContainer
-          testID={testID ? `${testID}-container` : undefined}
-          $fieldSize={fieldSize}
-          $isError={Boolean(isError || error)}
-          $isDisabled={!editable}
-        >
-          {copyButton?.position === "left" && renderCopyButton("left")}
-          {leftElement && (
-            <SideElement marginSide="right">{leftElement}</SideElement>
-          )}
+        <View className="flex-row items-center">
+          <View
+            testID={testID ? `${testID}-container` : undefined}
+            className={`${inputContainerClasses} ${containerPaddingClasses} flex-1`}
+            style={containerHeightStyles}
+          >
+            {copyButton?.position === "left" && renderCopyButton("left")}
+            {leftElement && (
+              <View className={sideElementClasses}>{leftElement}</View>
+            )}
 
-          <StyledTextInputComponent
-            ref={ref}
-            testID={testID}
-            placeholder={placeholder}
-            placeholderTextColor={THEME.colors.text.secondary}
-            value={value}
-            onChangeText={onChangeText}
-            editable={editable}
-            secureTextEntry={isPassword && !showPassword}
-            autoCorrect={autoCorrect}
-            autoFocus={props.autoFocus}
-            $fieldSize={fieldSize}
-            $hasLeftElement={leftElement || copyButton?.position === "left"}
-            $hasRightElement={
-              rightElement ||
-              copyButton?.position === "right" ||
-              (isPassword && !endButton)
-            }
-            $isDisabled={!editable}
-            selection={!editable && value ? { start: 0, end: 0 } : undefined}
-            {...props}
-          />
+            <TextInputComponent
+              ref={ref}
+              fieldSize={fieldSize}
+              value={value}
+              onChangeText={onChangeText}
+              placeholder={placeholder}
+              placeholderTextColor={THEME.colors.text.secondary}
+              secureTextEntry={isPassword && !showPassword}
+              editable={editable}
+              autoCorrect={autoCorrect}
+              isBottomSheetInput={isBottomSheetInput}
+              testID={testID}
+              selection={!editable && value ? { start: 0, end: 0 } : undefined}
+              {...props}
+            />
 
-          {rightElement && (
-            <SideElement marginSide="left">{rightElement}</SideElement>
-          )}
-          {copyButton?.position === "right" && renderCopyButton("right")}
+            {rightElement && (
+              <View className={leftSideElementClasses}>{rightElement}</View>
+            )}
+            {copyButton?.position === "right" && renderCopyButton("right")}
+          </View>
+
           {endButton && (
             <TouchableOpacity
               onPress={endButton.onPress}
               disabled={endButton.disabled}
               testID={testID ? `${testID}-end-button` : undefined}
+              className="flex-shrink-0"
             >
-              <ButtonContainer
-                backgroundColor={endButton.backgroundColor}
-                $fieldSize={fieldSize}
+              <View
+                className={`${buttonContainerClasses} ${buttonPaddingClasses} mr-[4px]`}
+                style={{
+                  backgroundColor:
+                    endButton.backgroundColor ||
+                    THEME.colors.background.default,
+                  height: endButtonHeight,
+                }}
               >
                 {typeof endButton.content === "string" ? (
                   <Text
@@ -403,33 +666,33 @@ export const Input = React.forwardRef<TextInput, InputProps>(
                 ) : (
                   endButton.content
                 )}
-              </ButtonContainer>
+              </View>
             </TouchableOpacity>
           )}
-        </InputContainer>
+        </View>
 
         {note && (
-          <FieldNoteWrapper>
+          <View className={fieldNoteClasses}>
             <Text sm color={THEME.colors.text.secondary}>
               {note}
             </Text>
-          </FieldNoteWrapper>
+          </View>
         )}
         {error && (
-          <FieldNoteWrapper>
+          <View className={fieldNoteClasses}>
             <Text sm color={THEME.colors.status.error}>
               {error}
             </Text>
-          </FieldNoteWrapper>
+          </View>
         )}
         {success && (
-          <FieldNoteWrapper>
+          <View className={fieldNoteClasses}>
             <Text sm color={THEME.colors.status.success}>
               {success}
             </Text>
-          </FieldNoteWrapper>
+          </View>
         )}
-      </Container>
+      </View>
     );
   },
 );
