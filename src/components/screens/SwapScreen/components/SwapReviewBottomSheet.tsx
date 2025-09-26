@@ -39,7 +39,7 @@ type SwapReviewBottomSheetProps = {
   onCancel?: () => void;
   onConfirm?: () => void;
   onBannerPress?: () => void;
-  scanResult: Blockaid.StellarTransactionScanResponse | undefined;
+  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
   sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
   destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
 };
@@ -48,7 +48,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   onCancel,
   onConfirm,
   onBannerPress,
-  scanResult,
+  transactionScanResult,
   sourceTokenScanResult,
   destTokenScanResult,
 }) => {
@@ -68,15 +68,15 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const transactionDetails = useSignTransactionDetails({
     xdr: transactionXDR || "",
   });
-  const signTransactionDetailsBottomSheetModalRef =
+  const swapTransactionDetailsBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
 
   const handleOpenTransactionDetails = () => {
-    signTransactionDetailsBottomSheetModalRef.current?.present();
+    swapTransactionDetailsBottomSheetModalRef.current?.present();
   };
 
   const handleDismiss = () => {
-    signTransactionDetailsBottomSheetModalRef.current?.dismiss();
+    swapTransactionDetailsBottomSheetModalRef.current?.dismiss();
   };
 
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
@@ -153,7 +153,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   };
 
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
-    assessTransactionSecurity(scanResult);
+    assessTransactionSecurity(transactionScanResult);
   const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
     assessTokenSecurity(sourceTokenScanResult);
   const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
@@ -376,14 +376,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       </TouchableOpacity>
       {transactionDetails && (
         <BottomSheet
-          modalRef={signTransactionDetailsBottomSheetModalRef}
+          modalRef={swapTransactionDetailsBottomSheetModalRef}
           handleCloseModal={() =>
-            signTransactionDetailsBottomSheetModalRef.current?.dismiss()
+            swapTransactionDetailsBottomSheetModalRef.current?.dismiss()
           }
           enableDynamicSizing={false}
           useInsetsBottomPadding={false}
           enablePanDownToClose={false}
-          analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+          analyticsEvent={AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS}
           snapPoints={["90%"]}
           customContent={
             <SignTransactionDetailsBottomSheet

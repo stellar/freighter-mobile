@@ -586,7 +586,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <SwapReviewBottomSheet
             onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
             onConfirm={handleConfirmSwap}
-            scanResult={transactionScanResult}
+            transactionScanResult={transactionScanResult}
             sourceTokenScanResult={
               sourceBalance
                 ? scanResults[sourceBalance.id.replace(":", "-")]

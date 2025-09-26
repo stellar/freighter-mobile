@@ -37,6 +37,7 @@ export enum AnalyticsEvent {
   VIEW_SWAP_TIMEOUT = "loaded screen: swap timeout",
   VIEW_SWAP_SETTINGS = "loaded screen: swap settings",
   VIEW_SWAP_CONFIRM = "loaded screen: swap confirm",
+  VIEW_SWAP_TRANSACTION_DETAILS = "loaded screen: swap transaction details",
   VIEW_SETTINGS = "loaded screen: settings",
   VIEW_PREFERENCES = "loaded screen: preferences",
   VIEW_CHANGE_NETWORK = "loaded screen: manage network",
