@@ -332,8 +332,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           recipientAddress: storeRecipientAddress,
         } = useTransactionSettingsStore.getState();
 
-        // Use internal value (already in dot notation) for transaction building
-
         const finalXDR = await buildTransaction({
           tokenAmount,
           selectedBalance,
