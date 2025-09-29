@@ -93,7 +93,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveRecipientAddress,
-    saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -423,7 +422,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     };
 
     processTransaction();
-    saveMemo("");
   };
 
   const handleProcessingScreenClose = () => {
