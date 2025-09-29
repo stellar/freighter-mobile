@@ -36,12 +36,6 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
 
         <StyledTextInput
           fieldSize="lg"
-          style={{
-            borderColor: themeColors.border.primary,
-            borderWidth: pxValue(1),
-            borderRadius: pxValue(8),
-            flex: 1,
-          }}
           value={inputUrl}
           onChangeText={onInputChange}
           onSubmitEditing={onUrlSubmit}
@@ -56,11 +50,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
         {/* Show Tabs Button */}
         <TouchableOpacity
           onPress={onShowTabs}
-          className="w-14 border border-border-primary justify-center items-center"
-          style={{
-            borderRadius: pxValue(8),
-            height: pxValue(26 + 3 * 8), // Match input height for lg fieldSize
-          }}
+          className="w-14 border border-border-primary justify-center items-center rounded-lg h-[48px]"
         >
           <Text md semiBold>
             {tabsCount > 9 ? "9+" : tabsCount}

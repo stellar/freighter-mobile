@@ -30,17 +30,9 @@ describe("Input", () => {
         );
         const input = getByTestId("test-input");
 
-        // Check that the input has the correct font size
-        let expectedFontSize;
-        if (size === "sm") expectedFontSize = 12;
-        else if (size === "md") expectedFontSize = 14;
-        else expectedFontSize = 16;
-
-        expect(input.props.style).toContainEqual(
-          expect.objectContaining({
-            fontSize: expectedFontSize,
-          }),
-        );
+        // Check that the input has the correct font size class
+        const expectedFontSizeClass = sizeMap[size as keyof typeof sizeMap];
+        expect(input.props.className).toContain(expectedFontSizeClass);
       });
     });
 
@@ -50,12 +42,8 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
 
-      // Check that the input has the correct font size
-      expect(input.props.style).toContainEqual(
-        expect.objectContaining({
-          fontSize: 16,
-        }),
-      );
+      // Check that the input has the correct font size class
+      expect(input.props.className).toContain("text-base");
     });
   });
 
@@ -264,13 +252,12 @@ describe("Input", () => {
       const container = getByTestId("test-styled-input");
 
       // StyledTextInput now wraps TextInputComponent in a View container
-      // The height and custom style are applied to the container
-      // Padding is applied to the TextInput inside
+      // The height and padding are applied via className, custom style is applied to the container
+      expect(container.props.className).toContain("h-[48px]");
+      expect(container.props.className).toContain("pl-[14px]");
+      expect(container.props.className).toContain("pr-[14px]");
       expect(container.props.style).toEqual(
-        expect.objectContaining({
-          height: 50,
-          ...customStyle,
-        }),
+        expect.objectContaining(customStyle),
       );
     });
   });

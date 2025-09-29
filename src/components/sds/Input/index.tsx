@@ -3,7 +3,7 @@ import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { isAndroid } from "helpers/device";
-import { pxValue, fsValue } from "helpers/dimensions";
+import { fsValue } from "helpers/dimensions";
 import React, { useState, useMemo } from "react";
 import {
   TouchableOpacity,
@@ -58,32 +58,46 @@ const getInputContainerClasses = (
 };
 
 // Get iOS-specific input classes
-const getIOSInputClasses = (isDisabled?: boolean) => {
+const getIOSInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
   const fontFamily = "font-inter-variable";
   const fontWeight = "font-normal";
   const textAlign = "text-left";
 
-  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign}`;
+  const fontSizeMap = {
+    sm: "text-xs",
+    md: "text-sm",
+    lg: "text-base",
+  };
+  const fontSize = fontSizeMap[fieldSize];
+
+  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
 };
 
 // Get Android-specific input classes
-const getAndroidInputClasses = (isDisabled?: boolean) => {
+const getAndroidInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
   const fontFamily = "font-inter-regular";
   const fontWeight = "font-normal";
   const textAlign = "text-left";
 
-  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign}`;
+  const fontSizeMap = {
+    sm: "text-xs",
+    md: "text-sm",
+    lg: "text-base",
+  };
+  const fontSize = fontSizeMap[fieldSize];
+
+  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
 };
 
 // Get platform-specific input classes
 const getInputClasses = (fieldSize: InputSize, isDisabled?: boolean) =>
   isAndroid
-    ? getAndroidInputClasses(isDisabled)
-    : getIOSInputClasses(isDisabled);
+    ? getAndroidInputClasses(fieldSize, isDisabled)
+    : getIOSInputClasses(fieldSize, isDisabled);
 
 // Get iOS-specific input styles
 const getIOSInputStyles = (fieldSize: InputSize) => {
@@ -154,17 +168,15 @@ const getSizeClasses = (fieldSize: InputSize) => {
   return paddingMap[fieldSize];
 };
 
-// Get container height styles to match original implementation exactly
-const getContainerHeightStyles = (fieldSize: InputSize) => {
+// Get container height classes to match original implementation exactly
+const getContainerHeightClasses = (fieldSize: InputSize) => {
   const heightMap = {
-    sm: pxValue(20 + 3 * 4),
-    md: pxValue(22 + 3 * 6),
-    lg: pxValue(26 + 3 * 8),
+    sm: "h-[30px]",
+    md: "h-[38px]",
+    lg: "h-[48px]",
   };
 
-  return {
-    height: heightMap[fieldSize],
-  };
+  return heightMap[fieldSize];
 };
 
 // Gap classes for container spacing
@@ -326,6 +338,7 @@ interface TextInputComponentProps {
   isBottomSheetInput?: boolean;
   testID?: string;
   style?: ViewStyle | TextStyle;
+  className?: string;
   ref: React.Ref<InputRef>;
   onSubmitEditing?: () => void;
   selectTextOnFocus?: boolean;
@@ -355,6 +368,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
       isBottomSheetInput = false,
       testID,
       style,
+      className,
       ...props
     },
     ref,
@@ -419,40 +433,28 @@ export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
   (props, ref) => {
     const { fieldSize = "lg", style, ...restProps } = props;
 
-    const containerHeightStyles = useMemo(
-      () => getContainerHeightStyles(fieldSize),
-      [fieldSize],
-    );
-
-    const textInputPaddingStyles = useMemo(() => {
-      // Add padding directly to TextInput for better Android compatibility
-      if (fieldSize === "sm")
-        return { paddingLeft: pxValue(10), paddingRight: pxValue(10) };
-      if (fieldSize === "md")
-        return { paddingLeft: pxValue(12), paddingRight: pxValue(12) };
-      return { paddingLeft: pxValue(14), paddingRight: pxValue(14) };
+    const containerHeightClasses = useMemo(() => {
+      const heightMap = {
+        sm: "h-[30px] pl-[10px] pr-[10px]",
+        md: "h-[38px] pl-[12px] pr-[12px]",
+        lg: "h-[48px] pl-[14px] pr-[14px]",
+      };
+      return heightMap[fieldSize];
     }, [fieldSize]);
 
-    const containerStyle = useMemo(
-      () => ({
-        ...containerHeightStyles,
-        ...style,
-      }),
-      [containerHeightStyles, style],
+    const containerClasses = useMemo(
+      () =>
+        `bg-background-default border border-border-primary rounded ${containerHeightClasses}`,
+      [containerHeightClasses],
     );
 
     const { testID, ...textInputProps } = restProps;
 
     return (
-      <View
-        testID={testID}
-        className="bg-background-default border border-border-primary rounded"
-        style={containerStyle}
-      >
+      <View testID={testID} className={containerClasses} style={style}>
         <TextInputComponent
           ref={ref}
           fieldSize={fieldSize}
-          style={textInputPaddingStyles}
           {...textInputProps}
         />
       </View>
@@ -569,17 +571,17 @@ export const Input = React.forwardRef<InputRef, InputProps>(
       [],
     );
 
-    const endButtonHeight = useMemo(() => {
+    const endButtonHeightClasses = useMemo(() => {
       const heightMap = {
-        sm: pxValue(20 + 3 * 4), // lineHeight(18) + 3 * paddingVertical(4)
-        md: pxValue(22 + 3 * 6), // lineHeight(20) + 3 * paddingVertical(6)
-        lg: pxValue(26 + 3 * 8), // lineHeight(24) + 3 * paddingVertical(8)
+        sm: "h-[32px]", // lineHeight(18) + 3 * paddingVertical(4)
+        md: "h-[40px]", // lineHeight(20) + 3 * paddingVertical(6)
+        lg: "h-[48px]", // lineHeight(24) + 3 * paddingVertical(8)
       };
       return heightMap[fieldSize];
     }, [fieldSize]);
 
-    const containerHeightStyles = useMemo(
-      () => getContainerHeightStyles(fieldSize),
+    const containerHeightClasses = useMemo(
+      () => getContainerHeightClasses(fieldSize),
       [fieldSize],
     );
 
@@ -608,8 +610,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
         <View className="flex-row items-center">
           <View
             testID={testID ? `${testID}-container` : undefined}
-            className={`${inputContainerClasses} ${containerPaddingClasses} flex-1`}
-            style={containerHeightStyles}
+            className={`${inputContainerClasses} ${containerPaddingClasses} ${containerHeightClasses} flex-1`}
           >
             {copyButton?.position === "left" && renderCopyButton("left")}
             {leftElement && (
@@ -646,12 +647,11 @@ export const Input = React.forwardRef<InputRef, InputProps>(
               className="flex-shrink-0"
             >
               <View
-                className={`${buttonContainerClasses} ${buttonPaddingClasses} mr-[4px]`}
+                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${endButtonHeightClasses} mr-[4px]`}
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
                     THEME.colors.background.default,
-                  height: endButtonHeight,
                 }}
               >
                 {typeof endButton.content === "string" ? (
