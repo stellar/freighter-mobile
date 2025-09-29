@@ -25,12 +25,6 @@ export type InputSize = "sm" | "md" | "lg";
 
 type ClassNameMap = Record<InputSize, string>;
 
-const FONT_SIZE_MAP: ClassNameMap = {
-  sm: "text-xs",
-  md: "text-sm",
-  lg: "text-base",
-};
-
 const CONTAINER_HEIGHT_MAP: ClassNameMap = {
   sm: "h-[30px]",
   md: "h-[38px]",
@@ -46,7 +40,7 @@ const VERTICAL_PADDING_MAP: ClassNameMap = {
 const HORIZONTAL_PADDING_MAP: ClassNameMap = {
   sm: "pl-[10px] pr-[10px]",
   md: "pl-[12px] pr-[12px]",
-  lg: "pl-[14px] pr-[14px]",
+  lg: "pl-[12px] pr-[12px]",
 };
 
 const GAP_MAP: ClassNameMap = {
@@ -97,24 +91,18 @@ const getInputContainerClasses = (
 const getIOSInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
-  const fontFamily = "font-inter-variable";
-  const fontWeight = "font-normal";
   const textAlign = "text-left";
-  const fontSize = FONT_SIZE_MAP[fieldSize];
 
-  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
+  return `${baseClasses} ${textColor} ${textAlign}`;
 };
 
 // Get Android-specific input classes
 const getAndroidInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
-  const fontFamily = "font-inter-regular";
-  const fontWeight = "font-normal";
   const textAlign = "text-left";
-  const fontSize = FONT_SIZE_MAP[fieldSize];
 
-  return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
+  return `${baseClasses} ${textColor} ${textAlign}`;
 };
 
 // Get platform-specific input classes
@@ -133,6 +121,8 @@ const getIOSInputStyles = (fieldSize: InputSize) => {
 
   return {
     fontSize: fontSizeMap[fieldSize],
+    fontFamily: "Inter-Variable",
+    fontWeight: "400" as const,
   };
 };
 
@@ -146,8 +136,10 @@ const getAndroidInputStyles = (fieldSize: InputSize) => {
 
   return {
     fontSize: fontSizeMap[fieldSize],
+    fontFamily: "Inter-Regular",
+    fontWeight: "400" as const,
     textAlignVertical: "center" as const,
-    includeFontPadding: false,
+    includeFontPadding: true,
     paddingVertical: 0,
     paddingTop: 0,
     paddingBottom: 0,
@@ -158,8 +150,8 @@ const getAndroidInputStyles = (fieldSize: InputSize) => {
 const getInputStyles = (fieldSize: InputSize) =>
   isAndroid ? getAndroidInputStyles(fieldSize) : getIOSInputStyles(fieldSize);
 
-const getSideElementClasses = (marginSide: "left" | "right") =>
-  `justify-center items-center ${marginSide === "left" ? "ml-2" : "mr-2"}`;
+const getSideElementClasses = (fieldSize: InputSize) =>
+  `${CONTAINER_HEIGHT_MAP[fieldSize]} justify-center items-center mt-[2px]`;
 
 const getFieldNoteWrapperClasses = () => "mt-1";
 
@@ -413,17 +405,11 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
   },
 );
 
-TextInputComponent.displayName = "TextInputComponent";
-
-// =============================================================================
-// StyledTextInput - Standalone TextInput for custom layouts
-// =============================================================================
-
 export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
   (props, ref) => {
     const { fieldSize = "lg", style, ...restProps } = props;
 
-    const containerClasses = `bg-background-default border border-border-primary rounded ${CONTAINER_HEIGHT_MAP[fieldSize]} ${HORIZONTAL_PADDING_MAP[fieldSize]} flex-1`;
+    const containerClasses = `rounded-lg bg-background-default border border-border-primary rounded ${CONTAINER_HEIGHT_MAP[fieldSize]} ${HORIZONTAL_PADDING_MAP[fieldSize]} flex-1`;
 
     const { testID, ...textInputProps } = restProps;
 
@@ -438,12 +424,6 @@ export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
     );
   },
 );
-
-StyledTextInput.displayName = "StyledTextInput";
-
-// =============================================================================
-// Main Input Component
-// =============================================================================
 
 export const Input = React.forwardRef<InputRef, InputProps>(
   (
@@ -501,14 +481,14 @@ export const Input = React.forwardRef<InputRef, InputProps>(
       [fieldSize, isError, error, editable, endButton],
     );
 
-    const sideElementClasses = useMemo(
-      () => getSideElementClasses("right"),
-      [],
+    const leftSideElementClasses = useMemo(
+      () => `${getSideElementClasses(fieldSize)} mr-2`,
+      [fieldSize],
     );
 
-    const leftSideElementClasses = useMemo(
-      () => getSideElementClasses("left"),
-      [],
+    const rightSideElementClasses = useMemo(
+      () => getSideElementClasses(fieldSize),
+      [fieldSize],
     );
 
     const fieldNoteClasses = useMemo(() => getFieldNoteWrapperClasses(), []);
@@ -550,9 +530,9 @@ export const Input = React.forwardRef<InputRef, InputProps>(
 
     const heightClasses = CONTAINER_HEIGHT_MAP[fieldSize];
 
-    const renderCopyButton = (position: "left" | "right") => (
+    const renderCopyButton = () => (
       <TouchableOpacity onPress={handleCopy}>
-        <View className={getSideElementClasses(position)}>
+        <View className={getSideElementClasses(fieldSize)}>
           <Text sm>{copyButton?.showLabel ? "Copy" : "📋"}</Text>
         </View>
       </TouchableOpacity>
@@ -577,9 +557,9 @@ export const Input = React.forwardRef<InputRef, InputProps>(
             testID={testID ? `${testID}-container` : undefined}
             className={`${inputContainerClasses} ${containerPaddingClasses} ${heightClasses} flex-1`}
           >
-            {copyButton?.position === "left" && renderCopyButton("left")}
+            {copyButton?.position === "left" && renderCopyButton()}
             {leftElement && (
-              <View className={sideElementClasses}>{leftElement}</View>
+              <View className={leftSideElementClasses}>{leftElement}</View>
             )}
 
             <TextInputComponent
@@ -599,9 +579,9 @@ export const Input = React.forwardRef<InputRef, InputProps>(
             />
 
             {rightElement && (
-              <View className={leftSideElementClasses}>{rightElement}</View>
+              <View className={rightSideElementClasses}>{rightElement}</View>
             )}
-            {copyButton?.position === "right" && renderCopyButton("right")}
+            {copyButton?.position === "right" && renderCopyButton()}
           </View>
 
           {endButton && (
