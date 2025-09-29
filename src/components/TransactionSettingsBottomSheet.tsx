@@ -23,10 +23,12 @@ import { TouchableOpacity, View } from "react-native";
  * @interface TransactionSettingsBottomSheetProps
  * @property {() => void} onCancel - Callback function when settings are cancelled
  * @property {() => void} onConfirm - Callback function when settings are confirmed
+ * @property {() => void} onSettingsChange - Callback function when settings change dynamically
  */
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
   onConfirm: () => void;
+  onSettingsChange?: () => Promise<void>;
 };
 
 /**
@@ -57,7 +59,7 @@ type TransactionSettingsBottomSheetProps = {
  */
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
-> = ({ onCancel, onConfirm }) => {
+> = ({ onCancel, onConfirm, onSettingsChange }) => {
   const { t } = useAppTranslation();
   const {
     transactionMemo,
@@ -91,6 +93,9 @@ const TransactionSettingsBottomSheet: React.FC<
     saveMemo(localMemo);
     saveTransactionTimeout(Number(localTimeout));
     saveTransactionFee(localFee);
+
+    onSettingsChange?.();
+
     onConfirm();
   };
 

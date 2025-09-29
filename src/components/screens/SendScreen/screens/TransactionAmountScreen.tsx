@@ -317,51 +317,67 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   useRightHeaderMenu({ actions: menuActions });
 
-  const handleOpenReview = useCallback(async () => {
-    try {
-      const finalXDR = await buildTransaction({
-        tokenAmount,
-        selectedBalance,
-        recipientAddress,
-        transactionMemo,
-        transactionFee,
-        transactionTimeout,
-        network,
-        senderAddress: publicKey,
-      });
+  const prepareTransaction = useCallback(
+    async (shouldOpenReview = false) => {
+      if (!recipientAddress || !selectedBalance) {
+        return;
+      }
 
-      if (!finalXDR) return;
+      try {
+        // Get fresh settings values each time the function is called
+        const {
+          transactionMemo: freshTransactionMemo,
+          transactionFee: freshTransactionFee,
+          transactionTimeout: freshTransactionTimeout,
+          recipientAddress: storeRecipientAddress,
+        } = useTransactionSettingsStore.getState();
 
-      scanTransaction(finalXDR, "internal")
-        .then((scanResult) => {
-          logger.info("TransactionAmountScreen", "scanResult", scanResult);
-          setTransactionScanResult(scanResult);
-        })
-        .catch(() => {
-          setTransactionScanResult(undefined);
-        })
-        .finally(() => {
-          reviewBottomSheetModalRef.current?.present();
+        // Use internal value (already in dot notation) for transaction building
+
+        const finalXDR = await buildTransaction({
+          tokenAmount,
+          selectedBalance,
+          recipientAddress: storeRecipientAddress,
+          transactionMemo: freshTransactionMemo,
+          transactionFee: freshTransactionFee,
+          transactionTimeout: freshTransactionTimeout,
+          network,
+          senderAddress: publicKey,
         });
-    } catch (error) {
-      logger.error(
-        "TransactionAmountScreen",
-        "Failed to build transaction:",
-        error,
-      );
-    }
-  }, [
-    tokenAmount,
-    selectedBalance,
-    recipientAddress,
-    transactionMemo,
-    transactionFee,
-    transactionTimeout,
-    network,
-    publicKey,
-    buildTransaction,
-    scanTransaction,
-  ]);
+
+        if (!finalXDR) return;
+
+        if (shouldOpenReview) {
+          scanTransaction(finalXDR, "internal")
+            .then((scanResult) => {
+              logger.info("TransactionAmountScreen", "scanResult", scanResult);
+              setTransactionScanResult(scanResult);
+            })
+            .catch(() => {
+              setTransactionScanResult(undefined);
+            })
+            .finally(() => {
+              reviewBottomSheetModalRef.current?.present();
+            });
+        }
+      } catch (error) {
+        logger.error(
+          "TransactionAmountScreen",
+          "Failed to build transaction:",
+          error,
+        );
+      }
+    },
+    [
+      tokenAmount,
+      selectedBalance,
+      network,
+      publicKey,
+      buildTransaction,
+      scanTransaction,
+      recipientAddress,
+    ],
+  );
 
   const handleTransactionConfirmation = () => {
     setIsProcessing(true);
@@ -510,13 +526,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityWarningBottomSheetModalRef.current?.present();
     }
   };
+
   const handleContinueButtonPress = () => {
     if (!recipientAddress) {
       navigateToSelectContactScreen();
       return;
     }
 
-    handleOpenReview();
+    prepareTransaction(true);
   };
 
   const getContinueButtonText = () => {
@@ -529,6 +546,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
 
     return t("transactionAmountScreen.reviewButton");
+  };
+
+  const handleSettingsChange = async () => {
+    await prepareTransaction(false);
   };
 
   return (
@@ -722,6 +743,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <TransactionSettingsBottomSheet
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
+            onSettingsChange={handleSettingsChange}
           />
         }
       />
