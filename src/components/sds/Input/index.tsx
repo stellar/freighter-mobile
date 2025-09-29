@@ -20,6 +20,42 @@ import {
 export type InputSize = "sm" | "md" | "lg";
 
 // =============================================================================
+// Unified maps for consistent sizing
+// =============================================================================
+
+type ClassNameMap = Record<InputSize, string>;
+
+const FONT_SIZE_MAP: ClassNameMap = {
+  sm: "text-xs",
+  md: "text-sm",
+  lg: "text-base",
+};
+
+const CONTAINER_HEIGHT_MAP: ClassNameMap = {
+  sm: "h-[30px]",
+  md: "h-[38px]",
+  lg: "h-[48px]",
+};
+
+const VERTICAL_PADDING_MAP: ClassNameMap = {
+  sm: "py-1", // paddingVertical(4)
+  md: "py-1.5", // paddingVertical(6)
+  lg: "py-2", // paddingVertical(8)
+};
+
+const HORIZONTAL_PADDING_MAP: ClassNameMap = {
+  sm: "pl-[10px] pr-[10px]",
+  md: "pl-[12px] pr-[12px]",
+  lg: "pl-[14px] pr-[14px]",
+};
+
+const GAP_MAP: ClassNameMap = {
+  sm: "gap-1.5",
+  md: "gap-1.5",
+  lg: "gap-2",
+};
+
+// =============================================================================
 // Helper functions for NativeWind classes
 // =============================================================================
 
@@ -64,13 +100,7 @@ const getIOSInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const fontFamily = "font-inter-variable";
   const fontWeight = "font-normal";
   const textAlign = "text-left";
-
-  const fontSizeMap = {
-    sm: "text-xs",
-    md: "text-sm",
-    lg: "text-base",
-  };
-  const fontSize = fontSizeMap[fieldSize];
+  const fontSize = FONT_SIZE_MAP[fieldSize];
 
   return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
 };
@@ -82,13 +112,7 @@ const getAndroidInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   const fontFamily = "font-inter-regular";
   const fontWeight = "font-normal";
   const textAlign = "text-left";
-
-  const fontSizeMap = {
-    sm: "text-xs",
-    md: "text-sm",
-    lg: "text-base",
-  };
-  const fontSize = fontSizeMap[fieldSize];
+  const fontSize = FONT_SIZE_MAP[fieldSize];
 
   return `${baseClasses} ${textColor} ${fontFamily} ${fontWeight} ${textAlign} ${fontSize}`;
 };
@@ -156,37 +180,6 @@ const getButtonContainerClasses = (
   };
 
   return `${bgColor} ${border} ${borderRadius[fieldSize]} items-center justify-center`;
-};
-
-// Size-specific classes for different field sizes
-const getSizeClasses = (fieldSize: InputSize) => {
-  const paddingMap = {
-    sm: "py-1", // paddingVertical(4)
-    md: "py-1.5", // paddingVertical(6)
-    lg: "py-2", // paddingVertical(8)
-  };
-  return paddingMap[fieldSize];
-};
-
-// Get container height classes to match original implementation exactly
-const getContainerHeightClasses = (fieldSize: InputSize) => {
-  const heightMap = {
-    sm: "h-[30px]",
-    md: "h-[38px]",
-    lg: "h-[48px]",
-  };
-
-  return heightMap[fieldSize];
-};
-
-// Gap classes for container spacing
-const getGapClasses = (fieldSize: InputSize) => {
-  const gapMap = {
-    sm: "gap-1.5",
-    md: "gap-1.5",
-    lg: "gap-2",
-  };
-  return gapMap[fieldSize];
 };
 
 // =============================================================================
@@ -357,7 +350,7 @@ interface TextInputComponentProps {
 const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
   (
     {
-      fieldSize,
+      fieldSize = "lg",
       value,
       onChangeText,
       placeholder,
@@ -374,14 +367,11 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
     ref,
   ) => {
     const inputClasses = useMemo(
-      () => getInputClasses(fieldSize || "lg", !editable),
+      () => getInputClasses(fieldSize, !editable),
       [fieldSize, editable],
     );
 
-    const inputStyles = useMemo(
-      () => getInputStyles(fieldSize || "lg"),
-      [fieldSize],
-    );
+    const inputStyles = useMemo(() => getInputStyles(fieldSize), [fieldSize]);
 
     if (isBottomSheetInput) {
       return (
@@ -433,20 +423,7 @@ export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
   (props, ref) => {
     const { fieldSize = "lg", style, ...restProps } = props;
 
-    const containerHeightClasses = useMemo(() => {
-      const heightMap = {
-        sm: "h-[30px] pl-[10px] pr-[10px]",
-        md: "h-[38px] pl-[12px] pr-[12px]",
-        lg: "h-[48px] pl-[14px] pr-[14px]",
-      };
-      return heightMap[fieldSize];
-    }, [fieldSize]);
-
-    const containerClasses = useMemo(
-      () =>
-        `bg-background-default border border-border-primary rounded ${containerHeightClasses}`,
-      [containerHeightClasses],
-    );
+    const containerClasses = `bg-background-default border border-border-primary rounded ${CONTAINER_HEIGHT_MAP[fieldSize]} ${HORIZONTAL_PADDING_MAP[fieldSize]} flex-1`;
 
     const { testID, ...textInputProps } = restProps;
 
@@ -514,13 +491,13 @@ export const Input = React.forwardRef<InputRef, InputProps>(
 
     // Memoize classes to avoid recalculation
     const containerClasses = useMemo(
-      () => `w-full ${getGapClasses(fieldSize)}`,
+      () => `w-full ${GAP_MAP[fieldSize]}`,
       [fieldSize],
     );
 
     const inputContainerClasses = useMemo(
       () =>
-        `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${getSizeClasses(fieldSize)}`,
+        `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${VERTICAL_PADDING_MAP[fieldSize]}`,
       [fieldSize, isError, error, editable, endButton],
     );
 
@@ -571,19 +548,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
       [],
     );
 
-    const endButtonHeightClasses = useMemo(() => {
-      const heightMap = {
-        sm: "h-[32px]", // lineHeight(18) + 3 * paddingVertical(4)
-        md: "h-[40px]", // lineHeight(20) + 3 * paddingVertical(6)
-        lg: "h-[48px]", // lineHeight(24) + 3 * paddingVertical(8)
-      };
-      return heightMap[fieldSize];
-    }, [fieldSize]);
-
-    const containerHeightClasses = useMemo(
-      () => getContainerHeightClasses(fieldSize),
-      [fieldSize],
-    );
+    const heightClasses = CONTAINER_HEIGHT_MAP[fieldSize];
 
     const renderCopyButton = (position: "left" | "right") => (
       <TouchableOpacity onPress={handleCopy}>
@@ -610,7 +575,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
         <View className="flex-row items-center">
           <View
             testID={testID ? `${testID}-container` : undefined}
-            className={`${inputContainerClasses} ${containerPaddingClasses} ${containerHeightClasses} flex-1`}
+            className={`${inputContainerClasses} ${containerPaddingClasses} ${heightClasses} flex-1`}
           >
             {copyButton?.position === "left" && renderCopyButton("left")}
             {leftElement && (
@@ -647,7 +612,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
               className="flex-shrink-0"
             >
               <View
-                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${endButtonHeightClasses} mr-[4px]`}
+                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${heightClasses} mr-[4px]`}
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
