@@ -1044,6 +1044,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
+      "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",
       "destinationToken": "Destination Token",

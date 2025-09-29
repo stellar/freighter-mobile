@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
+import Icon from "components/sds/Icon";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -13,8 +15,8 @@ const mockBalanceItems = [
       code: "XLM",
       type: "native",
     },
-    total: "100.5",
-    available: "100.5",
+    total: new BigNumber("1000.5"),
+    available: new BigNumber("1000.5"),
     minimumBalance: "1",
     buyingLiabilities: "0",
     sellingLiabilities: "0",
@@ -32,8 +34,8 @@ const mockBalanceItems = [
       code: "USDC",
       type: "",
     },
-    total: "10",
-    available: "10",
+    total: new BigNumber("10"),
+    available: new BigNumber("10"),
     minimumBalance: "1",
     buyingLiabilities: "0",
     sellingLiabilities: "0",
@@ -42,6 +44,25 @@ const mockBalanceItems = [
     imageUrl: "",
     currentPrice: new BigNumber("0.5"),
     percentagePriceChange24h: new BigNumber("0.02"),
+    fiatCode: "USD",
+    fiatTotal: "50.25",
+  },
+  {
+    id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    token: {
+      code: "FTT",
+      type: "",
+    },
+    total: new BigNumber("20"),
+    available: new BigNumber("20"),
+    minimumBalance: "1",
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
+    tokenCode: "FTT",
+    displayName: "FTT",
+    imageUrl: "",
+    currentPrice: new BigNumber("0.3"),
+    percentagePriceChange24h: new BigNumber("0.5"),
     fiatCode: "USD",
     fiatTotal: "50.25",
   },
@@ -67,11 +88,14 @@ jest.mock("react-native-gesture-handler", () => ({
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(() => ({
-    sourceTokenId: "SRC",
-    destinationTokenId: "",
-    sourceTokenSymbol: "XLM",
-    sourceAmount: "0",
-    destinationAmount: "0",
+    sourceTokenId:
+      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    destinationTokenId:
+      "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    sourceTokenSymbol: "USDC",
+    destinationTokenSymbol: "FTT",
+    sourceAmount: "1",
+    destinationAmount: "2",
     setSourceToken: mockSetSourceToken,
     setDestinationToken: mockSetDestinationToken,
     setSourceAmount: mockSetSourceAmount,
@@ -108,6 +132,8 @@ jest.mock("hooks/useColors", () => () => ({
   themeColors: {
     text: { secondary: "gray" },
     gray: { 9: "gray" },
+    red: { 9: "red" },
+    amber: { 9: "amber" },
     background: {
       tertiary: "white",
     },
@@ -128,7 +154,11 @@ jest.mock("hooks/useGetActiveAccount", () => () => ({
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
     balanceItems: mockBalanceItems,
-    scanResults: {},
+    scanResults: {
+      "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+        result_type: "Malicious",
+      },
+    },
     isLoading: false,
     error: null,
     noBalances: false,
@@ -177,9 +207,13 @@ describe("SwapAmountScreen", () => {
     expect(mockSetSourceAmount).toHaveBeenCalledWith("0");
   });
 
-  it.skip("opens review bottom sheet when destination balance exists", () => {
-    // const { result } = renderHook(() => useAppTranslation());
-    // ...
+  it("renders security warnings for malicious states", () => {
+    const { UNSAFE_getByType } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    const icon = UNSAFE_getByType(Icon.AlertCircle);
+    expect(icon).toBeTruthy();
+    expect(icon.props.themeColor).toBe("red");
   });
 
   it("resets state on unmount", () => {

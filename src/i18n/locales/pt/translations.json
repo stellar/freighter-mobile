@@ -1045,6 +1045,7 @@
       "destination": "Destino",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
+      "token": "Token",
       "amount": "Valor",
       "sendMax": "Enviar máximo",
       "destinationToken": "Token de destino",
