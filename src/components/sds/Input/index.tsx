@@ -13,15 +13,7 @@ import {
   TextStyle,
 } from "react-native";
 
-// =============================================================================
-// Constants and types
-// =============================================================================
-
 export type InputSize = "sm" | "md" | "lg";
-
-// =============================================================================
-// Unified maps for consistent sizing
-// =============================================================================
 
 type ClassNameMap = Record<InputSize, string>;
 
@@ -49,10 +41,6 @@ const GAP_MAP: ClassNameMap = {
   lg: "gap-2",
 };
 
-// =============================================================================
-// Helper functions for NativeWind classes
-// =============================================================================
-
 const getInputContainerClasses = (
   fieldSize: InputSize,
   isError?: boolean,
@@ -66,12 +54,10 @@ const getInputContainerClasses = (
 
   const borderColor = isError ? "border-status-error" : "border-border-primary";
 
-  // Apply borders conditionally - no right border when end button is present
   const borders = hasEndButton
-    ? `border-t border-b border-l ${borderColor}` // 3 borders when end button is present (no right border)
-    : `border ${borderColor}`; // 4 borders when no end button
+    ? `border-t border-b border-l ${borderColor}`
+    : `border ${borderColor}`;
 
-  // Add border radius based on field size and end button presence
   const borderRadius = hasEndButton
     ? {
         sm: "rounded-l",
@@ -87,8 +73,7 @@ const getInputContainerClasses = (
   return `${baseClasses} ${backgroundColor} ${borders} ${borderRadius[fieldSize]}`;
 };
 
-// Get iOS-specific input classes
-const getIOSInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
+const getIOSInputClasses = (isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
   const textAlign = "text-left";
@@ -96,8 +81,7 @@ const getIOSInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   return `${baseClasses} ${textColor} ${textAlign}`;
 };
 
-// Get Android-specific input classes
-const getAndroidInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
+const getAndroidInputClasses = (isDisabled?: boolean) => {
   const baseClasses = "flex-1";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
   const textAlign = "text-left";
@@ -105,13 +89,11 @@ const getAndroidInputClasses = (fieldSize: InputSize, isDisabled?: boolean) => {
   return `${baseClasses} ${textColor} ${textAlign}`;
 };
 
-// Get platform-specific input classes
-const getInputClasses = (fieldSize: InputSize, isDisabled?: boolean) =>
+const getInputClasses = (isDisabled?: boolean) =>
   isAndroid
-    ? getAndroidInputClasses(fieldSize, isDisabled)
-    : getIOSInputClasses(fieldSize, isDisabled);
+    ? getAndroidInputClasses(isDisabled)
+    : getIOSInputClasses(isDisabled);
 
-// Get iOS-specific input styles
 const getIOSInputStyles = (fieldSize: InputSize) => {
   const fontSizeMap = {
     sm: fsValue(12),
@@ -126,7 +108,6 @@ const getIOSInputStyles = (fieldSize: InputSize) => {
   };
 };
 
-// Get Android-specific input styles
 const getAndroidInputStyles = (fieldSize: InputSize) => {
   const fontSizeMap = {
     sm: fsValue(12),
@@ -139,14 +120,12 @@ const getAndroidInputStyles = (fieldSize: InputSize) => {
     fontFamily: "Inter-Regular",
     fontWeight: "400" as const,
     textAlignVertical: "center" as const,
-    includeFontPadding: true,
     paddingVertical: 0,
     paddingTop: 0,
     paddingBottom: 0,
   };
 };
 
-// Get platform-specific input styles
 const getInputStyles = (fieldSize: InputSize) =>
   isAndroid ? getAndroidInputStyles(fieldSize) : getIOSInputStyles(fieldSize);
 
@@ -162,9 +141,8 @@ const getButtonContainerClasses = (
 ) => {
   const bgColor = backgroundColor ? "" : "bg-background-primary";
   const borderColor = isError ? "border-status-error" : "border-border-primary";
-  const border = `border-l border-t border-b border-r ${borderColor}`; // Only right, top, and bottom borders (flat left)
+  const border = `border-l border-t border-b border-r ${borderColor}`;
 
-  // Add border radius for the right side
   const borderRadius = {
     sm: "rounded-r",
     md: "rounded-r-md",
@@ -173,10 +151,6 @@ const getButtonContainerClasses = (
 
   return `${bgColor} ${border} ${borderRadius[fieldSize]} items-center justify-center`;
 };
-
-// =============================================================================
-// Component
-// =============================================================================
 
 /**
  * Input component for text entry with various styling and functionality options.
@@ -304,12 +278,7 @@ interface InputProps {
   selectTextOnFocus?: boolean;
 }
 
-// Create a more flexible ref type that can handle both TextInput types
 type InputRef = TextInput | React.ComponentRef<typeof BottomSheetTextInput>;
-
-// =============================================================================
-// Shared TextInput Component
-// =============================================================================
 
 interface TextInputComponentProps {
   fieldSize?: InputSize;
@@ -358,10 +327,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
     },
     ref,
   ) => {
-    const inputClasses = useMemo(
-      () => getInputClasses(fieldSize, !editable),
-      [fieldSize, editable],
-    );
+    const inputClasses = useMemo(() => getInputClasses(!editable), [editable]);
 
     const inputStyles = useMemo(() => getInputStyles(fieldSize), [fieldSize]);
 
@@ -469,7 +435,6 @@ export const Input = React.forwardRef<InputRef, InputProps>(
       md: fieldSize === "lg",
     });
 
-    // Memoize classes to avoid recalculation
     const containerClasses = useMemo(
       () => `w-full ${GAP_MAP[fieldSize]}`,
       [fieldSize],
