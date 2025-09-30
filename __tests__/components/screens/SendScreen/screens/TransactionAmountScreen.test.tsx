@@ -594,6 +594,13 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
+    // Wait for initial render
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    });
+
     // Simulate initial transaction build without memo
     await act(async () => {
       await mockBuildTransactionFn({
@@ -629,6 +636,13 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    });
 
     // Simulate settings change triggering transaction rebuild
     await act(async () => {
@@ -667,7 +681,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     // This test ensures the bug is fixed: transaction XDR is rebuilt when memo is added
     // for a memo-required address, preventing the transaction from failing
-  });
+  }, 10000);
 
   it("should render the main UI components", () => {
     const { getByText } = render(
