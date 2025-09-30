@@ -88,13 +88,13 @@ const TransactionSettingsBottomSheet: React.FC<
    * Handles confirmation of transaction settings
    * Validates all inputs and saves to global store if valid
    */
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (memoError || feeError || timeoutError) return;
     saveMemo(localMemo);
     saveTransactionTimeout(Number(localTimeout));
     saveTransactionFee(localFee);
 
-    onSettingsChange?.();
+    await onSettingsChange?.();
 
     onConfirm();
   };
