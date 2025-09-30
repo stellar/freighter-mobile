@@ -1,7 +1,9 @@
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import TransactionAmountScreen from "components/screens/SendScreen/screens/TransactionAmountScreen";
 import { NETWORKS } from "config/constants";
+import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
@@ -21,40 +23,21 @@ import { useToast } from "providers/ToastProvider";
 import React from "react";
 import * as transactionService from "services/transactionService";
 
-// Mock dependencies
+// Type definitions
+type TransactionAmountScreenProps = NativeStackScreenProps<
+  SendPaymentStackParamList,
+  typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
+>;
+
+// Core mocks
 jest.mock("ducks/transactionBuilder");
 jest.mock("ducks/transactionSettings");
 jest.mock("ducks/auth");
-jest.mock("helpers/balances", () => ({
-  calculateSpendableAmount: jest.fn(),
-  hasXLMForFees: jest.fn(),
-}));
-jest.mock("services/blockaid/helper", () => ({
-  assessTokenSecurity: jest.fn(() => ({
-    isMalicious: false,
-    isSuspicious: false,
-  })),
-  assessTransactionSecurity: jest.fn(() => ({
-    isMalicious: false,
-    isSuspicious: false,
-  })),
-  extractSecurityWarnings: jest.fn(() => []),
-}));
-jest.mock("components/BalanceRow", () => ({
-  BalanceRow: "View",
-}));
-jest.mock("services/transactionService");
-jest.mock("hooks/blockaid/useBlockaidTransaction");
-jest.mock("hooks/useValidateTransactionMemo");
-jest.mock("helpers/cachedFetch");
-jest.mock("hooks/useGetActiveAccount");
-jest.mock("hooks/useBalancesList");
-jest.mock("hooks/useTokenFiatConverter");
-jest.mock("helpers/deviceSize");
-jest.mock("hooks/useRightHeader");
-jest.mock("providers/ToastProvider");
 jest.mock("ducks/history");
 jest.mock("ducks/sendRecipient");
+
+// Service mocks
+jest.mock("services/transactionService");
 jest.mock("services/analytics", () => ({
   analytics: {
     track: jest.fn(),
@@ -62,40 +45,21 @@ jest.mock("services/analytics", () => ({
     trackTransactionError: jest.fn(),
   },
 }));
-jest.mock("services/blockaid/helper", () => ({
-  assessTransactionSecurity: jest.fn(() => ({
-    isMalicious: false,
-    isSuspicious: false,
-  })),
-  extractSecurityWarnings: jest.fn(() => []),
-}));
-// Keep only essential mocks for core functionality - no component mocks
-jest.mock(
-  "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails",
-  () => ({
-    useSignTransactionDetails: jest.fn(() => ({
-      signTransactionDetails: null,
-    })),
-  }),
-);
 
-// Mock the entire SignTransactionDetails component
-jest.mock("components/screens/SendScreen/components", () => ({
-  SendReviewBottomSheet: function MockSendReviewBottomSheet() {
-    return null;
-  },
-  ContactRow: function MockContactRow() {
-    return null;
-  },
+// Helper mocks
+jest.mock("helpers/balances", () => ({
+  calculateSpendableAmount: jest.fn(),
+  hasXLMForFees: jest.fn(),
 }));
-jest.mock("hooks/useAppTranslation", () => ({
-  __esModule: true,
-  default: () => ({
-    t: (key: string) => key,
-  }),
-}));
+jest.mock("helpers/cachedFetch");
+jest.mock("helpers/deviceSize");
 
-// Mock the useBiometrics hook to avoid setSignInMethod errors
+// Hook mocks
+jest.mock("hooks/useGetActiveAccount");
+jest.mock("hooks/useBalancesList");
+jest.mock("hooks/useTokenFiatConverter");
+jest.mock("hooks/useValidateTransactionMemo");
+jest.mock("hooks/useRightHeader");
 jest.mock("hooks/useBiometrics", () => ({
   useBiometrics: () => ({
     biometryType: null,
@@ -113,10 +77,37 @@ jest.mock("hooks/useBiometrics", () => ({
     setSignInMethod: jest.fn(),
   }),
 }));
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
+jest.mock("hooks/blockaid/useBlockaidTransaction");
+jest.mock("providers/ToastProvider");
+
+// Component mocks
+jest.mock("components/BalanceRow", () => ({
+  BalanceRow: "View",
+}));
+jest.mock("components/screens/SendScreen/components", () => ({
+  SendReviewBottomSheet: function MockSendReviewBottomSheet() {
+    return null;
+  },
+  ContactRow: function MockContactRow() {
+    return null;
+  },
+}));
+jest.mock(
+  "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails",
+  () => ({
+    useSignTransactionDetails: jest.fn(() => ({
+      signTransactionDetails: null,
+    })),
   }),
+);
+jest.mock("components/sds/Icon", () => ({
+  __esModule: true,
+  default: new Proxy({}, { get: () => "View" }),
+}));
+
+// Third-party library mocks
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
   I18nextProvider: ({ children }: { children: React.ReactNode }) => {
     const MockI18nextProvider = ({
       children: childProps,
@@ -129,15 +120,12 @@ jest.mock("react-i18next", () => ({
 }));
 jest.mock("i18n", () => ({
   __esModule: true,
-  default: {
-    t: (key: string) => key,
-  },
+  default: { t: (key: string) => key },
 }));
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-
 jest.mock("@gorhom/bottom-sheet", () => ({
   BottomSheetModalProvider: ({ children }: { children: React.ReactNode }) =>
     children,
@@ -159,6 +147,12 @@ jest.mock("react-native-css-interop", () => ({
   styled: (Component: any) => Component,
   createInteropElement: jest.fn(),
 }));
+
+// Utility mocks
+jest.mock("hooks/useAppTranslation", () => ({
+  __esModule: true,
+  default: () => ({ t: (key: string) => key }),
+}));
 jest.mock("hooks/useColors", () => ({
   __esModule: true,
   default: () => ({
@@ -167,12 +161,7 @@ jest.mock("hooks/useColors", () => ({
       {
         get: (target, prop) => {
           if (typeof prop === "string") {
-            return new Proxy(
-              {},
-              {
-                get: () => "#000000",
-              },
-            );
+            return new Proxy({}, { get: () => "#000000" });
           }
           return (target as any)[prop];
         },
@@ -186,16 +175,16 @@ jest.mock("config/logger", () => ({
     info: jest.fn(),
   },
 }));
-
-// Mock the Icon component to avoid theme color issues
-jest.mock("components/sds/Icon", () => ({
-  __esModule: true,
-  default: new Proxy(
-    {},
-    {
-      get: () => "View",
-    },
-  ),
+jest.mock("services/blockaid/helper", () => ({
+  assessTokenSecurity: jest.fn(() => ({
+    isMalicious: false,
+    isSuspicious: false,
+  })),
+  assessTransactionSecurity: jest.fn(() => ({
+    isMalicious: false,
+    isSuspicious: false,
+  })),
+  extractSecurityWarnings: jest.fn(() => []),
 }));
 
 // Mock cachedFetch to return memo-required accounts data
@@ -255,12 +244,16 @@ const mockHasXLMForFees = hasXLMForFees as jest.MockedFunction<
   typeof hasXLMForFees
 >;
 
-// Mock navigation
+// Mock navigation and route
+const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
+const mockReset = jest.fn();
+
 const mockNavigation = {
-  navigate: jest.fn(),
-  goBack: jest.fn(),
-  reset: jest.fn(),
-};
+  goBack: mockGoBack,
+  navigate: mockNavigate,
+  reset: mockReset,
+} as unknown as TransactionAmountScreenProps["navigation"];
 
 const mockRoute = {
   params: {
@@ -268,7 +261,9 @@ const mockRoute = {
     recipientAddress:
       "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
   },
-};
+  key: "transaction-amount",
+  name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+} as unknown as TransactionAmountScreenProps["route"];
 
 describe("TransactionAmountScreen - Memo Update Flow", () => {
   const mockPublicKey =
@@ -450,10 +445,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     });
 
     const { rerender } = renderWithProviders(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Initial build
@@ -478,10 +470,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(updatedSettingsState);
 
     rerender(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Simulate settings change
@@ -525,10 +514,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     });
 
     const { rerender } = renderWithProviders(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Initial successful build
@@ -553,10 +539,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(updatedSettingsState);
 
     rerender(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Simulate settings change that fails
@@ -608,10 +591,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
     const { rerender } = renderWithProviders(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Simulate initial transaction build without memo
@@ -647,10 +627,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     // Rerender to reflect the settings change
     rerender(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Simulate settings change triggering transaction rebuild
@@ -694,10 +671,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
   it("should render the main UI components", () => {
     const { getByText } = render(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Try to find a text element that should be rendered
@@ -733,10 +707,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(settingsStateWithoutMemo);
 
     const { getByText } = render(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Find the continue button by text content
@@ -789,10 +760,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(settingsStateWithMemo);
 
     const { getByText } = render(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Find the continue button by text content
@@ -845,10 +813,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTransactionSettingsStore.mockReturnValue(settingsStateWithoutMemo);
 
     const { getByText } = render(
-      <TransactionAmountScreen
-        navigation={mockNavigation as any}
-        route={mockRoute as any}
-      />,
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     // Find the continue button by text content
