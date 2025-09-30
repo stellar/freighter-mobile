@@ -206,13 +206,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance || !account) return BigNumber(0);
+    if (!selectedBalance || !account) {
+      return BigNumber(0);
+    }
 
-    return calculateSpendableAmount({
+    const result = calculateSpendableAmount({
       balance: selectedBalance,
       subentryCount: account.subentryCount,
       transactionFee,
     });
+
+    return result;
   }, [selectedBalance, account, transactionFee]);
 
   const handlePercentagePress = (percentage: number) => {
@@ -496,9 +500,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return (
       !!amountError ||
       BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-      isBuilding
+      isBuilding ||
+      isValidatingMemo ||
+      isMemoMissing
     );
-  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
+  }, [
+    amountError,
+    tokenAmount,
+    isBuilding,
+    recipientAddress,
+    isValidatingMemo,
+    isMemoMissing,
+  ]);
 
   if (isProcessing) {
     return (
