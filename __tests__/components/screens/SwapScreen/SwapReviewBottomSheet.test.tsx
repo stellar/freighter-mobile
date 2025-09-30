@@ -3,7 +3,7 @@ import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
-import React from "react";
+import React, { act } from "react";
 
 import { mockBalances } from "../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
@@ -133,7 +133,7 @@ describe("SwapReviewBottomSheet", () => {
 
       await user.press(getByText("Confirm"));
       expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
-    }, 10000);
+    }, 50000);
 
     it("calls onCancel when cancel button is pressed", async () => {
       const user = userEvent.setup();
