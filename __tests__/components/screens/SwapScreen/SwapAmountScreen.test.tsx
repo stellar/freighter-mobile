@@ -1,72 +1,17 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
-import React from "react";
+import { useBalancesList } from "hooks/useBalancesList";
+import React, { act } from "react";
 import { View } from "react-native";
 
-const mockBalanceItems = [
-  {
-    id: "XLM",
-    token: {
-      code: "XLM",
-      type: "native",
-    },
-    total: new BigNumber("1000.5"),
-    available: new BigNumber("1000.5"),
-    minimumBalance: "1",
-    buyingLiabilities: "0",
-    sellingLiabilities: "0",
-    tokenCode: "XLM",
-    displayName: "XLM",
-    imageUrl: "",
-    currentPrice: new BigNumber("0.5"),
-    percentagePriceChange24h: new BigNumber("0.02"),
-    fiatCode: "USD",
-    fiatTotal: "50.25",
-  },
-  {
-    id: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-    token: {
-      code: "USDC",
-      type: "",
-    },
-    total: new BigNumber("10"),
-    available: new BigNumber("10"),
-    minimumBalance: "1",
-    buyingLiabilities: "0",
-    sellingLiabilities: "0",
-    tokenCode: "USDC",
-    displayName: "USDC",
-    imageUrl: "",
-    currentPrice: new BigNumber("0.5"),
-    percentagePriceChange24h: new BigNumber("0.02"),
-    fiatCode: "USD",
-    fiatTotal: "50.25",
-  },
-  {
-    id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-    token: {
-      code: "FTT",
-      type: "",
-    },
-    total: new BigNumber("20"),
-    available: new BigNumber("20"),
-    minimumBalance: "1",
-    buyingLiabilities: "0",
-    sellingLiabilities: "0",
-    tokenCode: "FTT",
-    displayName: "FTT",
-    imageUrl: "",
-    currentPrice: new BigNumber("0.3"),
-    percentagePriceChange24h: new BigNumber("0.5"),
-    fiatCode: "USD",
-    fiatTotal: "50.25",
-  },
-];
+import { mockBalances } from "../../../../__mocks__/balances";
+import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
+import { mockUseColors } from "../../../../__mocks__/use-colors";
 
 const MockView = View;
 const mockSetSourceToken = jest.fn();
@@ -78,14 +23,8 @@ const mockResetToDefaults = jest.fn();
 const mockExecuteSwap = jest.fn().mockResolvedValue(undefined);
 const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
 
-jest.mock("react-native-gesture-handler", () => ({
-  PanGestureHandler: MockView,
-  GestureHandlerRootView: MockView,
-  State: {},
-  createNativeWrapper: jest.fn((component) => component),
-  TapGestureHandler: ({ children }: any) => <MockView>{children}</MockView>,
-}));
-
+mockGestureHandler();
+mockUseColors();
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(() => ({
     sourceTokenId:
@@ -128,44 +67,9 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
     sourceAmount: "10",
   })),
 }));
-jest.mock("hooks/useColors", () => () => ({
-  themeColors: {
-    text: { secondary: "gray" },
-    gray: { 9: "gray" },
-    red: { 9: "red" },
-    amber: { 9: "amber" },
-    background: {
-      tertiary: "white",
-    },
-    foreground: {
-      primary: "white",
-    },
-    border: {
-      primary: "white",
-    },
-    base: {
-      1: "white",
-    },
-  },
-}));
+jest.mock("hooks/useBalancesList");
 jest.mock("hooks/useGetActiveAccount", () => () => ({
   account: { publicKey: "abc", subentryCount: 0 },
-}));
-jest.mock("hooks/useBalancesList", () => ({
-  useBalancesList: jest.fn(() => ({
-    balanceItems: mockBalanceItems,
-    scanResults: {
-      "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
-        result_type: "Malicious",
-      },
-    },
-    isLoading: false,
-    error: null,
-    noBalances: false,
-    isRefreshing: false,
-    isFunded: true,
-    handleRefresh: jest.fn(),
-  })),
 }));
 jest.mock("hooks/useRightHeader", () => ({ useRightHeaderMenu: jest.fn() }));
 const mockShowToast = jest.fn();
@@ -199,6 +103,20 @@ describe("SwapAmountScreen", () => {
   });
 
   it("initializes source token from route params", () => {
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: mockBalances,
+      scanResults: {
+        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+          result_type: "Malicious",
+        },
+      },
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
     renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
@@ -208,6 +126,20 @@ describe("SwapAmountScreen", () => {
   });
 
   it("renders security warnings for malicious states", () => {
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: mockBalances,
+      scanResults: {
+        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+          result_type: "Malicious",
+        },
+      },
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
     const { UNSAFE_getByType } = renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
@@ -216,11 +148,36 @@ describe("SwapAmountScreen", () => {
     expect(icon.props.themeColor).toBe("red");
   });
 
+  it("renders security warnings for suspicious states", () => {
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: mockBalances,
+      scanResults: {
+        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+          result_type: "Warning",
+        },
+      },
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
+    const { UNSAFE_getByType } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    const icon = UNSAFE_getByType(Icon.AlertCircle);
+    expect(icon).toBeTruthy();
+    expect(icon.props.themeColor).toBe("amber");
+  });
+
   it("resets state on unmount", () => {
     const { unmount } = renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
-    unmount();
+    act(() => {
+      unmount();
+    });
     expect(mockResetSwap).toHaveBeenCalled();
     expect(mockResetTransaction).toHaveBeenCalled();
     expect(mockResetToDefaults).toHaveBeenCalled();

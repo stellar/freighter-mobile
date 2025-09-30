@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import SwapScreen from "components/screens/SwapScreen";
@@ -7,18 +8,15 @@ import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
+import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
+
 const TEST_SYMBOL = "SRC";
 const TEST_KEY = "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
 const TEST_TOKEN_ID = `${TEST_SYMBOL}:${TEST_KEY}`;
 
 const MockView = View;
 const MockTouchable = TouchableOpacity;
-jest.mock("react-native-gesture-handler", () => ({
-  PanGestureHandler: MockView,
-  GestureHandlerRootView: MockView,
-  State: {},
-  createNativeWrapper: jest.fn((component) => component),
-}));
+mockGestureHandler();
 
 const mockSetSourceToken = jest.fn();
 const mockSetDestinationToken = jest.fn();

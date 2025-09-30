@@ -1,48 +1,21 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { View } from "react-native";
 
-const MockView = View;
+import { mockBalances } from "../../../../__mocks__/balances";
+import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
+import { mockUseColors } from "../../../../__mocks__/use-colors";
 
-jest.mock("react-native-gesture-handler", () => ({
-  PanGestureHandler: MockView,
-  GestureHandlerRootView: MockView,
-  State: {},
-  createNativeWrapper: jest.fn((component) => component),
-  TapGestureHandler: ({ children }: any) => <MockView>{children}</MockView>,
-}));
+mockGestureHandler();
+mockUseColors();
 
 const mockAccount = {
   publicKey: "GDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
   accountName: "Test Account",
 };
-
-const mockBalanceItems = [
-  {
-    id: "XLM",
-    token: {
-      code: "XLM",
-      type: "native",
-    },
-    total: "1000",
-    available: "1000",
-    currentPrice: 0.1,
-  },
-  {
-    id: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-    token: {
-      code: "USDC",
-      issuer: {
-        key: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-      },
-    },
-    total: "500",
-    available: "500",
-    currentPrice: 1,
-  },
-];
 
 jest.mock("hooks/useGetActiveAccount", () => () => ({
   account: mockAccount,
@@ -107,41 +80,8 @@ jest.mock("ducks/transactionBuilder", () => ({
 
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
-    balanceItems: mockBalanceItems,
+    balanceItems: mockBalances,
   })),
-}));
-
-jest.mock("hooks/useColors", () => () => ({
-  themeColors: {
-    background: {
-      primary: "#fcfcfc",
-      secondary: "#f8f8f8",
-      tertiary: "#f3f3f3",
-    },
-    foreground: {
-      primary: "#000",
-      secondary: "#666",
-    },
-    border: {
-      primary: "#e2e2e2",
-    },
-    base: {
-      1: "#000000",
-    },
-    text: {
-      secondary: "#6f6f6f",
-    },
-    gray: {
-      9: "#8f8f8f",
-    },
-    red: {
-      9: "#e5484d",
-    },
-    amber: {
-      9: "#ffb224",
-    },
-    lilac: { 11: "#9b59b6" },
-  },
 }));
 
 jest.mock(
@@ -212,7 +152,7 @@ describe("SwapReviewBottomSheet", () => {
         validation: {
           result_type: "Malicious",
         },
-      } as any;
+      } as Blockaid.StellarTransactionScanResponse;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -229,7 +169,7 @@ describe("SwapReviewBottomSheet", () => {
         validation: {
           result_type: "Warning",
         },
-      } as any;
+      } as Blockaid.StellarTransactionScanResponse;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -246,7 +186,7 @@ describe("SwapReviewBottomSheet", () => {
         validation: {
           result_type: "Malicious",
         },
-      } as any;
+      } as Blockaid.StellarTransactionScanResponse;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -264,7 +204,7 @@ describe("SwapReviewBottomSheet", () => {
         validation: {
           result_type: "Malicious",
         },
-      } as any;
+      } as Blockaid.StellarTransactionScanResponse;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -282,7 +222,7 @@ describe("SwapReviewBottomSheet", () => {
     it("shows malicious asset banner when source token is malicious", () => {
       const maliciousSourceScan = {
         result_type: "Malicious",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -297,7 +237,7 @@ describe("SwapReviewBottomSheet", () => {
     it("shows suspicious asset banner when source token is suspicious", () => {
       const suspiciousSourceScan = {
         result_type: "Spam",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -314,7 +254,7 @@ describe("SwapReviewBottomSheet", () => {
     it("shows malicious asset banner when destination token is malicious", () => {
       const maliciousDestScan = {
         result_type: "Malicious",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -329,7 +269,7 @@ describe("SwapReviewBottomSheet", () => {
     it("shows suspicious asset banner when destination token is suspicious", () => {
       const suspiciousDestScan = {
         result_type: "Spam",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -348,11 +288,11 @@ describe("SwapReviewBottomSheet", () => {
         validation: {
           result_type: "Malicious",
         },
-      } as any;
+      } as Blockaid.StellarTransactionScanResponse;
 
       const maliciousSourceScan = {
         result_type: "Malicious",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
@@ -369,11 +309,11 @@ describe("SwapReviewBottomSheet", () => {
     it("shows banner when both source and destination are malicious", () => {
       const maliciousSourceScan = {
         result_type: "Malicious",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const maliciousDestScan = {
         result_type: "Malicious",
-      } as any;
+      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet

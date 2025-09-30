@@ -1,4 +1,4 @@
-import { StellarTransactionScanResponse } from "@blockaid/client/resources/index.mjs";
+import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
 import { NETWORKS } from "config/constants";
@@ -41,7 +41,7 @@ interface UseSwapTransactionResult {
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
-  transactionScanResult: StellarTransactionScanResponse | undefined
+  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
 }
 
 export const useSwapTransaction = ({
@@ -57,7 +57,8 @@ export const useSwapTransaction = ({
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transactionScanResult, setTransactionScanResult] = useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
+  const [transactionScanResult, setTransactionScanResult] =
+    useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
@@ -89,8 +90,12 @@ export const useSwapTransaction = ({
     if (!transactionXDR) {
       throw new Error("Failed to build swap transaction");
     }
-    const scanResult = await scanTransaction(transactionXDR, "internal");
-    setTransactionScanResult(scanResult);
+    try {
+      const scanResult = await scanTransaction(transactionXDR, "internal");
+      setTransactionScanResult(scanResult);
+    } catch (error) {
+      logger.error("SwapTransaction", "Transaction scan failed", error);
+    }
   };
 
   const executeSwap = async () => {
