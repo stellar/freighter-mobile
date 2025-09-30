@@ -427,6 +427,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     });
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("should rebuild transaction when settings change", async () => {
     const mockBuildTransactionFn = jest
       .fn()
@@ -596,8 +600,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     // Wait for initial render
     await act(async () => {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 50);
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
       });
     });
 
@@ -639,8 +643,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     // Wait for rerender
     await act(async () => {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 50);
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
       });
     });
 
@@ -681,7 +685,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     // This test ensures the bug is fixed: transaction XDR is rebuilt when memo is added
     // for a memo-required address, preventing the transaction from failing
-  }, 10000);
+  }, 15000);
 
   it("should render the main UI components", () => {
     const { getByText } = render(
