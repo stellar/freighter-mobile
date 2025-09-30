@@ -93,7 +93,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     return (
       <View className="gap-1">
         <Display xs medium>
-          {formatFiatAmount(tokenBalance.currentPrice ?? 0)}
+          {formatFiatAmount(tokenBalance.currentPrice ?? "0")}
         </Display>
         {hasPercentageChange && (
           <View className="flex-row items-center gap-1">
@@ -137,7 +137,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
           ),
           trailingContent: (
             <Text md secondary color={THEME.colors.text.primary}>
-              {formatFiatAmount(tokenBalance.fiatTotal ?? 0)}
+              {formatFiatAmount(tokenBalance.fiatTotal ?? "0")}
             </Text>
           ),
         }
