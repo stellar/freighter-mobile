@@ -1,3 +1,4 @@
+import { DEFAULT_DECIMALS } from "config/constants";
 import { getNumberFormatSettings } from "react-native-localize";
 
 /**
@@ -15,7 +16,7 @@ import { getNumberFormatSettings } from "react-native-localize";
 export const formatNumericInput = (
   prevValue: string,
   key: string,
-  maxDecimals: number = 7, // Default to 7 for Stellar
+  maxDecimals: number = DEFAULT_DECIMALS, // Default to 7 for Stellar
 ): string => {
   const { decimalSeparator } = getNumberFormatSettings();
   // Handle delete key
