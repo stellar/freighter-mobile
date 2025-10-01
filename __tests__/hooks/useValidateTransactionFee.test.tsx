@@ -6,9 +6,9 @@ import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: { min?: string }) => {
     const translations: Record<string, string> = {
-      "transactionFeeScreen.errors.required": "Fee is required",
-      "transactionFeeScreen.errors.invalid": "Invalid fee value",
-      "transactionFeeScreen.errors.tooLow": `Fee must be at least ${params?.min}`,
+      "transactionSettings.errors.fee.required": "Fee is required",
+      "transactionSettings.errors.fee.invalid": "Invalid fee value",
+      "transactionSettings.errors.fee.tooLow": `Fee must be at least ${params?.min}`,
     };
     return translations[key] || key;
   },

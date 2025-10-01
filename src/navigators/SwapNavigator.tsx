@@ -2,12 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import SwapScreen from "components/screens/SwapScreen";
-import {
-  SwapAmountScreen,
-  SwapFeeScreen,
-  SwapSlippageScreen,
-  SwapTimeoutScreen,
-} from "components/screens/SwapScreen/screens";
+import { SwapAmountScreen } from "components/screens/SwapScreen/screens";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
@@ -41,27 +36,6 @@ export const SwapStackNavigator = () => {
         component={SwapAmountScreen}
         options={{
           headerTitle: t("swapScreen.title"),
-        }}
-      />
-      <SwapStack.Screen
-        name={SWAP_ROUTES.SWAP_FEE_SCREEN}
-        component={SwapFeeScreen}
-        options={{
-          headerTitle: t("transactionFeeScreen.title"),
-        }}
-      />
-      <SwapStack.Screen
-        name={SWAP_ROUTES.SWAP_TIMEOUT_SCREEN}
-        component={SwapTimeoutScreen}
-        options={{
-          headerTitle: t("transactionTimeoutScreen.title"),
-        }}
-      />
-      <SwapStack.Screen
-        name={SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN}
-        component={SwapSlippageScreen}
-        options={{
-          headerTitle: t("slippageScreen.title"),
         }}
       />
     </SwapStack.Navigator>

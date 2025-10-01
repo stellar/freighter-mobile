@@ -7,7 +7,7 @@ import { I18nManager, Platform, Settings } from "react-native";
  * two-letter language code (e.g., 'en', 'fr', 'ja'). The implementation varies by platform
  * to accommodate the different ways Android and iOS expose language settings.
  *
- * @returns {string | undefined} Two-letter language code or 'en' as fallback
+ * @returns {string} Two-letter language code or 'en' as fallback
  *
  * @example
  * // Get the user's OS language
@@ -16,12 +16,14 @@ import { I18nManager, Platform, Settings } from "react-native";
  * // Use the language for localization
  * const message = language === 'fr' ? 'Bonjour' : 'Hello';
  */
-function getOSLanguage(): string | undefined {
-  if (Platform.OS === "android") {
-    const locale = I18nManager.getConstants().localeIdentifier;
+function getOSLanguage(): string {
+  let language = "en"; // fallback
 
-    if (locale) {
-      return locale.substring(0, 2);
+  if (Platform.OS === "android") {
+    const androidLocale = I18nManager.getConstants().localeIdentifier;
+    if (androidLocale) {
+      // Extract language code from locale (e.g., 'en-US' -> 'en')
+      language = androidLocale.substring(0, 2);
     }
   }
 
@@ -31,11 +33,12 @@ function getOSLanguage(): string | undefined {
       (Settings.get("AppleLanguages") as string[])[0];
 
     if (deviceLanguage) {
-      return deviceLanguage.substring(0, 2);
+      // Extract language code from locale (e.g., 'en-US' -> 'en')
+      language = deviceLanguage.substring(0, 2);
     }
   }
 
-  return "en";
+  return language;
 }
 
 export default getOSLanguage;

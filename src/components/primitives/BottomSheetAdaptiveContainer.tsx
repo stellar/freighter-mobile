@@ -57,7 +57,6 @@ const BottomSheetAdaptiveContainer: React.FC<
   contentGapPx = BOTTOM_SHEET_CONTENT_GAP,
 }) => {
   const [headerHeight, setHeaderHeight] = useState(0);
-
   const maxContentHeight = useMemo(
     () =>
       calculateScrollableMaxHeight({
@@ -83,7 +82,13 @@ const BottomSheetAdaptiveContainer: React.FC<
         </View>
       ) : null}
 
-      <View style={{ maxHeight: maxContentHeight }}>{children}</View>
+      <View
+        style={{
+          maxHeight: maxContentHeight,
+        }}
+      >
+        {children}
+      </View>
     </View>
   );
 };

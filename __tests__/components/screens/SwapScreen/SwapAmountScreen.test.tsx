@@ -71,7 +71,10 @@ jest.mock("hooks/useBalancesList");
 jest.mock("hooks/useGetActiveAccount", () => () => ({
   account: { publicKey: "abc", subentryCount: 0 },
 }));
-jest.mock("hooks/useRightHeader", () => ({ useRightHeaderMenu: jest.fn() }));
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderMenu: jest.fn(),
+  useRightHeaderButton: jest.fn(),
+}));
 const mockShowToast = jest.fn();
 jest.mock("providers/ToastProvider", () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => (

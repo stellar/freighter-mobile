@@ -17,19 +17,28 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   assessTokenSecurity,
   assessTransactionSecurity,
@@ -80,6 +89,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   };
 
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
+
+  // Use sourceAmount as-is since it's already in the correct format for display
 
   const currentConversionRate =
     pathResult?.conversionRate ||
@@ -264,10 +275,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(
-                  pathResult?.sourceAmount || sourceAmount,
-                  sourceTokenSymbol,
-                )}
+                {formatTokenAmount(sourceAmount, sourceTokenSymbol)}
               </Text>
               <Text md medium secondary>
                 {sourceTokenFiatAmount}
@@ -322,9 +330,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         className="mt-[16px]"
         items={[
           {
-            icon: (
-              <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
-            ),
+            icon: <Icon.Wallet01 size={16} themeColor="gray" />,
             titleComponent: (
               <Text md secondary color={THEME.colors.text.secondary}>
                 {t("swapScreen.review.wallet")}
@@ -402,5 +408,81 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     </View>
   );
 };
+
+type SwapReviewFooterProps = {
+  onCancel?: () => void;
+  onConfirm?: () => void;
+  isBuilding?: boolean;
+  onSettingsPress?: () => void;
+  transactionXDR?: string;
+};
+
+export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
+  (props) => {
+    const { t } = useAppTranslation();
+    const insets = useSafeAreaInsets();
+
+    const {
+      onCancel,
+      onConfirm,
+      isBuilding = false,
+      transactionXDR,
+      onSettingsPress,
+    } = props;
+
+    const isDisabled = !transactionXDR || isBuilding;
+
+    const renderButtons = useCallback(() => {
+      const cancelButton = (
+        <View className="flex-1">
+          <Button onPress={onCancel} secondary xl>
+            {t("common.cancel")}
+          </Button>
+        </View>
+      );
+
+      const confirmButton = (
+        <View className="flex-1">
+          <Button
+            biometric
+            onPress={() => onConfirm?.()}
+            tertiary
+            xl
+            disabled={isDisabled}
+          >
+            {t("common.confirm")}
+          </Button>
+        </View>
+      );
+
+      return (
+        <>
+          {cancelButton}
+          {confirmButton}
+        </>
+      );
+    }, [onCancel, onConfirm, isDisabled, t]);
+
+    return (
+      <View
+        className="flex-row bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6"
+        style={{
+          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          gap: pxValue(12),
+        }}
+      >
+        {onSettingsPress && (
+          <TouchableOpacity
+            onPress={onSettingsPress}
+            className="w-[46px] h-[46px] rounded-full border border-gray-6 items-center justify-center"
+          >
+            <Icon.Settings04 size={24} themeColor="gray" />
+          </TouchableOpacity>
+        )}
+        {renderButtons()}
+      </View>
+    );
+  },
+);
 
 export default SwapReviewBottomSheet;

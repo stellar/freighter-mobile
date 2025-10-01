@@ -16,6 +16,14 @@ jest.mock("react-native-device-info", () => ({
   getBuildNumber: () => "42",
 }));
 
+const mockOpenInAppBrowser = jest.fn();
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: mockOpenInAppBrowser,
+    isAvailable: jest.fn(() => Promise.resolve(true)),
+  }),
+}));
+
 const mockCurrentYear = 2023;
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
@@ -59,6 +67,7 @@ const mockRoute = {
 describe("AboutScreen", () => {
   beforeEach(() => {
     mockOpenURL.mockClear();
+    mockOpenInAppBrowser.mockClear();
   });
 
   it("renders correctly with all information", () => {
@@ -81,34 +90,52 @@ describe("AboutScreen", () => {
   });
 
   it("opens Freighter website link when pressed", () => {
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
+
     renderWithProviders(
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Freighter Website"));
-    expect(mockOpenURL).toHaveBeenCalledWith(FREIGHTER_BASE_URL);
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(FREIGHTER_BASE_URL);
   });
 
   it("opens Stellar Foundation link when pressed", () => {
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
+
     renderWithProviders(
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Stellar Foundation"));
-    expect(mockOpenURL).toHaveBeenCalledWith(STELLAR_FOUNDATION_BASE_URL);
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      STELLAR_FOUNDATION_BASE_URL,
+    );
   });
 
   it("opens Privacy Policy link when pressed", () => {
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
+
     renderWithProviders(
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Privacy Policy"));
-    expect(mockOpenURL).toHaveBeenCalledWith(STELLAR_FOUNDATION_PRIVACY_URL);
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      STELLAR_FOUNDATION_PRIVACY_URL,
+    );
   });
 
   it("opens Terms of Service link when pressed", () => {
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
+
     renderWithProviders(
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
     fireEvent.press(screen.getByText("Terms of Service"));
-    expect(mockOpenURL).toHaveBeenCalledWith(STELLAR_FOUNDATION_TERMS_URL);
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      STELLAR_FOUNDATION_TERMS_URL,
+    );
   });
 });

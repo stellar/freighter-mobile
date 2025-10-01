@@ -32,7 +32,10 @@ describe("Input", () => {
         );
         const input = getByTestId("test-input");
 
-        expect(input.props.style).toMatchObject({
+        const inputStyle = Array.isArray(input.props.style)
+          ? input.props.style[0]
+          : input.props.style;
+        expect(inputStyle).toMatchObject({
           fontSize: fsValue(metrics.fontSize),
           height: pxValue(metrics.lineHeight + 3 * metrics.paddingVertical),
         });
@@ -45,7 +48,10 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
 
-      expect(input.props.style).toMatchObject({
+      const inputStyle = Array.isArray(input.props.style)
+        ? input.props.style[0]
+        : input.props.style;
+      expect(inputStyle).toMatchObject({
         fontSize: fsValue(16), // lg size
         height: pxValue(48), // lineHeight(24) + 3 * paddingVertical(8)
       });
