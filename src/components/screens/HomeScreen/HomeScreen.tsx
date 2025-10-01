@@ -288,7 +288,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   disabled={hasZeroBalance}
                   onPress={handleSendPress}
                 />
-                {!swapEnabled && (
+                {swapEnabled && (
                   <IconButton
                     Icon={Icon.RefreshCw02}
                     title={t("home.swap")}
