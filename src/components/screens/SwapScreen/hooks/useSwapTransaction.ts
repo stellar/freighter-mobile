@@ -14,7 +14,7 @@ import { useHistoryStore } from "ducks/history";
 import { SwapPathResult } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
 interface SwapTransactionParams {
@@ -53,7 +53,7 @@ export const useSwapTransaction = ({
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
 
-  const setupSwapTransaction = async () => {
+  const setupSwapTransaction = useCallback(async () => {
     if (
       !sourceBalance ||
       !destinationBalance ||
@@ -64,7 +64,8 @@ export const useSwapTransaction = ({
     }
 
     // Get fresh settings values each time the function is called
-    const { swapFee, swapTimeout } = useSwapSettingsStore.getState();
+    const { swapFee: freshSwapFee, swapTimeout: freshSwapTimeout } =
+      useSwapSettingsStore.getState();
 
     const transactionXDR = await buildSwapTransaction({
       sourceAmount,
@@ -73,8 +74,8 @@ export const useSwapTransaction = ({
       path: pathResult.path,
       destinationAmount: pathResult.destinationAmount,
       destinationAmountMin: pathResult.destinationAmountMin,
-      transactionFee: swapFee,
-      transactionTimeout: swapTimeout,
+      transactionFee: freshSwapFee,
+      transactionTimeout: freshSwapTimeout,
       network,
       senderAddress: account.publicKey,
     });
@@ -82,9 +83,17 @@ export const useSwapTransaction = ({
     if (!transactionXDR) {
       throw new Error("Failed to build swap transaction");
     }
-  };
+  }, [
+    sourceBalance,
+    destinationBalance,
+    pathResult,
+    buildSwapTransaction,
+    account?.publicKey,
+    sourceAmount,
+    network,
+  ]);
 
-  const executeSwap = async () => {
+  const executeSwap = useCallback(async () => {
     if (!account) {
       return;
     }
@@ -117,12 +126,13 @@ export const useSwapTransaction = ({
       }
 
       // Get fresh slippage value for analytics
-      const { swapSlippage } = useSwapSettingsStore.getState();
+      const { swapSlippage: freshSwapSlippage } =
+        useSwapSettingsStore.getState();
 
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
         destToken: destinationBalance.tokenCode,
-        allowedSlippage: swapSlippage?.toString(),
+        allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
       });
     } catch (error) {
@@ -136,7 +146,14 @@ export const useSwapTransaction = ({
 
       throw error;
     }
-  };
+  }, [
+    account,
+    sourceBalance?.tokenCode,
+    destinationBalance?.tokenCode,
+    signTransaction,
+    network,
+    submitTransaction,
+  ]);
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);

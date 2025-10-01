@@ -11,13 +11,14 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -25,20 +26,11 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type SwapReviewBottomSheetProps = {
-  onCancel?: () => void;
-  onConfirm?: () => void;
-  onSettingsPress?: () => void;
-};
-
-const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
-  onCancel,
-  onConfirm,
-  onSettingsPress,
-}) => {
+const SwapReviewBottomSheet = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -54,7 +46,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   } = useSwapStore();
 
   const { swapFee, swapSlippage } = useSwapSettingsStore();
-  const { transactionXDR, isBuilding } = useTransactionBuilderStore();
+  const { transactionXDR } = useTransactionBuilderStore();
 
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
   const [stableMinimumReceived, setStableMinimumReceived] =
@@ -152,12 +144,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       : "--";
 
   const publicKey = account?.publicKey;
-
-  const handleConfirmSwap = () => {
-    if (onConfirm) {
-      onConfirm();
-    }
-  };
 
   return (
     <View className="flex-1">
@@ -302,8 +288,72 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           {t("swapScreen.review.warning")}
         </Text>
       </View>
+    </View>
+  );
+};
 
-      <View className="mt-[24px] gap-[12px] flex-row">
+type SwapReviewFooterProps = {
+  onCancel?: () => void;
+  onConfirm?: () => void;
+  isBuilding?: boolean;
+  onSettingsPress?: () => void;
+  transactionXDR?: string;
+};
+
+export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
+  (props) => {
+    const { t } = useAppTranslation();
+    const insets = useSafeAreaInsets();
+
+    const {
+      onCancel,
+      onConfirm,
+      isBuilding = false,
+      transactionXDR,
+      onSettingsPress,
+    } = props;
+
+    const isDisabled = !transactionXDR || isBuilding;
+
+    const renderButtons = useCallback(() => {
+      const cancelButton = (
+        <View className="flex-1">
+          <Button onPress={onCancel} secondary xl>
+            {t("common.cancel")}
+          </Button>
+        </View>
+      );
+
+      const confirmButton = (
+        <View className="flex-1">
+          <Button
+            biometric
+            onPress={() => onConfirm?.()}
+            tertiary
+            xl
+            disabled={isDisabled}
+          >
+            {t("common.confirm")}
+          </Button>
+        </View>
+      );
+
+      return (
+        <>
+          {cancelButton}
+          {confirmButton}
+        </>
+      );
+    }, [onCancel, onConfirm, isDisabled, t]);
+
+    return (
+      <View
+        className="flex-row bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6"
+        style={{
+          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          gap: pxValue(12),
+        }}
+      >
         {onSettingsPress && (
           <TouchableOpacity
             onPress={onSettingsPress}
@@ -312,25 +362,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             <Icon.Settings04 size={24} themeColor="gray" />
           </TouchableOpacity>
         )}
-        <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
-            {t("common.cancel")}
-          </Button>
-        </View>
-        <View className="flex-1">
-          <Button
-            biometric
-            onPress={() => handleConfirmSwap()}
-            tertiary
-            xl
-            disabled={!transactionXDR || isBuilding}
-          >
-            {t("common.confirm")}
-          </Button>
-        </View>
+        {renderButtons()}
       </View>
-    </View>
-  );
-};
+    );
+  },
+);
 
 export default SwapReviewBottomSheet;

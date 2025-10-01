@@ -11,8 +11,9 @@ import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { TouchableOpacity, View, Platform, Linking } from "react-native";
+import { TouchableOpacity, View, Platform } from "react-native";
 import { analytics } from "services/analytics";
 
 interface AccountItemRowProps {
@@ -33,6 +34,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
 
@@ -53,7 +55,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     const url = `${getStellarExpertUrl(network)}/account/${account.publicKey}`;
     analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
 
-    await Linking.openURL(url);
+    await openInAppBrowser(url);
   };
 
   const actions: MenuItem[] = [
