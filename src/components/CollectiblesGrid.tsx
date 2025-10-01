@@ -131,7 +131,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       [renderCollectibleItem, themeColors.text.secondary],
     );
 
-    // only show spinner on initial load, as spinner is shown in the parent component
+    // During initial loading, show spinner without refresh capability
     if (isLoading && !isRefreshing) {
       return (
         <View className="flex-1 items-center justify-center mb-10">
