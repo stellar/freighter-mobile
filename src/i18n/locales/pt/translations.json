@@ -30,7 +30,7 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "addMemo": "Adicionar memo",
+    "addMemo": "Add. memo",
     "wallet": "Carteira"
   },
   "home": {
@@ -557,7 +557,7 @@
     "swapFrom": "Trocar de",
     "swapTo": "Trocar para",
     "title": "Trocar",
-    "searchTokenInputPlaceholder": "Pesquisar nome ou endereço do token",
+    "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
     "setMax": "Definir máximo",
     "receive": "Receber",
     "chooseToken": "Escolher token",
@@ -605,15 +605,27 @@
   "transactionTokenScreen": {
     "title": "Enviando"
   },
-  "transactionSettingsBottomSheet": {
+  "transactionSettings": {
     "title": "Configurações da transação",
     "feeTitle": "Taxa da transação",
     "memoTitle": "Memo",
+    "slippageTitle": "Deslizamento permitido",
     "timeoutTitle": "Tempo limite da transação",
+    "resetFee": "Redefinir",
+    "memoPlaceholder": "Digite seu memo",
+    "slippagePlaceholder": "% Personalizado",
+    "timeoutPlaceholder": "Digite o tempo limite",
+    "seconds": "segundos",
+    "congestion": "Congestionamento {{networkCongestion}}",
     "memoInfo": {
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido."
+    },
+    "slippageInfo": {
+      "title": "Deslizamento permitido",
+      "description": "O deslizamento é a diferença entre o preço esperado de uma negociação e o preço real pelo qual a negociação é executada.",
+      "additionalInfo": "Uma tolerância de deslizamento maior significa que você está disposto a aceitar uma diferença de preço maior, o que pode ajudar a garantir que sua negociação seja executada, mas pode resultar em um preço menos favorável."
     },
     "timeoutInfo": {
       "title": "Tempo limite da transação",
@@ -624,6 +636,28 @@
       "title": "Taxa da transação",
       "description": "Todas as transações na rede Stellar incluem uma pequena taxa para ajudar a manter a rede segura.",
       "additionalInfo": "Você pode escolher aumentar essa taxa se quiser que sua transação seja priorizada e processada mais rapidamente pela rede."
+    },
+    "errors": {
+      "memo": {
+        "invalid": "Formato de memo inválido",
+        "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
+      },
+      "slippage": {
+        "customRequired": "Slippage personalizado é obrigatório",
+        "invalidNumber": "Número inválido",
+        "minSlippage": "Slippage deve ser pelo menos {{min}}%",
+        "maxSlippage": "Slippage deve ser menor que {{max}}%"
+      },
+      "timeout": {
+        "required": "Tempo limite da transação é obrigatório",
+        "invalid": "Tempo limite da transação inválido",
+        "greaterThanZero": "O tempo limite deve ser maior que 0"
+      },
+      "fee": {
+        "required": "Taxa de transação é obrigatória",
+        "invalid": "Taxa de transação inválida",
+        "tooLow": "A taxa deve ser maior que {{min}}"
+      }
     }
   },
   "transactionAmountScreen": {
@@ -697,36 +731,6 @@
     "connectAnyway": "Conectar mesmo assim",
     "maliciousFlag": "Este site foi marcado como malicioso",
     "suspiciousFlag": "Este site foi marcado como suspeito"
-  },
-  "transactionMemoScreen": {
-    "title": "Memo",
-    "placeholder": "Digite seu memo",
-    "optional": "(opcional)",
-    "errors": {
-      "invalid": "Formato de memo inválido",
-      "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
-    }
-  },
-  "transactionTimeoutScreen": {
-    "title": "Tempo Limite da Transação",
-    "seconds": "segundos",
-    "setRecommended": "Definir recomendado",
-    "inputPlaceholder": "Digite o tempo limite",
-    "errors": {
-      "required": "Tempo limite da transação é obrigatório",
-      "invalid": "Tempo limite da transação inválido",
-      "greaterThanZero": "O tempo limite deve ser maior que 0"
-    }
-  },
-  "transactionFeeScreen": {
-    "title": "Taxa da Transação",
-    "setRecommended": "Definir recomendado",
-    "congestion": "Congestionamento {{networkCongestion}}",
-    "errors": {
-      "required": "Taxa de transação é obrigatória",
-      "invalid": "Taxa de transação inválida",
-      "tooLow": "A taxa deve ser maior que {{min}}"
-    }
   },
   "low": "baixo",
   "medium": "médio",
@@ -917,17 +921,6 @@
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
-  },
-  "slippageScreen": {
-    "title": "Slippage Permitido",
-    "customPlaceholder": "% Personalizado",
-    "setDefault": "Definir padrão",
-    "errors": {
-      "customRequired": "Slippage personalizado é obrigatório",
-      "invalidNumber": "Número inválido",
-      "minSlippage": "Slippage deve ser pelo menos {{min}}%",
-      "maxSlippage": "Slippage deve ser menor que {{max}}%"
-    }
   },
   "transaction": {
     "errors": {

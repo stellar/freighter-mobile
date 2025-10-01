@@ -1,5 +1,6 @@
+import { TransactionBuilder } from "@stellar/stellar-sdk";
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
@@ -21,8 +22,9 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useEffect, useState } from "react";
-import { View, Linking } from "react-native";
+import { View } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 /**
@@ -50,6 +52,7 @@ const TransactionDetailsBottomSheet: React.FC<
   const { copyToClipboard } = useClipboard();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const { recipientAddress, selectedTokenId, transactionMemo, transactionFee } =
     useTransactionSettingsStore();
@@ -69,6 +72,16 @@ const TransactionDetailsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === selectedTokenId,
   );
+
+  const transaction = TransactionBuilder.fromXDR(
+    transactionXDR as string,
+    network,
+  );
+
+  const memo =
+    "memo" in transaction && transaction.memo.value
+      ? String(transaction.memo.value)
+      : (transactionMemo ?? "");
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [transactionDetails, setTransactionDetails] =
@@ -134,7 +147,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
-    Linking.openURL(explorerUrl).catch((err) =>
+    openInAppBrowser(explorerUrl).catch((err) =>
       logger.error(
         "[Linking - openURL]",
         "Error opening transaction explorer:",
@@ -231,8 +244,8 @@ const TransactionDetailsBottomSheet: React.FC<
               </Text>
             ),
             trailingContent: (
-              <Text md medium secondary={!transactionMemo}>
-                {transactionMemo || t("common.none")}
+              <Text md medium secondary={!memo}>
+                {memo || t("common.none")}
               </Text>
             ),
           },

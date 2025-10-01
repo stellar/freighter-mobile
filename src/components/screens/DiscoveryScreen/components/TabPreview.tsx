@@ -8,7 +8,6 @@ import {
   getFaviconUrl,
   isHomepageUrl,
 } from "helpers/browser";
-import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { View, Image, TouchableOpacity } from "react-native";
@@ -87,8 +86,8 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
           className="absolute top-3 right-3 w-6 h-6 rounded-full border-[1px] border-border-primary bg-background-primary justify-center items-center"
         >
           <Icon.X
-            size={pxValue(BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE)}
-            color={themeColors.foreground.primary}
+            size={BROWSER_CONSTANTS.TAB_PREVIEW_CLOSE_ICON_SIZE}
+            themeColor="gray"
           />
         </TouchableOpacity>
       </View>

@@ -14,8 +14,9 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useMemo, useCallback } from "react";
-import { Dimensions, Linking, ScrollView, View } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 
 // Get window width once at module level for better performance
 const { width: windowWidth } = Dimensions.get("window");
@@ -71,6 +72,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     const { themeColors } = useColors();
     const { getCollectible, isLoading: isCollectiblesLoading } =
       useCollectiblesStore();
+    const { open: openInAppBrowser } = useInAppBrowser();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -147,19 +149,22 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
      *
      * @param {string} url - The external URL to open
      */
-    const handleViewInBrowser = useCallback(async (url?: string) => {
-      if (!url) return;
+    const handleViewInBrowser = useCallback(
+      async (url?: string) => {
+        if (!url) return;
 
-      try {
-        await Linking.openURL(url);
-      } catch (error) {
-        logger.error(
-          "CollectibleDetailsScreen",
-          "Failed to open externalUrl in browser:",
-          error,
-        );
-      }
-    }, []);
+        try {
+          await openInAppBrowser(url);
+        } catch (error) {
+          logger.error(
+            "CollectibleDetailsScreen",
+            "Failed to open externalUrl in browser:",
+            error,
+          );
+        }
+      },
+      [openInAppBrowser],
+    );
 
     // Show loading spinner when collectibles are being fetched
     if (isCollectiblesLoading) {

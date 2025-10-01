@@ -405,7 +405,7 @@ describe("balances duck", () => {
         createMockPricesStore({ prices: mockPrices }),
       );
 
-       mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
+      mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
 
       const { result, unmount } = renderHook(() => useBalancesStore());
 
@@ -436,7 +436,7 @@ describe("balances duck", () => {
         createMockPricesStore({ prices: {} }),
       );
 
-       mockScanBulkTokens.mockResolvedValue({ results: {} });
+      mockScanBulkTokens.mockResolvedValue({ results: {} });
 
       const { result, unmount } = renderHook(() => useBalancesStore());
 

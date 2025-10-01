@@ -13,7 +13,7 @@ export const useValidateTransactionFee = (fee: string) => {
 
   useEffect(() => {
     if (!fee) {
-      setError(t("transactionFeeScreen.errors.required"));
+      setError(t("transactionSettings.errors.fee.required"));
       return;
     }
 
@@ -21,13 +21,15 @@ export const useValidateTransactionFee = (fee: string) => {
     const minFee = new BigNumber(MIN_TRANSACTION_FEE);
 
     if (feeValue.isNaN()) {
-      setError(t("transactionFeeScreen.errors.invalid"));
+      setError(t("transactionSettings.errors.fee.invalid"));
       return;
     }
 
     if (feeValue.isLessThan(minFee)) {
       setError(
-        t("transactionFeeScreen.errors.tooLow", { min: MIN_TRANSACTION_FEE }),
+        t("transactionSettings.errors.fee.tooLow", {
+          min: MIN_TRANSACTION_FEE,
+        }),
       );
       return;
     }
