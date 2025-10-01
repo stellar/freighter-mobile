@@ -8,16 +8,17 @@ import { BLOCKAID_FEEDBACK_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React from "react";
+import React, { useMemo } from "react";
 import { View } from "react-native";
-import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
 export interface SecurityDetailBottomSheetProps {
   warnings: SecurityWarning[];
-  onCancel: () => void;
-  onProceedAnyway: () => void;
+  onCancel?: () => void;
+  onProceedAnyway?: () => void;
   onClose: () => void;
+  securityContext?: SecurityContext;
   severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
   /** The text to display for the "proceed anyway" button */
   proceedAnywayText: string;
@@ -55,6 +56,7 @@ export const SecurityDetailBottomSheet: React.FC<
   onCancel,
   onProceedAnyway,
   onClose,
+  securityContext = SecurityContext.TRANSACTION,
   severity = SecurityLevel.MALICIOUS,
   proceedAnywayText,
 }) => {
@@ -97,6 +99,22 @@ export const SecurityDetailBottomSheet: React.FC<
       ),
     }));
 
+  const getDescription = useMemo(
+    () => () => {
+      switch (securityContext) {
+        case SecurityContext.TOKEN:
+          return t("securityWarning.token");
+        case SecurityContext.SITE:
+        case SecurityContext.TRANSACTION:
+          return t("securityWarning.unsafeTransaction");
+
+        default:
+          return "";
+      }
+    },
+    [securityContext, t],
+  );
+
   return (
     <View className="flex-1 gap-[16px]">
       <View className="flex-row justify-between items-center">
@@ -111,7 +129,7 @@ export const SecurityDetailBottomSheet: React.FC<
           : t("securityWarning.suspiciousRequest")}
       </Text>
       <Text md secondary regular>
-        {t("securityWarning.unsafeTransaction")}
+        {getDescription()}
       </Text>
 
       <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
@@ -142,19 +160,23 @@ export const SecurityDetailBottomSheet: React.FC<
       </View>
 
       <View className="gap-[12px]">
-        <Button
-          xl
-          isFullWidth
-          onPress={onCancel}
-          variant={isMalicious ? "destructive" : "tertiary"}
-        >
-          {t("common.cancel")}
-        </Button>
-        <TextButton
-          text={proceedAnywayText}
-          onPress={onProceedAnyway}
-          variant={isMalicious ? "error" : "secondary"}
-        />
+        {onCancel && (
+          <Button
+            xl
+            isFullWidth
+            onPress={onCancel}
+            variant={isMalicious ? "destructive" : "tertiary"}
+          >
+            {t("common.cancel")}
+          </Button>
+        )}
+        {onProceedAnyway && (
+          <TextButton
+            text={proceedAnywayText}
+            onPress={onProceedAnyway}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        )}
       </View>
     </View>
   );

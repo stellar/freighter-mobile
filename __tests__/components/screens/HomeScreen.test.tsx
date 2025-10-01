@@ -57,6 +57,10 @@ jest.mock("components/primitives/Menu", () => {
 });
 
 // Mock the stores
+const mockFetchAccountBalances = jest.fn().mockResolvedValue(undefined);
+const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
+const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
+
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
     const mockState = {
@@ -65,9 +69,7 @@ jest.mock("ducks/balances", () => ({
       isLoading: false,
       isFunded: true,
       error: null,
-      fetchAccountBalances: jest
-        .fn()
-        .mockImplementation(() => Promise.resolve()),
+      fetchAccountBalances: mockFetchAccountBalances,
     };
     return selector ? selector(mockState) : mockState;
   }),
@@ -80,6 +82,32 @@ jest.mock("ducks/prices", () => ({
     error: null,
     lastUpdated: null,
     fetchPricesForBalances: jest.fn(),
+  })),
+}));
+
+jest.mock("ducks/collectibles", () => ({
+  useCollectiblesStore: jest.fn(() => ({
+    collections: [],
+    isLoading: false,
+    error: null,
+    fetchCollectibles: mockFetchCollectibles,
+  })),
+}));
+
+jest.mock("ducks/walletKit", () => ({
+  useWalletKitStore: jest.fn(() => ({
+    activeSessions: [],
+    isLoading: false,
+    error: null,
+    fetchActiveSessions: mockFetchActiveSessions,
+  })),
+}));
+
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: jest.fn(() => ({
+    swapEnabled: true,
+    isLoading: false,
+    error: null,
   })),
 }));
 
@@ -204,5 +232,27 @@ describe("HomeScreen", () => {
     expect(getByText("Buy")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();
     expect(getByText("Copy")).toBeTruthy();
+  });
+
+  it("calls all fetch functions when refresh is triggered", async () => {
+    const { getByTestId } = renderHomeScreen();
+
+    const flatList = getByTestId("home-screen-flatlist");
+
+    const { refreshControl } = flatList.props;
+    await refreshControl.props.onRefresh();
+
+    expect(mockFetchAccountBalances).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "TESTNET",
+    });
+    expect(mockFetchCollectibles).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "TESTNET",
+    });
+    expect(mockFetchActiveSessions).toHaveBeenCalledWith(
+      "test-public-key",
+      "TESTNET",
+    );
   });
 });

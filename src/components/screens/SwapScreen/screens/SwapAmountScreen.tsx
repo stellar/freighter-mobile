@@ -5,7 +5,10 @@ import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import NumericKeyboard from "components/NumericKeyboard";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { SwapReviewBottomSheet } from "components/screens/SwapScreen/components";
+import {
+  SwapReviewBottomSheet,
+  SwapReviewFooter,
+} from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
@@ -33,7 +36,13 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { View, Text as RNText, TouchableOpacity } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -54,7 +63,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { network } = useAuthenticationStore();
   const { swapFee, swapTimeout, swapSlippage, resetToDefaults } =
     useSwapSettingsStore();
-  const { isBuilding, resetTransaction } = useTransactionBuilderStore();
+  const { isBuilding, resetTransaction, transactionXDR } =
+    useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
@@ -254,43 +264,44 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   useRightHeaderMenu({ actions: menuActions });
 
-  const navigateToSelectDestinationTokenScreen = () => {
+  const navigateToSelectDestinationTokenScreen = useCallback(() => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
       selectionType: SWAP_SELECTION_TYPES.DESTINATION,
     });
-  };
+  }, [navigation]);
 
-  const navigateToSelectSourceTokenScreen = () => {
+  const navigateToSelectSourceTokenScreen = useCallback(() => {
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
       selectionType: SWAP_SELECTION_TYPES.SOURCE,
     });
-  };
+  }, [navigation]);
 
-  const handleAmountChange = (key: string) => {
-    const newAmount = formatNumericInput(sourceAmount, key, DEFAULT_DECIMALS);
-    setSourceAmount(newAmount);
-  };
+  const handleAmountChange = useCallback(
+    (key: string) => {
+      const newAmount = formatNumericInput(sourceAmount, key, DEFAULT_DECIMALS);
+      setSourceAmount(newAmount);
+    },
+    [sourceAmount, setSourceAmount],
+  );
 
-  const handleSetMax = () => {
-    if (spendableAmount) {
-      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
+  const handlePercentagePress = useCallback(
+    (percentage: number) => {
+      if (!spendableAmount) return;
 
-      setSourceAmount(spendableAmount.toString());
-    }
-  };
+      if (percentage === 100) {
+        if (spendableAmount) {
+          analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
+          setSourceAmount(spendableAmount.toString());
+        }
+      } else {
+        const targetAmount = spendableAmount.multipliedBy(percentage / 100);
+        setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+      }
+    },
+    [spendableAmount, setSourceAmount],
+  );
 
-  const handlePercentagePress = (percentage: number) => {
-    if (!spendableAmount) return;
-
-    if (percentage === 100) {
-      handleSetMax();
-    } else {
-      const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-      setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
-    }
-  };
-
-  const handleOpenReview = async () => {
+  const handleOpenReview = useCallback(async () => {
     try {
       await setupSwapTransaction();
 
@@ -311,9 +322,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         duration: 3000,
       });
     }
-  };
+  }, [setupSwapTransaction, t, showToast]);
 
-  const handleConfirmSwap = () => {
+  const handleConfirmSwap = useCallback(() => {
     swapReviewBottomSheetModalRef.current?.dismiss();
 
     setTimeout(() => {
@@ -330,15 +341,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         });
       });
     }, 100);
-  };
+  }, [executeSwap, t, showToast]);
 
-  const handleMainButtonPress = () => {
+  const handleMainButtonPress = useCallback(() => {
     if (destinationBalance) {
       handleOpenReview();
     } else {
       navigateToSelectDestinationTokenScreen();
     }
-  };
+  }, [
+    destinationBalance,
+    handleOpenReview,
+    navigateToSelectDestinationTokenScreen,
+  ]);
 
   // Reset everything on unmount
   useEffect(
@@ -348,6 +363,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       resetToDefaults();
     },
     [resetSwap, resetTransaction, resetToDefaults],
+  );
+
+  const handleCloseModal = useCallback(() => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleCancelSwap = useCallback(() => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const footerProps = useMemo(
+    () => ({
+      onCancel: handleCancelSwap,
+      onConfirm: handleConfirmSwap,
+      isBuilding,
+      transactionXDR: transactionXDR ?? undefined,
+    }),
+    [handleCancelSwap, handleConfirmSwap, isBuilding, transactionXDR],
+  );
+
+  const renderFooterComponent = useCallback(
+    () => <SwapReviewFooter {...footerProps} />,
+    [footerProps],
   );
 
   if (isProcessing) {
@@ -485,17 +523,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
-        handleCloseModal={() =>
-          swapReviewBottomSheetModalRef.current?.dismiss()
-        }
-        snapPoints={["90%"]}
+        handleCloseModal={handleCloseModal}
+        scrollable
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
-        customContent={
-          <SwapReviewBottomSheet
-            onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
-            onConfirm={handleConfirmSwap}
-          />
-        }
+        customContent={<SwapReviewBottomSheet />}
+        renderFooterComponent={renderFooterComponent}
       />
     </BaseLayout>
   );

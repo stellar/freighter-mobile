@@ -13,6 +13,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
   SendReviewBottomSheet,
+  SendReviewFooter,
 } from "components/screens/SendScreen/components";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -91,7 +92,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveRecipientAddress,
-    saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -153,10 +153,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     xdr: transactionXDR ?? "",
   });
 
-  const onConfirmAddMemo = () => {
+  const onConfirmAddMemo = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
-  };
+  }, []);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -207,13 +207,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   } = useTokenFiatConverter({ selectedBalance });
 
   const spendableBalance = useMemo(() => {
-    if (!selectedBalance || !account) return BigNumber(0);
+    if (!selectedBalance || !account) {
+      return BigNumber(0);
+    }
 
-    return calculateSpendableAmount({
+    const result = calculateSpendableAmount({
       balance: selectedBalance,
       subentryCount: account.subentryCount,
       transactionFee,
     });
+
+    return result;
   }, [selectedBalance, account, transactionFee]);
 
   const handlePercentagePress = (percentage: number) => {
@@ -318,53 +322,67 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   useRightHeaderMenu({ actions: menuActions });
 
-  const handleOpenReview = useCallback(async () => {
-    try {
-      const finalXDR = await buildTransaction({
-        tokenAmount,
-        selectedBalance,
-        recipientAddress,
-        transactionMemo,
-        transactionFee,
-        transactionTimeout,
-        network,
-        senderAddress: publicKey,
-      });
+  const prepareTransaction = useCallback(
+    async (shouldOpenReview = false) => {
+      if (!recipientAddress || !selectedBalance) {
+        return;
+      }
 
-      if (!finalXDR) return;
+      try {
+        // Get fresh settings values each time the function is called
+        const {
+          transactionMemo: freshTransactionMemo,
+          transactionFee: freshTransactionFee,
+          transactionTimeout: freshTransactionTimeout,
+          recipientAddress: storeRecipientAddress,
+        } = useTransactionSettingsStore.getState();
 
-      scanTransaction(finalXDR, "internal")
-        .then((scanResult) => {
-          logger.info("TransactionAmountScreen", "scanResult", scanResult);
-          setTransactionScanResult(scanResult);
-        })
-        .catch(() => {
-          setTransactionScanResult(undefined);
-        })
-        .finally(() => {
-          reviewBottomSheetModalRef.current?.present();
+        const finalXDR = await buildTransaction({
+          tokenAmount,
+          selectedBalance,
+          recipientAddress: storeRecipientAddress,
+          transactionMemo: freshTransactionMemo,
+          transactionFee: freshTransactionFee,
+          transactionTimeout: freshTransactionTimeout,
+          network,
+          senderAddress: publicKey,
         });
-    } catch (error) {
-      logger.error(
-        "TransactionAmountScreen",
-        "Failed to build transaction:",
-        error,
-      );
-    }
-  }, [
-    tokenAmount,
-    selectedBalance,
-    recipientAddress,
-    transactionMemo,
-    transactionFee,
-    transactionTimeout,
-    network,
-    publicKey,
-    buildTransaction,
-    scanTransaction,
-  ]);
 
-  const handleTransactionConfirmation = () => {
+        if (!finalXDR) return;
+
+        if (shouldOpenReview) {
+          scanTransaction(finalXDR, "internal")
+            .then((scanResult) => {
+              logger.info("TransactionAmountScreen", "scanResult", scanResult);
+              setTransactionScanResult(scanResult);
+            })
+            .catch(() => {
+              setTransactionScanResult(undefined);
+            })
+            .finally(() => {
+              reviewBottomSheetModalRef.current?.present();
+            });
+        }
+      } catch (error) {
+        logger.error(
+          "TransactionAmountScreen",
+          "Failed to build transaction:",
+          error,
+        );
+      }
+    },
+    [
+      tokenAmount,
+      selectedBalance,
+      network,
+      publicKey,
+      buildTransaction,
+      scanTransaction,
+      recipientAddress,
+    ],
+  );
+
+  const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
 
@@ -410,8 +428,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     };
 
     processTransaction();
-    saveMemo("");
-  };
+  }, [account, selectedBalance, signTransaction, network, submitTransaction]);
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
@@ -476,6 +493,37 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment.isSuspicious,
   ]);
 
+  const handleCancelReview = useCallback(() => {
+    reviewBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const footerProps = useMemo(
+    () => ({
+      onCancel: handleCancelReview,
+      onConfirm: isRequiredMemoMissing
+        ? onConfirmAddMemo
+        : handleTransactionConfirmation,
+      isRequiredMemoMissing,
+      isMalicious: transactionSecurityAssessment.isMalicious,
+      isSuspicious: transactionSecurityAssessment.isSuspicious,
+      isValidatingMemo,
+    }),
+    [
+      handleCancelReview,
+      isRequiredMemoMissing,
+      transactionSecurityAssessment.isMalicious,
+      transactionSecurityAssessment.isSuspicious,
+      onConfirmAddMemo,
+      handleTransactionConfirmation,
+      isValidatingMemo,
+    ],
+  );
+
+  const renderFooterComponent = useCallback(
+    () => <SendReviewFooter {...footerProps} />,
+    [footerProps],
+  );
+
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
       return false;
@@ -484,9 +532,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return (
       !!amountError ||
       BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-      isBuilding
+      isBuilding ||
+      isValidatingMemo ||
+      isMemoMissing
     );
-  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
+  }, [
+    amountError,
+    tokenAmount,
+    isBuilding,
+    recipientAddress,
+    isValidatingMemo,
+    isMemoMissing,
+  ]);
 
   if (isProcessing) {
     return (
@@ -512,13 +569,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityWarningBottomSheetModalRef.current?.present();
     }
   };
+
   const handleContinueButtonPress = () => {
     if (!recipientAddress) {
       navigateToSelectContactScreen();
       return;
     }
 
-    handleOpenReview();
+    prepareTransaction(true);
   };
 
   const getContinueButtonText = () => {
@@ -531,6 +589,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
 
     return t("transactionAmountScreen.reviewButton");
+  };
+
+  const handleSettingsChange = async () => {
+    await prepareTransaction(false);
   };
 
   return (
@@ -656,30 +718,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           </View>
         </View>
       </View>
-
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
+        scrollable
         customContent={
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onBannerPress={onBannerPress}
-            onCancel={() => reviewBottomSheetModalRef.current?.dismiss()}
-            onConfirm={
-              isRequiredMemoMissing
-                ? onConfirmAddMemo
-                : handleTransactionConfirmation
-            }
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
-            isValidatingMemo={isValidatingMemo}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
             signTransactionDetails={signTransactionDetails}
           />
         }
+        renderFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
@@ -724,10 +780,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <TransactionSettingsBottomSheet
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
+            onSettingsChange={handleSettingsChange}
           />
         }
       />
-
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}

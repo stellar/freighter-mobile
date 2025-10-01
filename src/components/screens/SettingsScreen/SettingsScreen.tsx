@@ -7,15 +7,17 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import DeleteAccountBottomSheet from "components/screens/SettingsScreen/DeleteAccountBottomSheet";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { FREIGHTER_BASE_URL } from "config/constants";
+import { DEFAULT_PADDING, FREIGHTER_BASE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { pxValue } from "helpers/dimensions";
 import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useRef } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -29,6 +31,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { themeColors } = useColors();
   const deleteAccountModalRef = useRef<BottomSheetModal>(null);
   const { open: openInAppBrowser } = useInAppBrowser();
+  const insets = useSafeAreaInsets();
 
   const handleLogout = React.useCallback(() => {
     logout();
@@ -150,13 +153,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View className="flex flex-col gap-6 mt-4">
+        <View
+          className="flex flex-col gap-6 mt-4"
+          style={{ marginBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+        >
           <List items={topListItems} />
           <List items={midListItems} />
           <List items={bottomListItems} />

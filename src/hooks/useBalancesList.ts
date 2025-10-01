@@ -1,3 +1,4 @@
+import Blockaid from "@blockaid/client";
 import { DEFAULT_REFRESH_DELAY, NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useBalancesStore } from "ducks/balances";
@@ -8,6 +9,7 @@ interface UseBalancesListResult {
   balanceItems: Array<
     PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken }
   >;
+  scanResults: Blockaid.TokenBulk.TokenBulkScanResponse["results"];
   isLoading: boolean;
   error: string | null;
   noBalances: boolean;
@@ -33,6 +35,7 @@ export const useBalancesList = ({
 
   const {
     pricedBalances,
+    scanResults,
     isLoading: isBalancesLoading,
     error: balancesError,
     isFunded,
@@ -128,6 +131,7 @@ export const useBalancesList = ({
   return useMemo(
     () => ({
       balanceItems,
+      scanResults,
       isLoading: isBalancesLoading || isMounting,
       error: shouldShowError ? balancesError : null,
       noBalances,
@@ -137,6 +141,7 @@ export const useBalancesList = ({
     }),
     [
       balanceItems,
+      scanResults,
       isBalancesLoading,
       isMounting,
       shouldShowError,
