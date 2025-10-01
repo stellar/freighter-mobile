@@ -81,6 +81,14 @@ export const isHorizonError = (val: unknown): val is HorizonError =>
 export const getIsAllowHttp = (networkUrl: string) =>
   !networkUrl.includes("https");
 
+/**
+ * Calculates the delay for exponential backoff retry logic
+ * @param attempt The current attempt number (1-based)
+ * @returns The delay in milliseconds
+ */
+export const calculateBackoffDelay = (attempt: number): number =>
+  2 ** (attempt - 1) * BASE_BACKOFF_SEC;
+
 export const stellarSdkServer = (networkUrl: string): Horizon.Server =>
   new Horizon.Server(networkUrl, {
     allowHttp: getIsAllowHttp(networkUrl),
@@ -140,7 +148,7 @@ export const submitTx = async (
       // https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
       // https://developers.stellar.org/docs/encyclopedia/error-handling
       if (attempt < SUBMIT_BACKOFF_MAX_ATTEMPTS) {
-        const delay = 2 ** (attempt - 1) * BASE_BACKOFF_SEC; // Exponential backoff: 1s, 2s, 4s, 8s
+        const delay = calculateBackoffDelay(attempt); // Exponential backoff: 1s, 2s, 4s, 8s
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), delay);
         });

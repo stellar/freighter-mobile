@@ -2,7 +2,7 @@
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
  * This test uses the actual isHorizonError function from stellar.ts
  */
-import { BASE_BACKOFF_SEC, isHorizonError } from "services/stellar";
+import { calculateBackoffDelay, isHorizonError } from "services/stellar";
 
 describe("stellar service - submitTx retry logic", () => {
   it("should implement correct delay timing", async () => {
@@ -10,9 +10,9 @@ describe("stellar service - submitTx retry logic", () => {
 
     const delays: number[] = [];
 
-    // Simulate the delay logic from submitTx
+    // Simulate the delay logic from submitTx using the extracted function
     const simulateDelay = (attempt: number) => {
-      const delay = 2 ** (attempt - 1) * BASE_BACKOFF_SEC;
+      const delay = calculateBackoffDelay(attempt);
       return new Promise<void>((resolve) => {
         setTimeout(() => {
           delays.push(delay);
@@ -27,13 +27,6 @@ describe("stellar service - submitTx retry logic", () => {
       promises.push(simulateDelay(attempt));
     }
 
-    // Calculate expected delays using the same logic as stellar.ts
-    const expectedDelays = [];
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const delay = 2 ** (attempt - 1) * BASE_BACKOFF_SEC;
-      expectedDelays.push(delay);
-    }
-
     // Fast-forward timers using the calculated delays
     jest.advanceTimersByTime(1000); // First delay
     jest.advanceTimersByTime(2000); // Second delay
@@ -41,7 +34,7 @@ describe("stellar service - submitTx retry logic", () => {
 
     await Promise.all(promises);
 
-    expect(delays).toEqual(expectedDelays);
+    expect(delays).toEqual([1000, 2000, 4000]);
 
     jest.useRealTimers();
   });
