@@ -7,6 +7,8 @@ module.exports = {
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),
     "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
+    "^helpers/(.*)$": "<rootDir>/__mocks__/helpers/$1",
+    "^services/(.*)$": "<rootDir>/__mocks__/services/$1",
   },
   transformIgnorePatterns: [
     `node_modules/(?!(${[
