@@ -18,7 +18,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
@@ -59,7 +59,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({ onCollectiblePress }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const [isMounted, setIsMounted] = useState(false);
     const { collections, isLoading, error, fetchCollectibles } =
       useCollectiblesStore();
     const { account } = useGetActiveAccount();
@@ -82,10 +81,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         });
       }
     }, [account?.publicKey, network, fetchCollectibles]);
-
-    useEffect(() => {
-      setIsMounted(true);
-    }, []);
 
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
@@ -137,7 +132,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     );
 
     // only show spinner on initial load, as spinner is shown in the parent component
-    if (isLoading && !isMounted && !isRefreshing) {
+    if (isLoading && !isRefreshing) {
       return (
         <View className="flex-1 items-center justify-center mb-10">
           <Spinner
