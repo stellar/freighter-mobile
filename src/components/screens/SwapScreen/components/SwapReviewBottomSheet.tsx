@@ -357,7 +357,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         {onSettingsPress && (
           <TouchableOpacity
             onPress={onSettingsPress}
-            className="w-[46px] h-[46px] rounded-full border border-gray-6 items-center justify-center"
+            className="w-[50px] h-[50px] rounded-full border border-gray-6 items-center justify-center"
           >
             <Icon.Settings04 size={24} themeColor="gray" />
           </TouchableOpacity>
