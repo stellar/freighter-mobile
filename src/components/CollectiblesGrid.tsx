@@ -59,10 +59,11 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({ onCollectiblePress }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const { collections, isLoading, error, fetchCollectibles } =
-      useCollectiblesStore();
     const { account } = useGetActiveAccount();
     const { network } = useAuthenticationStore();
+    const { collections, isLoading, error, fetchCollectibles } =
+      useCollectiblesStore();
+
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -80,7 +81,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           setIsRefreshing(false);
         });
       }
-    }, [account?.publicKey, network, fetchCollectibles]);
+    }, [fetchCollectibles, account?.publicKey, network]);
 
     const renderCollectibleItem = useCallback(
       ({ item }: { item: Collectible }) => (
@@ -144,6 +145,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
+    // For all other states, wrap content in FlatList with RefreshControl
     return (
       <FlatList
         data={collections}
@@ -154,8 +156,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={handleRefresh}
             tintColor={themeColors.secondary}
+            onRefresh={handleRefresh}
           />
         }
         ListFooterComponent={DefaultListFooter}
