@@ -1,3 +1,4 @@
+import { APP_VERSION } from "config/constants";
 import { logger } from "config/logger";
 import { isAndroid } from "helpers/device";
 import { Platform } from "react-native";
@@ -14,6 +15,7 @@ interface FeatureFlagsData {
 
 interface FeatureFlagsParams {
   platform: string;
+  version: string;
 }
 
 interface RemoteConfigState {
@@ -42,6 +44,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
     try {
       const params: FeatureFlagsParams = {
         platform: Platform.OS,
+        version: APP_VERSION,
       };
 
       const response = await freighterBackendV2.get<FeatureFlagsData>(

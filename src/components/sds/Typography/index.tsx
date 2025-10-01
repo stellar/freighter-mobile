@@ -1,14 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import {
-  Text as RNText,
-  Platform,
-  Linking,
-  StyleProp,
-  TextStyle,
-} from "react-native";
+import { Text as RNText, Platform, StyleProp, TextStyle } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -357,13 +352,11 @@ export const Text: React.FC<TextProps> = ({
   textAlign,
   ...props
 }) => {
+  const { open: openInAppBrowser } = useInAppBrowser();
+
   const handleOnPressUrl = () => {
     if (url) {
-      Linking.canOpenURL(url).then((supported) => {
-        if (supported) {
-          Linking.openURL(url);
-        }
-      });
+      openInAppBrowser(url);
     }
   };
 

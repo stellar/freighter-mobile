@@ -14,8 +14,9 @@ import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 
 type AboutScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -27,27 +28,28 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
   const { themeColors } = useColors();
   const appVersion = getAppVersionAndBuildNumber();
   const currentYear = new Date().getFullYear();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const linksListItems = [
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.freighter"),
-      onPress: () => Linking.openURL(FREIGHTER_BASE_URL),
+      onPress: () => openInAppBrowser(FREIGHTER_BASE_URL),
     },
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.stellar"),
-      onPress: () => Linking.openURL(STELLAR_FOUNDATION_BASE_URL),
+      onPress: () => openInAppBrowser(STELLAR_FOUNDATION_BASE_URL),
     },
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.privacyPolicy"),
-      onPress: () => Linking.openURL(STELLAR_FOUNDATION_PRIVACY_URL),
+      onPress: () => openInAppBrowser(STELLAR_FOUNDATION_PRIVACY_URL),
     },
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.termsOfService"),
-      onPress: () => Linking.openURL(STELLAR_FOUNDATION_TERMS_URL),
+      onPress: () => openInAppBrowser(STELLAR_FOUNDATION_TERMS_URL),
     },
   ];
 

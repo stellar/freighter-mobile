@@ -9,8 +9,9 @@ import {
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 
 type ShareFeedbackScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -20,12 +21,13 @@ type ShareFeedbackScreenProps = NativeStackScreenProps<
 const ShareFeedbackScreen: React.FC<ShareFeedbackScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const feedbackItems = [
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("shareFeedbackScreen.discord"),
-      onPress: () => Linking.openURL(FREIGHTER_DISCORD_URL),
+      onPress: () => openInAppBrowser(FREIGHTER_DISCORD_URL),
       trailingContent: (
         <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
@@ -33,7 +35,7 @@ const ShareFeedbackScreen: React.FC<ShareFeedbackScreenProps> = () => {
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("shareFeedbackScreen.github"),
-      onPress: () => Linking.openURL(FREIGHTER_GITHUB_ISSUE_URL),
+      onPress: () => openInAppBrowser(FREIGHTER_GITHUB_ISSUE_URL),
       trailingContent: (
         <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),

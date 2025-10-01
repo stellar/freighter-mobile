@@ -1,10 +1,19 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable @typescript-eslint/naming-convention */
 import { render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
+import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
 import * as balancesHelpers from "helpers/balances";
 import React from "react";
 import { Text } from "react-native";
+
+import {
+  beningTokenScan,
+  maliciousTokenScan,
+  suspiciousTokenScan,
+} from "../../__mocks__/blockaid-response";
 
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
@@ -21,6 +30,12 @@ jest.mock("hooks/useColors", () => ({
       },
       text: {
         secondary: "#a0a0a0",
+      },
+      amber: {
+        9: "amber",
+      },
+      red: {
+        9: "red",
       },
     },
   }),
@@ -65,14 +80,18 @@ describe("BalanceRow", () => {
   });
 
   it("should render basic balance information", () => {
-    const { getByText } = render(<BalanceRow balance={mockBalance} />);
+    const { getByText } = render(
+      <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+    );
 
     expect(getByText("XLM")).toBeTruthy();
     expect(getByText("100.5")).toBeTruthy();
   });
 
   it("should render default right content with fiat values", () => {
-    const { getByText } = render(<BalanceRow balance={mockBalance} />);
+    const { getByText } = render(
+      <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+    );
 
     expect(getByText("$50.25")).toBeTruthy();
     expect(getByText("+0.02%")).toBeTruthy();
@@ -85,6 +104,7 @@ describe("BalanceRow", () => {
         balance={mockBalance}
         rightContent={<Text>{customContent}</Text>}
         rightSectionWidth={100}
+        scanResult={beningTokenScan}
       />,
     );
 
@@ -174,6 +194,40 @@ describe("BalanceRow", () => {
       // Check if the RightSection has the correct width
       const rightSection = getByTestId("right-section");
       expect(rightSection.props.width).toBe(20);
+    });
+
+    it("should show alert icon for malicious tokens", () => {
+      const { UNSAFE_getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={maliciousTokenScan} />,
+      );
+
+      const icon = UNSAFE_getByType(Icon.AlertCircle);
+      expect(icon).toBeTruthy();
+      expect(icon.props.themeColor).toBe("red");
+    });
+
+    it("should show alert icon for suspicious tokens", () => {
+      const { UNSAFE_getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={suspiciousTokenScan} />,
+      );
+
+      const icon = UNSAFE_getByType(Icon.AlertCircle);
+      expect(icon).toBeTruthy();
+      expect(icon.props.themeColor).toBe("amber");
+    });
+
+    it("should not show alert icon for benign tokens", () => {
+      const { UNSAFE_getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+      );
+
+      try {
+        UNSAFE_getByType(Icon.AlertCircle);
+      } catch (error: unknown) {
+        expect((error as Error).message).toBe(
+          'No instances found with node type: "Unknown"',
+        );
+      }
     });
   });
 });

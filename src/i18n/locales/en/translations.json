@@ -551,6 +551,7 @@
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
     "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
+    "token": "This token does not appear safe for the following reasons.",
     "cancel": "Cancel",
     "connectAnyway": "Connect anyway",
     "poweredBy": "Powered by",

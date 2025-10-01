@@ -23,8 +23,9 @@ import { formatDate } from "helpers/date";
 import { formatTokenAmount, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useMemo } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 interface TransactionDetailsBottomSheetCustomContentProps {
@@ -39,6 +40,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
 > = ({ transactionDetails }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const fee = stroopToXlm(transactionDetails.fee).toString();
 
@@ -175,7 +177,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         onPress={() => {
           analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
 
-          Linking.openURL(transactionDetails.externalUrl);
+          openInAppBrowser(transactionDetails.externalUrl);
         }}
       >
         {t("history.transactionDetails.viewOnStellarExpert")}

@@ -8,8 +8,9 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { Linking, Platform, TouchableOpacity } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 
 interface TokenContextMenuProps {
   balance: PricedBalance;
@@ -23,6 +24,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const handleCopyContractAddress = () => {
     const contractAddress = getContractAddress({ balance, network });
@@ -50,7 +52,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
     }
 
     if (url) {
-      await Linking.openURL(url);
+      await openInAppBrowser(url);
     }
   };
 
