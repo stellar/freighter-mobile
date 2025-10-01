@@ -29,6 +29,7 @@ export enum AnalyticsEvent {
   VIEW_SEND_FEE = "loaded screen: send payment fee",
   VIEW_SEND_TIMEOUT = "loaded screen: send payment timeout",
   VIEW_SEND_CONFIRM = "loaded screen: send payment confirm",
+  VIEW_SEND_TRANSACTION_DETAILS = "loaded screen: send transaction details",
   VIEW_SEND_PROCESSING = "loaded screen: send payment processing",
   VIEW_SWAP = "loaded screen: swap",
   VIEW_SWAP_AMOUNT = "loaded screen: swap amount",
