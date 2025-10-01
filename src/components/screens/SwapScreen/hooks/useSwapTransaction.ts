@@ -13,7 +13,7 @@ import { ActiveAccount } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
 import { SwapPathResult } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
 interface SwapTransactionParams {
@@ -58,7 +58,7 @@ export const useSwapTransaction = ({
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
 
-  const setupSwapTransaction = async () => {
+  const setupSwapTransaction = useCallback(async () => {
     if (
       !sourceBalance ||
       !destinationBalance ||
@@ -84,9 +84,19 @@ export const useSwapTransaction = ({
     if (!transactionXDR) {
       throw new Error("Failed to build swap transaction");
     }
-  };
+  }, [
+    sourceBalance,
+    destinationBalance,
+    pathResult,
+    account?.publicKey,
+    sourceAmount,
+    swapFee,
+    swapTimeout,
+    network,
+    buildSwapTransaction,
+  ]);
 
-  const executeSwap = async () => {
+  const executeSwap = useCallback(async () => {
     if (!account) {
       return;
     }
@@ -135,7 +145,15 @@ export const useSwapTransaction = ({
 
       throw error;
     }
-  };
+  }, [
+    account,
+    sourceBalance?.tokenCode,
+    destinationBalance?.tokenCode,
+    signTransaction,
+    network,
+    submitTransaction,
+    swapSlippage,
+  ]);
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
