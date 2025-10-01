@@ -33,7 +33,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-connector@npm:^1.6.4":
+"@amplitude/analytics-connector@npm:^1.4.7, @amplitude/analytics-connector@npm:^1.6.4":
   version: 1.6.4
   resolution: "@amplitude/analytics-connector@npm:1.6.4"
   checksum: 10c0/b084180029e48c011fffc47301462fc2db06830421348ca5fdf235fb6d30e4c0309161eb4392350bc00ab2bf7537306f18b9dfffa9998f70db2b6f31470f0e88
@@ -62,6 +62,30 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/89f4e85b1f519e3e174d8cfaf24af4e57318a87a9488b0a57aa3552573bb58182ebc62364d9237da7bdde108678fcfbee1a4590344d8e067a0edc0e81f2b9d17
+  languageName: node
+  linkType: hard
+
+"@amplitude/experiment-core@npm:^0.7.2":
+  version: 0.7.2
+  resolution: "@amplitude/experiment-core@npm:0.7.2"
+  dependencies:
+    js-base64: "npm:^3.7.5"
+  checksum: 10c0/e5fd1c8232015d6ecf8a8ad7307ef4feb3c8305c115f2e4cb24bbcd0bb4716bbfaa9ac003d530c1911235da9b10226880fdfb58470fc15e5645d62b663ba1b02
+  languageName: node
+  linkType: hard
+
+"@amplitude/experiment-react-native-client@npm:^1.5.3":
+  version: 1.5.3
+  resolution: "@amplitude/experiment-react-native-client@npm:1.5.3"
+  dependencies:
+    "@amplitude/analytics-connector": "npm:^1.4.7"
+    "@amplitude/experiment-core": "npm:^0.7.2"
+    "@react-native-async-storage/async-storage": "npm:^1.17.6"
+    unfetch: "npm:^4.2.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/1aa0b899d97704ad083e60ee18017a0bd216b6e9e243379da0126a2c49ba4572203e783f13588a161f9991ff7fb3a18f9d3e15760c9ffe88e3544c08a47d0682
   languageName: node
   linkType: hard
 
@@ -3005,7 +3029,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-async-storage/async-storage@npm:^1.17.11":
+"@react-native-async-storage/async-storage@npm:^1.17.11, @react-native-async-storage/async-storage@npm:^1.17.6":
   version: 1.24.0
   resolution: "@react-native-async-storage/async-storage@npm:1.24.0"
   dependencies:
@@ -8853,6 +8877,7 @@ __metadata:
   resolution: "freighter-mobile@workspace:."
   dependencies:
     "@amplitude/analytics-react-native": "npm:^1.5.10"
+    "@amplitude/experiment-react-native-client": "npm:^1.5.3"
     "@babel/core": "npm:^7.26.9"
     "@babel/preset-env": "npm:^7.26.9"
     "@babel/runtime": "npm:^7.26.10"
@@ -10883,6 +10908,13 @@ __metadata:
     "@sideway/formula": "npm:^3.0.1"
     "@sideway/pinpoint": "npm:^2.0.0"
   checksum: 10c0/9262aef1da3f1bec5b03caf50c46368899fe03b8ff26cbe3d53af4584dd1049079fc97230bbf1500b6149db7cc765b9ee45f0deb24bb6fc3fa06229d7148c17f
+  languageName: node
+  linkType: hard
+
+"js-base64@npm:^3.7.5":
+  version: 3.7.8
+  resolution: "js-base64@npm:3.7.8"
+  checksum: 10c0/a4452a7e7f32b0ef568a344157efec00c14593bbb1cf0c113f008dddff7ec515b35147af0cd70a7735adb69a2a2bdee921adffea2ea465e2c856ba50d649b11e
   languageName: node
   linkType: hard
 
@@ -16516,6 +16548,13 @@ __metadata:
   version: 6.20.0
   resolution: "undici-types@npm:6.20.0"
   checksum: 10c0/68e659a98898d6a836a9a59e6adf14a5d799707f5ea629433e025ac90d239f75e408e2e5ff086afc3cace26f8b26ee52155293564593fbb4a2f666af57fc59bf
+  languageName: node
+  linkType: hard
+
+"unfetch@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "unfetch@npm:4.2.0"
+  checksum: 10c0/a5c0a896a6f09f278b868075aea65652ad185db30e827cb7df45826fe5ab850124bf9c44c4dafca4bf0c55a0844b17031e8243467fcc38dd7a7d435007151f1b
   languageName: node
   linkType: hard
 

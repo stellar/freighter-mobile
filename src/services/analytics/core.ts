@@ -1,4 +1,5 @@
 import * as amplitude from "@amplitude/analytics-react-native";
+import { Experiment } from "@amplitude/experiment-react-native-client";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
@@ -28,6 +29,9 @@ import type {
 // -----------------------------------------------------------------------------
 
 let hasInitialised = false;
+let experimentClient: ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null = null;
 
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
@@ -50,6 +54,10 @@ export const initAnalytics = (): void => {
       disableCookies: true,
     });
 
+    // Initialize Experiments
+    experimentClient =
+      Experiment.initializeWithAmplitudeAnalytics(AMPLITUDE_API_KEY);
+
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
     amplitude.setOptOut(!isEnabled);
@@ -67,6 +75,10 @@ export const initAnalytics = (): void => {
 };
 
 export const isInitialized = (): boolean => hasInitialised;
+
+export const getExperimentClient = (): ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null => experimentClient;
 
 // -----------------------------------------------------------------------------
 // SETTINGS MANAGEMENT

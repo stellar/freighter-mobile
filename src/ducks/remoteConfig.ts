@@ -1,22 +1,9 @@
-import { APP_VERSION } from "config/constants";
 import { logger } from "config/logger";
 import { isAndroid } from "helpers/device";
-import { Platform } from "react-native";
-import { freighterBackendV2 } from "services/backend";
+import { getExperimentClient } from "services/analytics/core";
 import { create } from "zustand";
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
-
-interface FeatureFlagsData {
-  swap_enabled: boolean;
-  discover_enabled: boolean;
-  onramp_enabled: boolean;
-}
-
-interface FeatureFlagsParams {
-  platform: string;
-  version: string;
-}
 
 interface RemoteConfigState {
   // Feature flags
@@ -42,34 +29,39 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
 
   fetchFeatureFlags: async () => {
     try {
-      const params: FeatureFlagsParams = {
-        platform: Platform.OS,
-        version: APP_VERSION,
-      };
+      const experimentClient = getExperimentClient();
 
-      const response = await freighterBackendV2.get<FeatureFlagsData>(
-        "/feature-flags",
-        { params },
-      );
+      if (!experimentClient) {
+        logger.warn(
+          "remoteConfig.fetchFeatureFlags",
+          "Experiment client not initialized",
+        );
+        return;
+      }
 
-      if (response.data) {
-        const featureFlags: FeatureFlagsData = response.data;
-        const currentState = get();
-        const updates: Partial<RemoteConfigState> = {};
+      await experimentClient.fetch();
+      const updates: Partial<RemoteConfigState> = {};
 
-        // Loop through all keys in the response and update state if key exists
-        Object.keys(featureFlags).forEach((key) => {
-          if (key in currentState) {
-            const typedKey = key as keyof FeatureFlagsData;
-            const typedUpdates = updates as Record<string, unknown>;
-            typedUpdates[key] = featureFlags[typedKey];
-          }
-        });
+      const swapVariant = experimentClient.variant("swap_enabled");
+      const discoverVariant = experimentClient.variant("discover_enabled");
+      const onrampVariant = experimentClient.variant("onramp_enabled");
 
+      console.log(swapVariant);
+
+      if (swapVariant?.value !== undefined) {
+        updates.swap_enabled = swapVariant.value === "on";
+      }
+      if (discoverVariant?.value !== undefined) {
+        updates.discover_enabled = discoverVariant.value === "on";
+      }
+      if (onrampVariant?.value !== undefined) {
+        updates.onramp_enabled = onrampVariant.value === "on";
+      }
+
+      if (Object.keys(updates).length > 0) {
         set(updates);
       }
     } catch (error) {
-      // Silently fail and keep current state
       logger.warn(
         "remoteConfig.fetchFeatureFlags",
         "Failed to fetch feature flags",
