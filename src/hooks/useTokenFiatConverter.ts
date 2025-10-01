@@ -6,7 +6,7 @@ import {
   parseDisplayNumber,
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
@@ -41,26 +41,21 @@ export const useTokenFiatConverter = ({
   const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
-  // Track if user is actively typing to prevent display value from being overwritten
-  const isTypingRef = useRef(false);
-
   // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
 
-  // Update display value when internal value changes (only when not actively typing)
+  // Update display value when internal value changes
   useEffect(() => {
-    if (!isTypingRef.current) {
-      setTokenAmountDisplay(
-        formatBigNumberForDisplay(new BigNumber(tokenAmount), {
-          decimalPlaces: DEFAULT_DECIMALS,
-          useGrouping: false,
-        }),
-      );
-    }
-  }, [tokenAmount, isTypingRef]);
+    setTokenAmountDisplay(
+      formatBigNumberForDisplay(new BigNumber(tokenAmount), {
+        decimalPlaces: DEFAULT_DECIMALS,
+        useGrouping: false,
+      }),
+    );
+  }, [tokenAmount]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {
@@ -96,16 +91,11 @@ export const useTokenFiatConverter = ({
    * @param {string} key - The key pressed (number or empty string for delete)
    */
   const handleDisplayAmountChange = (key: string) => {
-    // Set typing flag to prevent display value from being overwritten
-    isTypingRef.current = true;
-
     if (showFiatAmount) {
       const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
       // Update display value immediately to preserve formatting
-      setFiatAmount(newAmount);
-      const internalAmount =
-        parseDisplayNumber(newAmount).toFixed(FIAT_DECIMALS);
-      setFiatAmount(internalAmount);
+
+      setFiatAmount(parseDisplayNumber(newAmount).toFixed(FIAT_DECIMALS));
     } else {
       const newAmount = formatNumericInput(
         tokenAmountDisplay,
@@ -120,9 +110,6 @@ export const useTokenFiatConverter = ({
     }
 
     // Reset typing flag after a short delay
-    setTimeout(() => {
-      isTypingRef.current = false;
-    }, 100);
   };
 
   return {
