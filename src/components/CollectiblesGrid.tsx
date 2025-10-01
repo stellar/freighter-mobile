@@ -3,7 +3,12 @@ import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  DEFAULT_PRESS_DELAY,
+  DEFAULT_REFRESH_DELAY,
+} from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import {
   Collectible,
   Collection,
@@ -12,8 +17,9 @@ import {
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useEffect, useState } from "react";
-import { TouchableOpacity, View, FlatList } from "react-native";
+import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
  * Props for the CollectiblesGrid component
@@ -54,7 +60,28 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const [isMounted, setIsMounted] = useState(false);
-    const { collections, isLoading, error } = useCollectiblesStore();
+    const { collections, isLoading, error, fetchCollectibles } =
+      useCollectiblesStore();
+    const { account } = useGetActiveAccount();
+    const { network } = useAuthenticationStore();
+    // Local state for managing refresh UI only
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(() => {
+      if (account?.publicKey && network) {
+        setIsRefreshing(true);
+
+        // Start fetching collectibles immediately
+        fetchCollectibles({ publicKey: account.publicKey, network });
+
+        // Add a minimum delay to prevent UI flickering
+        new Promise((resolve) => {
+          setTimeout(resolve, DEFAULT_REFRESH_DELAY);
+        }).finally(() => {
+          setIsRefreshing(false);
+        });
+      }
+    }, [account?.publicKey, network, fetchCollectibles]);
 
     useEffect(() => {
       setIsMounted(true);
@@ -110,7 +137,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     );
 
     // only show spinner on initial load, as spinner is shown in the parent component
-    if (isLoading && !isMounted) {
+    if (isLoading && !isMounted && !isRefreshing) {
       return (
         <View className="flex-1 items-center justify-center mb-10">
           <Spinner
@@ -129,6 +156,13 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         keyExtractor={(collection) => collection.collectionAddress}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={themeColors.secondary}
+          />
+        }
         ListFooterComponent={DefaultListFooter}
         ListEmptyComponent={
           <View className="flex-1">
