@@ -324,6 +324,7 @@ type SendReviewFooterProps = {
   onConfirm?: () => void;
   isRequiredMemoMissing?: boolean;
   isMalicious?: boolean;
+  isValidatingMemo?: boolean;
   isSuspicious?: boolean;
 };
 
@@ -338,6 +339,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       onConfirm,
       isRequiredMemoMissing,
       isMalicious,
+      isValidatingMemo,
       isSuspicious,
     } = props;
 
@@ -346,7 +348,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
     const renderConfirmButton = useCallback(() => {
       const getButtonText = () => {
-        if (isRequiredMemoMissing) {
+        if (isRequiredMemoMissing || isValidatingMemo) {
           return t("common.addMemo");
         }
 
@@ -368,6 +370,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       );
     }, [
       isRequiredMemoMissing,
+      isValidatingMemo,
       onConfirm,
       t,
       isBuilding,

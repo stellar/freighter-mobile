@@ -92,7 +92,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveRecipientAddress,
-    saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -411,15 +410,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     };
 
     processTransaction();
-    saveMemo("");
-  }, [
-    account,
-    selectedBalance,
-    signTransaction,
-    network,
-    submitTransaction,
-    saveMemo,
-  ]);
+  }, [account, selectedBalance, signTransaction, network, submitTransaction]);
 
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
@@ -497,6 +488,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isRequiredMemoMissing,
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
+      isValidatingMemo,
     }),
     [
       handleCancelReview,
@@ -505,6 +497,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityAssessment.isSuspicious,
       onConfirmAddMemo,
       handleTransactionConfirmation,
+      isValidatingMemo,
     ],
   );
 
