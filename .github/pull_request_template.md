@@ -28,6 +28,10 @@ the why.]
 - [ ] These changes have been tested and confirmed to work as intended on
       Android.
 - [ ] These changes have been tested and confirmed to work as intended on iOS.
+- [ ] These changes have been tested and confirmed to work as intended on small
+      iOS screens.
+- [ ] These changes have been tested and confirmed to work as intended on small
+      Android screens.
 - [ ] I have tried to break these changes while extensively testing them.
 - [ ] This PR adds tests for the new functionality or fixes.
 
