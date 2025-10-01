@@ -1,5 +1,7 @@
 import { logger } from "config/logger";
 import { isAndroid } from "helpers/device";
+import { getAppVersion } from "helpers/version";
+import { Platform } from "react-native";
 import { getExperimentClient } from "services/analytics/core";
 import { create } from "zustand";
 
@@ -32,21 +34,25 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
       const experimentClient = getExperimentClient();
 
       if (!experimentClient) {
-        logger.warn(
+        logger.debug(
           "remoteConfig.fetchFeatureFlags",
-          "Experiment client not initialized",
+          "Experiment client not initialized yet, skipping fetch",
         );
         return;
       }
 
-      await experimentClient.fetch();
+      await experimentClient.fetch({
+        user_properties: {
+          platform: Platform.OS,
+          version: getAppVersion(),
+        },
+      });
+
       const updates: Partial<RemoteConfigState> = {};
 
       const swapVariant = experimentClient.variant("swap_enabled");
       const discoverVariant = experimentClient.variant("discover_enabled");
       const onrampVariant = experimentClient.variant("onramp_enabled");
-
-      console.log(swapVariant);
 
       if (swapVariant?.value !== undefined) {
         updates.swap_enabled = swapVariant.value === "on";
@@ -60,6 +66,11 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
 
       if (Object.keys(updates).length > 0) {
         set(updates);
+        logger.debug(
+          "remoteConfig.fetchFeatureFlags",
+          "Feature flags updated",
+          updates,
+        );
       }
     } catch (error) {
       logger.warn(

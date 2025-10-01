@@ -1,6 +1,7 @@
 import { MIN_IOS_VERSION_FOR_ATT_REQUEST } from "config/constants";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useDebounce from "hooks/useDebounce";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Platform, AppState, AppStateStatus } from "react-native";
@@ -276,6 +277,9 @@ export const useAnalyticsPermissions = ({
       await analytics.identifyUser();
 
       analytics.trackAppOpened({ previousState });
+
+      // Initialize feature flags after analytics is ready
+      useRemoteConfigStore.getState().initFetchFeatureFlagsPoll();
     };
 
     const handleAppStateChange = (nextAppState: AppStateStatus): void => {

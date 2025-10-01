@@ -14,6 +14,7 @@ import {
 } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
   DEBUG_CONFIG,
   TIMING,
   ANALYTICS_CONFIG,
@@ -55,8 +56,20 @@ export const initAnalytics = (): void => {
     });
 
     // Initialize Experiments
-    experimentClient =
-      Experiment.initializeWithAmplitudeAnalytics(AMPLITUDE_API_KEY);
+    if (AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY) {
+      experimentClient = Experiment.initializeWithAmplitudeAnalytics(
+        AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
+      );
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment client initialized with deployment key",
+      );
+    } else {
+      logger.warn(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment deployment key missing, feature flags will use defaults",
+      );
+    }
 
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();

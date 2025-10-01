@@ -1,6 +1,7 @@
 declare module "react-native-config" {
   interface NativeConfig {
     AMPLITUDE_API_KEY: string;
+    AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: string;
     SENTRY_DSN: string;
 
     FREIGHTER_BACKEND_URL: string;
