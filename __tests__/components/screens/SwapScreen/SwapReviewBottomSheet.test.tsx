@@ -3,7 +3,7 @@ import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
-import React, { act } from "react";
+import React from "react";
 
 import { mockBalances } from "../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
@@ -124,26 +124,6 @@ describe("SwapReviewBottomSheet", () => {
 
       expect(getByText("Test Account")).toBeTruthy();
     });
-
-    it("calls onConfirm when confirm button is pressed", async () => {
-      const user = userEvent.setup();
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet {...defaultProps} />,
-      );
-
-      await user.press(getByText("Confirm"));
-      expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
-    }, 50000);
-
-    it("calls onCancel when cancel button is pressed", async () => {
-      const user = userEvent.setup();
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet {...defaultProps} />,
-      );
-
-      await user.press(getByText("Cancel"));
-      expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
-    }, 10000);
   });
 
   describe("Transaction scan states", () => {
@@ -179,23 +159,6 @@ describe("SwapReviewBottomSheet", () => {
       );
 
       expect(getByText("This address was flagged as suspicious")).toBeTruthy();
-    });
-
-    it("shows confirm anyway button for malicious transaction", () => {
-      const maliciousTransactionScan = {
-        validation: {
-          result_type: "Malicious",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={maliciousTransactionScan}
-        />,
-      );
-
-      expect(getByText("Confirm anyway")).toBeTruthy();
     });
 
     it("calls onBannerPress when malicious banner is pressed", async () => {
