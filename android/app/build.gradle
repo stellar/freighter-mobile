@@ -88,30 +88,39 @@ android {
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+            storePassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_DEBUG_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
         }
-        release {
-            storeFile file('release.keystore')
-            // Replace with keystore password
-            storePassword '<release-keystore-password>'
-            keyAlias 'upload'
-            // Replace with keystore password
-            keyPassword '<release-keystore-password>'
+
+        dev {
+            storeFile file('dev-release.keystore')
+            storePassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_DEV_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
+        }
+
+        prod {
+            storeFile file('prod-release.keystore')
+            storePassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_PROD_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
         }
     }
 
     productFlavors {
-        prod {
-            dimension "environment"
-            applicationId "org.stellar.freighterwallet"
-            resValue "string", "app_name", "Freighter"
-        }
         dev {
             dimension "environment"
             applicationId "org.stellar.freighterdev"
             resValue "string", "app_name", "Freighter Dev"
+            signingConfig signingConfigs.dev
+        }
+
+        prod {
+            dimension "environment"
+            applicationId "org.stellar.freighterwallet"
+            resValue "string", "app_name", "Freighter"
+            signingConfig signingConfigs.prod
         }
     }
 
@@ -129,9 +138,6 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

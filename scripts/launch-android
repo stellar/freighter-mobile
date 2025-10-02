@@ -22,6 +22,7 @@ envs = %w[
   dev
 ]
 clean = false
+release = false
 env = envs.first
 
 OptionParser.new do |opts|
@@ -35,12 +36,16 @@ OptionParser.new do |opts|
   opts.on("--clean", "Clean build before starting app") do |value|
     clean = value
   end
+
+  opts.on("--release", "Build and install release version") do |value|
+    release = value
+  end
 end.parse!
 
 Dir.chdir("android") do
   task = ["install"]
   task << capitalize(env)
-  task << "Debug"
+  task << (release ? "Release" : "Debug")
 
   run "adb reverse tcp:8081 tcp:8081 &> /dev/null || true"
   run "./gradlew clean" if clean
