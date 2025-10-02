@@ -82,6 +82,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   // Use sourceAmount as-is since it's already in the correct format for display
 
+  // Use sourceAmount as-is since it's already in the correct format for display
+
   const currentConversionRate =
     pathResult?.conversionRate ||
     calculateSwapRate(
