@@ -446,6 +446,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityAssessment.isSuspicious,
   ]);
 
+  const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
+    transactionSecurityAssessment;
+  const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
+    sourceBalanceSecurityAssessment;
+  const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
+    destBalanceSecurityAssessment;
+  const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
+  const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
@@ -461,6 +470,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       onCancel: handleCancelSwap,
       onConfirm: handleConfirmSwap,
       isBuilding,
+      isMalicious,
+      isSuspicious,
       transactionXDR: transactionXDR ?? undefined,
       onSettingsPress: handleOpenSettings,
     }),
@@ -468,6 +479,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       handleCancelSwap,
       handleConfirmSwap,
       isBuilding,
+      isMalicious,
+      isSuspicious,
       transactionXDR,
       handleOpenSettings,
     ],
@@ -620,13 +633,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={() =>
           swapReviewBottomSheetModalRef.current?.dismiss()
         }
-        snapPoints={["75%"]}
+        snapPoints={["80%"]}
         scrollable
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
-            onCancel={() => swapReviewBottomSheetModalRef.current?.dismiss()}
-            onConfirm={handleConfirmSwap}
             transactionScanResult={transactionScanResult}
             sourceTokenScanResult={
               sourceBalance

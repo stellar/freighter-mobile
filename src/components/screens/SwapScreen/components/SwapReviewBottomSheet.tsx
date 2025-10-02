@@ -30,13 +30,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -45,8 +39,6 @@ import {
 } from "services/blockaid/helper";
 
 type SwapReviewBottomSheetProps = {
-  onCancel?: () => void;
-  onConfirm?: () => void;
   onBannerPress?: () => void;
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
   sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
@@ -54,8 +46,6 @@ type SwapReviewBottomSheetProps = {
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
-  onCancel,
-  onConfirm,
   onBannerPress,
   transactionScanResult,
   sourceTokenScanResult,
@@ -73,7 +63,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     sourceTokenSymbol,
     destinationTokenSymbol,
   } = useSwapStore();
-  const { transactionXDR, isBuilding } = useTransactionBuilderStore();
+  const { transactionXDR } = useTransactionBuilderStore();
   const transactionDetails = useSignTransactionDetails({
     xdr: transactionXDR || "",
   });
@@ -157,12 +147,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const publicKey = account?.publicKey;
 
-  const handleConfirmSwap = () => {
-    if (onConfirm) {
-      onConfirm();
-    }
-  };
-
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
     assessTransactionSecurity(transactionScanResult);
   const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
@@ -171,7 +155,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     assessTokenSecurity(destTokenScanResult);
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
-  const isDisabled = !transactionXDR || isBuilding;
+
   const bannerText = useMemo(() => {
     if (isTxMalicious) {
       return t("transactionAmountScreen.errors.malicious");
@@ -199,57 +183,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     isDestSuspicious,
     isSourceSuspicious,
   ]);
-
-  const renderButtons = () => {
-    const cancelButton = (
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
-      >
-        <Button
-          tertiary={isSuspicious}
-          destructive={isMalicious}
-          secondary={!isMalicious && !isSuspicious}
-          xl
-          isFullWidth
-          onPress={onCancel}
-          disabled={isDisabled}
-        >
-          {t("common.cancel")}
-        </Button>
-      </View>
-    );
-
-    if (isMalicious || isSuspicious) {
-      return (
-        <>
-          {cancelButton}
-          <TextButton
-            text={t("transactionAmountScreen.confirmAnyway")}
-            onPress={onConfirm}
-            disabled={isDisabled}
-            variant={isMalicious ? "error" : "secondary"}
-          />
-        </>
-      );
-    }
-
-    return (
-      <>
-        {cancelButton}
-        <View className="flex-1">
-          <Button
-            biometric
-            onPress={() => handleConfirmSwap()}
-            tertiary
-            xl
-            disabled={!transactionXDR || isBuilding}
-          >
-            {t("common.confirm")}
-          </Button>
-        </View>
-      </>
-    );
-  };
 
   return (
     <View className="flex-1">
@@ -399,17 +332,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           }
         />
       )}
-
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[16px]`}
-      >
-        {renderButtons()}
-      </View>
     </View>
   );
 };
 
 type SwapReviewFooterProps = {
+  isMalicious: boolean;
+  isSuspicious: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   isBuilding?: boolean;
@@ -423,6 +352,8 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
     const insets = useSafeAreaInsets();
 
     const {
+      isMalicious,
+      isSuspicious,
       onCancel,
       onConfirm,
       isBuilding = false,
@@ -432,46 +363,66 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
     const isDisabled = !transactionXDR || isBuilding;
 
-    const renderButtons = useCallback(() => {
+    const renderButtons = () => {
       const cancelButton = (
-        <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
+        <View
+          className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+        >
+          <Button
+            tertiary={isSuspicious}
+            destructive={isMalicious}
+            secondary={!isMalicious && !isSuspicious}
+            xl
+            isFullWidth
+            onPress={onCancel}
+          >
             {t("common.cancel")}
           </Button>
         </View>
       );
 
-      const confirmButton = (
-        <View className="flex-1">
-          <Button
-            biometric
-            onPress={() => onConfirm?.()}
-            tertiary
-            xl
-            disabled={isDisabled}
-          >
-            {t("common.confirm")}
-          </Button>
-        </View>
-      );
+      if (isMalicious || isSuspicious) {
+        return (
+          <>
+            {cancelButton}
+            <TextButton
+              text={t("transactionAmountScreen.confirmAnyway")}
+              onPress={onCancel}
+              variant={isMalicious ? "error" : "secondary"}
+            />
+          </>
+        );
+      }
 
       return (
         <>
           {cancelButton}
-          {confirmButton}
+          <View className="flex-1">
+            <Button
+              biometric
+              onPress={onConfirm}
+              tertiary
+              xl
+              disabled={isDisabled}
+            >
+              {t("common.confirm")}
+            </Button>
+          </View>
         </>
       );
-    }, [onCancel, onConfirm, isDisabled, t]);
+    };
+
+    const showSettingsButton = onSettingsPress && !isMalicious && !isSuspicious;
 
     return (
       <View
-        className="flex-row bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6"
+        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6`}
         style={{
           paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
           gap: pxValue(12),
         }}
       >
-        {onSettingsPress && (
+        {showSettingsButton && (
           <TouchableOpacity
             onPress={onSettingsPress}
             className="w-[46px] h-[46px] rounded-full border border-gray-6 items-center justify-center"
