@@ -1,7 +1,9 @@
 apply plugin: "com.android.application"
-apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+
+// Apply react-native-config
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -80,13 +82,9 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "org.stellar.freighterwallet"
-    defaultConfig {
-        applicationId "org.stellar.freighterwallet"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 29
-        versionName "1.5.23"
-    }
+
+    flavorDimensions "environment"
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -103,6 +101,29 @@ android {
             keyPassword '<release-keystore-password>'
         }
     }
+
+    productFlavors {
+        prod {
+            dimension "environment"
+            applicationId "org.stellar.freighterwallet"
+            resValue "string", "app_name", "Freighter"
+        }
+        dev {
+            dimension "environment"
+            applicationId "org.stellar.freighterdev"
+            resValue "string", "app_name", "Freighter Dev"
+        }
+    }
+
+    defaultConfig {
+        applicationId "org.stellar.freighterwallet"
+        resValue "string", "build_config_package", "org.stellar.freighterwallet"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 29
+        versionName "1.5.23"
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

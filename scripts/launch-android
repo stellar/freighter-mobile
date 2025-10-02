@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+
+def exit_with_error(message)
+  puts "ERROR: #{message}"
+  exit 1
+end
+
+def capitalize(word)
+  word.gsub(/^./, &:upcase)
+end
+
+def run(*args)
+  puts "$ #{args.join(' ')}"
+  system(*args)
+end
+
+envs = %w[
+  prod
+  dev
+]
+clean = false
+env = envs.first
+
+OptionParser.new do |opts|
+  opts.on(
+    "--env=ENV",
+    "Launch a given app bundle. Can be one of #{envs.inspect}"
+  ) do |value|
+    env = value
+  end
+
+  opts.on("--clean", "Clean build before starting app") do |value|
+    clean = value
+  end
+end.parse!
+
+Dir.chdir("android") do
+  task = ["install"]
+  task << capitalize(env)
+  task << "Debug"
+
+  run "adb reverse tcp:8081 tcp:8081 &> /dev/null || true"
+  run "./gradlew clean" if clean
+  run "./gradlew #{task.join}"
+end
