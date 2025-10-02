@@ -98,13 +98,10 @@ describe("remoteConfig duck", () => {
 
     it("should update state when variant values are 'on'", async () => {
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockImplementation((flag: string) => {
-        const variants: Record<string, any> = {
-          swap_enabled: { value: "on" },
-          discover_enabled: { value: "on" },
-          onramp_enabled: { value: "on" },
-        };
-        return variants[flag];
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: "on" },
+        discover_enabled: { value: "on" },
+        onramp_enabled: { value: "on" },
       });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
@@ -130,13 +127,10 @@ describe("remoteConfig duck", () => {
       });
 
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockImplementation((flag: string) => {
-        const variants: Record<string, any> = {
-          swap_enabled: { value: "off" },
-          discover_enabled: { value: "off" },
-          onramp_enabled: { value: "off" },
-        };
-        return variants[flag];
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: "off" },
+        discover_enabled: { value: "off" },
+        onramp_enabled: { value: "off" },
       });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
@@ -153,11 +147,10 @@ describe("remoteConfig duck", () => {
 
     it("should update only specific flags when variants are returned", async () => {
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockImplementation((flag: string) => {
-        if (flag === "swap_enabled") {
-          return { value: "on" };
-        }
-        return { value: undefined };
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: "on" },
+        discover_enabled: { value: undefined },
+        onramp_enabled: { value: undefined },
       });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
@@ -174,7 +167,11 @@ describe("remoteConfig duck", () => {
 
     it("should not update state when variants return undefined", async () => {
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockReturnValue({ value: undefined });
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: undefined },
+        discover_enabled: { value: undefined },
+        onramp_enabled: { value: undefined },
+      });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
       const { result } = renderHook(() => useRemoteConfigStore());
@@ -209,7 +206,7 @@ describe("remoteConfig duck", () => {
 
     it("should handle variant errors gracefully", async () => {
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockImplementation(() => {
+      mockClient.all.mockImplementation(() => {
         throw new Error("Variant error");
       });
       mockGetExperimentClient.mockReturnValue(mockClient);
@@ -229,13 +226,10 @@ describe("remoteConfig duck", () => {
 
     it("should handle mixed variant responses", async () => {
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockImplementation((flag: string) => {
-        const variants: Record<string, { value?: string }> = {
-          swap_enabled: { value: "on" },
-          discover_enabled: { value: undefined },
-          onramp_enabled: { value: "off" },
-        };
-        return variants[flag];
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: "on" },
+        discover_enabled: { value: undefined },
+        onramp_enabled: { value: "off" },
       });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
@@ -261,7 +255,11 @@ describe("remoteConfig duck", () => {
       });
 
       const mockClient = createMockExperimentClient();
-      mockClient.variant.mockReturnValue({ value: undefined });
+      mockClient.all.mockReturnValue({
+        swap_enabled: { value: undefined },
+        discover_enabled: { value: undefined },
+        onramp_enabled: { value: undefined },
+      });
       mockGetExperimentClient.mockReturnValue(mockClient);
 
       const { result } = renderHook(() => useRemoteConfigStore());

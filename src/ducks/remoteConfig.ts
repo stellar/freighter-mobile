@@ -17,6 +17,11 @@ interface RemoteConfigState {
   initFetchFeatureFlagsPoll: () => void;
 }
 
+type FeatureFlags = Omit<
+  RemoteConfigState,
+  "fetchFeatureFlags" | "initFetchFeatureFlagsPoll"
+>;
+
 const INITIAL_REMOTE_CONFIG_STATE = {
   swap_enabled: isAndroid,
   discover_enabled: isAndroid,
@@ -48,21 +53,15 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
         },
       });
 
-      const updates: Partial<RemoteConfigState> = {};
+      const updates: Partial<FeatureFlags> = {};
 
-      const swapVariant = experimentClient.variant("swap_enabled");
-      const discoverVariant = experimentClient.variant("discover_enabled");
-      const onrampVariant = experimentClient.variant("onramp_enabled");
+      const allVariants = experimentClient.all();
 
-      if (swapVariant?.value !== undefined) {
-        updates.swap_enabled = swapVariant.value === "on";
-      }
-      if (discoverVariant?.value !== undefined) {
-        updates.discover_enabled = discoverVariant.value === "on";
-      }
-      if (onrampVariant?.value !== undefined) {
-        updates.onramp_enabled = onrampVariant.value === "on";
-      }
+      Object.entries(allVariants).forEach(([key, variant]) => {
+        if (variant?.value !== undefined) {
+          updates[key as keyof FeatureFlags] = variant.value === "on";
+        }
+      });
 
       if (Object.keys(updates).length > 0) {
         set(updates);
