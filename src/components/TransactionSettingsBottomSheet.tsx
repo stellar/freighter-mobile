@@ -167,7 +167,10 @@ const TransactionSettingsBottomSheet: React.FC<
   const handleUpdateSlippage = useCallback(
     (step: number) => {
       const currentValue = parseDisplayNumber(localSlippage) || 0;
-      const newValue = Math.max(0, Math.min(MAX_SLIPPAGE, currentValue + step));
+      const newValue = Math.max(
+        0,
+        Math.min(MAX_SLIPPAGE, Number(currentValue) + step),
+      );
       const roundedValue = Math.round(newValue * 100) / 100;
       const isWholeNumber = roundedValue % 1 === 0;
       const finalValue = isWholeNumber
@@ -232,7 +235,7 @@ const TransactionSettingsBottomSheet: React.FC<
   const settingSaveCallbacks = {
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
-      saveSlippage(parseDisplayNumber(localSlippage)),
+      saveSlippage(Number(parseDisplayNumber(localSlippage))),
     [TransactionSetting.Fee]: () =>
       saveFee(parseDisplayNumber(localFee).toString()),
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
@@ -308,7 +311,7 @@ const TransactionSettingsBottomSheet: React.FC<
               variant="secondary"
               onPress={() => handleUpdateSlippage(-STEP_SIZE_PERCENT)}
               disabled={
-                (parseDisplayNumber(localSlippage) || 0) <= MIN_SLIPPAGE
+                (Number(parseDisplayNumber(localSlippage)) || 0) <= MIN_SLIPPAGE
               }
             />
           </View>
@@ -334,7 +337,7 @@ const TransactionSettingsBottomSheet: React.FC<
               variant="secondary"
               onPress={() => handleUpdateSlippage(STEP_SIZE_PERCENT)}
               disabled={
-                (parseDisplayNumber(localSlippage) || 0) >= MAX_SLIPPAGE
+                (Number(parseDisplayNumber(localSlippage)) || 0) >= MAX_SLIPPAGE
               }
             />
           </View>

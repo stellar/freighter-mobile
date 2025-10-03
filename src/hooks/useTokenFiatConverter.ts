@@ -95,7 +95,7 @@ export const useTokenFiatConverter = ({
       const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
       // Update display value immediately to preserve formatting
 
-      setFiatAmount(parseDisplayNumber(newAmount).toFixed(FIAT_DECIMALS));
+      setFiatAmount(parseDisplayNumber(newAmount, FIAT_DECIMALS));
     } else {
       const newAmount = formatNumericInput(
         tokenAmountDisplay,
@@ -104,8 +104,7 @@ export const useTokenFiatConverter = ({
       );
       // Update display value immediately to preserve formatting
       setTokenAmountDisplay(newAmount);
-      const internalAmount =
-        parseDisplayNumber(newAmount).toFixed(DEFAULT_DECIMALS);
+      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
       setTokenAmount(internalAmount);
     }
 

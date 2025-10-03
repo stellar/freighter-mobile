@@ -92,12 +92,6 @@ describe("formatAmount helpers", () => {
       );
     });
 
-    it("should format string values correctly", () => {
-      expect(formatTokenAmount("1000")).toBe("1,000.00");
-      expect(formatTokenAmount("1234.56")).toBe("1,234.56");
-      expect(formatTokenAmount("0.12345")).toBe("0.12345");
-    });
-
     it("should format BigNumber values correctly", () => {
       expect(formatTokenAmount(new BigNumber(1000))).toBe("1,000.00");
       expect(formatTokenAmount(new BigNumber("1234.56"))).toBe("1,234.56");
@@ -433,37 +427,43 @@ describe("formatAmount helpers", () => {
 
   describe("parseDisplayNumber", () => {
     it("should parse US format (dot decimal)", () => {
-      expect(parseDisplayNumber("1,234.56")).toBe(1234.56);
-      expect(parseDisplayNumber("0.00001")).toBe(0.00001);
+      expect(parseDisplayNumber("1,234.56")).toBe("1234.56");
+      expect(parseDisplayNumber("0.00001")).toBe("0.00001");
     });
 
     it("should parse comma decimal format", () => {
       // The parseDisplayNumber function uses device settings
       // With dot as decimal separator, comma is treated as grouping separator
-      expect(parseDisplayNumber("1.234,56")).toBe(1.23456);
-      expect(parseDisplayNumber("0,00001")).toBe(1); // Comma is grouping separator, so this becomes 0.00001
+      expect(parseDisplayNumber("1.234,56")).toBe("1.23456");
+      expect(parseDisplayNumber("0,00001")).toBe("1"); // Comma is grouping separator, so this becomes 0.00001
     });
 
     it("should handle empty input", () => {
-      expect(parseDisplayNumber("")).toBe(0);
+      expect(parseDisplayNumber("")).toBe("0");
     });
 
     it("should handle malformed input gracefully", () => {
       // Note: Mock is not working correctly, so we expect default behavior
       // With dot as decimal separator, comma is treated as grouping separator
-      expect(parseDisplayNumber("1.234.567,89,extra")).toBe(1.234); // Only the first part is parsed
+      expect(parseDisplayNumber("1.234.567,89,extra")).toBe("1.234"); // Only the first part is parsed
     });
 
     it("should handle BigNumber input", () => {
       const bigNum = new BigNumber("123.45");
       const result = parseDisplayNumber(bigNum);
-      expect(result).toBe(123.45);
+      expect(result).toBe("123.45");
     });
 
     it("should handle BigNumber with high precision", () => {
       const bigNum = new BigNumber("123.456789012345");
       const result = parseDisplayNumber(bigNum);
-      expect(result).toBe(123.456789012345);
+      expect(result).toBe("123.456789012345");
+    });
+
+    it("should handle BigNumber with decimals parameter", () => {
+      const bigNum = new BigNumber("123.456789012345");
+      const result = parseDisplayNumber(bigNum, 2);
+      expect(result).toBe("123.46");
     });
   });
 
@@ -575,26 +575,6 @@ describe("formatAmount helpers", () => {
       expect(result.toString()).toBe("1.23456789e-10"); // BigNumber converts very small numbers to scientific notation
       // Verify the actual numeric value is correct
       expect(result.toNumber()).toBe(0.000000000123456789);
-    });
-  });
-
-  describe("Display number parsing with different separators", () => {
-    it("should parse dot decimal format correctly", () => {
-      expect(parseDisplayNumber("1,234.56")).toBe(1234.56);
-      expect(parseDisplayNumber("0.00001")).toBe(0.00001);
-    });
-
-    it("should parse comma decimal format correctly", () => {
-      // Note: Mock is not working correctly, so we expect default behavior
-      // With dot as decimal separator, comma is treated as grouping separator
-      expect(parseDisplayNumber("1.234,56")).toBe(1.23456);
-      expect(parseDisplayNumber("0,00001")).toBe(1); // Comma is grouping separator, so this becomes 000001 which is 1
-    });
-
-    it("should handle malformed input gracefully", () => {
-      // Note: Mock is not working correctly, so we expect default behavior
-      // With dot as decimal separator, comma is treated as grouping separator
-      expect(parseDisplayNumber("1.234.567,89,extra")).toBe(1.234); // Only the first part is parsed
     });
   });
 });

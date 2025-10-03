@@ -280,21 +280,24 @@ export const formatPercentageAmount = (
  * Uses react-native-localize to determine the correct decimal and grouping separators.
  *
  * @param {string | BigNumber} input - The formatted numeric string to parse
- * @returns {number} Parsed numeric value
+ * @returns {string} Parsed numeric value
  *
  * @example
- * parseDisplayNumber("1,23"); // Returns 1.23 (handles comma decimal separator)
- * parseDisplayNumber("1.23"); // Returns 1.23 (handles dot decimal separator)
- * parseDisplayNumber("1,234.56"); // Returns 1234.56 (handles thousands separator)
- * parseDisplayNumber(new BigNumber("1.23")); // Returns 1.23 (handles BigNumber)
+ * parseDisplayNumber("1,23"); // Returns "1.23" (handles comma decimal separator)
+ * parseDisplayNumber("1.23"); // Returns "1.23" (handles dot decimal separator)
+ * parseDisplayNumber("1,234.56"); // Returns "1234.56" (handles thousands separator)
+ * parseDisplayNumber(new BigNumber("1.23")); // Returns "1.23" (handles BigNumber)
  */
-export const parseDisplayNumber = (input: string | BigNumber): number => {
+export const parseDisplayNumber = (
+  input: string | BigNumber,
+  decimals?: number,
+): string => {
   // Handle BigNumber instances
   if (input instanceof BigNumber) {
-    return input.toNumber();
+    return decimals ? input.toFixed(decimals) : input.toString();
   }
 
-  if (!input || input === "") return 0;
+  if (!input || input === "") return "0";
 
   try {
     // Use device settings for decimal and grouping separators
@@ -306,7 +309,7 @@ export const parseDisplayNumber = (input: string | BigNumber): number => {
       .replace(new RegExp(`\\${decimalSeparator}`), ".");
 
     const result = parseFloat(normalized);
-    return Number.isNaN(result) ? NaN : result;
+    return result.toString();
   } catch (error) {
     // Fallback: try to handle both comma and dot as decimal separators
     const normalized = input
@@ -314,7 +317,7 @@ export const parseDisplayNumber = (input: string | BigNumber): number => {
       .replace(/[^\d.-]/g, ""); // Remove any non-numeric characters except dot and minus
 
     const result = parseFloat(normalized);
-    return Number.isNaN(result) ? NaN : result;
+    return result.toString();
   }
 };
 
