@@ -77,6 +77,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { fetchCollectibles } = useCollectiblesStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
+    console.log(swapEnabled);
 
     const hasTokens = useMemo(
       () => Object.keys(balances).length > 0,

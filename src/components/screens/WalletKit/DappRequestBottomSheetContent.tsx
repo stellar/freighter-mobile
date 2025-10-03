@@ -9,6 +9,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
@@ -235,7 +236,10 @@ const DappRequestBottomSheetContent: React.FC<
         <List variant="secondary" items={transactionBalanceListItems} />
         <List variant="secondary" items={accountDetailList} />
         {signTransactionDetails && (
-          <SignTransactionDetails data={signTransactionDetails} />
+          <SignTransactionDetails
+            data={signTransactionDetails}
+            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+          />
         )}
       </View>
 

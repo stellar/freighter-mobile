@@ -49,7 +49,6 @@ export const scanToken = async (
     const scanResult = response.data.data as Blockaid.TokenScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
-      response: scanResult,
       tokenCode,
       network,
     });
@@ -88,7 +87,6 @@ export const scanBulkTokens = async (
     const scanResult = response.data.data as Blockaid.TokenBulkScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_BULK_TOKEN_SCAN, {
-      response: scanResult,
       addressList,
       network,
     });
@@ -123,7 +121,6 @@ export const scanSite = async (
     const scanResult = response.data.data as Blockaid.SiteScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_SITE_SCAN, {
-      response: scanResult,
       url,
       network,
     });
@@ -162,7 +159,6 @@ export const scanTransaction = async (
       .data as Blockaid.StellarTransactionScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TRANSACTION_SCAN, {
-      response: scanResult,
       xdr,
       url,
       network,

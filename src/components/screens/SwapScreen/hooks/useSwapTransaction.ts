@@ -1,3 +1,4 @@
+import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
 import { NETWORKS } from "config/constants";
@@ -14,6 +15,7 @@ import { useHistoryStore } from "ducks/history";
 import { SwapPathResult } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
@@ -37,6 +39,7 @@ interface UseSwapTransactionResult {
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
+  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
 }
 
 export const useSwapTransaction = ({
@@ -49,9 +52,12 @@ export const useSwapTransaction = ({
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [transactionScanResult, setTransactionScanResult] =
+    useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
+  const { scanTransaction } = useBlockaidTransaction();
 
   const setupSwapTransaction = useCallback(async () => {
     if (
@@ -83,6 +89,12 @@ export const useSwapTransaction = ({
     if (!transactionXDR) {
       throw new Error("Failed to build swap transaction");
     }
+    try {
+      const scanResult = await scanTransaction(transactionXDR, "internal");
+      setTransactionScanResult(scanResult);
+    } catch (error) {
+      logger.error("SwapTransaction", "Transaction scan failed", error);
+    }
   }, [
     sourceBalance,
     destinationBalance,
@@ -91,6 +103,7 @@ export const useSwapTransaction = ({
     account?.publicKey,
     sourceAmount,
     network,
+    scanTransaction,
   ]);
 
   const executeSwap = useCallback(async () => {
@@ -192,5 +205,6 @@ export const useSwapTransaction = ({
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
+    transactionScanResult,
   };
 };
