@@ -384,7 +384,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
-      handleAmountChange: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      tokenAmountDisplay: "100",
     });
     mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
@@ -764,7 +765,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
-      handleAmountChange: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      tokenAmountDisplay: "100",
     });
 
     // Mock settings with memo provided for memo-required address
@@ -819,7 +821,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
-      handleAmountChange: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      tokenAmountDisplay: "100",
     });
 
     // Mock settings with no memo for non-memo-required address

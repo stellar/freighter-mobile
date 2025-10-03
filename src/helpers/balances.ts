@@ -413,6 +413,7 @@ export const isAmountSpendable = ({
   subentryCount = 0,
   transactionFee = "0.00001",
 }: IsAmountSpendableParams): boolean => {
+  // Expect internal dot notation value, convert to BigNumber directly
   const amountBN = new BigNumber(amount);
   const spendableAmount = calculateSpendableAmount({
     balance,
