@@ -43,6 +43,12 @@ const GAP_MAP: ClassNameMap = {
   lg: "gap-2",
 };
 
+const FONT_SIZE_MAP = {
+  sm: fsValue(12),
+  md: fsValue(14),
+  lg: fsValue(16),
+} as const;
+
 const getInputContainerClasses = (
   fieldSize: InputSize,
   isError?: boolean,
@@ -82,13 +88,6 @@ const getInputClasses = (isDisabled?: boolean) => {
 
   return `${baseClasses} ${textColor} ${textAlign}`;
 };
-
-// Unified font size map
-const FONT_SIZE_MAP = {
-  sm: fsValue(12),
-  md: fsValue(14),
-  lg: fsValue(16),
-} as const;
 
 const getInputStyles = (fieldSize: InputSize) => {
   const baseStyles = {
