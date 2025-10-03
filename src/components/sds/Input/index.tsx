@@ -172,10 +172,7 @@ interface InputProps {
   note?: string | React.ReactNode;
   error?: string | React.ReactNode;
   success?: string | React.ReactNode;
-  copyButton?: {
-    position: "left" | "right";
-    showLabel?: boolean;
-  };
+  copyButtonPosition?: "left" | "right";
   endButton?: {
     content: string | React.ReactNode;
     onPress: () => void;
@@ -310,7 +307,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
       note,
       error,
       success,
-      copyButton,
+      copyButtonPosition,
       endButton,
       value = "",
       onChangeText,
@@ -435,7 +432,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
             testID={testID ? `${testID}-container` : undefined}
             className={`${inputContainerClasses} ${containerPaddingClasses} ${heightClasses} flex-1`}
           >
-            {copyButton?.position === "left" && renderCopyButton()}
+            {copyButtonPosition === "left" && renderCopyButton()}
             {leftElement && (
               <View className={leftSideElementClasses}>{leftElement}</View>
             )}
@@ -482,7 +479,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
             {rightElement && (
               <View className={rightSideElementClasses}>{rightElement}</View>
             )}
-            {copyButton?.position === "right" && renderCopyButton()}
+            {copyButtonPosition === "right" && renderCopyButton()}
           </View>
 
           {endButton && (
@@ -593,7 +590,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
  * <Input
  *   label="Wallet Address"
  *   value={walletAddress}
- *   copyButton={{ position: "right", showLabel: true }}
+ *   copyButtonPosition="right"
  *   note="Click the copy button to copy the address"
  *   editable={false}
  * />
@@ -611,7 +608,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
  * @param {string | ReactNode} [props.note] - Helper text to display below the input
  * @param {string | ReactNode} [props.error] - Error message to display below the input
  * @param {string | ReactNode} [props.success] - Success message to display below the input
- * @param {Object} [props.copyButton] - Configuration for the copy button
+ * @param {"left" | "right"} [props.copyButtonPosition] - Configuration for the copy button
  * @param {Object} [props.endButton] - Configuration for the end button
  * @param {string} props.value - The input value
  * @param {Function} [props.onChangeText] - Callback when text changes
@@ -660,7 +657,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
       note,
       error,
       success,
-      copyButton,
+      copyButtonPosition,
       endButton,
       value = "",
       onChangeText,
@@ -749,7 +746,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
           note={note}
           error={error}
           success={success}
-          copyButton={copyButton}
+          copyButtonPosition={copyButtonPosition}
           endButton={endButton}
           value={value}
           onChangeText={onChangeText}
@@ -807,7 +804,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
             testID={testID ? `${testID}-container` : undefined}
             className={`${inputContainerClasses} ${containerPaddingClasses} ${heightClasses} flex-1`}
           >
-            {copyButton?.position === "left" && renderCopyButton()}
+            {copyButtonPosition === "left" && renderCopyButton()}
             {leftElement && (
               <View className={leftSideElementClasses}>{leftElement}</View>
             )}
@@ -832,7 +829,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
             {rightElement && (
               <View className={rightSideElementClasses}>{rightElement}</View>
             )}
-            {copyButton?.position === "right" && renderCopyButton()}
+            {copyButtonPosition === "right" && renderCopyButton()}
           </View>
 
           {endButton && (

@@ -134,30 +134,21 @@ describe("Input", () => {
 
     it("renders copy button on the left when specified", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "left", showLabel: true }}
-          value="test"
-        />,
+        <Input copyButtonPosition="left" value="test" />,
       );
       expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("renders copy button on the right when specified", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "right", showLabel: true }}
-          value="test"
-        />,
+        <Input copyButtonPosition="right" value="test" />,
       );
       expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("copies text to clipboard when copy button is pressed", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "right", showLabel: true }}
-          value="test value"
-        />,
+        <Input copyButtonPosition="right" value="test value" />,
       );
 
       fireEvent.press(getByText("common.copy"));
