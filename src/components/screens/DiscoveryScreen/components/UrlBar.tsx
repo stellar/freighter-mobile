@@ -35,17 +35,10 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
         <Avatar size="xl" publicAddress={account?.publicKey ?? ""} />
 
         <StyledTextInput
-          $fieldSize="lg"
-          style={{
-            borderColor: themeColors.border.primary,
-            borderWidth: pxValue(1),
-            borderRadius: pxValue(8),
-            paddingHorizontal: pxValue(12),
-          }}
+          fieldSize="lg"
           value={inputUrl}
           onChangeText={onInputChange}
           onSubmitEditing={onUrlSubmit}
-          selectTextOnFocus
           placeholder={t("discovery.urlBarPlaceholder")}
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"
@@ -56,10 +49,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
         {/* Show Tabs Button */}
         <TouchableOpacity
           onPress={onShowTabs}
-          className="w-14 h-14 border border-border-primary justify-center items-center"
-          style={{
-            borderRadius: pxValue(8),
-          }}
+          className="w-14 border border-border-primary justify-center items-center rounded-lg h-[48px]"
         >
           <Text md semiBold>
             {tabsCount > 9 ? "9+" : tabsCount}
