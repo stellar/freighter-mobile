@@ -7,9 +7,10 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useDeviceStorage from "hooks/useDeviceStorage";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useLayoutEffect, useMemo, useCallback } from "react";
-import { Linking, Platform } from "react-native";
+import { Platform } from "react-native";
 
 interface UseCollectibleDetailsHeaderProps {
   collectionAddress: string;
@@ -50,6 +51,7 @@ export const useCollectibleDetailsHeader = ({
   const { account } = useGetActiveAccount();
   const { fetchCollectibles, removeCollectible } = useCollectiblesStore();
   const { saveToPhotos } = useDeviceStorage();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -87,7 +89,7 @@ export const useCollectibleDetailsHeader = ({
     try {
       const stellarExpertUrl = getStellarExpertUrl(network);
       const collectibleUrl = `${stellarExpertUrl}/contract/${collectionAddress}`;
-      await Linking.openURL(collectibleUrl);
+      await openInAppBrowser(collectibleUrl);
     } catch (error) {
       logger.error(
         "useCollectibleDetailsHeader",
@@ -95,7 +97,7 @@ export const useCollectibleDetailsHeader = ({
         error,
       );
     }
-  }, [network, collectionAddress]);
+  }, [network, collectionAddress, openInAppBrowser]);
 
   /**
    * Handles removing the collectible from the wallet.

@@ -4,7 +4,7 @@ import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isHomepageUrl } from "helpers/browser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
-import { Share, Linking, Platform } from "react-native";
+import { Share, Platform } from "react-native";
 
 // Mock dependencies
 jest.mock("config/logger");
@@ -20,6 +20,13 @@ jest.mock("helpers/device", () => ({
   isIOS: false,
 }));
 jest.mock("hooks/useAppTranslation");
+const mockOpenInAppBrowser = jest.fn();
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: mockOpenInAppBrowser,
+    isAvailable: jest.fn(() => Promise.resolve(true)),
+  }),
+}));
 jest.mock("react-native", () => ({
   Share: {
     share: jest.fn(),
@@ -43,8 +50,8 @@ const mockIsHomepageUrl = isHomepageUrl as jest.MockedFunction<
 const mockUseAppTranslation = useAppTranslation as jest.MockedFunction<
   typeof useAppTranslation
 >;
+
 const mockShare = Share as jest.Mocked<typeof Share>;
-const mockLinking = Linking as jest.Mocked<typeof Linking>;
 
 describe("useBrowserActions", () => {
   const mockWebViewRef = {
@@ -236,19 +243,23 @@ describe("useBrowserActions", () => {
   });
 
   describe("handleOpenInBrowser", () => {
-    it("should call Linking.openURL with tab URL", async () => {
-      mockLinking.openURL.mockResolvedValue(true);
+    beforeEach(() => {
+      mockOpenInAppBrowser.mockClear();
+    });
+
+    it("should call useInAppBrowser with tab URL", async () => {
+      mockOpenInAppBrowser.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
 
       await result.current.handleOpenInBrowser();
 
-      expect(mockLinking.openURL).toHaveBeenCalledWith("https://example.com");
+      expect(mockOpenInAppBrowser).toHaveBeenCalledWith("https://example.com");
     });
 
-    it("should handle openURL errors", async () => {
-      const error = new Error("OpenURL error");
-      mockLinking.openURL.mockRejectedValue(error);
+    it("should handle openInAppBrowser errors", async () => {
+      const error = new Error("OpenInAppBrowser error");
+      mockOpenInAppBrowser.mockRejectedValue(error);
 
       const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
 

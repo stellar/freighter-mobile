@@ -27,7 +27,6 @@ export const scanToken = async (
   params: ScanTokenParams,
 ): Promise<Blockaid.TokenScanResponse> => {
   const { tokenCode, tokenIssuer, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
@@ -37,7 +36,11 @@ export const scanToken = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${address}`);
+    >(BLOCKAID_ENDPOINTS.SCAN_TOKEN, {
+      params: {
+        address,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -46,7 +49,6 @@ export const scanToken = async (
     const scanResult = response.data.data as Blockaid.TokenScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
-      response: scanResult,
       tokenCode,
       network,
     });
@@ -85,7 +87,6 @@ export const scanBulkTokens = async (
     const scanResult = response.data.data as Blockaid.TokenBulkScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_BULK_TOKEN_SCAN, {
-      response: scanResult,
       addressList,
       network,
     });
@@ -100,7 +101,6 @@ export const scanSite = async (
   params: ScanSiteParams,
 ): Promise<Blockaid.SiteScanResponse> => {
   const { url, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
@@ -108,7 +108,11 @@ export const scanSite = async (
 
     const response = await freighterBackend.get<
       BlockaidApiResponse<Blockaid.SiteScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${url}`);
+    >(BLOCKAID_ENDPOINTS.SCAN_SITE, {
+      params: {
+        url,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -117,7 +121,6 @@ export const scanSite = async (
     const scanResult = response.data.data as Blockaid.SiteScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_SITE_SCAN, {
-      response: scanResult,
       url,
       network,
     });
@@ -139,7 +142,7 @@ export const scanTransaction = async (
     }
 
     const transactionParams = {
-      url: encodeURIComponent(url),
+      url,
       tx_xdr: xdr,
       network,
     };
@@ -156,7 +159,6 @@ export const scanTransaction = async (
       .data as Blockaid.StellarTransactionScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TRANSACTION_SCAN, {
-      response: scanResult,
       xdr,
       url,
       network,

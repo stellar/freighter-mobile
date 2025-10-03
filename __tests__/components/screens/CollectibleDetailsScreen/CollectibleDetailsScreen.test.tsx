@@ -2,7 +2,6 @@ import { fireEvent } from "@testing-library/react-native";
 import { CollectibleDetailsScreen } from "components/screens/CollectibleDetailsScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Linking } from "react-native";
 
 // Mock the Linking module
 jest.mock("react-native/Libraries/Linking/Linking", () => ({
@@ -14,6 +13,15 @@ jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
   default: () => ({
     t: (key: string) => key,
+  }),
+}));
+
+// Mock the useInAppBrowser hook
+const mockOpenInAppBrowser = jest.fn();
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: mockOpenInAppBrowser,
+    isAvailable: jest.fn(() => Promise.resolve(true)),
   }),
 }));
 
@@ -163,10 +171,8 @@ describe("CollectibleDetailsScreen", () => {
   });
 
   it("opens external URL when view button is pressed", () => {
-    const mockOpenURL = Linking.openURL as jest.MockedFunction<
-      typeof Linking.openURL
-    >;
-    mockOpenURL.mockResolvedValue(undefined);
+    mockOpenInAppBrowser.mockClear();
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
 
     const { getByText } = renderWithProviders(
       <CollectibleDetailsScreen
@@ -178,7 +184,7 @@ describe("CollectibleDetailsScreen", () => {
     const viewButton = getByText("collectibleDetails.view");
     fireEvent.press(viewButton);
 
-    expect(mockOpenURL).toHaveBeenCalledWith("https://example.com");
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith("https://example.com");
   });
 
   it("sets navigation title to collectible name", () => {

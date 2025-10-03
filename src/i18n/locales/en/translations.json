@@ -641,15 +641,27 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
-  "transactionSettingsBottomSheet": {
+  "transactionSettings": {
     "title": "Transaction settings",
     "feeTitle": "Transaction fee",
     "memoTitle": "Memo",
+    "slippageTitle": "Slippage",
     "timeoutTitle": "Transaction timeout",
+    "resetFee": "Reset",
+    "memoPlaceholder": "Type your memo",
+    "slippagePlaceholder": "Custom %",
+    "timeoutPlaceholder": "Enter timeout",
+    "seconds": "seconds",
+    "congestion": "{{networkCongestion}} congestion",
     "memoInfo": {
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
       "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+    },
+    "slippageInfo": {
+      "title": "Allowed slippage",
+      "description": "The maximum price change (in percentage) you are willing to accept between initiating and confirming your swap. If the market price moves beyond this tolerance, the transaction will not execute.",
+      "additionalInfo": "A higher slippage tolerance means you're willing to accept a larger price difference, which can help ensure your trade executes but may result in a less favorable price."
     },
     "timeoutInfo": {
       "title": "Transaction timeout",
@@ -660,6 +672,28 @@
       "title": "Transaction fee",
       "description": "Every transaction on the Stellar network includes a small fee to help keep the network secure.",
       "additionalInfo": "You can choose to increase this fee if you want your transaction to be prioritized and processed faster by the network."
+    },
+    "errors": {
+      "memo": {
+        "invalid": "Invalid memo format",
+        "tooLong": "Memo is too long (maximum {{max}} bytes)"
+      },
+      "slippage": {
+        "customRequired": "Custom slippage is required",
+        "invalidNumber": "Invalid number",
+        "minSlippage": "Slippage must be at least {{min}}%",
+        "maxSlippage": "Slippage must be below {{max}}%"
+      },
+      "timeout": {
+        "required": "Transaction timeout is required",
+        "invalid": "Invalid transaction timeout",
+        "greaterThanZero": "Timeout must be greater than 0"
+      },
+      "fee": {
+        "required": "Transaction fee is required",
+        "invalid": "Invalid transaction fee",
+        "tooLow": "Fee must be greater than {{min}}"
+      }
     }
   },
   "transactionAmountScreen": {
@@ -690,7 +724,11 @@
       "amountTooHigh": "The amount entered is greater than the available balance",
       "memoMissing": "This transaction requires a memo",
       "malicious": "This address was flagged as malicious",
-      "suspicious": "This address was flagged as suspicious"
+      "suspicious": "This address was flagged as suspicious",
+      "maliciousTransaction": "This transaction was flagged as malicious",
+      "maliciousAsset": "An asset was flagged as malicious",
+      "suspiciousTransaction": "This transaction was flagged as suspicious",
+      "suspiciousAsset": "An asset was flagged as suspicious"
     },
     "confirmAnyway": "Confirm anyway"
   },
@@ -733,36 +771,6 @@
     "connectAnyway": "Connect anyway",
     "maliciousFlag": "This site was flagged as malicious",
     "suspiciousFlag": "This site was flagged as suspicious"
-  },
-  "transactionMemoScreen": {
-    "title": "Memo",
-    "placeholder": "Type your memo",
-    "optional": "(optional)",
-    "errors": {
-      "invalid": "Invalid memo format",
-      "tooLong": "Memo is too long (maximum {{max}} bytes)"
-    }
-  },
-  "transactionTimeoutScreen": {
-    "title": "Transaction Timeout",
-    "seconds": "seconds",
-    "setRecommended": "Set recommended",
-    "inputPlaceholder": "Enter timeout",
-    "errors": {
-      "required": "Transaction timeout is required",
-      "invalid": "Invalid transaction timeout",
-      "greaterThanZero": "Timeout must be greater than 0"
-    }
-  },
-  "transactionFeeScreen": {
-    "title": "Transaction Fee",
-    "setRecommended": "Set recommended",
-    "congestion": "{{networkCongestion}} congestion",
-    "errors": {
-      "required": "Transaction fee is required",
-      "invalid": "Invalid transaction fee",
-      "tooLow": "Fee must be greater than {{min}}"
-    }
   },
   "low": "Low",
   "medium": "Medium",
@@ -917,17 +925,6 @@
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
   },
-  "slippageScreen": {
-    "title": "Allowed Slippage",
-    "customPlaceholder": "Custom %",
-    "setDefault": "Set default",
-    "errors": {
-      "customRequired": "Custom slippage is required",
-      "invalidNumber": "Invalid number",
-      "minSlippage": "Slippage must be at least {{min}}%",
-      "maxSlippage": "Slippage must be below {{max}}%"
-    }
-  },
   "transaction": {
     "errors": {
       "amountRequired": "Source amount must be greater than 0",
@@ -1040,6 +1037,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
+      "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",
       "destinationToken": "Destination Token",
