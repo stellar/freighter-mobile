@@ -3,7 +3,7 @@ import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { isAndroid } from "helpers/device";
-import { fsValue, pxValue } from "helpers/dimensions";
+import { fsValue } from "helpers/dimensions";
 import { t } from "i18next";
 import React, { useState, useMemo } from "react";
 import {
@@ -496,23 +496,12 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
 
             <View className={getSuffixContainerClasses(fieldSize)}>
               <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: centered ? "center" : "flex-start",
-                  display: value ? "flex" : "none",
-                }}
+                className={`flex-1 flex-row items-center ${centered ? "justify-center" : "justify-start"} ${value ? "flex" : "hidden"}`}
               >
                 <Text style={getSuffixTextStyles(fieldSize)}>
                   {value || ""}
                 </Text>
-                <Text
-                  style={[
-                    getSuffixTextStyles(fieldSize),
-                    { marginRight: pxValue(4) },
-                  ]}
-                >
+                <Text className="mr-1" style={getSuffixTextStyles(fieldSize)}>
                   {inputSuffixDisplay}
                 </Text>
               </View>
