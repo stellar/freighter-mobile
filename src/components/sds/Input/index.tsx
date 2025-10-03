@@ -49,6 +49,45 @@ const FONT_SIZE_MAP = {
   lg: fsValue(16),
 } as const;
 
+// Border radius maps
+const BORDER_RADIUS_MAP: ClassNameMap = {
+  sm: "rounded",
+  md: "rounded-md",
+  lg: "rounded-lg",
+};
+
+const BORDER_RADIUS_LEFT_MAP: ClassNameMap = {
+  sm: "rounded-l",
+  md: "rounded-l-md",
+  lg: "rounded-l-lg",
+};
+
+const BORDER_RADIUS_RIGHT_MAP: ClassNameMap = {
+  sm: "rounded-r",
+  md: "rounded-r-md",
+  lg: "rounded-r-lg",
+};
+
+// Label size mapping - direct mapping to Text component props
+const LABEL_SIZE_MAP = {
+  sm: "xs",
+  md: "sm",
+  lg: "md",
+} as const;
+
+// Container padding maps
+const CONTAINER_PADDING_LEFT_MAP: ClassNameMap = {
+  sm: "pl-[10px]",
+  md: "pl-[12px]",
+  lg: "pl-[14px]",
+};
+
+const CONTAINER_PADDING_RIGHT_MAP: ClassNameMap = {
+  sm: "pr-[10px]",
+  md: "pr-[12px]",
+  lg: "pr-[14px]",
+};
+
 const getInputContainerClasses = (
   fieldSize: InputSize,
   isError?: boolean,
@@ -67,18 +106,10 @@ const getInputContainerClasses = (
     : `border ${borderColor}`;
 
   const borderRadius = hasEndButton
-    ? {
-        sm: "rounded-l",
-        md: "rounded-l-md",
-        lg: "rounded-l-lg",
-      }
-    : {
-        sm: "rounded",
-        md: "rounded-md",
-        lg: "rounded-lg",
-      };
+    ? BORDER_RADIUS_LEFT_MAP[fieldSize]
+    : BORDER_RADIUS_MAP[fieldSize];
 
-  return `${baseClasses} ${backgroundColor} ${borders} ${borderRadius[fieldSize]}`;
+  return `${baseClasses} ${backgroundColor} ${borders} ${borderRadius}`;
 };
 
 const getInputClasses = (isDisabled?: boolean) => {
@@ -127,13 +158,7 @@ const getButtonContainerClasses = (
   const borderColor = isError ? "border-status-error" : "border-border-primary";
   const border = `border-l border-t border-b border-r ${borderColor}`;
 
-  const borderRadius = {
-    sm: "rounded-r",
-    md: "rounded-r-md",
-    lg: "rounded-r-lg",
-  };
-
-  return `${bgColor} ${border} ${borderRadius[fieldSize]} items-center justify-center`;
+  return `${bgColor} ${border} ${BORDER_RADIUS_RIGHT_MAP[fieldSize]} items-center justify-center`;
 };
 
 // Helper functions for suffix input styling
@@ -155,6 +180,101 @@ const getSuffixTextStyles = (fieldSize: InputSize) => ({
     android: "normal" as const,
   }),
 });
+
+// Custom hook for common input functionality
+const useInputCommon = (
+  fieldSize: InputSize,
+  value: string,
+  isError?: boolean,
+  error?: string | React.ReactNode,
+  editable?: boolean,
+  endButton?: InputProps["endButton"],
+) => {
+  const handleCopy = useMemo(
+    () => () => {
+      if (!value) {
+        return;
+      }
+      Clipboard.setString(value);
+    },
+    [value],
+  );
+
+  const renderCopyButton = useMemo(
+    () => () => (
+      <TouchableOpacity onPress={handleCopy}>
+        <View className={getSideElementClasses(fieldSize)}>
+          <Text sm>{t("common.copy")}</Text>
+        </View>
+      </TouchableOpacity>
+    ),
+    [fieldSize, handleCopy],
+  );
+
+  const containerClasses = useMemo(
+    () => `w-full ${GAP_MAP[fieldSize]}`,
+    [fieldSize],
+  );
+
+  const inputContainerClasses = useMemo(
+    () =>
+      `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${VERTICAL_PADDING_MAP[fieldSize]}`,
+    [fieldSize, isError, error, editable, endButton],
+  );
+
+  const leftSideElementClasses = useMemo(
+    () => `${getSideElementClasses(fieldSize)} mr-2`,
+    [fieldSize],
+  );
+
+  const rightSideElementClasses = useMemo(
+    () => getSideElementClasses(fieldSize),
+    [fieldSize],
+  );
+
+  const fieldNoteClasses = useMemo(() => getFieldNoteWrapperClasses(), []);
+
+  const buttonContainerClasses = useMemo(
+    () =>
+      getButtonContainerClasses(
+        fieldSize,
+        endButton?.backgroundColor,
+        Boolean(isError || error),
+      ),
+    [fieldSize, endButton?.backgroundColor, isError, error],
+  );
+
+  const containerPaddingClasses = useMemo(() => {
+    const paddingLeft = CONTAINER_PADDING_LEFT_MAP[fieldSize];
+    const paddingRight = !endButton
+      ? CONTAINER_PADDING_RIGHT_MAP[fieldSize]
+      : "";
+    return `${paddingLeft} ${paddingRight}`.trim();
+  }, [fieldSize, endButton]);
+
+  const buttonPaddingClasses = useMemo(
+    () => "pt-[8px] pb-[8px] pl-[12px] pr-[12px]",
+    [],
+  );
+
+  const heightClasses = CONTAINER_HEIGHT_MAP[fieldSize];
+
+  const getLabelSize = () => ({ [LABEL_SIZE_MAP[fieldSize]]: true });
+
+  return {
+    renderCopyButton,
+    getLabelSize,
+    containerClasses,
+    inputContainerClasses,
+    leftSideElementClasses,
+    rightSideElementClasses,
+    fieldNoteClasses,
+    buttonContainerClasses,
+    containerPaddingClasses,
+    buttonPaddingClasses,
+    heightClasses,
+  };
+};
 
 // Define InputProps first since TextInputComponentProps references it
 interface InputProps {
@@ -320,82 +440,20 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     },
     ref,
   ) => {
-    const handleCopy = () => {
-      if (!value) {
-        return;
-      }
-      Clipboard.setString(value);
-    };
-
-    const getLabelSize = () => ({
-      xs: fieldSize === "sm",
-      sm: fieldSize === "md",
-      md: fieldSize === "lg",
-    });
-
-    const renderCopyButton = () => (
-      <TouchableOpacity onPress={handleCopy}>
-        <View className={getSideElementClasses(fieldSize)}>
-          <Text sm>{t("common.copy")}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-
-    // All hooks must be called at the top level
-    const containerClasses = useMemo(
-      () => `w-full ${GAP_MAP[fieldSize]}`,
-      [fieldSize],
-    );
-
-    const inputContainerClasses = useMemo(
-      () =>
-        `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${VERTICAL_PADDING_MAP[fieldSize]}`,
-      [fieldSize, isError, error, editable, endButton],
-    );
-
-    const leftSideElementClasses = useMemo(
-      () => `${getSideElementClasses(fieldSize)} mr-2`,
-      [fieldSize],
-    );
-
-    const rightSideElementClasses = useMemo(
-      () => getSideElementClasses(fieldSize),
-      [fieldSize],
-    );
-
-    const fieldNoteClasses = useMemo(() => getFieldNoteWrapperClasses(), []);
-
-    const buttonContainerClasses = useMemo(
-      () =>
-        getButtonContainerClasses(
-          fieldSize,
-          endButton?.backgroundColor,
-          Boolean(isError || error),
-        ),
-      [fieldSize, endButton?.backgroundColor, isError, error],
-    );
-
-    const containerPaddingClasses = useMemo(() => {
-      let paddingLeft = "pl-[14px]"; // default lg
-      if (fieldSize === "sm") paddingLeft = "pl-[10px]";
-      else if (fieldSize === "md") paddingLeft = "pl-[12px]";
-
-      let paddingRight = "";
-      if (!endButton) {
-        if (fieldSize === "sm") paddingRight = "pr-[10px]";
-        else if (fieldSize === "md") paddingRight = "pr-[12px]";
-        else paddingRight = "pr-[14px]";
-      }
-
-      return `${paddingLeft} ${paddingRight}`.trim();
-    }, [fieldSize, endButton]);
-
-    const buttonPaddingClasses = useMemo(
-      () => "pt-[8px] pb-[8px] pl-[12px] pr-[12px]",
-      [],
-    );
-
-    const heightClasses = CONTAINER_HEIGHT_MAP[fieldSize];
+    // Use the common hook
+    const {
+      renderCopyButton,
+      getLabelSize,
+      containerClasses,
+      inputContainerClasses,
+      leftSideElementClasses,
+      rightSideElementClasses,
+      fieldNoteClasses,
+      buttonContainerClasses,
+      containerPaddingClasses,
+      buttonPaddingClasses,
+      heightClasses,
+    } = useInputCommon(fieldSize, value, isError, error, editable, endButton);
 
     const commonTextInputProps = {
       ref,
@@ -415,7 +473,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     return (
       <View className={containerClasses}>
         {label && (
-          <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+          <Text {...getLabelSize()} sm color={THEME.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
             {labelSuffix && (
               <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
@@ -674,61 +732,20 @@ export const Input = React.forwardRef<InputRef, InputProps>(
   ) => {
     const [showPassword] = useState(false);
 
-    // All hooks must be called at the top level
-    const containerClasses = useMemo(
-      () => `w-full ${GAP_MAP[fieldSize]}`,
-      [fieldSize],
-    );
-
-    const inputContainerClasses = useMemo(
-      () =>
-        `${getInputContainerClasses(fieldSize, Boolean(isError || error), !editable, Boolean(endButton))} ${VERTICAL_PADDING_MAP[fieldSize]}`,
-      [fieldSize, isError, error, editable, endButton],
-    );
-
-    const leftSideElementClasses = useMemo(
-      () => `${getSideElementClasses(fieldSize)} mr-2`,
-      [fieldSize],
-    );
-
-    const rightSideElementClasses = useMemo(
-      () => getSideElementClasses(fieldSize),
-      [fieldSize],
-    );
-
-    const fieldNoteClasses = useMemo(() => getFieldNoteWrapperClasses(), []);
-
-    const buttonContainerClasses = useMemo(
-      () =>
-        getButtonContainerClasses(
-          fieldSize,
-          endButton?.backgroundColor,
-          Boolean(isError || error),
-        ),
-      [fieldSize, endButton?.backgroundColor, isError, error],
-    );
-
-    const containerPaddingClasses = useMemo(() => {
-      let paddingLeft = "pl-[14px]"; // default lg
-      if (fieldSize === "sm") paddingLeft = "pl-[10px]";
-      else if (fieldSize === "md") paddingLeft = "pl-[12px]";
-
-      let paddingRight = "";
-      if (!endButton) {
-        if (fieldSize === "sm") paddingRight = "pr-[10px]";
-        else if (fieldSize === "md") paddingRight = "pr-[12px]";
-        else paddingRight = "pr-[14px]";
-      }
-
-      return `${paddingLeft} ${paddingRight}`.trim();
-    }, [fieldSize, endButton]);
-
-    const buttonPaddingClasses = useMemo(
-      () => "pt-[8px] pb-[8px] pl-[12px] pr-[12px]",
-      [],
-    );
-
-    const heightClasses = CONTAINER_HEIGHT_MAP[fieldSize];
+    // Use the common hook
+    const {
+      renderCopyButton,
+      getLabelSize,
+      containerClasses,
+      inputContainerClasses,
+      leftSideElementClasses,
+      rightSideElementClasses,
+      fieldNoteClasses,
+      buttonContainerClasses,
+      containerPaddingClasses,
+      buttonPaddingClasses,
+      heightClasses,
+    } = useInputCommon(fieldSize, value, isError, error, editable, endButton);
 
     // If inputSuffixDisplay is provided, use the separate SuffixInput component
     if (inputSuffixDisplay) {
@@ -761,28 +778,6 @@ export const Input = React.forwardRef<InputRef, InputProps>(
         />
       );
     }
-
-    const handleCopy = () => {
-      if (!value) {
-        return;
-      }
-
-      Clipboard.setString(value);
-    };
-
-    const getLabelSize = () => ({
-      xs: fieldSize === "sm",
-      sm: fieldSize === "md",
-      md: fieldSize === "lg",
-    });
-
-    const renderCopyButton = () => (
-      <TouchableOpacity onPress={handleCopy}>
-        <View className={getSideElementClasses(fieldSize)}>
-          <Text sm>{t("common.copy")}</Text>
-        </View>
-      </TouchableOpacity>
-    );
 
     return (
       <View className={containerClasses}>
