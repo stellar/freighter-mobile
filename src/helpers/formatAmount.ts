@@ -103,7 +103,7 @@ export const formatFiatAmount = (
  * formatPercentageAmount(1.23); // Returns "+1.23%"
  * formatPercentageAmount(-1.23); // Returns "-1.23%"
  * formatPercentageAmount(0); // Returns "0.00%"
- * formatPercentageAmount(); // Returns "0.00%"
+ * formatPercentageAmount(); // Returns "--"
  */
 export const formatPercentageAmount = (
   amount?: string | number | { toString: () => string } | null,
@@ -114,8 +114,13 @@ export const formatPercentageAmount = (
 
   const bnAmount = convertToBigNumber(amount);
 
-  // Format the number with 2 decimal places
-  const formattedNumber = bnAmount.toFixed(2);
+  // Format the number with exactly 2 decimal places
+  const formatter = new Intl.NumberFormat("en-US", {
+    useGrouping: false,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const formattedNumber = formatter.format(bnAmount.toNumber());
 
   // Add the appropriate sign and percentage symbol
   if (bnAmount.gt(0)) {

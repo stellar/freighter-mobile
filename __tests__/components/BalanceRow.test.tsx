@@ -1,7 +1,9 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable @typescript-eslint/naming-convention */
 import { render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
+import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
 import * as balancesHelpers from "helpers/balances";
 import React from "react";
@@ -12,7 +14,6 @@ import {
   maliciousTokenScan,
   suspiciousTokenScan,
 } from "../../__mocks__/blockaid-response";
-import Icon from "components/sds/Icon";
 
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
@@ -31,11 +32,11 @@ jest.mock("hooks/useColors", () => ({
         secondary: "#a0a0a0",
       },
       amber: {
-        9: "amber"
+        9: "amber",
       },
       red: {
-        9: "red"
-      }
+        9: "red",
+      },
     },
   }),
 }));
@@ -202,7 +203,7 @@ describe("BalanceRow", () => {
 
       const icon = UNSAFE_getByType(Icon.AlertCircle);
       expect(icon).toBeTruthy();
-      expect(icon.props["themeColor"]).toBe("red");
+      expect(icon.props.themeColor).toBe("red");
     });
 
     it("should show alert icon for suspicious tokens", () => {
@@ -212,7 +213,7 @@ describe("BalanceRow", () => {
 
       const icon = UNSAFE_getByType(Icon.AlertCircle);
       expect(icon).toBeTruthy();
-      expect(icon.props["themeColor"]).toBe("amber");
+      expect(icon.props.themeColor).toBe("amber");
     });
 
     it("should not show alert icon for benign tokens", () => {
@@ -221,9 +222,11 @@ describe("BalanceRow", () => {
       );
 
       try {
-       UNSAFE_getByType(Icon.AlertCircle); 
+        UNSAFE_getByType(Icon.AlertCircle);
       } catch (error: unknown) {
-        expect((error as Error).message).toBe("No instances found with node type: \"Unknown\""); 
+        expect((error as Error).message).toBe(
+          'No instances found with node type: "Unknown"',
+        );
       }
     });
   });

@@ -39,7 +39,6 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
           value={inputUrl}
           onChangeText={onInputChange}
           onSubmitEditing={onUrlSubmit}
-          selectTextOnFocus
           placeholder={t("discovery.urlBarPlaceholder")}
           placeholderTextColor={themeColors.text.secondary}
           autoCapitalize="none"

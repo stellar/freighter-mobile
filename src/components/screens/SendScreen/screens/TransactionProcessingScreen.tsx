@@ -78,6 +78,15 @@ const TransactionProcessingScreen: React.FC<
     });
   }, [navigation]);
 
+  useEffect(
+    () => () => {
+      navigation.setOptions({
+        headerShown: true,
+      });
+    },
+    [navigation],
+  );
+
   useEffect(() => {
     if (transactionError) {
       setStatus(TransactionStatus.FAILED);
@@ -132,7 +141,7 @@ const TransactionProcessingScreen: React.FC<
           <Icon.CheckCircle size={48} color={themeColors.status.success} />
         );
       case TransactionStatus.FAILED:
-        return <Icon.XCircle size={48} color={themeColors.status.error} />;
+        return <Icon.XCircle size={48} themeColor="red" />;
       case TransactionStatus.UNSUPPORTED:
         return (
           <Icon.AlertTriangle size={48} color={themeColors.status.warning} />

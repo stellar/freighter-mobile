@@ -1,139 +1,456 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndicator";
 import { Text } from "components/sds/Typography";
-import { MIN_TRANSACTION_FEE, NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  MAX_SLIPPAGE,
+  MIN_SLIPPAGE,
+  MIN_TRANSACTION_FEE,
+  NATIVE_TOKEN_CODE,
+  TransactionSettingsContext,
+  TransactionSetting,
+} from "config/constants";
 import { NetworkCongestion } from "config/types";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
+import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-/**
- * Props for the TransactionSettingsBottomSheet component
- * @interface TransactionSettingsBottomSheetProps
- * @property {() => void} onCancel - Callback function when settings are cancelled
- * @property {() => void} onConfirm - Callback function when settings are confirmed
- */
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
   onConfirm: () => void;
+  context: TransactionSettingsContext;
+  onSettingsChange?: () => void;
 };
 
-/**
- * TransactionSettingsBottomSheet Component
- *
- * A bottom sheet modal that allows users to configure transaction settings including:
- * - Transaction fee (with network congestion indicator)
- * - Transaction timeout
- * - Transaction memo
- *
- * Each setting includes validation and informational tooltips. The component
- * manages local state for each setting and only saves to the global store
- * when the user confirms the changes.
- *
- * @param {TransactionSettingsBottomSheetProps} props - Component props
- * @returns {JSX.Element} The rendered bottom sheet component
- *
- * @example
- * ```tsx
- * <TransactionSettingsBottomSheet
- *   onCancel={() => setShowSettings(false)}
- *   onConfirm={() => {
- *     // Settings saved, proceed with transaction
- *     setShowSettings(false);
- *   }}
- * />
- * ```
- */
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
-> = ({ onCancel, onConfirm }) => {
+> = ({ onCancel, onConfirm, context, onSettingsChange }) => {
+  // All hooks at the top
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
+
   const {
     transactionMemo,
-    saveMemo,
-    transactionTimeout,
-    saveTransactionTimeout,
     transactionFee,
+    transactionTimeout,
+    saveMemo: saveTransactionMemo,
     saveTransactionFee,
+    saveTransactionTimeout,
   } = useTransactionSettingsStore();
+
+  const {
+    swapFee,
+    swapTimeout,
+    swapSlippage,
+    saveSwapFee,
+    saveSwapTimeout,
+    saveSwapSlippage,
+  } = useSwapSettingsStore();
+
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const { themeColors } = useColors();
-  const { recommendedFee, networkCongestion } = useNetworkFees();
-  const [localFee, setLocalFee] = useState(transactionFee ?? recommendedFee);
-  const [localMemo, setLocalMemo] = useState(transactionMemo);
-  const [localTimeout, setLocalTimeout] = useState(
-    transactionTimeout.toString(),
-  );
+  // Derived values based on context
+  const memo =
+    context === TransactionSettingsContext.Swap ? "" : transactionMemo;
+  const fee =
+    context === TransactionSettingsContext.Swap ? swapFee : transactionFee;
+  const timeout =
+    context === TransactionSettingsContext.Swap
+      ? swapTimeout
+      : transactionTimeout;
+  const slippage =
+    context === TransactionSettingsContext.Swap ? swapSlippage : 1;
+
+  const settings =
+    context === TransactionSettingsContext.Swap
+      ? [
+          TransactionSetting.Fee,
+          TransactionSetting.Timeout,
+          TransactionSetting.Slippage,
+        ]
+      : [
+          TransactionSetting.Fee,
+          TransactionSetting.Timeout,
+          TransactionSetting.Memo,
+        ];
+
+  // State hooks
+  const [localFee, setLocalFee] = useState(fee ?? recommendedFee);
+  const [localMemo, setLocalMemo] = useState(memo);
+  const [localTimeout, setLocalTimeout] = useState(timeout.toString());
+  const [localSlippage, setLocalSlippage] = useState(slippage.toString());
+
+  // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
+  const { error: slippageError } = useValidateSlippage(localSlippage);
 
-  /**
-   * Handles confirmation of transaction settings
-   * Validates all inputs and saves to global store if valid
-   */
+  // Constants
+  const STEP_SIZE_PERCENT = 0.5;
+
+  // Callback functions
+  const saveMemo = useCallback(
+    (value: string) => {
+      if (context === TransactionSettingsContext.Transaction) {
+        saveTransactionMemo(value);
+      }
+    },
+    [context, saveTransactionMemo],
+  );
+
+  const saveFee = useCallback(
+    (value: string) => {
+      if (context === TransactionSettingsContext.Swap) {
+        saveSwapFee(value);
+      } else {
+        saveTransactionFee(value);
+      }
+    },
+    [context, saveSwapFee, saveTransactionFee],
+  );
+
+  const saveTimeout = useCallback(
+    (value: number) => {
+      if (context === TransactionSettingsContext.Swap) {
+        saveSwapTimeout(value);
+      } else {
+        saveTransactionTimeout(value);
+      }
+    },
+    [context, saveSwapTimeout, saveTransactionTimeout],
+  );
+
+  const saveSlippage = useCallback(
+    (value: number) => {
+      if (context === TransactionSettingsContext.Swap) {
+        saveSwapSlippage(value);
+      }
+    },
+    [context, saveSwapSlippage],
+  );
+
+  const updateSlippage = useCallback((value: string) => {
+    setLocalSlippage(value);
+  }, []);
+  const handleUpdateSlippage = useCallback(
+    (step: number) => {
+      const currentValue = parseFloat(localSlippage) || 0;
+      const newValue = Math.max(0, Math.min(MAX_SLIPPAGE, currentValue + step));
+      const roundedValue = Math.round(newValue * 100) / 100;
+      const isWholeNumber = roundedValue % 1 === 0;
+      const finalValue = isWholeNumber
+        ? Math.round(roundedValue)
+        : roundedValue;
+      updateSlippage(finalValue.toString());
+    },
+    [localSlippage, updateSlippage],
+  );
+
+  const handleSlippageTextChange = useCallback((text: string) => {
+    const numericValue = text.replace("%", "");
+    setLocalSlippage(numericValue);
+  }, []);
+  const handleMemoChange = useCallback((text: string) => {
+    setLocalMemo(text);
+  }, []);
+
+  const handleFeeChange = useCallback((text: string) => {
+    setLocalFee(text);
+  }, []);
+
+  const handleTimeoutChange = useCallback((text: string) => {
+    setLocalTimeout(text);
+  }, []);
+
+  const getLocalizedCongestionLevel = useCallback(
+    (congestion: NetworkCongestion): string => {
+      switch (congestion) {
+        case NetworkCongestion.LOW:
+          return t("low");
+        case NetworkCongestion.MEDIUM:
+          return t("medium");
+        case NetworkCongestion.HIGH:
+          return t("high");
+        default:
+          return t("low");
+      }
+    },
+    [t],
+  );
+
+  // Data objects and configurations
+  const settingErrors = {
+    [TransactionSetting.Memo]: memoError,
+    [TransactionSetting.Slippage]: slippageError,
+    [TransactionSetting.Fee]: feeError,
+    [TransactionSetting.Timeout]: timeoutError,
+  };
+
+  const settingSaveCallbacks = {
+    [TransactionSetting.Memo]: () => saveMemo(localMemo),
+    [TransactionSetting.Slippage]: () =>
+      saveSlippage(parseFloat(localSlippage)),
+    [TransactionSetting.Fee]: () => saveFee(parseFloat(localFee).toString()),
+    [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
+  };
+
   const handleConfirm = () => {
-    if (memoError || feeError || timeoutError) return;
-    saveMemo(localMemo);
-    saveTransactionTimeout(Number(localTimeout));
-    saveTransactionFee(localFee);
+    const hasErrors = settings.some((setting) => settingErrors[setting]);
+    if (hasErrors) return;
+
+    settings.forEach((setting) => {
+      settingSaveCallbacks[setting]();
+    });
+
+    // Notify that settings have changed
+    onSettingsChange?.();
+
     onConfirm();
   };
 
-  /**
-   * Converts network congestion level to localized string
-   *
-   * @param {NetworkCongestion} congestion - The network congestion level
-   * @returns {string} Localized string representation of congestion level
-   */
-  const getLocalizedCongestionLevel = (
-    congestion: NetworkCongestion,
-  ): string => {
-    switch (congestion) {
-      case NetworkCongestion.LOW:
-        return t("low");
-      case NetworkCongestion.MEDIUM:
-        return t("medium");
-      case NetworkCongestion.HIGH:
-        return t("high");
-      default:
-        return t("low");
-    }
-  };
+  // Render functions
+  const getMemoRow = useCallback(
+    () => (
+      <View className="flex-col gap-2 mt-[24px]">
+        <View className="flex flex-row items-center gap-2">
+          <Text sm secondary>
+            {t("transactionSettings.memoTitle")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => memoInfoBottomSheetModalRef.current?.present()}
+          >
+            <Icon.InfoCircle themeColor="gray" size={16} />
+          </TouchableOpacity>
+        </View>
+        <Input
+          isBottomSheetInput
+          fieldSize="lg"
+          leftElement={<Icon.File02 size={16} themeColor="gray" />}
+          placeholder={t("transactionSettings.memoPlaceholder")}
+          value={localMemo}
+          onChangeText={handleMemoChange}
+          error={memoError}
+        />
+      </View>
+    ),
+    [localMemo, memoError, t, handleMemoChange],
+  );
 
-  /**
-   * Configuration for information bottom sheets
-   * Each setting has its own info modal with icon, title, and content
-   */
+  const getSlippageRow = useCallback(
+    () => (
+      <View className="flex-col gap-2 mt-[24px]">
+        <View className="flex flex-row items-center justify-between">
+          <View className="flex flex-row items-center gap-2">
+            <Text sm secondary>
+              {t("transactionSettings.slippageTitle")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => slippageInfoBottomSheetModalRef.current?.present()}
+            >
+              <Icon.InfoCircle themeColor="gray" size={16} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={() => updateSlippage("1")}>
+            <Text sm medium color={themeColors.lilac[11]}>
+              {t("transactionSettings.resetFee")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View className="flex flex-row items-start gap-2">
+          <View className="mt-[5px]">
+            <IconButton
+              Icon={Icon.Minus}
+              size="md"
+              variant="secondary"
+              onPress={() => handleUpdateSlippage(-STEP_SIZE_PERCENT)}
+              disabled={(parseFloat(localSlippage) || 0) <= MIN_SLIPPAGE}
+            />
+          </View>
+
+          <View className="flex-1">
+            <Input
+              isBottomSheetInput
+              fieldSize="lg"
+              placeholder={t("transactionSettings.slippagePlaceholder")}
+              value={localSlippage}
+              onChangeText={handleSlippageTextChange}
+              keyboardType="numeric"
+              error={slippageError}
+              inputSuffixDisplay="%"
+              centered
+            />
+          </View>
+
+          <View className="mt-[5px]">
+            <IconButton
+              Icon={Icon.Plus}
+              size="md"
+              variant="secondary"
+              onPress={() => handleUpdateSlippage(STEP_SIZE_PERCENT)}
+              disabled={(parseFloat(localSlippage) || 0) >= MAX_SLIPPAGE}
+            />
+          </View>
+        </View>
+      </View>
+    ),
+    [
+      localSlippage,
+      slippageError,
+      t,
+      themeColors.lilac,
+      handleUpdateSlippage,
+      handleSlippageTextChange,
+      STEP_SIZE_PERCENT,
+      updateSlippage,
+    ],
+  );
+
+  const getFeeRow = useCallback(
+    () => (
+      <View className="flex flex-col gap-2">
+        <View className="flex flex-row items-center justify-between">
+          <View className="flex flex-row items-center gap-2">
+            <Text sm secondary>
+              {t("transactionSettings.feeTitle")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => feeInfoBottomSheetModalRef.current?.present()}
+            >
+              <Icon.InfoCircle themeColor="gray" size={16} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            onPress={() => setLocalFee(recommendedFee || MIN_TRANSACTION_FEE)}
+          >
+            <Text sm medium color={themeColors.lilac[11]}>
+              {t("transactionSettings.resetFee")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View className="flex flex-row mt-[4px] items-center gap-2">
+          <Input
+            isBottomSheetInput
+            fieldSize="lg"
+            value={localFee}
+            leftElement={<Icon.Route size={16} themeColor="gray" />}
+            onChangeText={handleFeeChange}
+            keyboardType="numeric"
+            placeholder={MIN_TRANSACTION_FEE}
+            error={feeError}
+            note={
+              <View className="flex-row items-center gap-2 mt-2">
+                <NetworkCongestionIndicator
+                  level={networkCongestion}
+                  size={16}
+                />
+                <Text sm secondary>
+                  {t("transactionSettings.congestion", {
+                    networkCongestion:
+                      getLocalizedCongestionLevel(networkCongestion),
+                  })}
+                </Text>
+              </View>
+            }
+            rightElement={
+              <Text md secondary>
+                {NATIVE_TOKEN_CODE}
+              </Text>
+            }
+          />
+        </View>
+      </View>
+    ),
+    [
+      localFee,
+      feeError,
+      t,
+      themeColors.lilac,
+      networkCongestion,
+      getLocalizedCongestionLevel,
+      handleFeeChange,
+      recommendedFee,
+    ],
+  );
+
+  const getTimeoutRow = useCallback(
+    () => (
+      <View className="flex flex-col gap-2 mt-[24px]">
+        <View className="flex flex-row items-center gap-2">
+          <Text sm secondary>
+            {t("transactionSettings.timeoutTitle")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => timeoutInfoBottomSheetModalRef.current?.present()}
+          >
+            <Icon.InfoCircle themeColor="gray" size={16} />
+          </TouchableOpacity>
+        </View>
+        <Input
+          isBottomSheetInput
+          fieldSize="lg"
+          leftElement={<Icon.ClockRefresh size={16} themeColor="gray" />}
+          placeholder={t("transactionSettings.timeoutPlaceholder")}
+          value={localTimeout}
+          onChangeText={handleTimeoutChange}
+          keyboardType="numeric"
+          error={timeoutError}
+          rightElement={
+            <Text md secondary>
+              {t("transactionSettings.seconds")}
+            </Text>
+          }
+        />
+      </View>
+    ),
+    [localTimeout, timeoutError, t, handleTimeoutChange],
+  );
+
   const bottomSheetsConfig = [
     {
       IconComponent: Icon.File02,
       key: "memoInfo" as const,
       modalRef: memoInfoBottomSheetModalRef,
-      title: t("transactionSettingsBottomSheet.memoInfo.title"),
+      title: t("transactionSettings.memoInfo.title"),
       onClose: () => memoInfoBottomSheetModalRef.current?.dismiss(),
       texts: [
         {
           key: "description",
-          value: t("transactionSettingsBottomSheet.memoInfo.description"),
+          value: t("transactionSettings.memoInfo.description"),
         },
         {
           key: "additionalInfo",
-          value: t("transactionSettingsBottomSheet.memoInfo.additionalInfo"),
+          value: t("transactionSettings.memoInfo.additionalInfo"),
+        },
+      ],
+    },
+    {
+      IconComponent: Icon.CoinsSwap01,
+      key: "slippageInfo" as const,
+      modalRef: slippageInfoBottomSheetModalRef,
+      title: t("transactionSettings.slippageInfo.title"),
+      onClose: () => slippageInfoBottomSheetModalRef.current?.dismiss(),
+      texts: [
+        {
+          key: "description",
+          value: t("transactionSettings.slippageInfo.description"),
         },
       ],
     },
@@ -141,16 +458,16 @@ const TransactionSettingsBottomSheet: React.FC<
       IconComponent: Icon.Route,
       key: "feeInfo" as const,
       modalRef: feeInfoBottomSheetModalRef,
-      title: t("transactionSettingsBottomSheet.feeInfo.title"),
+      title: t("transactionSettings.feeInfo.title"),
       onClose: () => feeInfoBottomSheetModalRef.current?.dismiss(),
       texts: [
         {
           key: "description",
-          value: t("transactionSettingsBottomSheet.feeInfo.description"),
+          value: t("transactionSettings.feeInfo.description"),
         },
         {
           key: "additionalInfo",
-          value: t("transactionSettingsBottomSheet.feeInfo.additionalInfo"),
+          value: t("transactionSettings.feeInfo.additionalInfo"),
         },
       ],
     },
@@ -158,16 +475,16 @@ const TransactionSettingsBottomSheet: React.FC<
       IconComponent: Icon.ClockRefresh,
       key: "timeoutInfo" as const,
       modalRef: timeoutInfoBottomSheetModalRef,
-      title: t("transactionSettingsBottomSheet.timeoutInfo.title"),
+      title: t("transactionSettings.timeoutInfo.title"),
       onClose: () => timeoutInfoBottomSheetModalRef.current?.dismiss(),
       texts: [
         {
           key: "description",
-          value: t("transactionSettingsBottomSheet.timeoutInfo.description"),
+          value: t("transactionSettings.timeoutInfo.description"),
         },
         {
           key: "additionalInfo",
-          value: t("transactionSettingsBottomSheet.timeoutInfo.additionalInfo"),
+          value: t("transactionSettings.timeoutInfo.additionalInfo"),
         },
       ],
     },
@@ -177,120 +494,32 @@ const TransactionSettingsBottomSheet: React.FC<
     <View className="flex-1">
       <View className="flex-1 justify-between">
         <View className="flex flex-col gap-2">
-          <View className="flex flex-row items-center gap-2">
-            <Text sm secondary>
-              {t("transactionSettingsBottomSheet.feeTitle")}
-            </Text>
-            <TouchableOpacity
-              onPress={() => feeInfoBottomSheetModalRef.current?.present()}
-            >
-              <Icon.InfoCircle color={themeColors.gray[8]} size={16} />
-            </TouchableOpacity>
-          </View>
-          <View className="flex flex-row mt-[4px] items-center gap-2">
-            <Input
-              isBottomSheetInput
-              fieldSize="lg"
-              value={localFee}
-              leftElement={
-                <Icon.Route size={16} color={themeColors.foreground.primary} />
-              }
-              onChangeText={setLocalFee}
-              keyboardType="numeric"
-              placeholder={MIN_TRANSACTION_FEE}
-              error={feeError}
-              rightElement={
-                <Text md secondary>
-                  {NATIVE_TOKEN_CODE}
-                </Text>
-              }
-            />
-          </View>
-        </View>
-        <View className="flex-row items-center gap-2 mt-2">
-          <NetworkCongestionIndicator level={networkCongestion} size={16} />
-          <Text sm secondary>
-            {t("transactionFeeScreen.congestion", {
-              networkCongestion: getLocalizedCongestionLevel(networkCongestion),
-            })}
-          </Text>
+          {/* Render settings directly based on settings array */}
+          {settings.includes(TransactionSetting.Fee) && getFeeRow()}
+          {settings.includes(TransactionSetting.Timeout) && getTimeoutRow()}
+          {settings.includes(TransactionSetting.Slippage) && getSlippageRow()}
+          {settings.includes(TransactionSetting.Memo) && getMemoRow()}
         </View>
       </View>
 
-      <View className="flex flex-col gap-2 mt-[24px]">
-        <View className="flex flex-row items-center gap-2">
-          <Text sm secondary>
-            {t("transactionSettingsBottomSheet.timeoutTitle")}
-          </Text>
-          <TouchableOpacity
-            onPress={() => timeoutInfoBottomSheetModalRef.current?.present()}
+      <View className="mt-[24px] gap-[12px] flex-row">
+        <View className="flex-1">
+          <Button onPress={onCancel} secondary xl>
+            {t("common.cancel")}
+          </Button>
+        </View>
+        <View className="flex-1">
+          <Button
+            tertiary
+            xl
+            onPress={handleConfirm}
+            disabled={settings.some((setting) => settingErrors[setting])}
           >
-            <Icon.InfoCircle color={themeColors.gray[8]} size={16} />
-          </TouchableOpacity>
-        </View>
-        <Input
-          isBottomSheetInput
-          fieldSize="lg"
-          leftElement={
-            <Icon.ClockRefresh
-              size={16}
-              color={themeColors.foreground.primary}
-            />
-          }
-          placeholder={t("transactionTimeoutScreen.inputPlaceholder")}
-          value={localTimeout}
-          onChangeText={setLocalTimeout}
-          keyboardType="numeric"
-          error={timeoutError}
-          rightElement={
-            <Text md secondary>
-              {t("transactionTimeoutScreen.seconds")}
-            </Text>
-          }
-        />
-      </View>
-
-      <View className="flex-col gap-2 mt-[24px]">
-        <View className="flex flex-row items-center gap-2">
-          <Text sm secondary>
-            {t("transactionSettingsBottomSheet.memoTitle")}
-          </Text>
-          <TouchableOpacity
-            onPress={() => memoInfoBottomSheetModalRef.current?.present()}
-          >
-            <Icon.InfoCircle color={themeColors.gray[8]} size={16} />
-          </TouchableOpacity>
-        </View>
-        <Input
-          isBottomSheetInput
-          fieldSize="lg"
-          leftElement={
-            <Icon.File02 size={16} color={themeColors.foreground.primary} />
-          }
-          placeholder={t("transactionMemoScreen.placeholder")}
-          value={localMemo}
-          onChangeText={setLocalMemo}
-          error={memoError}
-        />
-
-        <View className="mt-[24px] gap-[12px] flex-row">
-          <View className="flex-1">
-            <Button onPress={onCancel} secondary xl>
-              {t("common.cancel")}
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button
-              tertiary
-              xl
-              onPress={handleConfirm}
-              disabled={!!memoError || !!feeError || !!timeoutError}
-            >
-              {t("common.save")}
-            </Button>
-          </View>
+            {t("common.save")}
+          </Button>
         </View>
       </View>
+
       {bottomSheetsConfig.map(
         ({ IconComponent, modalRef, onClose, title, key, texts }) => (
           <BottomSheet

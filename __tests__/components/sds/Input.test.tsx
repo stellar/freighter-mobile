@@ -139,7 +139,7 @@ describe("Input", () => {
           value="test"
         />,
       );
-      expect(getByText("Copy")).toBeTruthy();
+      expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("renders copy button on the right when specified", () => {
@@ -149,7 +149,7 @@ describe("Input", () => {
           value="test"
         />,
       );
-      expect(getByText("Copy")).toBeTruthy();
+      expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("copies text to clipboard when copy button is pressed", () => {
@@ -160,7 +160,7 @@ describe("Input", () => {
         />,
       );
 
-      fireEvent.press(getByText("Copy"));
+      fireEvent.press(getByText("common.copy"));
       expect(Clipboard.setString).toHaveBeenCalledWith("test value");
     });
   });
@@ -228,8 +228,15 @@ describe("Input", () => {
       const input = getByTestId("test-input");
 
       // Style is now an array [inputStyles, customStyle]
-      expect(input.props.style).toContainEqual(
-        expect.objectContaining(customStyle),
+      expect(input.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fontFamily: "Inter-Variable",
+            fontSize: 16,
+            fontWeight: "400",
+          }),
+          expect.objectContaining(customStyle),
+        ]),
       );
     });
   });

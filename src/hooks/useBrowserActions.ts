@@ -3,8 +3,9 @@ import { useBrowserTabsStore } from "ducks/browserTabs";
 import { normalizeUrl, isHomepageUrl } from "helpers/browser";
 import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useMemo } from "react";
-import { Share, Linking, Platform } from "react-native";
+import { Share, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 
 /**
@@ -20,6 +21,7 @@ export const useBrowserActions = (
     useBrowserTabsStore();
 
   const { t } = useAppTranslation();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const activeTab = getActiveTab();
 
@@ -98,10 +100,10 @@ export const useBrowserActions = (
   const handleOpenInBrowser = useCallback(() => {
     if (!activeTab) return;
 
-    Linking.openURL(activeTab.url).catch((error) => {
+    openInAppBrowser(activeTab.url).catch((error) => {
       logger.error("useBrowserActions", "Failed to open in browser:", error);
     });
-  }, [activeTab]);
+  }, [activeTab, openInAppBrowser]);
 
   // Check if current tab is on homepage
   const isOnHomepage = useMemo(
