@@ -15,6 +15,14 @@ import {
   Platform,
 } from "react-native";
 
+/**
+ * Size variants for input components.
+ *
+ * @typedef {"sm" | "md" | "lg"} InputSize
+ * @property {"sm"} sm - Small size (30px height)
+ * @property {"md"} md - Medium size (38px height)
+ * @property {"lg"} lg - Large size (48px height)
+ */
 export type InputSize = "sm" | "md" | "lg";
 
 type ClassNameMap = Record<InputSize, string>;
@@ -162,12 +170,24 @@ const getButtonContainerClasses = (
 };
 
 // Helper functions for suffix input styling
+/**
+ * Generates CSS classes for the suffix input container.
+ *
+ * @param {InputSize} fieldSize - The size variant of the input field
+ * @returns {string} CSS classes for the suffix container
+ */
 const getSuffixContainerClasses = (fieldSize: InputSize) => {
   const height = CONTAINER_HEIGHT_MAP[fieldSize];
   const padding = HORIZONTAL_PADDING_MAP[fieldSize];
   return `flex-1 flex-row items-center ${height} ${padding}`;
 };
 
+/**
+ * Generates text styles for suffix input text elements.
+ *
+ * @param {InputSize} fieldSize - The size variant of the input field
+ * @returns {Object} Style object for suffix text elements
+ */
 const getSuffixTextStyles = (fieldSize: InputSize) => ({
   fontSize: FONT_SIZE_MAP[fieldSize],
   color: THEME.colors.text.primary,
@@ -181,7 +201,29 @@ const getSuffixTextStyles = (fieldSize: InputSize) => ({
   }),
 });
 
-// Custom hook for common input functionality
+/**
+ * Custom hook that provides common input functionality and styling logic.
+ * Consolidates shared logic between Input and SuffixInput components.
+ *
+ * @param {InputSize} fieldSize - The size variant of the input field
+ * @param {string} value - The current input value
+ * @param {boolean} [isError] - Whether the input is in an error state
+ * @param {string | React.ReactNode} [error] - Error message to display
+ * @param {boolean} [editable] - Whether the input is editable
+ * @param {Object} [endButton] - Configuration for the end button
+ * @returns {Object} Object containing styling classes and utility functions
+ * @returns {Function} returns.renderCopyButton - Function to render the copy button
+ * @returns {Function} returns.getLabelSize - Function to get label size props
+ * @returns {string} returns.containerClasses - CSS classes for the container
+ * @returns {string} returns.inputContainerClasses - CSS classes for the input container
+ * @returns {string} returns.leftSideElementClasses - CSS classes for left side elements
+ * @returns {string} returns.rightSideElementClasses - CSS classes for right side elements
+ * @returns {string} returns.fieldNoteClasses - CSS classes for field notes
+ * @returns {string} returns.buttonContainerClasses - CSS classes for button container
+ * @returns {string} returns.containerPaddingClasses - CSS classes for container padding
+ * @returns {string} returns.buttonPaddingClasses - CSS classes for button padding
+ * @returns {string} returns.heightClasses - CSS classes for height
+ */
 const useInputCommon = (
   fieldSize: InputSize,
   value: string,
@@ -324,9 +366,38 @@ interface InputProps {
   centered?: boolean;
 }
 
+/**
+ * Reference type for input components.
+ * Can be either a TextInput or BottomSheetTextInput component reference.
+ *
+ * @typedef {TextInput | React.ComponentRef<typeof BottomSheetTextInput>} InputRef
+ */
 type InputRef = TextInput | React.ComponentRef<typeof BottomSheetTextInput>;
 
-// TextInputComponent uses a subset of InputProps - only the core text input props
+/**
+ * Props interface for the TextInputComponent.
+ * Contains only the core text input properties needed for the base component.
+ *
+ * @typedef {Object} TextInputComponentProps
+ * @property {string} [fieldSize] - Size variant of the input field
+ * @property {string} [value] - The input value
+ * @property {Function} [onChangeText] - Callback when text changes
+ * @property {string} [placeholder] - Placeholder text
+ * @property {string} [placeholderTextColor] - Color of the placeholder text
+ * @property {boolean} [secureTextEntry] - Whether the input is for password entry
+ * @property {boolean} [editable] - Whether the input is editable
+ * @property {string} [autoCapitalize] - Text capitalization behavior
+ * @property {boolean} [autoCorrect] - Whether to enable auto-correction
+ * @property {boolean} [autoFocus] - Whether to focus the input on mount
+ * @property {string} [keyboardType] - Keyboard type for the input
+ * @property {boolean} [isBottomSheetInput] - Whether to use BottomSheetTextInput
+ * @property {string} [testID] - Test ID for testing
+ * @property {ViewStyle | TextStyle} [style] - Custom style to override default styling
+ * @property {Function} [onSubmitEditing] - Callback when editing is submitted
+ * @property {Object} [selection] - Text selection range
+ * @property {string} [className] - Additional CSS classes
+ * @property {React.Ref<InputRef>} ref - Reference to the input component
+ */
 type TextInputComponentProps = Pick<
   InputProps,
   | "fieldSize"
@@ -350,6 +421,25 @@ type TextInputComponentProps = Pick<
   selection?: { start: number; end: number };
 };
 
+/**
+ * Core text input component that handles both regular TextInput and BottomSheetTextInput.
+ * Provides the base functionality for all input components with NativeWind styling.
+ *
+ * @param {TextInputComponentProps} props - The component props
+ * @param {string} [props.fieldSize="lg"] - Size variant of the input field
+ * @param {string} props.value - The input value
+ * @param {Function} [props.onChangeText] - Callback when text changes
+ * @param {string} [props.placeholder] - Placeholder text
+ * @param {string} [props.placeholderTextColor] - Color of the placeholder text
+ * @param {boolean} [props.secureTextEntry=false] - Whether the input is for password entry
+ * @param {boolean} [props.editable=true] - Whether the input is editable
+ * @param {boolean} [props.autoCorrect=true] - Whether to enable auto-correction
+ * @param {boolean} [props.isBottomSheetInput=false] - Whether to use BottomSheetTextInput
+ * @param {string} [props.testID] - Test ID for testing
+ * @param {ViewStyle | TextStyle} [props.style] - Custom style to override default styling
+ * @param {string} [props.className] - Additional CSS classes
+ * @returns {JSX.Element} The TextInputComponent
+ */
 const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
   (
     {
@@ -413,6 +503,41 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
   },
 );
 
+/**
+ * Specialized input component that displays a suffix text after the input value.
+ * Useful for inputs that need to show units (e.g., "XLM", "USD") or other contextual information.
+ * The suffix is displayed as overlay text while maintaining full input functionality.
+ *
+ * @example
+ * Basic suffix input:
+ * ```tsx
+ * <SuffixInput
+ *   label="Amount"
+ *   value={amount}
+ *   onChangeText={setAmount}
+ *   inputSuffixDisplay="XLM"
+ *   placeholder="0.00"
+ * />
+ * ```
+ *
+ * @example
+ * Centered suffix input:
+ * ```tsx
+ * <SuffixInput
+ *   label="Price"
+ *   value={price}
+ *   onChangeText={setPrice}
+ *   inputSuffixDisplay="USD"
+ *   centered
+ *   placeholder="0.00"
+ * />
+ * ```
+ *
+ * @param {InputProps} props - The component props (same as Input component)
+ * @param {string} [props.inputSuffixDisplay] - Text to display as suffix after the input value
+ * @param {boolean} [props.centered=false] - Whether to center the text alignment within the input field
+ * @returns {JSX.Element} The SuffixInput component
+ */
 const SuffixInput = React.forwardRef<InputRef, InputProps>(
   (
     {
@@ -642,8 +767,20 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
  * />
  * ```
  *
+ * @example
+ * With suffix display (automatically uses SuffixInput):
+ * ```tsx
+ * <Input
+ *   label="Amount"
+ *   value={amount}
+ *   onChangeText={setAmount}
+ *   inputSuffixDisplay="XLM"
+ *   placeholder="0.00"
+ * />
+ * ```
+ *
  * @param {InputProps} props - The component props
- * @param {string} [props.fieldSize="md"] - Size variant of the input field ("sm" | "md" | "lg")
+ * @param {string} [props.fieldSize="lg"] - Size variant of the input field ("sm" | "md" | "lg")
  * @param {string | ReactNode} [props.label] - Label text or component to display above the input
  * @param {string | ReactNode} [props.labelSuffix] - Additional text to display after the label
  * @param {boolean} [props.isLabelUppercase] - Whether to transform the label text to uppercase
@@ -665,10 +802,19 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
  * @param {("default" | "number-pad" | "decimal-pad" | "numeric" | "email-address" | "phone-pad")} [props.keyboardType] - Keyboard type for the input
  * @param {ViewStyle | TextStyle} [props.style] - Custom style to override default styling
  * @param {boolean} [props.isBottomSheetInput] - Whether the input is a bottom sheet input
- * @param {string} [props.inputSuffixDisplay] - Text to display as suffix after the input value (e.g., "XLM")
- * @param {boolean} [props.centered] - Whether to center the text alignment within the input field
+ * @param {string} [props.inputSuffixDisplay] - Text to display as suffix after the input value (e.g., "XLM"). When provided, automatically uses SuffixInput component
+ * @param {boolean} [props.centered] - Whether to center the text alignment within the input field (only applies when inputSuffixDisplay is provided)
  */
 
+/**
+ * A styled text input component with basic container styling.
+ * Provides a simple wrapper around TextInputComponent with predefined styling.
+ *
+ * @param {InputProps} props - The component props
+ * @param {string} [props.fieldSize="lg"] - Size variant of the input field
+ * @param {ViewStyle | TextStyle} [props.style] - Custom style to override default styling
+ * @returns {JSX.Element} The StyledTextInput component
+ */
 export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
   (props, ref) => {
     const { fieldSize = "lg", style, ...restProps } = props;
