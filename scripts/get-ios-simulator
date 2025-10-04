@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# This script finds the most recently booted simulator, prioritizing newer iOS versions
+
+# Get all booted simulators and sort by iOS version (newest first)
+booted_simulators=$(xcrun simctl list devices | grep "Booted" | sort -V -r)
+
+if [ -n "$booted_simulators" ]; then
+    # If there are booted simulators, use the first one (newest iOS version)
+    # Extract the simulator name (everything before the first parenthesis)
+    echo "$booted_simulators" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
+else
+    # If no booted simulators, get the newest available iPhone simulator
+    # Find the newest iOS version section and get the first iPhone from it
+    newest_ios_section=$(xcrun simctl list devices | grep -E "^-- iOS [0-9]" | sort -V -r | head -1)
+    
+    if [ -n "$newest_ios_section" ]; then
+        # Get the first iPhone from the newest iOS version section
+        xcrun simctl list devices | sed -n "/$newest_ios_section/,/^--/p" | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
+    else
+        # Fallback: get any available iPhone
+        xcrun simctl list devices | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
+    fi
+fi
