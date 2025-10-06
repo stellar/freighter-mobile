@@ -31,14 +31,14 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "wallet": "Wallet"
+    "wallet": "Wallet",
+    "copy": "Copy"
   },
   "home": {
     "title": "Home",
     "buy": "Add",
     "send": "Send",
     "swap": "Swap",
-    "copy": "Copy",
     "actions": {
       "settings": "Settings",
       "manageTokens": "Manage tokens",

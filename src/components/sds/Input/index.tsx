@@ -1,9 +1,9 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import Clipboard from "@react-native-clipboard/clipboard";
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
 import { isAndroid } from "helpers/device";
 import { fsValue } from "helpers/dimensions";
+import { useClipboard } from "hooks/useClipboard";
 import { t } from "i18next";
 import React, { useState, useMemo } from "react";
 import {
@@ -232,25 +232,21 @@ const useInputCommon = (
   editable?: boolean,
   endButton?: InputProps["endButton"],
 ) => {
-  const handleCopy = useMemo(
-    () => () => {
-      if (!value) {
-        return;
-      }
-      Clipboard.setString(value);
-    },
-    [value],
-  );
+  const { copyToClipboard } = useClipboard();
 
   const renderCopyButton = useMemo(
     () => () => (
-      <TouchableOpacity onPress={handleCopy}>
+      <TouchableOpacity
+        onPress={() => {
+          copyToClipboard(value);
+        }}
+      >
         <View className={getSideElementClasses(fieldSize)}>
           <Text sm>{t("common.copy")}</Text>
         </View>
       </TouchableOpacity>
     ),
-    [fieldSize, handleCopy],
+    [fieldSize, copyToClipboard, value],
   );
 
   const containerClasses = useMemo(
@@ -626,7 +622,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
                 <Text style={getSuffixTextStyles(fieldSize)}>
                   {value || ""}
                 </Text>
-                <Text className="mr-1" style={getSuffixTextStyles(fieldSize)}>
+                <Text style={getSuffixTextStyles(fieldSize)}>
                   {inputSuffixDisplay}
                 </Text>
               </View>

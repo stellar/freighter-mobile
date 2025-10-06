@@ -77,7 +77,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { fetchCollectibles } = useCollectiblesStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
-    console.log(swapEnabled);
 
     const hasTokens = useMemo(
       () => Object.keys(balances).length > 0,
@@ -299,7 +298,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 )}
                 <IconButton
                   Icon={Icon.Copy01}
-                  title={t("home.copy")}
+                  title={t("common.copy")}
                   onPress={() => handleCopyAddress(account?.publicKey)}
                 />
               </View>
