@@ -117,6 +117,10 @@ const getTextAreaStyles = (fieldSize: TextAreaSize): TextStyle => {
 
 const getFieldNoteWrapperClasses = (): string => "mt-2";
 
+const getLabelProps = (fieldSize: TextAreaSize) => ({
+  [LABEL_SIZE_MAP[fieldSize]]: true,
+});
+
 /**
  * Textarea component for multi-line text entry with various styling and functionality options.
  *
@@ -211,10 +215,6 @@ export const Textarea: React.FC<TextareaProps> = ({
   isError,
   ...props
 }: TextareaProps) => {
-  const getLabelSize = () => ({
-    [LABEL_SIZE_MAP[fieldSize]]: true,
-  });
-
   const containerClasses = useMemo(
     () => getContainerClasses(fieldSize),
     [fieldSize],
@@ -240,13 +240,15 @@ export const Textarea: React.FC<TextareaProps> = ({
     [],
   );
 
+  const labelProps = useMemo(() => getLabelProps(fieldSize), [fieldSize]);
+
   return (
     <View className={containerClasses}>
       {label && (
-        <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+        <Text {...labelProps} color={THEME.colors.text.secondary}>
           {isLabelUppercase ? label.toString().toUpperCase() : label}
           {labelSuffix && (
-            <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+            <Text {...labelProps} color={THEME.colors.text.secondary}>
               {" "}
               {labelSuffix}
             </Text>
