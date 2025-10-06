@@ -271,7 +271,6 @@ export interface TextProps extends TypographyBaseProps {
   isVerticallyCentered?: boolean;
   url?: string;
   style?: StyleProp<TextStyle>;
-  className?: string;
   numberOfLines?: number;
   onPress?: () => void;
   textAlign?: "left" | "center" | "right";
@@ -351,7 +350,6 @@ export const Text: React.FC<TextProps> = ({
   url,
   onPress,
   textAlign,
-  className,
   ...props
 }) => {
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -369,7 +367,6 @@ export const Text: React.FC<TextProps> = ({
       $color={getColor({ color, ...props }, THEME.colors.text.primary)}
       $isVerticallyCentered={isVerticallyCentered}
       $textAlign={textAlign}
-      className={className}
       {...(url && { onPress: () => handleOnPressUrl() })}
       {...(!url && onPress && { onPress: () => onPress() })}
       {...props}
