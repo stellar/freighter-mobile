@@ -148,12 +148,12 @@ The app supports two different bundle IDs for different environments:
 
 **Important**
 
-- In both cases you should open a new terminal tab to run Metro bundler
-  (`yarn start`) and that tab should be kept open while running the app
-- You should have an Android emulator/device already booted for the
-  `yarn android` script to work
-- If you don't have an iOS simulator open it will try to open the first one
-  available while running the `yarn ios` script
+- The Metro bundler should automatically launch in a separate terminal window
+  while running the `yarn ios` or `yarn android` scripts. You can also launch
+  Metro manually through the `yarn start` command if needed
+- If you don't have an iOS simulator or Android emulator booted it will try to
+  boot the most recent one available while running the `yarn ios` or
+  `yarn android` scripts
 - The development variant will have "Dev" in the app name to distinguish it from
   production
 

@@ -1,7 +1,22 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Summary:
+# - Starts Metro bundler on port 8081 in a new Terminal window (falls back to background).
+# - Boots the most recent available Android emulator if no device is connected and waits for boot.
+# - Ensures adb reverse is set up for Metro (tcp:8081 <-> tcp:8081).
+# - Installs the selected Android variant based on --env and --release flags (supports --clean).
+# - Launches the app's main activity after installation.
+#
+# Usage:
+#   ruby scripts/launch-android [--env=dev|prod] [--release] [--clean]
+#
+# Defaults:
+#   --env=prod, debug build unless --release is provided.
+
 require "optparse"
+require "socket"
+require "timeout"
 
 def exit_with_error(message)
   puts "ERROR: #{message}"
@@ -15,6 +30,120 @@ end
 def run(*args)
   puts "$ #{args.join(' ')}"
   system(*args)
+end
+
+def port_open?(host, port)
+  Timeout.timeout(0.5) do
+    begin
+      socket = TCPSocket.new(host, port)
+      socket.close
+      true
+    rescue StandardError
+      false
+    end
+  end
+rescue Timeout::Error
+  false
+end
+
+def metro_running?
+  port_open?("127.0.0.1", 8081)
+end
+
+def start_metro
+  return if metro_running?
+
+  puts "Starting Metro bundler on port 8081 in a new Terminal window..."
+  project_dir = Dir.pwd
+  # Ensure we properly escape the command for AppleScript
+  cmd = "cd #{project_dir} && yarn start"
+  escaped = cmd.gsub('\\', '\\\\').gsub('"', '\\"')
+
+  applescript = "tell application \"Terminal\" to activate\n" \
+                 + "tell application \"Terminal\" to do script \"#{escaped}\""
+
+  success = false
+  begin
+    pid = spawn("osascript", "-e", applescript)
+    Process.detach(pid)
+    # We assume success if osascript started; Terminal will handle the command
+    success = true
+  rescue Errno::ENOENT
+    success = false
+  end
+
+  unless success
+    puts "WARNING: Could not open new Terminal window via AppleScript. Starting Metro in background..."
+    pid = spawn("yarn", "start")
+    Process.detach(pid)
+  end
+end
+
+def wait_for_metro(timeout_seconds = 45)
+  start_time = Time.now
+  until metro_running?
+    sleep 1
+    if Time.now - start_time > timeout_seconds
+      puts "WARNING: Metro did not report ready on :8081 within #{timeout_seconds}s; continuing..."
+      break
+    end
+  end
+end
+
+def any_android_device_connected?
+  # Skip header line and look for any line ending with "device"
+  devices_output = `adb devices 2>/dev/null | sed -n '2,$p' | awk '{ print $2 }' | grep -w device`
+  !devices_output.strip.empty?
+end
+
+def list_avds
+  avds = `emulator -list-avds 2>/dev/null`.lines.map(&:strip).reject(&:empty?)
+  avds
+end
+
+def pick_preferred_avd
+  avds = list_avds
+  return nil if avds.empty?
+
+  # Best-effort: prefer Pixel/most recent names if present, else first
+  preferred = avds.sort.reverse.find { |n| n =~ /Pixel/i } || avds.sort.reverse.first
+  preferred
+end
+
+def launch_emulator_if_needed
+  return if any_android_device_connected?
+
+  avd = pick_preferred_avd
+  if avd.nil?
+    puts "WARNING: No Android AVDs found. Connect a device or create an AVD in Android Studio."
+    return
+  end
+
+  puts "Launching Android emulator: #{avd}"
+  pid = spawn("emulator", "-avd", avd, "-netdelay", "none", "-netspeed", "full")
+  Process.detach(pid)
+end
+
+def wait_for_emulator_boot(timeout_seconds = 180)
+  return if any_android_device_connected?
+
+  puts "Waiting for Android emulator to boot (up to #{timeout_seconds}s)..."
+  run "adb wait-for-device"
+  start_time = Time.now
+  loop do
+    boot_completed = `adb shell getprop sys.boot_completed 2>/dev/null`.strip
+    break if boot_completed == "1"
+    sleep 2
+    if Time.now - start_time > timeout_seconds
+      puts "WARNING: Emulator didn't signal boot completed in time; proceeding anyway."
+      break
+    end
+  end
+end
+
+def ensure_adb_reverse
+  # Connect Metro port to device/emulator
+  run "adb reverse tcp:8081 tcp:8081 &> /dev/null || true"
 end
 
 envs = %w[
@@ -42,12 +171,26 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+# Orchestrate helpful dev steps similar to iOS flow
+start_metro
+launch_emulator_if_needed
+wait_for_metro
+wait_for_emulator_boot
+ensure_adb_reverse
+
 Dir.chdir("android") do
   task = ["install"]
   task << capitalize(env)
   task << (release ? "Release" : "Debug")
 
-  run "adb reverse tcp:8081 tcp:8081 &> /dev/null || true"
   run "./gradlew clean" if clean
   run "./gradlew #{task.join}"
 end
+
+# After installation, launch the app on the connected device/emulator
+app_id = env == "dev" ? "org.stellar.freighterdev" : "org.stellar.freighterwallet"
+main_activity = "org.stellar.freighterwallet.MainActivity"
+
+# Best-effort: give the Package Manager a brief moment to register the new install
+sleep 2
+run "adb shell am start -n #{app_id}/#{main_activity} -a android.intent.action.MAIN -c android.intent.category.LAUNCHER"
