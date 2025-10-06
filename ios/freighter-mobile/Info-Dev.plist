@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>en</string>
+		<key>CFBundleDisplayName</key>
+		<string>Freighter Dev</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>$(PRODUCT_NAME)</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(MARKETING_VERSION)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Viewer</string>
+				<key>CFBundleURLName</key>
+				<string>org.stellar.freighterdev</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>freighterdev</string>
+				</array>
+			</dict>
+		</array>
+		<key>CFBundleVersion</key>
+		<string>$(CURRENT_PROJECT_VERSION)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true />
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<false />
+		</dict>
+		<key>NSCameraUsageDescription</key>
+		<string>Freighter Dev needs access to your Camera to scan QR codes.</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Freighter Dev needs access to your Face ID to securely log in and approve transactions.</string>
+		<key>UIAppFonts</key>
+		<array>
+			<string>Inter-Bold.ttf</string>
+			<string>Inter-Light.ttf</string>
+			<string>Inter-Medium.ttf</string>
+			<string>Inter-Regular.ttf</string>
+			<string>Inter-SemiBold.ttf</string>
+			<string>Inter-VariableFont_opsz,wght.ttf</string>
+		</array>
+		<key>UILaunchStoryboardName</key>
+		<string>BootSplash</string>
+		<key>UIRequiredDeviceCapabilities</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<key>UIViewControllerBasedStatusBarAppearance</key>
+		<false />
+		<key>NSUserTrackingUsageDescription</key>
+		<string>Allow Freighter Dev to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
+	</dict>
+</plist>
+

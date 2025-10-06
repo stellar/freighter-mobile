@@ -1,7 +1,9 @@
 apply plugin: "com.android.application"
-apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+
+// Apply react-native-config
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -80,37 +82,62 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "org.stellar.freighterwallet"
+
+    flavorDimensions "environment"
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_DEBUG_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+        }
+
+        dev {
+            storeFile file('dev-release.keystore')
+            storePassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_DEV_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
+        }
+
+        prod {
+            storeFile file('prod-release.keystore')
+            storePassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
+            keyAlias project.env.get('ANDROID_PROD_KEYSTORE_ALIAS')
+            keyPassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
+        }
+    }
+
+    productFlavors {
+        dev {
+            dimension "environment"
+            applicationId "org.stellar.freighterdev"
+            resValue "string", "app_name", "Freighter Dev"
+            signingConfig signingConfigs.dev
+        }
+
+        prod {
+            dimension "environment"
+            applicationId "org.stellar.freighterwallet"
+            resValue "string", "app_name", "Freighter"
+            signingConfig signingConfigs.prod
+        }
+    }
+
     defaultConfig {
         applicationId "org.stellar.freighterwallet"
+        resValue "string", "build_config_package", "org.stellar.freighterwallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 29
         versionName "1.5.23"
     }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-        release {
-            storeFile file('release.keystore')
-            // Replace with keystore password
-            storePassword '<release-keystore-password>'
-            keyAlias 'upload'
-            // Replace with keystore password
-            keyPassword '<release-keystore-password>'
-        }
-    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

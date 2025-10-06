@@ -8,6 +8,8 @@ PODS:
     - DGSwiftUtilities (~> 0.29)
   - DGSwiftUtilities (0.47.0)
   - DoubleConversion (1.1.6)
+  - experiment-react-native-client (1.5.3):
+    - React-Core
   - fast_float (6.1.4)
   - FastOpenCV-iOS (1.0.4)
   - FBLazyVector (0.78.0)
@@ -2253,6 +2255,7 @@ DEPENDENCIES:
   - "amplitude-react-native (from `../node_modules/@amplitude/analytics-react-native`)"
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
+  - "experiment-react-native-client (from `../node_modules/@amplitude/experiment-react-native-client`)"
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
@@ -2370,6 +2373,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  experiment-react-native-client:
+    :path: "../node_modules/@amplitude/experiment-react-native-client"
   fast_float:
     :podspec: "../node_modules/react-native/third-party-podspecs/fast_float.podspec"
   FBLazyVector:
@@ -2575,6 +2580,7 @@ SPEC CHECKSUMS:
   ContextMenuAuxiliaryPreview: 20be0be795b783b68f8792732eed4bed9f202c1c
   DGSwiftUtilities: 567f8d5ee618f0b7afb185b17aa45ff356315a0f
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
+  experiment-react-native-client: 9a287477a97c21fa0dc02ab992bf6f8438f1d1d3
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
   FastOpenCV-iOS: 2057f306db3ad068577e6fca38411f1b1920d71e
   FBLazyVector: 6fe148afcef2e3213e484758e3459609d40d57f5
@@ -2677,6 +2683,6 @@ SPEC CHECKSUMS:
   VisionCamera: 05e4bc4783174689a5878a0797015ab32afae9e4
   Yoga: afd04ff05ebe0121a00c468a8a3c8080221cb14c
 
-PODFILE CHECKSUM: 428cf5dce9f6ce2832ba5d68db705ab05200adf4
+PODFILE CHECKSUM: 5b42d20d2a8c6b084ffae31cfcd2f32f34e749cb
 
 COCOAPODS: 1.16.2

@@ -270,7 +270,8 @@ interface ButtonProps extends VariantProps, SizeProps {
   testID?: string;
 }
 
-export const Button = ({
+// Base button component without hooks
+const ButtonBase = ({
   variant,
   size,
   children,
@@ -280,15 +281,10 @@ export const Button = ({
   isFullWidth = false,
   disabled = false,
   squared = false,
-  biometric = false,
   onPress,
   testID,
-  iconColor,
   ...props
-}: ButtonProps) => {
-  const { verifyActionWithBiometrics } = useAuthenticationStore();
-  const { getBiometricButtonIcon } = useBiometrics();
-
+}: Omit<ButtonProps, "biometric">) => {
   const disabledState = isLoading || disabled;
   const resolvedVariant = getVariant(
     { variant, ...props },
@@ -296,35 +292,10 @@ export const Button = ({
   );
   const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
 
-  // Handle biometric authentication
   const handlePress = React.useCallback(() => {
     if (!onPress) return;
-
-    if (biometric) {
-      verifyActionWithBiometrics(async (...args: unknown[]) => {
-        await onPress(...args);
-        return Promise.resolve();
-      });
-    } else {
-      onPress();
-    }
-  }, [onPress, biometric, verifyActionWithBiometrics]);
-
-  // Determine icon to display
-  const resolvedIcon = React.useMemo(() => {
-    if (biometric) {
-      return getBiometricButtonIcon(iconColor);
-    }
-    return icon;
-  }, [biometric, icon, getBiometricButtonIcon, iconColor]);
-
-  // Determine icon position for biometric buttons
-  const resolvedIconPosition = React.useMemo(() => {
-    if (biometric) {
-      return IconPosition.LEFT;
-    }
-    return iconPosition;
-  }, [biometric, iconPosition]);
+    onPress();
+  }, [onPress]);
 
   const renderIcon = (position: IconPosition) => {
     if (isLoading && position === IconPosition.RIGHT) {
@@ -339,8 +310,8 @@ export const Button = ({
       );
     }
 
-    if (resolvedIcon && resolvedIconPosition === position) {
-      return <IconContainer position={position}>{resolvedIcon}</IconContainer>;
+    if (icon && iconPosition === position) {
+      return <IconContainer position={position}>{icon}</IconContainer>;
     }
 
     return null;
@@ -370,82 +341,41 @@ export const Button = ({
   );
 };
 
-export const SimpleButton = ({
-  variant,
-  size,
-  children,
-  icon,
-  iconPosition = IconPosition.RIGHT,
-  isLoading = false,
-  isFullWidth = false,
-  disabled = false,
-  squared = false,
-  onPress,
-  testID,
-  iconColor,
-  ...props
-}: ButtonProps) => {
-  const disabledState = isLoading || disabled;
-  const resolvedVariant = getVariant(
-    { variant, ...props },
-    ButtonVariants.PRIMARY,
-  );
-  const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
+const withBiometrics =
+  (Component: typeof ButtonBase) =>
+  ({ iconColor, onPress, ...props }: ButtonProps) => {
+    const { verifyActionWithBiometrics } = useAuthenticationStore();
+    const { getBiometricButtonIcon } = useBiometrics();
 
-  const handlePress = React.useCallback(() => {
-    if (!onPress) return;
+    const handleBiometricPress = React.useCallback(() => {
+      if (!onPress) return;
 
-    onPress();
-  }, [onPress]);
+      verifyActionWithBiometrics(async (...args: unknown[]) => {
+        await onPress(...args);
+        return Promise.resolve();
+      });
+    }, [onPress, verifyActionWithBiometrics]);
 
-  // Determine icon to display
-  const resolvedIcon = React.useMemo(() => icon, [icon]);
+    const biometricIcon = React.useMemo(
+      () => getBiometricButtonIcon(iconColor),
+      [getBiometricButtonIcon, iconColor],
+    );
 
-  const resolvedIconPosition = React.useMemo(
-    () => iconPosition,
-    [iconPosition],
-  );
-
-  const renderIcon = (position: IconPosition) => {
-    if (isLoading && position === IconPosition.RIGHT) {
-      return (
-        <IconContainer position={IconPosition.RIGHT}>
-          <ActivityIndicator
-            testID="button-loading-indicator"
-            size="small"
-            color={getTextColor(resolvedVariant, disabledState)}
-          />
-        </IconContainer>
-      );
-    }
-
-    if (resolvedIcon && resolvedIconPosition === position) {
-      return <IconContainer position={position}>{resolvedIcon}</IconContainer>;
-    }
-
-    return null;
+    return (
+      <Component
+        {...props}
+        icon={biometricIcon}
+        iconPosition={IconPosition.LEFT}
+        onPress={handleBiometricPress}
+      />
+    );
   };
 
-  return (
-    <StyledButton
-      variant={resolvedVariant}
-      size={resolvedSize}
-      isFullWidth={isFullWidth}
-      disabled={disabledState}
-      squared={squared}
-      onPress={handlePress}
-      testID={testID}
-    >
-      {renderIcon(IconPosition.LEFT)}
-      <Text
-        size={getFontSize(resolvedSize)}
-        weight="semiBold"
-        color={getTextColor(resolvedVariant, disabledState)}
-        isVerticallyCentered
-      >
-        {children}
-      </Text>
-      {renderIcon(IconPosition.RIGHT)}
-    </StyledButton>
-  );
+const ButtonWithBiometrics = withBiometrics(ButtonBase);
+
+export const Button = ({ biometric = false, ...props }: ButtonProps) => {
+  if (biometric) {
+    return <ButtonWithBiometrics {...props} />;
+  }
+  return <ButtonBase {...props} />;
 };
