@@ -6,6 +6,8 @@ import Config from "react-native-config";
 // -----------------------------------------------------------------------------
 
 export const AMPLITUDE_API_KEY = Config.AMPLITUDE_API_KEY ?? "";
+export const AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY =
+  Config.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY ?? "";
 
 // -----------------------------------------------------------------------------
 // STORAGE KEYS

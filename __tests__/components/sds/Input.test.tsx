@@ -17,9 +17,11 @@ jest.mock("@react-native-clipboard/clipboard", () => ({
   getString: jest.fn(),
 }));
 
+const mockCopyToClipboard = jest.fn();
+
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({
-    copyToClipboard: jest.fn(),
+    copyToClipboard: mockCopyToClipboard,
     getClipboardText: jest.fn(),
   }),
 }));
@@ -29,6 +31,7 @@ describe("Input", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCopyToClipboard.mockClear();
   });
 
   describe("Size handling", () => {
@@ -171,7 +174,7 @@ describe("Input", () => {
       );
 
       fireEvent.press(getByText("common.copy"));
-      expect(getByText("common.copy")).toBeTruthy();
+      expect(mockCopyToClipboard).toHaveBeenCalledWith("test value");
     });
   });
 
