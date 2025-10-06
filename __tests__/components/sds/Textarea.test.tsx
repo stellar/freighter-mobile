@@ -53,14 +53,12 @@ describe("Textarea", () => {
         );
         const textarea = getByTestId("test-textarea");
 
-        // Test style properties
         expect(textarea.props.style).toMatchObject({
           height: metrics.lines * 28,
           fontSize: fsValue(metrics.fontSize),
         });
         expect(textarea.props).toHaveProperty("numberOfLines", metrics.lines);
 
-        // Test className properties
         expect(textarea.props.className).toContain("w-full");
         expect(textarea.props.className).toContain("bg-background-primary");
         expect(textarea.props.className).toContain("border");
@@ -77,7 +75,7 @@ describe("Textarea", () => {
 
       expect(textarea.props.style).toMatchObject({
         height: MD_SIZE_NUMBER_OF_LINES * 28,
-        fontSize: fsValue(14), // md fontSize
+        fontSize: fsValue(14),
       });
       expect(textarea.props).toHaveProperty(
         "numberOfLines",
