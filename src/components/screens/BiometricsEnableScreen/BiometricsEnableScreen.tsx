@@ -137,7 +137,7 @@ export const BiometricsOnboardingScreen: React.FC<
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
-  const { mnemonicPhrase, password: hookPassword } = useLoginDataStore();
+  const { mnemonicPhrase, password } = useLoginDataStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,7 +147,6 @@ export const BiometricsOnboardingScreen: React.FC<
   const enableBiometrics = useCallback(async () => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
     const { source } = route.params;
-    const password = hookPassword;
 
     if (source === BiometricsSource.POST_ONBOARDING) {
       await enableBiometricsAction(async () => {
@@ -183,12 +182,12 @@ export const BiometricsOnboardingScreen: React.FC<
         if (source === BiometricsSource.IMPORT_WALLET) {
           await importWallet({
             mnemonicPhrase,
-            password: biometricPassword ?? hookPassword,
+            password: biometricPassword ?? password,
           });
         } else {
           await signUp({
             mnemonicPhrase,
-            password: biometricPassword ?? hookPassword,
+            password: biometricPassword ?? password,
           });
         }
 
@@ -212,13 +211,12 @@ export const BiometricsOnboardingScreen: React.FC<
     enableBiometricsAction,
     navigation,
     mnemonicPhrase,
-    hookPassword,
+    password,
   ]);
 
   const handleSkip = useCallback(async () => {
     setIsProcessing(true);
     const { source } = route.params;
-    const password = hookPassword;
     await dataStorage.setItem(
       STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
       "true",
@@ -243,12 +241,12 @@ export const BiometricsOnboardingScreen: React.FC<
       if (source === BiometricsSource.IMPORT_WALLET) {
         await importWallet({
           mnemonicPhrase,
-          password: hookPassword,
+          password,
         });
       } else {
         await signUp({
           mnemonicPhrase,
-          password: hookPassword,
+          password,
         });
       }
 
@@ -268,7 +266,7 @@ export const BiometricsOnboardingScreen: React.FC<
     importWallet,
     navigation,
     mnemonicPhrase,
-    hookPassword,
+    password,
   ]);
 
   const handleSkipPress = useCallback(async () => {
