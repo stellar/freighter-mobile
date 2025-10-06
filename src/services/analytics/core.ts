@@ -1,4 +1,5 @@
 import * as amplitude from "@amplitude/analytics-react-native";
+import { Experiment } from "@amplitude/experiment-react-native-client";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
@@ -13,6 +14,7 @@ import {
 } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
   DEBUG_CONFIG,
   TIMING,
   ANALYTICS_CONFIG,
@@ -28,6 +30,9 @@ import type {
 // -----------------------------------------------------------------------------
 
 let hasInitialised = false;
+let experimentClient: ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null = null;
 
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
@@ -50,6 +55,22 @@ export const initAnalytics = (): void => {
       disableCookies: true,
     });
 
+    // Initialize Experiments
+    if (AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY) {
+      experimentClient = Experiment.initializeWithAmplitudeAnalytics(
+        AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
+      );
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment client initialized with deployment key",
+      );
+    } else {
+      logger.warn(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment deployment key missing, feature flags will use defaults",
+      );
+    }
+
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
     amplitude.setOptOut(!isEnabled);
@@ -67,6 +88,10 @@ export const initAnalytics = (): void => {
 };
 
 export const isInitialized = (): boolean => hasInitialised;
+
+export const getExperimentClient = (): ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null => experimentClient;
 
 // -----------------------------------------------------------------------------
 // SETTINGS MANAGEMENT
