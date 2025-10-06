@@ -1,7 +1,6 @@
 import { fireEvent } from "@testing-library/react-native";
 import { Textarea } from "components/sds/Textarea";
-import { THEME } from "config/theme";
-import { pxValue } from "helpers/dimensions";
+import { fsValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -54,10 +53,18 @@ describe("Textarea", () => {
         );
         const textarea = getByTestId("test-textarea");
 
+        // Test style properties
         expect(textarea.props.style).toMatchObject({
-          height: pxValue(metrics.lines * 28),
+          height: metrics.lines * 28,
+          fontSize: fsValue(metrics.fontSize),
         });
         expect(textarea.props).toHaveProperty("numberOfLines", metrics.lines);
+
+        // Test className properties
+        expect(textarea.props.className).toContain("w-full");
+        expect(textarea.props.className).toContain("bg-background-primary");
+        expect(textarea.props.className).toContain("border");
+        expect(textarea.props.className).toContain("text-text-primary");
       });
     });
 
@@ -69,7 +76,8 @@ describe("Textarea", () => {
       const textarea = getByTestId("test-textarea");
 
       expect(textarea.props.style).toMatchObject({
-        height: pxValue(MD_SIZE_NUMBER_OF_LINES * 28),
+        height: MD_SIZE_NUMBER_OF_LINES * 28,
+        fontSize: fsValue(14), // md fontSize
       });
       expect(textarea.props).toHaveProperty(
         "numberOfLines",
@@ -109,9 +117,7 @@ describe("Textarea", () => {
 
       const textarea = getByTestId("test-textarea");
 
-      expect(textarea.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(textarea.props.className).toContain("border-status-error");
     });
 
     it("applies error styles when error message is provided", () => {
@@ -121,9 +127,7 @@ describe("Textarea", () => {
 
       const textarea = getByTestId("test-textarea");
 
-      expect(textarea.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(textarea.props.className).toContain("border-status-error");
       expect(getByText("Error message")).toBeTruthy();
     });
   });
@@ -147,10 +151,8 @@ describe("Textarea", () => {
         <Textarea testID="test-textarea" value="" editable={false} />,
       );
 
-      const textareaContainer = getByTestId("test-textarea");
-      expect(textareaContainer.props.style).toMatchObject({
-        backgroundColor: THEME.colors.background.secondary,
-      });
+      const textarea = getByTestId("test-textarea");
+      expect(textarea.props.className).toContain("bg-background-secondary");
     });
   });
 
