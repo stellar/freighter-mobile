@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.10",
+    "@amplitude/experiment-react-native-client": "^1.5.3",
     "@babel/runtime": "^7.26.10",
     "@blockaid/client": "^0.58.0",
     "@dr.pogodin/react-native-fs": "^2.35.1",

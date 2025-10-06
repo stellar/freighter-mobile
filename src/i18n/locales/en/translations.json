@@ -724,7 +724,11 @@
       "amountTooHigh": "The amount entered is greater than the available balance",
       "memoMissing": "This transaction requires a memo",
       "malicious": "This address was flagged as malicious",
-      "suspicious": "This address was flagged as suspicious"
+      "suspicious": "This address was flagged as suspicious",
+      "maliciousTransaction": "This transaction was flagged as malicious",
+      "maliciousAsset": "An asset was flagged as malicious",
+      "suspiciousTransaction": "This transaction was flagged as suspicious",
+      "suspiciousAsset": "An asset was flagged as suspicious"
     },
     "confirmAnyway": "Confirm anyway"
   },
@@ -1033,6 +1037,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
+      "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",
       "destinationToken": "Destination Token",

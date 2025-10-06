@@ -11,10 +11,12 @@ import React, { useRef } from "react";
 import { TouchableOpacity } from "react-native";
 
 interface SignTransactionDetailsProps {
+  analyticsEvent?: AnalyticsEvent;
   data: SignTransactionDetailsInterface;
 }
 
 const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
+  analyticsEvent,
   data,
 }) => {
   const { themeColors } = useColors();
@@ -50,7 +52,7 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
         enablePanDownToClose={false}
-        analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+        analyticsEvent={analyticsEvent}
         snapPoints={["90%"]}
         customContent={
           <SignTransactionDetailsBottomSheet

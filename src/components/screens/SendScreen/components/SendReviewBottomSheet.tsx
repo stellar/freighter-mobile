@@ -9,6 +9,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -307,7 +308,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       {renderBanner()}
       <List variant="secondary" items={transactionDetailsList} />
       {signTransactionDetails && (
-        <SignTransactionDetails data={signTransactionDetails} />
+        <SignTransactionDetails
+          data={signTransactionDetails}
+          analyticsEvent={AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS}
+        />
       )}
     </View>
   );

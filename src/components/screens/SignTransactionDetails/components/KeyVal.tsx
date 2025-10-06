@@ -21,6 +21,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { getCreateContractArgs, scValByType } from "helpers/soroban";
 import { formattedBuffer, truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
+import useColors from "hooks/useColors";
 import { t } from "i18next";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -162,35 +163,52 @@ interface PathListProps {
   paths: SdkToken[];
 }
 
-export const PathList = ({ paths }: PathListProps) => (
-  <View>
-    <View className="flex-row items-center gap-[8px]">
-      <Text>{t("signTransactionDetails.operations.path")}: </Text>
-    </View>
-    {paths.map(({ code, issuer }, index) => (
-      <View
-        key={`${code} ${index + 1}`}
-        className="flex-row items-center gap-[8px]"
-      >
-        <Text>#{index + 1}</Text>
-
-        <KeyValueListItem
-          operationKey={t("signTransactionDetails.operations.tokenCode")}
-          operationValue={code}
-        />
-
-        {issuer ? (
-          <KeyValueListItem
-            operationKey={t("signTransactionDetails.operations.issuer")}
-            operationValue={
-              <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
-            }
-          />
-        ) : null}
+export const PathList = ({ paths }: PathListProps) => {
+  const { themeColors } = useColors();
+  return (
+    <View>
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.Shuffle01 size={16} themeColor="gray" />
+        <Text secondary>{t("signTransactionDetails.operations.path")} </Text>
       </View>
-    ))}
-  </View>
-);
+      <View className="gap-[12px] mt-[8px]">
+        {paths.map(({ code, issuer }, index) => (
+          <View
+            key={`${code} ${index + 1}`}
+            className="bg-background-tertiary rounded-[16px] p-[16px] gap-[12px]"
+          >
+            <View className="rounded-full self-start px-[8px] py-[4px] bg-lilac-1 border border-lilac-6">
+              <Text size="xs" color={themeColors.lilac[11]}>
+                #{index + 1}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between items-center">
+              <Text secondary>
+                {t("signTransactionDetails.operations.token")}
+              </Text>
+              {issuer && (
+                <Text secondary>
+                  {t("signTransactionDetails.operations.issuer")}
+                </Text>
+              )}
+            </View>
+
+            <View className="flex-row justify-between items-center">
+              <Text>{code}</Text>
+              {issuer && (
+                <View className="flex-row items-center gap-[8px]">
+                  <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
+                  <Text>{truncateAddress(issuer, 4, 4)}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
 
 interface KeyValueSignerProps {
   signer: Signer;

@@ -197,7 +197,8 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       return (
         <View className="gap-[12px]">
           <List variant="secondary" items={items} />
-          <PathList paths={path} />
+          {/* direct trades will have no paths */}
+          {path.length > 0 && <PathList paths={path} />}
         </View>
       );
     }
@@ -245,7 +246,8 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       return (
         <View className="gap-[12px]">
           <List variant="secondary" items={items} />
-          <PathList paths={path} />
+          {/* direct trades will have no paths */}
+          {path.length > 0 && <PathList paths={path} />}
         </View>
       );
     }
