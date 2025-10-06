@@ -13,6 +13,19 @@ jest.mock("@react-navigation/native", () => ({
   })),
 }));
 
+const mockSetPassword = jest.fn();
+jest.mock("ducks/loginData", () => ({
+  useLoginDataStore: jest.fn(() => ({
+    password: null,
+    mnemonicPhrase: null,
+    setMnemonicPhrase: jest.fn(),
+    setPassword: mockSetPassword,
+    clearMnemonicPhrase: jest.fn(),
+    clearPassword: jest.fn(),
+    clearAll: jest.fn(),
+  })),
+}));
+
 describe("ChoosePasswordScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -64,7 +77,7 @@ describe("ChoosePasswordScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN,
       {
-        password: "password12345",
+        isImporting: undefined,
       },
     );
   });

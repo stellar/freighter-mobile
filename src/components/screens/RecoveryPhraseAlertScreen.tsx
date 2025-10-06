@@ -15,15 +15,12 @@ type RecoveryPhraseAlertScreenProps = NativeStackScreenProps<
 
 export const RecoveryPhraseAlertScreen: React.FC<
   RecoveryPhraseAlertScreenProps
-> = ({ navigation, route }) => {
-  const { password } = route.params;
+> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
   const handleContinue = () => {
-    navigation.navigate(AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN, {
-      password,
-    });
+    navigation.navigate(AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN);
   };
 
   return (

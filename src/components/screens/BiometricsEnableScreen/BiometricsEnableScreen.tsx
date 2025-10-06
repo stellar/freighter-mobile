@@ -23,6 +23,7 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useLoginDataStore } from "ducks/loginData";
 import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -136,6 +137,7 @@ export const BiometricsOnboardingScreen: React.FC<
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
+  const { mnemonicPhrase, password: hookPassword } = useLoginDataStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -144,7 +146,8 @@ export const BiometricsOnboardingScreen: React.FC<
 
   const enableBiometrics = useCallback(async () => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
-    const { password, mnemonicPhrase, source } = route.params;
+    const { source } = route.params;
+    const password = hookPassword;
 
     if (source === BiometricsSource.POST_ONBOARDING) {
       await enableBiometricsAction(async () => {
@@ -180,12 +183,12 @@ export const BiometricsOnboardingScreen: React.FC<
         if (source === BiometricsSource.IMPORT_WALLET) {
           await importWallet({
             mnemonicPhrase,
-            password: biometricPassword ?? password,
+            password: biometricPassword ?? hookPassword,
           });
         } else {
           await signUp({
             mnemonicPhrase,
-            password: biometricPassword ?? password,
+            password: biometricPassword ?? hookPassword,
           });
         }
 
@@ -208,11 +211,14 @@ export const BiometricsOnboardingScreen: React.FC<
     importWallet,
     enableBiometricsAction,
     navigation,
+    mnemonicPhrase,
+    hookPassword,
   ]);
 
   const handleSkip = useCallback(async () => {
     setIsProcessing(true);
-    const { password, mnemonicPhrase, source } = route.params;
+    const { source } = route.params;
+    const password = hookPassword;
     await dataStorage.setItem(
       STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
       "true",
@@ -237,12 +243,12 @@ export const BiometricsOnboardingScreen: React.FC<
       if (source === BiometricsSource.IMPORT_WALLET) {
         await importWallet({
           mnemonicPhrase,
-          password,
+          password: hookPassword,
         });
       } else {
         await signUp({
           mnemonicPhrase,
-          password,
+          password: hookPassword,
         });
       }
 
@@ -256,7 +262,14 @@ export const BiometricsOnboardingScreen: React.FC<
       );
       // Handle error appropriately
     }
-  }, [route.params, signUp, importWallet, navigation]);
+  }, [
+    route.params,
+    signUp,
+    importWallet,
+    navigation,
+    mnemonicPhrase,
+    hookPassword,
+  ]);
 
   const handleSkipPress = useCallback(async () => {
     setTimeout(() => {

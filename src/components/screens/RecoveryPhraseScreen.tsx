@@ -14,6 +14,7 @@ import {
 } from "config/routes";
 import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { useLoginDataStore } from "ducks/loginData";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -76,11 +77,10 @@ const Footer: React.FC<{
 };
 
 export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
-  route,
   navigation,
 }) => {
-  const { password } = route.params;
-  const [recoveryPhrase] = useState(
+  const { password, setMnemonicPhrase, setPassword } = useLoginDataStore();
+  const [localMnemonicPhrase] = useState(
     StellarHDWallet.generateMnemonic({
       entropyBits: 128,
     }),
@@ -92,18 +92,21 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { copyToClipboard } = useSecureClipboard();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { biometryType } = useBiometrics();
+
+  useEffect(() => {
+    setMnemonicPhrase(localMnemonicPhrase);
+    setPassword(password);
+  }, [localMnemonicPhrase, password, setMnemonicPhrase, setPassword]);
+
   useEffect(() => {
     clearError?.();
   }, [clearError]);
 
   const handleContinue = () => {
-    if (!recoveryPhrase) return;
+    if (!localMnemonicPhrase) return;
     analytics.track(AnalyticsEvent.VIEWED_RECOVERY_PHRASE);
 
-    navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN, {
-      password,
-      recoveryPhrase,
-    });
+    navigation.navigate(AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN);
   };
 
   const handleSkip = () => {
@@ -112,18 +115,16 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const confirmSkip = useCallback(() => {
     if (biometryType) {
-      storeBiometricPassword(password).then(() => {
+      storeBiometricPassword(password!).then(() => {
         navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-          password,
-          mnemonicPhrase: recoveryPhrase,
           source: BiometricsSource.ONBOARDING,
         });
       });
     } else {
       // No biometrics available, proceed with normal signup
       signUp({
-        password,
-        mnemonicPhrase: recoveryPhrase,
+        password: password!,
+        mnemonicPhrase: localMnemonicPhrase,
       }).then(() => {
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
@@ -133,7 +134,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   }, [
     signUp,
     password,
-    recoveryPhrase,
+    localMnemonicPhrase,
     navigation,
     biometryType,
     storeBiometricPassword,
@@ -144,11 +145,11 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   }, [confirmSkip]);
 
   const handleCopy = useCallback(() => {
-    if (!recoveryPhrase) return;
-    copyToClipboard(recoveryPhrase);
+    if (!localMnemonicPhrase) return;
+    copyToClipboard(localMnemonicPhrase);
 
     analytics.trackCopyBackupPhrase();
-  }, [recoveryPhrase, copyToClipboard]);
+  }, [localMnemonicPhrase, copyToClipboard]);
 
   if (error) {
     return (
@@ -189,7 +190,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         </Text>
         <RecoveryPhraseContainer>
           <RecoveryPhraseText primary md>
-            {recoveryPhrase}
+            {localMnemonicPhrase}
           </RecoveryPhraseText>
         </RecoveryPhraseContainer>
         <Button
