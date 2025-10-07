@@ -2,8 +2,8 @@ import * as Sentry from "@sentry/react-native";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
+import { EnvConfig } from "helpers/getEnvConfig";
 import { Platform } from "react-native";
-import Config from "react-native-config";
 import {
   getVersion,
   getBuildNumber,
@@ -14,7 +14,7 @@ import {
  * Sentry configuration constants
  */
 export const SENTRY_CONFIG = {
-  DSN: Config.SENTRY_DSN,
+  DSN: EnvConfig.SENTRY_DSN,
   // Reduced context when user has disabled analytics
   MINIMAL_CONTEXT_FIELDS: [
     "platform",
