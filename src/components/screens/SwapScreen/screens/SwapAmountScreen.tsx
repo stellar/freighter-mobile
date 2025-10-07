@@ -169,7 +169,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         amount: spendableAmount
           ? formatBigNumberForDisplay(spendableAmount, {
               decimalPlaces: DEFAULT_DECIMALS,
-              useGrouping: false,
             })
           : "0",
         symbol: sourceTokenSymbol,
@@ -181,7 +180,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           amount: spendableAmount
             ? formatBigNumberForDisplay(spendableAmount, {
                 decimalPlaces: DEFAULT_DECIMALS,
-                useGrouping: false,
               })
             : "0",
           symbol: sourceTokenSymbol,

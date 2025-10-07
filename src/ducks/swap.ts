@@ -154,7 +154,6 @@ export const useSwapStore = create<SwapState>((set) => ({
     if (!preserveDisplay) {
       const displayAmount = formatBigNumberForDisplay(new BigNumber(amount), {
         decimalPlaces: DEFAULT_DECIMALS,
-        useGrouping: false,
       });
       set({ sourceAmount: amount, sourceAmountDisplay: displayAmount });
     } else {

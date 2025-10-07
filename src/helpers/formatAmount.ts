@@ -470,7 +470,6 @@ export const formatNumberForDisplay = (
     }
 
     return formatNumber(valueAsString, {
-      useGrouping: false, // Don't add thousands separators for constants
       minimumFractionDigits: 0,
       maximumFractionDigits: DEFAULT_DECIMALS,
     });
@@ -494,19 +493,74 @@ export const formatNumberForDisplay = (
 /**
  * Formats a BigNumber with display-appropriate decimal separators and proper precision handling
  *
- * This function is optimized for BigNumber instances and preserves their precision
- * while applying display formatting using react-native-localize.
- *
- * @param {BigNumber} bigNumberValue - The BigNumber instance to format
- * @param {object} [options] - Formatting options
- * @param {number} [options.decimalPlaces] - Number of decimal places to display
- * @param {boolean} [options.useGrouping] - Whether to use thousands separators (default: false)
- * @returns {string} Formatted number with display-appropriate decimal separator
+ * This function is specifically designed for BigNumber instances and provides comprehensive
+ * formatting capabilities while preserving the full precision of BigNumber arithmetic.
+ * It's particularly useful for displaying cryptocurrency amounts, financial calculations,
+ * and any numeric values that require arbitrary precision.
+ * 
+ * It avoids converting to scientific notation (e.g. 1.23e+10)
+ * Uses the original string representation. 
+ * Also does not use JavaScript numbers to avoid rounding errors.
+
+ * For Displaying token balances with full precision, converting BigNumbers with proper grouping, while displaying amounts with the right decimal separator.
+ * The exponential is set at a high value to avoid scientific notation and return the long string representation.
+
+ * @param {BigNumber} bigNumberValue - The BigNumber instance to format. Must be a valid BigNumber.
+ * @param {object} [options] - Optional formatting configuration object
+ * @param {number} [options.decimalPlaces] - Number of decimal places to display. If not provided,
+ *   uses the actual decimal places from the BigNumber. When provided, rounds the number to the
+ *   specified precision using BigNumber's toFixed() method.
+ * @param {boolean} [options.useGrouping] - Whether to add thousands separators for better readability.
+ *   Defaults to false. When true, adds locale-appropriate grouping separators (e.g., "1,234.56" in US locale).
+ * @returns {string} Formatted number string with appropriate decimal separator based on device locale.
+ *   Returns the original string representation if the BigNumber is invalid (NaN).
  *
  * @example
- * formatBigNumberForDisplay(new BigNumber("1234.56789")); // Returns "1234.56789" (based on device settings)
- * formatBigNumberForDisplay(new BigNumber("1234.56789"), { decimalPlaces: 2 }); // Returns "1234.57" (based on device settings)
- * formatBigNumberForDisplay(new BigNumber("1234.56"), { useGrouping: true }); // Returns "1,234.56" (based on device settings)
+ * // Basic formatting with default options
+ * formatBigNumberForDisplay(new BigNumber("1234.56789")); 
+ * // Returns "1234.56789" (US locale) or "1234,56789" (European locale)
+ * 
+ * // Formatting with specific decimal places (rounds to 2 decimal places)
+ * formatBigNumberForDisplay(new BigNumber("1234.56789"), { decimalPlaces: 2 }); 
+ * // Returns "1234.57" (US locale) or "1234,57" (European locale)
+ * 
+ * // Formatting with thousands separators for large numbers
+ * formatBigNumberForDisplay(new BigNumber("1234567.89"), { useGrouping: true }); 
+ * // Returns "1,234,567.89" (US locale) or "1.234.567,89" (European locale)
+ * 
+ * // Combining decimal places and grouping
+ * formatBigNumberForDisplay(new BigNumber("9999999.123456"), { 
+ *   decimalPlaces: 3, 
+ *   useGrouping: true 
+ * }); 
+ * // Returns "9,999,999.123" (US locale) or "9.999.999,123" (European locale)
+ * 
+ * // Very large numbers (prevents scientific notation)
+ * formatBigNumberForDisplay(new BigNumber("123456789012345678901234567890")); 
+ * // Returns "123456789012345678901234567890" (full precision, no scientific notation)
+ * 
+ * // Very small numbers (preserves precision)
+ * formatBigNumberForDisplay(new BigNumber("0.000000000123456789")); 
+ * // Returns "0.000000000123456789" (preserves all decimal places)
+ * 
+ * // Zero values
+ * formatBigNumberForDisplay(new BigNumber("0")); 
+ * // Returns "0"
+ * 
+ * // Negative numbers
+ * formatBigNumberForDisplay(new BigNumber("-1234.56789")); 
+ * // Returns "-1234.56789" (preserves negative sign)
+ * 
+ * // Edge case: Very high precision with grouping
+ * formatBigNumberForDisplay(new BigNumber("1234567.123456789012345"), { 
+ *   decimalPlaces: 8, 
+ *   useGrouping: true 
+ * }); 
+ * // Returns "1,234,567.12345679" (rounded to 8 decimal places with grouping)
+ * 
+ * // Invalid BigNumber (NaN) handling
+ * formatBigNumberForDisplay(new BigNumber("invalid")); 
+ * // Returns "NaN" (graceful handling of invalid input)
  */
 export const formatBigNumberForDisplay = (
   bigNumberValue: BigNumber,
