@@ -22,6 +22,7 @@ import {
   parseDisplayNumber,
   formatNumberForDisplay,
 } from "helpers/formatAmount";
+import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -31,7 +32,6 @@ import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
 import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
-import { getNumberFormatSettings } from "react-native-localize";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -74,8 +74,6 @@ const TransactionSettingsBottomSheet: React.FC<
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const { decimalSeparator } = getNumberFormatSettings();
-
   // Derived values based on context
   const memo =
     context === TransactionSettingsContext.Swap ? "" : transactionMemo;
@@ -108,9 +106,7 @@ const TransactionSettingsBottomSheet: React.FC<
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
-    slippage
-      .toString()
-      .replace(".", getNumberFormatSettings().decimalSeparator),
+    enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
   // Validation hooks
@@ -176,32 +172,26 @@ const TransactionSettingsBottomSheet: React.FC<
       const finalValue = isWholeNumber
         ? Math.round(roundedValue)
         : roundedValue;
-      const formattedValue = finalValue
-        .toString()
-        .replace(".", decimalSeparator);
+      const formattedValue = enforceSettingInputDecimalSeparator(
+        finalValue.toString(),
+      );
       updateSlippage(formattedValue);
     },
-    [localSlippage, updateSlippage, decimalSeparator],
+    [localSlippage, updateSlippage],
   );
 
-  const handleSlippageTextChange = useCallback(
-    (text: string) => {
-      const numericValue = text.replace(/[.,]/g, decimalSeparator);
-      setLocalSlippage(numericValue);
-    },
-    [decimalSeparator],
-  );
+  const handleSlippageTextChange = useCallback((text: string) => {
+    const numericValue = enforceSettingInputDecimalSeparator(text);
+    setLocalSlippage(numericValue);
+  }, []);
   const handleMemoChange = useCallback((text: string) => {
     setLocalMemo(text);
   }, []);
 
-  const handleFeeChange = useCallback(
-    (text: string) => {
-      const normalizedText = text.replace(/[.,]/g, decimalSeparator);
-      setLocalFee(normalizedText);
-    },
-    [decimalSeparator],
-  );
+  const handleFeeChange = useCallback((text: string) => {
+    const normalizedText = enforceSettingInputDecimalSeparator(text);
+    setLocalFee(normalizedText);
+  }, []);
 
   const handleTimeoutChange = useCallback((text: string) => {
     const integerOnly = text.replace(/[^\d]/g, "");
