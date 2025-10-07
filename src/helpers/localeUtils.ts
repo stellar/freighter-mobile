@@ -6,7 +6,7 @@ export const isSupportedLocale = (locale: string): boolean =>
   SUPPORTED_LOCALES.includes(locale);
 
 /**
- * Retrieves the current operating system locale identifier
+ * Retrieves the current device locale identifier
  *
  * This function detects the device's full locale setting and returns it as a locale identifier
  * (e.g., 'en-US', 'fr-FR', 'de-DE'). This is used for locale-aware number formatting.
@@ -15,13 +15,13 @@ export const isSupportedLocale = (locale: string): boolean =>
  * @returns {string} Full locale identifier or 'en-US' as fallback
  *
  * @example
- * // Get the user's OS locale
- * const locale = getOSLocale(); // Returns 'en-US', 'de-DE', etc.
+ * // Get the user's device locale
+ * const locale = getDeviceLocale(); // Returns 'en-US', 'de-DE', etc.
  *
  * // Use for number formatting
  * const formatted = number.toLocaleString(locale);
  */
-export function getOSLocale(): string {
+export function getDeviceLocale(): string {
   let locale = "en-US"; // fallback
 
   if (Platform.OS === "android") {
@@ -53,7 +53,7 @@ export function getOSLocale(): string {
 }
 
 /**
- * Retrieves the current operating system language as a two-letter language code
+ * Retrieves the current device language as a two-letter language code
  *
  * This function detects the device's language setting and returns it as an ISO 639-1
  * two-letter language code (e.g., 'en', 'fr', 'ja'). The implementation varies by platform
@@ -62,15 +62,13 @@ export function getOSLocale(): string {
  * @returns {string} Two-letter language code or 'en' as fallback
  *
  * @example
- * // Get the user's OS language
- * const language = getOSLanguage(); // Returns 'en', 'fr', etc.
+ * // Get the user's device language
+ * const language = getDeviceLanguage(); // Returns 'en', 'fr', etc.
  *
  * // Use the language for localization
  */
-function getOSLanguage(): string {
-  const locale = getOSLocale();
+export function getDeviceLanguage(): string {
+  const locale = getDeviceLocale();
   // Extract language code from locale (e.g., 'en-US' -> 'en')
   return locale.substring(0, 2);
 }
-
-export default getOSLanguage;

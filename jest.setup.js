@@ -159,9 +159,11 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
-jest.mock("helpers/getOsLanguage", () =>
-  jest.fn().mockImplementationOnce(() => "en"),
-);
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  getDeviceLocale: jest.fn().mockReturnValue("en-US"),
+  isSupportedLocale: jest.fn().mockReturnValue(true),
+}));
 
 // Mock stellarExpert service to avoid import issues
 jest.mock("services/stellarExpert", () => ({

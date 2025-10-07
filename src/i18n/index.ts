@@ -1,4 +1,4 @@
-import getOSLanguage from "helpers/getOsLanguage";
+import { getDeviceLanguage } from "helpers/localeUtils";
 import en from "i18n/locales/en/translations.json";
 import pt from "i18n/locales/pt/translations.json";
 import i18n, { CustomTypeOptions, ParseKeys } from "i18next";
@@ -20,7 +20,7 @@ export type TranslationsKeys = ParseKeys<
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: getOSLanguage(),
+  lng: getDeviceLanguage(),
   fallbackLng: "en",
   ns: ["translations"],
   compatibilityJSON: "v4",

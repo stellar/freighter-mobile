@@ -470,6 +470,7 @@ export const formatNumberForDisplay = (
     }
 
     return formatNumber(valueAsString, {
+      useGrouping: false,
       minimumFractionDigits: 0,
       maximumFractionDigits: DEFAULT_DECIMALS,
     });
