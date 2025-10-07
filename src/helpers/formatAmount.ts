@@ -503,7 +503,7 @@ export const formatNumberForDisplay = (
  * Also does not use JavaScript numbers to avoid rounding errors.
 
  * For Displaying token balances with full precision, converting BigNumbers with proper grouping, while displaying amounts with the right decimal separator.
- * The exponential is set at a high value to avoid scientific notation and return the long string representation.
+ * The exponential on BigNumber configuration is set at a high value to avoid scientific notation and return the long string representation.
 
  * @param {BigNumber} bigNumberValue - The BigNumber instance to format. Must be a valid BigNumber.
  * @param {object} [options] - Optional formatting configuration object
