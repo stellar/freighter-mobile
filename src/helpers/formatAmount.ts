@@ -125,9 +125,21 @@ const convertToBigNumber = (
  * @returns {string} Formatted token amount string with optional token code
  *
  * @example
- * formatTokenAmount("1234.56"); // Returns "1,234.56" (based on device settings)
+ * // US format (dot decimal, comma thousands)
+ * formatTokenAmount("1234.56"); // Returns "1,234.56"
+ * formatTokenAmount("1234567.89"); // Returns "1,234,567.89"
+ * formatTokenAmount("0.0000012345"); // Returns "0.0000012345"
+ * formatTokenAmount("9007199254740992.123456789012345"); // Returns "9,007,199,254,740,992.123456789012345"
+ *
+ * // European format (comma decimal, dot thousands) - when device locale is set to European
+ * formatTokenAmount("1234,56"); // Returns "1.234,56" (based on device settings)
+ * formatTokenAmount("1234567,89"); // Returns "1.234.567,89" (with thousands separators)
+ * formatTokenAmount("0,0000012345"); // Returns "0,0000012345" (preserves precision)
+ *
+ * // BigNumber and token code examples
  * formatTokenAmount(new BigNumber("1234.56789")); // Returns "1,234.56789" (based on device settings)
  * formatTokenAmount("1234.56", "XLM"); // Returns "1,234.56 XLM" (based on device settings)
+ * formatTokenAmount("1000000", "USDC"); // Returns "1,000,000.00 USDC" (with token code)
  */
 export const formatTokenAmount = (
   amount: string | BigNumber,
@@ -178,9 +190,22 @@ export const formatTokenAmount = (
  * @returns {string} Formatted currency string (e.g., "$1,234.56" or "1.234,56 $")
  *
  * @example
- * formatFiatAmount("1234.56"); // Returns "$1,234.56" (based on device settings)
+ * // US format (dot decimal, comma thousands)
+ * formatFiatAmount("1234.56"); // Returns "$1,234.56"
+ * formatFiatAmount("1234567.89"); // Returns "$1,234,567.89"
+ * formatFiatAmount("0.001"); // Returns "$0.00" (rounded to 2 decimal places)
+ * formatFiatAmount("999999999.99"); // Returns "$999,999,999.99"
+ *
+ * // European format (comma decimal, dot thousands) - when device locale is set to European
+ * formatFiatAmount("1234,56"); // Returns "1.234,56 $" (based on device settings)
+ * formatFiatAmount("1234567,89"); // Returns "1.234.567,89 $" (with thousands separators)
+ * formatFiatAmount("0,001"); // Returns "0,00 $" (rounded to 2 decimal places)
+ * formatFiatAmount("999999999,99"); // Returns "999.999.999,99 $" (very large amounts)
+ *
+ * // BigNumber examples
  * formatFiatAmount(new BigNumber("1234.5")); // Returns "$1,234.50" (based on device settings)
  * formatFiatAmount("0.1"); // Returns "$0.10" (based on device settings)
+ * formatFiatAmount("1000000"); // Returns "$1,000,000.00" (with thousands separators)
  */
 export const formatFiatAmount = (amount: string | BigNumber) => {
   // Convert input to BigNumber for precision
@@ -230,9 +255,22 @@ export const formatFiatAmount = (amount: string | BigNumber) => {
  * @returns {string} Formatted percentage string with sign (e.g., "+1.23%" or "-1.23%")
  *
  * @example
+ * // US format (dot decimal)
  * formatPercentageAmount("1.23"); // Returns "+1.23%"
+ * formatPercentageAmount("1234.56"); // Returns "+1234.56%" (large percentages)
+ * formatPercentageAmount("0.1"); // Returns "+0.10%" (always 2 decimal places)
+ * formatPercentageAmount("0.001"); // Returns "+0.00%" (rounded to 2 decimal places)
+ *
+ * // European format (comma decimal) - when device locale is set to European
+ * formatPercentageAmount("1,23"); // Returns "+1,23%" (based on device settings)
+ * formatPercentageAmount("1234,56"); // Returns "+1234,56%" (large percentages)
+ * formatPercentageAmount("0,1"); // Returns "+0,10%" (always 2 decimal places)
+ * formatPercentageAmount("0,001"); // Returns "+0,00%" (rounded to 2 decimal places)
+ *
+ * // BigNumber and edge cases
  * formatPercentageAmount(new BigNumber("-1.23")); // Returns "-1.23%"
  * formatPercentageAmount("0"); // Returns "0.00%"
+ * formatPercentageAmount("999.99"); // Returns "+999.99%" (very large percentages)
  * formatPercentageAmount(); // Returns "--"
  */
 export const formatPercentageAmount = (
@@ -283,10 +321,23 @@ export const formatPercentageAmount = (
  * @returns {string} Parsed numeric value
  *
  * @example
- * parseDisplayNumber("1,23"); // Returns "1.23" (handles comma decimal separator)
+ * // US format parsing (dot decimal, comma thousands)
  * parseDisplayNumber("1.23"); // Returns "1.23" (handles dot decimal separator)
  * parseDisplayNumber("1,234.56"); // Returns "1234.56" (handles thousands separator)
+ * parseDisplayNumber("1,234,567.89"); // Returns "1234567.89" (multiple thousands separators)
+ * parseDisplayNumber("0.0000012345"); // Returns "0.0000012345" (preserves precision)
+ * parseDisplayNumber("999,999,999.99"); // Returns "999999999.99" (very large numbers)
+ *
+ * // European format parsing (comma decimal, dot thousands)
+ * parseDisplayNumber("1,23"); // Returns "1.23" (handles comma decimal separator)
+ * parseDisplayNumber("1.234,56"); // Returns "1234.56" (handles dot thousands separator)
+ * parseDisplayNumber("1.234.567,89"); // Returns "1234567.89" (multiple thousands separators)
+ * parseDisplayNumber("0,0000012345"); // Returns "0.0000012345" (preserves precision)
+ * parseDisplayNumber("999.999.999,99"); // Returns "999999999.99" (very large numbers)
+ *
+ * // BigNumber and decimals parameter
  * parseDisplayNumber(new BigNumber("1.23")); // Returns "1.23" (handles BigNumber)
+ * parseDisplayNumber(new BigNumber("1234.56789"), 2); // Returns "1234.57" (with decimals parameter)
  */
 export const parseDisplayNumber = (
   input: string | BigNumber,
@@ -331,9 +382,22 @@ export const parseDisplayNumber = (
  * @returns {BigNumber} A BigNumber instance representing the parsed value
  *
  * @example
- * parseDisplayNumberToBigNumber("1,23"); // Returns BigNumber(1.23)
- * parseDisplayNumberToBigNumber("1.234,56"); // Returns BigNumber(1234.56)
+ * // US format parsing (dot decimal, comma thousands)
+ * parseDisplayNumberToBigNumber("1.23"); // Returns BigNumber(1.23)
  * parseDisplayNumberToBigNumber("1,234.56"); // Returns BigNumber(1234.56)
+ * parseDisplayNumberToBigNumber("1,234,567.89"); // Returns BigNumber(1234567.89) (multiple thousands separators)
+ * parseDisplayNumberToBigNumber("0.0000012345"); // Returns BigNumber(0.0000012345) (preserves precision)
+ * parseDisplayNumberToBigNumber("999,999,999.99"); // Returns BigNumber(999999999.99) (very large numbers)
+ *
+ * // European format parsing (comma decimal, dot thousands)
+ * parseDisplayNumberToBigNumber("1,23"); // Returns BigNumber(1.23) (comma decimal separator)
+ * parseDisplayNumberToBigNumber("1.234,56"); // Returns BigNumber(1234.56) (dot thousands separator)
+ * parseDisplayNumberToBigNumber("1.234.567,89"); // Returns BigNumber(1234567.89) (multiple thousands separators)
+ * parseDisplayNumberToBigNumber("0,0000012345"); // Returns BigNumber(0.0000012345) (preserves precision)
+ * parseDisplayNumberToBigNumber("999.999.999,99"); // Returns BigNumber(999999999.99) (very large numbers)
+ *
+ * // Edge cases
+ * parseDisplayNumberToBigNumber(""); // Returns BigNumber(0) (empty input)
  * parseDisplayNumberToBigNumber(new BigNumber("1.23")); // Returns BigNumber(1.23)
  */
 export const parseDisplayNumberToBigNumber = (
@@ -364,9 +428,23 @@ export const parseDisplayNumberToBigNumber = (
  * @returns {string} Formatted number with display-appropriate decimal separator
  *
  * @example
+ * // US format (dot decimal)
  * formatNumberForDisplay("0.00001"); // Returns "0.00001" (based on device settings)
  * formatNumberForDisplay("1.5"); // Returns "1.5" (based on device settings)
  * formatNumberForDisplay("123.456"); // Returns "123.456" (based on device settings)
+ * formatNumberForDisplay("1234567.89"); // Returns "1234567.89" (truncated to 7 decimal places)
+ * formatNumberForDisplay("0.000000123456789"); // Returns "0.0000001" (truncated to 7 decimal places)
+ * formatNumberForDisplay("999999999.123456789"); // Returns "999999999.1234568" (very large numbers)
+ *
+ * // European format (comma decimal) - when device locale is set to European
+ * formatNumberForDisplay("0,00001"); // Returns "0,00001" (based on device settings)
+ * formatNumberForDisplay("1,5"); // Returns "1,5" (based on device settings)
+ * formatNumberForDisplay("123,456"); // Returns "123,456" (based on device settings)
+ * formatNumberForDisplay("1234567,89"); // Returns "1234567,89" (truncated to 7 decimal places)
+ * formatNumberForDisplay("0,000000123456789"); // Returns "0,0000001" (truncated to 7 decimal places)
+ *
+ * // BigNumber examples
+ * formatNumberForDisplay(new BigNumber("123.456789")); // Returns "123.4568" (BigNumber input)
  * formatNumberForDisplay(new BigNumber("1.5")); // Returns "1.5" (based on device settings)
  */
 export const formatNumberForDisplay = (
