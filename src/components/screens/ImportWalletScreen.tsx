@@ -26,7 +26,8 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { importWallet, error, clearError, verifyMnemonicPhrase } =
     useAuthenticationStore();
   const [localMnemonicPhrase, setLocalMnemonicPhrase] = useState("");
-  const { setMnemonicPhrase, setPassword } = useLoginDataStore();
+  const { setMnemonicPhrase, setPassword, clearLoginData } =
+    useLoginDataStore();
   const { biometryType } = useBiometrics();
   const { storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -66,6 +67,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
             mnemonicPhrase: localMnemonicPhrase,
             password: password!,
           });
+          clearLoginData(); // Clear sensitive data after successful import
         }
         setIsImporting(false);
       })();
@@ -80,6 +82,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     storeBiometricPassword,
     setMnemonicPhrase,
     setPassword,
+    clearLoginData,
   ]);
 
   const onPressPasteFromClipboard = async () => {

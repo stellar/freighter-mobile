@@ -99,9 +99,7 @@ jest.mock("ducks/loginData", () => ({
     mnemonicPhrase: null,
     setMnemonicPhrase: mockSetMnemonicPhrase,
     setPassword: mockSetPassword,
-    clearMnemonicPhrase: jest.fn(),
-    clearPassword: jest.fn(),
-    clearAll: jest.fn(),
+    clearLoginData: jest.fn(),
   })),
 }));
 

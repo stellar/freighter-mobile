@@ -137,7 +137,7 @@ export const BiometricsOnboardingScreen: React.FC<
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
-  const { mnemonicPhrase, password } = useLoginDataStore();
+  const { mnemonicPhrase, password, clearLoginData } = useLoginDataStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -191,6 +191,7 @@ export const BiometricsOnboardingScreen: React.FC<
           });
         }
 
+        clearLoginData(); // Clear sensitive data after successful authentication
         setIsBiometricsEnabled(true);
         return Promise.resolve();
       });
@@ -212,6 +213,7 @@ export const BiometricsOnboardingScreen: React.FC<
     navigation,
     mnemonicPhrase,
     password,
+    clearLoginData,
   ]);
 
   const handleSkip = useCallback(async () => {

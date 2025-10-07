@@ -79,7 +79,8 @@ const Footer: React.FC<{
 export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   navigation,
 }) => {
-  const { password, setMnemonicPhrase, setPassword } = useLoginDataStore();
+  const { password, setMnemonicPhrase, setPassword, clearLoginData } =
+    useLoginDataStore();
   const [localMnemonicPhrase] = useState(
     StellarHDWallet.generateMnemonic({
       entropyBits: 128,
@@ -126,6 +127,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         password: password!,
         mnemonicPhrase: localMnemonicPhrase,
       }).then(() => {
+        clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
     }
@@ -138,6 +140,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     navigation,
     biometryType,
     storeBiometricPassword,
+    clearLoginData,
   ]);
 
   const handleConfirmSkip = useCallback(() => {

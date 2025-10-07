@@ -32,7 +32,7 @@ type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
 export const ValidateRecoveryPhraseScreen: React.FC<
   ValidateRecoveryPhraseScreenProps
 > = ({ navigation }) => {
-  const { mnemonicPhrase, password } = useLoginDataStore();
+  const { mnemonicPhrase, password, clearLoginData } = useLoginDataStore();
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [error, setError] = useState<string | undefined>();
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
@@ -83,6 +83,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         password: password!,
         mnemonicPhrase: mnemonicPhrase!,
       }).then(() => {
+        clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
@@ -94,6 +95,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     navigation,
     biometryType,
     storeBiometricPassword,
+    clearLoginData,
   ]);
   const handleWordSelect = useCallback((word: string) => {
     setSelectedWord(word);

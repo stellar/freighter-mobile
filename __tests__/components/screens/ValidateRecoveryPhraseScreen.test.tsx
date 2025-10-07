@@ -119,9 +119,7 @@ jest.mock("ducks/loginData", () => ({
       "test phrase one two three four five six seven eight nine ten eleven twelve",
     setMnemonicPhrase: jest.fn(),
     setPassword: jest.fn(),
-    clearMnemonicPhrase: jest.fn(),
-    clearPassword: jest.fn(),
-    clearAll: jest.fn(),
+    clearLoginData: jest.fn(),
   })),
 }));
 

@@ -21,10 +21,8 @@ interface LoginDataState {
   password: string | null;
 
   setMnemonicPhrase: (phrase: string | null) => void;
-  clearMnemonicPhrase: () => void;
   setPassword: (password: string | null) => void;
-  clearPassword: () => void;
-  clearAll: () => void;
+  clearLoginData: () => void;
 }
 
 /**
@@ -61,19 +59,11 @@ export const useLoginDataStore = create<LoginDataState>((set) => ({
     set({ mnemonicPhrase: phrase });
   },
 
-  clearMnemonicPhrase: () => {
-    set({ mnemonicPhrase: null });
-  },
-
   setPassword: (password: string | null) => {
     set({ password });
   },
 
-  clearPassword: () => {
-    set({ password: null });
-  },
-
-  clearAll: () => {
+  clearLoginData: () => {
     set({ mnemonicPhrase: null, password: null });
   },
 }));
