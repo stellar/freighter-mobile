@@ -23,6 +23,7 @@ export const SENTRY_CONFIG = {
     "network",
     "appVersion",
     "buildVersion",
+    "bundleId",
   ] as const,
 } as const;
 
