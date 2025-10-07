@@ -3,6 +3,7 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
 import { EnvConfig } from "helpers/getEnvConfig";
+import { isProd } from "helpers/isEnv";
 import { Platform } from "react-native";
 import {
   getVersion,
@@ -95,6 +96,7 @@ export const initializeSentry = (): void => {
     spotlight: __DEV__,
     release: `freighter-mobile@${getVersion()}+${getBuildNumber()}`,
     denyUrls: [/api\.amplitude\.com\/2\/httpapi/i],
+    environment: isProd ? "production" : "development",
 
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,
