@@ -111,25 +111,51 @@ clean/install commands.
 
 ### Running the App
 
+The app supports two different bundle IDs for different environments:
+
+- **Production**: `org.stellar.freighterwallet` (default)
+- **Development**: `org.stellar.freighterdev`
+
 **Run on Android:**
 
-- In a new terminal window, navigate to the project root and run:
+- **Development variant:**
+
   ```bash
   yarn android
+  or
+  yarn android-dev
+  ```
+
+- **Production variant:**
+  ```bash
+  yarn android-prod
   ```
 
 **Run on iOS (macOS only):**
 
-- In a new terminal window, navigate to the project root and run:
+- **Development variant:**
+
   ```bash
   yarn ios
+  or
+  yarn ios-dev
+  ```
+
+- **Production variant:**
+  ```bash
+  yarn ios-prod
   ```
 
 **Important**
 
-- in both cases it should prompt you to open a new terminal tab to run Metro
-  bundler and that tab should be kept open while runing the app.
-- if you don't have a emulator open it will try to open the first one available
+- The Metro bundler should automatically launch in a separate terminal window
+  while running the `yarn ios` or `yarn android` scripts. You can also launch
+  Metro manually through the `yarn start` command if needed
+- If you don't have an iOS simulator or Android emulator booted it will try to
+  boot the most recent one available while running the `yarn ios` or
+  `yarn android` scripts
+- The development variant will have "Dev" in the app name to distinguish it from
+  production
 
 This should get you up and running with the Freighter Mobile app in your
 development environment. If you encounter any issues, please refer to the React
