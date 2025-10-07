@@ -115,8 +115,6 @@ const getTextAreaStyles = (fieldSize: TextAreaSize): TextStyle => {
   };
 };
 
-const getFieldNoteWrapperClasses = (): string => "mt-2";
-
 const getLabelProps = (fieldSize: TextAreaSize) => ({
   [LABEL_SIZE_MAP[fieldSize]]: true,
 });
@@ -235,11 +233,6 @@ export const Textarea: React.FC<TextareaProps> = ({
     [fieldSize],
   );
 
-  const fieldNoteWrapperClasses = useMemo(
-    () => getFieldNoteWrapperClasses(),
-    [],
-  );
-
   const labelProps = useMemo(() => getLabelProps(fieldSize), [fieldSize]);
 
   return (
@@ -274,7 +267,7 @@ export const Textarea: React.FC<TextareaProps> = ({
       </View>
 
       {note && (
-        <View className={fieldNoteWrapperClasses}>
+        <View className="mt-2">
           {typeof note === "string" ? (
             <Text sm color={THEME.colors.text.secondary}>
               {note}
@@ -285,14 +278,14 @@ export const Textarea: React.FC<TextareaProps> = ({
         </View>
       )}
       {error && (
-        <View className={fieldNoteWrapperClasses}>
+        <View className="mt-2">
           <Text sm color={THEME.colors.status.error}>
             {error}
           </Text>
         </View>
       )}
       {success && (
-        <View className={fieldNoteWrapperClasses}>
+        <View className="mt-2">
           <Text sm color={THEME.colors.status.success}>
             {success}
           </Text>
