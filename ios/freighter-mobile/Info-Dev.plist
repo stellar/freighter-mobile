@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>en</string>
 		<key>CFBundleDisplayName</key>
-		<string>Freighter</string>
+		<string>Freighter Dev</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -26,10 +26,10 @@
 				<key>CFBundleTypeRole</key>
 				<string>Viewer</string>
 				<key>CFBundleURLName</key>
-				<string>org.stellar.freighterwallet</string>
+				<string>org.stellar.freighterdev</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>freighterwallet</string>
+					<string>freighterdev</string>
 				</array>
 			</dict>
 		</array>
@@ -43,9 +43,9 @@
 			<false />
 		</dict>
 		<key>NSCameraUsageDescription</key>
-		<string>Freighter needs access to your Camera to scan QR codes.</string>
+		<string>Freighter Dev needs access to your Camera to scan QR codes.</string>
 		<key>NSFaceIDUsageDescription</key>
-		<string>Freighter needs access to your Face ID to securely log in and approve transactions.</string>
+		<string>Freighter Dev needs access to your Face ID to securely log in and approve transactions.</string>
 		<key>UIAppFonts</key>
 		<array>
 			<string>Inter-Bold.ttf</string>
@@ -68,10 +68,11 @@
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false />
 		<key>NSUserTrackingUsageDescription</key>
-		<string>Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
+		<string>Allow Freighter Dev to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
 	</dict>
 </plist>
+
