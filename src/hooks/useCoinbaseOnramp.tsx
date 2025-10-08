@@ -35,7 +35,7 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       body: JSON.stringify({ address: publicKey }),
     };
 
-    const url = `${EnvConfig.FREIGHTER_BACKEND_URL}/onramp/token`;
+    const url = `${EnvConfig.FREIGHTER_BACKEND_V1_URL}/onramp/token`;
     const response = await fetch(url, options);
     const { data } = (await response.json()) as {
       data: { token: string; error: string };

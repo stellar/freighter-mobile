@@ -6,6 +6,7 @@ import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ChangeNetworkBottomSheetContent from "components/screens/ChangeNetworkScreen/ChangeNetworkBottomSheet";
 import Icon from "components/sds/Icon";
+import SegmentedControl from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import {
   mapNetworkToNetworkDetails,
@@ -14,6 +15,8 @@ import {
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { BackendEnvironment, useBackendConfigStore } from "ducks/backendConfig";
+import { isDev } from "helpers/isEnv";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useNetworkColors from "hooks/useNetworkColors";
@@ -37,6 +40,20 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
     () => mapNetworkToNetworkDetails(activeNetwork),
     [activeNetwork],
   );
+
+  // Backend configuration (only for dev builds)
+  const {
+    backendV1Environment,
+    backendV2Environment,
+    setBackendV1Environment,
+    setBackendV2Environment,
+  } = useBackendConfigStore();
+
+  const backendEnvironmentOptions = [
+    { label: "PROD", value: BackendEnvironment.PROD },
+    { label: "STG", value: BackendEnvironment.STG },
+    { label: "DEV", value: BackendEnvironment.DEV },
+  ];
 
   const networkSettingsListItems = [
     {
@@ -114,6 +131,47 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
           </Text>
           <List className="mt-5" items={networkSettingsListItems} />
         </View>
+
+        {/* Backend configuration - only visible in dev builds */}
+        {isDev && (
+          <View className="flex flex-col gap-1 p-4 rounded-[12px] bg-background-secondary">
+            <View className="flex flex-row items-center gap-2 mb-2">
+              <Icon.AlertTriangle themeColor="amber" />
+              <Text sm semiBold color={themeColors.status.warning}>
+                Developer Settings
+              </Text>
+            </View>
+            <Text xs color={themeColors.status.warning}>
+              Backend changes will take effect after restarting the app.
+            </Text>
+
+            <View className="flex flex-col gap-2 mt-5">
+              <Text secondary sm medium>
+                Backend V1 Environment
+              </Text>
+              <SegmentedControl
+                options={backendEnvironmentOptions}
+                selectedValue={backendV1Environment}
+                onValueChange={(value) =>
+                  setBackendV1Environment(value as BackendEnvironment)
+                }
+              />
+            </View>
+
+            <View className="flex flex-col gap-2 mt-3">
+              <Text secondary sm medium>
+                Backend V2 Environment
+              </Text>
+              <SegmentedControl
+                options={backendEnvironmentOptions}
+                selectedValue={backendV2Environment}
+                onValueChange={(value) =>
+                  setBackendV2Environment(value as BackendEnvironment)
+                }
+              />
+            </View>
+          </View>
+        )}
       </View>
     </BaseLayout>
   );
