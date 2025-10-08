@@ -32,6 +32,6 @@
 
 - [ ] This is not a breaking change.
 - [ ] This PR updates existing JSDocs when applicable.
-- [ ] This PR adds JSDocs to new funcionalities.
+- [ ] This PR adds JSDocs to new functionalities.
 - [ ] I've checked with the product team if we should add metrics to these changes.
 - [ ] I've shared relevant before and after screenshots/videos highlighting these changes with the design team and they've approved the changes.
