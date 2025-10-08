@@ -7,6 +7,7 @@ import {
   TransactionBuilder,
   Address,
   nativeToScVal,
+  XdrLargeInt,
 } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
@@ -49,6 +50,17 @@ export interface BuildSwapTransactionParams {
   transactionTimeout?: number;
   network?: NETWORKS;
   senderAddress?: string;
+}
+
+export interface BuildSendCollectibleParams {
+  collectionAddress: string;
+  recipientAddress: string;
+  transactionMemo?: string;
+  transactionFee: string;
+  transactionTimeout: number;
+  tokenId: string;
+  network: NETWORKS;
+  senderAddress: string;
 }
 
 export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
@@ -162,6 +174,29 @@ export const validateSwapTransactionParams = (params: {
   // Validate different tokens
   if (sourceBalance.id === destinationBalance.id) {
     return t("transaction.errors.cannotSwapSameToken");
+  }
+
+  return null;
+};
+
+/**
+ * Validates send collectible transaction parameters
+ * Returns an error message if any validation fails
+ */
+export const validateSendCollectibleTransactionParams = (params: {
+  fee: string;
+  timeout: number;
+}): string | null => {
+  const { fee, timeout } = params;
+
+  // Validate fee is positive
+  if (Number(fee) <= 0) {
+    return t("transaction.errors.feeRequired");
+  }
+
+  // Validate timeout
+  if (timeout <= 0) {
+    return t("transaction.errors.timeoutRequired");
   }
 
   return null;
@@ -474,6 +509,67 @@ export const buildSwapTransaction = async (
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     throw new Error(`Failed to build swap transaction: ${errorMessage}`);
+  }
+};
+
+interface BuildSendCollectibleTransactionResult {
+  tx: Transaction;
+  xdr: string;
+}
+
+/**
+ * Builds a collectible transfer transaction
+ */
+export const buildSendCollectibleTransaction = async (
+  params: BuildSendCollectibleParams,
+): Promise<BuildSendCollectibleTransactionResult> => {
+  const {
+    collectionAddress,
+    transactionFee,
+    transactionTimeout,
+    tokenId,
+    network,
+    recipientAddress,
+    senderAddress,
+  } = params;
+
+  try {
+    const validationError = validateSendCollectibleTransactionParams({
+      fee: transactionFee,
+      timeout: transactionTimeout,
+    });
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const networkDetails = mapNetworkToNetworkDetails(network);
+    const server = stellarSdkServer(networkDetails.networkUrl);
+    const sourceAccount = await server.loadAccount(senderAddress);
+    const fee = xlmToStroop(transactionFee).toString();
+    const contract = new Contract(collectionAddress);
+
+    const txBuilder = new TransactionBuilder(sourceAccount, {
+      fee,
+      timebounds: await server.fetchTimebounds(transactionTimeout),
+      networkPassphrase: networkDetails.networkPassphrase,
+    });
+
+    const transferParams = [
+      new Address(senderAddress).toScVal(), // from
+      new Address(recipientAddress).toScVal(), // to
+      new XdrLargeInt("u64", tokenId).toU64(), // token_id
+    ];
+    txBuilder.addOperation(contract.call("transfer", ...transferParams));
+
+    const transaction = txBuilder.build();
+    return { tx: transaction, xdr: transaction.toXDR() };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    throw new Error(
+      `Failed to build send collectible transaction: ${errorMessage}`,
+    );
   }
 };
 
