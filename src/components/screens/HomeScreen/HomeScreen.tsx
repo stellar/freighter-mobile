@@ -298,7 +298,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 )}
                 <IconButton
                   Icon={Icon.Copy01}
-                  title={t("home.copy")}
+                  title={t("common.copy")}
                   onPress={() => handleCopyAddress(account?.publicKey)}
                 />
               </View>
