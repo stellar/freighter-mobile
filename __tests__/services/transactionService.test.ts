@@ -48,7 +48,7 @@ describe("buildSendCollectibleTransaction", () => {
     transactionMemo: undefined,
     transactionFee: "0.001",
     transactionTimeout: 300,
-    tokenId: "12345",
+    tokenId: 12345,
     network: NETWORKS.TESTNET,
     senderAddress: mockSenderKeypair.publicKey(),
   };
@@ -144,10 +144,10 @@ describe("buildSendCollectibleTransaction", () => {
     const toAddress = Address.fromScVal(args[1]);
     expect(toAddress.toString()).toBe(mockRecipientKeypair.publicKey());
 
-    // Third argument should be token_id as u64
+    // Third argument should be token_id as u32
     const tokenIdScVal = args[2];
-    expect(tokenIdScVal.switch().name).toBe("scvU64");
-    const tokenIdValue = tokenIdScVal.u64();
+    expect(tokenIdScVal.switch().name).toBe("scvU32");
+    const tokenIdValue = tokenIdScVal.u32();
     expect(tokenIdValue.toString()).toBe("12345");
   });
 
@@ -224,26 +224,6 @@ describe("buildSendCollectibleTransaction", () => {
     await expect(
       buildSendCollectibleTransaction(negativeFeeParams),
     ).rejects.toThrow();
-  });
-
-  it("should build transaction with large token ID", async () => {
-    const largeTokenId = "18446744073709551615";
-    const params = { ...baseParams, tokenId: largeTokenId };
-
-    const result = await buildSendCollectibleTransaction(params);
-
-    const parsedTx = TransactionBuilder.fromXDR(
-      result.xdr,
-      Networks.TESTNET,
-    ) as any;
-
-    const operation = parsedTx.operations[0];
-    const hostFunction = operation.func;
-    const invokeContractArgs = hostFunction.invokeContract();
-    const args = invokeContractArgs.args();
-
-    const tokenIdValue = args[2].u64();
-    expect(tokenIdValue.toString()).toBe(largeTokenId);
   });
 
   it("should create transaction with correct sequence number", async () => {

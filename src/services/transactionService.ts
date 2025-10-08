@@ -7,7 +7,7 @@ import {
   TransactionBuilder,
   Address,
   nativeToScVal,
-  XdrLargeInt,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
@@ -58,7 +58,7 @@ export interface BuildSendCollectibleParams {
   transactionMemo?: string;
   transactionFee: string;
   transactionTimeout: number;
-  tokenId: string;
+  tokenId: number;
   network: NETWORKS;
   senderAddress: string;
 }
@@ -558,7 +558,7 @@ export const buildSendCollectibleTransaction = async (
     const transferParams = [
       new Address(senderAddress).toScVal(), // from
       new Address(recipientAddress).toScVal(), // to
-      new XdrLargeInt("u64", tokenId).toU64(), // token_id
+      xdr.ScVal.scvU32(tokenId), // token_id
     ];
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
 
