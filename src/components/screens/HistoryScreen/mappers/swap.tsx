@@ -15,7 +15,7 @@ import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenDisplayAmount } from "helpers/formatAmount";
 import { getIconUrl } from "helpers/getIconUrl";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -53,7 +53,7 @@ export const mapSwapHistoryItem = async ({
 
   const srcTokenCode = sourceTokenCode || NATIVE_TOKEN_CODE;
   const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
-  const formattedAmount = `+${formatTokenAmount(amount, destTokenCodeFinal)}`;
+  const formattedAmount = `+${formatTokenDisplayAmount(amount, destTokenCodeFinal)}`;
 
   // Get token icons
   const destIcon =
@@ -164,7 +164,7 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatTokenAmount(
+            {formatTokenDisplayAmount(
               transactionDetails.swapDetails?.sourceAmount ?? "",
               transactionDetails.swapDetails?.sourceTokenCode ?? "",
             )}
@@ -192,7 +192,7 @@ export const SwapTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatTokenAmount(
+            {formatTokenDisplayAmount(
               transactionDetails.swapDetails?.destinationAmount ?? "",
               transactionDetails.swapDetails?.destinationTokenCode ?? "",
             )}

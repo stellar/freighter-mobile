@@ -3,7 +3,7 @@ import { SignTransactionSummaryInterface } from "components/screens/SignTransact
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenDisplayAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -39,7 +39,7 @@ const SignTransactionSummary = ({ summary }: SignTransactionSummaryProps) => {
     {
       title: t("signTransactionDetails.summary.fee"),
       trailingContent: (
-        <Text>{formatTokenAmount(feeXlm, NATIVE_TOKEN_CODE)}</Text>
+        <Text>{formatTokenDisplayAmount(feeXlm, NATIVE_TOKEN_CODE)}</Text>
       ),
       titleColor: themeColors.text.secondary,
     },

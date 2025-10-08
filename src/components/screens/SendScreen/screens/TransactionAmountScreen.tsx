@@ -40,7 +40,10 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatFiatAmount, formatTokenAmount } from "helpers/formatAmount";
+import {
+  formatFiatAmount,
+  formatTokenDisplayAmount,
+} from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -626,7 +629,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
-                  ? formatTokenAmount(tokenAmount, selectedBalance?.tokenCode)
+                  ? formatTokenDisplayAmount(
+                      tokenAmount,
+                      selectedBalance?.tokenCode,
+                    )
                   : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity

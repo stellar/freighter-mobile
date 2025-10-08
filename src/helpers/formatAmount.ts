@@ -120,28 +120,32 @@ const convertToBigNumber = (
  * for displaying token amounts in the UI. Uses react-native-localize for consistent
  * decimal and thousands separators based on device settings.
  *
- * @param {string | BigNumber} amount - The amount to format (string recommended for precision)
+ * The function automatically calculates the number of significant decimal places by
+ * removing trailing zeros, but always shows a minimum of 2 decimal places and a maximum
+ * of 7 decimal places (DEFAULT_DECIMALS) for consistency.
+ *
+ * IMPORTANT: Input should always be in dot notation (e.g., "123.45"), not comma notation.
+ * The output format will depend on the device's locale settings.
+ *
+ * @param {string | BigNumber} amount - The amount to format in dot notation (string recommended for precision)
  * @param {string} [code] - Optional token code to append to the formatted amount
  * @returns {string} Formatted token amount string with optional token code
  *
  * @example
- * // US format (dot decimal, comma thousands)
- * formatTokenAmount("1234.56"); // Returns "1,234.56"
- * formatTokenAmount("1234567.89"); // Returns "1,234,567.89"
- * formatTokenAmount("0.0000012345"); // Returns "0.0000012345"
- * formatTokenAmount("9007199254740992.123456789012345"); // Returns "9,007,199,254,740,992.123456789012345"
- *
- * // European format (comma decimal, dot thousands) - when device locale is set to European
- * formatTokenAmount("1234,56"); // Returns "1.234,56" (based on device settings)
- * formatTokenAmount("1234567,89"); // Returns "1.234.567,89" (with thousands separators)
- * formatTokenAmount("0,0000012345"); // Returns "0,0000012345" (preserves precision)
+ * // Input should always be in dot notation, output format depends on device locale
+ * // Trailing zeros are removed, but minimum 2 decimal places are shown
+ * formatTokenDisplayAmount("1234.56"); // Returns "1,234.56" (US) or "1.234,56" (EU)
+ * formatTokenDisplayAmount("1234.5000"); // Returns "1,234.50" (US) or "1.234,50" (EU) - trailing zeros removed
+ * formatTokenDisplayAmount("1234.0000"); // Returns "1,234.00" (US) or "1.234,00" (EU) - minimum 2 decimal places
+ * formatTokenDisplayAmount("0.0000012345"); // Returns "0.0000012345" (US) or "0,0000012345" (EU) - shows significant digits
+ * formatTokenDisplayAmount("9007199254740992.123456789012345"); // Returns "9,007,199,254,740,992.1234567" (US) or "9.007.199.254.740.992,1234567" (EU) - capped at 7 decimals
  *
  * // BigNumber and token code examples
- * formatTokenAmount(new BigNumber("1234.56789")); // Returns "1,234.56789" (based on device settings)
- * formatTokenAmount("1234.56", "XLM"); // Returns "1,234.56 XLM" (based on device settings)
- * formatTokenAmount("1000000", "USDC"); // Returns "1,000,000.00 USDC" (with token code)
+ * formatTokenDisplayAmount(new BigNumber("1234.56789")); // Returns "1,234.56789" (US) or "1.234,56789" (EU)
+ * formatTokenDisplayAmount("1234.56", "XLM"); // Returns "1,234.56 XLM" (US) or "1.234,56 XLM" (EU)
+ * formatTokenDisplayAmount("1000000", "USDC"); // Returns "1,000,000.00 USDC" (US) or "1.000.000,00 USDC" (EU)
  */
-export const formatTokenAmount = (
+export const formatTokenDisplayAmount = (
   amount: string | BigNumber,
   code?: string,
 ) => {
@@ -164,15 +168,26 @@ export const formatTokenAmount = (
     originalString = bnAmount.toString();
   }
 
-  // Calculate actual decimal places from the original string
-  const decimalPlaces = originalString!.includes(".")
-    ? originalString!.split(".")[1].length
-    : 0;
+  // Calculate significant decimal places (removing trailing zeros)
+  let significantDecimalPlaces = 0;
+  if (originalString!.includes(".")) {
+    const decimalPart = originalString!.split(".")[1];
+    // Remove trailing zeros to get significant decimal places
+    const trimmedDecimal = decimalPart.replace(/0+$/, "");
+    significantDecimalPlaces = trimmedDecimal.length;
+  }
+
+  // Use minimum of 2 decimal places, but cap at DEFAULT_DECIMALS (7)
+  const minDecimalPlaces = 2;
+  const maxDecimalPlaces = Math.min(
+    DEFAULT_DECIMALS,
+    Math.max(minDecimalPlaces, significantDecimalPlaces),
+  );
 
   const formattedAmount = formatNumber(originalString!, {
     useGrouping: true,
-    minimumFractionDigits: 2, // Always show at least 2 decimal places
-    maximumFractionDigits: decimalPlaces > 0 ? decimalPlaces : 2, // Use actual precision, minimum 2
+    minimumFractionDigits: minDecimalPlaces,
+    maximumFractionDigits: maxDecimalPlaces,
   });
 
   // Return the formatted amount with the token code if provided
@@ -186,26 +201,23 @@ export const formatTokenAmount = (
  * thousand separators, and exactly 2 decimal places. Uses react-native-localize
  * for consistent number formatting based on device settings.
  *
- * @param {string | BigNumber} amount - The amount to format (string recommended for precision) as currency
+ * IMPORTANT: Input should always be in dot notation (e.g., "123.45"), not comma notation.
+ * The output format will depend on the device's locale settings.
+ *
+ * @param {string | BigNumber} amount - The amount to format in dot notation (string recommended for precision) as currency
  * @returns {string} Formatted currency string (e.g., "$1,234.56" or "1.234,56 $")
  *
  * @example
- * // US format (dot decimal, comma thousands)
- * formatFiatAmount("1234.56"); // Returns "$1,234.56"
- * formatFiatAmount("1234567.89"); // Returns "$1,234,567.89"
- * formatFiatAmount("0.001"); // Returns "$0.00" (rounded to 2 decimal places)
- * formatFiatAmount("999999999.99"); // Returns "$999,999,999.99"
- *
- * // European format (comma decimal, dot thousands) - when device locale is set to European
- * formatFiatAmount("1234,56"); // Returns "1.234,56 $" (based on device settings)
- * formatFiatAmount("1234567,89"); // Returns "1.234.567,89 $" (with thousands separators)
- * formatFiatAmount("0,001"); // Returns "0,00 $" (rounded to 2 decimal places)
- * formatFiatAmount("999999999,99"); // Returns "999.999.999,99 $" (very large amounts)
+ * // Input should always be in dot notation, output format depends on device locale
+ * formatFiatAmount("1234.56"); // Returns "$1,234.56" (US) or "1.234,56 $" (EU)
+ * formatFiatAmount("1234567.89"); // Returns "$1,234,567.89" (US) or "1.234.567,89 $" (EU)
+ * formatFiatAmount("0.001"); // Returns "$0.00" (US) or "0,00 $" (EU) - rounded to 2 decimal places
+ * formatFiatAmount("999999999.99"); // Returns "$999,999,999.99" (US) or "999.999.999,99 $" (EU)
  *
  * // BigNumber examples
- * formatFiatAmount(new BigNumber("1234.5")); // Returns "$1,234.50" (based on device settings)
- * formatFiatAmount("0.1"); // Returns "$0.10" (based on device settings)
- * formatFiatAmount("1000000"); // Returns "$1,000,000.00" (with thousands separators)
+ * formatFiatAmount(new BigNumber("1234.5")); // Returns "$1,234.50" (US) or "1.234,50 $" (EU)
+ * formatFiatAmount("0.1"); // Returns "$0.10" (US) or "0,10 $" (EU)
+ * formatFiatAmount("1000000"); // Returns "$1,000,000.00" (US) or "1.000.000,00 $" (EU)
  */
 export const formatFiatAmount = (amount: string | BigNumber) => {
   // Convert input to BigNumber for precision
@@ -251,26 +263,23 @@ export const formatFiatAmount = (amount: string | BigNumber) => {
  * Positive numbers are prefixed with a '+' sign, and negative numbers with a '-' sign.
  * Uses react-native-localize for consistent decimal separator formatting.
  *
- * @param {string | BigNumber} [amount] - The amount to format as percentage (string recommended for precision)
+ * IMPORTANT: Input should always be in dot notation (e.g., "1.23"), not comma notation.
+ * The output format will depend on the device's locale settings.
+ *
+ * @param {string | BigNumber} [amount] - The amount to format in dot notation as percentage (string recommended for precision)
  * @returns {string} Formatted percentage string with sign (e.g., "+1.23%" or "-1.23%")
  *
  * @example
- * // US format (dot decimal)
- * formatPercentageAmount("1.23"); // Returns "+1.23%"
- * formatPercentageAmount("1234.56"); // Returns "+1234.56%" (large percentages)
- * formatPercentageAmount("0.1"); // Returns "+0.10%" (always 2 decimal places)
- * formatPercentageAmount("0.001"); // Returns "+0.00%" (rounded to 2 decimal places)
- *
- * // European format (comma decimal) - when device locale is set to European
- * formatPercentageAmount("1,23"); // Returns "+1,23%" (based on device settings)
- * formatPercentageAmount("1234,56"); // Returns "+1234,56%" (large percentages)
- * formatPercentageAmount("0,1"); // Returns "+0,10%" (always 2 decimal places)
- * formatPercentageAmount("0,001"); // Returns "+0,00%" (rounded to 2 decimal places)
+ * // Input should always be in dot notation, output format depends on device locale
+ * formatPercentageAmount("1.23"); // Returns "+1.23%" (US) or "+1,23%" (EU)
+ * formatPercentageAmount("1234.56"); // Returns "+1234.56%" (US) or "+1234,56%" (EU)
+ * formatPercentageAmount("0.1"); // Returns "+0.10%" (US) or "+0,10%" (EU) - always 2 decimal places
+ * formatPercentageAmount("0.001"); // Returns "+0.00%" (US) or "+0,00%" (EU) - rounded to 2 decimal places
  *
  * // BigNumber and edge cases
- * formatPercentageAmount(new BigNumber("-1.23")); // Returns "-1.23%"
- * formatPercentageAmount("0"); // Returns "0.00%"
- * formatPercentageAmount("999.99"); // Returns "+999.99%" (very large percentages)
+ * formatPercentageAmount(new BigNumber("-1.23")); // Returns "-1.23%" (US) or "-1,23%" (EU)
+ * formatPercentageAmount("0"); // Returns "0.00%" (US) or "0,00%" (EU)
+ * formatPercentageAmount("999.99"); // Returns "+999.99%" (US) or "+999,99%" (EU)
  * formatPercentageAmount(); // Returns "--"
  */
 export const formatPercentageAmount = (
@@ -424,28 +433,24 @@ export const parseDisplayNumberToBigNumber = (
  * using react-native-localize. Useful for displaying numeric values like fees, prices,
  * or any decimal numbers in the correct format.
  *
- * @param {string | BigNumber} numericValue - The numeric value to format (e.g., "0.00001", "1.5", "123.456", or BigNumber instance)
+ * IMPORTANT: Input should always be in dot notation (e.g., "123.45"), not comma notation.
+ * The output format will depend on the device's locale settings.
+ *
+ * @param {string | BigNumber} numericValue - The numeric value to format in dot notation (e.g., "0.00001", "1.5", "123.456", or BigNumber instance)
  * @returns {string} Formatted number with display-appropriate decimal separator
  *
  * @example
- * // US format (dot decimal)
- * formatNumberForDisplay("0.00001"); // Returns "0.00001" (based on device settings)
- * formatNumberForDisplay("1.5"); // Returns "1.5" (based on device settings)
- * formatNumberForDisplay("123.456"); // Returns "123.456" (based on device settings)
- * formatNumberForDisplay("1234567.89"); // Returns "1234567.89" (truncated to 7 decimal places)
- * formatNumberForDisplay("0.000000123456789"); // Returns "0.0000001" (truncated to 7 decimal places)
- * formatNumberForDisplay("999999999.123456789"); // Returns "999999999.1234568" (very large numbers)
- *
- * // European format (comma decimal) - when device locale is set to European
- * formatNumberForDisplay("0,00001"); // Returns "0,00001" (based on device settings)
- * formatNumberForDisplay("1,5"); // Returns "1,5" (based on device settings)
- * formatNumberForDisplay("123,456"); // Returns "123,456" (based on device settings)
- * formatNumberForDisplay("1234567,89"); // Returns "1234567,89" (truncated to 7 decimal places)
- * formatNumberForDisplay("0,000000123456789"); // Returns "0,0000001" (truncated to 7 decimal places)
+ * // Input should always be in dot notation, output format depends on device locale
+ * formatNumberForDisplay("0.00001"); // Returns "0.00001" (US) or "0,00001" (EU)
+ * formatNumberForDisplay("1.5"); // Returns "1.5" (US) or "1,5" (EU)
+ * formatNumberForDisplay("123.456"); // Returns "123.456" (US) or "123,456" (EU)
+ * formatNumberForDisplay("1234567.89"); // Returns "1234567.89" (US) or "1234567,89" (EU) - truncated to 7 decimal places
+ * formatNumberForDisplay("0.000000123456789"); // Returns "0.0000001" (US) or "0,0000001" (EU) - truncated to 7 decimal places
+ * formatNumberForDisplay("999999999.123456789"); // Returns "999999999.1234568" (US) or "999999999,1234568" (EU)
  *
  * // BigNumber examples
- * formatNumberForDisplay(new BigNumber("123.456789")); // Returns "123.4568" (BigNumber input)
- * formatNumberForDisplay(new BigNumber("1.5")); // Returns "1.5" (based on device settings)
+ * formatNumberForDisplay(new BigNumber("123.456789")); // Returns "123.4568" (US) or "123,4568" (EU)
+ * formatNumberForDisplay(new BigNumber("1.5")); // Returns "1.5" (US) or "1,5" (EU)
  */
 export const formatNumberForDisplay = (
   numericValue: string | BigNumber,

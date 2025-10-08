@@ -22,10 +22,10 @@ import {
   CustomToken,
 } from "config/types";
 import { isSacContract } from "helpers/balances";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenDisplayAmount } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
-  formatTokenAmount as formatSorobanTokenAmount,
+  formatTokenDisplayAmount as formatSorobanTokenAmount,
   getBalanceByKey,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -163,7 +163,7 @@ const processSorobanMint = async ({
           token.decimals,
         );
 
-        const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenAmount(
+        const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenDisplayAmount(
           formattedTokenAmount,
           code,
         )}`;
@@ -273,7 +273,7 @@ const processSorobanMint = async ({
       Number(decimals),
     );
 
-    const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenAmount(
+    const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenDisplayAmount(
       formattedTokenAmount,
       code,
     )}`;
@@ -369,7 +369,7 @@ const processSorobanTransfer = async ({
       sorobanAttributes.from !== publicKey;
 
     const paymentDifference = isRecipient ? "+" : "-";
-    const formattedAmount = `${paymentDifference}${formatTokenAmount(
+    const formattedAmount = `${paymentDifference}${formatTokenDisplayAmount(
       formattedTokenAmount,
       code,
     )}`;
@@ -603,7 +603,7 @@ export const SorobanTransferTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatTokenAmount(tokenAmount, contractSymbol)}
+            {formatTokenDisplayAmount(tokenAmount, contractSymbol)}
           </Text>
         </View>
         {transactionDetails.IconComponent}

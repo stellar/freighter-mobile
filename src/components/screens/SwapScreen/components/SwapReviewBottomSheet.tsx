@@ -24,7 +24,10 @@ import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenDisplayAmount,
+  formatFiatAmount,
+} from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -210,7 +213,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(sourceAmount, sourceTokenSymbol)}
+                {formatTokenDisplayAmount(sourceAmount, sourceTokenSymbol)}
               </Text>
               <Text md medium secondary>
                 {sourceTokenFiatAmount}
@@ -241,7 +244,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(destinationAmount, destinationTokenSymbol)}
+                {formatTokenDisplayAmount(
+                  destinationAmount,
+                  destinationTokenSymbol,
+                )}
               </Text>
               <Text md medium secondary>
                 {destinationTokenFiatAmount}

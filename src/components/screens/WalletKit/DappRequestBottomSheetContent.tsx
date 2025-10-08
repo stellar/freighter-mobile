@@ -13,7 +13,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenDisplayAmount } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -90,7 +90,7 @@ const DappRequestBottomSheetContent: React.FC<
   const formatFeeAmount = (feeXlm?: string | number) => {
     if (!feeXlm) return "--";
 
-    return formatTokenAmount(String(feeXlm), NATIVE_TOKEN_CODE);
+    return formatTokenDisplayAmount(String(feeXlm), NATIVE_TOKEN_CODE);
   };
 
   const accountDetailList = useMemo(

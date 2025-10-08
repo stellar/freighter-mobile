@@ -43,7 +43,7 @@ jest.mock("hooks/useColors", () => ({
 
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
-  formatTokenAmount: jest.fn((amount) => amount.toString()),
+  formatTokenDisplayAmount: jest.fn((amount) => amount.toString()),
   formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";
@@ -225,7 +225,7 @@ describe("BalanceRow", () => {
         UNSAFE_getByType(Icon.AlertCircle);
       } catch (error: unknown) {
         expect((error as Error).message).toBe(
-          "No instances found with node type: \"Unknown\"",
+          'No instances found with node type: "Unknown"',
         );
       }
     });

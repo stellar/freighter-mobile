@@ -22,7 +22,10 @@ import {
   VISUAL_DELAY_MS,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenDisplayAmount,
+  formatFiatAmount,
+} from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -117,7 +120,9 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.startingBalance"),
           trailingContent: (
-            <Text>{formatTokenAmount(startingBalance, NATIVE_TOKEN_CODE)}</Text>
+            <Text>
+              {formatTokenDisplayAmount(startingBalance, NATIVE_TOKEN_CODE)}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -146,7 +151,9 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
+          trailingContent: (
+            <Text>{formatTokenDisplayAmount(amount, asset.code)}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -166,7 +173,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.sendMax"),
           trailingContent: (
-            <Text>{formatTokenAmount(sendMax, sendAsset.code)}</Text>
+            <Text>{formatTokenDisplayAmount(sendMax, sendAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -188,7 +195,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.destinationAmount"),
           trailingContent: (
-            <Text>{formatTokenAmount(destAmount, destAsset.code)}</Text>
+            <Text>{formatTokenDisplayAmount(destAmount, destAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -215,7 +222,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.sendAmount"),
           trailingContent: (
-            <Text>{formatTokenAmount(sendAmount, sendAsset.code)}</Text>
+            <Text>{formatTokenDisplayAmount(sendAmount, sendAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -237,7 +244,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.destinationMinimum"),
           trailingContent: (
-            <Text>{formatTokenAmount(destMin, destAsset.code)}</Text>
+            <Text>{formatTokenDisplayAmount(destMin, destAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -263,7 +270,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatTokenAmount(amount, buying.code)}</Text>
+            <Text>{formatTokenDisplayAmount(amount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -303,7 +310,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatTokenAmount(amount, buying.code)}</Text>
+            <Text>{formatTokenDisplayAmount(amount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -333,7 +340,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         {
           title: t("signTransactionDetails.operations.buyAmount"),
           trailingContent: (
-            <Text>{formatTokenAmount(buyAmount, buying.code)}</Text>
+            <Text>{formatTokenDisplayAmount(buyAmount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -589,7 +596,9 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
+          trailingContent: (
+            <Text>{formatTokenDisplayAmount(amount, asset.code)}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -649,7 +658,9 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{formatTokenAmount(amount, asset.code)}</Text>,
+          trailingContent: (
+            <Text>{formatTokenDisplayAmount(amount, asset.code)}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
