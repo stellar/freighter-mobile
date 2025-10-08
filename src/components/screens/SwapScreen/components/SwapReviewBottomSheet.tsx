@@ -2,6 +2,7 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
+import { ReviewFooter } from "components/ReviewFooter";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -12,18 +13,14 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
-import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
-import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -32,7 +29,6 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   assessTokenSecurity,
   assessTransactionSecurity,
@@ -341,104 +337,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   );
 };
 
-type SwapReviewFooterProps = {
-  isMalicious: boolean;
-  isSuspicious: boolean;
-  onCancel?: () => void;
-  onConfirm?: () => void;
-  isBuilding?: boolean;
-  onSettingsPress?: () => void;
-  transactionXDR?: string;
-};
-
-export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
-  (props) => {
-    const { t } = useAppTranslation();
-    const insets = useSafeAreaInsets();
-
-    const {
-      isMalicious,
-      isSuspicious,
-      onCancel,
-      onConfirm,
-      isBuilding = false,
-      transactionXDR,
-      onSettingsPress,
-    } = props;
-
-    const isDisabled = !transactionXDR || isBuilding;
-
-    const renderButtons = () => {
-      const cancelButton = (
-        <View
-          className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
-        >
-          <Button
-            tertiary={isSuspicious}
-            destructive={isMalicious}
-            secondary={!isMalicious && !isSuspicious}
-            xl
-            isFullWidth
-            onPress={onCancel}
-          >
-            {t("common.cancel")}
-          </Button>
-        </View>
-      );
-
-      if (isMalicious || isSuspicious) {
-        return (
-          <>
-            {cancelButton}
-            <TextButton
-              text={t("transactionAmountScreen.confirmAnyway")}
-              onPress={onCancel}
-              variant={isMalicious ? "error" : "secondary"}
-            />
-          </>
-        );
-      }
-
-      return (
-        <>
-          {cancelButton}
-          <View className="flex-1">
-            <Button
-              biometric
-              onPress={onConfirm}
-              tertiary
-              xl
-              disabled={isDisabled}
-            >
-              {t("common.confirm")}
-            </Button>
-          </View>
-        </>
-      );
-    };
-
-    const showSettingsButton = onSettingsPress && !isMalicious && !isSuspicious;
-
-    return (
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6`}
-        style={{
-          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
-          gap: pxValue(12),
-        }}
-      >
-        {showSettingsButton && (
-          <TouchableOpacity
-            onPress={onSettingsPress}
-            className="w-[50px] h-[50px] rounded-full border border-gray-6 items-center justify-center"
-          >
-            <Icon.Settings04 size={24} themeColor="gray" />
-          </TouchableOpacity>
-        )}
-        {renderButtons()}
-      </View>
-    );
-  },
-);
+// Re-export the shared ReviewFooter as SwapReviewFooter for backward compatibility
+export const SwapReviewFooter = ReviewFooter;
 
 export default SwapReviewBottomSheet;
