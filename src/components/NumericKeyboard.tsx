@@ -3,6 +3,7 @@ import { Display } from "components/sds/Typography";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
+import { getNumberFormatSettings } from "react-native-localize";
 
 interface NumericKeyboardProps {
   onPress: (value: string) => void;
@@ -10,6 +11,7 @@ interface NumericKeyboardProps {
 
 const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const { themeColors } = useColors();
+  const { decimalSeparator } = getNumberFormatSettings();
 
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
@@ -46,7 +48,7 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
         {renderButton("9")}
       </View>
       <View className="flex-row gap-[12px] max-xs:gap-[6px]">
-        {renderButton(".")}
+        {renderButton(decimalSeparator)}
         {renderButton("0")}
         {renderButton(
           <Icon.Delete size={32} color={themeColors.text.primary} />,

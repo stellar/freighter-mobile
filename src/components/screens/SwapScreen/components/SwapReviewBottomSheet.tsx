@@ -24,7 +24,7 @@ import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -210,7 +210,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(sourceAmount, sourceTokenSymbol)}
+                {formatTokenForDisplay(sourceAmount, sourceTokenSymbol)}
               </Text>
               <Text md medium secondary>
                 {sourceTokenFiatAmount}
@@ -241,7 +241,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             </View>
             <View className="flex-1">
               <Text xl medium>
-                {formatTokenAmount(destinationAmount, destinationTokenSymbol)}
+                {formatTokenForDisplay(
+                  destinationAmount,
+                  destinationTokenSymbol,
+                )}
               </Text>
               <Text md medium secondary>
                 {destinationTokenFiatAmount}
@@ -427,7 +430,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         {showSettingsButton && (
           <TouchableOpacity
             onPress={onSettingsPress}
-            className="w-[46px] h-[46px] rounded-full border border-gray-6 items-center justify-center"
+            className="w-[50px] h-[50px] rounded-full border border-gray-6 items-center justify-center"
           >
             <Icon.Settings04 size={24} themeColor="gray" />
           </TouchableOpacity>

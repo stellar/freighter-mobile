@@ -16,7 +16,7 @@ import { I18nextProvider } from "react-i18next";
 type RenderWithProviderType = (component: React.ReactElement) => RenderAPI;
 
 // Mock the OS language detection for consistent test behavior
-jest.mock("helpers/getOsLanguage");
+jest.mock("helpers/localeUtils");
 
 /**
  * Renders a React component with all necessary providers for testing

@@ -11,6 +11,13 @@ jest.mock("@react-navigation/native", () => ({
   }),
 }));
 
+// Mock the OS locale detection for consistent test behavior
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  getDeviceLocale: jest.fn().mockReturnValue("en-US"),
+  isSupportedLocale: jest.fn().mockReturnValue(true),
+}));
+
 // Define a basic type for our test data
 interface OperationItem {
   id: string;

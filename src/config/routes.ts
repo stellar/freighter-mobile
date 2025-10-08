@@ -165,28 +165,16 @@ export type AuthStackParamList = {
     isImporting?: boolean;
   };
   [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
-    password: string;
     isImporting?: boolean;
   };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: {
-    password: string;
-  };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: {
-    password: string;
-  };
-  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
-    password: string;
-  };
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
-    password?: string;
-    mnemonicPhrase?: string;
     source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
-    password: string;
-    recoveryPhrase: string;
-  };
+  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {
@@ -211,9 +199,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.ABOUT_SCREEN]: undefined;
   [SETTINGS_ROUTES.SECURITY_SCREEN]: undefined;
   [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]: undefined;
-  [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
-    recoveryPhrase: string;
-  };
+  [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
 };
 

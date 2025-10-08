@@ -15,7 +15,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -54,7 +54,7 @@ export const mapPaymentHistoryItem = ({
 
   const isRecipient = to === publicKey && from !== publicKey;
   const paymentDifference = isRecipient ? "+" : "-";
-  const formattedAmount = `${paymentDifference}${formatTokenAmount(
+  const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),
     destTokenCode,
   )}`;
@@ -127,7 +127,7 @@ export const PaymentTransactionDetailsContent: React.FC<{
       <View className="flex-row justify-between items-center">
         <View>
           <Text xl primary medium numberOfLines={1}>
-            {formatTokenAmount(
+            {formatTokenForDisplay(
               transactionDetails.paymentDetails?.amount ?? "",
               transactionDetails.paymentDetails?.tokenCode ?? "",
             )}

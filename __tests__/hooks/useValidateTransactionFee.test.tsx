@@ -3,6 +3,13 @@ import BigNumber from "bignumber.js";
 import { MIN_TRANSACTION_FEE } from "config/constants";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 
+// Mock the OS locale detection for consistent test behavior
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  getDeviceLocale: jest.fn().mockReturnValue("en-US"),
+  isSupportedLocale: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: { min?: string }) => {
     const translations: Record<string, string> = {

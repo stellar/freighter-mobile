@@ -22,11 +22,19 @@ type FeatureFlags = Omit<
   "fetchFeatureFlags" | "initFetchFeatureFlagsPoll"
 >;
 
-const INITIAL_REMOTE_CONFIG_STATE = {
-  swap_enabled: isAndroid,
-  discover_enabled: isAndroid,
-  onramp_enabled: isAndroid,
-};
+// While developing locally we don't set the Amplitude API keys which prevents
+// us from fetching feature flags so let's set all "true" by default in __DEV__
+const INITIAL_REMOTE_CONFIG_STATE = __DEV__
+  ? {
+      swap_enabled: true,
+      discover_enabled: true,
+      onramp_enabled: true,
+    }
+  : {
+      swap_enabled: isAndroid,
+      discover_enabled: isAndroid,
+      onramp_enabled: isAndroid,
+    };
 
 let featureFlagsPollInterval: NodeJS.Timeout | null = null;
 let isPollingStarted = false;

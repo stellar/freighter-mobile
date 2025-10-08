@@ -34,15 +34,45 @@ let experimentClient: ReturnType<
   typeof Experiment.initializeWithAmplitudeAnalytics
 > | null = null;
 
+/**
+ * Sets persistent user properties in Amplitude.
+ * These are attributes that don't change frequently (e.g. "Bundle Id")
+ * Other attributes like "Platform", "OS" and "Version" appear to be
+ * automatically assigned by Amplitude.
+ */
+const setAmplitudeUserProperties = (): void => {
+  try {
+    const identify = new amplitude.Identify();
+
+    // Let's set bundle id as a user property so we could easily
+    // filter mobile Prod and Dev users in Amplitude.
+    identify.set("Bundle Id", getBundleId());
+
+    amplitude.identify(identify);
+
+    logger.debug(DEBUG_CONFIG.LOG_PREFIX, "User properties set in Amplitude");
+  } catch (error) {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to set Amplitude user properties",
+      error,
+    );
+  }
+};
+
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
   if (!AMPLITUDE_API_KEY) {
-    logger.error(
-      DEBUG_CONFIG.LOG_PREFIX,
-      "missing amplitude config error",
-      "Missing AMPLITUDE_API_KEY in environment",
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.error(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "missing amplitude config error",
+        "Missing AMPLITUDE_API_KEY in environment",
+      );
+    }
 
     return;
   }
@@ -70,6 +100,9 @@ export const initAnalytics = (): void => {
         "Experiment deployment key missing, feature flags will use defaults",
       );
     }
+
+    // Set user properties that don't change
+    setAmplitudeUserProperties();
 
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
@@ -211,10 +244,14 @@ const dispatchUnthrottled = (
   }
 
   if (!AMPLITUDE_API_KEY) {
-    logger.debug(
-      DEBUG_CONFIG.LOG_PREFIX,
-      `Skipping event due to missing API key: ${event}`,
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        `Skipping event due to missing API key: ${event}`,
+      );
+    }
 
     return;
   }

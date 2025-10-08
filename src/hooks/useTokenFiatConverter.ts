@@ -1,6 +1,10 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import {
+  formatBigNumberForDisplay,
+  parseDisplayNumber,
+} from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
 
@@ -9,11 +13,12 @@ interface UseTokenFiatConverterProps {
 }
 
 interface UseTokenFiatConverterResult {
-  tokenAmount: string;
+  tokenAmount: string; // Internal value (dot notation)
+  tokenAmountDisplay: string; // Display value (locale-formatted)
   fiatAmount: string;
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
-  handleAmountChange: (key: string) => void;
+  handleDisplayAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
 }
@@ -32,6 +37,7 @@ export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
+  const [tokenAmountDisplay, setTokenAmountDisplay] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
 
@@ -40,6 +46,16 @@ export const useTokenFiatConverter = ({
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
+
+  // Update display value when internal value changes
+  useEffect(() => {
+    setTokenAmountDisplay(
+      formatBigNumberForDisplay(new BigNumber(tokenAmount), {
+        decimalPlaces: DEFAULT_DECIMALS,
+        useGrouping: false,
+      }),
+    );
+  }, [tokenAmount]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {
@@ -70,24 +86,38 @@ export const useTokenFiatConverter = ({
   }, [fiatAmount, tokenPrice, showFiatAmount]);
 
   /**
-   * Handles numeric input and deletion
+   * Handles numeric input and deletion for display-formatted values
    *
    * @param {string} key - The key pressed (number or empty string for delete)
    */
-  const handleAmountChange = (key: string) => {
+  const handleDisplayAmountChange = (key: string) => {
     if (showFiatAmount) {
-      setFiatAmount((prev) => formatNumericInput(prev, key, FIAT_DECIMALS));
+      const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
+      // Update display value immediately to preserve formatting
+
+      setFiatAmount(parseDisplayNumber(newAmount, FIAT_DECIMALS));
     } else {
-      setTokenAmount((prev) => formatNumericInput(prev, key, DEFAULT_DECIMALS));
+      const newAmount = formatNumericInput(
+        tokenAmountDisplay,
+        key,
+        DEFAULT_DECIMALS,
+      );
+      // Update display value immediately to preserve formatting
+      setTokenAmountDisplay(newAmount);
+      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
+      setTokenAmount(internalAmount);
     }
+
+    // Reset typing flag after a short delay
   };
 
   return {
     tokenAmount,
+    tokenAmountDisplay,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
-    handleAmountChange,
+    handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
   };

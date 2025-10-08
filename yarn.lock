@@ -8976,6 +8976,7 @@ __metadata:
     react-native-ios-utilities: "npm:5.1.2"
     react-native-keychain: "npm:^10.0.0"
     react-native-level-fs: "npm:^3.0.0"
+    react-native-localize: "npm:^3.5.2"
     react-native-permissions: "npm:^5.4.2"
     react-native-qrcode-svg: "npm:^6.3.15"
     react-native-randombytes: "npm:^3.6.1"
@@ -14041,6 +14042,23 @@ __metadata:
   peerDependencies:
     asyncstorage-down: ">=3.0.0 <5.0.0"
   checksum: 10c0/2c05a33d406f12fb7f8e47c7bbe37aab4d72d20d3d3fd92d7d205d70bbfc3c0c4c5ea4692c2baf9d72b0db232e722bac09c0fdf695119be19ebe1e8b6c894c1c
+  languageName: node
+  linkType: hard
+
+"react-native-localize@npm:^3.5.2":
+  version: 3.5.2
+  resolution: "react-native-localize@npm:3.5.2"
+  peerDependencies:
+    "@expo/config-plugins": ^9.0.0 || ^10.0.0
+    react: "*"
+    react-native: "*"
+    react-native-macos: "*"
+  peerDependenciesMeta:
+    "@expo/config-plugins":
+      optional: true
+    react-native-macos:
+      optional: true
+  checksum: 10c0/dc87a13cc0681eb5a524190edcbe589fdadec02cd94db7c86dbf6c03d18ece0333adee439b1419b1c01e9a73a2b0ee2fd37b7f881c0008b7770ccd9919ff32b6
   languageName: node
   linkType: hard
 

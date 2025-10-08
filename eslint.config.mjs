@@ -122,6 +122,7 @@ export default [
           props: true,
         },
       ],
+      "no-unreachable": "error",
 
       "translations/missing-translations": "error",
     },

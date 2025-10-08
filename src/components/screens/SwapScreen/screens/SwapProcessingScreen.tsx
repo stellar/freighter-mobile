@@ -13,7 +13,7 @@ import { logger } from "config/logger";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, {
@@ -202,7 +202,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               <View className="items-center">
                 <View className="flex-column flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatTokenAmount(
+                    {formatTokenForDisplay(
                       displayData.sourceAmount,
                       displayData.sourceToken.code,
                     )}
@@ -212,7 +212,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
                   </Text>
                   {shouldShowDestinationAmount ? (
                     <Text xl medium primary>
-                      {formatTokenAmount(
+                      {formatTokenForDisplay(
                         displayData.destinationAmount,
                         displayData.destinationToken.code,
                       )}

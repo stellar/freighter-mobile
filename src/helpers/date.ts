@@ -1,9 +1,12 @@
+import { getDeviceLocale } from "helpers/localeUtils";
+
 // Note: January has index 0, and December has index 11
 export const getMonthLabel = (monthIndex: number, locale?: string) => {
   const date = new Date(2000, monthIndex, 1); // 2000-{month}-01
-  // We can change the localization here once Freighter starts supporting
-  // languages other than 'en-us'
-  const monthLabel = date.toLocaleString(locale ?? "en-us", { month: "long" });
+  // Use current locale for month labels
+  const monthLabel = date.toLocaleString(locale ?? getDeviceLocale(), {
+    month: "long",
+  });
   return monthLabel;
 };
 
@@ -18,7 +21,7 @@ export const formatDate = ({
 }) => {
   const dateObj = new Date(date);
 
-  return new Intl.DateTimeFormat(locale ?? "en-us", {
+  return new Intl.DateTimeFormat(locale ?? getDeviceLocale(), {
     dateStyle: "medium",
     ...(includeTime && {
       timeStyle: "short",
@@ -47,21 +50,23 @@ export const formatTransactionDate = (
 
   if (!includeTime) {
     // Simple format for history lists: "Dec 13"
-    return dateObj.toDateString().split(" ").slice(1, 3).join(" ");
+    return dateObj.toLocaleDateString(getDeviceLocale(), {
+      month: "short",
+      day: "numeric",
+    });
   }
 
   // Comprehensive format for transaction details: "Dec 13, 2023 · 2:30pm"
-  const formattedDate = dateObj.toLocaleDateString("en-US", {
+  const formattedDate = dateObj.toLocaleDateString(getDeviceLocale(), {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
   const formattedTime = dateObj
-    .toLocaleTimeString("en-US", {
+    .toLocaleTimeString(getDeviceLocale(), {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
     })
     .toLowerCase();
 

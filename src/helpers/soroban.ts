@@ -252,7 +252,7 @@ export const getBalanceByKey = (
 };
 
 // Adopted from https://github.com/ethers-io/ethers.js/blob/master/packages/bignumber/src.ts/fixednumber.ts#L27
-export const formatTokenAmount = (amount: BigNumber, decimals: number) => {
+export const formatTokenForDisplay = (amount: BigNumber, decimals: number) => {
   let formatted = amount.toString();
 
   if (decimals > 0) {

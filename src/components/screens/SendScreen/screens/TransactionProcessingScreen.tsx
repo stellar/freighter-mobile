@@ -14,7 +14,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -196,7 +196,7 @@ const TransactionProcessingScreen: React.FC<
               <View className="items-center">
                 <View className="flex-row flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatTokenAmount(
+                    {formatTokenForDisplay(
                       transactionAmount,
                       selectedBalance?.tokenCode,
                     )}

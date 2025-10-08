@@ -1,8 +1,13 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -33,7 +38,8 @@ interface SwapState {
   destinationTokenId: string;
   sourceTokenSymbol: string;
   destinationTokenSymbol: string;
-  sourceAmount: string;
+  sourceAmount: string; // Internal value (dot notation)
+  sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
   isLoadingPath: boolean;
@@ -43,7 +49,8 @@ interface SwapState {
 
   setSourceToken: (tokenId: string, tokenSymbol: string) => void;
   setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
-  setSourceAmount: (amount: string) => void;
+  setSourceAmount: (amount: string, preserveDisplay?: boolean) => void;
+  setSourceAmountDisplay: (displayAmount: string) => void;
   findSwapPath: (params: {
     sourceBalance: PricedBalance;
     destinationBalance: PricedBalance;
@@ -62,6 +69,7 @@ const initialState = {
   sourceTokenSymbol: "",
   destinationTokenSymbol: "",
   sourceAmount: "0",
+  sourceAmountDisplay: "0",
   destinationAmount: "0",
   pathResult: null,
   isLoadingPath: false,
@@ -141,8 +149,21 @@ export const useSwapStore = create<SwapState>((set) => ({
   setDestinationToken: (tokenId, tokenSymbol) =>
     set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
 
-  setSourceAmount: (amount) => {
-    set({ sourceAmount: amount });
+  setSourceAmount: (amount, preserveDisplay = false) => {
+    // Expect internal dot notation input, convert to display format
+    if (!preserveDisplay) {
+      const displayAmount = formatBigNumberForDisplay(new BigNumber(amount), {
+        decimalPlaces: DEFAULT_DECIMALS,
+      });
+      set({ sourceAmount: amount, sourceAmountDisplay: displayAmount });
+    } else {
+      set({ sourceAmount: amount });
+    }
+  },
+
+  setSourceAmountDisplay: (displayAmount) => {
+    // Update only the display value, preserve internal value
+    set({ sourceAmountDisplay: displayAmount });
   },
 
   findSwapPath: async (params) => {

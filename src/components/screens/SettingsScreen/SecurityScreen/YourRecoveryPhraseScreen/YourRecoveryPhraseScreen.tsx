@@ -4,6 +4,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
+import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
@@ -18,16 +19,16 @@ type YourRecoveryPhraseScreenProps = NativeStackScreenProps<
 
 const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recoveryPhrase } = route.params;
+  const { mnemonicPhrase } = useLoginDataStore();
   const { copyToClipboard } = useSecureClipboard();
   const handleCopyToClipboard = () => {
-    copyToClipboard(recoveryPhrase);
-
-    analytics.trackCopyBackupPhrase();
+    if (mnemonicPhrase) {
+      copyToClipboard(mnemonicPhrase);
+      analytics.trackCopyBackupPhrase();
+    }
   };
 
   return (
@@ -35,7 +36,7 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
       <View className="flex-1 p-4">
         <View className="bg-background-tertiary rounded-xl p-8 mb-6">
           <Text textAlign="center" md medium>
-            {recoveryPhrase}
+            {mnemonicPhrase || ""}
           </Text>
         </View>
 

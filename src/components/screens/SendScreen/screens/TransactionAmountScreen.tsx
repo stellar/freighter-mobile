@@ -40,7 +40,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatFiatAmount, formatTokenAmount } from "helpers/formatAmount";
+import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -119,6 +119,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetTransaction,
     isBuilding,
     transactionXDR,
+    transactionHash,
   } = useTransactionBuilderStore();
 
   // Reset everything on unmount
@@ -210,10 +211,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const {
     tokenAmount,
+    tokenAmountDisplay,
     fiatAmount,
     showFiatAmount,
     setShowFiatAmount,
-    handleAmountChange,
+    handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
   } = useTokenFiatConverter({ selectedBalance });
@@ -249,10 +251,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     if (showFiatAmount) {
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
       const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Use standard formatting for fiat amount
+      // Set raw internal value (dot notation)
       setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
     } else {
-      // Use standard formatting for token amount
+      // Set raw internal value (dot notation)
       setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
@@ -281,7 +283,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     if (
       spendableBalance &&
-      currentTokenAmount.isGreaterThan(spendableBalance)
+      currentTokenAmount.isGreaterThan(spendableBalance) &&
+      !transactionHash
     ) {
       const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
       setAmountError(errorMessage);
@@ -299,13 +302,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     spendableBalance,
     balanceItems,
     transactionFee,
+    transactionHash,
     t,
     showToast,
   ]);
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
-      if (!recipientAddress || !selectedBalance) {
+      const numberTokenAmount = new BigNumber(tokenAmount);
+
+      const hasRequiredParams =
+        recipientAddress &&
+        selectedBalance &&
+        numberTokenAmount.isGreaterThan(0);
+      if (!hasRequiredParams) {
         return;
       }
 
@@ -606,7 +616,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     ? { primary: true }
                     : { secondary: true })}
                 >
-                  {tokenAmount}{" "}
+                  {tokenAmountDisplay}{" "}
                   <RNText style={{ color: themeColors.text.secondary }}>
                     {selectedBalance?.tokenCode}
                   </RNText>
@@ -616,7 +626,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-center">
               <Text lg medium secondary>
                 {showFiatAmount
-                  ? formatTokenAmount(tokenAmount, selectedBalance?.tokenCode)
+                  ? formatTokenForDisplay(
+                      tokenAmount,
+                      selectedBalance?.tokenCode,
+                    )
                   : formatFiatAmount(fiatAmount)}
               </Text>
               <TouchableOpacity
@@ -685,7 +698,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             </View>
           </View>
           <View className="w-full">
-            <NumericKeyboard onPress={handleAmountChange} />
+            <NumericKeyboard onPress={handleDisplayAmountChange} />
           </View>
           <View className="w-full mt-auto mb-4">
             <Button

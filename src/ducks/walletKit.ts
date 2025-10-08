@@ -1,12 +1,12 @@
 import { WalletKitTypes } from "@reown/walletkit";
 import { SessionTypes } from "@walletconnect/types";
 import { NETWORKS } from "config/constants";
+import { EnvConfig } from "helpers/getEnvConfig";
 import {
   disconnectAllSessions,
   disconnectSession,
   getActiveSessions,
 } from "helpers/walletKitUtil";
-import Config from "react-native-config";
 import { create } from "zustand";
 
 /** Project ID for WalletKit initialization */
@@ -17,7 +17,7 @@ export const {
   WALLET_KIT_MT_URL,
   WALLET_KIT_MT_ICON,
   WALLET_KIT_MT_REDIRECT_NATIVE,
-} = Config;
+} = EnvConfig;
 
 /** Metadata for the WalletKit instance */
 export const WALLET_KIT_METADATA = {

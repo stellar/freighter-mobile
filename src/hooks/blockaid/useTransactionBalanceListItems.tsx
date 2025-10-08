@@ -11,7 +11,7 @@ import {
   NonNativeToken,
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
@@ -151,7 +151,7 @@ export const useTransactionBalanceListItems = (
         isCredit,
       } = change;
       const sign = isCredit ? "+" : "-";
-      const formattedAmount = `${sign}${formatTokenAmount(amount, tokenCode)}`;
+      const formattedAmount = `${sign}${formatTokenForDisplay(amount, tokenCode)}`;
 
       const tokenId: TokenIdentifier = isNative
         ? NATIVE_TOKEN_CODE

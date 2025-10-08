@@ -1,7 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
 import { PricedBalance } from "config/types";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
 interface FormatConversionRateParams {
@@ -23,7 +23,7 @@ interface GetContractAddressParams {
 
 /**
  * Formats conversion rate for display with proper symbols
- * Uses formatTokenAmount for consistent 7-decimal formatting following extension rules
+ * Uses formatTokenForDisplay for consistent 7-decimal formatting following extension rules
  */
 export const formatConversionRate = ({
   rate,
@@ -40,7 +40,7 @@ export const formatConversionRate = ({
   }
 
   const roundedRate = rateBN.toFixed(DEFAULT_DECIMALS);
-  const formattedRate = formatTokenAmount(roundedRate);
+  const formattedRate = formatTokenForDisplay(roundedRate);
 
   return `1 ${sourceSymbol} ≈ ${formattedRate} ${destinationSymbol}`;
 };
@@ -60,7 +60,7 @@ export const calculateMinimumReceived = ({
     BigNumber(allowedSlippage).dividedBy(100),
   );
 
-  return formatTokenAmount(
+  return formatTokenForDisplay(
     destinationAmountBN
       .multipliedBy(slippageMultiplier)
       .toFixed(DEFAULT_DECIMALS),

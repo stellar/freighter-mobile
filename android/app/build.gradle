@@ -113,6 +113,7 @@ android {
             dimension "environment"
             applicationId "org.stellar.freighterdev"
             resValue "string", "app_name", "Freighter Dev"
+            manifestPlaceholders = [deepLinkScheme: "freighterdev"]
             signingConfig signingConfigs.dev
         }
 
@@ -120,6 +121,7 @@ android {
             dimension "environment"
             applicationId "org.stellar.freighterwallet"
             resValue "string", "app_name", "Freighter"
+            manifestPlaceholders = [deepLinkScheme: "freighterwallet"]
             signingConfig signingConfigs.prod
         }
     }
