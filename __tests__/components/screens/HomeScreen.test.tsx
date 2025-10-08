@@ -136,7 +136,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "home.buy": "Buy",
       "home.send": "Send",
       "home.swap": "Swap",
-      "home.copy": "Copy",
+      "common.copy": "Copy",
       accountAddressCopied: "Address copied",
       "home.actions.settings": "Settings",
       "home.actions.manageTokens": "Manage Tokens",

@@ -31,14 +31,14 @@
     "hash": "Hash",
     "salt": "Salt",
     "addMemo": "Add. memo",
-    "wallet": "Carteira"
+    "wallet": "Carteira",
+    "copy": "Copiar"
   },
   "home": {
     "title": "Início",
     "buy": "Adicionar",
     "send": "Enviar",
     "swap": "Trocar",
-    "copy": "Copiar",
     "actions": {
       "settings": "Configurações",
       "manageTokens": "Gerenciar tokens",

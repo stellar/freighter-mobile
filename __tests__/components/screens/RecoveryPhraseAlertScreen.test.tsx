@@ -6,6 +6,16 @@ import React from "react";
 
 const mockNavigate = jest.fn();
 
+jest.mock("ducks/loginData", () => ({
+  useLoginDataStore: jest.fn(() => ({
+    password: "password",
+    mnemonicPhrase: null,
+    setMnemonicPhrase: jest.fn(),
+    setPassword: jest.fn(),
+    clearLoginData: jest.fn(),
+  })),
+}));
+
 describe("RecoveryPhraseAlertScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -15,7 +25,7 @@ describe("RecoveryPhraseAlertScreen", () => {
     const { getByText, getByTestId } = renderWithProviders(
       <RecoveryPhraseAlertScreen
         navigation={{ navigate: mockNavigate } as never}
-        route={{ params: { password: "password" } } as never}
+        route={{ params: {} } as never}
       />,
     );
 
@@ -27,7 +37,7 @@ describe("RecoveryPhraseAlertScreen", () => {
     const { getByText } = renderWithProviders(
       <RecoveryPhraseAlertScreen
         navigation={{ navigate: mockNavigate } as never}
-        route={{ params: { password: "password" } } as never}
+        route={{ params: {} } as never}
       />,
     );
 
@@ -37,7 +47,6 @@ describe("RecoveryPhraseAlertScreen", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN,
-      { password: "password" },
     );
   });
 });

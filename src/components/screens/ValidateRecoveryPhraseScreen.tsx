@@ -9,6 +9,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { BiometricsSource, VALIDATION_WORDS_PER_ROW } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
@@ -30,8 +31,8 @@ type ValidateRecoveryPhraseScreenProps = NativeStackScreenProps<
 
 export const ValidateRecoveryPhraseScreen: React.FC<
   ValidateRecoveryPhraseScreenProps
-> = ({ route, navigation }) => {
-  const { password, recoveryPhrase } = route.params;
+> = ({ navigation }) => {
+  const { mnemonicPhrase, password, clearLoginData } = useLoginDataStore();
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [error, setError] = useState<string | undefined>();
   const isSigningUp = useAuthenticationStore((state) => state.isLoading);
@@ -43,7 +44,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
   const { themeColors } = useColors();
 
   const { words, selectedIndexes, generateWordOptionsForRound } =
-    useWordSelection(recoveryPhrase);
+    useWordSelection(mnemonicPhrase || "");
   const currentWordIndex = selectedIndexes[roundIndex];
   const currentCorrectWord = words[currentWordIndex];
 
@@ -71,30 +72,30 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   const handleFinishSignUp = useCallback(() => {
     if (biometryType) {
-      storeBiometricPassword(password).then(() => {
+      storeBiometricPassword(password!).then(() => {
         navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-          password,
-          mnemonicPhrase: recoveryPhrase,
           source: BiometricsSource.ONBOARDING,
         });
       });
     } else {
       // No biometrics available, proceed with normal signup
       signUp({
-        password,
-        mnemonicPhrase: recoveryPhrase,
+        password: password!,
+        mnemonicPhrase: mnemonicPhrase!,
       }).then(() => {
+        clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
     }
   }, [
     password,
-    recoveryPhrase,
+    mnemonicPhrase,
     signUp,
     navigation,
     biometryType,
     storeBiometricPassword,
+    clearLoginData,
   ]);
   const handleWordSelect = useCallback((word: string) => {
     setSelectedWord(word);
