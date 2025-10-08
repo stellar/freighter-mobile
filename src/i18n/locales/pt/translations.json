@@ -123,7 +123,13 @@
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
-    "networkSettings": "Configurações de Rede"
+    "networkSettings": "Configurações de Rede",
+    "developerSettings": {
+      "title": "Configurações do Desenvolvedor",
+      "warning": "As alterações de backend entrarão em vigor após reiniciar o aplicativo.",
+      "backendV1Environment": "Ambiente do Backend V1",
+      "backendV2Environment": "Ambiente do Backend V2"
+    }
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",
