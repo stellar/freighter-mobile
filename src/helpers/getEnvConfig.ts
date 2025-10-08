@@ -29,7 +29,8 @@ type EnvConfigType = {
  * Get environment-specific configuration based on bundle ID
  */
 const getEnvConfig = (): EnvConfigType => ({
-  AMPLITUDE_API_KEY: Config.AMPLITUDE_API_KEY,
+  // Let's avoid sending events to Amplitude while developing locally
+  AMPLITUDE_API_KEY: __DEV__ ? "" : Config.AMPLITUDE_API_KEY,
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY:
     Config.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
 

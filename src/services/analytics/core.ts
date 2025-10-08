@@ -64,11 +64,15 @@ export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
   if (!AMPLITUDE_API_KEY) {
-    logger.error(
-      DEBUG_CONFIG.LOG_PREFIX,
-      "missing amplitude config error",
-      "Missing AMPLITUDE_API_KEY in environment",
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.error(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "missing amplitude config error",
+        "Missing AMPLITUDE_API_KEY in environment",
+      );
+    }
 
     return;
   }
@@ -240,10 +244,14 @@ const dispatchUnthrottled = (
   }
 
   if (!AMPLITUDE_API_KEY) {
-    logger.debug(
-      DEBUG_CONFIG.LOG_PREFIX,
-      `Skipping event due to missing API key: ${event}`,
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        `Skipping event due to missing API key: ${event}`,
+      );
+    }
 
     return;
   }
