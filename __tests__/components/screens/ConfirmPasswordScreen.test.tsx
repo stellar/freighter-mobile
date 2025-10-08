@@ -13,9 +13,22 @@ jest.mock("@react-navigation/native", () => ({
   })),
 }));
 
+const mockLoginDataStore = {
+  password: "password12345",
+  mnemonicPhrase: null,
+  setMnemonicPhrase: jest.fn(),
+  setPassword: jest.fn(),
+  clearLoginData: jest.fn(),
+};
+
+jest.mock("ducks/loginData", () => ({
+  useLoginDataStore: jest.fn(() => mockLoginDataStore),
+}));
+
 describe("ConfirmPasswordScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLoginDataStore.password = "password12345";
   });
 
   it("renders correctly", () => {
@@ -47,6 +60,9 @@ describe("ConfirmPasswordScreen", () => {
   });
 
   it("has disabled continue button when password is different", () => {
+    // Set the password in the mock store to be different from what we'll type
+    mockLoginDataStore.password = "password123456";
+
     const { getByText, getByPlaceholderText } = renderWithProviders(
       <ConfirmPasswordScreen
         navigation={{ navigate: mockNavigate } as never}
@@ -81,7 +97,6 @@ describe("ConfirmPasswordScreen", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN,
-      { password: "password12345" },
     );
   });
 

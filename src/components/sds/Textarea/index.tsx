@@ -1,9 +1,8 @@
 import { Text } from "components/sds/Typography";
 import { THEME } from "config/theme";
-import { fs, px } from "helpers/dimensions";
-import React from "react";
-import { Platform, TextInput } from "react-native";
-import styled from "styled-components/native";
+import { fsValue } from "helpers/dimensions";
+import React, { useMemo } from "react";
+import { Platform, TextInput, View, TextStyle } from "react-native";
 
 export interface TextareaProps
   extends React.ComponentProps<typeof TextInput>,
@@ -41,63 +40,84 @@ const TEXTAREA_SIZES = {
 
 export type TextAreaSize = keyof typeof TEXTAREA_SIZES;
 
-interface StyledProps {
-  $fieldSize: TextAreaSize;
-  $isError?: boolean;
-  $isDisabled?: boolean;
-  position?: "left" | "right";
-  $variant?: "error" | "success";
-}
-
 const LINES_MULTIPLIER = 28;
 
-const Container = styled.View<Pick<StyledProps, "$fieldSize">>`
-  width: 100%;
-`;
+type ClassNameMap = Record<TextAreaSize, string>;
 
-const TextAreaContainer = styled.View<Pick<StyledProps, "$fieldSize">>`
-  width: 100%;
-  height: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
-    px(TEXTAREA_SIZES[$fieldSize].lines * LINES_MULTIPLIER)};
-`;
+const CONTAINER_GAP_MAP: ClassNameMap = {
+  sm: "gap-1.5",
+  md: "gap-2",
+  lg: "gap-2",
+};
 
-const StyledTextInput = styled.TextInput<Pick<StyledProps, "$fieldSize">>`
-  flex: 1;
-  background-color: ${({ $isDisabled }: Pick<StyledProps, "$isDisabled">) =>
-    $isDisabled
-      ? THEME.colors.background.secondary
-      : THEME.colors.background.default};
-  height: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
-    px(TEXTAREA_SIZES[$fieldSize].lines * LINES_MULTIPLIER)};
-  font-size: ${({ $fieldSize }: { $fieldSize: TextAreaSize }) =>
-    fs(TEXTAREA_SIZES[$fieldSize].fontSize)};
-  color: ${THEME.colors.text.primary};
-  border-width: 1px;
-  border-color: ${({ $isError }: Pick<StyledProps, "$isError">) => {
-    if ($isError) {
-      return THEME.colors.status.error;
-    }
-    return THEME.colors.border.default;
-  }};
-  border-radius: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(TEXTAREA_SIZES[$fieldSize].borderRadius)};
-  padding-horizontal: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(TEXTAREA_SIZES[$fieldSize].paddingHorizontal)};
-  padding-vertical: ${({ $fieldSize }: Pick<StyledProps, "$fieldSize">) =>
-    px(TEXTAREA_SIZES[$fieldSize].paddingVertical)};
-  font-family: ${Platform.select({
-    ios: "Inter-Variable",
-    android: "Inter-Regular",
-  })};
-  font-weight: ${Platform.select({
-    ios: "400",
-    android: "normal",
-  })};
-`;
+const BORDER_RADIUS_MAP: ClassNameMap = {
+  sm: "rounded",
+  md: "rounded-md",
+  lg: "rounded-lg",
+};
 
-const FieldNoteWrapper = styled.View`
-  margin-top: ${px(8)};
-`;
+const HORIZONTAL_PADDING_MAP: ClassNameMap = {
+  sm: "px-[10px]",
+  md: "px-[12px]",
+  lg: "px-[14px]",
+};
+
+const VERTICAL_PADDING_MAP: ClassNameMap = {
+  sm: "py-[6px]",
+  md: "py-[8px]",
+  lg: "py-[10px]",
+};
+
+const LABEL_SIZE_MAP = {
+  sm: "xs",
+  md: "sm",
+  lg: "md",
+} as const;
+
+const getContainerClasses = (fieldSize: TextAreaSize): string =>
+  `w-full ${CONTAINER_GAP_MAP[fieldSize]}`;
+
+const getTextAreaContainerClasses = (fieldSize: TextAreaSize): string =>
+  `w-full h-[${TEXTAREA_SIZES[fieldSize].lines * LINES_MULTIPLIER}px]`;
+
+const getTextAreaClasses = (
+  fieldSize: TextAreaSize,
+  isError?: boolean,
+  isDisabled?: boolean,
+): string => {
+  const baseClasses = "w-full";
+  const backgroundColor = isDisabled
+    ? "bg-background-secondary"
+    : "bg-background-primary";
+  const borderColor = isError ? "border-status-error" : "border-border-primary";
+  const borderRadius = BORDER_RADIUS_MAP[fieldSize];
+  const paddingHorizontal = HORIZONTAL_PADDING_MAP[fieldSize];
+  const paddingVertical = VERTICAL_PADDING_MAP[fieldSize];
+  const textColor = "text-text-primary";
+
+  return `${baseClasses} ${backgroundColor} ${borderColor} ${borderRadius} ${paddingHorizontal} ${paddingVertical} ${textColor} border`;
+};
+
+const getTextAreaStyles = (fieldSize: TextAreaSize): TextStyle => {
+  const height = TEXTAREA_SIZES[fieldSize].lines * LINES_MULTIPLIER;
+
+  return {
+    height,
+    fontSize: fsValue(TEXTAREA_SIZES[fieldSize].fontSize),
+    fontFamily: Platform.select({
+      ios: "Inter-Variable",
+      android: "Inter-Regular",
+    }),
+    fontWeight: Platform.select({
+      ios: "400",
+      android: "normal",
+    }),
+  };
+};
+
+const getLabelProps = (fieldSize: TextAreaSize) => ({
+  [LABEL_SIZE_MAP[fieldSize]]: true,
+});
 
 /**
  * Textarea component for multi-line text entry with various styling and functionality options.
@@ -193,19 +213,35 @@ export const Textarea: React.FC<TextareaProps> = ({
   isError,
   ...props
 }: TextareaProps) => {
-  const getLabelSize = () => ({
-    xs: fieldSize === "sm",
-    sm: fieldSize === "md",
-    md: fieldSize === "lg",
-  });
+  const containerClasses = useMemo(
+    () => getContainerClasses(fieldSize),
+    [fieldSize],
+  );
+
+  const textAreaContainerClasses = useMemo(
+    () => getTextAreaContainerClasses(fieldSize),
+    [fieldSize],
+  );
+
+  const textAreaClasses = useMemo(
+    () => getTextAreaClasses(fieldSize, isError || !!error, !editable),
+    [fieldSize, isError, error, editable],
+  );
+
+  const textAreaStyles = useMemo(
+    () => getTextAreaStyles(fieldSize),
+    [fieldSize],
+  );
+
+  const labelProps = useMemo(() => getLabelProps(fieldSize), [fieldSize]);
 
   return (
-    <Container $fieldSize={fieldSize}>
+    <View className={containerClasses}>
       {label && (
-        <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+        <Text {...labelProps} color={THEME.colors.text.secondary}>
           {isLabelUppercase ? label.toString().toUpperCase() : label}
           {labelSuffix && (
-            <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+            <Text {...labelProps} color={THEME.colors.text.secondary}>
               {" "}
               {labelSuffix}
             </Text>
@@ -213,26 +249,25 @@ export const Textarea: React.FC<TextareaProps> = ({
         </Text>
       )}
 
-      <TextAreaContainer $fieldSize={fieldSize}>
-        <StyledTextInput
+      <View className={textAreaContainerClasses}>
+        <TextInput
           testID={testID}
-          $fieldSize={fieldSize}
+          className={textAreaClasses}
+          style={textAreaStyles}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           multiline
           numberOfLines={TEXTAREA_SIZES[fieldSize].lines}
           textAlignVertical="top"
-          $isError={isError || !!error}
-          $isDisabled={!editable}
           placeholderTextColor={THEME.colors.text.secondary}
           editable={editable}
           {...props}
         />
-      </TextAreaContainer>
+      </View>
 
       {note && (
-        <FieldNoteWrapper>
+        <View className="mt-2">
           {typeof note === "string" ? (
             <Text sm color={THEME.colors.text.secondary}>
               {note}
@@ -240,23 +275,23 @@ export const Textarea: React.FC<TextareaProps> = ({
           ) : (
             note
           )}
-        </FieldNoteWrapper>
+        </View>
       )}
       {error && (
-        <FieldNoteWrapper>
+        <View className="mt-2">
           <Text sm color={THEME.colors.status.error}>
             {error}
           </Text>
-        </FieldNoteWrapper>
+        </View>
       )}
       {success && (
-        <FieldNoteWrapper>
+        <View className="mt-2">
           <Text sm color={THEME.colors.status.success}>
             {success}
           </Text>
-        </FieldNoteWrapper>
+        </View>
       )}
-    </Container>
+    </View>
   );
 };
 

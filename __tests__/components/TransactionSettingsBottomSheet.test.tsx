@@ -1,7 +1,8 @@
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { fireEvent, waitFor } from "@testing-library/react-native";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { TransactionSettingsContext } from "config/constants";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 // Mock dependencies
@@ -85,7 +86,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
   });
 
   it("should call onSettingsChange when confirm is pressed", async () => {
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
@@ -113,7 +114,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
   it("should handle async onSettingsChange correctly", async () => {
     const asyncOnSettingsChange = jest.fn().mockResolvedValue(undefined);
 
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
@@ -135,7 +136,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
   });
 
   it("should save settings to store when confirm is pressed", async () => {
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
@@ -180,7 +181,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       }
     });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}

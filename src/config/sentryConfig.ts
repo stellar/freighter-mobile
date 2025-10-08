@@ -2,8 +2,9 @@ import * as Sentry from "@sentry/react-native";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
+import { EnvConfig } from "helpers/getEnvConfig";
+import { isProd } from "helpers/isEnv";
 import { Platform } from "react-native";
-import Config from "react-native-config";
 import {
   getVersion,
   getBuildNumber,
@@ -14,7 +15,7 @@ import {
  * Sentry configuration constants
  */
 export const SENTRY_CONFIG = {
-  DSN: Config.SENTRY_DSN,
+  DSN: EnvConfig.SENTRY_DSN,
   // Reduced context when user has disabled analytics
   MINIMAL_CONTEXT_FIELDS: [
     "platform",
@@ -22,6 +23,7 @@ export const SENTRY_CONFIG = {
     "network",
     "appVersion",
     "buildVersion",
+    "bundleId",
   ] as const,
 } as const;
 
@@ -95,6 +97,7 @@ export const initializeSentry = (): void => {
     spotlight: __DEV__,
     release: `freighter-mobile@${getVersion()}+${getBuildNumber()}`,
     denyUrls: [/api\.amplitude\.com\/2\/httpapi/i],
+    environment: isProd ? "production" : "development",
 
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,

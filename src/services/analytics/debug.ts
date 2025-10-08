@@ -1,4 +1,5 @@
 import { useAnalyticsStore } from "ducks/analytics";
+import { isDev } from "helpers/isEnv";
 import { DEBUG_CONFIG, AMPLITUDE_API_KEY } from "services/analytics/constants";
 import { isInitialized } from "services/analytics/core";
 import type { AnalyticsDebugInfo } from "services/analytics/types";
@@ -61,7 +62,7 @@ export const getAnalyticsDebugInfo = (): AnalyticsDebugInfo => {
     isEnabled,
     userId,
     hasInitialized: hasInit,
-    environment: __DEV__ ? "development" : "production",
+    environment: isDev ? "development" : "production",
     amplitudeKey: AMPLITUDE_API_KEY ? "[set]" : DEBUG_CONSTANTS.API_KEY_NOT_SET,
     isSendingToAmplitude,
     recentEvents: [...recentEvents],

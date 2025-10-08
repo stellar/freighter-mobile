@@ -91,6 +91,18 @@ jest.mock("ducks/auth", () => ({
   }),
 }));
 
+const mockSetMnemonicPhrase = jest.fn();
+const mockSetPassword = jest.fn();
+jest.mock("ducks/loginData", () => ({
+  useLoginDataStore: jest.fn(() => ({
+    password: "test-password",
+    mnemonicPhrase: null,
+    setMnemonicPhrase: mockSetMnemonicPhrase,
+    setPassword: mockSetPassword,
+    clearLoginData: jest.fn(),
+  })),
+}));
+
 const mockNavigation = {
   navigate: jest.fn(),
 };
@@ -199,11 +211,6 @@ describe("RecoveryPhraseScreen", () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN,
-      {
-        password: "test-password",
-        recoveryPhrase:
-          "test phrase one two three four five six seven eight nine ten eleven twelve",
-      },
     );
   });
 
