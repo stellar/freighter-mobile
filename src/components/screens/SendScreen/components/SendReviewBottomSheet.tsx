@@ -16,10 +16,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import {
-  formatTokenDisplayAmount,
-  formatFiatAmount,
-} from "helpers/formatAmount";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -224,7 +221,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         titleColor: themeColors.text.secondary,
         trailingContent: (
           <Text md primary>
-            {formatTokenDisplayAmount(transactionFee, NATIVE_TOKEN_CODE)}
+            {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
           </Text>
         ),
       },
@@ -274,7 +271,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               <TokenIcon token={selectedBalance} />
               <View className="flex-1">
                 <Text xl medium>
-                  {formatTokenDisplayAmount(
+                  {formatTokenForDisplay(
                     tokenAmount,
                     selectedBalance.tokenCode,
                   )}

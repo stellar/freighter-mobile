@@ -10,7 +10,7 @@ import { PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
-  formatTokenDisplayAmount,
+  formatTokenForDisplay,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -151,7 +151,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatTokenDisplayAmount(balance.total, balance.tokenCode)}
+              formatTokenForDisplay(balance.total, balance.tokenCode)}
           </Text>
         </TokenTextContainer>
       </LeftSection>

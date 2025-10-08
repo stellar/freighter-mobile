@@ -14,7 +14,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { formatTokenDisplayAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -80,7 +80,7 @@ export const mapCreateAccountHistoryItem = ({
       transactionDetails,
       rowText: NATIVE_TOKEN_CODE,
       dateText: date,
-      amountText: `-${formatTokenDisplayAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
+      amountText: `-${formatTokenForDisplay(startingBalance, NATIVE_TOKEN_CODE)}`,
       actionText: t("history.transactionHistory.sent"),
       ActionIconComponent: senderActionIcon,
       IconComponent: senderIcon,
@@ -90,7 +90,7 @@ export const mapCreateAccountHistoryItem = ({
   }
 
   // RECIPIENT's view: Show as "Account Funded"
-  const formattedAmount = `+${formatTokenDisplayAmount(
+  const formattedAmount = `+${formatTokenForDisplay(
     startingBalance,
     NATIVE_TOKEN_CODE,
   )}`;
@@ -143,7 +143,7 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
         </Text>
         <Text sm secondary numberOfLines={1}>
           {t("history.transactionDetails.startingBalance")}{" "}
-          {formatTokenDisplayAmount(
+          {formatTokenForDisplay(
             transactionDetails.createAccountDetails?.startingBalance ?? "",
             NATIVE_TOKEN_CODE,
           )}

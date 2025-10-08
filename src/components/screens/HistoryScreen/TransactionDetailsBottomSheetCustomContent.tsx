@@ -20,7 +20,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
-import { formatTokenDisplayAmount, stroopToXlm } from "helpers/formatAmount";
+import { formatTokenForDisplay, stroopToXlm } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
@@ -57,7 +57,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         )
       : "0";
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
-  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenDisplayAmount(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
+  const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenForDisplay(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
   const detailItems = useMemo(
     () =>
       [
@@ -103,7 +103,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
           trailingContent: (
-            <Text>{formatTokenDisplayAmount(fee, NATIVE_TOKEN_CODE)}</Text>
+            <Text>{formatTokenForDisplay(fee, NATIVE_TOKEN_CODE)}</Text>
           ),
         },
         // filter out undefined entries for non-swaps in order to keep detail order.

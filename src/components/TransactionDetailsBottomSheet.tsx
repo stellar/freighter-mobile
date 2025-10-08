@@ -14,10 +14,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTransactionDate } from "helpers/date";
-import {
-  formatTokenDisplayAmount,
-  formatFiatAmount,
-} from "helpers/formatAmount";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -182,7 +179,7 @@ const TransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatTokenDisplayAmount(
+              {formatTokenForDisplay(
                 transactionAmount,
                 selectedBalance?.tokenCode,
               )}
@@ -268,7 +265,7 @@ const TransactionDetailsBottomSheet: React.FC<
               <View className="flex-row items-center gap-[4px]">
                 <StellarLogo width={16} height={16} />
                 <Text md medium>
-                  {formatTokenDisplayAmount(transactionFee, NATIVE_TOKEN_CODE)}
+                  {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
                 </Text>
               </View>
             ),

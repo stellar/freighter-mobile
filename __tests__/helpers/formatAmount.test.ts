@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import {
-  formatTokenDisplayAmount,
+  formatTokenForDisplay,
   formatFiatAmount,
   formatPercentageAmount,
   formatNumberForDisplay,
@@ -18,32 +18,32 @@ jest.mock("react-native-localize", () => ({
 }));
 
 describe("formatAmount helpers", () => {
-  describe("formatTokenDisplayAmount", () => {
+  describe("formatTokenForDisplay", () => {
     it("should format string values correctly", () => {
-      expect(formatTokenDisplayAmount("1000")).toBe("1,000.00");
-      expect(formatTokenDisplayAmount("1234.56")).toBe("1,234.56");
-      expect(formatTokenDisplayAmount("0.12345")).toBe("0.12345");
+      expect(formatTokenForDisplay("1000")).toBe("1,000.00");
+      expect(formatTokenForDisplay("1234.56")).toBe("1,234.56");
+      expect(formatTokenForDisplay("0.12345")).toBe("0.12345");
     });
 
     it("should handle trailing zeros correctly with minimum 2 decimal places", () => {
       // Test trailing zeros removal with minimum 2 decimal places
-      expect(formatTokenDisplayAmount("1234.5000")).toBe("1,234.50"); // Trailing zeros removed
-      expect(formatTokenDisplayAmount("1234.0000")).toBe("1,234.00"); // Minimum 2 decimal places
-      expect(formatTokenDisplayAmount("1234.1000")).toBe("1,234.10"); // One trailing zero removed
-      expect(formatTokenDisplayAmount("1234.1200")).toBe("1,234.12"); // Two trailing zeros removed
-      expect(formatTokenDisplayAmount("1234.1230")).toBe("1,234.123"); // One trailing zero removed, shows 3 significant digits
-      expect(formatTokenDisplayAmount("1234.1234")).toBe("1,234.1234"); // No trailing zeros, shows all 4 digits
-      expect(formatTokenDisplayAmount("0.0000")).toBe("0.00"); // Minimum 2 decimal places for zero
-      expect(formatTokenDisplayAmount("0.1000")).toBe("0.10"); // One trailing zero removed
+      expect(formatTokenForDisplay("1234.5000")).toBe("1,234.50"); // Trailing zeros removed
+      expect(formatTokenForDisplay("1234.0000")).toBe("1,234.00"); // Minimum 2 decimal places
+      expect(formatTokenForDisplay("1234.1000")).toBe("1,234.10"); // One trailing zero removed
+      expect(formatTokenForDisplay("1234.1200")).toBe("1,234.12"); // Two trailing zeros removed
+      expect(formatTokenForDisplay("1234.1230")).toBe("1,234.123"); // One trailing zero removed, shows 3 significant digits
+      expect(formatTokenForDisplay("1234.1234")).toBe("1,234.1234"); // No trailing zeros, shows all 4 digits
+      expect(formatTokenForDisplay("0.0000")).toBe("0.00"); // Minimum 2 decimal places for zero
+      expect(formatTokenForDisplay("0.1000")).toBe("0.10"); // One trailing zero removed
     });
 
     it("should cap decimal places at 7 (DEFAULT_DECIMALS)", () => {
       // Test that very high precision numbers are capped at 7 decimal places
-      expect(formatTokenDisplayAmount("1234.123456789012345")).toBe(
+      expect(formatTokenForDisplay("1234.123456789012345")).toBe(
         "1,234.1234568",
       ); // Capped at 7 decimals (rounded)
-      expect(formatTokenDisplayAmount("0.123456789012345")).toBe("0.1234568"); // Capped at 7 decimals (rounded)
-      expect(formatTokenDisplayAmount("999999999.123456789012345")).toBe(
+      expect(formatTokenForDisplay("0.123456789012345")).toBe("0.1234568"); // Capped at 7 decimals (rounded)
+      expect(formatTokenForDisplay("999999999.123456789012345")).toBe(
         "999,999,999.1234568",
       ); // Capped at 7 decimals (rounded)
     });
@@ -54,13 +54,13 @@ describe("formatAmount helpers", () => {
       const veryLargeNumberPlus = "9007199254740993"; // 2^53 + 1
       const veryLargeDecimal = "9007199254740992.123456789012345";
 
-      expect(formatTokenDisplayAmount(veryLargeNumber)).toBe(
+      expect(formatTokenForDisplay(veryLargeNumber)).toBe(
         "9,007,199,254,740,992.00",
       );
-      expect(formatTokenDisplayAmount(veryLargeNumberPlus)).toBe(
+      expect(formatTokenForDisplay(veryLargeNumberPlus)).toBe(
         "9,007,199,254,740,993.00",
       );
-      expect(formatTokenDisplayAmount(veryLargeDecimal)).toBe(
+      expect(formatTokenForDisplay(veryLargeDecimal)).toBe(
         "9,007,199,254,740,992.1234568",
       );
     });
@@ -71,10 +71,10 @@ describe("formatAmount helpers", () => {
       const extremelyLargeDecimal =
         "1234567890123456789012345678901234567890.12345678901234567890123456789";
 
-      expect(formatTokenDisplayAmount(extremelyLargeNumber)).toBe(
+      expect(formatTokenForDisplay(extremelyLargeNumber)).toBe(
         "1,234,567,890,123,456,789,012,345,678,901,234,567,890.00",
       );
-      expect(formatTokenDisplayAmount(extremelyLargeDecimal)).toBe(
+      expect(formatTokenForDisplay(extremelyLargeDecimal)).toBe(
         "1,234,567,890,123,456,789,012,345,678,901,234,567,890.1234568",
       );
     });
@@ -87,13 +87,13 @@ describe("formatAmount helpers", () => {
         "9007199254740992.123456789012345",
       );
 
-      expect(formatTokenDisplayAmount(veryLargeNumber)).toBe(
+      expect(formatTokenForDisplay(veryLargeNumber)).toBe(
         "9,007,199,254,740,992.00",
       );
-      expect(formatTokenDisplayAmount(veryLargeNumberPlus)).toBe(
+      expect(formatTokenForDisplay(veryLargeNumberPlus)).toBe(
         "9,007,199,254,740,993.00",
       );
-      expect(formatTokenDisplayAmount(veryLargeDecimal)).toBe(
+      expect(formatTokenForDisplay(veryLargeDecimal)).toBe(
         "9,007,199,254,740,992.1234568",
       );
     });
@@ -107,60 +107,52 @@ describe("formatAmount helpers", () => {
         "1234567890123456789012345678901234567890.12345678901234567890123456789",
       );
 
-      expect(formatTokenDisplayAmount(extremelyLargeNumber)).toBe(
+      expect(formatTokenForDisplay(extremelyLargeNumber)).toBe(
         "1,234,567,890,123,456,789,012,345,678,901,234,567,890.00",
       );
-      expect(formatTokenDisplayAmount(extremelyLargeDecimal)).toBe(
+      expect(formatTokenForDisplay(extremelyLargeDecimal)).toBe(
         "1,234,567,890,123,456,789,012,345,678,901,234,567,890.1234568",
       );
     });
 
     it("should format BigNumber values correctly", () => {
-      expect(formatTokenDisplayAmount(new BigNumber(1000))).toBe("1,000.00");
-      expect(formatTokenDisplayAmount(new BigNumber("1234.56"))).toBe(
-        "1,234.56",
-      );
-      expect(formatTokenDisplayAmount(new BigNumber("0.12345"))).toBe(
-        "0.12345",
-      );
+      expect(formatTokenForDisplay(new BigNumber(1000))).toBe("1,000.00");
+      expect(formatTokenForDisplay(new BigNumber("1234.56"))).toBe("1,234.56");
+      expect(formatTokenForDisplay(new BigNumber("0.12345"))).toBe("0.12345");
     });
 
     it("should include the token code when provided", () => {
-      expect(formatTokenDisplayAmount("1000", "XLM")).toBe("1,000.00 XLM");
-      expect(formatTokenDisplayAmount("1234.56", "USDC")).toBe("1,234.56 USDC");
-      expect(formatTokenDisplayAmount(new BigNumber("0.12345"), "BTC")).toBe(
+      expect(formatTokenForDisplay("1000", "XLM")).toBe("1,000.00 XLM");
+      expect(formatTokenForDisplay("1234.56", "USDC")).toBe("1,234.56 USDC");
+      expect(formatTokenForDisplay(new BigNumber("0.12345"), "BTC")).toBe(
         "0.12345 BTC",
       );
     });
 
     it("should handle very small numbers", () => {
-      expect(formatTokenDisplayAmount("0.000001")).toBe("0.000001");
-      expect(formatTokenDisplayAmount(new BigNumber("0.0000012345"))).toBe(
+      expect(formatTokenForDisplay("0.000001")).toBe("0.000001");
+      expect(formatTokenForDisplay(new BigNumber("0.0000012345"))).toBe(
         "0.0000012",
       );
     });
 
     it("should handle very large numbers", () => {
-      expect(formatTokenDisplayAmount("1000000000")).toBe("1,000,000,000.00");
-      expect(formatTokenDisplayAmount("1000000000.12")).toBe(
-        "1,000,000,000.12",
-      );
-      expect(formatTokenDisplayAmount(new BigNumber("1000000000.123456"))).toBe(
+      expect(formatTokenForDisplay("1000000000")).toBe("1,000,000,000.00");
+      expect(formatTokenForDisplay("1000000000.12")).toBe("1,000,000,000.12");
+      expect(formatTokenForDisplay(new BigNumber("1000000000.123456"))).toBe(
         "1,000,000,000.123456",
       );
     });
 
     it("should handle zero values", () => {
-      expect(formatTokenDisplayAmount("0")).toBe("0.00");
-      expect(formatTokenDisplayAmount(new BigNumber(0))).toBe("0.00");
+      expect(formatTokenForDisplay("0")).toBe("0.00");
+      expect(formatTokenForDisplay(new BigNumber(0))).toBe("0.00");
     });
 
     it("should handle negative values", () => {
-      expect(formatTokenDisplayAmount("-1000")).toBe("-1,000.00");
-      expect(formatTokenDisplayAmount("-1234.56")).toBe("-1,234.56");
-      expect(formatTokenDisplayAmount(new BigNumber("-0.12345"))).toBe(
-        "-0.12345",
-      );
+      expect(formatTokenForDisplay("-1000")).toBe("-1,000.00");
+      expect(formatTokenForDisplay("-1234.56")).toBe("-1,234.56");
+      expect(formatTokenForDisplay(new BigNumber("-0.12345"))).toBe("-0.12345");
     });
   });
 

@@ -43,7 +43,7 @@ jest.mock("hooks/useColors", () => ({
 
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
-  formatTokenDisplayAmount: jest.fn((amount) => amount.toString()),
+  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
   formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";

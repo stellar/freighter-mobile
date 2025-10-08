@@ -18,10 +18,7 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
-import {
-  formatTokenDisplayAmount,
-  formatFiatAmount,
-} from "helpers/formatAmount";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -181,7 +178,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatTokenDisplayAmount(actualSourceAmount, sourceToken.code)}
+              {formatTokenForDisplay(actualSourceAmount, sourceToken.code)}
             </Text>
             <Text md medium secondary>
               {sourceTokenFiatAmount}
@@ -202,7 +199,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         <View className="flex-row items-center justify-between">
           <View>
             <Text xl medium primary>
-              {formatTokenDisplayAmount(
+              {formatTokenForDisplay(
                 actualDestinationAmount,
                 destinationToken.code,
               )}
@@ -266,7 +263,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             ),
             trailingContent: (
               <Text md medium>
-                {formatTokenDisplayAmount(
+                {formatTokenForDisplay(
                   displayMinimumReceived,
                   destinationToken.code,
                 )}
@@ -286,7 +283,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <View className="flex-row items-center gap-[4px]">
                 <StellarLogo width={16} height={16} />
                 <Text md medium>
-                  {formatTokenDisplayAmount(swapFee, NATIVE_TOKEN_CODE)}
+                  {formatTokenForDisplay(swapFee, NATIVE_TOKEN_CODE)}
                 </Text>
               </View>
             ),

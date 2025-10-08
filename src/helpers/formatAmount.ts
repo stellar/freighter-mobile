@@ -134,18 +134,18 @@ const convertToBigNumber = (
  * @example
  * // Input should always be in dot notation, output format depends on device locale
  * // Trailing zeros are removed, but minimum 2 decimal places are shown
- * formatTokenDisplayAmount("1234.56"); // Returns "1,234.56" (US) or "1.234,56" (EU)
- * formatTokenDisplayAmount("1234.5000"); // Returns "1,234.50" (US) or "1.234,50" (EU) - trailing zeros removed
- * formatTokenDisplayAmount("1234.0000"); // Returns "1,234.00" (US) or "1.234,00" (EU) - minimum 2 decimal places
- * formatTokenDisplayAmount("0.0000012345"); // Returns "0.0000012345" (US) or "0,0000012345" (EU) - shows significant digits
- * formatTokenDisplayAmount("9007199254740992.123456789012345"); // Returns "9,007,199,254,740,992.1234567" (US) or "9.007.199.254.740.992,1234567" (EU) - capped at 7 decimals
+ * formatTokenForDisplay("1234.56"); // Returns "1,234.56" (US) or "1.234,56" (EU)
+ * formatTokenForDisplay("1234.5000"); // Returns "1,234.50" (US) or "1.234,50" (EU) - trailing zeros removed
+ * formatTokenForDisplay("1234.0000"); // Returns "1,234.00" (US) or "1.234,00" (EU) - minimum 2 decimal places
+ * formatTokenForDisplay("0.0000012345"); // Returns "0.0000012345" (US) or "0,0000012345" (EU) - shows significant digits
+ * formatTokenForDisplay("9007199254740992.123456789012345"); // Returns "9,007,199,254,740,992.1234567" (US) or "9.007.199.254.740.992,1234567" (EU) - capped at 7 decimals
  *
  * // BigNumber and token code examples
- * formatTokenDisplayAmount(new BigNumber("1234.56789")); // Returns "1,234.56789" (US) or "1.234,56789" (EU)
- * formatTokenDisplayAmount("1234.56", "XLM"); // Returns "1,234.56 XLM" (US) or "1.234,56 XLM" (EU)
- * formatTokenDisplayAmount("1000000", "USDC"); // Returns "1,000,000.00 USDC" (US) or "1.000.000,00 USDC" (EU)
+ * formatTokenForDisplay(new BigNumber("1234.56789")); // Returns "1,234.56789" (US) or "1.234,56789" (EU)
+ * formatTokenForDisplay("1234.56", "XLM"); // Returns "1,234.56 XLM" (US) or "1.234,56 XLM" (EU)
+ * formatTokenForDisplay("1000000", "USDC"); // Returns "1,000,000.00 USDC" (US) or "1.000.000,00 USDC" (EU)
  */
-export const formatTokenDisplayAmount = (
+export const formatTokenForDisplay = (
   amount: string | BigNumber,
   code?: string,
 ) => {
