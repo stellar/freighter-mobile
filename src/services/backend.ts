@@ -785,7 +785,7 @@ export interface SimulateTransactionParams {
 export const simulateTransaction = async (
   params: SimulateTransactionParams,
 ) => {
-  const { data } = await freighterBackend.post<SimulateTransactionResponse>(
+  const { data } = await freighterBackendV1.post<SimulateTransactionResponse>(
     "/simulate-transaction",
     params,
   );
@@ -842,7 +842,7 @@ export interface SubmitTransactionBody {
  */
 export const submitTransaction = async (body: SubmitTransactionBody) => {
   const { data } =
-    await freighterBackend.post<Horizon.HorizonApi.SubmitTransactionResponse>(
+    await freighterBackendV1.post<Horizon.HorizonApi.SubmitTransactionResponse>(
       "/submit-transaction",
       body,
     );

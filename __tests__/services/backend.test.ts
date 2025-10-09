@@ -1,7 +1,7 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
 import { NETWORK_URLS } from "config/constants";
 import {
-  freighterBackend,
+  freighterBackendV1,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
@@ -261,7 +261,7 @@ describe("Backend Service - Transaction Operations", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPost = freighterBackend.post as jest.MockedFunction<any>;
+    mockPost = freighterBackendV1.post as jest.MockedFunction<any>;
   });
 
   describe("simulateTransaction", () => {
