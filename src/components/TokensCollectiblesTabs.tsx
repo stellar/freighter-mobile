@@ -4,7 +4,11 @@ import { CollectiblesGrid } from "components/CollectiblesGrid";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, NETWORKS } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  NETWORKS,
+  TransactionContext,
+} from "config/constants";
 import {
   MANAGE_TOKENS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
@@ -56,6 +60,10 @@ interface Props {
     collectionAddress: string;
     tokenId: string;
   }) => void;
+  /** Whether to show spendable amounts instead of total amounts for tokens */
+  showSpendableAmount?: boolean;
+  /** Type of fee to use for spendable amount calculation */
+  feeContext?: TransactionContext;
 }
 
 /**
@@ -88,6 +96,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     network,
     onTokenPress,
     onCollectiblePress,
+    showSpendableAmount = false,
+    feeContext = TransactionContext.Send,
   }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
@@ -180,9 +190,11 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           publicKey={publicKey}
           network={network}
           onTokenPress={onTokenPress}
+          showSpendableAmount={showSpendableAmount}
+          feeContext={feeContext}
         />
       ),
-      [publicKey, network, onTokenPress],
+      [publicKey, network, onTokenPress, showSpendableAmount, feeContext],
     );
 
     /**

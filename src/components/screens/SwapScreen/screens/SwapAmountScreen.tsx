@@ -21,7 +21,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   SWAP_SELECTION_TYPES,
-  TransactionSettingsContext,
+  TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
@@ -557,6 +557,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 balance={sourceBalance}
                 scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
                 onPress={navigateToSelectSourceTokenScreen}
+                spendableAmount={spendableAmount || undefined}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -703,7 +704,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
         customContent={
           <TransactionSettingsBottomSheet
-            context={TransactionSettingsContext.Swap}
+            context={TransactionContext.Swap}
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}

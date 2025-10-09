@@ -80,10 +80,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
 
-  // Use sourceAmount as-is since it's already in the correct format for display
-
-  // Use sourceAmount as-is since it's already in the correct format for display
-
   const currentConversionRate =
     pathResult?.conversionRate ||
     calculateSwapRate(
@@ -366,17 +362,43 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       onSettingsPress,
     } = props;
 
+    const isTrusted = !isMalicious && !isSuspicious;
     const isDisabled = !transactionXDR || isBuilding;
 
     const renderButtons = () => {
-      const cancelButton = (
-        <View
-          className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
+      const confirmButton = (
+        <View className="flex-1">
+          <Button
+            biometric
+            onPress={onConfirm}
+            tertiary
+            xl
+            disabled={isDisabled}
+          >
+            {t("common.confirm")}
+          </Button>
+        </View>
+      );
+      const settingsButton = (
+        <TouchableOpacity
+          onPress={onSettingsPress}
+          className="border border-gray-6 items-center justify-center"
+          style={{
+            height: pxValue(50),
+            borderRadius: pxValue(25),
+            width: pxValue(50),
+          }}
         >
+          <Icon.Settings04 size={24} themeColor="gray" />
+        </TouchableOpacity>
+      );
+
+      const cancelButton = (
+        <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
             tertiary={isSuspicious}
             destructive={isMalicious}
-            secondary={!isMalicious && !isSuspicious}
+            secondary={isTrusted}
             xl
             isFullWidth
             onPress={onCancel}
@@ -386,55 +408,40 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         </View>
       );
 
-      if (isMalicious || isSuspicious) {
+      const confirmAnywayButton = (
+        <TextButton
+          text={t("transactionAmountScreen.confirmAnyway")}
+          onPress={onConfirm}
+          variant={isMalicious ? "error" : "secondary"}
+        />
+      );
+
+      if (!isTrusted) {
         return (
           <>
             {cancelButton}
-            <TextButton
-              text={t("transactionAmountScreen.confirmAnyway")}
-              onPress={onCancel}
-              variant={isMalicious ? "error" : "secondary"}
-            />
+            {confirmAnywayButton}
           </>
         );
       }
 
       return (
         <>
+          {onSettingsPress && settingsButton}
           {cancelButton}
-          <View className="flex-1">
-            <Button
-              biometric
-              onPress={onConfirm}
-              tertiary
-              xl
-              disabled={isDisabled}
-            >
-              {t("common.confirm")}
-            </Button>
-          </View>
+          {confirmButton}
         </>
       );
     };
 
-    const showSettingsButton = onSettingsPress && !isMalicious && !isSuspicious;
-
     return (
       <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6`}
+        className={`${isTrusted ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6`}
         style={{
           paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
           gap: pxValue(12),
         }}
       >
-        {showSettingsButton && (
-          <TouchableOpacity
-            onPress={onSettingsPress}
-            className="w-[50px] h-[50px] rounded-full border border-gray-6 items-center justify-center"
-          >
-            <Icon.Settings04 size={24} themeColor="gray" />
-          </TouchableOpacity>
-        )}
         {renderButtons()}
       </View>
     );

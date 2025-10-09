@@ -1,11 +1,16 @@
 import { NavigationProp, useNavigation } from "@react-navigation/native";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import { FriendbotButton } from "components/FriendbotButton";
 import { Button } from "components/sds/Button";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
-import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
+import {
+  CREATE_ACCOUNT_TUTORIAL_URL,
+  NETWORKS,
+  TransactionContext,
+} from "config/constants";
 import {
   ADD_FUNDS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
@@ -13,9 +18,13 @@ import {
 } from "config/routes";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
+import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode } from "react";
 import { FlatList, RefreshControl } from "react-native";
@@ -46,6 +55,11 @@ const NotificationContent = styled.View`
   align-items: center;
 `;
 
+// Local type that extends PricedBalance to include spendableAmount
+type BalanceItemWithSpendable = PricedBalance & {
+  spendableAmount?: BigNumber;
+};
+
 interface BalancesListProps {
   publicKey: string;
   network: NETWORKS;
@@ -54,6 +68,8 @@ interface BalancesListProps {
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   excludeTokenIds?: string[];
+  showSpendableAmount?: boolean;
+  feeContext?: TransactionContext;
 }
 
 /**
@@ -78,9 +94,14 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   disableNavigation = false,
   renderRightContent,
   excludeTokenIds = [],
+  showSpendableAmount = false,
+  feeContext = TransactionContext.Send,
 }) => {
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
+  const { account } = useGetActiveAccount();
+  const { transactionFee } = useTransactionSettingsStore();
+  const { swapFee } = useSwapSettingsStore();
 
   // Always call the hook, but handle navigation context errors gracefully
   let navigation: NavigationProp<RootStackParamList> | null = null;
@@ -102,11 +123,37 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     handleRefresh,
   } = useBalancesList({ publicKey, network, searchTerm });
 
-  // Filter out excluded tokens
-  const balanceItems = React.useMemo(
-    () => allBalanceItems.filter((item) => !excludeTokenIds.includes(item.id)),
-    [allBalanceItems, excludeTokenIds],
-  );
+  // Filter out excluded tokens and calculate spendable amounts
+  const balanceItems = React.useMemo((): BalanceItemWithSpendable[] => {
+    const currentFee =
+      feeContext === TransactionContext.Swap ? swapFee : transactionFee;
+
+    return allBalanceItems
+      .filter((item) => !excludeTokenIds.includes(item.id))
+      .map((item) => {
+        const spendableAmount =
+          showSpendableAmount && account
+            ? calculateSpendableAmount({
+                balance: item,
+                subentryCount: account.subentryCount || 0,
+                transactionFee: currentFee,
+              })
+            : undefined;
+
+        return {
+          ...item,
+          spendableAmount,
+        };
+      });
+  }, [
+    allBalanceItems,
+    excludeTokenIds,
+    showSpendableAmount,
+    account,
+    feeContext,
+    swapFee,
+    transactionFee,
+  ]);
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,
@@ -192,14 +239,19 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         renderItem={({ item }) => (
           <BalanceRow
             balance={item}
-            scanResult={scanResults[item.id.replace(":", "-")]}
-            onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+            scanResult={
+              item.id ? scanResults[item.id.replace(":", "-")] : undefined
+            }
+            onPress={
+              onTokenPress && item.id ? () => onTokenPress(item.id!) : undefined
+            }
             rightContent={
               renderRightContent ? renderRightContent(item) : undefined
             }
+            spendableAmount={item.spendableAmount}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || `balance-${Math.random()}`}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

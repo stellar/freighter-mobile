@@ -12,7 +12,7 @@ import {
   MIN_SLIPPAGE,
   MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
-  TransactionSettingsContext,
+  TransactionContext,
   TransactionSetting,
 } from "config/constants";
 import { NetworkCongestion } from "config/types";
@@ -36,7 +36,7 @@ import { TouchableOpacity, View } from "react-native";
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
   onConfirm: () => void;
-  context: TransactionSettingsContext;
+  context: TransactionContext;
   onSettingsChange?: () => void;
 };
 
@@ -75,19 +75,14 @@ const TransactionSettingsBottomSheet: React.FC<
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // Derived values based on context
-  const memo =
-    context === TransactionSettingsContext.Swap ? "" : transactionMemo;
-  const fee =
-    context === TransactionSettingsContext.Swap ? swapFee : transactionFee;
+  const memo = context === TransactionContext.Swap ? "" : transactionMemo;
+  const fee = context === TransactionContext.Swap ? swapFee : transactionFee;
   const timeout =
-    context === TransactionSettingsContext.Swap
-      ? swapTimeout
-      : transactionTimeout;
-  const slippage =
-    context === TransactionSettingsContext.Swap ? swapSlippage : 1;
+    context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
+  const slippage = context === TransactionContext.Swap ? swapSlippage : 1;
 
   const settings =
-    context === TransactionSettingsContext.Swap
+    context === TransactionContext.Swap
       ? [
           TransactionSetting.Fee,
           TransactionSetting.Timeout,
@@ -118,7 +113,7 @@ const TransactionSettingsBottomSheet: React.FC<
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
-      if (context === TransactionSettingsContext.Transaction) {
+      if (context === TransactionContext.Send) {
         saveTransactionMemo(value);
       }
     },
@@ -127,7 +122,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const saveFee = useCallback(
     (value: string) => {
-      if (context === TransactionSettingsContext.Swap) {
+      if (context === TransactionContext.Swap) {
         saveSwapFee(value);
       } else {
         saveTransactionFee(value);
@@ -138,7 +133,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const saveTimeout = useCallback(
     (value: number) => {
-      if (context === TransactionSettingsContext.Swap) {
+      if (context === TransactionContext.Swap) {
         saveSwapTimeout(value);
       } else {
         saveTransactionTimeout(value);
@@ -149,7 +144,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const saveSlippage = useCallback(
     (value: number) => {
-      if (context === TransactionSettingsContext.Swap) {
+      if (context === TransactionContext.Swap) {
         saveSwapSlippage(value);
       }
     },
@@ -382,7 +377,7 @@ const TransactionSettingsBottomSheet: React.FC<
             placeholder={formatNumberForDisplay(MIN_TRANSACTION_FEE)}
             error={feeError}
             note={
-              <View className="flex-row items-center gap-2 mt-2">
+              <View className="flex-row items-center gap-2 mt-2 h-5">
                 <NetworkCongestionIndicator
                   level={networkCongestion}
                   size={16}
