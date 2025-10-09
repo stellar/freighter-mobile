@@ -1,4 +1,5 @@
 import { NavigationProp, useNavigation } from "@react-navigation/native";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import { FriendbotButton } from "components/FriendbotButton";
@@ -53,6 +54,11 @@ const NotificationContent = styled.View`
   flex-direction: row;
   align-items: center;
 `;
+
+// Local type that extends PricedBalance to include spendableAmount
+type BalanceItemWithSpendable = PricedBalance & {
+  spendableAmount?: BigNumber;
+};
 
 interface BalancesListProps {
   publicKey: string;
@@ -117,11 +123,37 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     handleRefresh,
   } = useBalancesList({ publicKey, network, searchTerm });
 
-  // Filter out excluded tokens
-  const balanceItems = React.useMemo(
-    () => allBalanceItems.filter((item) => !excludeTokenIds.includes(item.id)),
-    [allBalanceItems, excludeTokenIds],
-  );
+  // Filter out excluded tokens and calculate spendable amounts
+  const balanceItems = React.useMemo((): BalanceItemWithSpendable[] => {
+    const currentFee =
+      feeType === TransactionContext.Swap ? swapFee : transactionFee;
+
+    return allBalanceItems
+      .filter((item) => !excludeTokenIds.includes(item.id))
+      .map((item) => {
+        const spendableAmount =
+          showSpendableAmount && account
+            ? calculateSpendableAmount({
+                balance: item,
+                subentryCount: account.subentryCount || 0,
+                transactionFee: currentFee,
+              })
+            : undefined;
+
+        return {
+          ...item,
+          spendableAmount,
+        };
+      });
+  }, [
+    allBalanceItems,
+    excludeTokenIds,
+    showSpendableAmount,
+    account,
+    feeType,
+    swapFee,
+    transactionFee,
+  ]);
 
   const isTestNetwork = [NETWORKS.TESTNET, NETWORKS.FUTURENET].includes(
     network,
@@ -204,31 +236,22 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         showsVerticalScrollIndicator={false}
         ListFooterComponent={DefaultListFooter}
         data={balanceItems}
-        renderItem={({ item }) => {
-          const currentFee =
-            feeType === TransactionContext.Swap ? swapFee : transactionFee;
-          const spendableAmount =
-            showSpendableAmount && account
-              ? calculateSpendableAmount({
-                  balance: item,
-                  subentryCount: account.subentryCount || 0,
-                  transactionFee: currentFee,
-                })
-              : undefined;
-
-          return (
-            <BalanceRow
-              balance={item}
-              scanResult={scanResults[item.id.replace(":", "-")]}
-              onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
-              rightContent={
-                renderRightContent ? renderRightContent(item) : undefined
-              }
-              spendableAmount={spendableAmount}
-            />
-          );
-        }}
-        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <BalanceRow
+            balance={item}
+            scanResult={
+              item.id ? scanResults[item.id.replace(":", "-")] : undefined
+            }
+            onPress={
+              onTokenPress && item.id ? () => onTokenPress(item.id!) : undefined
+            }
+            rightContent={
+              renderRightContent ? renderRightContent(item) : undefined
+            }
+            spendableAmount={item.spendableAmount}
+          />
+        )}
+        keyExtractor={(item) => item.id || `balance-${Math.random()}`}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
