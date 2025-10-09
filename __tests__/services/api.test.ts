@@ -6,7 +6,7 @@
  * - API functionality tests
  */
 import { NETWORKS } from "config/constants";
-import { freighterBackend } from "services/backend";
+import { freighterBackendV1 } from "services/backend";
 import { scanToken, scanSite, scanTransaction } from "services/blockaid/api";
 
 // Mock the API services
@@ -84,8 +84,8 @@ describe("Blockaid API Service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Get fresh mock functions for each test
-    mockGet = freighterBackend.get as jest.MockedFunction<any>;
-    mockPost = freighterBackend.post as jest.MockedFunction<any>;
+    mockGet = freighterBackendV1.get as jest.MockedFunction<any>;
+    mockPost = freighterBackendV1.post as jest.MockedFunction<any>;
   });
 
   describe("URL Parameter Encoding", () => {

@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/react-native";
+import { EnvConfig } from "config/envConfig";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
-import { EnvConfig } from "helpers/getEnvConfig";
 import { isProd } from "helpers/isEnv";
 import { Platform } from "react-native";
 import {

@@ -5,8 +5,13 @@ declare module "react-native-config" {
     
     SENTRY_DSN: string;
 
-    FREIGHTER_BACKEND_URL: string;
-    FREIGHTER_BACKEND_V2_URL: string;
+    FREIGHTER_BACKEND_V1_PROD_URL: string;
+    FREIGHTER_BACKEND_V1_STG_URL: string;
+    FREIGHTER_BACKEND_V1_DEV_URL: string;
+
+    FREIGHTER_BACKEND_V2_PROD_URL: string;
+    FREIGHTER_BACKEND_V2_STG_URL: string;
+    FREIGHTER_BACKEND_V2_DEV_URL: string;
 
     WALLET_KIT_PROJECT_ID: string;
     WALLET_KIT_MT_URL: string;

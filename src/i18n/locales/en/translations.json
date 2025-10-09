@@ -160,7 +160,13 @@
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",
-    "networkSettings": "Network Settings"
+    "networkSettings": "Network Settings",
+    "developerSettings": {
+      "title": "Developer Settings",
+      "warning": "Backend changes will take effect after restarting the app.",
+      "backendV1Environment": "Backend V1 Environment",
+      "backendV2Environment": "Backend V2 Environment"
+    }
   },
   "networkSettingsScreen": {
     "title": "Network Settings",

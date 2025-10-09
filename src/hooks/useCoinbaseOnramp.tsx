@@ -1,7 +1,7 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BackendEnvConfig } from "config/envConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
-import { EnvConfig } from "helpers/getEnvConfig";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
@@ -35,7 +35,7 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       body: JSON.stringify({ address: publicKey }),
     };
 
-    const url = `${EnvConfig.FREIGHTER_BACKEND_URL}/onramp/token`;
+    const url = `${BackendEnvConfig.FREIGHTER_BACKEND_V1_URL}/onramp/token`;
     const response = await fetch(url, options);
     const { data } = (await response.json()) as {
       data: { token: string; error: string };
