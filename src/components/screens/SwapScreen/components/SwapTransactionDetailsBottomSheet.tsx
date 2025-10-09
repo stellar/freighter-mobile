@@ -18,7 +18,11 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatAmount,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -55,7 +59,9 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { account } = useGetActiveAccount();
   const { open: openInAppBrowser } = useInAppBrowser();
 
-  const { swapFee, swapSlippage } = useSwapSettingsStore();
+  const { swapSlippage } = useSwapSettingsStore();
+
+  const actualFee = stroopToXlm(transactionDetails?.fee ?? 0).toString();
 
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -263,10 +269,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             ),
             trailingContent: (
               <Text md medium>
-                {formatTokenForDisplay(
-                  displayMinimumReceived,
-                  destinationToken.code,
-                )}
+                {`${displayMinimumReceived} ${destinationToken.code}`}
               </Text>
             ),
           },
@@ -283,7 +286,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <View className="flex-row items-center gap-[4px]">
                 <StellarLogo width={16} height={16} />
                 <Text md medium>
-                  {formatTokenForDisplay(swapFee, NATIVE_TOKEN_CODE)}
+                  {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                 </Text>
               </View>
             ),
