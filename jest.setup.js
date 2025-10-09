@@ -516,3 +516,35 @@ jest.mock("react-native-localize", () => ({
 
 // Export the mock function so tests can modify it
 global.mockGetNumberFormatSettings = mockGetNumberFormatSettings;
+
+// Mock helpers/getEnvConfig to avoid async initialization issues in tests
+jest.mock("helpers/getEnvConfig", () => {
+  const { BackendEnvironment } = jest.requireActual("config/backendConfig");
+
+  return {
+    EnvConfig: {
+      AMPLITUDE_API_KEY: "mock-amplitude-key",
+      AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "mock-experiment-key",
+      SENTRY_DSN: "mock-sentry-dsn",
+      WALLET_KIT_PROJECT_ID: "mock-wallet-kit-project-id",
+      WALLET_KIT_MT_URL: "https://mock-wallet-kit.example.com",
+      WALLET_KIT_MT_ICON: "https://mock-icon.example.com/icon.png",
+      WALLET_KIT_MT_NAME: "Mock Freighter Wallet",
+      WALLET_KIT_MT_DESCRIPTION: "Mock wallet description",
+      WALLET_KIT_MT_REDIRECT_NATIVE: "mockfreighter://",
+      ANDROID_DEBUG_KEYSTORE_PASSWORD: "mock-debug-password",
+      ANDROID_DEBUG_KEYSTORE_ALIAS: "mock-debug-alias",
+      ANDROID_DEV_KEYSTORE_PASSWORD: "mock-dev-password",
+      ANDROID_DEV_KEYSTORE_ALIAS: "mock-dev-alias",
+      ANDROID_PROD_KEYSTORE_PASSWORD: "mock-prod-password",
+      ANDROID_PROD_KEYSTORE_ALIAS: "mock-prod-alias",
+    },
+    BackendEnvConfig: {
+      FREIGHTER_BACKEND_V1_URL:
+        "https://mock-backend-v1-dev.example.com/api/v1",
+      FREIGHTER_BACKEND_V2_URL:
+        "https://mock-backend-v2-dev.example.com/api/v1",
+    },
+    BackendEnvironment,
+  };
+});
