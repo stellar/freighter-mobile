@@ -1,19 +1,21 @@
 import BigNumber from "bignumber.js";
 import { List, ListItemProps } from "components/List";
-import { ReviewFooter } from "components/ReviewFooter";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -22,6 +24,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SendReviewBottomSheetProps = {
   selectedBalance?: PricedBalance;
@@ -317,7 +320,151 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   );
 };
 
-// Re-export the shared ReviewFooter as SendReviewFooter for backward compatibility
-export const SendReviewFooter = ReviewFooter;
+type SendReviewFooterProps = {
+  onCancel?: () => void;
+  onConfirm?: () => void;
+  isRequiredMemoMissing?: boolean;
+  isMalicious?: boolean;
+  isValidatingMemo?: boolean;
+  isSuspicious?: boolean;
+  onSettingsPress?: () => void;
+};
+
+export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
+  (props) => {
+    const { t } = useAppTranslation();
+    const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+    const insets = useSafeAreaInsets();
+
+    const {
+      onCancel,
+      onConfirm,
+      isRequiredMemoMissing,
+      isMalicious,
+      isValidatingMemo,
+      isSuspicious,
+      onSettingsPress,
+    } = props;
+
+    const isTrusted = !isMalicious && !isSuspicious;
+    const isLoading = isBuilding;
+    const isDisabled = !transactionXDR || isLoading;
+
+    const renderConfirmButton = useCallback(() => {
+      const getButtonText = () => {
+        if (isRequiredMemoMissing || isValidatingMemo) {
+          return t("common.addMemo");
+        }
+
+        return t("common.confirm");
+      };
+
+      return (
+        <View className="flex-1">
+          <Button
+            biometric
+            onPress={() => onConfirm?.()}
+            tertiary
+            xl
+            disabled={isBuilding || !transactionXDR || !!error}
+          >
+            {getButtonText()}
+          </Button>
+        </View>
+      );
+    }, [
+      isRequiredMemoMissing,
+      isValidatingMemo,
+      onConfirm,
+      t,
+      isBuilding,
+      transactionXDR,
+      error,
+    ]);
+
+    const renderButtons = useCallback(() => {
+      const settingsButton = (
+        <TouchableOpacity
+          onPress={onSettingsPress}
+          className="border border-gray-6 items-center justify-center"
+          style={{
+            height: pxValue(50),
+            borderRadius: pxValue(25),
+            width: pxValue(50),
+          }}
+        >
+          <Icon.Settings04 size={24} themeColor="gray" />
+        </TouchableOpacity>
+      );
+
+      const cancelButton = (
+        <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
+          <Button
+            tertiary={isSuspicious}
+            destructive={!isTrusted}
+            secondary={isTrusted}
+            isFullWidth
+            onPress={onCancel}
+            disabled={isDisabled}
+          >
+            {t("common.cancel")}
+          </Button>
+        </View>
+      );
+
+      const confirmAnywayButton = (
+        <TextButton
+          text={t("transactionAmountScreen.confirmAnyway")}
+          onPress={onConfirm}
+          isLoading={isLoading}
+          disabled={isDisabled}
+          variant={isMalicious ? "error" : "secondary"}
+        />
+      );
+
+      if (!isTrusted) {
+        return (
+          <>
+            {cancelButton}
+            {confirmAnywayButton}
+          </>
+        );
+      }
+
+      return (
+        <>
+          {onSettingsPress && settingsButton}
+          {cancelButton}
+          {renderConfirmButton()}
+        </>
+      );
+    }, [
+      onSettingsPress,
+      isTrusted,
+      isSuspicious,
+      isMalicious,
+      onCancel,
+      isDisabled,
+      t,
+      onConfirm,
+      isLoading,
+      renderConfirmButton,
+    ]);
+
+    return (
+      <View
+        className={`${
+          isTrusted ? "flex-row" : "flex-col"
+        } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
+        style={{
+          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          gap: pxValue(12),
+        }}
+      >
+        {renderButtons()}
+      </View>
+    );
+  },
+);
 
 export default SendReviewBottomSheet;
