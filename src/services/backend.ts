@@ -35,7 +35,7 @@ import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService, isRequestCanceled } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
-export const freighterBackend = createApiService({
+export const freighterBackendV1 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V1_URL,
 });
 export const freighterBackendV2 = createApiService({
@@ -113,7 +113,7 @@ export const getContractSpecs = async ({
   contractId: string;
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
-  const response = await freighterBackend.get<{ data: Record<string, any> }>(
+  const response = await freighterBackendV1.get<{ data: Record<string, any> }>(
     `/contract-spec/${contractId}`,
     {
       params: {
@@ -207,7 +207,7 @@ export const fetchBalances = async ({
     });
   }
 
-  const { data } = await freighterBackend.get<FetchBalancesResponse>(
+  const { data } = await freighterBackendV1.get<FetchBalancesResponse>(
     `/account-balances/${publicKey}?${params.toString()}`,
   );
 
@@ -289,7 +289,7 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  const { data } = await freighterBackend.post<TokenPricesResponse>(
+  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
     "/token-prices",
     {
       tokens: filteredTokens,
@@ -383,7 +383,7 @@ export const getTokenDetails = async ({
   try {
     // TODO: Add verification for custom network.
 
-    const response = await freighterBackend.get<TokenDetailsResponse>(
+    const response = await freighterBackendV1.get<TokenDetailsResponse>(
       `/token-details/${contractId}`,
       {
         params: {
@@ -448,7 +448,7 @@ export const isSacContractExecutable = async (
   // TODO: Add verification for custom network.
 
   try {
-    const response = await freighterBackend.get<{ isSacContract: boolean }>(
+    const response = await freighterBackendV1.get<{ isSacContract: boolean }>(
       `/is-sac-contract/${contractId}`,
       {
         params: {
@@ -506,7 +506,7 @@ export const getIndexerAccountHistory = async ({
   networkDetails: NetworkDetails;
 }): Promise<Horizon.ServerApi.OperationRecord[]> => {
   try {
-    const response = await freighterBackend.get<
+    const response = await freighterBackendV1.get<
       Horizon.ServerApi.OperationRecord[]
     >(`/account-history/${publicKey}`, {
       params: {
@@ -715,7 +715,7 @@ export interface SimulateTransactionResponse {
 export const simulateTokenTransfer = async (
   params: SimulateTokenTransferParams,
 ) => {
-  const { data } = await freighterBackend.post<SimulateTransactionResponse>(
+  const { data } = await freighterBackendV1.post<SimulateTransactionResponse>(
     "/simulate-token-transfer",
     params,
   );
