@@ -63,7 +63,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
             network={network}
             onTokenPress={handleTokenPress}
             showSpendableAmount
-            feeType={TransactionContext.Send}
+            feeContext={TransactionContext.Send}
           />
         </View>
       </View>

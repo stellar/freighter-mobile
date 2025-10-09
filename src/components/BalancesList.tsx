@@ -69,7 +69,7 @@ interface BalancesListProps {
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   excludeTokenIds?: string[];
   showSpendableAmount?: boolean;
-  feeType?: TransactionContext;
+  feeContext?: TransactionContext;
 }
 
 /**
@@ -95,7 +95,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   renderRightContent,
   excludeTokenIds = [],
   showSpendableAmount = false,
-  feeType = TransactionContext.Send,
+  feeContext = TransactionContext.Send,
 }) => {
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -126,7 +126,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   // Filter out excluded tokens and calculate spendable amounts
   const balanceItems = React.useMemo((): BalanceItemWithSpendable[] => {
     const currentFee =
-      feeType === TransactionContext.Swap ? swapFee : transactionFee;
+      feeContext === TransactionContext.Swap ? swapFee : transactionFee;
 
     return allBalanceItems
       .filter((item) => !excludeTokenIds.includes(item.id))
@@ -150,7 +150,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     excludeTokenIds,
     showSpendableAmount,
     account,
-    feeType,
+    feeContext,
     swapFee,
     transactionFee,
   ]);

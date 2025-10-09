@@ -63,7 +63,7 @@ interface Props {
   /** Whether to show spendable amounts instead of total amounts for tokens */
   showSpendableAmount?: boolean;
   /** Type of fee to use for spendable amount calculation */
-  feeType?: TransactionContext;
+  feeContext?: TransactionContext;
 }
 
 /**
@@ -97,7 +97,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     onTokenPress,
     onCollectiblePress,
     showSpendableAmount = false,
-    feeType = TransactionContext.Send,
+    feeContext = TransactionContext.Send,
   }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
@@ -191,10 +191,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           network={network}
           onTokenPress={onTokenPress}
           showSpendableAmount={showSpendableAmount}
-          feeType={feeType}
+          feeContext={feeContext}
         />
       ),
-      [publicKey, network, onTokenPress, showSpendableAmount, feeType],
+      [publicKey, network, onTokenPress, showSpendableAmount, feeContext],
     );
 
     /**

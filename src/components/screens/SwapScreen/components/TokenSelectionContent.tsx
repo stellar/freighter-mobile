@@ -23,7 +23,7 @@ interface TokenSelectionContentProps {
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   excludeTokenIds?: string[];
   showSpendableAmount?: boolean;
-  feeType?: TransactionContext;
+  feeContext?: TransactionContext;
 }
 
 const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
@@ -31,7 +31,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   renderRightContent,
   excludeTokenIds = [],
   showSpendableAmount = false,
-  feeType = TransactionContext.Swap,
+  feeContext = TransactionContext.Swap,
 }) => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey ?? "";
@@ -105,7 +105,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         renderRightContent={renderRightContent}
         excludeTokenIds={excludeTokenIds}
         showSpendableAmount={showSpendableAmount}
-        feeType={feeType}
+        feeContext={feeContext}
       />
     </View>
   );

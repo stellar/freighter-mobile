@@ -414,7 +414,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
       const confirmAnywayButton = (
         <TextButton
-          text={t("transactionAmountScreen.confirmAnyway")}
+          text={
+            isRequiredMemoMissing
+              ? t("common.addMemo")
+              : t("transactionAmountScreen.confirmAnyway")
+          }
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
@@ -444,6 +448,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isSuspicious,
       isMalicious,
       onCancel,
+      isRequiredMemoMissing,
       isDisabled,
       t,
       onConfirm,

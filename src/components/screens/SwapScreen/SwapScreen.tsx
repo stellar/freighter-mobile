@@ -46,7 +46,7 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation, route }) => {
         onTokenPress={handleTokenPress}
         excludeTokenIds={excludeTokenIds}
         showSpendableAmount
-        feeType={TransactionContext.Swap}
+        feeContext={TransactionContext.Swap}
       />
     </BaseLayout>
   );
