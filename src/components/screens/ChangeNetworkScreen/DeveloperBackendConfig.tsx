@@ -1,10 +1,16 @@
 import Icon from "components/sds/Icon";
 import SegmentedControl from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
-import { BackendEnvironment, useBackendConfigStore } from "ducks/backendConfig";
+import {
+  BackendEnvironment,
+  getBackendV1Environment,
+  getBackendV2Environment,
+  setBackendV1Environment,
+  setBackendV2Environment,
+} from "config/backendConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 
 /**
@@ -19,12 +25,34 @@ const DeveloperBackendConfig: React.FC = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const {
-    backendV1Environment,
-    backendV2Environment,
-    setBackendV1Environment,
-    setBackendV2Environment,
-  } = useBackendConfigStore();
+  const [backendV1Env, setBackendV1Env] = useState<BackendEnvironment>(
+    BackendEnvironment.DEV,
+  );
+  const [backendV2Env, setBackendV2Env] = useState<BackendEnvironment>(
+    BackendEnvironment.DEV,
+  );
+
+  // Load saved backend environments on mount
+  useEffect(() => {
+    const loadBackendEnvironments = async () => {
+      const v1Env = await getBackendV1Environment();
+      const v2Env = await getBackendV2Environment();
+      setBackendV1Env(v1Env);
+      setBackendV2Env(v2Env);
+    };
+
+    loadBackendEnvironments();
+  }, []);
+
+  const handleSetBackendV1Environment = (env: BackendEnvironment) => {
+    setBackendV1Env(env);
+    setBackendV1Environment(env);
+  };
+
+  const handleSetBackendV2Environment = (env: BackendEnvironment) => {
+    setBackendV2Env(env);
+    setBackendV2Environment(env);
+  };
 
   const backendEnvironmentOptions = [
     { label: "PROD", value: BackendEnvironment.PROD },
@@ -50,9 +78,9 @@ const DeveloperBackendConfig: React.FC = () => {
         </Text>
         <SegmentedControl
           options={backendEnvironmentOptions}
-          selectedValue={backendV1Environment}
+          selectedValue={backendV1Env}
           onValueChange={(value) =>
-            setBackendV1Environment(value as BackendEnvironment)
+            handleSetBackendV1Environment(value as BackendEnvironment)
           }
         />
       </View>
@@ -63,9 +91,9 @@ const DeveloperBackendConfig: React.FC = () => {
         </Text>
         <SegmentedControl
           options={backendEnvironmentOptions}
-          selectedValue={backendV2Environment}
+          selectedValue={backendV2Env}
           onValueChange={(value) =>
-            setBackendV2Environment(value as BackendEnvironment)
+            handleSetBackendV2Environment(value as BackendEnvironment)
           }
         />
       </View>

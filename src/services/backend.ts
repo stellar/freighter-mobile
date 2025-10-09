@@ -30,16 +30,16 @@ import {
 } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
-import { EnvConfig } from "helpers/getEnvConfig";
+import { BackendEnvConfig } from "helpers/getEnvConfig";
 import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService, isRequestCanceled } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
 export const freighterBackend = createApiService({
-  baseURL: EnvConfig.FREIGHTER_BACKEND_V1_URL,
+  baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V1_URL,
 });
 export const freighterBackendV2 = createApiService({
-  baseURL: EnvConfig.FREIGHTER_BACKEND_V2_URL,
+  baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
