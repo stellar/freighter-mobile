@@ -2,7 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TokenSelectionContent } from "components/screens/SwapScreen/components";
-import { SWAP_SELECTION_TYPES } from "config/constants";
+import { SWAP_SELECTION_TYPES, TransactionContext } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import React, { useMemo } from "react";
@@ -45,6 +45,8 @@ const SwapScreen: React.FC<SwapScreenProps> = ({ navigation, route }) => {
       <TokenSelectionContent
         onTokenPress={handleTokenPress}
         excludeTokenIds={excludeTokenIds}
+        showSpendableAmount
+        feeType={TransactionContext.Swap}
       />
     </BaseLayout>
   );

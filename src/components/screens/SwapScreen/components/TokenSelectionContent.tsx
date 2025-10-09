@@ -2,7 +2,11 @@ import { BalancesList } from "components/BalancesList";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_DEBOUNCE_DELAY, NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  DEFAULT_DEBOUNCE_DELAY,
+  NATIVE_TOKEN_CODE,
+  TransactionContext,
+} from "config/constants";
 import { PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { isContractId } from "helpers/soroban";
@@ -18,12 +22,16 @@ interface TokenSelectionContentProps {
   onTokenPress: (tokenId: string, tokenSymbol: string) => void;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   excludeTokenIds?: string[];
+  showSpendableAmount?: boolean;
+  feeType?: TransactionContext;
 }
 
 const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   onTokenPress,
   renderRightContent,
   excludeTokenIds = [],
+  showSpendableAmount = false,
+  feeType = TransactionContext.Swap,
 }) => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey ?? "";
@@ -96,6 +104,8 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         disableNavigation
         renderRightContent={renderRightContent}
         excludeTokenIds={excludeTokenIds}
+        showSpendableAmount={showSpendableAmount}
+        feeType={feeType}
       />
     </View>
   );

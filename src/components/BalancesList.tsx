@@ -5,7 +5,11 @@ import { FriendbotButton } from "components/FriendbotButton";
 import { Button } from "components/sds/Button";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
-import { CREATE_ACCOUNT_TUTORIAL_URL, NETWORKS } from "config/constants";
+import {
+  CREATE_ACCOUNT_TUTORIAL_URL,
+  NETWORKS,
+  TransactionContext,
+} from "config/constants";
 import {
   ADD_FUNDS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
@@ -13,9 +17,13 @@ import {
 } from "config/routes";
 import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
+import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode } from "react";
 import { FlatList, RefreshControl } from "react-native";
@@ -54,6 +62,8 @@ interface BalancesListProps {
   disableNavigation?: boolean;
   renderRightContent?: (balance: PricedBalance) => ReactNode;
   excludeTokenIds?: string[];
+  showSpendableAmount?: boolean;
+  feeType?: TransactionContext;
 }
 
 /**
@@ -78,9 +88,14 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   disableNavigation = false,
   renderRightContent,
   excludeTokenIds = [],
+  showSpendableAmount = false,
+  feeType = TransactionContext.Send,
 }) => {
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
+  const { account } = useGetActiveAccount();
+  const { transactionFee } = useTransactionSettingsStore();
+  const { swapFee } = useSwapSettingsStore();
 
   // Always call the hook, but handle navigation context errors gracefully
   let navigation: NavigationProp<RootStackParamList> | null = null;
@@ -189,16 +204,30 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         showsVerticalScrollIndicator={false}
         ListFooterComponent={DefaultListFooter}
         data={balanceItems}
-        renderItem={({ item }) => (
-          <BalanceRow
-            balance={item}
-            scanResult={scanResults[item.id.replace(":", "-")]}
-            onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
-            rightContent={
-              renderRightContent ? renderRightContent(item) : undefined
-            }
-          />
-        )}
+        renderItem={({ item }) => {
+          const currentFee =
+            feeType === TransactionContext.Swap ? swapFee : transactionFee;
+          const spendableAmount =
+            showSpendableAmount && account
+              ? calculateSpendableAmount({
+                  balance: item,
+                  subentryCount: account.subentryCount || 0,
+                  transactionFee: currentFee,
+                })
+              : undefined;
+
+          return (
+            <BalanceRow
+              balance={item}
+              scanResult={scanResults[item.id.replace(":", "-")]}
+              onPress={onTokenPress ? () => onTokenPress(item.id) : undefined}
+              rightContent={
+                renderRightContent ? renderRightContent(item) : undefined
+              }
+              spendableAmount={spendableAmount}
+            />
+          );
+        }}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl

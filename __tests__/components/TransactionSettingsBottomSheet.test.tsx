@@ -1,6 +1,6 @@
 import { fireEvent, waitFor } from "@testing-library/react-native";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import { TransactionSettingsContext } from "config/constants";
+import { TransactionContext } from "config/constants";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -90,7 +90,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
-        context={TransactionSettingsContext.Transaction}
+        context={TransactionContext.Send}
         onSettingsChange={mockOnSettingsChange}
       />,
     );
@@ -118,7 +118,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
-        context={TransactionSettingsContext.Transaction}
+        context={TransactionContext.Send}
         onSettingsChange={asyncOnSettingsChange}
       />,
     );
@@ -140,7 +140,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
-        context={TransactionSettingsContext.Transaction}
+        context={TransactionContext.Send}
         onSettingsChange={mockOnSettingsChange}
       />,
     );
@@ -185,7 +185,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
-        context={TransactionSettingsContext.Transaction}
+        context={TransactionContext.Send}
         onSettingsChange={mockOnSettingsChangeForMemo}
       />,
     );

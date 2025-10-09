@@ -24,7 +24,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   FIAT_DECIMALS,
-  TransactionSettingsContext,
+  TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -244,7 +244,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
-      const totalBalance = BigNumber(selectedBalance.total);
+      const totalBalance = BigNumber(spendableBalance);
       targetAmount = totalBalance.multipliedBy(percentage / 100);
     }
 
@@ -649,6 +649,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 isSingleRow
                 onPress={navigateToSelectTokenScreen}
                 balance={selectedBalance}
+                spendableAmount={spendableBalance}
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -772,7 +773,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
         customContent={
           <TransactionSettingsBottomSheet
-            context={TransactionSettingsContext.Transaction}
+            context={TransactionContext.Send}
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
