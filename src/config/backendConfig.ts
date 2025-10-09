@@ -33,11 +33,11 @@ const STORAGE_KEYS = {
   BACKEND_V2_ENVIRONMENT: "@backend-config:v2-environment",
 } as const;
 
-const DEFAULT_BACKEND_ENVIRONMENT = BackendEnvironment.DEV;
+const DEFAULT_BACKEND_ENVIRONMENT = BackendEnvironment.PROD;
 
 /**
  * Get the selected Backend V1 environment from AsyncStorage
- * Returns DEV as default if nothing is stored
+ * Returns PROD as default if nothing is stored
  */
 export const getBackendV1Environment =
   async (): Promise<BackendEnvironment> => {
@@ -58,7 +58,7 @@ export const getBackendV1Environment =
 
 /**
  * Get the selected Backend V2 environment from AsyncStorage
- * Returns DEV as default if nothing is stored
+ * Returns PROD as default if nothing is stored
  */
 export const getBackendV2Environment =
   async (): Promise<BackendEnvironment> => {
