@@ -1,7 +1,7 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BackendEnvConfig } from "config/envConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
-import { BackendEnvConfig } from "helpers/getEnvConfig";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";

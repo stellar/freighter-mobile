@@ -1,7 +1,7 @@
 import { WalletKitTypes } from "@reown/walletkit";
 import { SessionTypes } from "@walletconnect/types";
 import { NETWORKS } from "config/constants";
-import { EnvConfig } from "helpers/getEnvConfig";
+import { EnvConfig } from "config/envConfig";
 import {
   disconnectAllSessions,
   disconnectSession,

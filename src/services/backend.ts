@@ -17,6 +17,7 @@
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
+import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
   TokenTypeWithCustomToken,
@@ -30,7 +31,6 @@ import {
 } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
-import { BackendEnvConfig } from "helpers/getEnvConfig";
 import { getNativeContractDetails } from "helpers/soroban";
 import { createApiService, isRequestCanceled } from "services/apiFactory";
 

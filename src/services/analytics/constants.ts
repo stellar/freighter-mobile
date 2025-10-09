@@ -1,4 +1,4 @@
-import { EnvConfig } from "helpers/getEnvConfig";
+import { EnvConfig } from "config/envConfig";
 import { Platform } from "react-native";
 
 // -----------------------------------------------------------------------------

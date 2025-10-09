@@ -517,8 +517,8 @@ jest.mock("react-native-localize", () => ({
 // Export the mock function so tests can modify it
 global.mockGetNumberFormatSettings = mockGetNumberFormatSettings;
 
-// Mock helpers/getEnvConfig to avoid async initialization issues in tests
-jest.mock("helpers/getEnvConfig", () => {
+// Mock config/envConfig to avoid async initialization issues in tests
+jest.mock("config/envConfig", () => {
   const { BackendEnvironment } = jest.requireActual("config/backendConfig");
 
   return {
