@@ -14,7 +14,7 @@
  * data transformation (e.g., BigNumber conversion via bigize helper).
  */
 /* eslint-disable arrow-body-style */
-import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
+import { Horizon, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
@@ -727,6 +727,127 @@ export const simulateTokenTransfer = async (
       params.network_passphrase,
     ),
   };
+};
+
+/**
+ * Parameters for operation simulation
+ * @interface SimulateTransactionParams
+ * @property {string} address - Contract address for the token
+ * @property {string} pub_key - Public key of the sender
+ * @property {string} memo - Transaction memo
+ * @property {string} [fee] - Optional fee amount
+ * @property {Object} params - operation parameters
+ * @property {string} network_url - Network URL for simulation
+ * @property {string} network_passphrase - Network passphrase
+ */
+export interface SimulateTransactionParams {
+  address: string;
+  pub_key: string;
+  memo: string;
+  fee?: string;
+  params: xdr.ScVal[];
+  network_url: string;
+  network_passphrase: string;
+}
+
+/**
+ * Simulates an operation
+ * @async
+ * @function simulateTransaction
+ * @param {SimulateTransactionParams} params - Simulation parameters
+ * @returns {Promise<Object>} Promise resolving to simulation result with prepared transaction
+ *
+ * @description
+ * Simulates an operation:
+ * - Validates transaction parameters
+ * - Returns simulation response and prepared transaction
+ * - Converts XDR to TransactionBuilder for easy manipulation
+ *
+ * @throws {Error} When the simulation fails
+ *
+ * @example
+ * ```ts
+ * const _params = [
+ *  new Sdk.Address(params.publicKey).toScVal(),
+ *  new Sdk.Address(params.destination).toScVal(),
+ *  new Sdk.XdrLargeInt("i128", params.amount).toI128(),
+ * ];
+ * const result = await simulateTransaction({
+ *   address: "contract123",
+ *   pub_key: "GABC...",
+ *   memo: "Transfer",
+ *   params,
+ *   network_url: "https://horizon.stellar.org",
+ *   network_passphrase: "Public Global Stellar Network"
+ * });
+ * ```
+ */
+export const simulateTransaction = async (
+  params: SimulateTransactionParams,
+) => {
+  const { data } = await freighterBackend.post<SimulateTransactionResponse>(
+    "/simulate-transaction",
+    params,
+  );
+
+  return {
+    ...data,
+    preparedTx: TransactionBuilder.fromXDR(
+      data.preparedTransaction,
+      params.network_passphrase,
+    ),
+  };
+};
+
+/**
+ * Body for submitting a transaction
+ * @interface SubmitTransactionBody
+ * @property {string} signed_xdr - xdr to submit
+ * @property {string} network_url - Network URL for submission
+ * @property {string} network_passphrase - Network passphrase
+ */
+export interface SubmitTransactionBody {
+  signed_xdr: string;
+  network_url: string;
+  network_passphrase: string;
+}
+
+/**
+ * submits an transaction
+ * @async
+ * @function submitTransaction
+ * @param {SubmitTransactionBody} params - Submission details
+ * @returns {Promise<Object>} Promise resolving to a HorizonApi.SubmitTransactionResponse
+ *
+ * @description
+ * Submits a transaction to the network:
+ *
+ * @throws {Error} When the submission fails
+ *
+ * @example
+ * ```ts
+ * const _params = [
+ *  new Sdk.Address(params.publicKey).toScVal(),
+ *  new Sdk.Address(params.destination).toScVal(),
+ *  new Sdk.XdrLargeInt("i128", params.amount).toI128(),
+ * ];
+ * const result = await submitTransaction({
+ *   body: {
+ *    signed_xdr: "...",
+ *    network_url: "https://horizon.stellar.org",
+ *    network_passphrase: "Public Global Stellar Network"
+ *  }
+ * });
+ * ```
+ */
+export const submitTransaction = async (body: SubmitTransactionBody) => {
+  const { data } =
+    await freighterBackend.post<Horizon.HorizonApi.SubmitTransactionResponse>(
+      "/submit-transaction",
+      body,
+    );
+
+  return data;
 };
 
 /**
