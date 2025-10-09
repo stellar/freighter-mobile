@@ -1,20 +1,79 @@
 #!/bin/bash
 
-echo 'Cleaning all the things';
-yarn gradle-clean;
-yarn node-clean;
-rm -rf $TMPDIR/react-*;
-rm -rf $TMPDIR/npm-*;
+export LANG=en_US.UTF-8
+echo ''
+echo '╔════════════════════════════════════════════════════════════╗'
+echo '║  🧹 RESET ENVIRONMENT - Deep Clean All Dependencies        ║'
+echo '╚════════════════════════════════════════════════════════════╝'
+echo ''
+
+# Step 1: Clean Gradle/Android
+echo '📱 Step 1/7: Cleaning Android/Gradle build artifacts...'
+sh ./scripts/gradle-clean;
+echo ''
+
+# Step 2: Delete node_modules
+echo '📦 Step 2/7: Cleaning node_modules (this may take 30-60 seconds)...'
+if [ -d "node_modules" ]; then
+  find node_modules -depth -delete 2>/dev/null
+  if [ -d "node_modules" ]; then
+    chmod -R u+w node_modules 2>/dev/null
+    rm -rf node_modules 2>/dev/null
+  fi
+  if [ ! -d "node_modules" ]; then
+    echo '   ✅ node_modules cleaned'
+  fi
+else
+  echo '   ✅ node_modules already clean'
+fi
+echo ''
+
+# Step 3: Clean temporary files
+echo '🗑️  Step 3/7: Cleaning temporary React Native and npm caches...'
+rm -rf $TMPDIR/react-* 2>/dev/null;
+rm -rf $TMPDIR/npm-* 2>/dev/null;
+echo '   ✅ Temporary files cleaned'
+echo ''
+
+# Step 4: Clean iOS
+echo '🍎 Step 4/7: Cleaning iOS dependencies and caches...'
 cd ios;
 rm -rf Pods;
 rm -rf Podfile.lock;
 rm -rf build;
+echo '   ✅ iOS Pods and build artifacts cleaned'
+echo ''
+
+# Step 5: Clean npm cache
+echo '📦 Step 5/7: Cleaning npm cache...'
 npm cache clean --force;
+echo '   ✅ npm cache cleaned'
+echo ''
+
+# Step 6: Clean Pod cache
+echo '☕ Step 6/7: Cleaning Pod cache...'
 pod cache clean --all;
+echo '   ✅ pod cache cleaned'
+echo ''
+
+# Step 7: Clean Android build
+echo '🤖 Step 7/7: Cleaning Android build directory...'
 cd ../android;
 rm -rf build;
+echo '   ✅ Android build cleaned'
+
+# Clean Xcode caches
 cd ..;
-rm -rf ~/Library/Developer/Xcode/DerivedData;
-rm -rf "${HOME}/Library/Caches/CocoaPods";
-rm -rf "`pwd`/Pods/";
-echo 'Done cleaning!';
+echo ''
+echo '🧹 Removing Xcode DerivedData and CocoaPods files...'
+rm -rf ~/Library/Developer/Xcode/DerivedData 2>/dev/null;
+rm -rf "${HOME}/Library/Caches/CocoaPods" 2>/dev/null;
+rm -rf "`pwd`/Pods/" 2>/dev/null;
+echo '   ✅ Xcode & CocoaPods files removed'
+
+echo ''
+echo '╔════════════════════════════════════════════════════════════╗'
+echo '║  ✅ ENVIRONMENT RESET COMPLETE!                            ║'
+echo '║  Run "yarn install" to reinstall all dependencies          ║'
+echo '╚════════════════════════════════════════════════════════════╝'
+echo ''

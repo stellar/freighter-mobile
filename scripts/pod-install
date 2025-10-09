@@ -1,16 +1,37 @@
 #!/usr/bin/env bash
 
+export LANG=en_US.UTF-8
 set -e
 
 pod_install() {
   if [[ -x $(which pod) ]]; then
+    # Check if this is a fresh install (no Pods directory)
+    if [[ ! -d "ios/Pods" ]]; then
+      echo ""
+      echo "╔════════════════════════════════════════════════════════════╗"
+      echo "║  🧹 FRESH POD INSTALLATION - Installing from scratch       ║"
+      echo "║  📦 Downloading all 108 CocoaPods (may take 1-2 minutes)   ║"
+      echo "╚════════════════════════════════════════════════════════════╝"
+      echo ""
+    else
+      echo ""
+      echo "=> 🔄 Updating CocoaPods..."
+      echo ""
+    fi
+
     if [[ "$IOS_SCHEME" == "" ]]; then
       bundle exec pod install --project-directory=ios
     else
       bundle exec pod install --deployment --project-directory=ios
     fi
+    
+    echo ""
+    echo "╔════════════════════════════════════════════════════════════╗"
+    echo "║  ✅ POD INSTALLATION COMPLETE!                             ║"
+    echo "╚════════════════════════════════════════════════════════════╝"
+    echo ""
   else
-    echo "=> Cocoapods not installed; skipping."
+    echo "=> ⚠️  Cocoapods not installed; skipping."
   fi
 }
 
