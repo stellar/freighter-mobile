@@ -377,7 +377,7 @@ const TransactionSettingsBottomSheet: React.FC<
             placeholder={formatNumberForDisplay(MIN_TRANSACTION_FEE)}
             error={feeError}
             note={
-              <View className="flex-row items-center gap-2 mt-2">
+              <View className="flex-row items-center gap-2 mt-2 h-5">
                 <NetworkCongestionIndicator
                   level={networkCongestion}
                   size={16}
