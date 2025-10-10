@@ -34,17 +34,20 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
       >
         <Avatar size="xl" publicAddress={account?.publicKey ?? ""} />
 
-        <StyledTextInput
-          fieldSize="lg"
-          value={inputUrl}
-          onChangeText={onInputChange}
-          onSubmitEditing={onUrlSubmit}
-          placeholder={t("discovery.urlBarPlaceholder")}
-          placeholderTextColor={themeColors.text.secondary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="default"
-        />
+        <View className="flex-1 rounded-lg bg-background-default border border-border-primary h-14 items-center justify-center pl-[12px] pr-[12px]">
+          <StyledTextInput
+            fieldSize="lg"
+            value={inputUrl}
+            onChangeText={onInputChange}
+            onSubmitEditing={onUrlSubmit}
+            placeholder={t("discovery.urlBarPlaceholder")}
+            placeholderTextColor={themeColors.text.secondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="default"
+            lineBreakModeIOS="head"
+          />
+        </View>
 
         {/* Show Tabs Button */}
         <TouchableOpacity

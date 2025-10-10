@@ -360,6 +360,8 @@ interface InputProps {
   inputSuffixDisplay?: string;
   /** Whether to center the text alignment within the input field */
   centered?: boolean;
+  /** Line break mode for iOS */
+  lineBreakModeIOS?: "head" | "middle" | "tail" | "clip";
 }
 
 /**
@@ -411,6 +413,7 @@ type TextInputComponentProps = Pick<
   | "autoCapitalize"
   | "autoFocus"
   | "keyboardType"
+  | "lineBreakModeIOS"
 > & {
   className?: string;
   ref: React.Ref<InputRef>;
@@ -451,6 +454,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
       testID,
       style,
       className,
+      lineBreakModeIOS,
       ...props
     },
     ref,
@@ -473,6 +477,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
           editable={editable}
           secureTextEntry={secureTextEntry}
           autoCorrect={autoCorrect}
+          lineBreakModeIOS={lineBreakModeIOS}
           className={inputClasses}
           style={[inputStyles, style]}
           {...props}
@@ -491,6 +496,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
         editable={editable}
         secureTextEntry={secureTextEntry}
         autoCorrect={autoCorrect}
+        lineBreakModeIOS={lineBreakModeIOS}
         className={inputClasses}
         style={[inputStyles, style]}
         {...props}
@@ -814,18 +820,13 @@ export const StyledTextInput = React.forwardRef<InputRef, InputProps>(
   (props, ref) => {
     const { fieldSize = "lg", style, ...restProps } = props;
 
-    const containerClasses = `rounded-lg bg-background-default border border-border-primary rounded ${CONTAINER_HEIGHT_MAP[fieldSize]} ${HORIZONTAL_PADDING_MAP[fieldSize]} flex-1`;
-
-    const { testID, ...textInputProps } = restProps;
-
     return (
-      <View testID={testID} className={containerClasses} style={style}>
-        <TextInputComponent
-          ref={ref}
-          fieldSize={fieldSize}
-          {...textInputProps}
-        />
-      </View>
+      <TextInputComponent
+        ref={ref}
+        fieldSize={fieldSize}
+        style={style}
+        {...restProps}
+      />
     );
   },
 );
