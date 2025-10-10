@@ -369,7 +369,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       const confirmButton = (
         <View className="flex-1">
           <Button
-            biometric
+            biometric={!isDisabled}
             onPress={onConfirm}
             tertiary
             xl
