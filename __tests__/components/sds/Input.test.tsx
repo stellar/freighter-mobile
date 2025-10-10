@@ -255,15 +255,15 @@ describe("Input", () => {
   });
 
   describe("StyledTextInput", () => {
-    it("renders as standalone TextInput with container", () => {
+    it("renders as standalone TextInputComponent", () => {
       const { getByTestId } = renderWithProviders(
         <StyledTextInput testID="test-styled-input" value="test" />,
       );
-      const container = getByTestId("test-styled-input");
+      const input = getByTestId("test-styled-input");
 
-      expect(container).toBeTruthy();
-      expect(container.props.className).toContain("bg-background-default");
-      expect(container.props.className).toContain("border");
+      expect(input).toBeTruthy();
+      expect(input.props.className).toContain("flex-1");
+      expect(input.props.className).toContain("text-text-primary");
     });
 
     it("applies custom style when provided", () => {
@@ -281,15 +281,18 @@ describe("Input", () => {
           style={customStyle}
         />,
       );
-      const container = getByTestId("test-styled-input");
+      const input = getByTestId("test-styled-input");
 
-      // StyledTextInput now wraps TextInputComponent in a View container
-      // The height and padding are applied via className, custom style is applied to the container
-      expect(container.props.className).toContain("h-[48px]");
-      expect(container.props.className).toContain("pl-[12px]");
-      expect(container.props.className).toContain("pr-[12px]");
-      expect(container.props.style).toEqual(
-        expect.objectContaining(customStyle),
+      // StyledTextInput now directly returns TextInputComponent with custom style applied
+      expect(input.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fontFamily: "Inter-Variable",
+            fontSize: 16,
+            fontWeight: "400",
+          }),
+          expect.objectContaining(customStyle),
+        ]),
       );
     });
   });
