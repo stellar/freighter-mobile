@@ -632,7 +632,6 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
                 fieldSize={fieldSize}
                 style={{
                   position: "absolute",
-                  left: -8,
                   right: 0,
                   top: 0,
                   bottom: 0,
@@ -657,7 +656,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
               className="flex-shrink-0"
             >
               <View
-                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${heightClasses} mr-[4px]`}
+                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${heightClasses}`}
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
@@ -965,7 +964,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
               className="flex-shrink-0"
             >
               <View
-                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${heightClasses} mr-[4px]`}
+                className={`${buttonContainerClasses} ${buttonPaddingClasses} ${heightClasses}`}
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
