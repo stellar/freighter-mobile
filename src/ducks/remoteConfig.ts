@@ -1,7 +1,7 @@
 import { logger } from "config/logger";
 import { isAndroid } from "helpers/device";
-import { getAppVersion } from "helpers/version";
-import { Platform } from "react-native";
+import { getBundleId } from "react-native-device-info";
+import { ANALYTICS_CONFIG } from "services/analytics/constants";
 import { getExperimentClient } from "services/analytics/core";
 import { create } from "zustand";
 
@@ -56,8 +56,12 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
 
       await experimentClient.fetch({
         user_properties: {
-          platform: Platform.OS,
-          version: getAppVersion(),
+          // We need to explicitly pass the "Bundle Id" here to make sure the
+          // correct flag values will be assigned regardless if (iOS) users
+          // have ever enabled tracking permission or not.
+          // Other common properties like "Platform" and "Version" appear to be
+          // always forwarded regardless of tracking permission.
+          [ANALYTICS_CONFIG.BUNDLE_ID_KEY]: getBundleId(),
         },
       });
 
