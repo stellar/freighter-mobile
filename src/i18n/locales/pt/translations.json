@@ -30,7 +30,8 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "addMemo": "Add. memo",
+    "addMemoShorthand": "Add. memo",
+    "addMemo": "Adicionar memo",
     "wallet": "Carteira",
     "copy": "Copiar"
   },

@@ -164,6 +164,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   });
 
   const onConfirmAddMemo = useCallback(() => {
+    addMemoExplanationBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   }, []);
 

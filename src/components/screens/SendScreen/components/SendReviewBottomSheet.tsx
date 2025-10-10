@@ -353,7 +353,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
     const renderConfirmButton = useCallback(() => {
       const getButtonText = () => {
         if (isRequiredMemoMissing || isValidatingMemo) {
-          return t("common.addMemo");
+          return isTrusted ? t("common.addMemoShorthand") : t("common.addMemo");
         }
 
         return t("common.confirm");
@@ -376,6 +376,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isRequiredMemoMissing,
       isValidatingMemo,
       onConfirm,
+      isTrusted,
       t,
       isBuilding,
       transactionXDR,
