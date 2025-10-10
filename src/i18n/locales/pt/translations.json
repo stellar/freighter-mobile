@@ -497,7 +497,7 @@
     "title": "Adicionar um token",
     "addTokenButton": "Aprovar",
     "removeTokenButton": "Aprovar",
-    "searchPlaceholder": "Pesquisar nome ou endereço do token",
+    "searchPlaceholder": "Pesq. nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
