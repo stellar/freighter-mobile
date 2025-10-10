@@ -46,7 +46,7 @@ const setAmplitudeUserProperties = (): void => {
 
     // Let's set bundle id as a user property so we could easily
     // filter mobile Prod and Dev users in Amplitude.
-    identify.set("Bundle Id", getBundleId());
+    identify.set(ANALYTICS_CONFIG.BUNDLE_ID_KEY, getBundleId());
 
     amplitude.identify(identify);
 
