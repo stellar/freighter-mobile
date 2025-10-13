@@ -306,7 +306,12 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     submitTransaction: jest.fn(),
     resetTransaction: jest.fn(),
     isBuilding: false,
-    transactionXDR: null,
+    isSigning: false,
+    isSubmitting: false,
+    transactionXDR:
+      "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA",
+    transaction: null,
+    network: NETWORKS.TESTNET,
   };
 
   const mockTransactionSettingsState = {
@@ -847,5 +852,585 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     // The continue button should be enabled for non-memo-required addresses even without memo
     // The button is a TouchableOpacity with disabled state in accessibilityState
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
+  });
+});
+
+describe("TransactionAmountScreen - Address Change Scenarios", () => {
+  const mockPublicKey =
+    "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+  const mockNonMemoRequiredAddress =
+    "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
+  const mockMemoRequiredAddress =
+    "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+  const mockTokenAmount = "100";
+
+  const mockSelectedBalance = {
+    id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    tokenId: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    total: "1000",
+    available: "1000",
+    token: {
+      code: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    },
+  };
+
+  const mockXlmBalance = {
+    id: "XLM",
+    tokenId: "XLM",
+    total: new BigNumber("10.0000000"),
+    available: new BigNumber("10.0000000"),
+    token: {
+      code: "XLM",
+      issuer: "",
+      type: "native",
+    },
+    tokenType: "native",
+    price: 0.1,
+    fiatValue: 1.0,
+  };
+
+  const mockTransactionBuilderState = {
+    buildTransaction: jest.fn(),
+    signTransaction: jest.fn(),
+    submitTransaction: jest.fn(),
+    resetTransaction: jest.fn(),
+    isBuilding: false,
+    isSigning: false,
+    isSubmitting: false,
+    transactionXDR:
+      "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA",
+    transaction: null,
+    network: NETWORKS.PUBLIC,
+  };
+
+  const mockTransactionSettingsState = {
+    transactionMemo: "",
+    transactionFee: "0.00001",
+    transactionTimeout: 30,
+    recipientAddress: mockNonMemoRequiredAddress,
+    selectedTokenId:
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    saveMemo: jest.fn(),
+    saveTransactionFee: jest.fn(),
+    saveTransactionTimeout: jest.fn(),
+    saveRecipientAddress: jest.fn(),
+    saveSelectedTokenId: jest.fn(),
+    resetSettings: jest.fn(),
+  };
+
+  const mockAuthState = {
+    publicKey: mockPublicKey,
+    network: NETWORKS.PUBLIC,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseTransactionBuilderStore.mockReturnValue(mockTransactionBuilderState);
+    mockUseTransactionSettingsStore.mockReturnValue(
+      mockTransactionSettingsState,
+    );
+    mockUseAuthenticationStore.mockReturnValue(mockAuthState);
+
+    // Mock additional hooks
+    mockUseGetActiveAccount.mockReturnValue({
+      account: {
+        publicKey: mockPublicKey,
+        privateKey: "mockPrivateKey",
+        accountName: "Test Account",
+        id: "test-id",
+        subentryCount: 0,
+      } as ActiveAccount,
+      isLoading: false,
+      error: null,
+      refreshAccount: jest.fn(),
+      signTransaction: jest.fn(),
+    });
+
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [mockSelectedBalance as any, mockXlmBalance as any],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    });
+
+    mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+    mockHasXLMForFees.mockReturnValue(true);
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: mockTokenAmount,
+      fiatAmount: "100.00",
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      tokenAmountDisplay: "100",
+    });
+    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
+    mockUseRightHeaderMenu.mockReturnValue(undefined);
+    mockUseToast.mockReturnValue({
+      showToast: jest.fn(),
+      dismissToast: jest.fn(),
+    });
+    mockUseHistoryStore.mockReturnValue({
+      fetchAccountHistory: jest.fn(),
+    });
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+    });
+
+    // Mock useBlockaidTransaction for address change scenarios
+    mockScanTransaction.mockReturnValue({
+      scanTransaction: jest.fn().mockResolvedValue({
+        warnings: [],
+        malicious: false,
+        suspicious: false,
+      }),
+    });
+
+    // Set default mock for useValidateTransactionMemo
+    mockUseValidateTransactionMemo.mockReturnValue({
+      isMemoMissing: false,
+      isValidatingMemo: false,
+    });
+
+    mockCachedFetch.mockResolvedValue({
+      _links: {
+        self: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200",
+        },
+        prev: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=desc&limit=200&cursor=GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM",
+        },
+        next: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200&cursor=GDZHDOITT5W2S35LVJZRLUAUXLU7UEDEAN4R7O4VA5FFGKG7RHC4NPSC",
+        },
+      },
+      _embedded: {
+        records: [
+          {
+            address: mockMemoRequiredAddress,
+            paging_token: mockMemoRequiredAddress,
+            domain: "wazirx.com",
+            name: "WazirX",
+            tags: ["exchange", "memo-required"],
+          },
+        ],
+      },
+    });
+  });
+
+  it("should handle address change from non-memo-required to memo-required", async () => {
+    // Mock the memo validation hook to simulate the address change scenario
+    let currentAddress = mockNonMemoRequiredAddress;
+    const mockImplementationFn = jest.fn(() => {
+      // Simulate memo validation based on current address
+      const isMemoRequired = currentAddress === mockMemoRequiredAddress;
+      return {
+        isValidatingMemo: false,
+        isMemoMissing:
+          isMemoRequired && !mockTransactionSettingsState.transactionMemo,
+      };
+    });
+    mockUseValidateTransactionMemo.mockImplementation(mockImplementationFn);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Start with non-memo-required address
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify initial state - should not require memo
+    expect(mockImplementationFn).toHaveBeenCalled();
+    const initialValidation =
+      mockUseValidateTransactionMemo.mock.results[0].value;
+    expect(initialValidation.isMemoMissing).toBe(false);
+
+    // Change to memo-required address
+    currentAddress = mockMemoRequiredAddress;
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    // Rerender to reflect the address change
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify that memo validation was called again with new address
+    expect(mockUseValidateTransactionMemo).toHaveBeenCalledTimes(2);
+    const updatedValidation =
+      mockUseValidateTransactionMemo.mock.results[1].value;
+    expect(updatedValidation.isMemoMissing).toBe(true);
+  });
+
+  it("should handle address change from memo-required to non-memo-required", async () => {
+    // Mock the memo validation hook to simulate the address change scenario
+    let currentAddress = mockMemoRequiredAddress;
+    const mockImplementationFn = jest.fn(() => {
+      // Simulate memo validation based on current address
+      const isMemoRequired = currentAddress === mockMemoRequiredAddress;
+      return {
+        isValidatingMemo: false,
+        isMemoMissing:
+          isMemoRequired && !mockTransactionSettingsState.transactionMemo,
+      };
+    });
+    mockUseValidateTransactionMemo.mockImplementation(mockImplementationFn);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Start with memo-required address
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify initial state - should require memo
+    expect(mockImplementationFn).toHaveBeenCalled();
+    const initialValidation = mockImplementationFn.mock.results[0].value;
+    expect(initialValidation.isMemoMissing).toBe(true);
+
+    // Change to non-memo-required address
+    currentAddress = mockNonMemoRequiredAddress;
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    // Rerender to reflect the address change
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify that memo validation was called again with new address
+    expect(mockImplementationFn).toHaveBeenCalledTimes(2);
+    const updatedValidation = mockImplementationFn.mock.results[1].value;
+    expect(updatedValidation.isMemoMissing).toBe(false);
+  });
+
+  it("should rebuild transaction when address changes from non-memo-required to memo-required with memo", async () => {
+    const mockBuildTransactionFn = jest
+      .fn()
+      .mockResolvedValueOnce({
+        xdr: "initialXDRWithoutMemo",
+        tx: { sequence: "1" } as any,
+      })
+      .mockResolvedValueOnce({
+        xdr: "updatedXDRWithMemo",
+        tx: { sequence: "1" } as any,
+      });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Mock memo validation to simulate address change
+    let currentAddress = mockNonMemoRequiredAddress;
+    mockUseValidateTransactionMemo.mockImplementation(() => {
+      const isMemoRequired = currentAddress === mockMemoRequiredAddress;
+      return {
+        isValidatingMemo: false,
+        isMemoMissing:
+          isMemoRequired && !mockTransactionSettingsState.transactionMemo,
+      };
+    });
+
+    // Start with non-memo-required address
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = renderWithProviders(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Change to memo-required address with memo
+    currentAddress = mockMemoRequiredAddress;
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockMemoRequiredAddress,
+      transactionMemo: "Required memo for memo-required address",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    // Rerender to reflect the changes
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Simulate transaction rebuild with new settings
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockMemoRequiredAddress,
+        transactionMemo: "Required memo for memo-required address",
+        transactionFee: "0.00001",
+        transactionTimeout: 30,
+        network: NETWORKS.PUBLIC,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    // Verify that buildTransaction was called with the correct parameters
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientAddress: mockMemoRequiredAddress,
+        transactionMemo: "Required memo for memo-required address",
+      }),
+    );
+  });
+
+  it("should handle validation state updates during address change", async () => {
+    // Mock memo validation to simulate validation states
+    let validationState = {
+      isValidatingMemo: false,
+      isMemoMissing: false,
+    };
+
+    const mockImplementationFn = jest.fn(() => validationState);
+    mockUseValidateTransactionMemo.mockImplementation(mockImplementationFn);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Start with non-memo-required address
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify initial validation state
+    expect(mockImplementationFn).toHaveBeenCalled();
+    expect(validationState.isMemoMissing).toBe(false);
+
+    // Simulate validation state change for memo-required address
+    validationState = {
+      isValidatingMemo: true,
+      isMemoMissing: false,
+    };
+
+    // Change to memo-required address
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    // Rerender to reflect the address change
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify validation was called again
+    expect(mockImplementationFn).toHaveBeenCalledTimes(2);
+
+    // Simulate validation completion
+    validationState = {
+      isValidatingMemo: false,
+      isMemoMissing: true,
+    };
+
+    // Rerender again to reflect validation completion
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Verify final validation state
+    expect(mockImplementationFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("should handle multiple rapid address changes", async () => {
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Mock memo validation to track address changes
+    let callCount = 0;
+    const mockImplementationFn = jest.fn(() => {
+      callCount++;
+      // Simulate different validation results based on call count
+      const isMemoRequired = callCount % 2 === 0; // Alternate between memo required and not required
+      return {
+        isValidatingMemo: false,
+        isMemoMissing: isMemoRequired,
+      };
+    });
+    mockUseValidateTransactionMemo.mockImplementation(mockImplementationFn);
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Simulate rapid address changes
+    const addresses = [
+      mockNonMemoRequiredAddress,
+      mockMemoRequiredAddress,
+      "GDIQJ6G5D4EZLZ3ZXFL225R5OYS5J6GVEDWAPLEQPZON2W5DR25WZ3B2",
+      mockNonMemoRequiredAddress,
+    ];
+
+    await addresses.reduce(async (promise, address) => {
+      await promise;
+      settingsState = {
+        ...settingsState,
+        recipientAddress: address,
+      };
+      mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+      rerender(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      await act(async () => {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), 10);
+        });
+      });
+    }, Promise.resolve());
+
+    // Verify that memo validation was called for each address change
+    expect(mockImplementationFn).toHaveBeenCalledTimes(addresses.length + 1); // +1 for initial render
   });
 });

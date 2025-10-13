@@ -153,18 +153,13 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
       setIsValidatingMemo(true);
 
       try {
-        const isMemoRequiredFromCache =
-          await checkMemoRequiredFromCache(localTransaction);
+        const [isMemoRequiredFromCache, isMemoRequiredFromSDK] =
+          await Promise.all([
+            checkMemoRequiredFromCache(localTransaction),
+            checkMemoRequiredFromStellarSDK(localTransaction),
+          ]);
 
-        if (isMemoRequiredFromCache) {
-          setIsMemoMissing(true);
-          return;
-        }
-
-        const isMemoRequiredFromSDK =
-          await checkMemoRequiredFromStellarSDK(localTransaction);
-
-        setIsMemoMissing(isMemoRequiredFromSDK);
+        setIsMemoMissing(isMemoRequiredFromSDK || isMemoRequiredFromCache);
       } catch (error) {
         logger.error("Memo Validation", "Error validating memo", error);
 
