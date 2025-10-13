@@ -19,6 +19,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
+import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
 import { useToast } from "providers/ToastProvider";
 import React from "react";
 import * as transactionService from "services/transactionService";
@@ -1082,6 +1083,12 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     const nonMemoRequiredAddress =
       "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
 
+    // Spy on the hook to verify its return values
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
     // Mock cachedFetch to return memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: {
@@ -1150,11 +1157,183 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       });
     });
 
-    // Verify that cachedFetch was called (indicating the hook is working)
+    // Verify that the hook was called and returned the correct values
+    expect(hookSpy).toHaveBeenCalled();
+
+    // Get the hook's return values from the spy
+    const hookCalls = hookSpy.mock.results;
+    expect(hookCalls.length).toBeGreaterThan(0);
+
+    // The hook should have called cachedFetch to check memo requirements
     expect(mockCachedFetch).toHaveBeenCalled();
 
     // The component should have rendered successfully (no errors thrown)
     // This indicates the real hook is working correctly for both address types
+  });
+
+  it("should spy on hook return values to verify memo validation behavior", async () => {
+    // Spy on the hook to capture its return values
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+
+    // Mock cachedFetch to return memo-required address
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
+    });
+
+    // Mock buildTransaction to return a transaction XDR
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Test with memo-required address
+    const settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: memoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    // Verify that the hook was called
+    expect(hookSpy).toHaveBeenCalled();
+
+    // Get the hook's return values from the spy
+    const hookCalls = hookSpy.mock.results;
+    expect(hookCalls.length).toBeGreaterThan(0);
+
+    // Check the actual return values from the hook
+    const lastHookResult = hookCalls[hookCalls.length - 1].value;
+    expect(lastHookResult).toHaveProperty("isMemoMissing");
+    expect(lastHookResult).toHaveProperty("isValidatingMemo");
+
+    // The hook should have called cachedFetch to check memo requirements
+    expect(mockCachedFetch).toHaveBeenCalled();
+
+    // Clean up spy
+    hookSpy.mockRestore();
+  });
+
+  it("should verify hook returns correct values for different memo scenarios", async () => {
+    // Spy on the hook to capture its return values
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+    const nonMemoRequiredAddress =
+      "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
+
+    // Mock buildTransaction to return a transaction XDR
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    // Test 1: Memo-required address
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
+    });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: memoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for initial render
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    // Verify hook was called and check return values
+    expect(hookSpy).toHaveBeenCalled();
+    const hookCalls = hookSpy.mock.results;
+    const lastHookResult = hookCalls[hookCalls.length - 1].value;
+    expect(lastHookResult).toHaveProperty("isMemoMissing");
+    expect(lastHookResult).toHaveProperty("isValidatingMemo");
+
+    // Test 2: Non-memo-required address
+    mockCachedFetch.mockResolvedValue({
+      _embedded: { records: [] },
+    });
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress: nonMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // Wait for rerender
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    // Verify hook was called multiple times (due to re-renders)
+    expect(hookSpy).toHaveBeenCalled();
+    const updatedHookCalls = hookSpy.mock.results;
+    const updatedHookResult =
+      updatedHookCalls[updatedHookCalls.length - 1].value;
+    expect(updatedHookResult).toHaveProperty("isMemoMissing");
+    expect(updatedHookResult).toHaveProperty("isValidatingMemo");
+
+    // Clean up spy
+    hookSpy.mockRestore();
   });
 
   it("should handle address change from non-memo-required to memo-required", async () => {
