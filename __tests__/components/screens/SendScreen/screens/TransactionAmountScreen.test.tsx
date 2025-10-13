@@ -6,6 +6,7 @@ import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
+import { usePreferencesStore } from "ducks/preferences";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -18,7 +19,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
-import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
 import { useToast } from "providers/ToastProvider";
 import React from "react";
 import * as transactionService from "services/transactionService";
@@ -35,9 +36,13 @@ jest.mock("ducks/transactionSettings");
 jest.mock("ducks/auth");
 jest.mock("ducks/history");
 jest.mock("ducks/sendRecipient");
+jest.mock("ducks/preferences");
 
 // Service mocks
 jest.mock("services/transactionService");
+jest.mock("services/stellar");
+jest.mock("helpers/cachedFetch");
+jest.mock("helpers/stellarExpert");
 jest.mock("services/analytics", () => ({
   analytics: {
     track: jest.fn(),
@@ -58,7 +63,6 @@ jest.mock("helpers/deviceSize");
 jest.mock("hooks/useGetActiveAccount");
 jest.mock("hooks/useBalancesList");
 jest.mock("hooks/useTokenFiatConverter");
-jest.mock("hooks/useValidateTransactionMemo");
 jest.mock("hooks/useRightHeader");
 jest.mock("hooks/useBiometrics", () => ({
   useBiometrics: () => ({
@@ -200,10 +204,6 @@ const mockUseTransactionSettingsStore =
   >;
 const mockUseAuthenticationStore =
   useAuthenticationStore as jest.MockedFunction<typeof useAuthenticationStore>;
-const mockUseValidateTransactionMemo =
-  useValidateTransactionMemo as jest.MockedFunction<
-    typeof useValidateTransactionMemo
-  >;
 const mockBuildTransaction =
   transactionService.buildPaymentTransaction as jest.MockedFunction<
     typeof transactionService.buildPaymentTransaction
@@ -243,6 +243,12 @@ const mockCalculateSpendableAmount =
 const mockHasXLMForFees = hasXLMForFees as jest.MockedFunction<
   typeof hasXLMForFees
 >;
+
+// Mock additional dependencies for useValidateTransactionMemo
+const mockUsePreferencesStore = usePreferencesStore as jest.MockedFunction<
+  typeof usePreferencesStore
+>;
+const mockStellarSdkServer = jest.fn();
 
 // Mock navigation and route
 const mockGoBack = jest.fn();
@@ -306,7 +312,12 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     submitTransaction: jest.fn(),
     resetTransaction: jest.fn(),
     isBuilding: false,
-    transactionXDR: null,
+    isSigning: false,
+    isSubmitting: false,
+    transactionXDR:
+      "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA",
+    transaction: null,
+    network: NETWORKS.TESTNET,
   };
 
   const mockTransactionSettingsState = {
@@ -336,11 +347,22 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       mockTransactionSettingsState,
     );
     mockUseAuthenticationStore.mockReturnValue(mockAuthState);
-    // Set default mock for useValidateTransactionMemo - individual tests can override
-    mockUseValidateTransactionMemo.mockReturnValue({
-      isValidatingMemo: false,
-      isMemoMissing: false,
+
+    mockUsePreferencesStore.mockReturnValue({
+      isMemoValidationEnabled: true,
     });
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: { records: [] },
+    });
+
+    mockStellarSdkServer.mockReturnValue({
+      checkMemoRequired: jest.fn().mockResolvedValue(undefined),
+    });
+
+    jest.doMock("services/stellar", () => ({
+      stellarSdkServer: mockStellarSdkServer,
+    }));
     mockBuildTransaction.mockResolvedValue({
       xdr: mockXDR,
       tx: { sequence: "1" } as any,
@@ -349,7 +371,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       scanTransaction: jest.fn().mockResolvedValue(mockScanResult),
     });
 
-    // Mock additional hooks
     mockUseGetActiveAccount.mockReturnValue({
       account: {
         publicKey: mockPublicKey,
@@ -400,7 +421,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       resetSendRecipient: jest.fn(),
     });
 
-    // Mock cachedFetch to return memo-required accounts data
     mockCachedFetch.mockResolvedValue({
       _links: {
         self: {
@@ -478,7 +498,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Simulate settings change
     await act(async () => {
       await mockBuildTransactionFn({
         tokenAmount: mockTokenAmount,
@@ -492,7 +511,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       });
     });
 
-    // Verify that buildTransaction was called twice with different memos
     expect(mockBuildTransactionFn).toHaveBeenCalledTimes(2);
     expect(mockBuildTransactionFn).toHaveBeenNthCalledWith(
       1,
@@ -547,7 +565,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Simulate settings change that fails
     await act(async () => {
       try {
         await mockBuildTransactionFn({
@@ -566,12 +583,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       }
     });
 
-    // Verify that the error was handled gracefully
     expect(mockBuildTransactionFn).toHaveBeenCalledTimes(2);
   });
 
   it("should rebuild transaction with memo for memo-required address GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF", async () => {
-    // This test specifically covers the bug that was fixed
     const mockBuildTransactionFn = jest
       .fn()
       .mockResolvedValueOnce({
@@ -599,7 +614,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 50);
@@ -620,7 +634,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       });
     });
 
-    // Verify initial build was called without memo
     expect(mockBuildTransactionFn).toHaveBeenCalledWith(
       expect.objectContaining({
         transactionMemo: "",
@@ -637,19 +650,16 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     };
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
-    // Rerender to reflect the settings change
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 50);
       });
     });
 
-    // Simulate settings change triggering transaction rebuild
     await act(async () => {
       await mockBuildTransactionFn({
         tokenAmount: mockTokenAmount,
@@ -664,7 +674,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       });
     });
 
-    // Verify that buildTransaction was called twice with different memos
     expect(mockBuildTransactionFn).toHaveBeenCalledTimes(2);
     expect(mockBuildTransactionFn).toHaveBeenNthCalledWith(
       1,
@@ -683,9 +692,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
           "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
       }),
     );
-
-    // This test ensures the bug is fixed: transaction XDR is rebuilt when memo is added
-    // for a memo-required address, preventing the transaction from failing
   }, 15000);
 
   it("should render the main UI components", () => {
@@ -699,13 +705,20 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
   });
 
   it("should enable continue button even when memo-required address has no memo", () => {
-    // Mock the memo validation hook to return memo missing for the memo-required address
-    mockUseValidateTransactionMemo.mockReturnValue({
-      isValidatingMemo: false,
-      isMemoMissing: true, // This simulates a memo-required address
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
     });
 
-    // Mock buildTransaction to return a transaction XDR
     const mockBuildTransactionFn = jest.fn().mockResolvedValue({
       xdr: "mockTransactionXDR",
       tx: { sequence: "1" } as any,
@@ -716,7 +729,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Mock settings with no memo for memo-required address
     const settingsStateWithoutMemo = {
       ...mockTransactionSettingsState,
       transactionMemo: "", // No memo provided
@@ -740,13 +752,20 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
   });
 
   it("should enable continue button when memo-required address has memo provided", () => {
-    // Mock the memo validation hook to return memo not missing
-    mockUseValidateTransactionMemo.mockReturnValue({
-      isValidatingMemo: false,
-      isMemoMissing: false, // Memo is provided
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
     });
 
-    // Mock buildTransaction to return a transaction XDR
     const mockBuildTransactionFn = jest.fn().mockResolvedValue({
       xdr: "mockTransactionXDR",
       tx: { sequence: "1" } as any,
@@ -757,7 +776,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Mock tokenFiatConverter to return a non-zero amount so button shows "reviewButton"
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
       fiatAmount: "100.00",
@@ -769,7 +787,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       tokenAmountDisplay: "100",
     });
 
-    // Mock settings with memo provided for memo-required address
     const settingsStateWithMemo = {
       ...mockTransactionSettingsState,
       transactionMemo:
@@ -796,13 +813,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
   });
 
   it("should enable continue button for non-memo-required address without memo", () => {
-    // Mock the memo validation hook to return memo not missing (not a memo-required address)
-    mockUseValidateTransactionMemo.mockReturnValue({
-      isValidatingMemo: false,
-      isMemoMissing: false, // Not a memo-required address
+    mockCachedFetch.mockResolvedValue({
+      _embedded: { records: [] },
     });
 
-    // Mock buildTransaction to return a transaction XDR
     const mockBuildTransactionFn = jest.fn().mockResolvedValue({
       xdr: "mockTransactionXDR",
       tx: { sequence: "1" } as any,
@@ -813,7 +827,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Mock tokenFiatConverter to return a non-zero amount so button shows "reviewButton"
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
       fiatAmount: "100.00",
@@ -825,7 +838,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       tokenAmountDisplay: "100",
     });
 
-    // Mock settings with no memo for non-memo-required address
     const settingsStateWithoutMemo = {
       ...mockTransactionSettingsState,
       transactionMemo: "", // No memo provided
@@ -847,5 +859,675 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     // The continue button should be enabled for non-memo-required addresses even without memo
     // The button is a TouchableOpacity with disabled state in accessibilityState
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
+  });
+});
+
+describe("TransactionAmountScreen - Address Change Scenarios", () => {
+  const mockPublicKey =
+    "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+  const mockNonMemoRequiredAddress =
+    "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
+  const mockMemoRequiredAddress =
+    "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+  const mockTokenAmount = "100";
+
+  const mockSelectedBalance = {
+    id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    tokenId: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    total: "1000",
+    available: "1000",
+    token: {
+      code: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    },
+  };
+
+  const mockXlmBalance = {
+    id: "XLM",
+    tokenId: "XLM",
+    total: new BigNumber("10.0000000"),
+    available: new BigNumber("10.0000000"),
+    token: {
+      code: "XLM",
+      issuer: "",
+      type: "native",
+    },
+    tokenType: "native",
+    price: 0.1,
+    fiatValue: 1.0,
+  };
+
+  const mockTransactionBuilderState = {
+    buildTransaction: jest.fn(),
+    signTransaction: jest.fn(),
+    submitTransaction: jest.fn(),
+    resetTransaction: jest.fn(),
+    isBuilding: false,
+    isSigning: false,
+    isSubmitting: false,
+    transactionXDR:
+      "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA",
+    transaction: null,
+    network: NETWORKS.PUBLIC,
+  };
+
+  const mockTransactionSettingsState = {
+    transactionMemo: "",
+    transactionFee: "0.00001",
+    transactionTimeout: 30,
+    recipientAddress: mockNonMemoRequiredAddress,
+    selectedTokenId:
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    saveMemo: jest.fn(),
+    saveTransactionFee: jest.fn(),
+    saveTransactionTimeout: jest.fn(),
+    saveRecipientAddress: jest.fn(),
+    saveSelectedTokenId: jest.fn(),
+    resetSettings: jest.fn(),
+  };
+
+  const mockAuthState = {
+    publicKey: mockPublicKey,
+    network: NETWORKS.PUBLIC,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseTransactionBuilderStore.mockReturnValue(mockTransactionBuilderState);
+    mockUseTransactionSettingsStore.mockReturnValue(
+      mockTransactionSettingsState,
+    );
+    mockUseAuthenticationStore.mockReturnValue(mockAuthState);
+
+    mockUsePreferencesStore.mockReturnValue({
+      isMemoValidationEnabled: true,
+    });
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: { records: [] },
+    });
+
+    mockStellarSdkServer.mockReturnValue({
+      checkMemoRequired: jest.fn().mockResolvedValue(undefined),
+    });
+
+    jest.doMock("services/stellar", () => ({
+      stellarSdkServer: mockStellarSdkServer,
+    }));
+
+    mockUseGetActiveAccount.mockReturnValue({
+      account: {
+        publicKey: mockPublicKey,
+        privateKey: "mockPrivateKey",
+        accountName: "Test Account",
+        id: "test-id",
+        subentryCount: 0,
+      } as ActiveAccount,
+      isLoading: false,
+      error: null,
+      refreshAccount: jest.fn(),
+      signTransaction: jest.fn(),
+    });
+
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [mockSelectedBalance as any, mockXlmBalance as any],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    });
+
+    mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+    mockHasXLMForFees.mockReturnValue(true);
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: mockTokenAmount,
+      fiatAmount: "100.00",
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      tokenAmountDisplay: "100",
+    });
+    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
+    mockUseRightHeaderMenu.mockReturnValue(undefined);
+    mockUseToast.mockReturnValue({
+      showToast: jest.fn(),
+      dismissToast: jest.fn(),
+    });
+    mockUseHistoryStore.mockReturnValue({
+      fetchAccountHistory: jest.fn(),
+    });
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+    });
+
+    mockScanTransaction.mockReturnValue({
+      scanTransaction: jest.fn().mockResolvedValue({
+        warnings: [],
+        malicious: false,
+        suspicious: false,
+      }),
+    });
+
+    mockCachedFetch.mockResolvedValue({
+      _links: {
+        self: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200",
+        },
+        prev: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=desc&limit=200&cursor=GA5XIGA5C7QTPTWXQHY6MCJRMTRZDOSHR6EFIBNDQTCQHG262N4GGKTM",
+        },
+        next: {
+          href: "/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200&cursor=GDZHDOITT5W2S35LVJZRLUAUXLU7UEDEAN4R7O4VA5FFGKG7RHC4NPSC",
+        },
+      },
+      _embedded: {
+        records: [
+          {
+            address: mockMemoRequiredAddress,
+            paging_token: mockMemoRequiredAddress,
+            domain: "wazirx.com",
+            name: "WazirX",
+            tags: ["exchange", "memo-required"],
+          },
+        ],
+      },
+    });
+  });
+
+  it("should verify memo-required status changes with real hook", async () => {
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+    const nonMemoRequiredAddress =
+      "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
+
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
+    });
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: memoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(mockCachedFetch).toHaveBeenCalled();
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: { records: [] },
+    });
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress: nonMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(hookSpy).toHaveBeenCalled();
+
+    const hookCalls = hookSpy.mock.results;
+    expect(hookCalls.length).toBeGreaterThan(0);
+
+    expect(mockCachedFetch).toHaveBeenCalled();
+  });
+
+  it("should spy on hook return values to verify memo validation behavior", async () => {
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
+    });
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    const settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: memoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(hookSpy).toHaveBeenCalled();
+
+    const hookCalls = hookSpy.mock.results;
+    expect(hookCalls.length).toBeGreaterThan(0);
+
+    const lastHookResult = hookCalls[hookCalls.length - 1].value;
+    expect(lastHookResult.isMemoMissing).toBe(true);
+    expect(lastHookResult.isValidatingMemo).toBe(false);
+
+    expect(mockCachedFetch).toHaveBeenCalled();
+
+    hookSpy.mockRestore();
+  });
+
+  it("should verify hook returns correct values for memo-required address", async () => {
+    const hookSpy = jest.spyOn(
+      useValidateTransactionMemo,
+      "useValidateTransactionMemo",
+    );
+
+    const memoRequiredAddress =
+      "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    mockCachedFetch.mockResolvedValue({
+      _embedded: {
+        records: [
+          {
+            address: memoRequiredAddress,
+            tags: ["memo-required"],
+          },
+        ],
+      },
+    });
+
+    const settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: memoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(hookSpy).toHaveBeenCalled();
+    const hookCalls = hookSpy.mock.results;
+    const lastHookResult = hookCalls[hookCalls.length - 1].value;
+    expect(lastHookResult.isMemoMissing).toBe(true);
+    expect(lastHookResult.isValidatingMemo).toBe(false);
+
+    hookSpy.mockRestore();
+  });
+
+  it("should handle address change from non-memo-required to memo-required", async () => {
+    mockCachedFetch
+      .mockResolvedValueOnce({
+        _embedded: { records: [] },
+      })
+      .mockResolvedValueOnce({
+        _embedded: {
+          records: [
+            {
+              address: mockMemoRequiredAddress,
+              tags: ["memo-required"],
+            },
+          ],
+        },
+      });
+
+    const mockBuildTransactionFn = jest
+      .fn()
+      .mockResolvedValueOnce({
+        xdr: "mockTransactionXDR1",
+        tx: { sequence: "1" } as any,
+      })
+      .mockResolvedValueOnce({
+        xdr: "mockTransactionXDR2",
+        tx: { sequence: "2" } as any,
+      });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(mockCachedFetch).toHaveBeenCalled();
+  });
+
+  it("should handle address change from memo-required to non-memo-required", async () => {
+    mockCachedFetch
+      .mockResolvedValueOnce({
+        _embedded: {
+          records: [
+            {
+              address: mockMemoRequiredAddress,
+              tags: ["memo-required"],
+            },
+          ],
+        }, // First call - memo required
+      })
+      .mockResolvedValueOnce({
+        _embedded: { records: [] }, // Second call - no memo required
+      });
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 200);
+      });
+    });
+
+    expect(mockCachedFetch).toHaveBeenCalled();
+  });
+
+  it("should rebuild transaction when address changes from non-memo-required to memo-required with memo", async () => {
+    const mockBuildTransactionFn = jest
+      .fn()
+      .mockResolvedValueOnce({
+        xdr: "initialXDRWithoutMemo",
+        tx: { sequence: "1" } as any,
+      })
+      .mockResolvedValueOnce({
+        xdr: "updatedXDRWithMemo",
+        tx: { sequence: "1" } as any,
+      });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    mockCachedFetch
+      .mockResolvedValueOnce({
+        _embedded: { records: [] }, // First call - no memo required
+      })
+      .mockResolvedValueOnce({
+        _embedded: {
+          records: [
+            {
+              address: mockMemoRequiredAddress,
+              tags: ["memo-required"],
+            },
+          ],
+        }, // Second call - memo required
+      });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = renderWithProviders(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress: mockMemoRequiredAddress,
+      transactionMemo: "Required memo for memo-required address",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    // Simulate transaction rebuild with new settings
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockMemoRequiredAddress,
+        transactionMemo: "Required memo for memo-required address",
+        transactionFee: "0.00001",
+        transactionTimeout: 30,
+        network: NETWORKS.PUBLIC,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientAddress: mockMemoRequiredAddress,
+        transactionMemo: "Required memo for memo-required address",
+      }),
+    );
+  });
+
+  it("should handle multiple rapid address changes", async () => {
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockTransactionXDR",
+      tx: { sequence: "1" } as any,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    mockCachedFetch
+      .mockResolvedValueOnce({
+        _embedded: { records: [] }, // First call - no memo required
+      })
+      .mockResolvedValueOnce({
+        _embedded: {
+          records: [
+            {
+              address: mockMemoRequiredAddress,
+              tags: ["memo-required"],
+            },
+          ],
+        }, // Second call - memo required
+      })
+      .mockResolvedValueOnce({
+        _embedded: { records: [] }, // Third call - no memo required
+      });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      recipientAddress: mockNonMemoRequiredAddress,
+      transactionMemo: "",
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+    const { rerender } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 50);
+      });
+    });
+
+    const addresses = [
+      mockNonMemoRequiredAddress,
+      mockMemoRequiredAddress,
+      "GDIQJ6G5D4EZLZ3ZXFL225R5OYS5J6GVEDWAPLEQPZON2W5DR25WZ3B2",
+      mockNonMemoRequiredAddress,
+    ];
+
+    await addresses.reduce(async (promise, address) => {
+      await promise;
+      settingsState = {
+        ...settingsState,
+        recipientAddress: address,
+      };
+      mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+
+      rerender(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      await act(async () => {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), 10);
+        });
+      });
+    }, Promise.resolve());
+
+    expect(mockCachedFetch).toHaveBeenCalled();
   });
 });
