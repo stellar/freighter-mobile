@@ -12,8 +12,56 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { cachedFetch } from "helpers/cachedFetch";
 import { isMainnet } from "helpers/networks";
 import { getApiStellarExpertIsMemoRequiredListUrl } from "helpers/stellarExpert";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { stellarSdkServer } from "services/stellar";
+
+/**
+ * Checks if a memo is required by querying cached memo-required accounts
+ *
+ * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+ * @returns {Promise<boolean>} True if a memo is required, false otherwise
+ */
+export const checkMemoRequiredFromCache = async (
+  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+): Promise<boolean> => {
+  const response = await cachedFetch<MemoRequiredAccountsApiResponse>(
+    getApiStellarExpertIsMemoRequiredListUrl(),
+    STORAGE_KEYS.MEMO_REQUIRED_ACCOUNTS,
+  );
+
+  // eslint-disable-next-line no-underscore-dangle
+  const memoRequiredAccounts = response._embedded.records || [];
+
+  const destination = transaction.operations.find(
+    (operation) => "destination" in operation,
+  )?.destination;
+
+  const matchingBlockedTags = memoRequiredAccounts
+    .filter(({ address }) => address === destination)
+    .flatMap(({ tags }) => tags);
+
+  return matchingBlockedTags.some(
+    (tag) => tag === (TRANSACTION_WARNING.memoRequired as string),
+  );
+};
+
+/**
+ * Checks if a memo is required using Stellar SDK's built-in validation
+ * This is a fallback method when cache validation fails
+ *
+ * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+ * @param {string} networkUrl - The network URL for the Stellar server
+ * @returns {Promise<boolean>} True if a memo is required, false otherwise
+ */
+export const checkMemoRequiredFromStellarSDK = async (
+  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+  networkUrl: string,
+): Promise<boolean> => {
+  const server = stellarSdkServer(networkUrl);
+
+  await server.checkMemoRequired(transaction);
+  return false;
+};
 
 /**
  * Hook to validate transaction memos for addresses that require them
@@ -62,58 +110,6 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     [isMemoValidationEnabled, network],
   );
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
-
-  /**
-   * Checks if a memo is required by querying cached memo-required accounts
-   *
-   * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
-   * @returns {Promise<boolean>} True if a memo is required, false otherwise
-   */
-  const checkMemoRequiredFromCache = useCallback(
-    async (
-      transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
-    ): Promise<boolean> => {
-      const response = await cachedFetch<MemoRequiredAccountsApiResponse>(
-        getApiStellarExpertIsMemoRequiredListUrl(),
-        STORAGE_KEYS.MEMO_REQUIRED_ACCOUNTS,
-      );
-
-      // eslint-disable-next-line no-underscore-dangle
-      const memoRequiredAccounts = response._embedded.records || [];
-
-      const destination = transaction.operations.find(
-        (operation) => "destination" in operation,
-      )?.destination;
-
-      const matchingBlockedTags = memoRequiredAccounts
-        .filter(({ address }) => address === destination)
-        .flatMap(({ tags }) => tags);
-
-      return matchingBlockedTags.some(
-        (tag) => tag === (TRANSACTION_WARNING.memoRequired as string),
-      );
-    },
-    [],
-  );
-
-  /**
-   * Checks if a memo is required using Stellar SDK's built-in validation
-   * This is a fallback method when cache validation fails
-   *
-   * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
-   * @returns {Promise<boolean>} True if a memo is required, false otherwise
-   */
-  const checkMemoRequiredFromStellarSDK = useCallback(
-    async (
-      transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
-    ): Promise<boolean> => {
-      const server = stellarSdkServer(networkDetails.networkUrl);
-
-      await server.checkMemoRequired(transaction);
-      return false;
-    },
-    [networkDetails.networkUrl],
-  );
 
   /**
    * Effect to parse XDR and set initial memo validation state
@@ -166,7 +162,10 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
         const [isMemoRequiredFromCache, isMemoRequiredFromSDK] =
           await Promise.all([
             checkMemoRequiredFromCache(localTransaction),
-            checkMemoRequiredFromStellarSDK(localTransaction),
+            checkMemoRequiredFromStellarSDK(
+              localTransaction,
+              networkDetails.networkUrl,
+            ),
           ]);
 
         setIsMemoMissing(isMemoRequiredFromSDK || isMemoRequiredFromCache);
@@ -186,8 +185,6 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     localMemo,
     localTransaction,
     shouldValidateMemo,
-    checkMemoRequiredFromCache,
-    checkMemoRequiredFromStellarSDK,
     networkDetails.networkUrl,
     network,
     xdr,

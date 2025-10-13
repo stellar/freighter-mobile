@@ -8,7 +8,11 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { cachedFetch } from "helpers/cachedFetch";
 import { isMainnet } from "helpers/networks";
 import { getApiStellarExpertIsMemoRequiredListUrl } from "helpers/stellarExpert";
-import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import {
+  useValidateTransactionMemo,
+  checkMemoRequiredFromCache,
+  checkMemoRequiredFromStellarSDK,
+} from "hooks/useValidateTransactionMemo";
 import { stellarSdkServer } from "services/stellar";
 
 // Mock dependencies
@@ -590,6 +594,89 @@ describe("useValidateTransactionMemo", () => {
 
       // Should not require memo when validation is disabled
       expect(result.current.isMemoMissing).toBe(false);
+    });
+  });
+
+  describe("checkMemoRequiredFromCache", () => {
+    it("should return true when address is in memo-required list", async () => {
+      const mockTransaction = {
+        operations: [{ destination: mockMemoRequiredAddress }],
+      } as any;
+
+      mockCachedFetch.mockResolvedValue({
+        _embedded: {
+          records: [
+            {
+              address: mockMemoRequiredAddress,
+              tags: ["memo-required"],
+            },
+          ],
+        },
+      });
+
+      const result = await checkMemoRequiredFromCache(mockTransaction);
+      expect(result).toBe(true);
+    });
+
+    it("should return false when address is not in memo-required list", async () => {
+      const mockTransaction = {
+        operations: [{ destination: mockNonMemoRequiredAddress }],
+      } as any;
+
+      mockCachedFetch.mockResolvedValue({
+        _embedded: { records: [] },
+      });
+
+      const result = await checkMemoRequiredFromCache(mockTransaction);
+      expect(result).toBe(false);
+    });
+
+    it("should handle empty records array", async () => {
+      const mockTransaction = {
+        operations: [{ destination: mockMemoRequiredAddress }],
+      } as any;
+
+      mockCachedFetch.mockResolvedValue({
+        _embedded: { records: [] },
+      });
+
+      const result = await checkMemoRequiredFromCache(mockTransaction);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("checkMemoRequiredFromStellarSDK", () => {
+    it("should return false when SDK validation passes", async () => {
+      const mockTransaction = {
+        operations: [{ destination: mockMemoRequiredAddress }],
+      } as any;
+
+      mockStellarSdkServer.mockReturnValue({
+        checkMemoRequired: jest.fn().mockResolvedValue(undefined),
+      } as any);
+
+      const result = await checkMemoRequiredFromStellarSDK(
+        mockTransaction,
+        "https://horizon-testnet.stellar.org",
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should return false when SDK validation throws error", async () => {
+      const mockTransaction = {
+        operations: [{ destination: mockMemoRequiredAddress }],
+      } as any;
+
+      mockStellarSdkServer.mockReturnValue({
+        checkMemoRequired: jest.fn().mockRejectedValue(new Error("SDK Error")),
+      } as any);
+
+      await expect(
+        checkMemoRequiredFromStellarSDK(
+          mockTransaction,
+          "https://horizon-testnet.stellar.org",
+        ),
+      ).rejects.toThrow("SDK Error");
     });
   });
 });
