@@ -708,7 +708,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     const memoRequiredAddress =
       "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
 
-    // Mock cachedFetch to return memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: {
         records: [
@@ -756,7 +755,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     const memoRequiredAddress =
       "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
 
-    // Mock cachedFetch to return memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: {
         records: [
@@ -815,7 +813,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
   });
 
   it("should enable continue button for non-memo-required address without memo", () => {
-    // Mock cachedFetch to return no memo-required addresses (default behavior)
     mockCachedFetch.mockResolvedValue({
       _embedded: { records: [] },
     });
