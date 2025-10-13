@@ -1,4 +1,3 @@
-// TransactionBuilder is mocked below, so we don't need to import it
 import { renderHook, act } from "@testing-library/react-hooks";
 import { NETWORKS } from "config/constants";
 import { MemoRequiredAccountsApiResponse } from "config/types";
@@ -16,7 +15,6 @@ import {
 import * as useValidateTransactionMemoModule from "hooks/useValidateTransactionMemo";
 import { stellarSdkServer } from "services/stellar";
 
-// Mock dependencies
 jest.mock("ducks/auth");
 jest.mock("ducks/preferences");
 jest.mock("ducks/transactionSettings");
@@ -31,11 +29,9 @@ jest.mock("config/logger", () => ({
   },
 }));
 
-// Mock TransactionBuilder.fromXDR to handle real XDR strings
 jest.mock("@stellar/stellar-sdk", () => ({
   TransactionBuilder: {
     fromXDR: jest.fn((xdr: string) => {
-      // Handle real XDR strings
       if (
         xdr ===
         "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA"
@@ -98,7 +94,6 @@ const mockStellarSdkServer = stellarSdkServer as jest.MockedFunction<
   typeof stellarSdkServer
 >;
 
-// Real XDR strings for testing
 const NON_MEMO_REQUIRED_XDR =
   "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA";
 
@@ -154,7 +149,6 @@ describe("useValidateTransactionMemo", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default mocks
     mockUseAuthenticationStore.mockReturnValue({
       network: NETWORKS.PUBLIC,
     } as any);
@@ -174,7 +168,6 @@ describe("useValidateTransactionMemo", () => {
     mockCachedFetch.mockResolvedValue(mockMemoRequiredAccountsResponse);
     mockStellarSdkServer.mockReturnValue(mockServer as any);
 
-    // Reset server mock
     mockServer.checkMemoRequired.mockResolvedValue(undefined);
   });
 
@@ -303,7 +296,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -321,7 +313,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockNonMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -337,7 +328,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -359,7 +349,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -371,7 +360,6 @@ describe("useValidateTransactionMemo", () => {
     });
 
     it("should not require memo when SDK validation passes", async () => {
-      // Mock cache validation to succeed and return false (no memo required)
       mockCachedFetch.mockResolvedValue({
         _embedded: {
           records: [],
@@ -382,7 +370,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockNonMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -396,7 +383,6 @@ describe("useValidateTransactionMemo", () => {
 
   describe("Memo presence validation", () => {
     it("should not require memo when memo is present in transaction", async () => {
-      // Mock transaction settings to have a memo
       mockUseTransactionSettingsStore.mockReturnValue({
         transactionMemo: mockMemo,
       } as any);
@@ -404,7 +390,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -418,7 +403,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -436,7 +420,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -449,7 +432,6 @@ describe("useValidateTransactionMemo", () => {
 
   describe("Validation state updates", () => {
     it("should show validating state during validation", async () => {
-      // Mock a slow cache fetch
       let resolveCache: (value: any) => void;
       const cachePromise = new Promise<any>((resolve) => {
         resolveCache = resolve;
@@ -488,7 +470,6 @@ describe("useValidateTransactionMemo", () => {
         { initialProps: { xdr: mockXDR, memo: "" } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 100);
@@ -500,7 +481,6 @@ describe("useValidateTransactionMemo", () => {
       // Update memo
       rerender({ xdr: mockXDR, memo: mockMemo });
 
-      // Wait for validation update
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 100);
@@ -519,7 +499,6 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -552,7 +531,6 @@ describe("useValidateTransactionMemo", () => {
         { initialProps: { network: NETWORKS.PUBLIC } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 100);
@@ -579,7 +557,6 @@ describe("useValidateTransactionMemo", () => {
         { initialProps: { enabled: true } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 100);
