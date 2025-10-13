@@ -120,7 +120,12 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
    * Runs when XDR, network, or validation settings change
    */
   useEffect(() => {
-    if (!xdr || !network || !shouldValidateMemo) {
+    if (!shouldValidateMemo) {
+      setIsMemoMissing(false);
+      return;
+    }
+
+    if (!xdr || !network) {
       return;
     }
 
@@ -140,6 +145,11 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
    * Checks both cache and SDK methods to determine if memo is required
    */
   useEffect(() => {
+    if (!shouldValidateMemo) {
+      setIsMemoMissing(false);
+
+      return;
+    }
     if (!localTransaction) {
       return;
     }

@@ -1025,10 +1025,8 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
   });
 
   it("should handle address change from non-memo-required to memo-required", async () => {
-    // Mock the memo validation hook to simulate the address change scenario
     let currentAddress = mockNonMemoRequiredAddress;
     const mockImplementationFn = jest.fn(() => {
-      // Simulate memo validation based on current address
       const isMemoRequired = currentAddress === mockMemoRequiredAddress;
       return {
         isValidatingMemo: false,
@@ -1048,7 +1046,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Start with non-memo-required address
     let settingsState = {
       ...mockTransactionSettingsState,
       recipientAddress: mockNonMemoRequiredAddress,
@@ -1060,20 +1057,17 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 50);
       });
     });
 
-    // Verify initial state - should not require memo
     expect(mockImplementationFn).toHaveBeenCalled();
     const initialValidation =
       mockUseValidateTransactionMemo.mock.results[0].value;
     expect(initialValidation.isMemoMissing).toBe(false);
 
-    // Change to memo-required address
     currentAddress = mockMemoRequiredAddress;
     settingsState = {
       ...settingsState,
@@ -1081,20 +1075,17 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     };
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
-    // Rerender to reflect the address change
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 50);
       });
     });
 
-    // Verify that memo validation was called again with new address
-    expect(mockUseValidateTransactionMemo).toHaveBeenCalledTimes(2);
+    expect(mockImplementationFn).toHaveBeenCalledTimes(2);
     const updatedValidation =
       mockUseValidateTransactionMemo.mock.results[1].value;
     expect(updatedValidation.isMemoMissing).toBe(true);

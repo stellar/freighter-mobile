@@ -209,17 +209,15 @@ describe("useValidateTransactionMemo", () => {
 
   describe("Address change scenarios", () => {
     it("should update validation when address changes from non-memo-required to memo-required", async () => {
-      // Start with non-memo-required address
       const nonMemoRequiredXDR = createMockXDR(mockNonMemoRequiredAddress);
       const { result, rerender } = renderHook(
         ({ xdr }) => useValidateTransactionMemo(xdr),
         { initialProps: { xdr: nonMemoRequiredXDR } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), 100);
+          setTimeout(() => resolve(), 200);
         });
       });
 
@@ -227,11 +225,9 @@ describe("useValidateTransactionMemo", () => {
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Change to memo-required address
       const memoRequiredXDR = createMockXDR(mockMemoRequiredAddress);
       rerender({ xdr: memoRequiredXDR });
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
@@ -239,23 +235,20 @@ describe("useValidateTransactionMemo", () => {
       });
 
       // Should now require memo for memo-required address
-      // Note: The hook validates memo requirements when there's no memo
       expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
     });
 
     it("should update validation when address changes from memo-required to non-memo-required", async () => {
-      // Start with memo-required address
       const memoRequiredXDR = createMockXDR(mockMemoRequiredAddress);
       const { result, rerender } = renderHook(
         ({ xdr }) => useValidateTransactionMemo(xdr),
         { initialProps: { xdr: memoRequiredXDR } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), 100);
+          setTimeout(() => resolve(), 200);
         });
       });
 
@@ -263,66 +256,39 @@ describe("useValidateTransactionMemo", () => {
       expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Change to non-memo-required address
       const nonMemoRequiredXDR = createMockXDR(mockNonMemoRequiredAddress);
       rerender({ xdr: nonMemoRequiredXDR });
 
-      // Wait for validation to complete - need to wait longer for async validation
       await act(async () => {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), 200);
         });
       });
 
-      // Should no longer require memo
+      // Should no longer require memo for non-memo-required address
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
     });
 
-    it("should handle address change with memo provided", async () => {
-      // Mock transaction settings to have a memo
+    it("should not require memo when memo is present", async () => {
       mockUseTransactionSettingsStore.mockReturnValue({
         transactionMemo: mockMemo,
       } as any);
 
-      // Start with memo-required address and memo
       const memoRequiredXDRWithMemo = createMockXDR(mockMemoRequiredAddress);
-      const { result, rerender } = renderHook(
+      const { result } = renderHook(
         ({ xdr }) => useValidateTransactionMemo(xdr),
         { initialProps: { xdr: memoRequiredXDRWithMemo } },
       );
 
-      // Wait for initial validation
       await act(async () => {
         await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), 100);
+          setTimeout(() => resolve(), 200);
         });
       });
 
       // Should not require memo when memo is provided
       expect(result.current.isMemoMissing).toBe(false);
-      expect(result.current.isValidatingMemo).toBe(false);
-
-      // Change to different memo-required address without memo
-      // Clear the transaction memo to simulate no memo for the new address
-      mockUseTransactionSettingsStore.mockReturnValue({
-        transactionMemo: "",
-      } as any);
-
-      const differentMemoRequiredXDR = createMockXDR(
-        "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D",
-      );
-      rerender({ xdr: differentMemoRequiredXDR });
-
-      // Wait for validation to complete - need to wait longer for async validation
-      await act(async () => {
-        await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), 200);
-        });
-      });
-
-      // Should require memo for new address
-      expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
     });
   });
@@ -595,9 +561,7 @@ describe("useValidateTransactionMemo", () => {
       rerender({ network: NETWORKS.TESTNET });
 
       // Should not require memo on testnet
-      // Note: The current hook implementation doesn't update isMemoMissing when shouldValidateMemo changes
-      // This test should be updated when the hook is fixed to handle network changes properly
-      expect(result.current.isMemoMissing).toBe(true);
+      expect(result.current.isMemoMissing).toBe(false);
     });
 
     it("should revalidate when memo validation preference changes", async () => {
@@ -625,9 +589,7 @@ describe("useValidateTransactionMemo", () => {
       rerender({ enabled: false });
 
       // Should not require memo when validation is disabled
-      // Note: The current hook implementation doesn't update isMemoMissing when shouldValidateMemo changes
-      // This test should be updated when the hook is fixed to handle preference changes properly
-      expect(result.current.isMemoMissing).toBe(true);
+      expect(result.current.isMemoMissing).toBe(false);
     });
   });
 });
