@@ -45,7 +45,7 @@ const UrlBar: React.FC<UrlBarProps> = React.memo(
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="default"
-            lineBreakModeIOS="head"
+            lineBreakModeIOS="tail"
           />
         </View>
 
