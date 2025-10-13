@@ -561,11 +561,9 @@ describe("useValidateTransactionMemo", () => {
 
       expect(result.current.isMemoMissing).toBe(true);
 
-      // Change to testnet
       mockIsMainnet.mockReturnValue(false);
       rerender({ network: NETWORKS.TESTNET });
 
-      // Should not require memo on testnet
       expect(result.current.isMemoMissing).toBe(false);
     });
 
@@ -683,7 +681,6 @@ describe("useValidateTransactionMemo", () => {
 
   describe("Hook return value verification", () => {
     it("should return correct values for memo-required address", async () => {
-      // Spy on the hook to verify its return values
       const hookSpy = jest.spyOn(
         useValidateTransactionMemoModule,
         "useValidateTransactionMemo",
@@ -698,19 +695,14 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Verify hook was called
       expect(hookSpy).toHaveBeenCalled();
-
-      // Verify return values - should require memo for memo-required address
       expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Clean up spy
       hookSpy.mockRestore();
     });
 
     it("should return correct values for non-memo-required address", async () => {
-      // Spy on the hook to verify its return values
       const hookSpy = jest.spyOn(
         useValidateTransactionMemoModule,
         "useValidateTransactionMemo",
@@ -725,19 +717,14 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Verify hook was called
       expect(hookSpy).toHaveBeenCalled();
-
-      // Verify return values - should not require memo for non-memo-required address
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Clean up spy
       hookSpy.mockRestore();
     });
 
     it("should return correct values when validation is disabled", () => {
-      // Spy on the hook to verify its return values
       const hookSpy = jest.spyOn(
         useValidateTransactionMemoModule,
         "useValidateTransactionMemo",
@@ -750,19 +737,14 @@ describe("useValidateTransactionMemo", () => {
       const mockXDR = createMockXDR(mockMemoRequiredAddress);
       const { result } = renderHook(() => useValidateTransactionMemo(mockXDR));
 
-      // Verify hook was called
       expect(hookSpy).toHaveBeenCalled();
-
-      // Verify return values
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Clean up spy
       hookSpy.mockRestore();
     });
 
     it("should return different values when address changes from non-memo-required to memo-required", async () => {
-      // Spy on the hook to verify its return values change
       const hookSpy = jest.spyOn(
         useValidateTransactionMemoModule,
         "useValidateTransactionMemo",
@@ -780,14 +762,10 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Verify hook was called
       expect(hookSpy).toHaveBeenCalled();
-
-      // First call should return false (no memo required)
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Change to memo-required address
       const memoRequiredXDR = createMockXDR(mockMemoRequiredAddress);
       rerender({ xdr: memoRequiredXDR });
 
@@ -797,19 +775,14 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Second call should return true (memo required)
       expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
-
-      // Verify hook was called multiple times
       expect(hookSpy).toHaveBeenCalled();
 
-      // Clean up spy
       hookSpy.mockRestore();
     });
 
     it("should return different values when address changes from memo-required to non-memo-required", async () => {
-      // Spy on the hook to verify its return values change
       const hookSpy = jest.spyOn(
         useValidateTransactionMemoModule,
         "useValidateTransactionMemo",
@@ -827,14 +800,10 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Verify hook was called
       expect(hookSpy).toHaveBeenCalled();
-
-      // First call should return true (memo required)
       expect(result.current.isMemoMissing).toBe(true);
       expect(result.current.isValidatingMemo).toBe(false);
 
-      // Change to non-memo-required address
       const nonMemoRequiredXDR = createMockXDR(mockNonMemoRequiredAddress);
       rerender({ xdr: nonMemoRequiredXDR });
 
@@ -844,14 +813,10 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      // Second call should return false (no memo required)
       expect(result.current.isMemoMissing).toBe(false);
       expect(result.current.isValidatingMemo).toBe(false);
-
-      // Verify hook was called multiple times
       expect(hookSpy).toHaveBeenCalled();
 
-      // Clean up spy
       hookSpy.mockRestore();
     });
   });

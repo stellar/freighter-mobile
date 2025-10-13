@@ -1077,19 +1077,16 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
   });
 
   it("should verify memo-required status changes with real hook", async () => {
-    // Test that the real hook correctly identifies memo-required addresses
     const memoRequiredAddress =
       "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
     const nonMemoRequiredAddress =
       "GBFPKF27LTXP5V3KWOHPZOKEI4KNSAJIXLIIQREN6S4L74O6C7U6K67A";
 
-    // Spy on the hook to verify its return values
     const hookSpy = jest.spyOn(
       useValidateTransactionMemo,
       "useValidateTransactionMemo",
     );
 
-    // Mock cachedFetch to return memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: {
         records: [
@@ -1101,7 +1098,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       },
     });
 
-    // Mock buildTransaction to return a transaction XDR
     const mockBuildTransactionFn = jest.fn().mockResolvedValue({
       xdr: "mockTransactionXDR",
       tx: { sequence: "1" } as any,
@@ -1112,7 +1108,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Test with memo-required address
     let settingsState = {
       ...mockTransactionSettingsState,
       recipientAddress: memoRequiredAddress,
@@ -1124,17 +1119,14 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify that cachedFetch was called (indicating the hook is working)
     expect(mockCachedFetch).toHaveBeenCalled();
 
-    // Change to non-memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: { records: [] },
     });
@@ -1145,34 +1137,25 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     };
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
-    // Rerender to reflect the address change
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify that the hook was called and returned the correct values
     expect(hookSpy).toHaveBeenCalled();
 
-    // Get the hook's return values from the spy
     const hookCalls = hookSpy.mock.results;
     expect(hookCalls.length).toBeGreaterThan(0);
 
-    // The hook should have called cachedFetch to check memo requirements
     expect(mockCachedFetch).toHaveBeenCalled();
-
-    // The component should have rendered successfully (no errors thrown)
-    // This indicates the real hook is working correctly for both address types
   });
 
   it("should spy on hook return values to verify memo validation behavior", async () => {
-    // Spy on the hook to capture its return values
     const hookSpy = jest.spyOn(
       useValidateTransactionMemo,
       "useValidateTransactionMemo",
@@ -1181,7 +1164,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     const memoRequiredAddress =
       "GB5CLRWUCBQ6DFK2LR5ZMWJ7QCVEB3XKMPTQUYCDIYB4DRZJBEW6M26D";
 
-    // Mock cachedFetch to return memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: {
         records: [
@@ -1193,7 +1175,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       },
     });
 
-    // Mock buildTransaction to return a transaction XDR
     const mockBuildTransactionFn = jest.fn().mockResolvedValue({
       xdr: "mockTransactionXDR",
       tx: { sequence: "1" } as any,
@@ -1204,7 +1185,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Test with memo-required address
     const settingsState = {
       ...mockTransactionSettingsState,
       recipientAddress: memoRequiredAddress,
@@ -1216,29 +1196,23 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify that the hook was called
     expect(hookSpy).toHaveBeenCalled();
 
-    // Get the hook's return values from the spy
     const hookCalls = hookSpy.mock.results;
     expect(hookCalls.length).toBeGreaterThan(0);
 
-    // Check the actual return values from the hook
     const lastHookResult = hookCalls[hookCalls.length - 1].value;
     expect(lastHookResult).toHaveProperty("isMemoMissing");
     expect(lastHookResult).toHaveProperty("isValidatingMemo");
 
-    // The hook should have called cachedFetch to check memo requirements
     expect(mockCachedFetch).toHaveBeenCalled();
 
-    // Clean up spy
     hookSpy.mockRestore();
   });
 
@@ -1288,21 +1262,18 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify hook was called and check return values
     expect(hookSpy).toHaveBeenCalled();
     const hookCalls = hookSpy.mock.results;
     const lastHookResult = hookCalls[hookCalls.length - 1].value;
     expect(lastHookResult).toHaveProperty("isMemoMissing");
     expect(lastHookResult).toHaveProperty("isValidatingMemo");
 
-    // Test 2: Non-memo-required address
     mockCachedFetch.mockResolvedValue({
       _embedded: { records: [] },
     });
@@ -1317,14 +1288,12 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify hook was called multiple times (due to re-renders)
     expect(hookSpy).toHaveBeenCalled();
     const updatedHookCalls = hookSpy.mock.results;
     const updatedHookResult =
@@ -1332,15 +1301,13 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     expect(updatedHookResult).toHaveProperty("isMemoMissing");
     expect(updatedHookResult).toHaveProperty("isValidatingMemo");
 
-    // Clean up spy
     hookSpy.mockRestore();
   });
 
   it("should handle address change from non-memo-required to memo-required", async () => {
-    // Mock cachedFetch to return different results for different addresses
     mockCachedFetch
       .mockResolvedValueOnce({
-        _embedded: { records: [] }, // First call - no memo required
+        _embedded: { records: [] },
       })
       .mockResolvedValueOnce({
         _embedded: {
@@ -1350,7 +1317,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
               tags: ["memo-required"],
             },
           ],
-        }, // Second call - memo required
+        },
       });
 
     const mockBuildTransactionFn = jest
@@ -1369,7 +1336,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       buildTransaction: mockBuildTransactionFn,
     });
 
-    // Start with non-memo-required address
     let settingsState = {
       ...mockTransactionSettingsState,
       recipientAddress: mockNonMemoRequiredAddress,
@@ -1381,43 +1347,29 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for initial render
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Change to memo-required address
     settingsState = {
       ...settingsState,
       recipientAddress: mockMemoRequiredAddress,
     };
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
-    // Rerender to reflect the address change
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify that the real hook was called with the transaction XDR
-    // The hook should have called cachedFetch to check memo requirements
     expect(mockCachedFetch).toHaveBeenCalled();
-
-    // The component should have rendered successfully (no errors thrown)
-    // This indicates the real hook is working properly with the address change
-
-    // The test passes if we get here without errors, which means:
-    // 1. The real hook is working correctly
-    // 2. The component integrates properly with the hook
-    // 3. Address changes are handled without errors
   });
 
   it("should handle address change from memo-required to non-memo-required", async () => {
@@ -1466,34 +1418,23 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       });
     });
 
-    // Change to non-memo-required address
     settingsState = {
       ...settingsState,
       recipientAddress: mockNonMemoRequiredAddress,
     };
     mockUseTransactionSettingsStore.mockReturnValue(settingsState);
 
-    // Rerender to reflect the address change
     rerender(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    // Wait for rerender
     await act(async () => {
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 200);
       });
     });
 
-    // Verify that the component rendered without errors
-    // The real hook should have been called with the transaction XDR
-    // We can verify this by checking that the component rendered successfully
-
-    // The hook should have called cachedFetch to check memo requirements
     expect(mockCachedFetch).toHaveBeenCalled();
-
-    // The component should have rendered successfully (no errors thrown)
-    // This indicates the real hook is working properly
   });
 
   it("should rebuild transaction when address changes from non-memo-required to memo-required with memo", async () => {
