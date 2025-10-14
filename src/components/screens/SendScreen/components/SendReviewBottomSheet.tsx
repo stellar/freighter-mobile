@@ -41,6 +41,14 @@ type SendReviewBottomSheetProps = {
   onBannerPress?: () => void;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  /**
+   * Text to display in the banner
+   */
+  bannerText?: string;
+  /**
+   * Variant of the banner (error or warning)
+   */
+  bannerVariant?: "error" | "warning";
   signTransactionDetails?: SignTransactionDetailsInterface | null;
 };
 
@@ -67,6 +75,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   onBannerPress,
   isMalicious,
   isSuspicious,
+  bannerText,
+  bannerVariant,
   signTransactionDetails,
 }) => {
   const { t } = useAppTranslation();
@@ -155,22 +165,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       return null;
     }
 
-    const getBannerText = () => {
-      if (isMalicious) {
-        return t("transactionAmountScreen.errors.malicious");
-      }
-
-      if (isSuspicious) {
-        return t("transactionAmountScreen.errors.suspicious");
-      }
-
-      return t("transactionAmountScreen.errors.memoMissing");
-    };
+    if (!bannerText) {
+      return null;
+    }
 
     return (
       <Banner
-        variant={isSuspicious ? "warning" : "error"}
-        text={getBannerText()}
+        variant={bannerVariant || "error"}
+        text={bannerText}
         onPress={onBannerPress}
       />
     );

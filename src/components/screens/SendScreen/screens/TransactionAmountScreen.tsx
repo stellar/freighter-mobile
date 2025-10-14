@@ -540,6 +540,50 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     );
   }, [amountError, tokenAmount, isBuilding, recipientAddress]);
 
+  const handleConfirmAnyway = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    handleTransactionConfirmation();
+  }, [handleTransactionConfirmation]);
+
+  const openSecurityWarningBottomSheet = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
+
+  const openAddMemoExplanationBottomSheet = useCallback(() => {
+    addMemoExplanationBottomSheetModalRef.current?.present();
+  }, []);
+
+  const bannerContent = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious) {
+      return {
+        text: t("transactionAmountScreen.errors.malicious"),
+        variant: "error" as const,
+        onPress: openSecurityWarningBottomSheet,
+      };
+    }
+
+    if (transactionSecurityAssessment.isSuspicious) {
+      return {
+        text: t("transactionAmountScreen.errors.suspicious"),
+        variant: "warning" as const,
+        onPress: openSecurityWarningBottomSheet,
+      };
+    }
+
+    return {
+      text: t("transactionAmountScreen.errors.memoMissing"),
+      variant: "error" as const,
+      onPress: openAddMemoExplanationBottomSheet,
+    };
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    t,
+    openSecurityWarningBottomSheet,
+    openAddMemoExplanationBottomSheet,
+  ]);
+
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
@@ -550,20 +594,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
     );
   }
-
-  const handleConfirmAnyway = () => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
-    handleTransactionConfirmation();
-  };
-
-  const onBannerPress = () => {
-    if (isRequiredMemoMissing) {
-      addMemoExplanationBottomSheetModalRef.current?.present();
-    } else {
-      transactionSecurityWarningBottomSheetModalRef.current?.present();
-    }
-  };
 
   const handleContinueButtonPress = () => {
     if (!recipientAddress) {
@@ -722,11 +752,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
-            onBannerPress={onBannerPress}
+            onBannerPress={bannerContent.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            bannerText={bannerContent.text}
+            bannerVariant={bannerContent.variant}
             signTransactionDetails={signTransactionDetails}
           />
         }
