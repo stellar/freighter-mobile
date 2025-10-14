@@ -70,11 +70,17 @@ const getEnvConfig = (): EnvConfigType => ({
 
   SENTRY_DSN: Config.SENTRY_DSN,
 
-  WALLET_KIT_PROJECT_ID: Config.WALLET_KIT_PROJECT_ID,
-  WALLET_KIT_MT_URL: Config.WALLET_KIT_MT_URL,
-  WALLET_KIT_MT_ICON: Config.WALLET_KIT_MT_ICON,
-
-  // Get wallet kit metadata based on bundle ID
+  // Get wallet kit project id and metadata based on bundle ID
+  // TODP: extract to a function
+  WALLET_KIT_PROJECT_ID: isProd
+    ? Config.WALLET_KIT_PROJECT_ID_PROD
+    : Config.WALLET_KIT_PROJECT_ID_DEV,
+  WALLET_KIT_MT_URL: isProd
+    ? Config.WALLET_KIT_MT_URL_PROD
+    : Config.WALLET_KIT_MT_URL_DEV,
+  WALLET_KIT_MT_ICON: isProd
+    ? Config.WALLET_KIT_MT_ICON_PROD
+    : Config.WALLET_KIT_MT_ICON_DEV,
   WALLET_KIT_MT_NAME: isProd
     ? Config.WALLET_KIT_MT_NAME_PROD
     : Config.WALLET_KIT_MT_NAME_DEV,

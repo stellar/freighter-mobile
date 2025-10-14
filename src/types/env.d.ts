@@ -13,14 +13,16 @@ declare module "react-native-config" {
     FREIGHTER_BACKEND_V2_STG_URL: string;
     FREIGHTER_BACKEND_V2_DEV_URL: string;
 
-    WALLET_KIT_PROJECT_ID: string;
-    WALLET_KIT_MT_URL: string;
-    WALLET_KIT_MT_ICON: string;
-
+    WALLET_KIT_PROJECT_ID_PROD: string;
+    WALLET_KIT_MT_URL_PROD: string;
+    WALLET_KIT_MT_ICON_PROD: string;
     WALLET_KIT_MT_NAME_PROD: string;
     WALLET_KIT_MT_DESCRIPTION_PROD: string;
     WALLET_KIT_MT_REDIRECT_NATIVE_PROD: string;
 
+    WALLET_KIT_PROJECT_ID_DEV: string;
+    WALLET_KIT_MT_URL_DEV: string;
+    WALLET_KIT_MT_ICON_DEV: string;
     WALLET_KIT_MT_NAME_DEV: string;
     WALLET_KIT_MT_DESCRIPTION_DEV: string;
     WALLET_KIT_MT_REDIRECT_NATIVE_DEV: string;
