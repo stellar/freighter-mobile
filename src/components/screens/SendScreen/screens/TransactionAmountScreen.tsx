@@ -555,6 +555,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, []);
 
   const bannerContent = useMemo(() => {
+    const shouldShowNoticeBanner =
+      isRequiredMemoMissing ||
+      transactionSecurityAssessment.isMalicious ||
+      transactionSecurityAssessment.isSuspicious;
+
+    if (!shouldShowNoticeBanner) {
+      return undefined;
+    }
+
     if (transactionSecurityAssessment.isMalicious) {
       return {
         text: t("transactionAmountScreen.errors.malicious"),
@@ -577,6 +586,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       onPress: openAddMemoExplanationBottomSheet,
     };
   }, [
+    isRequiredMemoMissing,
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
     t,
@@ -752,13 +762,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           <SendReviewBottomSheet
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
-            onBannerPress={bannerContent.onPress}
+            onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
-            bannerText={bannerContent.text}
-            bannerVariant={bannerContent.variant}
+            bannerText={bannerContent?.text}
+            bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
           />
         }
