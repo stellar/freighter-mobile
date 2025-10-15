@@ -121,7 +121,7 @@ const getInputContainerClasses = (
 };
 
 const getInputClasses = (isDisabled?: boolean) => {
-  const baseClasses = "flex-1";
+  const baseClasses = "flex-1 w-full";
   const textColor = isDisabled ? "text-text-secondary" : "text-text-primary";
   const textAlign = "text-left";
 
