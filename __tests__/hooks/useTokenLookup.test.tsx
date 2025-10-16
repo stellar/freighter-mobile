@@ -174,11 +174,10 @@ describe("useTokenLookup", () => {
     );
 
     // Set some search state
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("test");
+      await flushPromises();
     });
-
-    await flushPromises();
 
     // Now reset
     act(() => {
@@ -198,11 +197,10 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("error");
+      await flushPromises();
     });
-
-    await flushPromises();
 
     expect(result.current.status).toBe(HookStatus.ERROR);
   });
@@ -233,11 +231,10 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("USDC");
+      await flushPromises();
     });
-
-    await flushPromises();
 
     expect(result.current.status).toBe(HookStatus.SUCCESS);
     expect(result.current.searchResults.length).toBeGreaterThan(0);
@@ -258,14 +255,11 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("test");
-    });
-    act(() => {
       result.current.handleSearch("USDC");
+      await flushPromises();
     });
-
-    await flushPromises();
 
     expect(result.current.status).toBe(HookStatus.SUCCESS);
     const tokens = result.current.searchResults.map((t) => t.tokenCode);
@@ -282,13 +276,12 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.handleSearch(
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
       );
+      await flushPromises();
     });
-
-    await flushPromises();
 
     expect(result.current.status).toBe(HookStatus.SUCCESS);
     expect(result.current.searchResults[0].tokenCode).toBe("TOKEN");

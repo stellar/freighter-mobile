@@ -21,8 +21,30 @@ const config = {
   },
   resolver: {
     assetExts: ["png", "jpg", "jpeg", "gif"],
-    sourceExts: ["js", "jsx", "ts", "tsx", "svg", "json"],
+    sourceExts: ["js", "jsx", "ts", "tsx", "svg", "json", "cjs"],
     extraNodeModules: require("node-libs-react-native"),
+    unstable_enablePackageExports: false,
+    unstable_enableSymlinks: false,
+    resolveRequest: (context, moduleName, platform) => {
+      // Handle @noble/hashes crypto.js import
+      if (moduleName === "@noble/hashes/crypto.js") {
+        return {
+          filePath: require.resolve("@noble/hashes/crypto.js"),
+          type: "sourceFile",
+        };
+      }
+
+      // Handle multiformats cjs imports
+      if (moduleName.startsWith("multiformats/cjs/")) {
+        const path = moduleName.replace("multiformats/cjs/", "");
+        return {
+          filePath: require.resolve(`multiformats/cjs/src/${path}`),
+          type: "sourceFile",
+        };
+      }
+
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
 };
 

@@ -40,14 +40,6 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const mockOpenURL = jest.fn();
-jest.mock("react-native/Libraries/Linking/Linking", () => ({
-  openURL: mockOpenURL,
-  canOpenURL: jest.fn().mockResolvedValue(true),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-}));
-
 type AboutScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
   typeof SETTINGS_ROUTES.ABOUT_SCREEN
@@ -66,7 +58,6 @@ const mockRoute = {
 
 describe("AboutScreen", () => {
   beforeEach(() => {
-    mockOpenURL.mockClear();
     mockOpenInAppBrowser.mockClear();
   });
 

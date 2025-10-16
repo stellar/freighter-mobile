@@ -229,6 +229,8 @@ jest.mock("react-native-vision-camera", () => ({
   }),
 }));
 
+jest.mock("zeego/dropdown-menu");
+
 jest.mock("ducks/walletKit", () => ({
   WalletKitEventTypes: {
     SESSION_PROPOSAL: "SESSION_PROPOSAL",
@@ -384,6 +386,23 @@ jest.mock("react-native-biometrics", () => ({
 }));
 
 // Mock the useBiometrics hook
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: jest.fn(() => ({
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
+    getBiometricButtonIcon: jest.fn(() => null),
+  })),
+}));
 
 jest.mock("react-native-keychain", () => ({
   BIOMETRY_TYPE: {
@@ -426,7 +445,7 @@ jest.mock("react-native-keychain", () => ({
     SECURE_SOFTWARE: "SecurityLevelSecureSoftware",
     SECURE_HARDWARE: "SecurityLevelSecureHardware",
   },
-  getSupportedBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  getSupportedBiometryType: jest.fn(() => Promise.resolve(null)),
   getInternetCredentials: jest.fn(() => Promise.resolve(null)),
   setInternetCredentials: jest.fn(() => Promise.resolve()),
   resetInternetCredentials: jest.fn(() => Promise.resolve()),
@@ -475,6 +494,43 @@ jest.mock("react-native-fast-opencv", () => ({
     })),
     clearBuffers: jest.fn(),
   },
+}));
+
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    account: {
+      publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
+      privateKey: "mock-private-key",
+      accountName: "Test Account",
+      id: "test-account-id",
+      subentryCount: 0,
+    },
+    isLoading: false,
+    error: null,
+    refreshAccount: jest.fn(),
+    signTransaction: jest.fn(),
+  })),
+}));
+
+jest.mock("hooks/useBalancesList", () => ({
+  useBalancesList: jest.fn(() => ({
+    balanceItems: [],
+    scanResults: {},
+    isLoading: false,
+    error: null,
+    noBalances: true,
+    isRefreshing: false,
+    isFunded: false,
+    handleRefresh: jest.fn(),
+  })),
+}));
+
+jest.mock("hooks/useWelcomeBanner", () => ({
+  useWelcomeBanner: jest.fn(() => ({
+    welcomeBannerBottomSheetModalRef: { current: null },
+    handleWelcomeBannerDismiss: jest.fn(),
+  })),
 }));
 
 // Mock Sentry for Jest tests
