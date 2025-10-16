@@ -82,6 +82,10 @@ export enum AnalyticsEvent {
   SWAP_SUCCESS = "swap: success",
   SWAP_FAIL = "swap: error",
 
+  // Send Collectible Events
+  SEND_COLLECTIBLE_SUCCESS = "send collectible: success",
+  SEND_COLLECTIBLE_FAIL = "send collectible: error",
+
   // Copy Events
   COPY_PUBLIC_KEY = "viewPublicKey: copied public key",
   COPY_BACKUP_PHRASE = "backup phrase: copied phrase",

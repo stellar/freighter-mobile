@@ -34,7 +34,8 @@ export enum SorobanTokenInterface {
 export type ArgsForTokenInvocation = {
   from: string;
   to: string;
-  amount: bigint | number;
+  amount?: bigint | number;
+  tokenId?: number;
 };
 
 export type TokenInvocationArgs = ArgsForTokenInvocation & {
@@ -100,15 +101,29 @@ export const getArgsForTokenInvocation = (
   fnName: string,
   args: xdr.ScVal[],
 ): ArgsForTokenInvocation => {
-  let amount: bigint | number;
+  let tokenId: number | undefined;
+  let amount: bigint | number | undefined;
   let from = "";
   let to = "";
 
+  const thirdArgType = args[2].switch();
   switch (fnName) {
     case SorobanTokenInterface.transfer:
+      // both SEP-41 & SEP-50 tokens use the transfer method
+      // with different signatures. Without parsing the token spec,
+      // we can guess that the contract is either a token or a collectible
+      // by the type of the 3rd argument.
+      // Token transfer - (from: Address, to: Address, amount: i128)
+      // Collectible transfer - (from: Address, to: Address, tokenId: u32)
+      if (thirdArgType === xdr.ScValType.scvI128()) {
+        amount = scValToNative(args[2]);
+      }
+      if (thirdArgType === xdr.ScValType.scvU32()) {
+        tokenId = scValToNative(args[2]);
+      }
+
       from = addressToString(args[0].address());
       to = addressToString(args[1].address());
-      amount = scValToNative(args[2]);
       break;
     case SorobanTokenInterface.mint:
       to = addressToString(args[0].address());
@@ -118,7 +133,7 @@ export const getArgsForTokenInvocation = (
       amount = BigInt(0);
   }
 
-  return { from, to, amount };
+  return { from, to, amount, tokenId };
 };
 
 export const getTokenInvocationArgs = (

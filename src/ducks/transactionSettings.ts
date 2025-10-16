@@ -10,6 +10,10 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
   transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
   recipientAddress: "",
   selectedTokenId: "",
+  selectedCollectibleDetails: {
+    collectionAddress: "",
+    tokenId: "",
+  },
 };
 
 /**
@@ -24,11 +28,13 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  * @property {number} transactionTimeout - Timeout in seconds for the transaction
  * @property {string} recipientAddress - Recipient address for the transaction
  * @property {string} selectedTokenId - ID of the token selected for the transaction
+ * @property {string} selectedCollectibleDetails - collection ID and token ID of the collectible selected for the transaction
  * @property {Function} saveMemo - Function to save the memo value
  * @property {Function} saveTransactionFee - Function to save the transaction fee value
  * @property {Function} saveTransactionTimeout - Function to save the transaction timeout value
  * @property {Function} saveRecipientAddress - Function to save the recipient address
  * @property {Function} saveSelectedTokenId - Function to save the selected token ID
+ * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectilbe details
  * @property {Function} resetSettings - Function to reset all settings to default values
  */
 interface TransactionSettingsState {
@@ -37,12 +43,20 @@ interface TransactionSettingsState {
   transactionTimeout: number;
   recipientAddress: string;
   selectedTokenId: string;
+  selectedCollectibleDetails: {
+    collectionAddress: string;
+    tokenId: string;
+  };
 
   saveMemo: (memo: string) => void;
   saveTransactionFee: (fee: string) => void;
   saveTransactionTimeout: (timeout: number) => void;
   saveRecipientAddress: (address: string) => void;
   saveSelectedTokenId: (tokenId: string) => void;
+  saveSelectedCollectibleDetails: (collectibleDetails: {
+    collectionAddress: string;
+    tokenId: string;
+  }) => void;
   resetSettings: () => void;
 }
 
@@ -85,6 +99,15 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * @param {string} tokenId - The token ID
      */
     saveSelectedTokenId: (tokenId) => set({ selectedTokenId: tokenId }),
+
+    /**
+     * Saves the selected collectible details for the transaction
+     * @param {string} collectibleDetails - The collectible details
+     */
+    saveSelectedCollectibleDetails: (collectibleDetails: {
+      collectionAddress: string;
+      tokenId: string;
+    }) => set({ selectedCollectibleDetails: collectibleDetails }),
 
     /**
      * Resets all transaction settings to their default values

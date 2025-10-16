@@ -181,8 +181,9 @@ const SwapTransactionDetailsBottomSheet: React.FC<
       </View>
 
       <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row items-center">
+          <TokenIcon token={sourceToken} size="lg" />
+          <View className="ml-[16px]">
             <Text xl medium primary>
               {formatTokenForDisplay(actualSourceAmount, sourceToken.code)}
             </Text>
@@ -190,20 +191,18 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {sourceTokenFiatAmount}
             </Text>
           </View>
-          <TokenIcon token={sourceToken} size="lg" />
         </View>
 
-        <View>
+        <View className="w-[40px] flex items-center py-1">
           <Icon.ChevronDownDouble
             size={20}
             color={themeColors.foreground.primary}
-            circle
-            circleBackground={themeColors.background.tertiary}
           />
         </View>
 
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row items-center">
+          <TokenIcon token={destinationToken} size="lg" />
+          <View className="ml-[16px]">
             <Text xl medium primary>
               {formatTokenForDisplay(
                 actualDestinationAmount,
@@ -214,7 +213,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {destinationTokenFiatAmount}
             </Text>
           </View>
-          <TokenIcon token={destinationToken} size="lg" />
         </View>
       </View>
 

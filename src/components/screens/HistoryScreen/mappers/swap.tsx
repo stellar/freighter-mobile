@@ -161,15 +161,7 @@ export const SwapTransactionDetailsContent: React.FC<{
 
   return (
     <TransactionDetailsContent>
-      <View className="flex-row justify-between items-center">
-        <View>
-          <Text xl primary medium numberOfLines={1}>
-            {formatTokenForDisplay(
-              transactionDetails.swapDetails?.sourceAmount ?? "",
-              transactionDetails.swapDetails?.sourceTokenCode ?? "",
-            )}
-          </Text>
-        </View>
+      <View className="flex-row items-center">
         <TokenIcon
           token={{
             code: transactionDetails.swapDetails?.sourceTokenCode ?? "",
@@ -180,24 +172,24 @@ export const SwapTransactionDetailsContent: React.FC<{
               ?.sourceTokenType as TokenTypeWithCustomToken,
           }}
         />
-      </View>
-
-      <Icon.ChevronDownDouble
-        size={20}
-        color={themeColors.foreground.primary}
-        circle
-        circleBackground={themeColors.background.tertiary}
-      />
-
-      <View className="flex-row justify-between items-center">
-        <View>
+        <View className="ml-[16px]">
           <Text xl primary medium numberOfLines={1}>
             {formatTokenForDisplay(
-              transactionDetails.swapDetails?.destinationAmount ?? "",
-              transactionDetails.swapDetails?.destinationTokenCode ?? "",
+              transactionDetails.swapDetails?.sourceAmount ?? "",
+              transactionDetails.swapDetails?.sourceTokenCode ?? "",
             )}
           </Text>
         </View>
+      </View>
+
+      <View className="w-[40px] flex items-center py-1">
+        <Icon.ChevronDownDouble
+          size={20}
+          color={themeColors.foreground.primary}
+        />
+      </View>
+
+      <View className="flex-row items-center">
         <TokenIcon
           token={{
             code: transactionDetails.swapDetails?.destinationTokenCode ?? "",
@@ -208,6 +200,14 @@ export const SwapTransactionDetailsContent: React.FC<{
               ?.destinationTokenType as TokenTypeWithCustomToken,
           }}
         />
+        <View className="ml-[16px]">
+          <Text xl primary medium numberOfLines={1}>
+            {formatTokenForDisplay(
+              transactionDetails.swapDetails?.destinationAmount ?? "",
+              transactionDetails.swapDetails?.destinationTokenCode ?? "",
+            )}
+          </Text>
+        </View>
       </View>
     </TransactionDetailsContent>
   );

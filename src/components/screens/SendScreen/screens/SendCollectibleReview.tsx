@@ -1,12 +1,11 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { BigNumber } from "bignumber.js";
-import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
+import { CollectibleImage } from "components/CollectibleImage";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
-import NumericKeyboard from "components/NumericKeyboard";
+import { List, ListItemProps } from "components/List";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -19,14 +18,9 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
+import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import {
-  DEFAULT_DECIMALS,
-  FIAT_DECIMALS,
-  NATIVE_TOKEN_CODE,
-  TransactionContext,
-} from "config/constants";
+import { TransactionContext } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -35,22 +29,17 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
-import { useToast } from "providers/ToastProvider";
 import React, {
   useCallback,
   useEffect,
@@ -58,7 +47,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
@@ -66,86 +55,72 @@ import {
   extractSecurityWarnings,
 } from "services/blockaid/helper";
 
-type TransactionAmountScreenProps = NativeStackScreenProps<
+type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
-  typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
+  typeof SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW
 >;
 
 /**
- * TransactionAmountScreen Component
+ * SendCollectibleReviewScreen Component
  *
- * A screen for entering transaction amounts in either token or fiat currency.
- * Supports switching between token and fiat input modes with automatic conversion.
+ * A screen for reviewing details of a collectible before sending.
  *
- * @param {TransactionAmountScreenProps} props - Component props
+ * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
  */
-const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
-  navigation,
-  route,
-}) => {
-  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
+const SendCollectibleReviewScreen: React.FC<
+  SendCollectibleReviewScreenProps
+> = ({ navigation, route }) => {
+  const { tokenId, collectionAddress } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const {
-    transactionFee,
-    recipientAddress,
-    selectedTokenId,
-    saveSelectedTokenId,
-    saveRecipientAddress,
-    resetSettings,
-  } = useTransactionSettingsStore();
+  const { recipientAddress, saveSelectedCollectibleDetails, resetSettings } =
+    useTransactionSettingsStore();
+  const { collections } = useCollectiblesStore();
 
   const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   useEffect(() => {
-    if (tokenId) {
-      saveSelectedTokenId(tokenId);
+    if (tokenId && collectionAddress) {
+      saveSelectedCollectibleDetails({ tokenId, collectionAddress });
     }
-  }, [tokenId, saveSelectedTokenId]);
-
-  useEffect(() => {
-    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
-      saveRecipientAddress(routeRecipientAddress);
-    }
-  }, [routeRecipientAddress, saveRecipientAddress]);
+  }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
 
   const {
-    buildTransaction,
+    buildSendCollectibleTransaction,
     signTransaction,
     submitTransaction,
     resetTransaction,
     isBuilding,
     transactionXDR,
-    transactionHash,
   } = useTransactionBuilderStore();
 
   // Reset everything on unmount
   useEffect(
     () => () => {
-      saveSelectedTokenId("");
+      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
       resetSendRecipient();
       resetSettings();
       resetTransaction();
     },
-    [resetSettings, resetSendRecipient, saveSelectedTokenId, resetTransaction],
+    [
+      resetSettings,
+      resetSendRecipient,
+      saveSelectedCollectibleDetails,
+      resetTransaction,
+    ],
   );
 
-  const { isValidatingMemo, isMemoMissing } =
-    useValidateTransactionMemo(transactionXDR);
+  const { isValidatingMemo } = useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [amountError, setAmountError] = useState<string | null>(null);
-  const { showToast } = useToast();
-  const deviceSize = useDeviceSize();
-  const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
@@ -165,7 +140,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   });
 
   const onConfirmAddMemo = useCallback(() => {
-    addMemoExplanationBottomSheetModalRef.current?.dismiss();
+    reviewBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.present();
   }, []);
 
@@ -186,136 +161,31 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSettingsBottomSheetModalRef.current?.dismiss();
   };
 
-  const navigateToSelectTokenScreen = () => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
-  };
-
   const navigateToSelectContactScreen = () => {
     navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
-
-  const { balanceItems } = useBalancesList({
-    publicKey: publicKey ?? "",
-    network,
-  });
-
-  const selectedBalance = balanceItems.find(
-    (item) => item.id === selectedTokenId || NATIVE_TOKEN_CODE,
-  );
-
-  const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
   const transactionSecurityAssessment = useMemo(
     () => assessTransactionSecurity(transactionScanResult),
     [transactionScanResult],
   );
 
-  const {
-    tokenAmount,
-    tokenAmountDisplay,
-    fiatAmount,
-    showFiatAmount,
-    setShowFiatAmount,
-    handleDisplayAmountChange,
-    setTokenAmount,
-    setFiatAmount,
-  } = useTokenFiatConverter({ selectedBalance });
-
-  const spendableBalance = useMemo(() => {
-    if (!selectedBalance || !account) {
-      return BigNumber(0);
-    }
-
-    const result = calculateSpendableAmount({
-      balance: selectedBalance,
-      subentryCount: account.subentryCount,
-      transactionFee,
-    });
-
-    return result;
-  }, [selectedBalance, account, transactionFee]);
-
-  const handlePercentagePress = (percentage: number) => {
-    if (!selectedBalance) return;
-
-    let targetAmount: BigNumber;
-
-    if (percentage === 100) {
-      targetAmount = spendableBalance;
-
-      analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-    } else {
-      const totalBalance = BigNumber(spendableBalance);
-      targetAmount = totalBalance.multipliedBy(percentage / 100);
-    }
-
-    if (showFiatAmount) {
-      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Set raw internal value (dot notation)
-      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
-    } else {
-      // Set raw internal value (dot notation)
-      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
-    }
-  };
-
-  useEffect(() => {
-    const currentTokenAmount = BigNumber(tokenAmount);
-
-    if (!hasXLMForFees(balanceItems, transactionFee)) {
-      const errorMessage = t(
-        "transactionAmountScreen.errors.insufficientXlmForFees",
-        {
-          fee: transactionFee,
-        },
+  const selectedCollectible = useMemo(() => {
+    const collection = collections.find(
+      (c) => c.collectionAddress === collectionAddress,
+    );
+    if (collection) {
+      return collection.items.find(
+        (collectible) => collectible.tokenId === tokenId,
       );
-      setAmountError(errorMessage);
-      showToast({
-        variant: "error",
-        title: t("transactionAmountScreen.errors.insufficientXlmForFees", {
-          fee: transactionFee,
-        }),
-        toastId: "insufficient-xlm-for-fees",
-        duration: 3000,
-      });
-      return;
     }
-
-    if (
-      spendableBalance &&
-      currentTokenAmount.isGreaterThan(spendableBalance) &&
-      !transactionHash
-    ) {
-      const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
-      setAmountError(errorMessage);
-      showToast({
-        variant: "error",
-        title: t("transactionAmountScreen.errors.amountTooHigh"),
-        toastId: "amount-too-high",
-        duration: 3000,
-      });
-    } else {
-      setAmountError(null);
-    }
-  }, [
-    tokenAmount,
-    spendableBalance,
-    balanceItems,
-    transactionFee,
-    transactionHash,
-    t,
-    showToast,
-  ]);
+    return undefined;
+  }, [collections, collectionAddress, tokenId]);
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
-      const numberTokenAmount = new BigNumber(tokenAmount);
-
       const hasRequiredParams =
-        recipientAddress &&
-        selectedBalance &&
-        numberTokenAmount.isGreaterThan(0);
+        publicKey && recipientAddress && selectedCollectible;
       if (!hasRequiredParams) {
         return;
       }
@@ -329,10 +199,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           recipientAddress: storeRecipientAddress,
         } = useTransactionSettingsStore.getState();
 
-        const finalXDR = await buildTransaction({
-          tokenAmount,
-          selectedBalance,
-          recipientAddress: storeRecipientAddress,
+        const xdr = await buildSendCollectibleTransaction({
+          collectionAddress: selectedCollectible.collectionAddress,
+          tokenId: Number(selectedCollectible.tokenId),
+          destinationAccount: storeRecipientAddress,
           transactionMemo: freshTransactionMemo,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
@@ -340,10 +210,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           senderAddress: publicKey,
         });
 
-        if (!finalXDR) return;
+        if (!xdr) return;
 
         if (shouldOpenReview) {
-          scanTransaction(finalXDR, "internal")
+          scanTransaction(xdr, "internal")
             .then((scanResult) => {
               logger.info("TransactionAmountScreen", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
@@ -364,11 +234,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       }
     },
     [
-      tokenAmount,
-      selectedBalance,
+      selectedCollectible,
       network,
       publicKey,
-      buildTransaction,
+      buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
     ],
@@ -385,8 +254,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     const processTransaction = async () => {
       try {
-        if (!account?.privateKey || !selectedBalance || !recipientAddress) {
-          throw new Error("Missing account or balance information");
+        if (!account?.privateKey || !selectedCollectible || !recipientAddress) {
+          throw new Error("Missing account or collectible information");
         }
 
         const { privateKey } = account;
@@ -401,13 +270,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         });
 
         if (success) {
-          analytics.trackSendPaymentSuccess({
-            sourceToken: selectedBalance?.tokenCode || "unknown",
+          analytics.trackSendCollectibleSuccess({
+            collectionAddress: selectedCollectible.collectionAddress,
+            tokenId: selectedCollectible.tokenId,
           });
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            transactionType: "payment",
+            transactionType: "sendCollectible",
           });
         }
       } catch (error) {
@@ -419,7 +289,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          transactionType: "payment",
+          transactionType: "sendCollectible",
         });
       }
     };
@@ -427,7 +297,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     processTransaction();
   }, [
     account,
-    selectedBalance,
+    selectedCollectible,
     signTransaction,
     network,
     submitTransaction,
@@ -504,10 +374,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const footerProps = useMemo(
     () => ({
       onCancel: handleCancelReview,
-      onConfirm: isRequiredMemoMissing
-        ? onConfirmAddMemo
-        : handleTransactionConfirmation,
-      isRequiredMemoMissing,
+      onConfirm: handleTransactionConfirmation,
+      isRequiredMemoMissing: false,
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isValidatingMemo,
@@ -515,10 +383,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }),
     [
       handleCancelReview,
-      isRequiredMemoMissing,
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
-      onConfirmAddMemo,
       handleTransactionConfirmation,
       isValidatingMemo,
     ],
@@ -534,78 +400,68 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return false;
     }
 
-    return (
-      !!amountError ||
-      BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-      isBuilding
-    );
-  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
+    return isBuilding;
+  }, [isBuilding, recipientAddress]);
 
-  const handleConfirmAnyway = useCallback(() => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
-    handleTransactionConfirmation();
-  }, [handleTransactionConfirmation]);
-
-  const openSecurityWarningBottomSheet = useCallback(() => {
-    transactionSecurityWarningBottomSheetModalRef.current?.present();
-  }, []);
-
-  const openAddMemoExplanationBottomSheet = useCallback(() => {
-    addMemoExplanationBottomSheetModalRef.current?.present();
-  }, []);
-
-  const bannerContent = useMemo(() => {
-    const shouldShowNoticeBanner =
-      isRequiredMemoMissing ||
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious;
-
-    if (!shouldShowNoticeBanner) {
-      return undefined;
-    }
-
-    if (transactionSecurityAssessment.isMalicious) {
-      return {
-        text: t("transactionAmountScreen.errors.malicious"),
-        variant: "error" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    if (transactionSecurityAssessment.isSuspicious) {
-      return {
-        text: t("transactionAmountScreen.errors.suspicious"),
-        variant: "warning" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    return {
-      text: t("transactionAmountScreen.errors.memoMissing"),
-      variant: "error" as const,
-      onPress: openAddMemoExplanationBottomSheet,
-    };
-  }, [
-    isRequiredMemoMissing,
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    t,
-    openSecurityWarningBottomSheet,
-    openAddMemoExplanationBottomSheet,
-  ]);
+  const selectCollectibleDetails: ListItemProps[] = useMemo(
+    () => [
+      {
+        title: t("common.name"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Text md primary>
+              {selectedCollectible?.name}
+            </Text>
+          </View>
+        ),
+      },
+      {
+        title: t("common.collection"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Text md primary>
+              {selectedCollectible?.collectionName}
+            </Text>
+          </View>
+        ),
+      },
+      {
+        title: t("common.tokenId"),
+        titleColor: themeColors.text.secondary,
+        trailingContent: (
+          <View className="flex-row items-center gap-2">
+            <Text md primary>
+              {selectedCollectible?.tokenId}
+            </Text>
+          </View>
+        ),
+      },
+    ],
+    [selectedCollectible, themeColors.text.secondary, t],
+  );
 
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
-        type="token"
-        key={selectedTokenId}
+        type="collectible"
+        key={selectedCollectible?.collectionAddress}
         onClose={handleProcessingScreenClose}
-        transactionAmount={tokenAmount}
-        selectedBalance={selectedBalance}
+        selectedCollectible={selectedCollectible}
       />
     );
   }
+
+  const handleConfirmAnyway = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    handleTransactionConfirmation();
+  };
+
+  const onBannerPress = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  };
 
   const handleContinueButtonPress = () => {
     if (!recipientAddress) {
@@ -621,138 +477,42 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return t("transactionAmountScreen.chooseRecipient");
     }
 
-    if (BigNumber(tokenAmount).isLessThanOrEqualTo(0)) {
-      return t("transactionAmountScreen.setAmount");
-    }
-
     return t("transactionAmountScreen.reviewButton");
   };
 
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1">
-        <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
-            {showFiatAmount ? (
-              <Display
-                size={isSmallScreen ? "lg" : "xl"}
-                medium
-                adjustsFontSizeToFit
-                numberOfLines={1}
-                minimumFontScale={0.6}
-                {...(Number(fiatAmount) > 0
-                  ? { primary: true }
-                  : { secondary: true })}
-              >
-                {formatFiatAmount(fiatAmount)}
-              </Display>
-            ) : (
-              <View className="flex-row items-center gap-[4px]">
-                <Display
-                  size={isSmallScreen ? "lg" : "xl"}
-                  medium
-                  adjustsFontSizeToFit
-                  numberOfLines={1}
-                  minimumFontScale={0.6}
-                  {...(Number(tokenAmount) > 0
-                    ? { primary: true }
-                    : { secondary: true })}
-                >
-                  {tokenAmountDisplay}{" "}
-                  <RNText style={{ color: themeColors.text.secondary }}>
-                    {selectedBalance?.tokenCode}
-                  </RNText>
-                </Display>
-              </View>
-            )}
-            <View className="flex-row items-center justify-center">
-              <Text lg medium secondary>
-                {showFiatAmount
-                  ? formatTokenForDisplay(
-                      tokenAmount,
-                      selectedBalance?.tokenCode,
-                    )
-                  : formatFiatAmount(fiatAmount)}
-              </Text>
-              <TouchableOpacity
-                className="ml-2"
-                onPress={() => setShowFiatAmount(!showFiatAmount)}
-              >
-                <Icon.RefreshCcw03
-                  size={16}
-                  color={themeColors.text.secondary}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
-            {selectedBalance && (
-              <BalanceRow
-                isSingleRow
-                onPress={navigateToSelectTokenScreen}
-                balance={selectedBalance}
-                spendableAmount={spendableBalance}
-                rightContent={
-                  <IconButton
-                    Icon={Icon.ChevronRight}
-                    size="sm"
-                    variant="ghost"
-                  />
-                }
-              />
-            )}
-          </View>
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
-            <ContactRow
-              isSingleRow
-              onPress={navigateToSelectContactScreen}
-              address={recipientAddress}
-              rightElement={
-                <IconButton
-                  Icon={Icon.ChevronRight}
-                  size="sm"
-                  variant="ghost"
-                />
-              }
+        <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
+          <ContactRow
+            isSingleRow
+            onPress={navigateToSelectContactScreen}
+            address={recipientAddress}
+            rightElement={
+              <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
+            }
+          />
+        </View>
+        <View className="mt-[24px] w-full flex items-center justify-center">
+          <View className="w-[240px] h-[240px] rounded-2xl bg-background-tertiary p-1">
+            <CollectibleImage
+              imageUri={selectedCollectible?.image}
+              placeholderIconSize={65}
             />
           </View>
         </View>
-        <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(25)}>
-                {t("transactionAmountScreen.percentageButtons.twentyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(50)}>
-                {t("transactionAmountScreen.percentageButtons.fifty")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(75)}>
-                {t("transactionAmountScreen.percentageButtons.seventyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(100)}>
-                {t("transactionAmountScreen.percentageButtons.max")}
-              </Button>
-            </View>
-          </View>
-          <View className="w-full">
-            <NumericKeyboard onPress={handleDisplayAmountChange} />
-          </View>
-          <View className="w-full mt-auto mb-4">
-            <Button
-              tertiary
-              xl
-              onPress={handleContinueButtonPress}
-              disabled={isContinueButtonDisabled}
-            >
-              {getContinueButtonText()}
-            </Button>
-          </View>
+        <View className="mt-[24px]">
+          <List variant="secondary" items={selectCollectibleDetails} />
+        </View>
+        <View className="w-full mt-auto mb-4">
+          <Button
+            tertiary
+            xl
+            onPress={handleContinueButtonPress}
+            disabled={isContinueButtonDisabled}
+          >
+            {getContinueButtonText()}
+          </Button>
         </View>
       </View>
       <BottomSheet
@@ -762,16 +522,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         scrollable
         customContent={
           <SendReviewBottomSheet
-            type="token"
-            selectedBalance={selectedBalance}
-            tokenAmount={tokenAmount}
-            onBannerPress={bannerContent?.onPress}
+            type="collectible"
+            selectedCollectible={selectedCollectible}
+            onBannerPress={onBannerPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
-            isRequiredMemoMissing={isRequiredMemoMissing}
+            isRequiredMemoMissing={false}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
-            bannerText={bannerContent?.text}
-            bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
           />
         }
@@ -843,4 +600,4 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 };
 
-export default TransactionAmountScreen;
+export default SendCollectibleReviewScreen;

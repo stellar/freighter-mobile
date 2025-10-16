@@ -302,4 +302,153 @@ describe("transactionBuilder Duck", () => {
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
   });
+
+  describe("buildSendCollectibleTransaction", () => {
+    const mockCollectionAddress =
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    const mockTokenId = 12345;
+
+    beforeEach(() => {
+      (
+        transactionService.buildSendCollectibleTransaction as jest.Mock
+      ).mockResolvedValue({
+        xdr: mockBuiltXDR,
+        tx: { toXDR: () => mockBuiltXDR, sequence: "1" },
+      });
+      (
+        transactionService.simulateCollectibleTransfer as jest.Mock
+      ).mockResolvedValue(mockPreparedXDR);
+    });
+
+    it("should build and simulate a collectible transaction successfully", async () => {
+      await act(async () => {
+        await store.getState().buildSendCollectibleTransaction({
+          collectionAddress: mockCollectionAddress,
+          destinationAccount: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        });
+      });
+
+      const state = store.getState();
+      expect(state.isBuilding).toBe(false);
+      expect(state.transactionXDR).toBe(mockPreparedXDR);
+      expect(state.signedTransactionXDR).toBeNull();
+      expect(state.transactionHash).toBeNull();
+      expect(state.error).toBeNull();
+      expect(
+        transactionService.buildSendCollectibleTransaction,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collectionAddress: mockCollectionAddress,
+          recipientAddress: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        }),
+      );
+      expect(transactionService.simulateCollectibleTransfer).toHaveBeenCalled();
+    });
+
+    it("should build collectible transaction with memo", async () => {
+      const memo = "Sending collectible";
+
+      await act(async () => {
+        await store.getState().buildSendCollectibleTransaction({
+          collectionAddress: mockCollectionAddress,
+          destinationAccount: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          transactionMemo: memo,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        });
+      });
+
+      expect(
+        transactionService.buildSendCollectibleTransaction,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionMemo: memo,
+        }),
+      );
+    });
+
+    it("should handle errors during buildSendCollectibleTransaction", async () => {
+      const buildError = new Error("Failed to build collectible transaction");
+      (
+        transactionService.buildSendCollectibleTransaction as jest.Mock
+      ).mockRejectedValue(buildError);
+
+      await act(async () => {
+        await store.getState().buildSendCollectibleTransaction({
+          collectionAddress: mockCollectionAddress,
+          destinationAccount: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        });
+      });
+
+      const state = store.getState();
+      expect(state.isBuilding).toBe(false);
+      expect(state.transactionXDR).toBeNull();
+      expect(state.error).toBe(buildError.message);
+    });
+
+    it("should handle errors during simulateCollectibleTransfer", async () => {
+      const simulateError = new Error(
+        "Failed to simulate collectible transfer",
+      );
+      (
+        transactionService.simulateCollectibleTransfer as jest.Mock
+      ).mockRejectedValue(simulateError);
+
+      await act(async () => {
+        await store.getState().buildSendCollectibleTransaction({
+          collectionAddress: mockCollectionAddress,
+          destinationAccount: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        });
+      });
+
+      const state = store.getState();
+      expect(state.isBuilding).toBe(false);
+      expect(state.transactionXDR).toBeNull();
+      expect(state.error).toBe(simulateError.message);
+    });
+
+    it("should return the prepared XDR from simulation", async () => {
+      let result: string | null = null;
+      await act(async () => {
+        result = await store.getState().buildSendCollectibleTransaction({
+          collectionAddress: mockCollectionAddress,
+          destinationAccount: mockRecipientAddress,
+          tokenId: mockTokenId,
+          transactionFee: "0.001",
+          transactionTimeout: 300,
+          network: mockNetwork,
+          senderAddress: mockPublicKey,
+        });
+      });
+
+      expect(result).toBe(mockPreparedXDR);
+      expect(
+        transactionService.buildSendCollectibleTransaction,
+      ).toHaveBeenCalled();
+      expect(transactionService.simulateCollectibleTransfer).toHaveBeenCalled();
+    });
+  });
 });

@@ -48,7 +48,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const { saveRecipientAddress } = useTransactionSettingsStore();
+  const { saveRecipientAddress, selectedCollectibleDetails } =
+    useTransactionSettingsStore();
 
   const { clearQRData } = useQRDataStore();
 
@@ -103,9 +104,22 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       // Transaction settings store is for the transaction flow
       saveRecipientAddress(contactAddress);
 
-      navigation.goBack();
+      if (selectedCollectibleDetails.tokenId) {
+        navigation.navigate(
+          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+          selectedCollectibleDetails,
+        );
+      } else {
+        navigation.goBack();
+      }
     },
-    [recentAddresses, setDestinationAddress, saveRecipientAddress, navigation],
+    [
+      recentAddresses,
+      setDestinationAddress,
+      saveRecipientAddress,
+      navigation,
+      selectedCollectibleDetails,
+    ],
   );
 
   const handlePasteFromClipboard = () => {

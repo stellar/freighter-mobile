@@ -56,6 +56,14 @@ export interface TokenMintDetailsType {
   amount: string;
 }
 
+export interface CollectibleTransferDetailsType {
+  from: string;
+  to: string;
+  tokenId: string;
+  collectibleName: string;
+  collectionName: string;
+}
+
 export interface ContractDetailsType {
   sorobanTokenInterface: SorobanTokenInterface;
   contractAddress: string;
@@ -64,6 +72,7 @@ export interface ContractDetailsType {
   contractDecimals?: number;
   transferDetails?: TokenTransferDetailsType;
   mintDetails?: TokenMintDetailsType;
+  collectibleTransferDetails?: CollectibleTransferDetailsType;
 }
 
 export interface TransactionDetails {

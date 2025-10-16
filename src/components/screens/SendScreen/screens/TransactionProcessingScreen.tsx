@@ -1,6 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
 import BottomSheet from "components/BottomSheet";
+import { CollectibleImage } from "components/CollectibleImage";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsBottomSheet from "components/TransactionDetailsBottomSheet";
@@ -11,6 +12,7 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { Collectible } from "ducks/collectibles";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -34,8 +36,10 @@ type TransactionStatusType =
 
 export interface TransactionProcessingScreenProps {
   onClose?: () => void;
-  transactionAmount: string;
-  selectedBalance:
+  transactionAmount?: string;
+  type: "token" | "collectible";
+  selectedCollectible?: Collectible | undefined;
+  selectedBalance?:
     | (PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken })
     | undefined;
 }
@@ -48,7 +52,13 @@ export interface TransactionProcessingScreenProps {
  */
 const TransactionProcessingScreen: React.FC<
   TransactionProcessingScreenProps
-> = ({ onClose, transactionAmount, selectedBalance }) => {
+> = ({
+  onClose,
+  transactionAmount,
+  selectedBalance,
+  selectedCollectible,
+  type,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
@@ -179,8 +189,16 @@ const TransactionProcessingScreen: React.FC<
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
-                {selectedBalance && (
+                {type === "token" && selectedBalance && (
                   <TokenIcon token={selectedBalance} size="lg" />
+                )}
+                {type === "collectible" && selectedCollectible && (
+                  <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
+                    <CollectibleImage
+                      imageUri={selectedCollectible?.image}
+                      placeholderIconSize={25}
+                    />
+                  </View>
                 )}
                 <Icon.ChevronRightDouble
                   size={16}
@@ -196,10 +214,15 @@ const TransactionProcessingScreen: React.FC<
               <View className="items-center">
                 <View className="flex-row flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {formatTokenForDisplay(
-                      transactionAmount,
-                      selectedBalance?.tokenCode,
-                    )}
+                    {type === "token" && transactionAmount
+                      ? formatTokenForDisplay(
+                          transactionAmount,
+                          selectedBalance?.tokenCode,
+                        )
+                      : null}
+                    {type === "collectible" && selectedCollectible
+                      ? selectedCollectible.name
+                      : null}
                   </Text>
                   <Text lg medium secondary>
                     {getMessageText()}
@@ -239,6 +262,7 @@ const TransactionProcessingScreen: React.FC<
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         customContent={
           <TransactionDetailsBottomSheet
+            type={type}
             transactionAmount={transactionAmount}
           />
         }

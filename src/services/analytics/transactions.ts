@@ -37,6 +37,15 @@ export const trackSendPaymentSuccess = (
   });
 };
 
+export const trackSendCollectibleSuccess = (
+  data: TransactionSuccessEvent,
+): void => {
+  track(AnalyticsEvent.SEND_COLLECTIBLE_SUCCESS, {
+    collectionAddress: data.collectionAddress,
+    tokenId: data.tokenId,
+  });
+};
+
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     sourceAsset: data.sourceToken,

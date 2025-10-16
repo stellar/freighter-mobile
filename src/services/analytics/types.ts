@@ -24,10 +24,17 @@ export interface SignedTransactionEvent {
 }
 
 export interface TransactionSuccessEvent {
-  sourceToken: string;
+  collectionAddress?: string;
+  tokenId?: string;
+  sourceToken?: string;
   destToken?: string;
   allowedSlippage?: string;
-  transactionType?: "payment" | "pathPayment" | "swap" | "sorobanToken";
+  transactionType?:
+    | "payment"
+    | "pathPayment"
+    | "swap"
+    | "sorobanToken"
+    | "sendCollectible";
 }
 
 export interface SwapSuccessEvent {
@@ -40,7 +47,12 @@ export interface SwapSuccessEvent {
 export interface TransactionErrorEvent {
   error: string;
   errorCode?: string;
-  transactionType?: "payment" | "pathPayment" | "swap" | "sorobanToken";
+  transactionType?:
+    | "payment"
+    | "pathPayment"
+    | "swap"
+    | "sorobanToken"
+    | "sendCollectible";
   isSwap?: boolean;
 }
 

@@ -6,7 +6,10 @@ import {
 } from "components/screens/HistoryScreen/helpers";
 import { CreateAccountTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/createAccount";
 import { PaymentTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/payment";
-import { SorobanTransferTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/soroban";
+import {
+  SorobanTokenTransferTransactionDetailsContent,
+  SorobanCollectibleTransferTransactionDetailsContent,
+} from "components/screens/HistoryScreen/mappers/soroban";
 import { SwapTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/swap";
 import {
   TransactionDetails,
@@ -163,11 +166,20 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       )}
 
       {transactionDetails.transactionType ===
-        TransactionType.CONTRACT_TRANSFER && (
-        <SorobanTransferTransactionDetailsContent
-          transactionDetails={transactionDetails}
-        />
-      )}
+        TransactionType.CONTRACT_TRANSFER &&
+        transactionDetails.contractDetails?.transferDetails && (
+          <SorobanTokenTransferTransactionDetailsContent
+            transactionDetails={transactionDetails}
+          />
+        )}
+
+      {transactionDetails.transactionType ===
+        TransactionType.CONTRACT_TRANSFER &&
+        transactionDetails.contractDetails?.collectibleTransferDetails && (
+          <SorobanCollectibleTransferTransactionDetailsContent
+            transactionDetails={transactionDetails}
+          />
+        )}
 
       <List variant="secondary" items={detailItems} />
       <Button
