@@ -5,7 +5,7 @@ import {
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import ContextMenuButton from "components/ContextMenuButton";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
-import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
+import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
 import Icon from "components/sds/Icon";
 import { QRCodeSource } from "config/constants";
 import {
@@ -60,7 +60,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   // performance by preventing unnecessary re-creations of the header components.
   const HeaderComponent = useCallback(
     (props: NativeStackHeaderProps | BottomTabHeaderProps) => (
-      <CustomNavigationHeader {...props} />
+      <HomeScreenHeader {...props} />
     ),
     [],
   );

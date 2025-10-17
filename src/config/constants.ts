@@ -8,6 +8,12 @@ import { BIOMETRY_TYPE } from "react-native-keychain";
 export const APP_VERSION = getAppVersion();
 
 export const DEFAULT_PADDING = 24;
+
+export enum Comparison {
+  SAME = 0,
+  LOWER = -1,
+  GREATER = 1,
+}
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";

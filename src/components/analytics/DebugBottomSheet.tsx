@@ -3,19 +3,22 @@ import BottomSheet from "components/BottomSheet";
 import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { formatTimeAgo } from "helpers/date";
 import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
 import { View, TouchableOpacity } from "react-native";
+import { getVersion } from "react-native-device-info";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 import { analytics } from "services/analytics";
 import { DEBUG_CONSTANTS } from "services/analytics/debug";
 
-interface AnalyticsDebugBottomSheetProps {
+interface DebugBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
   onDismiss: () => void;
 }
@@ -29,6 +32,13 @@ const CustomContent: React.FC<{
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { logout, devResetAppAuth } = useAuthenticationStore();
+  const {
+    overriddenAppVersion,
+    setOverriddenAppVersion,
+    clearOverriddenAppVersion,
+  } = useDebugStore();
+  const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
+  const [currentVersion] = useState(getVersion());
 
   const handleRefresh = () => {
     setDebugInfo(analytics.getAnalyticsDebugInfo());
@@ -53,13 +63,26 @@ const CustomContent: React.FC<{
     onDismiss();
   };
 
+  const handleSetVersionOverride = () => {
+    if (versionInput.trim()) {
+      setOverriddenAppVersion(versionInput.trim());
+    } else {
+      clearOverriddenAppVersion();
+    }
+  };
+
+  const handleClearVersionOverride = () => {
+    setVersionInput("");
+    clearOverriddenAppVersion();
+  };
+
   return (
     <View className="flex-1 w-full">
       <BottomSheetAdaptiveContainer
         header={
           <View className="flex-row justify-between items-center mb-4">
             <Text xl medium>
-              {t("analytics.debug.title")}
+              {t("debug.title")}
             </Text>
             <TouchableOpacity onPress={onDismiss}>
               <Icon.X color={themeColors.text.primary} />
@@ -156,6 +179,57 @@ const CustomContent: React.FC<{
             </View>
           </View>
 
+          {/* App Version Override Section */}
+          <View className="gap-3 mb-4">
+            <Text lg medium>
+              {t("debug.appVersionOverride.title")}
+            </Text>
+            <Text xs color={themeColors.text.secondary}>
+              {t("debug.appVersionOverride.description")}
+            </Text>
+
+            <View className="flex flex-col gap-2">
+              <Text xs color={themeColors.text.secondary}>
+                {t("debug.appVersionOverride.currentVersion", {
+                  version: currentVersion,
+                })}
+              </Text>
+
+              {overriddenAppVersion && (
+                <Text xs color={themeColors.status.warning}>
+                  {t("debug.appVersionOverride.overriddenVersion", {
+                    version: overriddenAppVersion,
+                  })}
+                </Text>
+              )}
+            </View>
+
+            <View className="flex flex-row gap-2">
+              <View className="flex-1">
+                <Input
+                  placeholder={t("debug.appVersionOverride.placeholder")}
+                  value={versionInput}
+                  onChangeText={setVersionInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <Button
+                variant="secondary"
+                onPress={handleSetVersionOverride}
+                disabled={!versionInput.trim()}
+              >
+                Set
+              </Button>
+            </View>
+
+            {overriddenAppVersion && (
+              <Button variant="tertiary" onPress={handleClearVersionOverride}>
+                {t("debug.appVersionOverride.clearOverride")}
+              </Button>
+            )}
+          </View>
+
           <View className="gap-3 mb-4">
             <View className="flex-row justify-between items-center">
               <Text lg medium>
@@ -229,9 +303,10 @@ const CustomContent: React.FC<{
   );
 };
 
-export const AnalyticsDebugBottomSheet: React.FC<
-  AnalyticsDebugBottomSheetProps
-> = ({ modalRef, onDismiss }) => {
+export const DebugBottomSheet: React.FC<DebugBottomSheetProps> = ({
+  modalRef,
+  onDismiss,
+}) => {
   // Only render in development mode
   if (!__DEV__) {
     return null;
