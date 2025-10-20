@@ -309,7 +309,7 @@
       "ops": "ops",
       "collectibleTransfer": {
         "unknownCollectible": "Colecionável desconhecido",
-        "unknownCollection": "Coleção desconhecida"
+        "unknownCollection": "Coleção {{contractId}}"
       }
     },
     "transactionDetails": {

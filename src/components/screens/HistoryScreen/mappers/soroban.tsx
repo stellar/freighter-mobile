@@ -519,6 +519,9 @@ const processCollectibleTransfer = async ({
         ),
         collectionName: t(
           "history.transactionHistory.collectibleTransfer.unknownCollection",
+          {
+            contractId: truncateAddress(sorobanAttributes.contractId),
+          },
         ),
       },
     },
