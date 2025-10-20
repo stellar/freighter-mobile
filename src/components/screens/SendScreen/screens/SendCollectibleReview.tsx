@@ -14,6 +14,7 @@ import {
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -49,6 +50,7 @@ import React, {
 } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
+import { TransactionOperationType } from "services/analytics/types";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
@@ -277,7 +279,7 @@ const SendCollectibleReviewScreen: React.FC<
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            operationType: "sendCollectible",
+            operationType: TransactionOperationType.SendCollectible,
           });
         }
       } catch (error) {
@@ -289,7 +291,7 @@ const SendCollectibleReviewScreen: React.FC<
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          operationType: "sendCollectible",
+          operationType: TransactionOperationType.SendCollectible,
         });
       }
     };
@@ -522,7 +524,7 @@ const SendCollectibleReviewScreen: React.FC<
         scrollable
         customContent={
           <SendReviewBottomSheet
-            type="collectible"
+            type={SendType.Collectible}
             selectedCollectible={selectedCollectible}
             onBannerPress={onBannerPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size

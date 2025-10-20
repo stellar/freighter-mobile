@@ -23,12 +23,13 @@ export interface SignedTransactionEvent {
   dappDomain?: string;
 }
 
-export type TransactionOperationType =
-  | "payment"
-  | "pathPayment"
-  | "swap"
-  | "sorobanToken"
-  | "sendCollectible";
+export enum TransactionOperationType {
+  Payment = "payment",
+  PathPayment = "pathPayment",
+  Swap = "swap",
+  SorobanToken = "sorobanToken",
+  SendCollectible = "sendCollectible",
+}
 
 export interface TransactionSuccessEvent {
   collectionAddress?: string;

@@ -15,6 +15,7 @@ import {
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -60,6 +61,7 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
+import { TransactionOperationType } from "services/analytics/types";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
@@ -407,7 +409,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            operationType: "payment",
+            operationType: TransactionOperationType.Payment,
           });
         }
       } catch (error) {
@@ -419,7 +421,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          operationType: "payment",
+          operationType: TransactionOperationType.Payment,
         });
       }
     };
@@ -762,7 +764,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         scrollable
         customContent={
           <SendReviewBottomSheet
-            type="token"
+            type={SendType.Token}
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onBannerPress={bannerContent?.onPress}

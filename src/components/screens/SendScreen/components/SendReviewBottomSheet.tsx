@@ -13,7 +13,7 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
-import { Collectible } from "ducks/collectibles";
+import { Collectible as CollectibleType } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
@@ -28,11 +28,16 @@ import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+export enum SendType {
+  Token = "token",
+  Collectible = "collectible",
+}
+
 type SendReviewBottomSheetProps = {
-  type: "token" | "collectible";
+  type: SendType;
   selectedBalance?: PricedBalance;
   tokenAmount?: string;
-  selectedCollectible?: Collectible;
+  selectedCollectible?: CollectibleType;
   /**
    * Indicates if a required memo is missing from the transaction
    * When true, shows a warning banner and may disable transaction confirmation
@@ -274,7 +279,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
-          {type === "token" &&
+          {type === SendType.Token &&
             selectedBalance &&
             tokenAmount &&
             !isLiquidityPool(selectedBalance) && (
@@ -299,7 +304,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
                 </View>
               </View>
             )}
-          {type === "collectible" && selectedCollectible && (
+          {type === SendType.Collectible && selectedCollectible && (
             <View className="w-full flex-row items-center gap-[16px]">
               <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
                 <CollectibleImage
