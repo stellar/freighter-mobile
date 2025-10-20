@@ -189,7 +189,7 @@ const TransactionProcessingScreen: React.FC<
 
             <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
-                {type === "token" && selectedBalance && (
+                {type === SendType.Token && selectedBalance && (
                   <TokenIcon token={selectedBalance} size="lg" />
                 )}
                 {type === "collectible" && selectedCollectible && (
