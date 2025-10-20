@@ -37,7 +37,7 @@ type TransactionStatusType =
 export interface TransactionProcessingScreenProps {
   onClose?: () => void;
   transactionAmount?: string;
-  type: "token" | "collectible";
+  type: SendType;
   selectedCollectible?: Collectible | undefined;
   selectedBalance?:
     | (PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken })
