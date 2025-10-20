@@ -541,7 +541,7 @@ const processCollectibleTransfer = async ({
       (collection) => "collection" in collection,
     );
 
-    if (!backendCollections) {
+    if (!backendCollections.length) {
       historyItemData.rowText = operationString;
       historyItemData.transactionDetails = defaultCollectibleTransferDetails;
       return historyItemData as HistoryItemData;
