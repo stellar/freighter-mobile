@@ -597,7 +597,11 @@ const processCollectibleTransfer = async ({
           from: sorobanAttributes.from,
           to: sorobanAttributes.to,
           tokenId: sorobanAttributes.tokenId,
-          collectibleName: transferedCollectible.name || "",
+          collectibleName:
+            transferedCollectible.name ||
+            t(
+              "history.transactionHistory.collectibleTransfer.unknownCollectible",
+            ),
           collectionName: transferedCollectible.collectionName,
         },
       },

@@ -773,13 +773,7 @@ export const simulateTransaction = async (
     params,
   );
 
-  return {
-    ...data,
-    preparedTx: TransactionBuilder.fromXDR(
-      data.preparedTransaction,
-      params.network_passphrase,
-    ),
-  };
+  return data;
 };
 
 /**

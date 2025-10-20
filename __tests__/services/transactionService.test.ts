@@ -280,12 +280,8 @@ describe("simulateCollectibleTransfer", () => {
   });
 
   it("should successfully simulate collectible transfer", async () => {
-    const mockPreparedTx = {
-      toXDR: jest.fn().mockReturnValue(mockPreparedXdr),
-    };
-
     (backend.simulateTransaction as jest.Mock).mockResolvedValue({
-      preparedTx: mockPreparedTx,
+      preparedTransaction: mockPreparedXdr,
       simulationResponse: {},
     });
 

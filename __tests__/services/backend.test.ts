@@ -291,7 +291,7 @@ describe("Backend Service - Transaction Operations", () => {
       expect(mockPost).toHaveBeenCalledWith("/simulate-tx", mockParams);
       expect(result).toHaveProperty("simulationResponse");
       expect(result).toHaveProperty("preparedTransaction");
-      expect(result).toHaveProperty("preparedTx");
+      expect(result).toHaveProperty("preparedTransaction");
       expect(result.simulationResponse).toEqual(
         mockSimulationResponse.simulationResponse,
       );
@@ -312,7 +312,7 @@ describe("Backend Service - Transaction Operations", () => {
       const result = await simulateTransaction(paramsWithEmptyArray);
 
       expect(result).toHaveProperty("simulationResponse");
-      expect(result).toHaveProperty("preparedTx");
+      expect(result).toHaveProperty("preparedTransaction");
     });
 
     it("should handle simulation errors", async () => {

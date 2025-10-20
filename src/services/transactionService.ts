@@ -560,18 +560,16 @@ export const buildSendCollectibleTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    if (transactionMemo) {
-      txBuilder.addMemo(
-        new Memo(Memo.text(transactionMemo).type, transactionMemo),
-      );
-    }
-
     const transferParams = [
       new Address(senderAddress).toScVal(), // from
       new Address(recipientAddress).toScVal(), // to
       xdr.ScVal.scvU32(tokenId), // token_id
     ];
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
+
+    if (transactionMemo) {
+      txBuilder.addMemo(Memo.text(transactionMemo));
+    }
 
     const transaction = txBuilder.build();
     return { tx: transaction, xdr: transaction.toXDR() };
@@ -649,7 +647,7 @@ export const simulateCollectibleTransfer = async ({
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
     });
-    return result.preparedTx.toXDR();
+    return result.preparedTransaction;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
