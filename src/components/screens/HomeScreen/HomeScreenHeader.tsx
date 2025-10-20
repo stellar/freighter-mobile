@@ -24,7 +24,8 @@ const HomeScreenHeader = (
   const { navigation, options = {} } = props;
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
-  const { needsOptionalUpdate, updateMessage, openAppStore } = useAppUpdate();
+  const { showBannerUpdateNotice, updateMessage, openAppStore } =
+    useAppUpdate();
   const baseColor = themeColors.base[1];
 
   const handleBannerPress = () => {
@@ -74,7 +75,7 @@ const HomeScreenHeader = (
       </View>
 
       {/* Update banner under the header - only show for optional updates */}
-      {needsOptionalUpdate && (
+      {showBannerUpdateNotice && (
         <NoticeBanner text={updateMessage} onPress={handleBannerPress} />
       )}
     </View>

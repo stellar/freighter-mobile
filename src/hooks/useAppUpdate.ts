@@ -1,4 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
+import { useAppUpdateStore } from "ducks/appUpdate";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { getAppUpdateText } from "helpers/appUpdateText";
@@ -7,12 +10,14 @@ import { isDev } from "helpers/isEnv";
 import { isVersionBelow } from "helpers/versionComparison";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
-import { useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Linking } from "react-native";
 import { getBundleId, getVersion } from "react-native-device-info";
 
 const IOS_APP_STORE_URL = "https://apps.apple.com/app/freighter/id6743947720";
 const ANDROID_APP_STORE_URL = `https://play.google.com/store/apps/details?id=${getBundleId()}`;
+
+const APP_STORE_URL = isIOS ? IOS_APP_STORE_URL : ANDROID_APP_STORE_URL;
 
 /**
  * Hook to manage app update logic and UI state
@@ -31,32 +36,54 @@ export const useAppUpdate = () => {
   const currentVersion =
     isDev && overriddenAppVersion ? overriddenAppVersion : getVersion();
 
-  // Parse the update text JSON for internationalization
   const updateMessage = getAppUpdateText(updateText);
 
-  // Only check for updates when remote config is initialized
-  // Forced update: when current version is below required version
-  const needsForcedUpdate =
+  const {
+    currentSessionNoticeDismissed,
+    dismissFullScreenNotice: dismissFullScreenNoticeAction,
+  } = useAppUpdateStore();
+
+  const [dismissedRequiredVersion, setDismissedRequiredVersion] = useState<
+    string | null
+  >(null);
+  const [isFlagLoaded, setIsFlagLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadDismissed = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(
+          STORAGE_KEYS.APP_UPDATE_DISMISSED_REQUIRED_VERSION,
+        );
+        setDismissedRequiredVersion(stored);
+        setIsFlagLoaded(true);
+      } catch (error) {
+        logger.error("useAppUpdate", "Failed to read dismissed version", error);
+        setIsFlagLoaded(true);
+      }
+    };
+    loadDismissed();
+  }, []);
+
+  const hasDismissedCurrentVersion =
+    dismissedRequiredVersion === currentVersion;
+
+  const isBelowRequired =
     isInitialized && isVersionBelow(currentVersion, requiredAppVersion);
+  const isBelowLatest =
+    isInitialized && isVersionBelow(currentVersion, latestAppVersion);
 
-  // Optional update: when current version is below latest but above required (for banner)
-  const needsOptionalUpdate =
-    isInitialized &&
-    !needsForcedUpdate &&
-    isVersionBelow(currentVersion, latestAppVersion);
+  const showFullScreenUpdateNotice =
+    isBelowRequired && !hasDismissedCurrentVersion;
 
-  const getAppStoreUrl = useCallback(
-    () =>
-      isIOS
-        ? IOS_APP_STORE_URL // iOS is using TestFlight for development builds - not able to generate a programatic link
-        : ANDROID_APP_STORE_URL,
-    [],
-  );
+  const showBannerUpdateNotice =
+    isFlagLoaded &&
+    !showFullScreenUpdateNotice &&
+    !currentSessionNoticeDismissed &&
+    isBelowLatest;
 
-  const openAppStore = useCallback(async () => {
+  const openAppStore = async () => {
     try {
-      const url = getAppStoreUrl();
-      await Linking.openURL(url);
+      await Linking.openURL(APP_STORE_URL);
     } catch (error) {
       logger.error("useAppUpdate", "Failed to open app store", error);
       showToast({
@@ -68,15 +95,33 @@ export const useAppUpdate = () => {
         duration: 3000,
       });
     }
-  }, [getAppStoreUrl, showToast, t]);
+  };
+
+  const dismissFullScreenNotice = async () => {
+    try {
+      dismissFullScreenNoticeAction();
+      setDismissedRequiredVersion(currentVersion);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.APP_UPDATE_DISMISSED_REQUIRED_VERSION,
+        currentVersion,
+      );
+    } catch (error) {
+      logger.error(
+        "useAppUpdate",
+        "Failed to dismiss full screen notice",
+        error,
+      );
+    }
+  };
 
   return {
     currentVersion,
     requiredVersion: requiredAppVersion,
     latestVersion: latestAppVersion,
     updateMessage,
-    needsForcedUpdate,
-    needsOptionalUpdate,
+    showFullScreenUpdateNotice,
+    showBannerUpdateNotice,
     openAppStore,
+    dismissFullScreenNotice,
   };
 };

@@ -77,7 +77,8 @@ export const RootNavigator = () => {
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
-  const { needsForcedUpdate } = useAppUpdate();
+  const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
+    useAppUpdate();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
@@ -133,10 +134,10 @@ export const RootNavigator = () => {
 
   // Show force update screen when needed
   useEffect(() => {
-    if (needsForcedUpdate) {
+    if (showFullScreenUpdateNotice) {
       setShowForceUpdate(true);
     }
-  }, [needsForcedUpdate]);
+  }, [showFullScreenUpdateNotice]);
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
@@ -157,7 +158,14 @@ export const RootNavigator = () => {
 
   // Show force update screen if required
   if (showForceUpdate) {
-    return <ForceUpdateScreen onDismiss={() => setShowForceUpdate(false)} />;
+    return (
+      <ForceUpdateScreen
+        onDismiss={() => {
+          dismissFullScreenNotice();
+          setShowForceUpdate(false);
+        }}
+      />
+    );
   }
 
   return (

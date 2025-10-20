@@ -1006,7 +1006,8 @@
       "placeholder": "Enter version (e.g., 1.0.0)",
       "currentVersion": "Current version: {{version}}",
       "overriddenVersion": "Overridden version: {{version}}",
-      "clearOverride": "Clear Override"
+      "clearOverride": "Clear Override",
+      "clearUpdateDismissalFlag": "Clear update dismissal flag"
     }
   },
   "blockaid": {

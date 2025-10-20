@@ -1,10 +1,12 @@
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomSheet from "components/BottomSheet";
 import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { STORAGE_KEYS } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { formatTimeAgo } from "helpers/date";
@@ -23,7 +25,7 @@ interface DebugBottomSheetProps {
   onDismiss: () => void;
 }
 
-const SNAP_VALUE_PERCENT = 80;
+const SNAP_VALUE_PERCENT = 90;
 
 const CustomContent: React.FC<{
   onDismiss: () => void;
@@ -61,6 +63,12 @@ const CustomContent: React.FC<{
   const handleResetApp = () => {
     devResetAppAuth();
     onDismiss();
+  };
+
+  const handleClearUpdateDismissalFlag = async () => {
+    await AsyncStorage.removeItem(
+      STORAGE_KEYS.APP_UPDATE_DISMISSED_REQUIRED_VERSION,
+    );
   };
 
   const handleSetVersionOverride = () => {
@@ -223,11 +231,24 @@ const CustomContent: React.FC<{
               </Button>
             </View>
 
-            {overriddenAppVersion && (
-              <Button variant="tertiary" onPress={handleClearVersionOverride}>
-                {t("debug.appVersionOverride.clearOverride")}
+            <View className="flex flex-row gap-2">
+              {overriddenAppVersion && (
+                <Button
+                  variant="tertiary"
+                  sm
+                  onPress={handleClearVersionOverride}
+                >
+                  {t("debug.appVersionOverride.clearOverride")}
+                </Button>
+              )}
+              <Button
+                variant="tertiary"
+                sm
+                onPress={handleClearUpdateDismissalFlag}
+              >
+                {t("debug.appVersionOverride.clearUpdateDismissalFlag")}
               </Button>
-            )}
+            </View>
           </View>
 
           <View className="gap-3 mb-4">
@@ -282,18 +303,18 @@ const CustomContent: React.FC<{
           <Text lg medium>
             {t("analytics.debug.actions")}
           </Text>
-          <Button secondary xl onPress={handleRefresh} isFullWidth>
+          <Button secondary md onPress={handleRefresh} isFullWidth>
             {t("analytics.debug.refresh")}
           </Button>
           <Button
             secondary
-            xl
+            md
             onPress={handleSimulateSessionExpiry}
             isFullWidth
           >
             {t("analytics.debug.simulateSessionExpiry")}
           </Button>
-          <Button secondary xl onPress={handleResetApp} isFullWidth>
+          <Button secondary md onPress={handleResetApp} isFullWidth>
             {t("analytics.debug.resetApp")}
           </Button>
         </View>

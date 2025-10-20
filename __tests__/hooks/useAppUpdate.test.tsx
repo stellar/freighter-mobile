@@ -1,4 +1,5 @@
-import { renderHook } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import { logger } from "config/logger";
 import { isDev } from "helpers/isEnv";
 import { getDeviceLanguage } from "helpers/localeUtils";
@@ -61,14 +62,20 @@ jest.mock("i18next", () => ({
   t: jest.fn((key: string) => key),
 }));
 
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+  removeItem: jest.fn(() => Promise.resolve()),
+}));
+
 describe("useAppUpdate", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
     // Set up default mocks
     mockUseRemoteConfigStore.mockReturnValue({
-      required_app_version: "1.6.22", // Required version below current
-      latest_app_version: "1.6.24",
+      required_app_version: "1.6.24", // Required version above current
+      latest_app_version: "1.6.25",
       app_update_text: {
         enabled: true,
         payload: {
@@ -98,15 +105,20 @@ describe("useAppUpdate", () => {
     (logger.error as jest.Mock).mockImplementation(() => {});
   });
 
-  it("should return correct values when remote config is initialized", () => {
+  it("should return correct values when remote config is initialized", async () => {
     const { result } = renderHook(() => useAppUpdate());
 
     expect(result.current.currentVersion).toBe("1.6.23");
-    expect(result.current.requiredVersion).toBe("1.6.22");
-    expect(result.current.latestVersion).toBe("1.6.24");
+    expect(result.current.requiredVersion).toBe("1.6.24");
+    expect(result.current.latestVersion).toBe("1.6.25");
     expect(result.current.updateMessage).toBe("Update available in English");
-    expect(result.current.needsForcedUpdate).toBe(false); // Current (1.6.23) > Required (1.6.22)
-    expect(result.current.needsOptionalUpdate).toBe(true); // Current (1.6.23) < Latest (1.6.24)
+    expect(result.current.showFullScreenUpdateNotice).toBe(true); // Current (1.6.23) < Required (1.6.24)
+
+    // Wait for async storage loading to complete
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false); // Banner should not show when full-screen is showing
+    });
+
     expect(typeof result.current.openAppStore).toBe("function");
   });
 
@@ -162,7 +174,7 @@ describe("useAppUpdate", () => {
     expect(result.current.updateMessage).toBe("Update available in English");
   });
 
-  it("should not show updates when remote config is not initialized", () => {
+  it("should not show updates when remote config is not initialized", async () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.23",
       latest_app_version: "1.6.24",
@@ -177,11 +189,14 @@ describe("useAppUpdate", () => {
 
     const { result } = renderHook(() => useAppUpdate());
 
-    expect(result.current.needsForcedUpdate).toBe(false);
-    expect(result.current.needsOptionalUpdate).toBe(false);
+    expect(result.current.showFullScreenUpdateNotice).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false);
+    });
   });
 
-  it("should trigger forced update when current version is below required", () => {
+  it("should trigger forced update when current version is below required", async () => {
     // Test forced update when current version is below required version
     // Current: 1.6.23, Required: 1.6.24 - should trigger forced update
     mockUseRemoteConfigStore.mockReturnValue({
@@ -201,12 +216,16 @@ describe("useAppUpdate", () => {
     expect(result.current.currentVersion).toBe("1.6.23");
     expect(result.current.requiredVersion).toBe("1.6.24");
     expect(result.current.latestVersion).toBe("1.6.25");
-    expect(result.current.needsForcedUpdate).toBe(true); // Current (1.6.23) < Required (1.6.24)
-    expect(result.current.needsOptionalUpdate).toBe(false); // Forced update takes precedence
+    expect(result.current.showFullScreenUpdateNotice).toBe(true); // Current (1.6.23) < Required (1.6.24)
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false); // Forced update takes precedence
+    });
+
     expect(result.current.updateMessage).toBe("Required version update");
   });
 
-  it("should not trigger update when versions are the same", () => {
+  it("should not trigger update when versions are the same", async () => {
     // Test that no update is triggered when current and latest versions are the same
     // Current: 1.6.23, Latest: 1.6.23 - should not trigger update
     mockUseRemoteConfigStore.mockReturnValue({
@@ -225,11 +244,14 @@ describe("useAppUpdate", () => {
 
     expect(result.current.currentVersion).toBe("1.6.23");
     expect(result.current.latestVersion).toBe("1.6.23");
-    expect(result.current.needsForcedUpdate).toBe(false); // Same versions - no update needed
-    expect(result.current.needsOptionalUpdate).toBe(false); // No optional updates - all are forced
+    expect(result.current.showFullScreenUpdateNotice).toBe(false); // Same versions - no update needed
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false);
+    });
   });
 
-  it("should trigger forced update when current version is below required", () => {
+  it("should trigger forced update when current version is below required", async () => {
     // Test forced update when current version is below required version
     // Current: 1.6.23, Required: 1.7.0, Latest: 1.7.24 - should trigger forced update
     mockUseRemoteConfigStore.mockReturnValue({
@@ -249,12 +271,16 @@ describe("useAppUpdate", () => {
     expect(result.current.currentVersion).toBe("1.6.23");
     expect(result.current.requiredVersion).toBe("1.7.0");
     expect(result.current.latestVersion).toBe("1.7.24");
-    expect(result.current.needsForcedUpdate).toBe(true); // Current (1.6.23) < Required (1.7.0)
-    expect(result.current.needsOptionalUpdate).toBe(false); // Forced update takes precedence
+    expect(result.current.showFullScreenUpdateNotice).toBe(true); // Current (1.6.23) < Required (1.7.0)
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false); // Forced update takes precedence
+    });
+
     expect(result.current.updateMessage).toBe("Required version update");
   });
 
-  it("should trigger forced update when current is below required and required equals latest", () => {
+  it("should trigger forced update when current is below required and required equals latest", async () => {
     // Test forced update when current version is below required and required equals latest
     // Current: 1.6.23, Required: 1.6.24, Latest: 1.6.24 - should trigger forced update
     mockUseRemoteConfigStore.mockReturnValue({
@@ -274,12 +300,16 @@ describe("useAppUpdate", () => {
     expect(result.current.currentVersion).toBe("1.6.23");
     expect(result.current.requiredVersion).toBe("1.6.24");
     expect(result.current.latestVersion).toBe("1.6.24");
-    expect(result.current.needsForcedUpdate).toBe(true); // Current (1.6.23) < Required (1.6.24)
-    expect(result.current.needsOptionalUpdate).toBe(false); // Forced update takes precedence
+    expect(result.current.showFullScreenUpdateNotice).toBe(true); // Current (1.6.23) < Required (1.6.24)
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false); // Forced update takes precedence
+    });
+
     expect(result.current.updateMessage).toBe("Forced update required");
   });
 
-  it("should not trigger any update when current is above required and same protocol as latest", () => {
+  it("should not trigger any update when current is above required and same protocol as latest", async () => {
     // Test no update when current version is above required and same protocol as latest
     // Current: 1.6.23, Required: 1.5.0, Latest: 1.6.23 - should not trigger any update
     mockUseRemoteConfigStore.mockReturnValue({
@@ -299,8 +329,12 @@ describe("useAppUpdate", () => {
     expect(result.current.currentVersion).toBe("1.6.23");
     expect(result.current.requiredVersion).toBe("1.5.0");
     expect(result.current.latestVersion).toBe("1.6.23");
-    expect(result.current.needsForcedUpdate).toBe(false); // Same protocol (23 vs 23), current >= required
-    expect(result.current.needsOptionalUpdate).toBe(false); // Same versions - no update needed
+    expect(result.current.showFullScreenUpdateNotice).toBe(false); // current >= required
+
+    await waitFor(() => {
+      expect(result.current.showBannerUpdateNotice).toBe(false); // Same versions - no update needed
+    });
+
     expect(result.current.updateMessage).toBe("No update needed");
   });
 
@@ -350,5 +384,45 @@ describe("useAppUpdate", () => {
       title: "common.error",
       duration: 3000,
     });
+  });
+
+  it("should not show full-screen update when current version was dismissed", async () => {
+    // Mock AsyncStorage to return the current version as dismissed
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue("1.6.23"); // Current version
+
+    const { result } = renderHook(() => useAppUpdate());
+
+    await waitFor(() => {
+      expect(result.current.showFullScreenUpdateNotice).toBe(false);
+    });
+  });
+
+  it("should show full-screen update when different version was dismissed", async () => {
+    // Mock AsyncStorage to return a different version as dismissed
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue("1.6.22"); // Different version
+
+    const { result } = renderHook(() => useAppUpdate());
+
+    await waitFor(() => {
+      expect(result.current.showFullScreenUpdateNotice).toBe(true);
+    });
+  });
+
+  it("should store current version when dismissing full-screen update", async () => {
+    const mockSetItem = AsyncStorage.setItem as jest.Mock;
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+    const { result } = renderHook(() => useAppUpdate());
+
+    await waitFor(() => {
+      expect(result.current.showFullScreenUpdateNotice).toBe(true);
+    });
+
+    await result.current.dismissFullScreenNotice();
+
+    expect(mockSetItem).toHaveBeenCalledWith(
+      "appUpdateDismissedRequiredVersion",
+      "1.6.23", // Current version should be stored
+    );
   });
 });
