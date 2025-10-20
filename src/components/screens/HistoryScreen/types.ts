@@ -81,6 +81,8 @@ export interface TransactionDetails {
   transactionType: TransactionType;
   externalUrl: string;
   fee: string;
+  memo?: string;
+  xdr: string;
   status: TransactionStatus;
   IconComponent: React.ReactNode;
   ActionIconComponent: React.ReactNode;

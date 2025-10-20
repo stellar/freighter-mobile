@@ -21,6 +21,8 @@ export const createDefaultHistoryItemData = (
   stellarExpertUrl: string,
   date: string,
   fee: string,
+  xdr: string,
+  memo: string | undefined,
   themeColors: ThemeColors,
 ): HistoryItemData => {
   const { type, id, amount = null } = operation;
@@ -33,6 +35,8 @@ export const createDefaultHistoryItemData = (
     transactionType: TransactionType.UNKNOWN,
     status: TransactionStatus.SUCCESS,
     fee,
+    xdr,
+    memo,
     IconComponent: null,
     ActionIconComponent: null,
     externalUrl: `${stellarExpertUrl}/op/${id}`,

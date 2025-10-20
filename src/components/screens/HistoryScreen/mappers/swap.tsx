@@ -27,8 +27,10 @@ interface SwapHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   network: NETWORKS;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -39,8 +41,10 @@ export const mapSwapHistoryItem = async ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   network,
   themeColors,
+  xdr,
 }: SwapHistoryItemData): Promise<HistoryItemData> => {
   const {
     id,
@@ -122,6 +126,8 @@ export const mapSwapHistoryItem = async ({
     IconComponent,
     ActionIconComponent,
     fee,
+    memo,
+    xdr,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
     swapDetails: {
       sourceTokenIssuer: operation.source_asset_issuer || "",

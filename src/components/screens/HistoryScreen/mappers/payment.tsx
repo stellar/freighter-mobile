@@ -28,7 +28,9 @@ interface PaymentHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -40,7 +42,9 @@ export const mapPaymentHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
+  xdr,
 }: PaymentHistoryItemData): HistoryItemData => {
   const {
     id,
@@ -86,6 +90,8 @@ export const mapPaymentHistoryItem = ({
     transactionType: TransactionType.PAYMENT,
     status: TransactionStatus.SUCCESS,
     fee,
+    memo,
+    xdr,
     IconComponent,
     ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,

@@ -49,6 +49,7 @@ interface SorobanHistoryItemData {
   date: string;
   fee: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 interface ProcessSorobanMintData {
@@ -62,6 +63,7 @@ interface ProcessSorobanMintData {
   fee: string;
   themeColors: ThemeColors;
   baseHistoryItemData: Partial<HistoryItemData>;
+  xdr: string;
 }
 
 interface ProcessSorobanTransferData {
@@ -74,6 +76,7 @@ interface ProcessSorobanTransferData {
   themeColors: ThemeColors;
   baseHistoryItemData: Partial<HistoryItemData>;
   operationString: string;
+  xdr: string;
 }
 
 interface ProcessCollectibleTransferData {
@@ -86,6 +89,7 @@ interface ProcessCollectibleTransferData {
   themeColors: ThemeColors;
   baseHistoryItemData: Partial<HistoryItemData>;
   operationString: string;
+  xdr: string;
 }
 
 /**
@@ -100,6 +104,7 @@ const processSorobanMint = async ({
   network,
   stellarExpertUrl,
   fee,
+  xdr,
   themeColors,
   baseHistoryItemData,
 }: ProcessSorobanMintData): Promise<HistoryItemData> => {
@@ -149,6 +154,7 @@ const processSorobanMint = async ({
           transactionType: TransactionType.CONTRACT,
           status: TransactionStatus.SUCCESS,
           fee,
+          xdr,
           IconComponent: historyItemData.IconComponent,
           ActionIconComponent: historyItemData.ActionIconComponent,
           externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -245,6 +251,7 @@ const processSorobanMint = async ({
           transactionType: TransactionType.CONTRACT,
           status: TransactionStatus.SUCCESS,
           fee,
+          xdr,
           IconComponent: historyItemData.IconComponent,
           ActionIconComponent: historyItemData.ActionIconComponent,
           externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -269,6 +276,7 @@ const processSorobanMint = async ({
         transactionType: TransactionType.CONTRACT,
         status: TransactionStatus.SUCCESS,
         fee,
+        xdr,
         IconComponent: historyItemData.IconComponent,
         ActionIconComponent: historyItemData.ActionIconComponent,
         externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -301,6 +309,7 @@ const processSorobanMint = async ({
       transactionType: TransactionType.CONTRACT,
       status: TransactionStatus.SUCCESS,
       fee,
+      xdr,
       IconComponent: historyItemData.IconComponent,
       ActionIconComponent: historyItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -328,6 +337,7 @@ const processSorobanTransfer = async ({
   network,
   stellarExpertUrl,
   fee,
+  xdr,
   themeColors,
   baseHistoryItemData,
   operationString,
@@ -350,6 +360,7 @@ const processSorobanTransfer = async ({
         transactionType: TransactionType.CONTRACT_TRANSFER,
         status: TransactionStatus.SUCCESS,
         fee,
+        xdr,
         IconComponent: historyItemData.IconComponent,
         ActionIconComponent: historyItemData.ActionIconComponent,
         externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -434,6 +445,7 @@ const processSorobanTransfer = async ({
       transactionType: TransactionType.CONTRACT_TRANSFER,
       status: TransactionStatus.SUCCESS,
       fee,
+      xdr,
       IconComponent: historyItemData.IconComponent,
       ActionIconComponent: historyItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -459,6 +471,7 @@ const processSorobanTransfer = async ({
       transactionType: TransactionType.CONTRACT_TRANSFER,
       status: TransactionStatus.SUCCESS,
       fee,
+      xdr,
       IconComponent: historyItemData.IconComponent,
       ActionIconComponent: historyItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -490,6 +503,7 @@ const processCollectibleTransfer = async ({
   publicKey,
   stellarExpertUrl,
   fee,
+  xdr,
   themeColors,
   baseHistoryItemData,
   operationString,
@@ -504,6 +518,7 @@ const processCollectibleTransfer = async ({
     transactionType: TransactionType.CONTRACT_TRANSFER,
     status: TransactionStatus.SUCCESS,
     fee,
+    xdr,
     IconComponent: historyItemData.IconComponent,
     ActionIconComponent: historyItemData.ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -587,6 +602,7 @@ const processCollectibleTransfer = async ({
       transactionType: TransactionType.CONTRACT_TRANSFER,
       status: TransactionStatus.SUCCESS,
       fee,
+      xdr,
       IconComponent: historyItemData.IconComponent,
       ActionIconComponent: historyItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -630,6 +646,7 @@ export const mapSorobanHistoryItem = async ({
   date,
   fee,
   themeColors,
+  xdr,
 }: SorobanHistoryItemData): Promise<HistoryItemData> => {
   const {
     id,
@@ -669,6 +686,7 @@ export const mapSorobanHistoryItem = async ({
       transactionType: TransactionType.CONTRACT,
       status: TransactionStatus.SUCCESS,
       fee,
+      xdr,
       IconComponent: baseHistoryItemData.IconComponent,
       ActionIconComponent: baseHistoryItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -691,6 +709,7 @@ export const mapSorobanHistoryItem = async ({
       network,
       stellarExpertUrl,
       fee,
+      xdr,
       themeColors,
       baseHistoryItemData,
     });
@@ -706,6 +725,7 @@ export const mapSorobanHistoryItem = async ({
         network,
         stellarExpertUrl,
         fee,
+        xdr,
         themeColors,
         baseHistoryItemData,
         operationString,
@@ -718,6 +738,7 @@ export const mapSorobanHistoryItem = async ({
       network,
       stellarExpertUrl,
       fee,
+      xdr,
       themeColors,
       baseHistoryItemData,
       operationString,
@@ -731,6 +752,7 @@ export const mapSorobanHistoryItem = async ({
     transactionType: TransactionType.CONTRACT,
     status: TransactionStatus.SUCCESS,
     fee,
+    xdr,
     IconComponent: baseHistoryItemData.IconComponent,
     ActionIconComponent: baseHistoryItemData.ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,

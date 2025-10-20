@@ -43,7 +43,7 @@ export const mapHistoryItemData = async ({
 }: MapHistoryItemDataProps): Promise<HistoryItemData> => {
   const {
     created_at: createdAt,
-    transaction_attr: { fee_charged: fee },
+    transaction_attr: { fee_charged: fee, memo, envelope_xdr: xdr },
     transaction_successful: transactionSuccessful,
     type,
     type_i: typeI,
@@ -65,7 +65,9 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      memo,
       themeColors,
+      xdr,
     });
   }
 
@@ -76,8 +78,10 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      memo,
       themeColors,
       isCreateExternalAccount,
+      xdr,
     });
   }
 
@@ -88,7 +92,9 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      memo,
       themeColors,
+      xdr,
     });
   }
 
@@ -99,8 +105,10 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      memo,
       network: networkDetails.network,
       themeColors,
+      xdr,
     });
   }
 
@@ -112,7 +120,9 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      memo,
       themeColors,
+      xdr,
     });
   }
 
@@ -134,6 +144,7 @@ export const mapHistoryItemData = async ({
       stellarExpertUrl,
       date,
       fee,
+      xdr,
       themeColors,
     });
   }
@@ -144,6 +155,8 @@ export const mapHistoryItemData = async ({
     stellarExpertUrl,
     date,
     fee,
+    xdr,
+    memo,
     themeColors,
   );
 };

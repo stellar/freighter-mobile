@@ -21,13 +21,16 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { THEME } from "config/theme";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
 import { formatTokenForDisplay, stroopToXlm } from "helpers/formatAmount";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -44,6 +47,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
+  const { copyToClipboard } = useClipboard();
 
   const fee = stroopToXlm(transactionDetails.fee).toString();
 
@@ -61,6 +65,14 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       : "0";
   const formattedSwapRate = new BigNumber(swapRate).toFixed(2, 1);
   const swapRateText = `1 ${transactionDetails.swapDetails?.sourceTokenCode} ≈ ${formatTokenForDisplay(formattedSwapRate, transactionDetails.swapDetails?.destinationTokenCode ?? "")}`;
+
+  const handleCopyXdr = useCallback(() => {
+    if (transactionDetails.xdr) {
+      copyToClipboard(transactionDetails.xdr, {
+        notificationMessage: t("common.copied"),
+      });
+    }
+  }, [transactionDetails.xdr, copyToClipboard, t]);
   const detailItems = useMemo(
     () =>
       [
@@ -87,6 +99,21 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
         },
+        {
+          icon: (
+            <Icon.File02 size={16} color={themeColors.foreground.primary} />
+          ),
+          titleComponent: (
+            <Text md secondary color={THEME.colors.text.secondary}>
+              {t("transactionAmountScreen.details.memo")}
+            </Text>
+          ),
+          trailingContent: (
+            <Text md medium secondary={!transactionDetails.memo}>
+              {transactionDetails.memo || t("common.none")}
+            </Text>
+          ),
+        },
         transactionDetails.transactionType === TransactionType.SWAP
           ? {
               icon: <Icon.Divide03 size={16} themeColor="gray" />,
@@ -109,6 +136,29 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             <Text>{formatTokenForDisplay(fee, NATIVE_TOKEN_CODE)}</Text>
           ),
         },
+        {
+          icon: (
+            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
+          ),
+          titleComponent: (
+            <Text md secondary color={THEME.colors.text.secondary}>
+              {t("transactionAmountScreen.details.xdr")}
+            </Text>
+          ),
+          trailingContent: (
+            <View
+              className="flex-row items-center gap-[8px]"
+              onTouchEnd={handleCopyXdr}
+            >
+              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+              <Text md medium>
+                {transactionDetails.xdr
+                  ? truncateAddress(transactionDetails.xdr, 10, 4)
+                  : t("common.none")}
+              </Text>
+            </View>
+          ),
+        },
         // filter out undefined entries for non-swaps in order to keep detail order.
       ].filter(Boolean),
     [
@@ -119,6 +169,10 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       themeColors.status.error,
       themeColors.status.success,
       transactionDetails.transactionType,
+      handleCopyXdr,
+      themeColors.foreground.primary,
+      transactionDetails.memo,
+      transactionDetails.xdr,
     ],
   ) as ListItemProps[];
 
