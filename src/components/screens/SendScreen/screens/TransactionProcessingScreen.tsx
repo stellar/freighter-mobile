@@ -6,6 +6,7 @@ import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsBottomSheet from "components/TransactionDetailsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -192,7 +193,7 @@ const TransactionProcessingScreen: React.FC<
                 {type === SendType.Token && selectedBalance && (
                   <TokenIcon token={selectedBalance} size="lg" />
                 )}
-                {type === "collectible" && selectedCollectible && (
+                {type === SendType.Collectible && selectedCollectible && (
                   <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
                     <CollectibleImage
                       imageUri={selectedCollectible?.image}
@@ -214,13 +215,13 @@ const TransactionProcessingScreen: React.FC<
               <View className="items-center">
                 <View className="flex-row flex-wrap items-center justify-center min-h-14">
                   <Text xl medium primary>
-                    {type === "token" && transactionAmount
+                    {type === SendType.Token && transactionAmount
                       ? formatTokenForDisplay(
                           transactionAmount,
                           selectedBalance?.tokenCode,
                         )
                       : null}
-                    {type === "collectible" && selectedCollectible
+                    {type === SendType.Collectible && selectedCollectible
                       ? selectedCollectible.name
                       : null}
                   </Text>

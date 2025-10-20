@@ -4,6 +4,7 @@ import BigNumber from "bignumber.js";
 import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -186,10 +187,10 @@ const TransactionDetailsBottomSheet: React.FC<
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
-        {type === "token" && selectedBalance && (
+        {type === SendType.Token && selectedBalance && (
           <TokenIcon token={selectedBalance} size="lg" />
         )}
-        {type === "collectible" && selectedCollectible && (
+        {type === SendType.Collectible && selectedCollectible && (
           <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
@@ -199,11 +200,11 @@ const TransactionDetailsBottomSheet: React.FC<
         )}
         <View>
           <Text md medium primary>
-            {type === "token" &&
+            {type === SendType.Token &&
               t("transactionDetailsBottomSheet.sent", {
                 tokenCode: selectedBalance?.tokenCode,
               })}
-            {type === "collectible" &&
+            {type === SendType.Collectible &&
               t("transactionDetailsBottomSheet.sentCollectible")}
           </Text>
           <View className="flex-row items-center gap-[4px]">
@@ -216,7 +217,7 @@ const TransactionDetailsBottomSheet: React.FC<
       </View>
 
       <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
-        {type === "token" && transactionAmount && (
+        {type === SendType.Token && transactionAmount && (
           <View className="flex-row items-center">
             {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
             <View className="ml-[16px]">
@@ -238,7 +239,7 @@ const TransactionDetailsBottomSheet: React.FC<
             </View>
           </View>
         )}
-        {type === "collectible" && selectedCollectible && (
+        {type === SendType.Collectible && selectedCollectible && (
           <View className="w-full flex-row items-center gap-[16px]">
             <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
               <CollectibleImage

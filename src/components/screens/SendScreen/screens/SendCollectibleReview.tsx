@@ -447,7 +447,7 @@ const SendCollectibleReviewScreen: React.FC<
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
-        type="collectible"
+        type={SendType.Collectible}
         key={selectedCollectible?.collectionAddress}
         onClose={handleProcessingScreenClose}
         selectedCollectible={selectedCollectible}
