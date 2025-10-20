@@ -600,7 +600,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
-        type="token"
+        type={SendType.Token}
         key={selectedTokenId}
         onClose={handleProcessingScreenClose}
         transactionAmount={tokenAmount}
