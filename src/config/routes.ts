@@ -223,7 +223,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
     tokenId: string;
-    collectionAddress?: string;
+    collectionAddress: string;
   };
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
