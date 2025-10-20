@@ -498,6 +498,32 @@ const processCollectibleTransfer = async ({
   const historyItemData: Partial<HistoryItemData> = { ...baseHistoryItemData };
   const tokenId = sorobanAttributes.tokenId.toString();
 
+  const defaultCollectibleTransferDetails: TransactionDetails = {
+    operation,
+    transactionTitle: t("history.transactionHistory.contract"),
+    transactionType: TransactionType.CONTRACT_TRANSFER,
+    status: TransactionStatus.SUCCESS,
+    fee,
+    IconComponent: historyItemData.IconComponent,
+    ActionIconComponent: historyItemData.ActionIconComponent,
+    externalUrl: `${stellarExpertUrl}/op/${id}`,
+    contractDetails: {
+      contractAddress: sorobanAttributes.contractId,
+      sorobanTokenInterface: SorobanTokenInterface.transfer,
+      collectibleTransferDetails: {
+        from: sorobanAttributes.from,
+        to: sorobanAttributes.to,
+        tokenId: sorobanAttributes.tokenId,
+        collectibleName: t(
+          "history.transactionHistory.collectibleTransfer.unknownCollectible",
+        ),
+        collectionName: t(
+          "history.transactionHistory.collectibleTransfer.unknownCollection",
+        ),
+      },
+    },
+  };
+
   try {
     const collections = await fetchCollectibles({
       owner: publicKey,
@@ -514,29 +540,7 @@ const processCollectibleTransfer = async ({
 
     if (!backendCollections) {
       historyItemData.rowText = operationString;
-      const transactionDetails: TransactionDetails = {
-        operation,
-        transactionTitle: t("history.transactionHistory.contract"),
-        transactionType: TransactionType.CONTRACT_TRANSFER,
-        status: TransactionStatus.SUCCESS,
-        fee,
-        IconComponent: historyItemData.IconComponent,
-        ActionIconComponent: historyItemData.ActionIconComponent,
-        externalUrl: `${stellarExpertUrl}/op/${id}`,
-        contractDetails: {
-          contractAddress: sorobanAttributes.contractId,
-          sorobanTokenInterface: SorobanTokenInterface.transfer,
-          collectibleTransferDetails: {
-            from: sorobanAttributes.from,
-            to: sorobanAttributes.to,
-            tokenId: sorobanAttributes.tokenId,
-            collectibleName: "",
-            collectionName: "",
-          },
-        },
-      };
-
-      historyItemData.transactionDetails = transactionDetails;
+      historyItemData.transactionDetails = defaultCollectibleTransferDetails;
       return historyItemData as HistoryItemData;
     }
 
@@ -599,30 +603,7 @@ const processCollectibleTransfer = async ({
     historyItemData.transactionDetails = transactionDetails;
   } catch (error) {
     historyItemData.rowText = operationString;
-    const transactionDetails: TransactionDetails = {
-      operation,
-      transactionTitle: t("history.transactionHistory.contract"),
-      transactionType: TransactionType.CONTRACT_TRANSFER,
-      status: TransactionStatus.SUCCESS,
-      fee,
-      IconComponent: historyItemData.IconComponent,
-      ActionIconComponent: historyItemData.ActionIconComponent,
-      externalUrl: `${stellarExpertUrl}/op/${id}`,
-      contractDetails: {
-        contractAddress: sorobanAttributes.contractId,
-        contractDecimals: 0,
-        sorobanTokenInterface: SorobanTokenInterface.transfer,
-        collectibleTransferDetails: {
-          from: sorobanAttributes.from,
-          to: sorobanAttributes.to,
-          tokenId: sorobanAttributes.tokenId,
-          collectibleName: "",
-          collectionName: "",
-        },
-      },
-    };
-
-    historyItemData.transactionDetails = transactionDetails;
+    historyItemData.transactionDetails = defaultCollectibleTransferDetails;
   }
 
   return historyItemData as HistoryItemData;

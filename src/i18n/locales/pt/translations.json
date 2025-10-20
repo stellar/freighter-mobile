@@ -306,7 +306,11 @@
       "minted": "Emitido",
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
       "unknown": "Desconhecido",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Colecionável desconhecido",
+        "unknownCollection": "Coleção desconhecida"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "Ver no stellar.expert",

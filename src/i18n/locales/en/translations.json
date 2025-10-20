@@ -342,7 +342,11 @@
       "minted": "Minted",
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Unknown Collectible",
+        "unknownCollection": "Unknown Collection"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "View on stellar.expert",
