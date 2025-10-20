@@ -277,7 +277,7 @@ const SendCollectibleReviewScreen: React.FC<
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            transactionType: "sendCollectible",
+            operationType: "sendCollectible",
           });
         }
       } catch (error) {
@@ -289,7 +289,7 @@ const SendCollectibleReviewScreen: React.FC<
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          transactionType: "sendCollectible",
+          operationType: "sendCollectible",
         });
       }
     };

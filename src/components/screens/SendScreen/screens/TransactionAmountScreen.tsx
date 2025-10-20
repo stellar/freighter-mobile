@@ -407,7 +407,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            transactionType: "payment",
+            operationType: "payment",
           });
         }
       } catch (error) {
@@ -419,7 +419,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          transactionType: "payment",
+          operationType: "payment",
         });
       }
     };

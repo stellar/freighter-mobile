@@ -23,18 +23,20 @@ export interface SignedTransactionEvent {
   dappDomain?: string;
 }
 
+export type TransactionOperationType =
+  | "payment"
+  | "pathPayment"
+  | "swap"
+  | "sorobanToken"
+  | "sendCollectible";
+
 export interface TransactionSuccessEvent {
   collectionAddress?: string;
   tokenId?: string;
   sourceToken?: string;
   destToken?: string;
   allowedSlippage?: string;
-  transactionType?:
-    | "payment"
-    | "pathPayment"
-    | "swap"
-    | "sorobanToken"
-    | "sendCollectible";
+  operationType?: TransactionOperationType;
 }
 
 export interface SwapSuccessEvent {
@@ -47,12 +49,7 @@ export interface SwapSuccessEvent {
 export interface TransactionErrorEvent {
   error: string;
   errorCode?: string;
-  transactionType?:
-    | "payment"
-    | "pathPayment"
-    | "swap"
-    | "sorobanToken"
-    | "sendCollectible";
+  operationType?: TransactionOperationType;
   isSwap?: boolean;
 }
 
