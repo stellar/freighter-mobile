@@ -48,8 +48,11 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const { saveRecipientAddress, selectedCollectibleDetails } =
-    useTransactionSettingsStore();
+  const {
+    saveRecipientAddress,
+    selectedCollectibleDetails,
+    saveSelectedCollectibleDetails,
+  } = useTransactionSettingsStore();
 
   const { clearQRData } = useQRDataStore();
 
@@ -71,8 +74,16 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient();
   }, [loadRecentAddresses, resetSendRecipient]);
 
-  // Clear QR data when component unmounts
-  useEffect(() => () => clearQRData(), [clearQRData]);
+  // Clear collectible details and QR data when component unmounts (exiting send flow)
+  useEffect(
+    () => () => {
+      clearQRData();
+      // Clear collectible details when leaving SearchContacts
+      // This ensures token flow doesn't accidentally use old collectible data
+      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    },
+    [clearQRData, saveSelectedCollectibleDetails],
+  );
 
   /**
    * Handles search input changes and updates suggestions
@@ -105,11 +116,37 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientAddress(contactAddress);
 
       if (selectedCollectibleDetails.tokenId) {
-        navigation.navigate(
-          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-          selectedCollectibleDetails,
-        );
+        // Check if this SearchContacts screen already exists earlier in the stack
+        // If it does, we're in a circular nav flow and should use replace()
+        const state = navigation.getState();
+        const currentIndex = state.index;
+        const currentRouteName = state.routes[currentIndex]?.name;
+
+        // Count how many times SearchContacts appears in the stack
+        const searchContactCount = state.routes.filter(
+          (route) =>
+            route.name === SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+        ).length;
+
+        if (
+          searchContactCount > 1 ||
+          currentRouteName !== SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
+        ) {
+          // We have duplicate SearchContacts or we're not at the current screen (shouldn't happen)
+          // Use replace() to swap
+          navigation.replace(
+            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+            selectedCollectibleDetails,
+          );
+        } else {
+          // First time - use navigate() to push Review onto stack
+          navigation.navigate(
+            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+            selectedCollectibleDetails,
+          );
+        }
       } else {
+        // For token sends, go back to the TransactionAmountScreen
         navigation.goBack();
       }
     },

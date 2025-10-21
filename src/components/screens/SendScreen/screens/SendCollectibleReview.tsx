@@ -100,20 +100,13 @@ const SendCollectibleReviewScreen: React.FC<
     transactionXDR,
   } = useTransactionBuilderStore();
 
-  // Reset everything on unmount
+  // Reset transaction on unmount, but keep selectedCollectibleDetails
+  // so navigation between Review and SearchContacts works correctly
   useEffect(
     () => () => {
-      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
-      resetSendRecipient();
-      resetSettings();
       resetTransaction();
     },
-    [
-      resetSettings,
-      resetSendRecipient,
-      saveSelectedCollectibleDetails,
-      resetTransaction,
-    ],
+    [resetTransaction],
   );
 
   const { isValidatingMemo } = useValidateTransactionMemo(transactionXDR);
@@ -164,7 +157,9 @@ const SendCollectibleReviewScreen: React.FC<
   };
 
   const navigateToSelectContactScreen = () => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    // Always replace Review with SearchContacts to avoid duplicate screens
+    // This works whether SearchContacts is already in stack or not
+    navigation.replace(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
 
   const transactionSecurityAssessment = useMemo(
@@ -309,6 +304,10 @@ const SendCollectibleReviewScreen: React.FC<
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
+    // Clean up stores when exiting the send flow
+    saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    resetSendRecipient();
+    resetSettings();
 
     if (account?.publicKey) {
       fetchAccountHistory({
