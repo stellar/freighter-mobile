@@ -1,0 +1,11 @@
+git_url("git@github.com:CassioMG/test-fastlane.git")
+git_branch("main")
+storage_mode("git")
+app_identifier(["org.stellar.freighterdev"])
+
+# type("development") # The default type, can be: appstore, adhoc, enterprise or development
+# username("cassio@stellar.org") # Your Apple Developer Portal username
+
+# For all available options run `fastlane match --help`
+
+# The docs are available on https://docs.fastlane.tools/actions/match
