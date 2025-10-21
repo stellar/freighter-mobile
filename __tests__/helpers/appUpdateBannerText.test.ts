@@ -12,9 +12,9 @@ jest.doMock("helpers/localeUtils", () => ({
 
 // Import after mocking
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { getAppUpdateText } = require("helpers/appUpdateText");
+const { appUpdateBannerText } = require("helpers/appUpdateBannerText");
 
-describe("getAppUpdateText", () => {
+describe("appUpdateBannerText", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockT.mockImplementation((key: string) => key);
@@ -30,7 +30,7 @@ describe("getAppUpdateText", () => {
       },
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(result).toBe("Update available in English");
   });
@@ -46,7 +46,7 @@ describe("getAppUpdateText", () => {
       },
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(result).toBe("Update available in English");
   });
@@ -62,7 +62,7 @@ describe("getAppUpdateText", () => {
       },
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(result).toBe("Atualização disponível em Português");
   });
@@ -76,7 +76,7 @@ describe("getAppUpdateText", () => {
       },
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");
@@ -88,7 +88,7 @@ describe("getAppUpdateText", () => {
       payload: null,
     };
 
-    const result = getAppUpdateText(appUpdateText as any);
+    const result = appUpdateBannerText(appUpdateText as any);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");
@@ -100,7 +100,7 @@ describe("getAppUpdateText", () => {
       payload: undefined,
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");
@@ -116,7 +116,7 @@ describe("getAppUpdateText", () => {
       },
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");
@@ -128,7 +128,7 @@ describe("getAppUpdateText", () => {
       payload: "simple string" as any,
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");
@@ -140,7 +140,7 @@ describe("getAppUpdateText", () => {
       payload: {},
     };
 
-    const result = getAppUpdateText(appUpdateText);
+    const result = appUpdateBannerText(appUpdateText);
 
     expect(mockT).toHaveBeenCalledWith("appUpdate.defaultMessage");
     expect(result).toBe("appUpdate.defaultMessage");

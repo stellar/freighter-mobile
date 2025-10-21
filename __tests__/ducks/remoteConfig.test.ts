@@ -49,7 +49,7 @@ describe("remoteConfig duck", () => {
         onramp_enabled: false,
         required_app_version: "0.0.0",
         latest_app_version: "1.0.0",
-        app_update_text: {
+        app_update_banner_text: {
           enabled: false,
           payload: undefined,
         },
@@ -68,7 +68,7 @@ describe("remoteConfig duck", () => {
       expect(result.current.onramp_enabled).toBe(false);
       expect(result.current.required_app_version).toBe("0.0.0");
       expect(result.current.latest_app_version).toBe("1.0.0");
-      expect(result.current.app_update_text).toEqual({
+      expect(result.current.app_update_banner_text).toEqual({
         enabled: false,
         payload: undefined,
       });
@@ -310,7 +310,7 @@ describe("remoteConfig duck", () => {
     it("should handle complex flags correctly", async () => {
       const mockClient = createMockExperimentClient();
       mockClient.all.mockReturnValue({
-        app_update_text: {
+        app_update_banner_text: {
           value: "on",
           payload: { en: "Update available", pt: "Atualização disponível" },
         },
@@ -323,7 +323,7 @@ describe("remoteConfig duck", () => {
         await result.current.fetchFeatureFlags();
       });
 
-      expect(result.current.app_update_text).toEqual({
+      expect(result.current.app_update_banner_text).toEqual({
         enabled: true,
         payload: { en: "Update available", pt: "Atualização disponível" },
       });
@@ -332,7 +332,7 @@ describe("remoteConfig duck", () => {
     it("should handle complex flags when disabled", async () => {
       const mockClient = createMockExperimentClient();
       mockClient.all.mockReturnValue({
-        app_update_text: {
+        app_update_banner_text: {
           value: "off",
           payload: { en: "Update available", pt: "Atualização disponível" },
         },
@@ -345,7 +345,7 @@ describe("remoteConfig duck", () => {
         await result.current.fetchFeatureFlags();
       });
 
-      expect(result.current.app_update_text).toEqual({
+      expect(result.current.app_update_banner_text).toEqual({
         enabled: false,
         payload: undefined,
       });

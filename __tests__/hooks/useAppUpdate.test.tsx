@@ -76,7 +76,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.24", // Required version above current
       latest_app_version: "1.6.25",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "Update available in English",
@@ -126,7 +126,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.23",
       latest_app_version: "1.6.24",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: false,
         payload: null,
       },
@@ -142,7 +142,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.23",
       latest_app_version: "1.6.24",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: null,
       },
@@ -178,7 +178,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.23",
       latest_app_version: "1.6.24",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "Update available",
@@ -202,7 +202,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.24", // Required version above current
       latest_app_version: "1.6.25",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "Required version update",
@@ -231,7 +231,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.23",
       latest_app_version: "1.6.23",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "No update needed",
@@ -257,7 +257,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.7.0", // Required version above current
       latest_app_version: "1.7.24",
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "Required version update",
@@ -286,7 +286,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.6.24", // Required version above current
       latest_app_version: "1.6.24", // Same as required
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "Forced update required",
@@ -315,7 +315,7 @@ describe("useAppUpdate", () => {
     mockUseRemoteConfigStore.mockReturnValue({
       required_app_version: "1.5.0", // Required version below current
       latest_app_version: "1.6.23", // Same protocol (23 vs 23) - no forced update
-      app_update_text: {
+      app_update_banner_text: {
         enabled: true,
         payload: {
           en: "No update needed",

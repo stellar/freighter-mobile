@@ -6,7 +6,7 @@ import { t } from "i18next";
  * @param appUpdateText - The app update text object with enabled and payload
  * @returns The localized update text
  */
-export const getAppUpdateText = (appUpdateText: {
+export const appUpdateBannerText = (appUpdateText: {
   enabled: boolean;
   payload: Record<string, string> | undefined;
 }): string => {

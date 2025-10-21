@@ -259,6 +259,10 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  *
+ * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
+ * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
+ * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
+ *
  * NOTE: we also have the BACKEND_V1_ENVIRONMENT and BACKEND_V2_ENVIRONMENT storage keys for the backend environment which are
  * handled separately in the backendConfig.ts file since those shouldn't be cleared or changed without the user's consent.
  * */

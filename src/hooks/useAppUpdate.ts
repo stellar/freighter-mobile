@@ -4,7 +4,7 @@ import { logger } from "config/logger";
 import { useAppUpdateStore } from "ducks/appUpdate";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { getAppUpdateText } from "helpers/appUpdateText";
+import { appUpdateBannerText } from "helpers/appUpdateBannerText";
 import { isIOS } from "helpers/device";
 import { isDev } from "helpers/isEnv";
 import { isVersionBelow } from "helpers/versionComparison";
@@ -28,7 +28,7 @@ export const useAppUpdate = () => {
   const {
     required_app_version: requiredAppVersion,
     latest_app_version: latestAppVersion,
-    app_update_text: updateText,
+    app_update_banner_text: updateText,
     isInitialized,
   } = useRemoteConfigStore();
   const { overriddenAppVersion } = useDebugStore();
@@ -36,7 +36,7 @@ export const useAppUpdate = () => {
   const currentVersion =
     isDev && overriddenAppVersion ? overriddenAppVersion : getVersion();
 
-  const updateMessage = getAppUpdateText(updateText);
+  const updateMessage = appUpdateBannerText(updateText);
 
   const {
     currentSessionNoticeDismissed,
@@ -49,6 +49,11 @@ export const useAppUpdate = () => {
   const [isFlagLoaded, setIsFlagLoaded] = useState(false);
 
   useEffect(() => {
+    /**
+     * Waits for flag to be loaded from AsyncStorage. If no flag is available, it means the user has never dismissed the app update full screen notice.
+     * If a flag is available, it will check for the version that the user has dismissed. e.g. Dismissed on app version 1.4.23 and required 1.6.23, it will not show again until user updates to 1.6.23
+     * If user updates to 1.6.23 and then falls behind again (e.g. app is on required version 1.7.23), it will show again until user dismisses it again.
+     */
     const loadDismissed = async () => {
       try {
         const stored = await AsyncStorage.getItem(

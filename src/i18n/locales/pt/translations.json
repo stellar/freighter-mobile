@@ -1135,7 +1135,7 @@
     }
   },
   "appUpdate": {
-    "defaultMessage": "Por favor atualize seu app para a última versão",
+    "defaultMessage": "Por favor atualize seu app para a última versão.",
     "forceUpdate": {
       "title": "Atualização Necessária",
       "description": "Uma nova versão do Freighter está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
