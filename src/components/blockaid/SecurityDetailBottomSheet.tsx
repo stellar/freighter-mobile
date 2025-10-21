@@ -118,6 +118,58 @@ export const SecurityDetailBottomSheet: React.FC<
     }));
   };
 
+  const renderButtons = () => {
+    // Unable to scan state - side by side without biometrics
+    if (isUnableToScan) {
+      return (
+        <View className="flex-row gap-3">
+          {onCancel && (
+            <View className="flex-1">
+              <Button xl isFullWidth onPress={onCancel} variant="secondary">
+                {t("common.cancel")}
+              </Button>
+            </View>
+          )}
+          {onProceedAnyway && (
+            <View className="flex-1">
+              <Button
+                xl
+                isFullWidth
+                onPress={onProceedAnyway}
+                variant="tertiary"
+              >
+                {proceedAnywayText}
+              </Button>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Malicious/Suspicious state - stacked layout with TextButton
+    return (
+      <View className="gap-[12px]">
+        {onCancel && (
+          <Button
+            xl
+            isFullWidth
+            onPress={onCancel}
+            variant={isMalicious ? "destructive" : "tertiary"}
+          >
+            {t("common.cancel")}
+          </Button>
+        )}
+        {onProceedAnyway && (
+          <TextButton
+            text={proceedAnywayText}
+            onPress={onProceedAnyway}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        )}
+      </View>
+    );
+  };
+
   const getDescription = useMemo(
     () => () => {
       if (isUnableToScan) {
@@ -184,40 +236,7 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className={`gap-[12px] ${isUnableToScan ? "flex-row" : ""}`}>
-        {onCancel && (
-          <View className={isUnableToScan ? "flex-1" : "w-full"}>
-            <Button
-              xl
-              isFullWidth
-              onPress={onCancel}
-              variant={isMalicious ? "destructive" : "secondary"}
-            >
-              {t("common.cancel")}
-            </Button>
-          </View>
-        )}
-        {onProceedAnyway && (
-          <View className={isUnableToScan ? "flex-1" : "w-full"}>
-            {isUnableToScan ? (
-              <Button
-                xl
-                isFullWidth
-                onPress={onProceedAnyway}
-                variant="tertiary"
-              >
-                {proceedAnywayText}
-              </Button>
-            ) : (
-              <TextButton
-                text={proceedAnywayText}
-                onPress={onProceedAnyway}
-                variant={isMalicious ? "error" : "secondary"}
-              />
-            )}
-          </View>
-        )}
-      </View>
+      {renderButtons()}
     </View>
   );
 };
