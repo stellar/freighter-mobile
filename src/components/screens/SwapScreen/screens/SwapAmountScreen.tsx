@@ -679,6 +679,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onBannerPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }
+            onUnableToScanPress={() =>
+              transactionSecurityWarningBottomSheetModalRef.current?.present()
+            }
           />
         }
         renderFooterComponent={renderFooterComponent}

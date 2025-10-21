@@ -34,6 +34,8 @@ type AddTokenBottomSheetContentProps = {
   isAddingToken: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  hasUnableToScan?: boolean;
+  onUnableToScanPress?: () => void;
 };
 
 const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
@@ -45,6 +47,8 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   isAddingToken,
   isMalicious = false,
   isSuspicious = false,
+  hasUnableToScan = false,
+  onUnableToScanPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -172,15 +176,15 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         {t("addTokenScreen.addToken")}
       </Badge>
 
-      {(isMalicious || isSuspicious) && (
+      {(isMalicious || isSuspicious || hasUnableToScan) && (
         <Banner
           variant={isMalicious ? "error" : "warning"}
-          text={
-            isMalicious
-              ? t("addTokenScreen.maliciousToken")
-              : t("addTokenScreen.suspiciousToken")
-          }
-          onPress={onAddToken}
+          text={(() => {
+            if (isMalicious) return t("addTokenScreen.maliciousToken");
+            if (isSuspicious) return t("addTokenScreen.suspiciousToken");
+            return t("blockaid.addTokenUnableToScan.title");
+          })()}
+          onPress={hasUnableToScan ? onUnableToScanPress : onAddToken}
           className="mt-4"
         />
       )}
@@ -195,7 +199,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         <List items={listItems} variant="secondary" />
       </View>
 
-      {!isMalicious && !isSuspicious && (
+      {!isMalicious && !isSuspicious && !hasUnableToScan && (
         <View className="mt-4 px-6">
           <Text sm secondary textAlign="center">
             {t("addTokenScreen.confirmTrust")}
@@ -204,13 +208,17 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
       )}
 
       <View
-        className={`w-full mt-6 ${isMalicious || isSuspicious ? "flex-col gap-3" : "flex-row justify-between gap-3"}`}
+        className={`w-full mt-6 ${isMalicious || isSuspicious || hasUnableToScan ? "flex-col gap-3" : "flex-row justify-between gap-3"}`}
       >
-        <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
+        <View
+          className={
+            isMalicious || isSuspicious || hasUnableToScan ? "w-full" : "flex-1"
+          }
+        >
           <Button
-            tertiary={isSuspicious}
+            tertiary={isSuspicious || hasUnableToScan}
             destructive={isMalicious}
-            secondary={!isMalicious && !isSuspicious}
+            secondary={!isMalicious && !isSuspicious && !hasUnableToScan}
             xl
             isFullWidth
             onPress={onCancel}
@@ -219,8 +227,12 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
             {t("common.cancel")}
           </Button>
         </View>
-        <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
-          {isMalicious || isSuspicious ? (
+        <View
+          className={
+            isMalicious || isSuspicious || hasUnableToScan ? "w-full" : "flex-1"
+          }
+        >
+          {isMalicious || isSuspicious || hasUnableToScan ? (
             <TextButton
               text={t("addTokenScreen.approveAnyway")}
               biometric

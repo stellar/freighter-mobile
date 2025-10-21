@@ -28,6 +28,7 @@ export enum SecurityLevel {
   SAFE = "SAFE",
   SUSPICIOUS = "SUSPICIOUS",
   MALICIOUS = "MALICIOUS",
+  UNABLE_TO_SCAN = "UNABLE_TO_SCAN",
 }
 
 /**

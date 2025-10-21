@@ -69,6 +69,7 @@ export const SecurityDetailBottomSheet: React.FC<
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
+  const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
 
   const getHeaderIcon = () => {
     const baseClasses =
@@ -82,6 +83,14 @@ export const SecurityDetailBottomSheet: React.FC<
       );
     }
 
+    if (isUnableToScan) {
+      return (
+        <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
+          <Icon.AlertTriangle themeColor="amber" />
+        </View>
+      );
+    }
+
     return (
       <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
         <Icon.AlertTriangle themeColor="amber" />
@@ -89,8 +98,17 @@ export const SecurityDetailBottomSheet: React.FC<
     );
   };
 
-  const getListItems = () =>
-    warnings.map((warning) => ({
+  const getListItems = () => {
+    if (isUnableToScan) {
+      return [
+        {
+          title: t("blockaid.addTokenUnableToScan.reason"),
+          icon: <Icon.MinusCircle size={16} themeColor="gray" />,
+        },
+      ];
+    }
+
+    return warnings.map((warning) => ({
       title: warning.description,
       icon: isMalicious ? (
         <Icon.XCircle size={16} themeColor="red" />
@@ -98,9 +116,14 @@ export const SecurityDetailBottomSheet: React.FC<
         <Icon.MinusCircle size={16} themeColor="gray" />
       ),
     }));
+  };
 
   const getDescription = useMemo(
     () => () => {
+      if (isUnableToScan) {
+        return t("blockaid.addTokenUnableToScan.description");
+      }
+
       switch (securityContext) {
         case SecurityContext.TOKEN:
           return t("securityWarning.token");
@@ -112,7 +135,7 @@ export const SecurityDetailBottomSheet: React.FC<
           return "";
       }
     },
-    [securityContext, t],
+    [securityContext, t, isUnableToScan],
   );
 
   return (
@@ -124,9 +147,11 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
       <Text xl primary>
-        {isMalicious
-          ? t("securityWarning.doNotProceed")
-          : t("securityWarning.suspiciousRequest")}
+        {(() => {
+          if (isMalicious) return t("securityWarning.doNotProceed");
+          if (isUnableToScan) return t("blockaid.addTokenUnableToScan.title");
+          return t("securityWarning.suspiciousRequest");
+        })()}
       </Text>
       <Text md secondary regular>
         {getDescription()}
@@ -159,23 +184,38 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="gap-[12px]">
+      <View className={`gap-[12px] ${isUnableToScan ? "flex-row" : ""}`}>
         {onCancel && (
-          <Button
-            xl
-            isFullWidth
-            onPress={onCancel}
-            variant={isMalicious ? "destructive" : "tertiary"}
-          >
-            {t("common.cancel")}
-          </Button>
+          <View className={isUnableToScan ? "flex-1" : "w-full"}>
+            <Button
+              xl
+              isFullWidth
+              onPress={onCancel}
+              variant={isMalicious ? "destructive" : "secondary"}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
         )}
         {onProceedAnyway && (
-          <TextButton
-            text={proceedAnywayText}
-            onPress={onProceedAnyway}
-            variant={isMalicious ? "error" : "secondary"}
-          />
+          <View className={isUnableToScan ? "flex-1" : "w-full"}>
+            {isUnableToScan ? (
+              <Button
+                xl
+                isFullWidth
+                onPress={onProceedAnyway}
+                variant="tertiary"
+              >
+                {proceedAnywayText}
+              </Button>
+            ) : (
+              <TextButton
+                text={proceedAnywayText}
+                onPress={onProceedAnyway}
+                variant={isMalicious ? "error" : "secondary"}
+              />
+            )}
+          </View>
         )}
       </View>
     </View>

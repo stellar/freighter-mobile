@@ -511,6 +511,7 @@
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",
+    "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
@@ -592,7 +593,8 @@
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens"
-    }
+    },
+    "proceedAnyway": "Prosseguir mesmo assim"
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",
@@ -1020,6 +1022,30 @@
         "unableToSimulate": "Não foi possível simular a transação",
         "noBalanceChanges": "Nenhuma mudança de saldo detectada"
       }
+    },
+    "unableToScan": {
+      "default": {
+        "title": "Não foi possível escanear",
+        "description": "Não conseguimos escanear este item em busca de ameaças de segurança. Prossiga com cautela."
+      },
+      "token": {
+        "title": "Não foi possível escanear o token",
+        "description": "Não conseguimos escanear este token em busca de ameaças de segurança. O token pode ser seguro, mas não podemos verificar seu status de segurança."
+      },
+      "site": {
+        "title": "Não foi possível escanear o site",
+        "description": "Não conseguimos escanear este site em busca de ameaças de segurança. O site pode ser seguro, mas não podemos verificar seu status de segurança."
+      },
+      "transaction": {
+        "title": "Não foi possível escanear a transação",
+        "description": "Não conseguimos escanear esta transação em busca de ameaças de segurança. A transação pode ser segura, mas não podemos verificar seu status de segurança."
+      },
+      "info": "Isso não significa que o item é malicioso - simplesmente significa que não podemos verificar seu status de segurança."
+    },
+    "addTokenUnableToScan": {
+      "title": "Prossiga com cautela",
+      "description": "Esta transação não parece segura pelos seguintes motivos.",
+      "reason": "Não foi possível escanear o token"
     }
   },
   "signTransactionDetails": {

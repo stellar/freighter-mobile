@@ -49,7 +49,9 @@ export const createSecurityAssessment = (
 ): SecurityAssessment => ({
   level,
   isSuspicious:
-    level !== SecurityLevel.SAFE && level !== SecurityLevel.MALICIOUS,
+    level !== SecurityLevel.SAFE &&
+    level !== SecurityLevel.MALICIOUS &&
+    level !== SecurityLevel.UNABLE_TO_SCAN,
   isMalicious: level === SecurityLevel.MALICIOUS,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
@@ -60,6 +62,7 @@ export const createSecurityAssessment = (
  * Token Security Assessment
  *
  * Evaluates token scan results using result_type for consistent security classification.
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid token scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -67,7 +70,16 @@ export const createSecurityAssessment = (
 export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
 ): SecurityAssessment => {
-  if (!scanResult?.result_type) {
+  // If scanResult is null/undefined, it means the scan failed
+  if (!scanResult) {
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      "blockaid.unableToScan.token.title",
+      "blockaid.unableToScan.token.description",
+    );
+  }
+
+  if (!scanResult.result_type) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
 
@@ -96,6 +108,7 @@ export const assessTokenSecurity = (
  *
  * Evaluates site scan results using status + is_malicious for site-specific logic.
  * miss = suspicious (warning), hit with is_malicious = malicious (error), hit with is_malicious = false (safe).
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid site scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -103,8 +116,13 @@ export const assessTokenSecurity = (
 export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
 ): SecurityAssessment => {
+  // If scanResult is null/undefined, it means the scan failed
   if (!scanResult) {
-    return createSecurityAssessment(SecurityLevel.SAFE);
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      "blockaid.unableToScan.site.title",
+      "blockaid.unableToScan.site.description",
+    );
   }
 
   // Site not found in database = suspicious (warning)
@@ -130,6 +148,7 @@ export const assessSiteSecurity = (
  * Transaction Security Assessment
  *
  * Evaluates transaction scan results using simulation + validation for transaction-specific logic.
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid transaction scan result
  * @returns SecurityAssessment with type-safe level and localized details
@@ -137,8 +156,13 @@ export const assessSiteSecurity = (
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
 ): SecurityAssessment => {
+  // If scanResult is null/undefined, it means the scan failed
   if (!scanResult) {
-    return createSecurityAssessment(SecurityLevel.SAFE);
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      "blockaid.unableToScan.transaction.title",
+      "blockaid.unableToScan.transaction.description",
+    );
   }
 
   const { simulation, validation } = scanResult;
