@@ -69,11 +69,12 @@ export const useTokenLookup = ({
       targetGroup.push(token);
     });
 
-    // Return in security priority order: Safe → Suspicious → Malicious
+    // Return in security priority order: Safe → Suspicious → Malicious → Unable to Scan
     return [
       ...securityGroups[SecurityLevel.SAFE],
       ...securityGroups[SecurityLevel.SUSPICIOUS],
       ...securityGroups[SecurityLevel.MALICIOUS],
+      ...securityGroups[SecurityLevel.UNABLE_TO_SCAN],
     ];
   };
 
