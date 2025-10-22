@@ -33,6 +33,7 @@ jest.mock("helpers/version", () => ({
 
 jest.mock("react-native-device-info", () => ({
   getBundleId: jest.fn(() => "org.bundleid.test"),
+  getVersion: jest.fn(() => "1.0.0"),
 }));
 
 const mockGetExperimentClient = getExperimentClient as jest.MockedFunction<
@@ -46,6 +47,12 @@ describe("remoteConfig duck", () => {
         swap_enabled: false,
         discover_enabled: false,
         onramp_enabled: false,
+        required_app_version: "0.0.0",
+        latest_app_version: "1.0.0",
+        app_update_banner_text: {
+          enabled: false,
+          payload: undefined,
+        },
       });
     });
 
@@ -59,6 +66,12 @@ describe("remoteConfig duck", () => {
       expect(result.current.swap_enabled).toBe(false);
       expect(result.current.discover_enabled).toBe(false);
       expect(result.current.onramp_enabled).toBe(false);
+      expect(result.current.required_app_version).toBe("0.0.0");
+      expect(result.current.latest_app_version).toBe("1.0.0");
+      expect(result.current.app_update_banner_text).toEqual({
+        enabled: false,
+        payload: undefined,
+      });
       expect(typeof result.current.fetchFeatureFlags).toBe("function");
       expect(typeof result.current.initFetchFeatureFlagsPoll).toBe("function");
     });
@@ -274,6 +287,68 @@ describe("remoteConfig duck", () => {
       expect(result.current.swap_enabled).toBe(true);
       expect(result.current.discover_enabled).toBe(false);
       expect(result.current.onramp_enabled).toBe(true);
+    });
+
+    it("should handle string flags correctly", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        required_app_version: { value: "1_2_3" },
+        latest_app_version: { value: "2_0_0" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.required_app_version).toBe("1.2.3");
+      expect(result.current.latest_app_version).toBe("2.0.0");
+    });
+
+    it("should handle complex flags correctly", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        app_update_banner_text: {
+          value: "on",
+          payload: { en: "Update available", pt: "Atualização disponível" },
+        },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.app_update_banner_text).toEqual({
+        enabled: true,
+        payload: { en: "Update available", pt: "Atualização disponível" },
+      });
+    });
+
+    it("should handle complex flags when disabled", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        app_update_banner_text: {
+          value: "off",
+          payload: { en: "Update available", pt: "Atualização disponível" },
+        },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.app_update_banner_text).toEqual({
+        enabled: false,
+        payload: undefined,
+      });
     });
   });
 });
