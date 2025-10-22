@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { StackActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -116,35 +117,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientAddress(contactAddress);
 
       if (selectedCollectibleDetails.tokenId) {
-        // Check if this SearchContacts screen already exists earlier in the stack
-        // If it does, we're in a circular nav flow and should use replace()
-        const state = navigation.getState();
-        const currentIndex = state.index;
-        const currentRouteName = state.routes[currentIndex]?.name;
-
-        // Count how many times SearchContacts appears in the stack
-        const searchContactCount = state.routes.filter(
-          (route) =>
-            route.name === SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
-        ).length;
-
-        if (
-          searchContactCount > 1 ||
-          currentRouteName !== SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
-        ) {
-          // We have duplicate SearchContacts or we're not at the current screen (shouldn't happen)
-          // Use replace() to swap
-          navigation.replace(
+        // Use popTo for collectible flow
+        // If Review exists in stack, pops back to it; otherwise adds it
+        navigation.dispatch(
+          StackActions.popTo(
             SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
             selectedCollectibleDetails,
-          );
-        } else {
-          // First time - use navigate() to push Review onto stack
-          navigation.navigate(
-            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-            selectedCollectibleDetails,
-          );
-        }
+          ),
+        );
       } else {
         // For token sends, go back to the TransactionAmountScreen
         navigation.goBack();

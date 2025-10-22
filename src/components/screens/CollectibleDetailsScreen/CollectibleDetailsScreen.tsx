@@ -78,7 +78,8 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     const { getCollectible, isLoading: isCollectiblesLoading } =
       useCollectiblesStore();
     const { open: openInAppBrowser } = useInAppBrowser();
-    const { saveSelectedCollectibleDetails } = useTransactionSettingsStore();
+    const { saveSelectedCollectibleDetails, saveSelectedTokenId } =
+      useTransactionSettingsStore();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -177,6 +178,8 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
       // the send button is not rendered.
       if (collectible) {
         saveSelectedCollectibleDetails(collectible);
+        // Clear token selection when entering collectible flow to prevent cross-flow contamination
+        saveSelectedTokenId("");
         navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
           screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
         });

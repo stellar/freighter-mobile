@@ -32,6 +32,8 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
 
   const handleTokenPress = (tokenId: string) => {
     saveSelectedTokenId(tokenId);
+    // Clear collectible details when selecting a token to prevent cross-flow contamination
+    saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
 
     navigation.goBack();
   };
@@ -41,6 +43,8 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     tokenId: string;
   }) => {
     saveSelectedCollectibleDetails(collectibleDetails);
+    // Clear token selection when selecting a collectible to prevent cross-flow contamination
+    saveSelectedTokenId("");
 
     if (recipientAddress) {
       navigation.navigate(

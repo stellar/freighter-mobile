@@ -97,6 +97,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveRecipientAddress,
+    saveSelectedCollectibleDetails,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -106,8 +107,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     if (tokenId) {
       saveSelectedTokenId(tokenId);
+      // Clear collectible details when entering token flow to prevent cross-flow contamination
+      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
     }
-  }, [tokenId, saveSelectedTokenId]);
+  }, [tokenId, saveSelectedTokenId, saveSelectedCollectibleDetails]);
 
   useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
@@ -125,15 +128,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionHash,
   } = useTransactionBuilderStore();
 
-  // Reset everything on unmount
+  // Reset transaction on unmount, but keep selectedTokenId and settings
+  // so navigation between Amount and SearchContacts/TokenScreen works correctly
   useEffect(
     () => () => {
-      saveSelectedTokenId("");
-      resetSendRecipient();
-      resetSettings();
       resetTransaction();
     },
-    [resetSettings, resetSendRecipient, saveSelectedTokenId, resetTransaction],
+    [resetTransaction],
   );
 
   const { isValidatingMemo, isMemoMissing } =
@@ -202,7 +203,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   });
 
   const selectedBalance = balanceItems.find(
-    (item) => item.id === selectedTokenId || NATIVE_TOKEN_CODE,
+    (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
@@ -439,6 +440,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
+    // Clean up stores when exiting the send flow
+    saveSelectedTokenId("");
+    resetSendRecipient();
+    resetSettings();
 
     if (account?.publicKey) {
       fetchAccountHistory({

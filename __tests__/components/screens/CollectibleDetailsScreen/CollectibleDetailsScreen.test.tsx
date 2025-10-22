@@ -104,9 +104,11 @@ jest.mock("ducks/collectibles", () => ({
 }));
 
 const mockSaveSelectedCollectibleDetails = jest.fn();
+const mockSaveSelectedTokenId = jest.fn();
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: () => ({
     saveSelectedCollectibleDetails: mockSaveSelectedCollectibleDetails,
+    saveSelectedTokenId: mockSaveSelectedTokenId,
   }),
 }));
 
