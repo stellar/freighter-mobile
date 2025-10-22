@@ -45,12 +45,17 @@ platform :android do
     UI.message "🧹 Performing deep Gradle clean..."
     sh("cd .. && rm -rf .gradle && rm -rf app/.cxx && rm -rf app/build && ./gradlew clean") rescue UI.error("Clean failed, continuing anyway...")
 
-    gradle task: "bundle",
-           flavor: "dev",
-           build_type: "Release",
-           print_command: false,
-           project_dir: "."
-
-    upload_to_play_store track: "internal", track_promote_to: "internal"
+    gradle(
+      task: "bundle",
+      flavor: "dev",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "."
+    )
+    
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "internal"
+    )
   end
 end
