@@ -2,8 +2,8 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { IconButton } from "components/IconButton";
 import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
-import { AnalyticsDebugBottomSheet } from "components/analytics/AnalyticsDebugBottomSheet";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
+import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
@@ -316,7 +316,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         </ScrollView>
 
         {/* Analytics Debug - Development Only */}
-        <AnalyticsDebugBottomSheet
+        <DebugBottomSheet
           modalRef={analyticsDebugBottomSheetRef}
           onDismiss={handleAnalyticsDebugDismiss}
         />

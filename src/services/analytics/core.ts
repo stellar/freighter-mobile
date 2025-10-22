@@ -74,6 +74,8 @@ export const initAnalytics = (): void => {
       );
     }
 
+    // Mark as initialized even without API key to prevent infinite loading
+    hasInitialised = true;
     return;
   }
 
