@@ -23,13 +23,13 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Runs all the tests
 
-### android upload_build
+### android beta
 
 ```sh
-[bundle exec] fastlane android upload_build
+[bundle exec] fastlane android beta
 ```
 
-Upload a new version to the Google Play
+Push a new beta build to the Google Play
 
 ----
 

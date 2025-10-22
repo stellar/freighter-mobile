@@ -36,8 +36,8 @@ platform :android do
     gradle(task: "test")
   end
 
-  desc "Upload a new version to the Google Play"
-  lane :upload_build do
+  desc "Push a new beta build to the Google Play"
+  lane :beta do
     # Automatically increment the version code
     increment_version_code_in_gradle("../app/build.gradle")
 
@@ -52,7 +52,7 @@ platform :android do
       print_command: false,
       project_dir: "."
     )
-    
+
     upload_to_play_store(
       track: "internal",
       track_promote_to: "internal"
