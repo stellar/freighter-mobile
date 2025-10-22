@@ -10,27 +10,37 @@
 #     https://docs.fastlane.tools/plugins/available-plugins
 #
 
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
+# Load environment variables from local .env file
+# TODO: move to CI envs later
+require 'dotenv'
+Dotenv.load('../../.env')
 
 default_platform(:ios)
 
 platform :ios do
   desc "Push a new beta build to TestFlight"
   lane :beta do
+
+    # build_number = "fetch from env"
+
+    # replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
+    #                 find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
+    #                 replace: "CURRENT_PROJECT_VERSION = #{build_number}"
+    
     app_store_connect_api_key(
       key_id: "75G8D5L857",
       issuer_id: "aee30e88-5312-413f-8f0f-0413f21d7d9e",
-      key_filepath: "./fastlane/AuthKey_75G8D5L857.p8",
-      duration: 1200, # optional (maximum 1200)
-      in_house: false # optional but may be required if using match/sigh
+      key_content: ENV.fetch("APPLE_CONNECT_API_KEY") { raise "APPLE_CONNECT_API_KEY environment variable is required" },
+      is_key_content_base64: true,
+      duration: 1200,
+      in_house: false
     )
 
     match(
       type: "appstore",
       readonly: true,
       git_url: "git@github.com:CassioMG/test-fastlane.git",
-      # git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_PRIVATE_KEY")),
+      git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
       verbose: false
     ) 
@@ -40,8 +50,13 @@ platform :ios do
     build_app(
       workspace: "freighter-mobile.xcworkspace",
       scheme: "freighter-mobile-dev",
+      # include_bitcode: true,
+      # export_method: "app-store",
+      # buildlog_path: "/tmp/build",
+      # output_directory: "/tmp/build",
+      # output_name: "Freighter Dev"
     ) 
     
-    upload_to_testflight(skip_waiting_for_build_processing: true)
+    # upload_to_testflight(skip_waiting_for_build_processing: true)
   end
 end
