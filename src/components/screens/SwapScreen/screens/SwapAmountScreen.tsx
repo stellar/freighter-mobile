@@ -26,6 +26,7 @@ import {
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -78,6 +79,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
@@ -405,8 +407,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
+    () =>
+      assessTransactionSecurity(
+        transactionScanResult,
+        overriddenBlockaidResponse,
+      ),
+    [transactionScanResult, overriddenBlockaidResponse],
   );
 
   const sourceBalanceSecurityAssessment = useMemo(
@@ -415,8 +421,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         sourceBalance
           ? scanResults[sourceBalance.id.replace(":", "-")]
           : undefined,
+        overriddenBlockaidResponse,
       ),
-    [sourceBalance, scanResults],
+    [sourceBalance, scanResults, overriddenBlockaidResponse],
   );
 
   const destBalanceSecurityAssessment = useMemo(
@@ -425,8 +432,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         destinationBalance
           ? scanResults[destinationBalance.id.replace(":", "-")]
           : undefined,
+        overriddenBlockaidResponse,
       ),
-    [destinationBalance, scanResults],
+    [destinationBalance, scanResults, overriddenBlockaidResponse],
   );
 
   const securityWarnings = useMemo(() => {

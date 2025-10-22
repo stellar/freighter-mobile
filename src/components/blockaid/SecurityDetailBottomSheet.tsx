@@ -98,17 +98,8 @@ export const SecurityDetailBottomSheet: React.FC<
     );
   };
 
-  const getListItems = () => {
-    if (isUnableToScan) {
-      return [
-        {
-          title: t("blockaid.addTokenUnableToScan.reason"),
-          icon: <Icon.MinusCircle size={16} themeColor="gray" />,
-        },
-      ];
-    }
-
-    return warnings.map((warning) => ({
+  const getListItems = () =>
+    warnings.map((warning) => ({
       title: warning.description,
       icon: isMalicious ? (
         <Icon.XCircle size={16} themeColor="red" />
@@ -116,7 +107,6 @@ export const SecurityDetailBottomSheet: React.FC<
         <Icon.MinusCircle size={16} themeColor="gray" />
       ),
     }));
-  };
 
   const renderButtons = () => {
     // Unable to scan state - side by side without biometrics

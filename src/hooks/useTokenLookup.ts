@@ -8,6 +8,7 @@ import {
   HookStatus,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { Icon } from "ducks/tokenIcons";
 import {
   formatTokenIdentifier,
@@ -45,6 +46,7 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+  const { overriddenBlockaidResponse } = useDebugStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
   const groupTokensBySecurityLevel = (
@@ -55,6 +57,7 @@ export const useTokenLookup = ({
         [SecurityLevel.SAFE]: [],
         [SecurityLevel.SUSPICIOUS]: [],
         [SecurityLevel.MALICIOUS]: [],
+        [SecurityLevel.UNABLE_TO_SCAN]: [],
       };
 
     // Preserve original order by adding tokens to groups as they appear
@@ -85,7 +88,10 @@ export const useTokenLookup = ({
         : token.tokenCode;
 
       const scanResult = scanResults.results?.[tokenIdentifier];
-      const securityInfo = assessTokenSecurity(scanResult);
+      const securityInfo = assessTokenSecurity(
+        scanResult,
+        overriddenBlockaidResponse,
+      );
 
       return {
         ...token,

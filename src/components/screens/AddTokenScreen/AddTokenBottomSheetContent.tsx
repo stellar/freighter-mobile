@@ -34,7 +34,7 @@ type AddTokenBottomSheetContentProps = {
   isAddingToken: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
-  hasUnableToScan?: boolean;
+  isUnableToScanToken?: boolean;
   onUnableToScanPress?: () => void;
 };
 
@@ -47,7 +47,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   isAddingToken,
   isMalicious = false,
   isSuspicious = false,
-  hasUnableToScan = false,
+  isUnableToScanToken = false,
   onUnableToScanPress,
 }) => {
   const { themeColors } = useColors();
@@ -58,7 +58,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
 
   const renderButtons = () => {
     // Normal state - side by side with biometrics
-    if (!isMalicious && !isSuspicious && !hasUnableToScan) {
+    if (!isMalicious && !isSuspicious && !isUnableToScanToken) {
       return (
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
@@ -89,7 +89,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
     }
 
     // Unable to scan state - side by side with biometrics
-    if (hasUnableToScan) {
+    if (isUnableToScanToken) {
       return (
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
@@ -273,7 +273,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         {t("addTokenScreen.addToken")}
       </Badge>
 
-      {(isMalicious || isSuspicious || hasUnableToScan) && (
+      {(isMalicious || isSuspicious || isUnableToScanToken) && (
         <Banner
           variant={isMalicious ? "error" : "warning"}
           text={(() => {
@@ -281,7 +281,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
             if (isSuspicious) return t("addTokenScreen.suspiciousToken");
             return t("blockaid.addTokenUnableToScan.title");
           })()}
-          onPress={hasUnableToScan ? onUnableToScanPress : onAddToken}
+          onPress={isUnableToScanToken ? onUnableToScanPress : onAddToken}
           className="mt-4"
         />
       )}
@@ -296,7 +296,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         <List items={listItems} variant="secondary" />
       </View>
 
-      {!isMalicious && !isSuspicious && !hasUnableToScan && (
+      {!isMalicious && !isSuspicious && !isUnableToScanToken && (
         <View className="mt-4 px-6">
           <Text sm secondary textAlign="center">
             {t("addTokenScreen.confirmTrust")}

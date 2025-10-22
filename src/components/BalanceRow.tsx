@@ -8,6 +8,7 @@ import {
   POSITIVE_PRICE_CHANGE_THRESHOLD,
 } from "config/constants";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
@@ -131,7 +132,11 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   isSingleRow = false,
   spendableAmount,
 }) => {
-  const { isMalicious, isSuspicious } = assessTokenSecurity(scanResult);
+  const { overriddenBlockaidResponse } = useDebugStore();
+  const { isMalicious, isSuspicious } = assessTokenSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
+  );
   return renderContent(
     <BalanceRowContainer isSingleRow={isSingleRow}>
       <LeftSection>

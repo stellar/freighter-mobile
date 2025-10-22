@@ -75,16 +75,38 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
-  const hasUnableToScan = scannedToken.level === SecurityLevel.UNABLE_TO_SCAN;
-  const securityWarnings = selectedToken?.securityWarnings || [];
+  const isUnableToScanToken =
+    scannedToken.level === SecurityLevel.UNABLE_TO_SCAN;
+
+  // Generate security warnings from the scanned token assessment
+  const securityWarnings = useMemo(() => {
+    if (isUnableToScanToken) {
+      // For "Unable to scan" cases, always provide a warning so the list renders
+      return [
+        {
+          id: "unable-to-scan",
+          description:
+            scannedToken.details || t("blockaid.addTokenUnableToScan.reason"),
+        },
+      ];
+    }
+
+    // For other cases, use the warnings from the selected token
+    return selectedToken?.securityWarnings || [];
+  }, [
+    isUnableToScanToken,
+    scannedToken.details,
+    selectedToken?.securityWarnings,
+    t,
+  ]);
 
   const securitySeverity = useMemo(() => {
     if (isTokenMalicious) return SecurityLevel.MALICIOUS;
     if (isTokenSuspicious) return SecurityLevel.SUSPICIOUS;
-    if (hasUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
+    if (isUnableToScanToken) return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
-  }, [isTokenMalicious, isTokenSuspicious, hasUnableToScan]);
+  }, [isTokenMalicious, isTokenSuspicious, isUnableToScanToken]);
 
   const resetPageState = useCallback(() => {
     handleRefresh();
@@ -149,12 +171,12 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     securityWarningBottomSheetModalRef.current?.dismiss();
 
     // If it's unable to scan, show the AddTokenBottomSheetContent with banner
-    if (hasUnableToScan) {
+    if (isUnableToScanToken) {
       addTokenBottomSheetModalRef.current?.present();
     } else {
       addToken();
     }
-  }, [addToken, hasUnableToScan]);
+  }, [addToken, isUnableToScanToken]);
 
   const handleUnableToScanPress = useCallback(() => {
     addTokenBottomSheetModalRef.current?.dismiss();
@@ -303,7 +325,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
               isAddingToken={isAddingToken}
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}
-              hasUnableToScan={hasUnableToScan}
+              isUnableToScanToken={isUnableToScanToken}
               onUnableToScanPress={handleUnableToScanPress}
             />
           }
@@ -337,7 +359,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
               }
               securityContext={SecurityContext.TOKEN}
               proceedAnywayText={
-                hasUnableToScan
+                isUnableToScanToken
                   ? t("common.continue")
                   : t("addTokenScreen.approveAnyway")
               }

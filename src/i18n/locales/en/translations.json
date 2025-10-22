@@ -1010,6 +1010,16 @@
       "overriddenVersion": "Overridden version: {{version}}",
       "clearOverride": "Clear Override",
       "clearUpdateDismissalFlag": "Clear update dismissal flag"
+    },
+    "blockaidOverride": {
+      "title": "Blockaid Response Override",
+      "description": "Override Blockaid security responses for testing different security states (DEV only)",
+      "overriddenResponse": "Overridden response: {{response}}",
+      "safe": "Safe",
+      "suspicious": "Suspicious",
+      "malicious": "Malicious",
+      "unableToScan": "Unable to Scan",
+      "clearOverride": "Clear Override"
     }
   },
   "blockaid": {

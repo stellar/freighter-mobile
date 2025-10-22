@@ -1011,6 +1011,16 @@
       "overriddenVersion": "Versão substituída: {{version}}",
       "clearOverride": "Limpar Substituição",
       "clearUpdateDismissalFlag": "Limpar flag de dispensa de atualização"
+    },
+    "blockaidOverride": {
+      "title": "Substituição da Resposta do Blockaid",
+      "description": "Substituir respostas de segurança do Blockaid para testar diferentes estados de segurança (apenas DEV)",
+      "overriddenResponse": "Resposta substituída: {{response}}",
+      "safe": "Seguro",
+      "suspicious": "Suspeito",
+      "malicious": "Malicioso",
+      "unableToScan": "Não foi possível escanear",
+      "clearOverride": "Limpar Substituição"
     }
   },
   "blockaid": {

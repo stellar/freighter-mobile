@@ -34,6 +34,7 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -88,6 +89,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
   const {
     transactionFee,
     recipientAddress,
@@ -205,8 +207,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
   const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
+    () =>
+      assessTransactionSecurity(
+        transactionScanResult,
+        overriddenBlockaidResponse,
+      ),
+    [transactionScanResult, overriddenBlockaidResponse],
   );
 
   const {
