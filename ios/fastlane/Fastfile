@@ -25,8 +25,23 @@ platform :ios do
       duration: 1200, # optional (maximum 1200)
       in_house: false # optional but may be required if using match/sigh
     )
+
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: "git@github.com:CassioMG/test-fastlane.git",
+      # git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_PRIVATE_KEY")),
+      git_branch: "main",
+      verbose: false
+    ) 
+
     increment_build_number(xcodeproj: "freighter-mobile.xcodeproj")
-    build_app(workspace: "freighter-mobile.xcworkspace", scheme: "freighter-mobile-dev")
-    upload_to_testflight
+    
+    build_app(
+      workspace: "freighter-mobile.xcworkspace",
+      scheme: "freighter-mobile-dev",
+    ) 
+    
+    upload_to_testflight(skip_waiting_for_build_processing: true)
   end
 end
