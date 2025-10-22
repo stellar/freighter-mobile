@@ -352,12 +352,28 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             .then((scanResult) => {
               logger.info("TransactionAmountScreen", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
+
+              // Check if the transaction scan result is "unable to scan"
+              const assessment = assessTransactionSecurity(
+                scanResult,
+                overriddenBlockaidResponse,
+              );
+              const isUnableToScan =
+                !scanResult ||
+                assessment.level === SecurityLevel.UNABLE_TO_SCAN;
+
+              if (isUnableToScan) {
+                // For "unable to scan" cases, show SecurityDetailBottomSheet first
+                transactionSecurityWarningBottomSheetModalRef.current?.present();
+              } else {
+                // For other cases, go directly to review screen
+                reviewBottomSheetModalRef.current?.present();
+              }
             })
             .catch(() => {
               setTransactionScanResult(undefined);
-            })
-            .finally(() => {
-              reviewBottomSheetModalRef.current?.present();
+              // If scan fails, treat as "unable to scan"
+              transactionSecurityWarningBottomSheetModalRef.current?.present();
             });
         }
       } catch (error) {
@@ -549,8 +565,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleConfirmAnyway = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleTransactionConfirmation();
-  }, [handleTransactionConfirmation]);
+    // Check if this was an "unable to scan" case
+    const isUnableToScan =
+      !transactionScanResult ||
+      transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+
+    if (isUnableToScan) {
+      // For "unable to scan" cases, show the review screen with banner
+      reviewBottomSheetModalRef.current?.present();
+    } else {
+      // For other cases, proceed with the transaction
+      handleTransactionConfirmation();
+    }
+  }, [
+    handleTransactionConfirmation,
+    transactionScanResult,
+    transactionSecurityAssessment.level,
+  ]);
 
   const openSecurityWarningBottomSheet = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.present();

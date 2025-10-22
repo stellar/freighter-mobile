@@ -380,32 +380,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     prepareSwapTransaction(false);
   }, [prepareSwapTransaction]);
 
-  const handleMainButtonPress = useCallback(async () => {
-    if (destinationBalance) {
-      await prepareSwapTransaction(true);
-    } else {
-      navigateToSelectDestinationTokenScreen();
-    }
-  }, [
-    destinationBalance,
-    prepareSwapTransaction,
-    navigateToSelectDestinationTokenScreen,
-  ]);
-
-  // Reset everything on unmount
-  useEffect(
-    () => () => {
-      resetSwap();
-      resetTransaction();
-      resetToDefaults();
-    },
-    [resetSwap, resetTransaction, resetToDefaults],
-  );
-
-  const handleCancelSecurityWarning = () => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-  };
-
   const transactionSecurityAssessment = useMemo(
     () =>
       assessTransactionSecurity(
@@ -436,6 +410,50 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       ),
     [destinationBalance, scanResults, overriddenBlockaidResponse],
   );
+
+  const handleMainButtonPress = useCallback(async () => {
+    if (destinationBalance) {
+      await prepareSwapTransaction(true);
+
+      // Check if any security assessment is "unable to scan"
+      const isUnableToScan =
+        transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
+        sourceBalanceSecurityAssessment.level ===
+          SecurityLevel.UNABLE_TO_SCAN ||
+        destBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+
+      if (isUnableToScan) {
+        // For "unable to scan" cases, show SecurityDetailBottomSheet first
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        // For other cases, go directly to review screen
+        swapReviewBottomSheetModalRef.current?.present();
+      }
+    } else {
+      navigateToSelectDestinationTokenScreen();
+    }
+  }, [
+    destinationBalance,
+    prepareSwapTransaction,
+    navigateToSelectDestinationTokenScreen,
+    transactionSecurityAssessment.level,
+    sourceBalanceSecurityAssessment.level,
+    destBalanceSecurityAssessment.level,
+  ]);
+
+  // Reset everything on unmount
+  useEffect(
+    () => () => {
+      resetSwap();
+      resetTransaction();
+      resetToDefaults();
+    },
+    [resetSwap, resetTransaction, resetToDefaults],
+  );
+
+  const handleCancelSecurityWarning = () => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+  };
 
   const securityWarnings = useMemo(() => {
     if (
@@ -492,7 +510,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleConfirmSwap();
+    // Check if this was an "unable to scan" case
+    const isUnableToScan =
+      transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
+      sourceBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
+      destBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+
+    if (isUnableToScan) {
+      // For "unable to scan" cases, show the review screen with banner
+      swapReviewBottomSheetModalRef.current?.present();
+    } else {
+      // For other cases, proceed with the swap
+      handleConfirmSwap();
+    }
   };
 
   const handleCancelSwap = useCallback(() => {
@@ -684,10 +714,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 ? scanResults[destinationBalance.id.replace(":", "-")]
                 : undefined
             }
-            onBannerPress={() =>
-              transactionSecurityWarningBottomSheetModalRef.current?.present()
-            }
-            onUnableToScanPress={() =>
+            onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }
           />

@@ -41,16 +41,14 @@ import {
 } from "services/blockaid/helper";
 
 type SwapReviewBottomSheetProps = {
-  onBannerPress?: () => void;
-  onUnableToScanPress?: () => void;
+  onSecurityWarningPress?: () => void;
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
   sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
   destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
-  onBannerPress,
-  onUnableToScanPress,
+  onSecurityWarningPress,
   transactionScanResult,
   sourceTokenScanResult,
   destTokenScanResult,
@@ -292,7 +290,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           className="mt-[16px]"
           variant={isSuspicious || isUnableToScanToken ? "warning" : "error"}
           text={bannerText}
-          onPress={isUnableToScanToken ? onUnableToScanPress : onBannerPress}
+          onPress={onSecurityWarningPress}
         />
       )}
 
