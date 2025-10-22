@@ -35,7 +35,7 @@ type AddTokenBottomSheetContentProps = {
   isMalicious?: boolean;
   isSuspicious?: boolean;
   isUnableToScanToken?: boolean;
-  onUnableToScanPress?: () => void;
+  onSecurityWarningPress?: () => void;
 };
 
 const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
@@ -48,7 +48,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   isMalicious = false,
   isSuspicious = false,
   isUnableToScanToken = false,
-  onUnableToScanPress,
+  onSecurityWarningPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -281,7 +281,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
             if (isSuspicious) return t("addTokenScreen.suspiciousToken");
             return t("blockaid.addTokenUnableToScan.title");
           })()}
-          onPress={isUnableToScanToken ? onUnableToScanPress : onAddToken}
+          onPress={onSecurityWarningPress}
           className="mt-4"
         />
       )}

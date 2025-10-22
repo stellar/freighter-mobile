@@ -147,14 +147,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       level: token?.securityLevel || SecurityLevel.SAFE,
     });
 
-    // If token is malicious, suspicious, or unable to scan, show security warning first
-    if (
-      token?.isMalicious ||
-      token?.isSuspicious ||
-      token?.securityLevel === SecurityLevel.UNABLE_TO_SCAN
-    ) {
+    // If token is unable to scan, show security warning first
+    if (token?.securityLevel === SecurityLevel.UNABLE_TO_SCAN) {
       securityWarningBottomSheetModalRef.current?.present();
     } else {
+      // For malicious, suspicious, and safe tokens, go directly to AddTokenBottomSheet
       addTokenBottomSheetModalRef.current?.present();
     }
   }, []);
@@ -178,7 +175,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     }
   }, [addToken, isUnableToScanToken]);
 
-  const handleUnableToScanPress = useCallback(() => {
+  const handleSecurityWarningPress = useCallback(() => {
     addTokenBottomSheetModalRef.current?.dismiss();
     securityWarningBottomSheetModalRef.current?.present();
   }, []);
@@ -326,7 +323,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}
               isUnableToScanToken={isUnableToScanToken}
-              onUnableToScanPress={handleUnableToScanPress}
+              onSecurityWarningPress={handleSecurityWarningPress}
             />
           }
         />
