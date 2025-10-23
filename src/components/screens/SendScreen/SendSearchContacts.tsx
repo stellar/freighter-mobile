@@ -48,7 +48,11 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const { saveRecipientAddress } = useTransactionSettingsStore();
+  const {
+    saveRecipientAddress,
+    selectedCollectibleDetails,
+    saveSelectedCollectibleDetails,
+  } = useTransactionSettingsStore();
 
   const { clearQRData } = useQRDataStore();
 
@@ -70,8 +74,16 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient();
   }, [loadRecentAddresses, resetSendRecipient]);
 
-  // Clear QR data when component unmounts
-  useEffect(() => () => clearQRData(), [clearQRData]);
+  // Clear collectible details and QR data when component unmounts (exiting send flow)
+  useEffect(
+    () => () => {
+      clearQRData();
+      // Clear collectible details when leaving SearchContacts
+      // This ensures token flow doesn't accidentally use old collectible data
+      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    },
+    [clearQRData, saveSelectedCollectibleDetails],
+  );
 
   /**
    * Handles search input changes and updates suggestions
@@ -103,9 +115,25 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       // Transaction settings store is for the transaction flow
       saveRecipientAddress(contactAddress);
 
-      navigation.goBack();
+      if (selectedCollectibleDetails.tokenId) {
+        // Use popTo for collectible flow
+        // If Review exists in stack, pops back to it; otherwise adds it
+        navigation.popTo(
+          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+          selectedCollectibleDetails,
+        );
+      } else {
+        // For token sends, go back to the TransactionAmountScreen
+        navigation.goBack();
+      }
     },
-    [recentAddresses, setDestinationAddress, saveRecipientAddress, navigation],
+    [
+      recentAddresses,
+      setDestinationAddress,
+      saveRecipientAddress,
+      navigation,
+      selectedCollectibleDetails,
+    ],
   );
 
   const handlePasteFromClipboard = () => {

@@ -25,7 +25,7 @@ import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
-import { simulateTokenTransfer } from "services/backend";
+import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
@@ -56,11 +56,11 @@ export interface BuildSendCollectibleParams {
   collectionAddress: string;
   recipientAddress: string;
   transactionMemo?: string;
-  transactionFee: string;
-  transactionTimeout: number;
+  transactionFee?: string;
+  transactionTimeout?: number;
   tokenId: number;
-  network: NETWORKS;
-  senderAddress: string;
+  network?: NETWORKS;
+  senderAddress?: string;
 }
 
 export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
@@ -527,6 +527,7 @@ export const buildSendCollectibleTransaction = async (
     collectionAddress,
     transactionFee,
     transactionTimeout,
+    transactionMemo,
     tokenId,
     network,
     recipientAddress,
@@ -534,6 +535,10 @@ export const buildSendCollectibleTransaction = async (
   } = params;
 
   try {
+    if (!senderAddress || !network || !transactionFee || !transactionTimeout) {
+      throw new Error("Missing required parameters for building transaction");
+    }
+
     const validationError = validateSendCollectibleTransactionParams({
       fee: transactionFee,
       timeout: transactionTimeout,
@@ -561,6 +566,10 @@ export const buildSendCollectibleTransaction = async (
       xdr.ScVal.scvU32(tokenId), // token_id
     ];
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
+
+    if (transactionMemo) {
+      txBuilder.addMemo(Memo.text(transactionMemo));
+    }
 
     const transaction = txBuilder.build();
     return { tx: transaction, xdr: transaction.toXDR() };
@@ -614,6 +623,35 @@ export const simulateContractTransfer = async ({
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     analytics.trackSimulationError(errorMessage, "contract_transfer");
+
+    throw error;
+  }
+};
+
+interface SimulateCollectibleTransferParams {
+  transactionXdr: string;
+  networkDetails: NetworkDetails;
+}
+
+export const simulateCollectibleTransfer = async ({
+  transactionXdr,
+  networkDetails,
+}: SimulateCollectibleTransferParams) => {
+  if (!networkDetails.sorobanRpcUrl) {
+    throw new Error("Soroban RPC URL is not defined for this network");
+  }
+
+  try {
+    const result = await simulateTransaction({
+      xdr: transactionXdr,
+      network_url: networkDetails.sorobanRpcUrl,
+      network_passphrase: networkDetails.networkPassphrase,
+    });
+    return result.preparedTransaction;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    analytics.trackSimulationError(errorMessage, "collectible_transfer");
 
     throw error;
   }
