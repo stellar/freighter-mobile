@@ -1,10 +1,13 @@
-git_url("git@github.com:CassioMG/test-fastlane.git")
+# Load environment variables from local .env file
+# TODO: move to CI envs later
+require 'dotenv'
+Dotenv.load('../../.env')
+
+git_url(ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" })
 git_branch("main")
 storage_mode("git")
-type("appstore") # The default type, can be: appstore, adhoc, enterprise or development
+type("appstore")
 app_identifier(["org.stellar.freighterdev"])
-
-# username("cassio@stellar.org") # Your Apple Developer Portal username
 
 # For all available options run `fastlane match --help`
 

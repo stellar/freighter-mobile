@@ -28,9 +28,9 @@ platform :ios do
     #                 replace: "CURRENT_PROJECT_VERSION = #{build_number}"
     
     app_store_connect_api_key(
-      key_id: "75G8D5L857",
-      issuer_id: "aee30e88-5312-413f-8f0f-0413f21d7d9e",
-      key_content: ENV.fetch("APPLE_CONNECT_API_KEY") { raise "APPLE_CONNECT_API_KEY environment variable is required" },
+      key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },
+      issuer_id: ENV.fetch("APPLE_CONNECT_ISSUER_ID") { raise "APPLE_CONNECT_ISSUER_ID environment variable is required" },
+      key_content: ENV.fetch("APPLE_CONNECT_KEY_CONTENT") { raise "APPLE_CONNECT_KEY_CONTENT environment variable is required" },
       is_key_content_base64: true,
       duration: 1200,
       in_house: false
@@ -39,7 +39,7 @@ platform :ios do
     match(
       type: "appstore",
       readonly: true,
-      git_url: "git@github.com:CassioMG/test-fastlane.git",
+      git_url: ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" },
       git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
       verbose: false
