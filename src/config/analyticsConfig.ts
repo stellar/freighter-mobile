@@ -135,6 +135,11 @@ export enum AnalyticsEvent {
   QR_SCAN_SUCCESS = "mobile: qr scan success",
   QR_SCAN_ERROR = "mobile: qr scan error",
 
+  // App Update Events
+  APP_UPDATE_OPEN_STORE_FROM_BANNER = "app update: opened app store from banner",
+  APP_UPDATE_OPEN_STORE_FROM_SCREEN = "app update: opened app store from screen",
+  APP_UPDATE_CONFIRMED_SKIP_ON_SCREEN = "app update: confirmed skip on screen",
+
   // Blockaid Events
   BLOCKAID_BULK_TOKEN_SCAN = "blockaid: bulk scanned tokens",
   BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",

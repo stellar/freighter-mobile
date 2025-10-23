@@ -1007,6 +1007,18 @@
       "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
     }
   },
+  "debug": {
+    "title": "Debug",
+    "appVersionOverride": {
+      "title": "Substituição da Versão do App",
+      "description": "Substituir versão do app para testar atualizações (apenas DEV)",
+      "placeholder": "Digite a versão (ex: 1.0.0)",
+      "currentVersion": "Versão atual: {{version}}",
+      "overriddenVersion": "Versão substituída: {{version}}",
+      "clearOverride": "Limpar Substituição",
+      "clearUpdateDismissalFlag": "Limpar flag de dispensa de atualização"
+    }
+  },
   "blockaid": {
     "brand": "Blockaid",
     "security": {
@@ -1128,6 +1140,17 @@
       "not": "Não",
       "beforeRelativeTime": "Antes do tempo relativo",
       "beforeAbsoluteTime": "Antes do tempo absoluto"
+    }
+  },
+  "appUpdate": {
+    "defaultMessage": "Por favor atualize seu app para a última versão.",
+    "forceUpdate": {
+      "title": "Atualização Necessária",
+      "description": "Uma nova versão do Freighter está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
+      "updateButton": "Atualizar app",
+      "laterButton": "Vou atualizar depois",
+      "skipTitle": "Continuar sem atualizar?",
+      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
     }
   }
 }
