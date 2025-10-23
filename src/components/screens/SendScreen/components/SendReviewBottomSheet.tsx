@@ -164,10 +164,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
    */
   const renderBanner = () => {
-    console.log("isRequiredMemoMissing", isRequiredMemoMissing);
-    console.log("isMalicious", isMalicious);
-    console.log("isSuspicious", isSuspicious);
-    console.log("isUnableToScan", isUnableToScan);
     if (
       !isRequiredMemoMissing &&
       !isMalicious &&

@@ -58,8 +58,7 @@ export const SECURITY_MESSAGE_KEYS = {
   TRANSACTION_MALICIOUS: "blockaid.security.transaction.malicious",
   TRANSACTION_WARNING: "blockaid.security.transaction.warning",
   // Unable to scan message keys
-  UNABLE_TO_SCAN_TOKEN_TITLE: "blockaid.unableToScan.token.title",
-  UNABLE_TO_SCAN_TOKEN_DESCRIPTION: "blockaid.unableToScan.token.description",
+  UNABLE_TO_SCAN_TOKEN: "blockaid.unableToScan.token",
   UNABLE_TO_SCAN_SITE_TITLE: "blockaid.unableToScan.site.title",
   UNABLE_TO_SCAN_SITE_DESCRIPTION: "blockaid.unableToScan.site.description",
   UNABLE_TO_SCAN_TRANSACTION_TITLE: "blockaid.unableToScan.transaction",
@@ -83,8 +82,8 @@ export const TOKEN_SECURITY_LEVEL_MESSAGE_KEYS = {
     description: SECURITY_MESSAGE_KEYS.TOKEN_MALICIOUS,
   },
   [SecurityLevel.UNABLE_TO_SCAN]: {
-    title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN_TITLE,
-    description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN_DESCRIPTION,
+    title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
+    description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
   },
 } as const;
 

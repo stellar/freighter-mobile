@@ -550,6 +550,9 @@
     "unableToScanToken": "Unable to scan token",
     "tokenAddress": "Token Address",
     "approveAnyway": "Approve anyway",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "unableToScanBanner": "Unable to scan for malicious tokens",
     "toastSuccess": "{{tokenCode}} successfully added as a token",
     "toastError": "Error adding token {{tokenCode}}",
     "emptyState": "No tokens found",
@@ -1050,10 +1053,7 @@
         "title": "Unable to scan",
         "description": "We were unable to scan this item for security threats. Proceed with caution."
       },
-      "token": {
-        "title": "Unable to scan token",
-        "description": "Unable to scan token."
-      },
+      "token": "Unable to scan token",
       "site": {
         "title": "Unable to scan site",
         "description": "We were unable to scan this site for security threats. The site may be safe, but we cannot verify its security status."

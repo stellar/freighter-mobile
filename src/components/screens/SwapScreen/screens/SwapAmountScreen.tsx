@@ -411,12 +411,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [destinationBalance, scanResults, overriddenBlockaidResponse],
   );
 
+  const showSecurityWarningForSource = useMemo(
+    () =>
+      sourceBalanceSecurityAssessment.isUnableToScan && sourceTokenId !== "XLM",
+    [sourceBalanceSecurityAssessment.isUnableToScan, sourceTokenId],
+  );
+
   const handleMainButtonPress = useCallback(async () => {
     if (destinationBalance) {
       // Check if any security assessment is "unable to scan"
+
       const isUnableToScan =
-        transactionSecurityAssessment.isUnableToScan ||
-        sourceBalanceSecurityAssessment.isUnableToScan ||
+        showSecurityWarningForSource ||
         destBalanceSecurityAssessment.isUnableToScan;
 
       if (isUnableToScan) {
@@ -435,9 +441,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationBalance,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
-    transactionSecurityAssessment.isUnableToScan,
-    sourceBalanceSecurityAssessment.isUnableToScan,
     destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForSource,
   ]);
 
   // Reset everything on unmount
@@ -477,14 +482,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
 
     // Add "unable to scan" warnings
-    if (transactionSecurityAssessment.isUnableToScan) {
-      warnings.push({
-        id: "unable-to-scan-transaction",
-        description: t("blockaid.unableToScan.transaction"),
-      });
-    }
+    // Transaction-level "unable to scan" warnings are excluded from swap flow
 
-    if (sourceBalanceSecurityAssessment.isUnableToScan) {
+    // Only add source "unable to scan" warning if we should show security warnings
+    if (showSecurityWarningForSource) {
       warnings.push({
         id: "unable-to-scan-source",
         description: t("blockaid.unableToScan.sourceToken"),
@@ -502,13 +503,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
     sourceBalanceSecurityAssessment.isMalicious,
     sourceBalanceSecurityAssessment.isSuspicious,
-    sourceBalanceSecurityAssessment.isUnableToScan,
     destBalanceSecurityAssessment.isMalicious,
     destBalanceSecurityAssessment.isSuspicious,
     destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForSource,
     transactionScanResult,
     scanResults,
     t,
@@ -525,8 +525,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   // Check if any security assessment is "unable to scan"
   const isUnableToScan =
-    transactionSecurityAssessment.isUnableToScan ||
-    sourceBalanceSecurityAssessment.isUnableToScan ||
+    showSecurityWarningForSource ||
     destBalanceSecurityAssessment.isUnableToScan;
 
   const transactionSecuritySeverity = useMemo(() => {
@@ -534,26 +533,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
-    if (transactionSecurityAssessment.isUnableToScan)
-      return SecurityLevel.UNABLE_TO_SCAN;
+    // Transaction-level "unable to scan" is excluded from swap flow
 
     return undefined;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
   ]);
 
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     // Check if this was an "unable to scan" case
-    const isUnableToScanCase =
-      transactionSecurityAssessment.isUnableToScan ||
-      sourceBalanceSecurityAssessment.isUnableToScan ||
+
+    const isUnableToScanConfirm =
+      showSecurityWarningForSource ||
       destBalanceSecurityAssessment.isUnableToScan;
 
-    if (isUnableToScanCase) {
+    if (isUnableToScanConfirm) {
       // For "unable to scan" cases, show the review screen with banner
       swapReviewBottomSheetModalRef.current?.present();
     } else {

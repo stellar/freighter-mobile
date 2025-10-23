@@ -245,6 +245,98 @@ describe("SwapReviewBottomSheet", () => {
     });
   });
 
+  describe("Unable to scan states", () => {
+    it("shows unable to scan banner when transaction scan fails", () => {
+      // When transactionScanResult is undefined/null, it should trigger unable to scan
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when source token scan fails", () => {
+      // When sourceTokenScanResult is undefined/null, it should trigger unable to scan
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          sourceTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when destination token scan fails", () => {
+      // When destTokenScanResult is undefined/null, it should trigger unable to scan
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows warning variant banner for unable to scan states", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      // The banner should be rendered with "Proceed with caution" text
+      // This indicates the warning variant is being used (amber colors)
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("calls onSecurityWarningPress when unable to scan banner is pressed", async () => {
+      const user = userEvent.setup();
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      await user.press(getByText("Proceed with caution"));
+      expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
+    }, 10000);
+
+    it("prioritizes transaction unable to scan over token unable to scan", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+          sourceTokenScanResult={undefined}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      // Should show "Proceed with caution" (transaction unable to scan takes priority)
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when multiple scans fail", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+          sourceTokenScanResult={undefined}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+  });
+
   describe("Combined scan states", () => {
     it("prioritizes transaction malicious over asset malicious in banner", () => {
       const maliciousTransactionScan = {
@@ -288,6 +380,44 @@ describe("SwapReviewBottomSheet", () => {
 
       // Should show asset malicious banner
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+    });
+
+    it("prioritizes malicious over unable to scan in banner", () => {
+      const maliciousTransactionScan = {
+        validation: {
+          result_type: "Malicious",
+        },
+      } as Blockaid.StellarTransactionScanResponse;
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={maliciousTransactionScan}
+          sourceTokenScanResult={undefined} // This would trigger unable to scan
+        />,
+      );
+
+      // Should show malicious message, not unable to scan
+      expect(getByText("This address was flagged as malicious")).toBeTruthy();
+    });
+
+    it("prioritizes suspicious over unable to scan in banner", () => {
+      const suspiciousTransactionScan = {
+        validation: {
+          result_type: "Warning",
+        },
+      } as Blockaid.StellarTransactionScanResponse;
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={suspiciousTransactionScan}
+          sourceTokenScanResult={undefined} // This would trigger unable to scan
+        />,
+      );
+
+      // Should show suspicious message, not unable to scan
+      expect(getByText("This address was flagged as suspicious")).toBeTruthy();
     });
   });
 });

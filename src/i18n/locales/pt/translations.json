@@ -514,6 +514,9 @@
     "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
+    "verified": "Verificado",
+    "unverified": "Não verificado",
+    "unableToScanBanner": "Não foi possível escanear tokens maliciosos",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
     "toastError": "Erro ao adicionar token {{tokenCode}}",
     "emptyState": "Nenhum token encontrado",
@@ -1051,10 +1054,7 @@
         "title": "Não foi possível escanear",
         "description": "Não conseguimos escanear este item em busca de ameaças de segurança. Prossiga com cautela."
       },
-      "token": {
-        "title": "Não foi possível escanear o token",
-        "description": "Não foi possível escanear o token."
-      },
+      "token": "Não foi possível escanear o token",
       "site": {
         "title": "Não foi possível escanear o site",
         "description": "Não conseguimos escanear este site em busca de ameaças de segurança. O site pode ser seguro, mas não podemos verificar seu status de segurança."

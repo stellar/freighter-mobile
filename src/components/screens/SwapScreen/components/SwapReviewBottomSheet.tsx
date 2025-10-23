@@ -170,8 +170,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
   const isUnableToScanToken =
-    transactionSecurityAssessment.isUnableToScan ||
-    sourceSecurityAssessment.isUnableToScan ||
+    (sourceSecurityAssessment.isUnableToScan && sourceTokenId !== "XLM") ||
     destSecurityAssessment.isUnableToScan;
 
   const bannerText = useMemo(() => {
