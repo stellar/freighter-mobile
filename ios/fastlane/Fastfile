@@ -10,6 +10,8 @@
 #     https://docs.fastlane.tools/plugins/available-plugins
 #
 
+# frozen_string_literal: true
+
 # Load environment variables from local .env file
 # TODO: move to CI envs later
 require 'dotenv'

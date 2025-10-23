@@ -10,8 +10,7 @@
 #     https://docs.fastlane.tools/plugins/available-plugins
 #
 
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
+# frozen_string_literal: true
 
 def increment_version_code_in_gradle(gradle_file_path)
   file_path = File.join(Dir.pwd, gradle_file_path)

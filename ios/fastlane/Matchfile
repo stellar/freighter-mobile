@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Load environment variables from local .env file
 # TODO: move to CI envs later
 require 'dotenv'
