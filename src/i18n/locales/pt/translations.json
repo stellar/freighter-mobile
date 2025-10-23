@@ -33,7 +33,10 @@
     "addMemoShorthand": "Add. memo",
     "addMemo": "Adicionar memo",
     "wallet": "Carteira",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "name": "Nome",
+    "collection": "Coleção",
+    "tokenId": "ID do Token"
   },
   "home": {
     "title": "Início",
@@ -303,7 +306,11 @@
       "minted": "Emitido",
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
       "unknown": "Desconhecido",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Colecionável desconhecido",
+        "unknownCollection": "Coleção {{contractId}}"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "Ver no stellar.expert",
@@ -765,6 +772,7 @@
   },
   "transactionDetailsBottomSheet": {
     "sent": "Enviado {{tokenCode}}",
+    "sentCollectible": "Enviado Colecionável",
     "firstTimeSend": "Primeiro envio",
     "status": "Status",
     "statusSuccess": "Sucesso",

@@ -99,4 +99,99 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().recipientAddress).toBe("");
     expect(store.getState().selectedTokenId).toBe("");
   });
+
+  describe("selectedCollectibleDetails", () => {
+    it("should have correct initial collectible details state", () => {
+      const initialState = store.getState();
+      expect(initialState.selectedCollectibleDetails).toEqual({
+        collectionAddress: "",
+        tokenId: "",
+      });
+    });
+
+    it("should save collectible details", () => {
+      const collectibleDetails = {
+        collectionAddress:
+          "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        tokenId: "12345",
+      };
+
+      act(() => {
+        store.getState().saveSelectedCollectibleDetails(collectibleDetails);
+      });
+
+      expect(store.getState().selectedCollectibleDetails).toEqual(
+        collectibleDetails,
+      );
+    });
+
+    it("should update collectible details when changed", () => {
+      const firstCollectible = {
+        collectionAddress:
+          "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        tokenId: "100",
+      };
+      const secondCollectible = {
+        collectionAddress:
+          "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        tokenId: "999",
+      };
+
+      act(() => {
+        store.getState().saveSelectedCollectibleDetails(firstCollectible);
+      });
+      expect(store.getState().selectedCollectibleDetails).toEqual(
+        firstCollectible,
+      );
+
+      act(() => {
+        store.getState().saveSelectedCollectibleDetails(secondCollectible);
+      });
+      expect(store.getState().selectedCollectibleDetails).toEqual(
+        secondCollectible,
+      );
+    });
+
+    it("should reset collectible details when resetSettings is called", () => {
+      const collectibleDetails = {
+        collectionAddress:
+          "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        tokenId: "12345",
+      };
+
+      act(() => {
+        store.getState().saveSelectedCollectibleDetails(collectibleDetails);
+      });
+
+      expect(store.getState().selectedCollectibleDetails).toEqual(
+        collectibleDetails,
+      );
+
+      act(() => {
+        store.getState().resetSettings();
+      });
+
+      expect(store.getState().selectedCollectibleDetails).toEqual({
+        collectionAddress: "",
+        tokenId: "",
+      });
+    });
+
+    it("should handle empty string values for collectible details", () => {
+      const emptyCollectibleDetails = {
+        collectionAddress: "",
+        tokenId: "",
+      };
+
+      act(() => {
+        store
+          .getState()
+          .saveSelectedCollectibleDetails(emptyCollectibleDetails);
+      });
+
+      expect(store.getState().selectedCollectibleDetails).toEqual(
+        emptyCollectibleDetails,
+      );
+    });
+  });
 });

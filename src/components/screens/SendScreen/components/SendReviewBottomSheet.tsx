@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { CollectibleImage } from "components/CollectibleImage";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
@@ -12,6 +13,7 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
+import { Collectible as CollectibleType } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
@@ -26,9 +28,16 @@ import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+export enum SendType {
+  Token = "token",
+  Collectible = "collectible",
+}
+
 type SendReviewBottomSheetProps = {
+  type: SendType;
   selectedBalance?: PricedBalance;
-  tokenAmount: string;
+  tokenAmount?: string;
+  selectedCollectible?: CollectibleType;
   /**
    * Indicates if a required memo is missing from the transaction
    * When true, shows a warning banner and may disable transaction confirmation
@@ -69,8 +78,10 @@ type SendReviewBottomSheetProps = {
  * @returns {JSX.Element} The rendered bottom sheet component
  */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
+  type,
   selectedBalance,
   tokenAmount,
+  selectedCollectible,
   isRequiredMemoMissing,
   onBannerPress,
   isMalicious,
@@ -268,29 +279,50 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
-          {selectedBalance && !isLiquidityPool(selectedBalance) && (
+          {type === SendType.Token &&
+            selectedBalance &&
+            tokenAmount &&
+            !isLiquidityPool(selectedBalance) && (
+              <View className="w-full flex-row items-center gap-[16px]">
+                <TokenIcon token={selectedBalance} />
+                <View className="flex-1">
+                  <Text xl medium>
+                    {formatTokenForDisplay(
+                      tokenAmount,
+                      selectedBalance.tokenCode,
+                    )}
+                  </Text>
+                  <Text md medium secondary>
+                    {selectedBalance.currentPrice
+                      ? formatFiatAmount(
+                          new BigNumber(tokenAmount).times(
+                            selectedBalance.currentPrice,
+                          ),
+                        )
+                      : "--"}
+                  </Text>
+                </View>
+              </View>
+            )}
+          {type === SendType.Collectible && selectedCollectible && (
             <View className="w-full flex-row items-center gap-[16px]">
-              <TokenIcon token={selectedBalance} />
+              <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
+                <CollectibleImage
+                  imageUri={selectedCollectible?.image}
+                  placeholderIconSize={25}
+                />
+              </View>
               <View className="flex-1">
                 <Text xl medium>
-                  {formatTokenForDisplay(
-                    tokenAmount,
-                    selectedBalance.tokenCode,
-                  )}
+                  {selectedCollectible.name}
                 </Text>
                 <Text md medium secondary>
-                  {selectedBalance.currentPrice
-                    ? formatFiatAmount(
-                        new BigNumber(tokenAmount).times(
-                          selectedBalance.currentPrice,
-                        ),
-                      )
-                    : "--"}
+                  {`${selectedCollectible.collectionName} #${selectedCollectible.tokenId}`}
                 </Text>
               </View>
             </View>
           )}
-          <View className="w-[40px] flex items-center">
+          <View className="w-[40px] flex items-center py-1">
             <Icon.ChevronDownDouble
               size={16}
               color={themeColors.foreground.secondary}

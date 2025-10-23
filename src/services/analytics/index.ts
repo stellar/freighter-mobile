@@ -30,6 +30,7 @@ import {
   trackGrantAccessSuccess,
   trackGrantAccessFail,
   trackHistoryOpenItem,
+  trackSendCollectibleSuccess,
 } from "services/analytics/transactions";
 import { identifyUser } from "services/analytics/user";
 
@@ -51,6 +52,7 @@ export interface AnalyticsInstance {
   readonly trackSimulationError: typeof trackSimulationError;
   readonly trackCopyPublicKey: typeof trackCopyPublicKey;
   readonly trackSendPaymentSuccess: typeof trackSendPaymentSuccess;
+  readonly trackSendCollectibleSuccess: typeof trackSendCollectibleSuccess;
   readonly trackSwapSuccess: typeof trackSwapSuccess;
   readonly trackTransactionError: typeof trackTransactionError;
   readonly trackCopyBackupPhrase: typeof trackCopyBackupPhrase;
@@ -109,6 +111,7 @@ export const analytics: AnalyticsInstance = {
   trackSimulationError,
   trackCopyPublicKey,
   trackSendPaymentSuccess,
+  trackSendCollectibleSuccess,
   trackSwapSuccess,
   trackTransactionError,
   trackCopyBackupPhrase,

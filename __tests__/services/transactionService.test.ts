@@ -6,10 +6,14 @@ import {
   Transaction,
   Operation,
 } from "@stellar/stellar-sdk";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { analytics } from "services/analytics";
+import * as backend from "services/backend";
 import {
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
+  simulateCollectibleTransfer,
+  validateSendCollectibleTransactionParams,
 } from "services/transactionService";
 
 jest.mock("services/stellar", () => ({
@@ -34,6 +38,10 @@ jest.mock("services/analytics", () => ({
 
 jest.mock("i18next", () => ({
   t: jest.fn((key: string) => key),
+}));
+
+jest.mock("services/backend", () => ({
+  simulateTransaction: jest.fn(),
 }));
 
 describe("buildSendCollectibleTransaction", () => {
@@ -259,5 +267,156 @@ describe("buildSendCollectibleTransaction", () => {
     expect(parsedTx.timeBounds).toBeDefined();
     expect(parsedTx.timeBounds!.minTime).toBe("0");
     expect(Number(parsedTx.timeBounds!.maxTime)).toBeGreaterThan(0);
+  });
+});
+
+describe("simulateCollectibleTransfer", () => {
+  const mockTransactionXdr = "mock_transaction_xdr";
+  const mockPreparedXdr = "mock_prepared_xdr";
+  const mockNetworkDetails = mapNetworkToNetworkDetails(NETWORKS.TESTNET);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should successfully simulate collectible transfer", async () => {
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: {},
+    });
+
+    const result = await simulateCollectibleTransfer({
+      transactionXdr: mockTransactionXdr,
+      networkDetails: mockNetworkDetails,
+    });
+
+    expect(result).toBe(mockPreparedXdr);
+    expect(backend.simulateTransaction).toHaveBeenCalledWith({
+      xdr: mockTransactionXdr,
+      network_url: mockNetworkDetails.sorobanRpcUrl,
+      network_passphrase: mockNetworkDetails.networkPassphrase,
+    });
+  });
+
+  it("should throw error if Soroban RPC URL is not defined", async () => {
+    const invalidNetworkDetails = {
+      ...mockNetworkDetails,
+      sorobanRpcUrl: undefined,
+    };
+
+    await expect(
+      simulateCollectibleTransfer({
+        transactionXdr: mockTransactionXdr,
+        networkDetails: invalidNetworkDetails,
+      }),
+    ).rejects.toThrow("Soroban RPC URL is not defined for this network");
+  });
+
+  it("should track simulation error when simulation fails", async () => {
+    const mockError = new Error("Simulation failed");
+    (backend.simulateTransaction as jest.Mock).mockRejectedValue(mockError);
+
+    await expect(
+      simulateCollectibleTransfer({
+        transactionXdr: mockTransactionXdr,
+        networkDetails: mockNetworkDetails,
+      }),
+    ).rejects.toThrow("Simulation failed");
+
+    expect(analytics.trackSimulationError).toHaveBeenCalledWith(
+      "Simulation failed",
+      "collectible_transfer",
+    );
+  });
+
+  it("should handle backend error responses", async () => {
+    const backendError = new Error("Backend service unavailable");
+    (backend.simulateTransaction as jest.Mock).mockRejectedValue(backendError);
+
+    await expect(
+      simulateCollectibleTransfer({
+        transactionXdr: mockTransactionXdr,
+        networkDetails: mockNetworkDetails,
+      }),
+    ).rejects.toThrow("Backend service unavailable");
+  });
+});
+
+describe("validateSendCollectibleTransactionParams", () => {
+  it("should return null for valid params", () => {
+    const params = {
+      fee: "0.001",
+      timeout: 300,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBeNull();
+  });
+
+  it("should return error for invalid fee (zero)", () => {
+    const params = {
+      fee: "0",
+      timeout: 300,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBe("transaction.errors.feeRequired");
+  });
+
+  it("should return error for invalid fee (negative)", () => {
+    const params = {
+      fee: "-0.001",
+      timeout: 300,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBe("transaction.errors.feeRequired");
+  });
+
+  it("should return error for invalid timeout (zero)", () => {
+    const params = {
+      fee: "0.001",
+      timeout: 0,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBe("transaction.errors.timeoutRequired");
+  });
+
+  it("should return error for invalid timeout (negative)", () => {
+    const params = {
+      fee: "0.001",
+      timeout: -100,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBe("transaction.errors.timeoutRequired");
+  });
+
+  it("should accept valid positive fee", () => {
+    const params = {
+      fee: "0.01",
+      timeout: 300,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBeNull();
+  });
+
+  it("should accept valid timeout", () => {
+    const params = {
+      fee: "0.001",
+      timeout: 600,
+    };
+
+    const result = validateSendCollectibleTransactionParams(params);
+
+    expect(result).toBeNull();
   });
 });

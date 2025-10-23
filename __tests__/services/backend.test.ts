@@ -266,11 +266,7 @@ describe("Backend Service - Transaction Operations", () => {
 
   describe("simulateTransaction", () => {
     const mockParams: SimulateTransactionParams = {
-      address: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-      pub_key: "GBGFQHJ5KRBCQT2LZF3B7PBVJNRRBHW3QJ7VSDFQSRAQGFXHMMNDVNW7",
-      memo: "test transfer",
-      fee: "1000",
-      params: [] as unknown as xdr.ScVal[],
+      xdr: "xdr",
       network_url: NETWORK_URLS.TESTNET,
       network_passphrase: Networks.TESTNET,
     };
@@ -292,35 +288,13 @@ describe("Backend Service - Transaction Operations", () => {
 
       const result = await simulateTransaction(mockParams);
 
-      expect(mockPost).toHaveBeenCalledWith(
-        "/simulate-transaction",
-        mockParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/simulate-tx", mockParams);
       expect(result).toHaveProperty("simulationResponse");
       expect(result).toHaveProperty("preparedTransaction");
-      expect(result).toHaveProperty("preparedTx");
+      expect(result).toHaveProperty("preparedTransaction");
       expect(result.simulationResponse).toEqual(
         mockSimulationResponse.simulationResponse,
       );
-    });
-
-    it("should handle simulation without optional fee", async () => {
-      const paramsWithoutFee = { ...mockParams };
-      delete paramsWithoutFee.fee;
-
-      mockPost.mockResolvedValue({
-        data: mockSimulationResponse,
-        status: 200,
-        statusText: "OK",
-      });
-
-      const result = await simulateTransaction(paramsWithoutFee);
-
-      expect(mockPost).toHaveBeenCalledWith(
-        "/simulate-transaction",
-        paramsWithoutFee,
-      );
-      expect(result).toHaveProperty("preparedTx");
     });
 
     it("should handle simulation with empty params array", async () => {
@@ -338,7 +312,7 @@ describe("Backend Service - Transaction Operations", () => {
       const result = await simulateTransaction(paramsWithEmptyArray);
 
       expect(result).toHaveProperty("simulationResponse");
-      expect(result).toHaveProperty("preparedTx");
+      expect(result).toHaveProperty("preparedTransaction");
     });
 
     it("should handle simulation errors", async () => {
@@ -354,10 +328,7 @@ describe("Backend Service - Transaction Operations", () => {
       await expect(simulateTransaction(mockParams)).rejects.toEqual(
         errorResponse,
       );
-      expect(mockPost).toHaveBeenCalledWith(
-        "/simulate-transaction",
-        mockParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/simulate-tx", mockParams);
     });
 
     it("should handle network errors", async () => {
@@ -398,10 +369,7 @@ describe("Backend Service - Transaction Operations", () => {
 
       const result = await submitTransaction(mockSubmitParams);
 
-      expect(mockPost).toHaveBeenCalledWith(
-        "/submit-transaction",
-        mockSubmitParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/submit-tx", mockSubmitParams);
       expect(result).toEqual(mockSubmitResponse);
       expect(result.successful).toBe(true);
       expect(result.ledger).toBe(12345);
@@ -416,10 +384,7 @@ describe("Backend Service - Transaction Operations", () => {
 
       await submitTransaction(mockSubmitParams);
 
-      expect(mockPost).toHaveBeenCalledWith(
-        "/submit-transaction",
-        mockSubmitParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/submit-tx", mockSubmitParams);
     });
 
     it("should handle submission with mainnet network", async () => {
@@ -437,10 +402,7 @@ describe("Backend Service - Transaction Operations", () => {
 
       const result = await submitTransaction(mainnetParams);
 
-      expect(mockPost).toHaveBeenCalledWith(
-        "/submit-transaction",
-        mainnetParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/submit-tx", mainnetParams);
       expect(result).toEqual(mockSubmitResponse);
     });
 
@@ -457,10 +419,7 @@ describe("Backend Service - Transaction Operations", () => {
       await expect(submitTransaction(mockSubmitParams)).rejects.toEqual(
         errorResponse,
       );
-      expect(mockPost).toHaveBeenCalledWith(
-        "/submit-transaction",
-        mockSubmitParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/submit-tx", mockSubmitParams);
     });
 
     it("should handle transaction timeout errors", async () => {
@@ -543,10 +502,7 @@ describe("Backend Service - Transaction Operations", () => {
 
       await submitTransaction(differentXdrParams);
 
-      expect(mockPost).toHaveBeenCalledWith(
-        "/submit-transaction",
-        differentXdrParams,
-      );
+      expect(mockPost).toHaveBeenCalledWith("/submit-tx", differentXdrParams);
     });
 
     it("should handle server errors (5xx)", async () => {
@@ -568,10 +524,7 @@ describe("Backend Service - Transaction Operations", () => {
   describe("Integration: simulateTransaction -> submitTransaction", () => {
     it("should support full workflow from simulation to submission", async () => {
       const simulateParams: SimulateTransactionParams = {
-        address: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-        pub_key: "GBGFQHJ5KRBCQT2LZF3B7PBVJNRRBHW3QJ7VSDFQSRAQGFXHMMNDVNW7",
-        memo: "test",
-        params: [] as unknown as xdr.ScVal[],
+        xdr: "xdr",
         network_url: "https://horizon-testnet.stellar.org",
         network_passphrase: "Test SDF Network ; September 2015",
       };
