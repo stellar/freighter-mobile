@@ -1,2 +1,4 @@
-json_key_file("path/to/key.json") # Path to the json secret file - Follow https://docs.fastlane.tools/actions/supply/#setup to get one
-package_name("org.stellar.freighterdev") # e.g. com.krausefx.app
+# frozen_string_literal: true
+
+json_key_file("./fastlane/google-fastlane-secret.json")
+package_name("org.stellar.freighterdev")

@@ -88,5 +88,7 @@ ios/sentry.properties
 *.dSYM.zip
 *.dSYM.tar.gz
 
-# App Store Connect API key
-*.p8
+# Fastlane secret files
+android/fastlane/android-*.json
+android/keystores/
+ios/fastlane/*.p8
