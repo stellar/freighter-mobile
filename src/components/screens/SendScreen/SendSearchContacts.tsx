@@ -1,5 +1,4 @@
 /* eslint-disable react/no-unstable-nested-components */
-import { StackActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -119,11 +118,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow
         // If Review exists in stack, pops back to it; otherwise adds it
-        navigation.dispatch(
-          StackActions.popTo(
-            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-            selectedCollectibleDetails,
-          ),
+        navigation.popTo(
+          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+          selectedCollectibleDetails,
         );
       } else {
         // For token sends, go back to the TransactionAmountScreen

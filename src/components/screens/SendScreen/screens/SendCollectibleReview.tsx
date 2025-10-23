@@ -1,6 +1,5 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { StackActions } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
@@ -160,9 +159,7 @@ const SendCollectibleReviewScreen: React.FC<
   const navigateToSelectContactScreen = () => {
     // Use popTo to navigate back to SearchContacts
     // If SearchContacts exists in stack, pops back to it; otherwise adds it
-    navigation.dispatch(
-      StackActions.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN),
-    );
+    navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
 
   const transactionSecurityAssessment = useMemo(
