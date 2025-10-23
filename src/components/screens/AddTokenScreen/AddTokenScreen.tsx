@@ -73,7 +73,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     balanceItems,
   });
 
-  // Filter search results into verified and unverified tokens
   const categorizedTokens = useMemo(() => {
     const verified = searchResults.filter((token) => !token.isUnableToScan);
     const unverified = searchResults.filter((token) => token.isUnableToScan);
@@ -84,7 +83,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const isTokenSuspicious = scannedToken.isSuspicious;
   const isUnableToScanToken = scannedToken.isUnableToScan;
 
-  // Generate security warnings from the scanned token assessment
   const securityWarnings = useMemo(() => {
     if (isUnableToScanToken) {
       return [
@@ -151,11 +149,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       level: token?.securityLevel || SecurityLevel.SAFE,
     });
 
-    // If token is unable to scan, show security warning first
     if (token?.isUnableToScan) {
       securityWarningBottomSheetModalRef.current?.present();
     } else {
-      // For malicious, suspicious, and safe tokens, go directly to AddTokenBottomSheet
       addTokenBottomSheetModalRef.current?.present();
     }
   }, []);
@@ -391,10 +387,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
           >
             {searchResults.length > 0 ? (
               <>
-                {/* Unverified Tokens Section */}
                 {categorizedTokens.unverified.length > 0 && (
                   <>
-                    {/* Banner for Unverified Tokens */}
                     <View className="mb-2 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2 mt-2">
                       <Icon.Cube01 size={16} color={themeColors.gray[11]} />
                       <Text sm color={themeColors.gray[11]}>
@@ -402,7 +396,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                       </Text>
                     </View>
 
-                    {/* Unverified Header */}
                     <View className="flex-row items-center py-2 gap-2 mt-2 mb-2">
                       <Icon.InfoCircle
                         size={16}
@@ -424,7 +417,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                   </>
                 )}
 
-                {/* Verified Tokens Section */}
                 {categorizedTokens.verified.length > 0 && (
                   <>
                     <View className="flex-row items-center py-2 mt-2 mb-2 gap-2">

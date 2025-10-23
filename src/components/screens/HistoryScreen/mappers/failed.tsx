@@ -15,7 +15,9 @@ interface FailedTransactionHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -26,7 +28,9 @@ export const mapFailedTransactionHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
+  xdr,
 }: FailedTransactionHistoryItemData): HistoryItemData => {
   const { id } = operation;
 
@@ -44,6 +48,8 @@ export const mapFailedTransactionHistoryItem = ({
     IconComponent,
     ActionIconComponent,
     fee,
+    memo,
+    xdr,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
   };
 

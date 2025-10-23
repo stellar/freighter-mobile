@@ -99,6 +99,7 @@ export const ADD_FUNDS_ROUTES = {
 } as const;
 
 export const SEND_PAYMENT_ROUTES = {
+  SEND_COLLECTIBLE_REVIEW: "SendCollectibleReview",
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
   TRANSACTION_AMOUNT_SCREEN: "TransactionAmountScreen",
@@ -220,6 +221,10 @@ export type AddFundsStackParamList = {
 
 export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
+    tokenId: string;
+    collectionAddress: string;
+  };
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;

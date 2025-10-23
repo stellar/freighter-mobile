@@ -476,10 +476,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       }
     }
 
-    // Add "unable to scan" warnings
-    // Transaction-level "unable to scan" warnings are excluded from swap flow
-
-    // Only add source "unable to scan" warning if we should show security warnings
     if (showSecurityWarningForSource) {
       warnings.push({
         id: "unable-to-scan-source",

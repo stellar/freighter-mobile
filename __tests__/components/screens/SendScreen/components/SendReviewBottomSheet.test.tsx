@@ -1,6 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { userEvent } from "@testing-library/react-native";
 import { SendReviewBottomSheet } from "components/screens/SendScreen/components";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -52,6 +53,7 @@ jest.mock("hooks/useClipboard", () => ({
 
 describe("SendReviewBottomSheet", () => {
   const defaultProps = {
+    type: SendType.Token,
     selectedBalance: mockBalances[0] as any,
     tokenAmount: "100",
     onBannerPress: jest.fn(),

@@ -15,6 +15,7 @@ import {
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -24,6 +25,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   FIAT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -60,6 +62,7 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
+import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
@@ -96,6 +99,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     selectedTokenId,
     saveSelectedTokenId,
     saveRecipientAddress,
+    saveSelectedCollectibleDetails,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -105,8 +109,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     if (tokenId) {
       saveSelectedTokenId(tokenId);
+      // Clear collectible details when entering token flow to prevent cross-flow contamination
+      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
     }
-  }, [tokenId, saveSelectedTokenId]);
+  }, [tokenId, saveSelectedTokenId, saveSelectedCollectibleDetails]);
 
   useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
@@ -124,15 +130,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionHash,
   } = useTransactionBuilderStore();
 
-  // Reset everything on unmount
+  // Reset transaction on unmount, but keep selectedTokenId and settings
+  // so navigation between Amount and SearchContacts/TokenScreen works correctly
   useEffect(
     () => () => {
-      saveSelectedTokenId("");
-      resetSendRecipient();
-      resetSettings();
       resetTransaction();
     },
-    [resetSettings, resetSendRecipient, saveSelectedTokenId, resetTransaction],
+    [resetTransaction],
   );
 
   const { isValidatingMemo, isMemoMissing } =
@@ -201,7 +205,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   });
 
   const selectedBalance = balanceItems.find(
-    (item) => item.id === selectedTokenId,
+    (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
@@ -423,7 +427,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } else {
           analytics.trackTransactionError({
             error: "Transaction failed",
-            transactionType: "payment",
+            operationType: TransactionOperationType.Payment,
           });
         }
       } catch (error) {
@@ -435,7 +439,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         analytics.trackTransactionError({
           error: error instanceof Error ? error.message : String(error),
-          transactionType: "payment",
+          operationType: TransactionOperationType.Payment,
         });
       }
     };
@@ -453,6 +457,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleProcessingScreenClose = () => {
     setIsProcessing(false);
     resetTransaction();
+    // Clean up stores when exiting the send flow
+    saveSelectedTokenId("");
+    resetSendRecipient();
+    resetSettings();
 
     if (account?.publicKey) {
       fetchAccountHistory({
@@ -653,6 +661,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
+        type={SendType.Token}
         key={selectedTokenId}
         onClose={handleProcessingScreenClose}
         transactionAmount={tokenAmount}
@@ -816,6 +825,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         scrollable
         customContent={
           <SendReviewBottomSheet
+            type={SendType.Token}
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
             onBannerPress={bannerContent?.onPress}

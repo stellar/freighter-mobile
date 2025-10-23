@@ -33,7 +33,10 @@
     "hash": "Hash",
     "salt": "Salt",
     "wallet": "Wallet",
-    "copy": "Copy"
+    "copy": "Copy",
+    "name": "Name",
+    "collection": "Collection",
+    "tokenId": "Token ID"
   },
   "home": {
     "title": "Home",
@@ -339,7 +342,11 @@
       "minted": "Minted",
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Unknown Collectible",
+        "unknownCollection": "Collection {{contractId}}"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "View on stellar.expert",
@@ -807,6 +814,7 @@
   },
   "transactionDetailsBottomSheet": {
     "sent": "Sent {{tokenCode}}",
+    "sentCollectible": "Sent Collectible",
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",

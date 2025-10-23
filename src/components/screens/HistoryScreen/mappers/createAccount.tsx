@@ -26,8 +26,10 @@ interface CreateAccountHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
   isCreateExternalAccount: boolean;
+  xdr: string;
 }
 
 /**
@@ -38,8 +40,10 @@ export const mapCreateAccountHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
   isCreateExternalAccount,
+  xdr,
 }: CreateAccountHistoryItemData): HistoryItemData => {
   const { account, starting_balance: startingBalance, funder } = operation;
   const isRecipient = !isCreateExternalAccount;
@@ -63,6 +67,8 @@ export const mapCreateAccountHistoryItem = ({
       transactionTitle: NATIVE_TOKEN_CODE,
       transactionType: TransactionType.PAYMENT,
       fee,
+      memo,
+      xdr,
       status: TransactionStatus.SUCCESS,
       IconComponent: senderIcon,
       ActionIconComponent: senderActionIcon,
@@ -104,6 +110,8 @@ export const mapCreateAccountHistoryItem = ({
     transactionTitle: t("history.transactionHistory.accountFunded"),
     transactionType: TransactionType.CREATE_ACCOUNT,
     fee,
+    memo,
+    xdr,
     status: TransactionStatus.SUCCESS,
     IconComponent: null,
     ActionIconComponent: recipientActionIcon,

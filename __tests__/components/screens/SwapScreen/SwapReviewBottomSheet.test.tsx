@@ -247,7 +247,6 @@ describe("SwapReviewBottomSheet", () => {
 
   describe("Unable to scan states", () => {
     it("shows unable to scan banner when transaction scan fails", () => {
-      // When transactionScanResult is undefined/null, it should trigger unable to scan
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
@@ -259,7 +258,6 @@ describe("SwapReviewBottomSheet", () => {
     });
 
     it("shows unable to scan banner when source token scan fails", () => {
-      // When sourceTokenScanResult is undefined/null, it should trigger unable to scan
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
@@ -271,7 +269,6 @@ describe("SwapReviewBottomSheet", () => {
     });
 
     it("shows unable to scan banner when destination token scan fails", () => {
-      // When destTokenScanResult is undefined/null, it should trigger unable to scan
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
@@ -290,8 +287,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // The banner should be rendered with "Proceed with caution" text
-      // This indicates the warning variant is being used (amber colors)
       expect(getByText("Proceed with caution")).toBeTruthy();
     });
 
@@ -390,7 +385,7 @@ describe("SwapReviewBottomSheet", () => {
         <SwapReviewBottomSheet
           {...defaultProps}
           transactionScanResult={maliciousTransactionScan}
-          sourceTokenScanResult={undefined} // This would trigger unable to scan
+          sourceTokenScanResult={undefined}
         />,
       );
 
@@ -408,7 +403,7 @@ describe("SwapReviewBottomSheet", () => {
         <SwapReviewBottomSheet
           {...defaultProps}
           transactionScanResult={suspiciousTransactionScan}
-          sourceTokenScanResult={undefined} // This would trigger unable to scan
+          sourceTokenScanResult={undefined}
         />,
       );
 
