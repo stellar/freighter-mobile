@@ -193,7 +193,6 @@ describe("SendReviewBottomSheet", () => {
         />,
       );
 
-      // Should show malicious message, not suspicious
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
@@ -208,7 +207,6 @@ describe("SendReviewBottomSheet", () => {
         />,
       );
 
-      // Should show malicious message, not unable to scan
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
@@ -223,7 +221,6 @@ describe("SendReviewBottomSheet", () => {
         />,
       );
 
-      // Should show suspicious message, not unable to scan
       expect(getByText("This address was flagged as suspicious")).toBeTruthy();
     });
 
@@ -239,7 +236,6 @@ describe("SendReviewBottomSheet", () => {
         />,
       );
 
-      // Should show the highest priority message (malicious)
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
   });
@@ -269,7 +265,6 @@ describe("SendReviewBottomSheet", () => {
         />,
       );
 
-      // Should show malicious message, not memo missing
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
   });

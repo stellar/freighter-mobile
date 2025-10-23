@@ -215,13 +215,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [transactionScanResult, overriddenBlockaidResponse],
   );
 
-  // XLM exclusion logic: Don't show security warnings for XLM transactions
-  const shouldShowSecurityWarnings = useMemo(
-    () =>
-      transactionSecurityAssessment.isUnableToScan && selectedTokenId !== "XLM",
-    [transactionSecurityAssessment.isUnableToScan, selectedTokenId],
-  );
-
   const {
     tokenAmount,
     tokenAmountDisplay,
@@ -360,32 +353,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               logger.info("TransactionAmountScreen", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
 
-              // Check if the transaction scan result is "unable to scan"
               const assessment = assessTransactionSecurity(
                 scanResult,
                 overriddenBlockaidResponse,
               );
               const isUnableToScan = !scanResult || assessment.isUnableToScan;
-              const shouldShowWarnings =
-                isUnableToScan && selectedTokenId !== "XLM";
 
-              if (shouldShowWarnings) {
-                // For "unable to scan" cases, show SecurityDetailBottomSheet first
+              if (isUnableToScan) {
                 transactionSecurityWarningBottomSheetModalRef.current?.present();
               } else {
-                // For other cases, go directly to review screen
                 reviewBottomSheetModalRef.current?.present();
               }
             })
             .catch(() => {
               setTransactionScanResult(undefined);
-              // If scan fails, treat as "unable to scan" but only show warnings for non-XLM tokens
-              if (selectedTokenId !== "XLM") {
-                transactionSecurityWarningBottomSheetModalRef.current?.present();
-              } else {
-                // For XLM, go directly to review screen even if scan fails
-                reviewBottomSheetModalRef.current?.present();
-              }
+              transactionSecurityWarningBottomSheetModalRef.current?.present();
             });
         }
       } catch (error) {
@@ -405,7 +387,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       scanTransaction,
       recipientAddress,
       overriddenBlockaidResponse,
-      selectedTokenId,
     ],
   );
 
@@ -597,15 +578,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleConfirmAnyway = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    // Check if this was an "unable to scan" case
     const isUnableToScan =
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
-      // For "unable to scan" cases, show the review screen with banner
       reviewBottomSheetModalRef.current?.present();
     } else {
-      // For other cases, proceed with the transaction
       handleTransactionConfirmation();
     }
   }, [
@@ -627,7 +605,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isRequiredMemoMissing ||
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious ||
-      shouldShowSecurityWarnings;
+      transactionSecurityAssessment.isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
       return undefined;
@@ -667,7 +645,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
     transactionSecurityAssessment.isUnableToScan,
-    shouldShowSecurityWarnings,
     t,
     openSecurityWarningBottomSheet,
     openAddMemoExplanationBottomSheet,

@@ -87,7 +87,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   // Generate security warnings from the scanned token assessment
   const securityWarnings = useMemo(() => {
     if (isUnableToScanToken) {
-      // For "Unable to scan" cases, always provide a warning so the list renders
       return [
         {
           id: "unable-to-scan",
@@ -96,7 +95,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
       ];
     }
 
-    // For other cases, use the warnings from the selected token
     return selectedToken?.securityWarnings || [];
   }, [
     isUnableToScanToken,

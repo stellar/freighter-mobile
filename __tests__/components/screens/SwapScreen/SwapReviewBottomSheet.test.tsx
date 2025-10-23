@@ -319,7 +319,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show "Proceed with caution" (transaction unable to scan takes priority)
       expect(getByText("Proceed with caution")).toBeTruthy();
     });
 
@@ -357,7 +356,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show transaction malicious message, not asset malicious
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
@@ -378,7 +376,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show asset malicious banner
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
     });
 
@@ -397,7 +394,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show malicious message, not unable to scan
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
@@ -416,7 +412,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show suspicious message, not unable to scan
       expect(getByText("This address was flagged as suspicious")).toBeTruthy();
     });
   });

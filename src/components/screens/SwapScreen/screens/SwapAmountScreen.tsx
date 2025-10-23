@@ -419,19 +419,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleMainButtonPress = useCallback(async () => {
     if (destinationBalance) {
-      // Check if any security assessment is "unable to scan"
-
       const isUnableToScan =
         showSecurityWarningForSource ||
         destBalanceSecurityAssessment.isUnableToScan;
 
       if (isUnableToScan) {
-        // For "unable to scan" cases, prepare transaction but don't open review yet
         await prepareSwapTransaction(false);
-        // Show SecurityDetailBottomSheet first
         transactionSecurityWarningBottomSheetModalRef.current?.present();
       } else {
-        // For other cases, prepare transaction and go directly to review screen
         await prepareSwapTransaction(true);
       }
     } else {
@@ -523,7 +518,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
 
-  // Check if any security assessment is "unable to scan"
   const isUnableToScan =
     showSecurityWarningForSource ||
     destBalanceSecurityAssessment.isUnableToScan;
@@ -533,28 +527,25 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
-    // Transaction-level "unable to scan" is excluded from swap flow
+    if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    isUnableToScan,
   ]);
 
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
-    // Check if this was an "unable to scan" case
 
     const isUnableToScanConfirm =
       showSecurityWarningForSource ||
       destBalanceSecurityAssessment.isUnableToScan;
 
     if (isUnableToScanConfirm) {
-      // For "unable to scan" cases, show the review screen with banner
       swapReviewBottomSheetModalRef.current?.present();
     } else {
-      // For other cases, proceed with the swap
       handleConfirmSwap();
     }
   };
