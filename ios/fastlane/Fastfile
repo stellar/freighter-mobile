@@ -17,7 +17,15 @@
 require 'dotenv'
 Dotenv.load('../../.env')
 
+opt_out_usage
+
 default_platform(:ios)
+
+# def replace_in_file(file, find:, replace:)
+#   contents = File.read(file)
+#   contents.gsub!(find, replace)
+#   File.open(file, "w") {|io| io << contents }
+# end
 
 platform :ios do
   desc "Push a new beta build to TestFlight"
