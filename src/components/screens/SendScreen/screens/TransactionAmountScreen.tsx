@@ -60,7 +60,7 @@ import React, {
 } from "react";
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
   extractSecurityWarnings,
@@ -358,9 +358,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 scanResult,
                 overriddenBlockaidResponse,
               );
-              const isUnableToScan =
-                !scanResult ||
-                assessment.level === SecurityLevel.UNABLE_TO_SCAN;
+              const isUnableToScan = !scanResult || assessment.isUnableToScan;
 
               if (isUnableToScan) {
                 // For "unable to scan" cases, show SecurityDetailBottomSheet first
@@ -392,6 +390,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
+      overriddenBlockaidResponse,
     ],
   );
 
@@ -488,6 +487,18 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const transactionSecurityWarnings = useMemo(() => {
+    if (transactionSecurityAssessment.isUnableToScan) {
+      // For "Unable to scan" cases, always provide a warning so the list renders
+      return [
+        {
+          id: "unable-to-scan",
+          description:
+            transactionSecurityAssessment.details ||
+            t("blockaid.unableToScan.info"),
+        },
+      ];
+    }
+
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious
@@ -503,7 +514,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
+    transactionSecurityAssessment.details,
     transactionScanResult,
+    t,
   ]);
 
   const transactionSecuritySeverity = useMemo(() => {
@@ -511,11 +525,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
+    if (transactionSecurityAssessment.isUnableToScan)
+      return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
   ]);
 
   const handleCancelReview = useCallback(() => {
@@ -567,8 +584,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     // Check if this was an "unable to scan" case
     const isUnableToScan =
-      !transactionScanResult ||
-      transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+      !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
       // For "unable to scan" cases, show the review screen with banner
@@ -580,7 +596,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [
     handleTransactionConfirmation,
     transactionScanResult,
-    transactionSecurityAssessment.level,
+    transactionSecurityAssessment.isUnableToScan,
   ]);
 
   const openSecurityWarningBottomSheet = useCallback(() => {
@@ -869,7 +885,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+            securityContext={SecurityContext.TRANSACTION}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

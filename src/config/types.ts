@@ -307,6 +307,7 @@ export type FormattedSearchTokenRecord = {
   decimals?: number;
   isSuspicious?: boolean;
   isMalicious?: boolean;
+  isUnableToScan?: boolean;
   securityLevel?: SecurityLevel;
   securityWarnings?: SecurityWarning[];
 };

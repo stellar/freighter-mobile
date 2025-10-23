@@ -75,8 +75,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
-  const isUnableToScanToken =
-    scannedToken.level === SecurityLevel.UNABLE_TO_SCAN;
+  const isUnableToScanToken = scannedToken.isUnableToScan;
 
   // Generate security warnings from the scanned token assessment
   const securityWarnings = useMemo(() => {
@@ -86,7 +85,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
         {
           id: "unable-to-scan",
           description:
-            scannedToken.details || t("blockaid.addTokenUnableToScan.reason"),
+            scannedToken.details ||
+            t("blockaid.unableToScan.token.description"),
         },
       ];
     }
@@ -144,11 +144,12 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     setScannedToken({
       isMalicious: token?.isMalicious || false,
       isSuspicious: token?.isSuspicious || false,
+      isUnableToScan: token?.isUnableToScan || false,
       level: token?.securityLevel || SecurityLevel.SAFE,
     });
 
     // If token is unable to scan, show security warning first
-    if (token?.securityLevel === SecurityLevel.UNABLE_TO_SCAN) {
+    if (token?.isUnableToScan) {
       securityWarningBottomSheetModalRef.current?.present();
     } else {
       // For malicious, suspicious, and safe tokens, go directly to AddTokenBottomSheet

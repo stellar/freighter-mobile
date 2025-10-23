@@ -98,6 +98,7 @@ export const useTokenLookup = ({
         ...token,
         isSuspicious: securityInfo.isSuspicious,
         isMalicious: securityInfo.isMalicious,
+        isUnableToScan: securityInfo.isUnableToScan,
         securityLevel: securityInfo.level,
         securityWarnings: extractSecurityWarnings(scanResult),
       };

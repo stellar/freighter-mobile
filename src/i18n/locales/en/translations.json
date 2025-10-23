@@ -558,8 +558,9 @@
   "securityWarning": {
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
-    "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
-    "token": "This token does not appear safe for the following reasons.",
+    "proceedWithCaution": "Proceed with caution",
+    "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
+    "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
     "connectAnyway": "Connect anyway",
     "poweredBy": "Powered by",
@@ -1051,22 +1052,16 @@
       },
       "token": {
         "title": "Unable to scan token",
-        "description": "We were unable to scan this token for security threats. The token may be safe, but we cannot verify its security status."
+        "description": "Unable to scan token."
       },
       "site": {
         "title": "Unable to scan site",
         "description": "We were unable to scan this site for security threats. The site may be safe, but we cannot verify its security status."
       },
-      "transaction": {
-        "title": "Unable to scan transaction",
-        "description": "We were unable to scan this transaction for security threats. The transaction may be safe, but we cannot verify its security status."
-      },
+      "transaction": "Unable to scan transaction",
+      "sourceToken": "Unable to scan source token",
+      "destinationToken": "Unable to scan destination token",
       "info": "This does not mean the item is malicious - it simply means we cannot verify its security status."
-    },
-    "addTokenUnableToScan": {
-      "title": "Proceed with caution",
-      "description": "This transaction does not appear safe for the following reasons.",
-      "reason": "Unable to scan token"
     }
   },
   "signTransactionDetails": {

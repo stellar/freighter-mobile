@@ -413,21 +413,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleMainButtonPress = useCallback(async () => {
     if (destinationBalance) {
-      await prepareSwapTransaction(true);
-
       // Check if any security assessment is "unable to scan"
       const isUnableToScan =
-        transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
-        sourceBalanceSecurityAssessment.level ===
-          SecurityLevel.UNABLE_TO_SCAN ||
-        destBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+        transactionSecurityAssessment.isUnableToScan ||
+        sourceBalanceSecurityAssessment.isUnableToScan ||
+        destBalanceSecurityAssessment.isUnableToScan;
 
       if (isUnableToScan) {
-        // For "unable to scan" cases, show SecurityDetailBottomSheet first
+        // For "unable to scan" cases, prepare transaction but don't open review yet
+        await prepareSwapTransaction(false);
+        // Show SecurityDetailBottomSheet first
         transactionSecurityWarningBottomSheetModalRef.current?.present();
       } else {
-        // For other cases, go directly to review screen
-        swapReviewBottomSheetModalRef.current?.present();
+        // For other cases, prepare transaction and go directly to review screen
+        await prepareSwapTransaction(true);
       }
     } else {
       navigateToSelectDestinationTokenScreen();
@@ -436,9 +435,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationBalance,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
-    transactionSecurityAssessment.level,
-    sourceBalanceSecurityAssessment.level,
-    destBalanceSecurityAssessment.level,
+    transactionSecurityAssessment.isUnableToScan,
+    sourceBalanceSecurityAssessment.isUnableToScan,
+    destBalanceSecurityAssessment.isUnableToScan,
   ]);
 
   // Reset everything on unmount
@@ -456,6 +455,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   const securityWarnings = useMemo(() => {
+    const warnings = [];
+
+    // Add warnings for malicious and suspicious cases
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious ||
@@ -464,38 +466,52 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       destBalanceSecurityAssessment.isMalicious ||
       destBalanceSecurityAssessment.isSuspicious
     ) {
-      const warnings = [
+      const extractedWarnings = [
         ...extractSecurityWarnings(transactionScanResult),
         ...Object.values(scanResults).map(extractSecurityWarnings),
       ].flat();
 
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
+      if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
+        warnings.push(...extractedWarnings);
       }
     }
 
-    return [];
+    // Add "unable to scan" warnings
+    if (transactionSecurityAssessment.isUnableToScan) {
+      warnings.push({
+        id: "unable-to-scan-transaction",
+        description: t("blockaid.unableToScan.transaction"),
+      });
+    }
+
+    if (sourceBalanceSecurityAssessment.isUnableToScan) {
+      warnings.push({
+        id: "unable-to-scan-source",
+        description: t("blockaid.unableToScan.sourceToken"),
+      });
+    }
+
+    if (destBalanceSecurityAssessment.isUnableToScan) {
+      warnings.push({
+        id: "unable-to-scan-destination",
+        description: t("blockaid.unableToScan.destinationToken"),
+      });
+    }
+
+    return warnings;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
     sourceBalanceSecurityAssessment.isMalicious,
     sourceBalanceSecurityAssessment.isSuspicious,
+    sourceBalanceSecurityAssessment.isUnableToScan,
     destBalanceSecurityAssessment.isMalicious,
     destBalanceSecurityAssessment.isSuspicious,
+    destBalanceSecurityAssessment.isUnableToScan,
     transactionScanResult,
     scanResults,
-  ]);
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
+    t,
   ]);
 
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
@@ -507,16 +523,37 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
 
+  // Check if any security assessment is "unable to scan"
+  const isUnableToScan =
+    transactionSecurityAssessment.isUnableToScan ||
+    sourceBalanceSecurityAssessment.isUnableToScan ||
+    destBalanceSecurityAssessment.isUnableToScan;
+
+  const transactionSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious)
+      return SecurityLevel.MALICIOUS;
+    if (transactionSecurityAssessment.isSuspicious)
+      return SecurityLevel.SUSPICIOUS;
+    if (transactionSecurityAssessment.isUnableToScan)
+      return SecurityLevel.UNABLE_TO_SCAN;
+
+    return undefined;
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
+  ]);
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     // Check if this was an "unable to scan" case
-    const isUnableToScan =
-      transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
-      sourceBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN ||
-      destBalanceSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+    const isUnableToScanCase =
+      transactionSecurityAssessment.isUnableToScan ||
+      sourceBalanceSecurityAssessment.isUnableToScan ||
+      destBalanceSecurityAssessment.isUnableToScan;
 
-    if (isUnableToScan) {
+    if (isUnableToScanCase) {
       // For "unable to scan" cases, show the review screen with banner
       swapReviewBottomSheetModalRef.current?.present();
     } else {
@@ -731,7 +768,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+            proceedAnywayText={
+              isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

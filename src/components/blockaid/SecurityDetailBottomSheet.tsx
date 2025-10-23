@@ -86,7 +86,7 @@ export const SecurityDetailBottomSheet: React.FC<
     if (isUnableToScan) {
       return (
         <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
-          <Icon.AlertTriangle themeColor="amber" />
+          <Icon.AlertCircle themeColor="amber" />
         </View>
       );
     }
@@ -163,7 +163,16 @@ export const SecurityDetailBottomSheet: React.FC<
   const getDescription = useMemo(
     () => () => {
       if (isUnableToScan) {
-        return t("blockaid.addTokenUnableToScan.description");
+        switch (securityContext) {
+          case SecurityContext.TOKEN:
+            return t("securityWarning.token");
+          case SecurityContext.SITE:
+            return t("blockaid.unableToScan.site.description");
+          case SecurityContext.TRANSACTION:
+            return t("securityWarning.unsafeTransaction");
+          default:
+            return t("blockaid.unableToScan.info");
+        }
       }
 
       switch (securityContext) {
@@ -191,7 +200,7 @@ export const SecurityDetailBottomSheet: React.FC<
       <Text xl primary>
         {(() => {
           if (isMalicious) return t("securityWarning.doNotProceed");
-          if (isUnableToScan) return t("blockaid.addTokenUnableToScan.title");
+          if (isUnableToScan) return t("securityWarning.proceedWithCaution");
           return t("securityWarning.suspiciousRequest");
         })()}
       </Text>

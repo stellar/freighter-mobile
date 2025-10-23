@@ -29,6 +29,7 @@ export interface SecurityAssessment {
   level: SecurityLevel;
   isSuspicious: boolean;
   isMalicious: boolean;
+  isUnableToScan: boolean;
   details?: string;
 }
 
@@ -55,6 +56,7 @@ export const createSecurityAssessment = (
     level !== SecurityLevel.MALICIOUS &&
     level !== SecurityLevel.UNABLE_TO_SCAN,
   isMalicious: level === SecurityLevel.MALICIOUS,
+  isUnableToScan: level === SecurityLevel.UNABLE_TO_SCAN,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
     : undefined,

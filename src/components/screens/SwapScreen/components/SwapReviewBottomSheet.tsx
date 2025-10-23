@@ -34,7 +34,6 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
   assessTransactionSecurity,
@@ -161,28 +160,19 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     overriddenBlockaidResponse,
   );
 
-  const {
-    isMalicious: isTxMalicious,
-    isSuspicious: isTxSuspicious,
-    level: txLevel,
-  } = transactionSecurityAssessment;
-  const {
-    isMalicious: isSourceMalicious,
-    isSuspicious: isSourceSuspicious,
-    level: sourceLevel,
-  } = sourceSecurityAssessment;
-  const {
-    isMalicious: isDestMalicious,
-    isSuspicious: isDestSuspicious,
-    level: destLevel,
-  } = destSecurityAssessment;
+  const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
+    transactionSecurityAssessment;
+  const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
+    sourceSecurityAssessment;
+  const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
+    destSecurityAssessment;
 
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
   const isUnableToScanToken =
-    txLevel === SecurityLevel.UNABLE_TO_SCAN ||
-    sourceLevel === SecurityLevel.UNABLE_TO_SCAN ||
-    destLevel === SecurityLevel.UNABLE_TO_SCAN;
+    transactionSecurityAssessment.isUnableToScan ||
+    sourceSecurityAssessment.isUnableToScan ||
+    destSecurityAssessment.isUnableToScan;
 
   const bannerText = useMemo(() => {
     if (isTxMalicious) {
@@ -461,7 +451,9 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
       if (!isTrusted) {
         return (
-          <View className={`${isUnableToScanToken ? "flex-row gap-3" : ""}`}>
+          <View
+            className={`${isUnableToScanToken ? "flex-row gap-3" : "gap-3"}`}
+          >
             {cancelButton}
             {confirmAnywayButton}
           </View>

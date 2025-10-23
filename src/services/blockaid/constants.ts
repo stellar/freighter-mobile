@@ -62,9 +62,8 @@ export const SECURITY_MESSAGE_KEYS = {
   UNABLE_TO_SCAN_TOKEN_DESCRIPTION: "blockaid.unableToScan.token.description",
   UNABLE_TO_SCAN_SITE_TITLE: "blockaid.unableToScan.site.title",
   UNABLE_TO_SCAN_SITE_DESCRIPTION: "blockaid.unableToScan.site.description",
-  UNABLE_TO_SCAN_TRANSACTION_TITLE: "blockaid.unableToScan.transaction.title",
-  UNABLE_TO_SCAN_TRANSACTION_DESCRIPTION:
-    "blockaid.unableToScan.transaction.description",
+  UNABLE_TO_SCAN_TRANSACTION_TITLE: "blockaid.unableToScan.transaction",
+  UNABLE_TO_SCAN_TRANSACTION_DESCRIPTION: "blockaid.unableToScan.info",
 } as const;
 
 /**

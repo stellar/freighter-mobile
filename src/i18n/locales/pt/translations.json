@@ -522,8 +522,9 @@
   "securityWarning": {
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
-    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
-    "token": "Este token não parece seguro pelos seguintes motivos.",
+    "proceedWithCaution": "Proceda com cautela",
+    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
+    "token": "Este token não parece seguro pelos seguintes motivos:",
     "cancel": "Cancelar",
     "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",
@@ -1052,22 +1053,16 @@
       },
       "token": {
         "title": "Não foi possível escanear o token",
-        "description": "Não conseguimos escanear este token em busca de ameaças de segurança. O token pode ser seguro, mas não podemos verificar seu status de segurança."
+        "description": "Não foi possível escanear o token."
       },
       "site": {
         "title": "Não foi possível escanear o site",
         "description": "Não conseguimos escanear este site em busca de ameaças de segurança. O site pode ser seguro, mas não podemos verificar seu status de segurança."
       },
-      "transaction": {
-        "title": "Não foi possível escanear a transação",
-        "description": "Não conseguimos escanear esta transação em busca de ameaças de segurança. A transação pode ser segura, mas não podemos verificar seu status de segurança."
-      },
+      "transaction": "Não foi possível escanear a transação",
+      "sourceToken": "Não foi possível escanear o token de origem",
+      "destinationToken": "Não foi possível escanear o token de destino",
       "info": "Isso não significa que o item é malicioso - simplesmente significa que não podemos verificar seu status de segurança."
-    },
-    "addTokenUnableToScan": {
-      "title": "Prossiga com cautela",
-      "description": "Esta transação não parece segura pelos seguintes motivos.",
-      "reason": "Não foi possível escanear o token"
     }
   },
   "signTransactionDetails": {
