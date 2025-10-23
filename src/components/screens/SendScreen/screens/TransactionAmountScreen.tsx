@@ -611,7 +611,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     const shouldShowNoticeBanner =
       isRequiredMemoMissing ||
       transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious;
+      transactionSecurityAssessment.isSuspicious ||
+      transactionSecurityAssessment.isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
       return undefined;
@@ -633,6 +634,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       };
     }
 
+    if (transactionSecurityAssessment.isUnableToScan) {
+      return {
+        text: t("securityWarning.proceedWithCaution"),
+        variant: "warning" as const,
+        onPress: openSecurityWarningBottomSheet,
+      };
+    }
+
     return {
       text: t("transactionAmountScreen.errors.memoMissing"),
       variant: "error" as const,
@@ -642,6 +651,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isRequiredMemoMissing,
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
     t,
     openSecurityWarningBottomSheet,
     openAddMemoExplanationBottomSheet,
@@ -820,6 +830,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             isRequiredMemoMissing={isRequiredMemoMissing}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}

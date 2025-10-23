@@ -97,7 +97,7 @@ describe("SwapReviewBottomSheet", () => {
   const defaultProps = {
     onCancel: jest.fn(),
     onConfirm: jest.fn(),
-    onBannerPress: jest.fn(),
+    onSecurityWarningPress: jest.fn(),
     transactionScanResult: undefined,
     sourceTokenScanResult: undefined,
     destTokenScanResult: undefined,
@@ -177,7 +177,7 @@ describe("SwapReviewBottomSheet", () => {
       );
 
       await user.press(getByText("This address was flagged as malicious"));
-      expect(defaultProps.onBannerPress).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
     }, 10000);
   });
 

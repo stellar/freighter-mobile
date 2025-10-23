@@ -41,6 +41,7 @@ type SendReviewBottomSheetProps = {
   onBannerPress?: () => void;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
   /**
    * Text to display in the banner
    */
@@ -75,6 +76,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   onBannerPress,
   isMalicious,
   isSuspicious,
+  isUnableToScan,
   bannerText,
   bannerVariant,
   signTransactionDetails,
@@ -156,12 +158,22 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * - When a required memo is missing
    * - When the transaction is flagged as malicious
    * - When the transaction is flagged as suspicious
+   * - When the transaction is unable to scan
    * Includes a call-to-action button to add the required memo
    *
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
    */
   const renderBanner = () => {
-    if (!isRequiredMemoMissing && !isMalicious && !isSuspicious) {
+    console.log("isRequiredMemoMissing", isRequiredMemoMissing);
+    console.log("isMalicious", isMalicious);
+    console.log("isSuspicious", isSuspicious);
+    console.log("isUnableToScan", isUnableToScan);
+    if (
+      !isRequiredMemoMissing &&
+      !isMalicious &&
+      !isSuspicious &&
+      !isUnableToScan
+    ) {
       return null;
     }
 
@@ -171,7 +183,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <Banner
-        variant={bannerVariant || "error"}
+        variant={
+          isSuspicious || isUnableToScan ? "warning" : bannerVariant || "error"
+        }
         text={bannerText}
         onPress={onBannerPress}
       />

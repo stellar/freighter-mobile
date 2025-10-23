@@ -192,7 +192,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     }
 
     if (isUnableToScanToken) {
-      return t("blockaid.unableToScan.default.title");
+      return t("securityWarning.proceedWithCaution");
     }
 
     return t("transactionAmountScreen.errors.malicious");

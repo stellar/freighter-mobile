@@ -279,7 +279,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           text={(() => {
             if (isMalicious) return t("addTokenScreen.maliciousToken");
             if (isSuspicious) return t("addTokenScreen.suspiciousToken");
-            return t("blockaid.addTokenUnableToScan.title");
+            return t("securityWarning.proceedWithCaution");
           })()}
           onPress={onSecurityWarningPress}
           className="mt-4"
