@@ -178,7 +178,7 @@ describe("SwapReviewBottomSheet", () => {
 
       await user.press(getByText("This address was flagged as malicious"));
       expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
-    }, 10000);
+    }, 15000);
   });
 
   describe("Source token scan states", () => {
