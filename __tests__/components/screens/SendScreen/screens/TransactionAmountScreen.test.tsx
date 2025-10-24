@@ -332,6 +332,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
+    saveSelectedCollectibleDetails: jest.fn(),
     resetSettings: jest.fn(),
   };
 
@@ -923,6 +924,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
+    saveSelectedCollectibleDetails: jest.fn(),
     resetSettings: jest.fn(),
   };
 

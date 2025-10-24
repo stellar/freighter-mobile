@@ -6,6 +6,7 @@ import {
   TransactionTokenScreen,
   TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
+import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -38,6 +39,13 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN}
         component={TransactionAmountScreen}
+        options={{
+          headerTitle: t("transactionAmountScreen.title"),
+        }}
+      />
+      <SendPaymentStack.Screen
+        name={SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW}
+        component={SendCollectibleReviewScreen}
         options={{
           headerTitle: t("transactionAmountScreen.title"),
         }}

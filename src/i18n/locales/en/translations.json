@@ -33,7 +33,10 @@
     "hash": "Hash",
     "salt": "Salt",
     "wallet": "Wallet",
-    "copy": "Copy"
+    "copy": "Copy",
+    "name": "Name",
+    "collection": "Collection",
+    "tokenId": "Token ID"
   },
   "home": {
     "title": "Home",
@@ -339,7 +342,11 @@
       "minted": "Minted",
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Unknown Collectible",
+        "unknownCollection": "Collection {{contractId}}"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "View on stellar.expert",
@@ -801,6 +808,7 @@
   },
   "transactionDetailsBottomSheet": {
     "sent": "Sent {{tokenCode}}",
+    "sentCollectible": "Sent Collectible",
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",
@@ -998,6 +1006,18 @@
       "simulateSessionExpiry": "⏰ Simulate Session Expiry"
     }
   },
+  "debug": {
+    "title": "Debug",
+    "appVersionOverride": {
+      "title": "App Version Override",
+      "description": "Override app version for testing updates (DEV only)",
+      "placeholder": "Enter version (e.g., 1.0.0)",
+      "currentVersion": "Current version: {{version}}",
+      "overriddenVersion": "Overridden version: {{version}}",
+      "clearOverride": "Clear Override",
+      "clearUpdateDismissalFlag": "Clear update dismissal flag"
+    }
+  },
   "blockaid": {
     "brand": "Blockaid",
     "security": {
@@ -1119,6 +1139,17 @@
       "not": "Not",
       "beforeRelativeTime": "Before Relative Time",
       "beforeAbsoluteTime": "Before Absolute Time"
+    }
+  },
+  "appUpdate": {
+    "defaultMessage": "Please update your app to the latest version.",
+    "forceUpdate": {
+      "title": "Update Required",
+      "description": "A new version of Freighter is available. Please update to ensure your wallet performs correctly and securely. Your funds are not affected.",
+      "updateButton": "Update app",
+      "laterButton": "I'll update later",
+      "skipTitle": "Proceed without update?",
+      "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
     }
   }
 }
