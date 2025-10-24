@@ -1,4 +1,13 @@
 # frozen_string_literal: true
 
-json_key_file("./fastlane/google-fastlane-secret.json")
-package_name("org.stellar.freighterdev")
+for_platform :android do
+  json_key_file("./fastlane/google-fastlane-secret.json")
+  
+  for_lane :dev do
+    package_name("org.stellar.freighterdev")
+  end
+
+  for_lane :prod do
+    package_name("org.stellar.freighterwallet")
+  end
+end

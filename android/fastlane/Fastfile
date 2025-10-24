@@ -61,26 +61,43 @@ def increment_version_code(gradle_file_path)
 end
 
 platform :android do
-  desc "Runs all the tests"
-  lane :test do
-    gradle(task: "test")
-  end
-
-  desc "Push a new beta build to the Google Play"
-  lane :beta do
-    create_json_secret_file
-
-    create_keystore_file("dev")
-    
-    increment_version_code("../app/build.gradle")
+  before_all do
+    # setup_ci
 
     # Deep clean gradle build artifacts
     UI.message "🧹 Performing deep Gradle clean..."
     sh("cd .. && rm -rf .gradle && rm -rf app/.cxx && rm -rf app/build && ./gradlew clean") rescue UI.error("Clean failed, continuing anyway...")
 
+    # increment_version_code("../app/build.gradle")
+
+    create_json_secret_file
+  end
+
+  desc "Push a new Dev build to the Google Play"
+  lane :dev do
+    create_keystore_file("dev")
+    
     gradle(
       task: "bundle",
       flavor: "dev",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "."
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "internal"
+    )
+  end
+
+  desc "Push a new Prod build to the Google Play"
+  lane :prod do
+    create_keystore_file("prod")
+    
+    gradle(
+      task: "bundle",
+      flavor: "prod",
       build_type: "Release",
       print_command: false,
       project_dir: "."

@@ -28,15 +28,16 @@ default_platform(:ios)
 # end
 
 platform :ios do
-  desc "Push a new beta build to TestFlight"
-  lane :beta do
-
+  before_all do
+    # setup_ci
+    
     # build_number = "fetch from env"
-
     # replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
     #                 find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
     #                 replace: "CURRENT_PROJECT_VERSION = #{build_number}"
-    
+
+    # increment_build_number(xcodeproj: "freighter-mobile.xcodeproj")
+
     app_store_connect_api_key(
       key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },
       issuer_id: ENV.fetch("APPLE_CONNECT_ISSUER_ID") { raise "APPLE_CONNECT_ISSUER_ID environment variable is required" },
@@ -54,9 +55,10 @@ platform :ios do
       git_branch: "main",
       verbose: false
     ) 
+  end
 
-    increment_build_number(xcodeproj: "freighter-mobile.xcodeproj")
-    
+  desc "Push a new Dev build to TestFlight"
+  lane :dev do
     build_app(
       workspace: "freighter-mobile.xcworkspace",
       scheme: "freighter-mobile-dev",
@@ -67,6 +69,21 @@ platform :ios do
       # output_name: "Freighter Dev"
     ) 
     
-    # upload_to_testflight(skip_waiting_for_build_processing: true)
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  desc "Push a new Prod build to TestFlight"
+  lane :prod do
+    build_app(
+      workspace: "freighter-mobile.xcworkspace",
+      scheme: "freighter-mobile",
+      # include_bitcode: true,
+      # export_method: "app-store",
+      # buildlog_path: "/tmp/build",
+      # output_directory: "/tmp/build",
+      # output_name: "Freighter"
+    ) 
+    
+    upload_to_testflight(skip_waiting_for_build_processing: true)
   end
 end

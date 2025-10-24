@@ -3,14 +3,10 @@
 # Load environment variables from local .env file
 # TODO: move to CI envs later
 require 'dotenv'
-Dotenv.load('../../.env')
+Dotenv.load('../.env')
 
 git_url(ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" })
 git_branch("main")
 storage_mode("git")
 type("appstore")
-app_identifier(["org.stellar.freighterdev"])
-
-# For all available options run `fastlane match --help`
-
-# The docs are available on https://docs.fastlane.tools/actions/match
+app_identifier(["org.stellar.freighterdev", "org.stellar.freighterwallet"])
