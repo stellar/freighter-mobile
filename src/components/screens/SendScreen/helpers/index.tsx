@@ -26,7 +26,7 @@ export function useTransactionSecurity(
     ) {
       const warnings = extractSecurityWarnings(transactionScanResult);
 
-      if (Array.isArray(warnings) && warnings.length > 0) {
+      if (warnings.length > 0) {
         return warnings;
       }
     }
