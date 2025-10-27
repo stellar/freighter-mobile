@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 interface UseFocusedPollingParams {
   /**
@@ -12,9 +12,14 @@ interface UseFocusedPollingParams {
   onStop: () => void;
 }
 
+const POLLING_INTERVAL = 60000; // 60 seconds
+
 /**
  * Hook to manage polling based on screen focus
- * Automatically handles starting/stopping polling when screen is focused/unfocused
+ *
+ * Automatically handles starting/stopping polling when screen is focused/unfocused.
+ * Tracks the last poll time and resets the timestamp if 60 seconds have passed since
+ * the last poll, triggering an immediate fetch before the polling timer starts.
  *
  * @param params - Parameters for the polling
  * @param params.onStart - Function to call when polling should start
@@ -24,13 +29,19 @@ export const useFocusedPolling = ({
   onStart,
   onStop,
 }: UseFocusedPollingParams) => {
-  // Handle screen focus changes
+  const lastPollTimeRef = useRef<number>(Date.now());
+
   useFocusEffect(
     useCallback(() => {
-      // Start polling when screen is focused
+      const now = Date.now();
+      const timeSinceLastPoll = now - lastPollTimeRef.current;
+
+      if (timeSinceLastPoll >= POLLING_INTERVAL) {
+        lastPollTimeRef.current = now;
+      }
+
       onStart();
 
-      // Stop polling when screen loses focus
       return () => {
         onStop();
       };

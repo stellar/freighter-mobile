@@ -206,7 +206,6 @@ const extractScanResultsFromBalances = (
   balances: BalanceMap,
   network: NETWORKS,
 ) => {
-  // Only extract scan results on mainnet
   if (!isMainnet(network)) {
     return Promise.resolve({
       results: {} as Record<
@@ -220,7 +219,6 @@ const extractScanResultsFromBalances = (
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
   Object.entries(balances).forEach(([tokenIdentifier, balance]) => {
-    // Skip native token and liquidity pools
     if (
       tokenIdentifier === NATIVE_TOKEN_CODE ||
       tokenIdentifier.includes("lp")
@@ -228,14 +226,12 @@ const extractScanResultsFromBalances = (
       return;
     }
 
-    // Extract blockaidData from balance (safely cast since we know it's in Balance type)
     const blockaidData =
       "blockaidData" in balance
         ? (balance as { blockaidData?: Blockaid.Token.TokenScanResponse })
             .blockaidData
         : undefined;
     if (blockaidData) {
-      // Convert token identifier format from "CODE:ISSUER" to "CODE-ISSUER"
       const scanKey = tokenIdentifier.includes(":")
         ? tokenIdentifier.replace(":", "-")
         : tokenIdentifier;
@@ -332,19 +328,13 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         throw new Error("No balances returned from API");
       }
 
-      // Set the "raw" balances right away as they don't depend on prices
       set({
         balances,
         isFunded: isFunded ?? false,
         subentryCount: subentryCount ?? 0,
       });
 
-      console.log("balances", { balances });
-
-      // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
-
-      // Run priced balances + extract scan results from backend in parallel
       const [pricedBalances, scanResult] = await Promise.all([
         fetchPricedBalances(set, balances, statePricedBalances, params),
         Promise.resolve(
@@ -360,8 +350,6 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         },
       }));
 
-      // No need to check for errors since we're extracting from backend data
-
       set({
         pricedBalances,
         isLoading: false,
@@ -376,12 +364,10 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
     }
   },
   startPolling: (params) => {
-    // Clear any existing polling
     if (pollingIntervalId) {
       clearInterval(pollingIntervalId);
     }
 
-    // Start polling after initial interval
     pollingIntervalId = setInterval(() => {
       get().fetchAccountBalances(params);
     }, POLLING_INTERVAL);

@@ -29,6 +29,9 @@ export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
 // This is used to prevent flickering while refreshing lists with "pull to refresh" action
 export const DEFAULT_REFRESH_DELAY = 1000;
 
+// Balances polling interval in milliseconds
+export const BALANCES_FETCH_POLLING_INTERVAL = 60000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";

@@ -10,9 +10,7 @@ interface UsePricedBalancesPollingParams {
 
 /**
  * Hook to manage polling of priced balances
- * Automatically starts polling when mounted and stops when unmounted
- * Only polls when the screen is focused and app is active
- *
+ * Uses focused polling to start and stop polling when the screen is focused and app is active
  * @param params - Parameters for the polling
  * @param params.publicKey - The public key to fetch balances for
  * @param params.network - The network to fetch balances from

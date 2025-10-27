@@ -46,6 +46,8 @@ type AddTokenScreenProps = NativeStackScreenProps<
   typeof MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN
 >;
 
+const DEBOUNCE_SEARCH_BACKOFF_MS = 500;
+
 const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
@@ -219,7 +221,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
 
   const debouncedHandleSearch = useDebounce((text: string) => {
     handleSearch(text);
-  }, 500);
+  }, DEBOUNCE_SEARCH_BACKOFF_MS);
 
   const handleAddTokenMemo = useCallback(
     (token: FormattedSearchTokenRecord) => handleAddToken(token),
