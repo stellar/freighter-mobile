@@ -3,11 +3,6 @@ import { CollectibleDetailsScreen } from "components/screens/CollectibleDetailsS
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
-// Mock the Linking module
-jest.mock("react-native/Libraries/Linking/Linking", () => ({
-  openURL: jest.fn(),
-}));
-
 // Mock the useAppTranslation hook
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,

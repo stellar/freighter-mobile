@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-css-interop/dist/runtime/native/api.js b/node_modules/react-native-css-interop/dist/runtime/native/api.js
+index 1234567..abcdefg 100644
+--- a/node_modules/react-native-css-interop/dist/runtime/native/api.js
++++ b/node_modules/react-native-css-interop/dist/runtime/native/api.js
+@@ -24,7 +24,7 @@ const cssInterop = (baseComponent, mapping) => {
+     const type = (0, unwrap_components_1.getComponentType)(baseComponent);
+     if (type === "function") {
+         component = (props) => {
+-            return (0, native_interop_1.interop)(baseComponent, configs, props, undefined);
++            return (0, native_interop_1.interop)(baseComponent, configs, props, props.ref);
+         };
+     }
+     else {

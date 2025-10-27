@@ -1,4 +1,4 @@
-import { userEvent } from "@testing-library/react-native";
+import { userEvent, act } from "@testing-library/react-native";
 import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -193,6 +193,11 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   const renderHomeScreen = () =>
@@ -237,10 +242,17 @@ describe("HomeScreen", () => {
   it("calls all fetch functions when refresh is triggered", async () => {
     const { getByTestId } = renderHomeScreen();
 
-    const flatList = getByTestId("home-screen-flatlist");
+    const scrollView = getByTestId("home-screen-scrollview");
 
-    const { refreshControl } = flatList.props;
-    await refreshControl.props.onRefresh();
+    const { refreshControl } = scrollView.props;
+
+    await act(async () => {
+      await refreshControl.props.onRefresh();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
 
     expect(mockFetchAccountBalances).toHaveBeenCalledWith({
       publicKey: "test-public-key",

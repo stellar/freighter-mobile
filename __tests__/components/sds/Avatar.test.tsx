@@ -1,6 +1,3 @@
-/**
- * @jest-environment jsdom
- */
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
