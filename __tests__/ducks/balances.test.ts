@@ -14,7 +14,7 @@ import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 
-import { beningTokenScan } from "../../__mocks__/blockaid-response";
+import { benignTokenScan } from "../../__mocks__/blockaid-response";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
@@ -93,7 +93,7 @@ describe("balances duck", () => {
     limit: new BigNumber("1000"),
     buyingLiabilities: "0",
     sellingLiabilities: "0",
-    blockaidData: beningTokenScan,
+    blockaidData: benignTokenScan,
   };
 
   const mockBalances = {
@@ -385,7 +385,7 @@ describe("balances duck", () => {
       // Should extract scan results from blockaidData in balances
       expect(result.current.scanResults).toEqual({
         "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-          beningTokenScan,
+          benignTokenScan,
       });
       unmount();
     });
@@ -418,7 +418,7 @@ describe("balances duck", () => {
     it("should not extract scan results for native tokens or liquidity pools", async () => {
       const mockNativeWithBlockaid = {
         ...mockNativeBalance,
-        blockaidData: beningTokenScan,
+        blockaidData: benignTokenScan,
       };
 
       const mockBalancesWithoutTokens = {
@@ -445,7 +445,7 @@ describe("balances duck", () => {
 
     it("should extract scan results from multiple balances", async () => {
       const manyBalances = {} as BalanceMap;
-      const expectedScanResults: Record<string, typeof beningTokenScan> = {};
+      const expectedScanResults: Record<string, typeof benignTokenScan> = {};
 
       for (let i = 0; i < 5; i++) {
         const tokenId = `TOKEN${i}:ISSUER${i}`;
@@ -456,9 +456,9 @@ describe("balances duck", () => {
             code: `TOKEN${i}`,
             issuer: { key: `ISSUER${i}` },
           },
-          blockaidData: beningTokenScan,
+          blockaidData: benignTokenScan,
         };
-        expectedScanResults[`TOKEN${i}-ISSUER${i}`] = beningTokenScan;
+        expectedScanResults[`TOKEN${i}-ISSUER${i}`] = benignTokenScan;
       }
 
       mockFetchBalances.mockResolvedValueOnce({ balances: manyBalances });

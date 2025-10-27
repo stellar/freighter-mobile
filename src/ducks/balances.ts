@@ -339,6 +339,8 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         subentryCount: subentryCount ?? 0,
       });
 
+      console.log("balances", { balances });
+
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
 
