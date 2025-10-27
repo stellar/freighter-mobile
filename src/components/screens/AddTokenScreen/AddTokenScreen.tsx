@@ -73,12 +73,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     balanceItems,
   });
 
-  const categorizedTokens = useMemo(() => {
-    const verified = searchResults.filter((token) => !token.isUnableToScan);
-    const unverified = searchResults.filter((token) => token.isUnableToScan);
-    return { verified, unverified };
-  }, [searchResults]);
-
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
   const isUnableToScanToken = scannedToken.isUnableToScan;
@@ -386,59 +380,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             alwaysBounceVertical={false}
           >
             {searchResults.length > 0 ? (
-              <>
-                {categorizedTokens.unverified.length > 0 && (
-                  <>
-                    <View className="mb-2 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2 mt-2">
-                      <Icon.Cube01 size={16} color={themeColors.gray[11]} />
-                      <Text sm color={themeColors.gray[11]}>
-                        {t("addTokenScreen.unableToScanBanner")}
-                      </Text>
-                    </View>
-
-                    <View className="flex-row items-center py-2 gap-2 mt-2 mb-2">
-                      <Icon.InfoCircle
-                        size={16}
-                        color={themeColors.text.secondary}
-                      />
-                      <Text sm medium secondary>
-                        {t("addTokenScreen.unverified")}
-                      </Text>
-                    </View>
-
-                    {categorizedTokens.unverified.map((token) => (
-                      <TokenItem
-                        key={`${token.tokenCode}:${token.issuer}`}
-                        token={token}
-                        handleAddToken={handleAddTokenMemo}
-                        handleRemoveToken={handleRemoveTokenMemo}
-                      />
-                    ))}
-                  </>
-                )}
-
-                {categorizedTokens.verified.length > 0 && (
-                  <>
-                    <View className="flex-row items-center py-2 mt-2 mb-2 gap-2">
-                      <Icon.InfoCircle
-                        size={16}
-                        color={themeColors.text.secondary}
-                      />
-                      <Text sm medium secondary>
-                        {t("addTokenScreen.verified")}
-                      </Text>
-                    </View>
-                    {categorizedTokens.verified.map((token) => (
-                      <TokenItem
-                        key={`${token.tokenCode}:${token.issuer}`}
-                        token={token}
-                        handleAddToken={handleAddTokenMemo}
-                        handleRemoveToken={handleRemoveTokenMemo}
-                      />
-                    ))}
-                  </>
-                )}
-              </>
+              searchResults.map((token) => (
+                <TokenItem
+                  key={`${token.tokenCode}:${token.issuer}`}
+                  token={token}
+                  handleAddToken={handleAddTokenMemo}
+                  handleRemoveToken={handleRemoveTokenMemo}
+                />
+              ))
             ) : (
               <EmptyState />
             )}
