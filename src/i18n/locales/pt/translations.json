@@ -521,6 +521,7 @@
     "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
+    "unableToScanBanner": "Não foi possível escanear tokens maliciosos",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
     "toastError": "Erro ao adicionar token {{tokenCode}}",
     "emptyState": "Nenhum token encontrado",

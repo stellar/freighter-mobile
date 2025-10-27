@@ -73,6 +73,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     balanceItems,
   });
 
+  const hasUnableToScanTokens = useMemo(
+    () => searchResults.some((token) => token.isUnableToScan),
+    [searchResults],
+  );
+
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
   const isUnableToScanToken = scannedToken.isUnableToScan;
@@ -380,14 +385,24 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             alwaysBounceVertical={false}
           >
             {searchResults.length > 0 ? (
-              searchResults.map((token) => (
-                <TokenItem
-                  key={`${token.tokenCode}:${token.issuer}`}
-                  token={token}
-                  handleAddToken={handleAddTokenMemo}
-                  handleRemoveToken={handleRemoveTokenMemo}
-                />
-              ))
+              <>
+                {hasUnableToScanTokens && (
+                  <View className="mb-4 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2">
+                    <Icon.Cube01 size={16} color={themeColors.gray[11]} />
+                    <Text sm color={themeColors.gray[11]}>
+                      {t("addTokenScreen.unableToScanBanner")}
+                    </Text>
+                  </View>
+                )}
+                {searchResults.map((token) => (
+                  <TokenItem
+                    key={`${token.tokenCode}:${token.issuer}`}
+                    token={token}
+                    handleAddToken={handleAddTokenMemo}
+                    handleRemoveToken={handleRemoveTokenMemo}
+                  />
+                ))}
+              </>
             ) : (
               <EmptyState />
             )}
