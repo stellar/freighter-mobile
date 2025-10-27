@@ -219,7 +219,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
 
   const debouncedHandleSearch = useDebounce((text: string) => {
     handleSearch(text);
-  }, 200);
+  }, 500);
 
   const handleAddTokenMemo = useCallback(
     (token: FormattedSearchTokenRecord) => handleAddToken(token),

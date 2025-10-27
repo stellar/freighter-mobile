@@ -15,12 +15,11 @@ import {
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
-import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
 // Polling interval in milliseconds
-const POLLING_INTERVAL = 30000;
+const POLLING_INTERVAL = 60000; // Increased from 30s to 60s
 
 // Keep track of the polling interval ID
 let pollingIntervalId: NodeJS.Timeout | null = null;
@@ -196,22 +195,18 @@ const fetchPricedBalances = async (
 };
 
 /**
- * Scans all balances
+ * Extracts scan results from balances returned by the backend
+ * Backend already performs Blockaid scans and includes blockaidData in each balance
  *
- * @param balances The balances for assets to scan
- * @param network The current network, used to scan
- * @returns An array of scan results for current balances
+ * @param balances The balances with blockaidData from backend
+ * @param network The current network
+ * @returns An object with scan results extracted from balance blockaidData
  */
-const scanBalances = async (
-  set: (
-    partial:
-      | Partial<BalancesState>
-      | ((state: BalancesState) => Partial<BalancesState>),
-  ) => void,
+const extractScanResultsFromBalances = (
   balances: BalanceMap,
   network: NETWORKS,
-  batchSize = 20,
 ) => {
+  // Only extract scan results on mainnet
   if (!isMainnet(network)) {
     return Promise.resolve({
       results: {} as Record<
@@ -221,50 +216,34 @@ const scanBalances = async (
       error: null,
     });
   }
-  try {
-    const entries = Object.entries(balances); // [tokenIdentifier, Balance][]
 
-    const scanResults: Record<
-      string,
-      Blockaid.TokenBulk.TokenBulkScanResponse.Results
-    > = {};
-    for (let i = 0; i < entries.length; i += batchSize) {
-      const batchEntries = entries.slice(i, i + batchSize);
+  const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
-      const addressList = batchEntries
-        .filter(
-          ([tokenIdentifier]) =>
-            tokenIdentifier !== NATIVE_TOKEN_CODE &&
-            !tokenIdentifier.includes("lp"),
-        )
-        .map(([tokenIdentifier]) =>
-          tokenIdentifier.includes(":")
-            ? tokenIdentifier.replace(":", "-")
-            : tokenIdentifier,
-        );
-
-      /* eslint-disable-next-line no-await-in-loop */
-      const { results } = await scanBulkTokens({ addressList, network });
-
-      set((state) => ({
-        scanResults: {
-          ...state.scanResults,
-          ...results,
-        },
-      }));
-      Object.assign(scanResults, results);
+  Object.entries(balances).forEach(([tokenIdentifier, balance]) => {
+    // Skip native token and liquidity pools
+    if (
+      tokenIdentifier === NATIVE_TOKEN_CODE ||
+      tokenIdentifier.includes("lp")
+    ) {
+      return;
     }
 
-    return { results: scanResults, error: null };
-  } catch (error) {
-    return {
-      results: {} as Record<
-        string,
-        Blockaid.TokenBulk.TokenBulkScanResponse.Results
-      >,
-      error,
-    };
-  }
+    // Extract blockaidData from balance (safely cast since we know it's in Balance type)
+    const blockaidData =
+      "blockaidData" in balance
+        ? (balance as { blockaidData?: Blockaid.Token.TokenScanResponse })
+            .blockaidData
+        : undefined;
+    if (blockaidData) {
+      // Convert token identifier format from "CODE:ISSUER" to "CODE-ISSUER"
+      const scanKey = tokenIdentifier.includes(":")
+        ? tokenIdentifier.replace(":", "-")
+        : tokenIdentifier;
+      scanResults[scanKey] = blockaidData;
+    }
+  });
+
+  return { results: scanResults, error: null };
 };
 
 /**
@@ -363,19 +342,23 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
 
-      // Run priced balances + scans in parallel
+      // Run priced balances + extract scan results from backend in parallel
       const [pricedBalances, scanResult] = await Promise.all([
         fetchPricedBalances(set, balances, statePricedBalances, params),
-        scanBalances(set, balances, params.network),
+        Promise.resolve(
+          extractScanResultsFromBalances(balances, params.network),
+        ),
       ]);
 
-      if (scanResult.error) {
-        logger.error(
-          "scanBalances",
-          "Error scanning balances:",
-          scanResult.error,
-        );
-      }
+      // Update scan results in state
+      set((state) => ({
+        scanResults: {
+          ...state.scanResults,
+          ...scanResult.results,
+        },
+      }));
+
+      // No need to check for errors since we're extracting from backend data
 
       set({
         pricedBalances,
