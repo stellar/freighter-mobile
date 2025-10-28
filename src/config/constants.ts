@@ -82,9 +82,9 @@ export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
 export const STELLAR_FOUNDATION_TERMS_URL =
-  "https://stellar.org/terms-of-service";
+  "https://www.freighter.app/terms";
 export const STELLAR_FOUNDATION_PRIVACY_URL =
-  "https://stellar.org/privacy-policy";
+  "https://www.freighter.app/privacy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
