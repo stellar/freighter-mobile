@@ -110,11 +110,9 @@ platform :ios do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
       scheme: "freighter-mobile-dev",
-      # include_bitcode: true,
-      # export_method: "app-store",
-      # buildlog_path: "/tmp/build",
-      # output_directory: "/tmp/build",
-      # output_name: "Freighter Dev"
+      buildlog_path: "/tmp/build",
+      output_directory: "/tmp/build",
+      output_name: "Freighter-Dev"
     ) 
     
     upload_build
@@ -125,11 +123,9 @@ platform :ios do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
       scheme: "freighter-mobile",
-      # include_bitcode: true,
-      # export_method: "app-store",
-      # buildlog_path: "/tmp/build",
-      # output_directory: "/tmp/build",
-      # output_name: "Freighter"
+      buildlog_path: "/tmp/build",
+      output_directory: "/tmp/build",
+      output_name: "Freighter"
     ) 
     
     upload_build

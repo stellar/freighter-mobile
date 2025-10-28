@@ -162,3 +162,21 @@ jobs:
         run: |
           bundle exec fastlane --version
           bundle exec fastlane ios ${{ env.FASTLANE_LANE }}
+
+      # Dev builds: Short retention for rapid iteration
+      - name: Upload dev build artifacts
+        uses: actions/upload-artifact@v4
+        if: always() && env.IOS_SCHEME == 'freighter-mobile-dev'
+        with:
+          name: ios-build-dev-${{ env.BUILD_VERSION }}
+          path: /tmp/build
+          retention-days: 7
+
+      # Production builds: Extended retention given less frequent uploads
+      - name: Upload prod build artifacts
+        uses: actions/upload-artifact@v4
+        if: always() && env.IOS_SCHEME == 'freighter-mobile'
+        with:
+          name: ios-build-prod-${{ env.BUILD_VERSION }}
+          path: /tmp/build
+          retention-days: 30
