@@ -76,7 +76,7 @@ platform :ios do
     build_version = ENV.fetch("BUILD_VERSION")
     replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
                     find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
-                    replace: "CURRENT_PROJECT_VERSION = #{build_number}"
+                    replace: "CURRENT_PROJECT_VERSION = #{build_version}"
 
     app_store_connect_api_key(
       key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },

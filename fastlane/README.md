@@ -15,6 +15,12 @@ For _fastlane_ installation instructions, see
 
 ## iOS
 
+### ios upload_build
+
+```sh
+[bundle exec] fastlane ios upload_build
+```
+
 ### ios dev
 
 ```sh
@@ -34,6 +40,12 @@ Push a new Prod build to TestFlight
 ---
 
 ## Android
+
+### android upload_build
+
+```sh
+[bundle exec] fastlane android upload_build
+```
 
 ### android dev
 
