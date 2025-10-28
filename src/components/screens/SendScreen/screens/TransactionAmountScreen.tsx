@@ -16,6 +16,10 @@ import {
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
+import {
+  useSendBannerContent,
+  useTransactionSecurity,
+} from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -62,11 +66,6 @@ import React, {
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -208,10 +207,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
-  const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
-  );
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = useTransactionSecurity(transactionScanResult);
 
   const {
     tokenAmount,
@@ -473,37 +473,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
-  const transactionSecurityWarnings = useMemo(() => {
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
-    ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionScanResult,
-  ]);
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-  ]);
-
   const handleCancelReview = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
   }, []);
@@ -562,45 +531,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
 
-  const bannerContent = useMemo(() => {
-    const shouldShowNoticeBanner =
-      isRequiredMemoMissing ||
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious;
-
-    if (!shouldShowNoticeBanner) {
-      return undefined;
-    }
-
-    if (transactionSecurityAssessment.isMalicious) {
-      return {
-        text: t("transactionAmountScreen.errors.malicious"),
-        variant: "error" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    if (transactionSecurityAssessment.isSuspicious) {
-      return {
-        text: t("transactionAmountScreen.errors.suspicious"),
-        variant: "warning" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    return {
-      text: t("transactionAmountScreen.errors.memoMissing"),
-      variant: "error" as const,
-      onPress: openAddMemoExplanationBottomSheet,
-    };
-  }, [
+  const bannerContent = useSendBannerContent({
+    isMalicious: transactionSecurityAssessment.isMalicious,
+    isSuspicious: transactionSecurityAssessment.isSuspicious,
     isRequiredMemoMissing,
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    t,
-    openSecurityWarningBottomSheet,
-    openAddMemoExplanationBottomSheet,
-  ]);
+    onSecurityWarningPress: openSecurityWarningBottomSheet,
+    onMemoMissingPress: openAddMemoExplanationBottomSheet,
+  });
 
   if (isProcessing) {
     return (
