@@ -102,7 +102,6 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
-      # TODO: we need the ./scripts/gh-ios-env script to set the env vars.
       - name: Set env
         run: |
           echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}" >> $GITHUB_ENV
@@ -120,12 +119,10 @@ jobs:
           echo "BUILD_VERSION=${BUILD_VERSION}"
           echo "REF_NAME=${REF_NAME}"
           echo "APP_VERSION=${APP_VERSION}"
-          echo "APP_ID=${APP_VERSION}"
+          echo "APP_ID=${APP_ID}"
           echo "APP_NAME=${APP_NAME}"
           echo "IOS_SCHEME=${IOS_SCHEME}"
           echo "FASTLANE_LANE=${FASTLANE_LANE}"
-          echo "RELEASE_VERSION=${RELEASE_VERSION}"
-          echo "RELEASE_VERSION_DIGEST=${RELEASE_VERSION_DIGEST}"
 
           echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
           echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
