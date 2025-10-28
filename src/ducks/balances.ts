@@ -18,11 +18,7 @@ import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
-// Polling interval in milliseconds
-const POLLING_INTERVAL = 60000; // Increased from 30s to 60s
-
 // Keep track of the polling interval ID
-let pollingIntervalId: NodeJS.Timeout | null = null;
 
 /**
  * Balances State Interface
@@ -39,8 +35,6 @@ let pollingIntervalId: NodeJS.Timeout | null = null;
  * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
- * @property {Function} startPolling - Function to start polling for balance updates
- * @property {Function} stopPolling - Function to stop polling for balance updates
  */
 interface BalancesState {
   balances: BalanceMap;
@@ -55,8 +49,6 @@ interface BalancesState {
     network: NETWORKS;
     contractIds?: string[];
   }) => Promise<void>;
-  startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
-  stopPolling: () => void;
   getBalances: () => BalanceMap;
 }
 
@@ -361,21 +353,6 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
           error instanceof Error ? error.message : "Failed to fetch balances",
         isLoading: false,
       });
-    }
-  },
-  startPolling: (params) => {
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-    }
-
-    pollingIntervalId = setInterval(() => {
-      get().fetchAccountBalances(params);
-    }, POLLING_INTERVAL);
-  },
-  stopPolling: () => {
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-      pollingIntervalId = null;
     }
   },
   getBalances: () => get().balances,

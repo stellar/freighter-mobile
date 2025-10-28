@@ -1,7 +1,7 @@
-import { NETWORKS } from "config/constants";
+import { BALANCES_FETCH_POLLING_INTERVAL, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import { useFocusedPolling } from "hooks/useFocusedPolling";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 interface UsePricedBalancesPollingParams {
   publicKey: string;
@@ -19,21 +19,22 @@ export const usePricedBalancesPolling = ({
   publicKey,
   network,
 }: UsePricedBalancesPollingParams) => {
-  const { startPolling, stopPolling } = useBalancesStore();
+  const { fetchAccountBalances } = useBalancesStore();
 
-  const handleStart = useCallback(() => {
-    startPolling({
+  const handlePoll = useCallback(() => {
+    fetchAccountBalances({
       publicKey,
       network,
     });
-  }, [publicKey, network, startPolling]);
+  }, [publicKey, network, fetchAccountBalances]);
 
-  const handleStop = useCallback(() => {
-    stopPolling();
-  }, [stopPolling]);
+  // Ensure initial fetch on mount
+  useEffect(() => {
+    handlePoll();
+  }, [handlePoll]);
 
   useFocusedPolling({
-    onStart: handleStart,
-    onStop: handleStop,
+    onPoll: handlePoll,
+    interval: BALANCES_FETCH_POLLING_INTERVAL,
   });
 };

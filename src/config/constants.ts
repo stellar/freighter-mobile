@@ -32,6 +32,9 @@ export const DEFAULT_REFRESH_DELAY = 1000;
 // Balances polling interval in milliseconds
 export const BALANCES_FETCH_POLLING_INTERVAL = 60000;
 
+// History polling interval in milliseconds
+export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";

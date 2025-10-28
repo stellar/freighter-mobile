@@ -44,22 +44,11 @@ export const useBalancesList = ({
 
   const noBalances = Object.keys(pricedBalances).length === 0;
 
-  // Initial data fetch
-  const fetchInitialData = useCallback(async () => {
-    try {
-      await fetchAccountBalances({
-        publicKey,
-        network,
-      });
-    } finally {
-      setHasAttemptedInitialLoad(true);
-      setIsMounting(false);
-    }
-  }, [fetchAccountBalances, publicKey, network]);
-
+  // Mark as mounted and attempted load since polling handles the initial fetch
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    setHasAttemptedInitialLoad(true);
+    setIsMounting(false);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
