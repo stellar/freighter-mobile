@@ -32,18 +32,25 @@ const createMockPricedBalance = (
 describe("useTokenFiatConverter", () => {
   it("should initialize with zero amounts", () => {
     const { result } = renderHook(() =>
-      useTokenFiatConverter({ selectedBalance: undefined }),
+      useTokenFiatConverter({
+        selectedBalance: undefined,
+        spendableBalance: new BigNumber(0),
+      }),
     );
 
     expect(result.current.tokenAmount).toBe("0");
-    expect(result.current.fiatAmount).toBe("0.00");
+    expect(result.current.fiatAmount).toBe("0");
+    expect(result.current.fiatAmountDisplay).toBe("0.00");
     expect(result.current.showFiatAmount).toBe(false);
   });
 
   it("should correctly convert token amount to fiat amount", () => {
     const mockBalance = createMockPricedBalance(100, 2.5);
     const { result } = renderHook(() =>
-      useTokenFiatConverter({ selectedBalance: mockBalance }),
+      useTokenFiatConverter({
+        selectedBalance: mockBalance,
+        spendableBalance: new BigNumber(100),
+      }),
     );
 
     act(() => {
@@ -60,7 +67,10 @@ describe("useTokenFiatConverter", () => {
   it("should correctly convert fiat amount to token amount when showFiatAmount is true", () => {
     const mockBalance = createMockPricedBalance(100, 2.5);
     const { result } = renderHook(() =>
-      useTokenFiatConverter({ selectedBalance: mockBalance }),
+      useTokenFiatConverter({
+        selectedBalance: mockBalance,
+        spendableBalance: new BigNumber(100),
+      }),
     );
 
     act(() => {
@@ -81,7 +91,10 @@ describe("useTokenFiatConverter", () => {
   it("should handle zero token price correctly during conversions", () => {
     const mockBalance = createMockPricedBalance(100, 0);
     const { result } = renderHook(() =>
-      useTokenFiatConverter({ selectedBalance: mockBalance }),
+      useTokenFiatConverter({
+        selectedBalance: mockBalance,
+        spendableBalance: new BigNumber(100),
+      }),
     );
 
     act(() => {
@@ -105,7 +118,10 @@ describe("useTokenFiatConverter", () => {
   it("should toggle display mode without immediately changing the primary value set", () => {
     const mockBalance = createMockPricedBalance(100, 2);
     const { result } = renderHook(() =>
-      useTokenFiatConverter({ selectedBalance: mockBalance }),
+      useTokenFiatConverter({
+        selectedBalance: mockBalance,
+        spendableBalance: new BigNumber(100),
+      }),
     );
 
     act(() => {
@@ -137,5 +153,115 @@ describe("useTokenFiatConverter", () => {
     expect(result.current.fiatAmount).toBe(
       new BigNumber(100).toFixed(FIAT_DECIMALS),
     );
+  });
+
+  describe("Decimal separator handling", () => {
+    it("should handle dot as decimal separator in token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({
+          selectedBalance: mockBalance,
+          spendableBalance: new BigNumber(100),
+        }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange(".");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      expect(result.current.tokenAmountDisplay).toBe("10.5");
+      expect(result.current.tokenAmount).toBe("10.5");
+    });
+  });
+
+  describe("Mid-typing scenarios", () => {
+    it("should preserve typing state when typing '100.' in token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({
+          selectedBalance: mockBalance,
+          spendableBalance: new BigNumber(100),
+        }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange(".");
+      });
+
+      expect(result.current.tokenAmountDisplay).toBe("100.");
+      expect(result.current.tokenAmount).toBe("100");
+    });
+  });
+
+  describe("Max spendable validation", () => {
+    it("should prevent typing amounts exceeding max spendable in token mode", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({
+          selectedBalance: mockBalance,
+          spendableBalance: new BigNumber(50), // Max spendable is 50
+        }),
+      );
+
+      // Try to type "100" which exceeds max spendable
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      // Should not exceed max spendable
+      expect(parseFloat(result.current.tokenAmount)).toBeLessThanOrEqual(50);
+    });
+
+    it("should prevent typing amounts exceeding max spendable in fiat mode", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({
+          selectedBalance: mockBalance,
+          spendableBalance: new BigNumber(50), // Max spendable is 50 tokens = 125 fiat
+        }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // Try to type "200" which exceeds max spendable fiat (125)
+      act(() => {
+        result.current.handleDisplayAmountChange("2");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      // Should not exceed max spendable fiat
+      expect(parseFloat(result.current.fiatAmount)).toBeLessThanOrEqual(125);
+    });
   });
 });

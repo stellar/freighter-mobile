@@ -257,6 +257,46 @@ export const formatFiatAmount = (amount: string | BigNumber) => {
 };
 
 /**
+ * Formats a fiat amount for display without currency symbol, respecting locale settings
+ *
+ * @param {string | BigNumber} amount - The amount to format in dot notation
+ * @returns {string} Formatted amount string without currency symbol (e.g., "1,234.56" or "1.234,56")
+ *
+ * @example
+ * formatFiatAmountForDisplay("1234.56"); // Returns "1,234.56" (US) or "1.234,56" (EU)
+ * formatFiatAmountForDisplay("0"); // Returns "0.00" (US) or "0,00" (EU)
+ * formatFiatAmountForDisplay("100.5"); // Returns "100.50" (US) or "100,50" (EU)
+ */
+export const formatFiatAmountForDisplay = (amount: string | BigNumber) => {
+  // Convert input to BigNumber for precision
+  const bnAmount = convertToBigNumber(amount);
+
+  // Use original string to preserve precision and avoid scientific notation
+  let originalString;
+  if (typeof amount === "string") {
+    originalString = amount;
+  } else if (amount instanceof BigNumber) {
+    const bnString = bnAmount.toString();
+    if (bnString.includes("e") || bnString.includes("E")) {
+      // If it's in scientific notation, use toFixed with high precision
+      const fixedString = bnAmount.toFixed(100);
+      originalString = fixedString;
+    } else {
+      originalString = bnString;
+    }
+  }
+
+  // Format as number with 2 decimal places using react-native-localize
+  const formattedAmount = formatNumber(originalString as string, {
+    useGrouping: true,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return formattedAmount;
+};
+
+/**
  * Formats a numeric value as a percentage with sign indicator
  *
  * This function formats numbers with 2 decimal places and adds a percentage symbol.

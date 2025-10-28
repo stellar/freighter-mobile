@@ -28,7 +28,6 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
-  FIAT_DECIMALS,
   NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
@@ -46,7 +45,10 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatAmountForDisplay,
+} from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -207,6 +209,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
+  const spendableBalance = useMemo(() => {
+    if (!selectedBalance || !account) {
+      return BigNumber(0);
+    }
+
+    const result = calculateSpendableAmount({
+      balance: selectedBalance,
+      subentryCount: account.subentryCount,
+      transactionFee,
+    });
+
+    return result;
+  }, [selectedBalance, account, transactionFee]);
+
   const {
     transactionSecurityAssessment,
     transactionSecurityWarnings,
@@ -222,21 +238,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
-  } = useTokenFiatConverter({ selectedBalance });
-
-  const spendableBalance = useMemo(() => {
-    if (!selectedBalance || !account) {
-      return BigNumber(0);
-    }
-
-    const result = calculateSpendableAmount({
-      balance: selectedBalance,
-      subentryCount: account.subentryCount,
-      transactionFee,
-    });
-
-    return result;
-  }, [selectedBalance, account, transactionFee]);
+  } = useTokenFiatConverter({ selectedBalance, spendableBalance });
 
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
@@ -253,10 +255,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
 
     if (showFiatAmount) {
+      // Use the same price calculation method as BalanceRow
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Set raw internal value (dot notation)
-      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
+      if (!tokenPrice.isZero()) {
+        // Calculate fiat amount using the same method as balance.fiatTotal
+        const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
+        // Set raw internal value with full precision
+        setFiatAmount(calculatedFiatAmount.toString());
+        // Let the hook handle the token amount conversion
+      }
     } else {
       // Set raw internal value (dot notation)
       setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
@@ -588,7 +595,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                   ? { primary: true }
                   : { secondary: true })}
               >
-                {formatFiatAmount(fiatAmount)}
+                ${formatFiatAmountForDisplay(fiatAmount)}
               </Display>
             ) : (
               <View className="flex-row items-center gap-[4px]">
@@ -616,7 +623,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                       tokenAmount,
                       selectedBalance?.tokenCode,
                     )
-                  : formatFiatAmount(fiatAmount)}
+                  : `$${formatFiatAmountForDisplay(fiatAmount)}`}
               </Text>
               <TouchableOpacity
                 className="ml-2"
