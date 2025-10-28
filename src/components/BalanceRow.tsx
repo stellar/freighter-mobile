@@ -65,11 +65,9 @@ interface BalanceRowProps {
   spendableAmount?: BigNumber;
 }
 
-// Helper to extract blockaidData from balance if available
 const getBlockaidDataFromBalance = (
   balance: PricedBalance,
 ): Blockaid.TokenBulk.TokenBulkScanResponse.Results | undefined => {
-  // Check if balance has blockaidData (from backend)
   if ("blockaidData" in balance && balance.blockaidData) {
     return balance.blockaidData as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
   }
@@ -142,7 +140,6 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   isSingleRow = false,
   spendableAmount,
 }) => {
-  // Try to get scan result from balance's blockaidData first, fallback to prop
   const scanResultFromBalance = getBlockaidDataFromBalance(balance);
   const scanResult = scanResultFromBalance || scanResultFromProps;
 
