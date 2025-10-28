@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-# Load environment variables from local .env file
-# TODO: move to CI envs later
-require 'dotenv'
-Dotenv.load('../.env')
-
+# TODO: do we need to pass all those here and on Fastfile too?
 git_url(ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" })
 git_branch("main")
 storage_mode("git")
