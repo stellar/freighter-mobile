@@ -89,6 +89,6 @@ ios/sentry.properties
 *.dSYM.tar.gz
 
 # Fastlane secret files
-android/fastlane/*-secret.json
+fastlane/*-secret.json
 android/keystores/
 ios/fastlane/*.p8

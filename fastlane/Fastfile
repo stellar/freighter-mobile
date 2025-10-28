@@ -15,11 +15,50 @@
 # Load environment variables from local .env file
 # TODO: move to CI envs later
 require 'dotenv'
-Dotenv.load('../../.env')
+Dotenv.load('../.env')
 
 opt_out_usage
 
-default_platform(:ios)
+default_platform(:android)
+
+def create_json_secret_file
+  key_file_contents = Base64.strict_decode64(
+    ENV.fetch("GOOGLE_JSON_SECRET_CONTENT") { raise "GOOGLE_JSON_SECRET_CONTENT environment variable is required" }
+  )
+
+  key_file = "google-fastlane-secret.json"
+
+  File.open(key_file, "w") {|io| io << key_file_contents }
+  File.chmod(0o600, key_file)
+end
+
+def create_keystore_file(env)
+  key_file_contents = Base64.strict_decode64(
+    ENV.fetch("ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT") { raise "ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT environment variable is required" }
+  )
+
+  key_file = File.expand_path(
+    "#{Dir.pwd}/../android/keystores/#{env.to_s.downcase}-release.keystore"
+  )
+
+  File.open(key_file, "wb") {|io| io << key_file_contents }
+  File.chmod(0o600, key_file)
+end
+
+def increment_version_code(gradle_file_path)
+  file_path = File.join(Dir.pwd, gradle_file_path)
+  contents = File.read(file_path)
+  
+  # Find and increment the versionCode
+  contents.gsub!(/versionCode\s+(\d+)/) do |match|
+    current_version = $1.to_i
+    new_version = current_version + 1
+    UI.success "📱 Incrementing versionCode: #{current_version} → #{new_version}"
+    "versionCode #{new_version}"
+  end
+  
+  File.write(file_path, contents)
+end
 
 # def replace_in_file(file, find:, replace:)
 #   contents = File.read(file)
@@ -60,7 +99,7 @@ platform :ios do
   desc "Push a new Dev build to TestFlight"
   lane :dev do
     build_app(
-      workspace: "freighter-mobile.xcworkspace",
+      workspace: "ios/freighter-mobile.xcworkspace",
       scheme: "freighter-mobile-dev",
       # include_bitcode: true,
       # export_method: "app-store",
@@ -75,7 +114,7 @@ platform :ios do
   desc "Push a new Prod build to TestFlight"
   lane :prod do
     build_app(
-      workspace: "freighter-mobile.xcworkspace",
+      workspace: "ios/freighter-mobile.xcworkspace",
       scheme: "freighter-mobile",
       # include_bitcode: true,
       # export_method: "app-store",
@@ -85,5 +124,55 @@ platform :ios do
     ) 
     
     upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+end
+
+platform :android do
+  before_all do
+    # setup_ci
+
+    # Deep clean gradle build artifacts
+    UI.message "🧹 Performing deep Gradle clean..."
+    sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+
+    # increment_version_code("android/app/build.gradle")
+
+    create_json_secret_file
+  end
+
+  desc "Push a new Dev build to the Google Play"
+  lane :dev do
+    create_keystore_file("dev")
+    
+    gradle(
+      task: "bundle",
+      flavor: "dev",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "android/"
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "internal"
+    )
+  end
+
+  desc "Push a new Prod build to the Google Play"
+  lane :prod do
+    create_keystore_file("prod")
+    
+    gradle(
+      task: "bundle",
+      flavor: "prod",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "android/"
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "internal"
+    )
   end
 end
