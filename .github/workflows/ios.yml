@@ -31,7 +31,7 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  RUBY_VERSION: 3.0.0
+  RUBY_VERSION: 3.1.4
 
   # Apple Connect API variables (for app_store_connect_api_key)
   APPLE_CONNECT_KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
