@@ -7,10 +7,10 @@ import {
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
+import { getNumberFormatSettings } from "react-native-localize";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
-  spendableBalance: BigNumber;
 }
 
 interface UseTokenFiatConverterResult {
@@ -38,13 +38,12 @@ interface UseTokenFiatConverterResult {
  */
 export const useTokenFiatConverter = ({
   selectedBalance,
-  spendableBalance, // eslint-disable-line @typescript-eslint/no-unused-vars -- Reserved for future validation in UI
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
   const [tokenAmountDisplay, setTokenAmountDisplay] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
   const [fiatAmountDisplay, setFiatAmountDisplay] = useState("0");
-  const [showFiatAmount, setShowFiatAmount] = useState(false);
+  const [useFiatAmountInput, setUseFiatAmountInput] = useState(false);
 
   // Helper function to format fiat input - keep raw input, format in Display component
   const formatFiatInput = (prevValue: string, key: string): string => {
@@ -85,11 +84,10 @@ export const useTokenFiatConverter = ({
       if (decimalIndex !== -1) {
         const decimalPartLength = prevValue.length - decimalIndex - 1;
         if (decimalPartLength >= FIAT_DECIMALS) {
-          return prevValue; // Max decimal places reached
+          return prevValue;
         }
       }
 
-      // Limit total length
       if (prevValue.length >= 20) {
         return prevValue;
       }
@@ -118,7 +116,7 @@ export const useTokenFiatConverter = ({
 
   // Update fiat amount when token amount changes
   useEffect(() => {
-    if (!showFiatAmount && tokenPrice) {
+    if (!useFiatAmountInput && tokenPrice) {
       const bnTokenAmount = new BigNumber(tokenAmount);
       if (bnTokenAmount.isFinite() && !bnTokenAmount.isZero()) {
         const newFiatAmount = tokenPrice.multipliedBy(bnTokenAmount);
@@ -127,11 +125,20 @@ export const useTokenFiatConverter = ({
         setFiatAmount("0");
       }
     }
-  }, [tokenAmount, tokenPrice, showFiatAmount]);
+  }, [tokenAmount, tokenPrice, useFiatAmountInput]);
+
+  // Update fiatAmountDisplay when fiatAmount changes in token mode
+  useEffect(() => {
+    if (!useFiatAmountInput) {
+      const { decimalSeparator } = getNumberFormatSettings();
+      const displayAmount = fiatAmount.replace(".", decimalSeparator);
+      setFiatAmountDisplay(displayAmount);
+    }
+  }, [fiatAmount, useFiatAmountInput]);
 
   // Update token amount when fiat amount changes
   useEffect(() => {
-    if (showFiatAmount && tokenPrice) {
+    if (useFiatAmountInput && tokenPrice) {
       const bnFiatAmount = new BigNumber(fiatAmount);
       if (bnFiatAmount.isFinite()) {
         const newTokenAmount = tokenPrice.isZero()
@@ -142,7 +149,7 @@ export const useTokenFiatConverter = ({
         setTokenAmount("0");
       }
     }
-  }, [fiatAmount, tokenPrice, showFiatAmount]);
+  }, [fiatAmount, tokenPrice, useFiatAmountInput]);
 
   /**
    * Handles numeric input and deletion for display-formatted values
@@ -150,7 +157,7 @@ export const useTokenFiatConverter = ({
    * @param {string} key - The key pressed (number or empty string for delete)
    */
   const handleDisplayAmountChange = (key: string) => {
-    if (showFiatAmount) {
+    if (useFiatAmountInput) {
       const newAmount = formatFiatInput(fiatAmountDisplay, key);
 
       // Check if the new amount exceeds max spendable
@@ -161,7 +168,6 @@ export const useTokenFiatConverter = ({
         internalAmount = internalAmount.slice(0, -1);
       }
 
-      // Always allow typing - validation will be handled by the UI to show errors
       // Update display value immediately to preserve formatting
       setFiatAmountDisplay(newAmount);
       setFiatAmount(internalAmount);
@@ -172,7 +178,6 @@ export const useTokenFiatConverter = ({
         DEFAULT_DECIMALS,
       );
 
-      // Always allow typing - validation will be handled by the UI to show errors
       const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
 
       // Update display value immediately to preserve formatting
@@ -181,11 +186,10 @@ export const useTokenFiatConverter = ({
     }
   };
 
-  // Helper function to update fiat display when setting programmatically
   const updateFiatDisplay = (amount: string) => {
     setFiatAmount(amount);
-    // Convert dot to comma for display to match user's locale input format
-    const displayAmount = amount.replace(".", ",");
+    const { decimalSeparator } = getNumberFormatSettings();
+    const displayAmount = amount.replace(".", decimalSeparator);
     setFiatAmountDisplay(displayAmount);
   };
 
@@ -194,8 +198,8 @@ export const useTokenFiatConverter = ({
     tokenAmountDisplay,
     fiatAmount,
     fiatAmountDisplay,
-    showFiatAmount,
-    setShowFiatAmount,
+    showFiatAmount: useFiatAmountInput,
+    setShowFiatAmount: setUseFiatAmountInput,
     handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,

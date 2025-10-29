@@ -72,7 +72,7 @@ import { TransactionOperationType } from "services/analytics/types";
 // Helper function to safely format fiat display value
 const formatFiatDisplayValue = (value: string): string => {
   if (!value || value === "0") {
-    return "0,00";
+    return formatFiatAmountForDisplay("0.00");
   }
 
   const normalizedValue = value.replace(",", ".");
@@ -270,7 +270,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     handleDisplayAmountChange,
     setTokenAmount,
     updateFiatDisplay,
-  } = useTokenFiatConverter({ selectedBalance, spendableBalance });
+  } = useTokenFiatConverter({ selectedBalance });
 
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
@@ -297,28 +297,34 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
       if (!tokenPrice.isZero()) {
         // Calculate fiat amount from the capped token amount
-        const calculatedFiatAmount =
-          cappedTargetAmount.multipliedBy(tokenPrice);
-        // Limit to 2 decimal places for fiat amounts
-        const fiatAmountString = calculatedFiatAmount.toFixed(2);
+        let calculatedFiatAmount = cappedTargetAmount.multipliedBy(tokenPrice);
+        let fiatAmountString = calculatedFiatAmount.toFixed(2);
 
-        // Verify that converting back to tokens doesn't exceed spendableBalance
-        // This prevents rounding errors from going over the limit
-        const convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
+        let convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
           tokenPrice,
         );
+        if (convertedBackToTokens.isGreaterThan(spendableBalance)) {
+          // Subtract 1 cent to fix USD value going over max tokens (due to calc precision (2 decimals vs 7 decimals))
+          calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
+          fiatAmountString = calculatedFiatAmount.toFixed(2);
+          convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
+            tokenPrice,
+          );
+        }
+
+        // Ensure the final token amount doesn't exceed spendableBalance
         const finalTokenAmount = BigNumber.minimum(
           convertedBackToTokens,
           spendableBalance,
         );
 
-        // Recalculate fiat from the final capped token amount to ensure accuracy
+        // Recalculate fiat from the final token amount to ensure accuracy
         const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
         const finalFiatAmountString = finalFiatAmount.toFixed(2);
 
-        // Update both internal value and display with proper formatting
+        // Set fiat amount first - this will trigger the fiat->token conversion
         updateFiatDisplay(finalFiatAmountString);
-        // Set token amount directly to ensure it matches
+        // Set token amount to ensure it matches the capped value
         setTokenAmount(finalTokenAmount.toFixed(DEFAULT_DECIMALS));
       }
     } else {
