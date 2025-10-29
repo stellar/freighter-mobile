@@ -30,13 +30,17 @@ export const useFocusedPolling = ({
   const lastPollTimeRef = useRef<number>(0); // Start at 0 to ensure immediate fetch on first load
   const remainingTimeRef = useRef<number>(interval);
   const pauseTimeRef = useRef<number | null>(null);
-  const pollingIntervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearAllTimers = useCallback(() => {
-    if (pollingIntervalIdRef.current) {
-      clearTimeout(pollingIntervalIdRef.current);
-      clearInterval(pollingIntervalIdRef.current);
-      pollingIntervalIdRef.current = null;
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
     }
   }, []);
 
@@ -50,6 +54,13 @@ export const useFocusedPolling = ({
     pauseTimeRef.current = pauseTime;
   }, [clearAllTimers]);
 
+  const startPollingInterval = useCallback(() => {
+    intervalIdRef.current = setInterval(() => {
+      onPoll();
+      lastPollTimeRef.current = Date.now();
+    }, interval);
+  }, [onPoll, interval]);
+
   const startPolling = useCallback(
     (immediate = false) => {
       clearAllTimers();
@@ -59,13 +70,21 @@ export const useFocusedPolling = ({
         lastPollTimeRef.current = Date.now();
       }
 
-      pollingIntervalIdRef.current = setInterval(() => {
-        onPoll();
-        lastPollTimeRef.current = Date.now();
-      }, interval);
+      startPollingInterval();
     },
-    [onPoll, interval, clearAllTimers],
+    [onPoll, clearAllTimers, startPollingInterval],
   );
+
+  const restartPollingInterval = useCallback(() => {
+    timeoutIdRef.current = null;
+    remainingTimeRef.current = interval;
+
+    // Do immediate fetch since the timer expired
+    onPoll();
+    lastPollTimeRef.current = Date.now();
+
+    startPollingInterval();
+  }, [onPoll, interval, startPollingInterval]);
 
   useEffect(() => handleUnmount, [handleUnmount]);
 
@@ -95,24 +114,26 @@ export const useFocusedPolling = ({
           remainingTimeRef.current = interval;
           startPolling(true);
         } else {
-          pollingIntervalIdRef.current = setTimeout(() => {
-            remainingTimeRef.current = interval;
-
-            // Do immediate fetch since the timer expired
-            onPoll();
-            lastPollTimeRef.current = Date.now();
-
-            pollingIntervalIdRef.current = setInterval(() => {
-              onPoll();
-              lastPollTimeRef.current = Date.now();
-            }, interval);
-          }, remainingTimeRef.current);
+          // Use setTimeout to wait for remaining time, then fetch instantly and restart interval.
+          // Needed for pause/resume: when screen refocuses with time remaining (e.g., 5s),
+          // we wait for that remaining time, fetch immediately, then restart the full interval.
+          // setInterval can't be used here because it waits for the full interval before first fetch.
+          timeoutIdRef.current = setTimeout(
+            restartPollingInterval,
+            remainingTimeRef.current,
+          );
         }
       } else {
         startPolling(false);
       }
 
       return handleUnfocus;
-    }, [startPolling, interval, clearAllTimers, handleUnfocus, onPoll]),
+    }, [
+      startPolling,
+      interval,
+      clearAllTimers,
+      handleUnfocus,
+      restartPollingInterval,
+    ]),
   );
 };

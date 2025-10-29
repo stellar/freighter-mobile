@@ -30,7 +30,7 @@ export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
 export const DEFAULT_REFRESH_DELAY = 1000;
 
 // Balances polling interval in milliseconds
-export const BALANCES_FETCH_POLLING_INTERVAL = 60000;
+export const BALANCES_FETCH_POLLING_INTERVAL = 30000;
 
 // History polling interval in milliseconds
 export const HISTORY_FETCH_POLLING_INTERVAL = 30000;

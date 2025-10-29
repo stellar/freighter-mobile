@@ -195,22 +195,16 @@ const fetchPricedBalances = async (
  * @returns An object with scan results extracted from balance blockaidData
  */
 const extractScanResultsFromBalances = (
-  balances: BalanceMap,
+  pricedBalances: PricedBalanceMap,
   network: NETWORKS,
 ) => {
   if (!isMainnet(network)) {
-    return Promise.resolve({
-      results: {} as Record<
-        string,
-        Blockaid.TokenBulk.TokenBulkScanResponse.Results
-      >,
-      error: null,
-    });
+    return {};
   }
 
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
-  Object.entries(balances).forEach(([tokenIdentifier, balance]) => {
+  Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
     if (
       tokenIdentifier === NATIVE_TOKEN_CODE ||
       tokenIdentifier.includes("lp")
@@ -327,12 +321,17 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       });
 
       const statePricedBalances = get().pricedBalances;
-      const [pricedBalances, scanResult] = await Promise.all([
-        fetchPricedBalances(set, balances, statePricedBalances, params),
-        Promise.resolve(
-          extractScanResultsFromBalances(balances, params.network),
-        ),
-      ]);
+      const pricedBalances = await fetchPricedBalances(
+        set,
+        balances,
+        statePricedBalances,
+        params,
+      );
+
+      const scanResult = extractScanResultsFromBalances(
+        pricedBalances,
+        params.network,
+      );
 
       // Update scan results in state
       set((state) => ({
