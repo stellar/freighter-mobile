@@ -129,7 +129,9 @@ jobs:
           echo "APPLE_CONNECT_KEY_ID=$(echo -n $APPLE_CONNECT_KEY_ID | md5)"
           echo "APPLE_CONNECT_ISSUER_ID=$(echo -n $APPLE_CONNECT_ISSUER_ID | md5)"
           echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
+          echo "FASTLANE_GIT_URL=$(echo -n $FASTLANE_GIT_URL | md5)"
           echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
+          echo "MATCH_PASSWORD=$(echo -n $MATCH_PASSWORD | md5)"
 
       - name: Enable Corepack
         run: corepack enable
