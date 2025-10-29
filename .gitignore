@@ -91,5 +91,4 @@ ios/sentry.properties
 
 # Fastlane secret files
 fastlane/*-secret.json
-android/keystores/
 ios/fastlane/*.p8
