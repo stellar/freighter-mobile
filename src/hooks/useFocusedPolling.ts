@@ -97,6 +97,7 @@ export const useFocusedPolling = ({
 
       if (timeSinceLastPoll >= interval) {
         remainingTimeRef.current = interval;
+        // start polling true = immediate fetch because timeSinceLastPoll is greater than interval
         startPolling(true);
       } else if (pauseTimeRef.current) {
         // Resume: subtract the paused duration from remaining time
@@ -124,9 +125,9 @@ export const useFocusedPolling = ({
           );
         }
       } else {
+        // start polling false = no immediate fetch because timeSinceLastPoll is less than interval
         startPolling(false);
       }
-
       return handleUnfocus;
     }, [
       startPolling,
