@@ -45,7 +45,10 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatInputDisplay,
+} from "helpers/formatAmount";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -65,35 +68,6 @@ import React, {
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-
-const getFiatDisplayTemplate = (value: string): string => {
-  if (!value || value === "0") {
-    return formatFiatAmount("0.00");
-  }
-
-  const normalizedValue = value.replace(",", ".");
-  const parsed = parseFloat(normalizedValue);
-
-  if (!Number.isNaN(parsed)) {
-    return formatFiatAmount(parsed.toString());
-  }
-
-  const match = value.match(/^(\d+)([.,]?)(\d*)$/);
-  if (match) {
-    const [, integer, separator, decimal] = match;
-    if (separator && decimal.length === 0) {
-      return formatFiatAmount(`${integer}.00`);
-    }
-    if (separator && decimal.length === 1) {
-      return formatFiatAmount(`${integer}.${decimal}0`);
-    }
-    if (integer) {
-      return formatFiatAmount(`${integer}.00`);
-    }
-  }
-
-  return value;
-};
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -645,7 +619,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                   ? { primary: true }
                   : { secondary: true })}
               >
-                {getFiatDisplayTemplate(fiatAmountDisplay)}
+                {formatFiatInputDisplay(fiatAmountDisplay)}
               </Display>
             ) : (
               <View className="flex-row items-center gap-[4px]">
@@ -673,7 +647,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                       tokenAmount,
                       selectedBalance?.tokenCode,
                     )
-                  : getFiatDisplayTemplate(fiatAmountDisplay)}
+                  : formatFiatInputDisplay(fiatAmountDisplay)}
               </Text>
               <TouchableOpacity
                 className="ml-2"
