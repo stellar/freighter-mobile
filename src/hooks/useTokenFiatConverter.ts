@@ -159,8 +159,6 @@ export const useTokenFiatConverter = ({
     if (useFiatAmountInput) {
       const newAmount = formatFiatInputTemplate(fiatAmountDisplay, key);
 
-      // Check if the new amount exceeds max spendable
-      // For fiat input, we need to parse it differently since it's raw input, not locale-formatted
       let internalAmount = newAmount.replace(",", ".");
       // Remove trailing decimal separator for internal value
       if (internalAmount.endsWith(".")) {
