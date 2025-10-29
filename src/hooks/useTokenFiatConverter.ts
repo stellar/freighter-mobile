@@ -45,8 +45,7 @@ export const useTokenFiatConverter = ({
   const [fiatAmountDisplay, setFiatAmountDisplay] = useState("0");
   const [useFiatAmountInput, setUseFiatAmountInput] = useState(false);
 
-  // Helper function to format fiat input - keep raw input, format in Display component
-  const formatFiatInput = (prevValue: string, key: string): string => {
+  const formatFiatInputTemplate = (prevValue: string, key: string): string => {
     // Handle delete key - only remove last character, don't reformat
     if (key === "") {
       const newValue = prevValue.slice(0, -1);
@@ -158,7 +157,7 @@ export const useTokenFiatConverter = ({
    */
   const handleDisplayAmountChange = (key: string) => {
     if (useFiatAmountInput) {
-      const newAmount = formatFiatInput(fiatAmountDisplay, key);
+      const newAmount = formatFiatInputTemplate(fiatAmountDisplay, key);
 
       // Check if the new amount exceeds max spendable
       // For fiat input, we need to parse it differently since it's raw input, not locale-formatted
