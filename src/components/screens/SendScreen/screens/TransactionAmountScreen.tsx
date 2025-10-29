@@ -69,35 +69,33 @@ import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 
-// Helper function to safely format fiat display value
-const formatFiatDisplayValue = (value: string): string => {
+const getFiatDisplayTemplate = (value: string): string => {
   if (!value || value === "0") {
-    return formatFiatAmountForDisplay("0.00");
+    return `$${formatFiatAmountForDisplay("0.00")}`;
   }
 
   const normalizedValue = value.replace(",", ".");
   const parsed = parseFloat(normalizedValue);
 
   if (!Number.isNaN(parsed)) {
-    return formatFiatAmountForDisplay(parsed.toString());
+    return `$${formatFiatAmountForDisplay(parsed.toString())}`;
   }
 
   const match = value.match(/^(\d+)([.,]?)(\d*)$/);
   if (match) {
     const [, integer, separator, decimal] = match;
     if (separator && decimal.length === 0) {
-      return formatFiatAmountForDisplay(`${integer}.00`);
+      return `$${formatFiatAmountForDisplay(`${integer}.00`)}`;
     }
     if (separator && decimal.length === 1) {
-      return formatFiatAmountForDisplay(`${integer}.${decimal}0`);
+      return `$${formatFiatAmountForDisplay(`${integer}.${decimal}0`)}`;
     }
     if (integer) {
-      return formatFiatAmountForDisplay(`${integer}.00`);
+      return `$${formatFiatAmountForDisplay(`${integer}.00`)}`;
     }
   }
 
-  // Fallback: return as is
-  return value;
+  return `$${value}`;
 };
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
@@ -293,10 +291,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     );
 
     if (showFiatAmount) {
-      // Use the same price calculation method as BalanceRow
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
       if (!tokenPrice.isZero()) {
-        // Calculate fiat amount from the capped token amount
         let calculatedFiatAmount = cappedTargetAmount.multipliedBy(tokenPrice);
         let fiatAmountString = calculatedFiatAmount.toFixed(2);
 
@@ -304,7 +300,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           tokenPrice,
         );
         if (convertedBackToTokens.isGreaterThan(spendableBalance)) {
-          // Subtract 1 cent to fix USD value going over max tokens (due to calc precision (2 decimals vs 7 decimals))
+          // Subtract 1 cent to fix USD value going over max tokens
           calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
           fiatAmountString = calculatedFiatAmount.toFixed(2);
           convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
@@ -312,23 +308,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           );
         }
 
-        // Ensure the final token amount doesn't exceed spendableBalance
         const finalTokenAmount = BigNumber.minimum(
           convertedBackToTokens,
           spendableBalance,
         );
-
-        // Recalculate fiat from the final token amount to ensure accuracy
         const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
         const finalFiatAmountString = finalFiatAmount.toFixed(2);
 
-        // Set fiat amount first - this will trigger the fiat->token conversion
         updateFiatDisplay(finalFiatAmountString);
-        // Set token amount to ensure it matches the capped value
         setTokenAmount(finalTokenAmount.toFixed(DEFAULT_DECIMALS));
       }
     } else {
-      // Set raw internal value (dot notation) - already capped to spendableBalance
       setTokenAmount(cappedTargetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
@@ -658,7 +648,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                   ? { primary: true }
                   : { secondary: true })}
               >
-                ${formatFiatDisplayValue(fiatAmountDisplay)}
+                {getFiatDisplayTemplate(fiatAmountDisplay)}
               </Display>
             ) : (
               <View className="flex-row items-center gap-[4px]">
@@ -686,7 +676,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                       tokenAmount,
                       selectedBalance?.tokenCode,
                     )
-                  : `$${formatFiatDisplayValue(fiatAmountDisplay)}`}
+                  : getFiatDisplayTemplate(fiatAmountDisplay)}
               </Text>
               <TouchableOpacity
                 className="ml-2"
