@@ -74,6 +74,9 @@ platform :ios do
     setup_ci
     
     build_version = ENV.fetch("BUILD_VERSION")
+
+    UI.message "🔄 Setting build version: #{build_version}"
+
     replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
                     find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
                     replace: "CURRENT_PROJECT_VERSION = #{build_version}"
