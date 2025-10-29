@@ -23,6 +23,7 @@ interface UseTokenFiatConverterResult {
   handleDisplayAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
+  updateFiatDisplay: (amount: string) => void;
 }
 
 /**
@@ -37,13 +38,67 @@ interface UseTokenFiatConverterResult {
  */
 export const useTokenFiatConverter = ({
   selectedBalance,
-  spendableBalance,
+  spendableBalance, // eslint-disable-line @typescript-eslint/no-unused-vars -- Reserved for future validation in UI
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
   const [tokenAmountDisplay, setTokenAmountDisplay] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
-  const [fiatAmountDisplay, setFiatAmountDisplay] = useState("0.00");
+  const [fiatAmountDisplay, setFiatAmountDisplay] = useState("0");
   const [showFiatAmount, setShowFiatAmount] = useState(false);
+
+  // Helper function to format fiat input - keep raw input, format in Display component
+  const formatFiatInput = (prevValue: string, key: string): string => {
+    // Handle delete key - only remove last character, don't reformat
+    if (key === "") {
+      const newValue = prevValue.slice(0, -1);
+
+      // If the deleted character was a decimal separator, also remove the digit before it
+      if (prevValue.endsWith(".") || prevValue.endsWith(",")) {
+        return newValue.slice(0, -1);
+      }
+
+      return newValue === "" ? "0" : newValue;
+    }
+
+    // Handle decimal separator - preserve user's input (comma or dot)
+    if (key === "." || key === ",") {
+      // Allow only one decimal separator
+      if (prevValue.includes(".") || prevValue.includes(",")) {
+        return prevValue;
+      }
+      // Add separator to the value
+      return `${prevValue}${key}`;
+    }
+
+    // Handle digit keys ("0" - "9")
+    if (/^[0-9]$/.test(key)) {
+      // Handle leading zero replacement
+      if (prevValue === "0") {
+        return key; // Replace "0" with the new digit
+      }
+
+      // Check if we have a decimal separator and limit decimal places
+      const decimalIndex = Math.max(
+        prevValue.lastIndexOf("."),
+        prevValue.lastIndexOf(","),
+      );
+      if (decimalIndex !== -1) {
+        const decimalPartLength = prevValue.length - decimalIndex - 1;
+        if (decimalPartLength >= FIAT_DECIMALS) {
+          return prevValue; // Max decimal places reached
+        }
+      }
+
+      // Limit total length
+      if (prevValue.length >= 20) {
+        return prevValue;
+      }
+
+      return prevValue + key;
+    }
+
+    return prevValue;
+  };
 
   // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
@@ -90,48 +145,23 @@ export const useTokenFiatConverter = ({
   }, [fiatAmount, tokenPrice, showFiatAmount]);
 
   /**
-   * Validates if the input amount exceeds the maximum spendable amount
-   *
-   * @param {string} amount - The amount to validate
-   * @param {boolean} isFiat - Whether this is a fiat amount
-   * @returns {boolean} True if amount is valid, false if it exceeds max
-   */
-  const validateAmount = (amount: string, isFiat: boolean): boolean => {
-    const amountBN = new BigNumber(amount);
-    if (!amountBN.isFinite() || amountBN.isLessThanOrEqualTo(0)) {
-      return true; // Allow zero or invalid amounts
-    }
-
-    if (isFiat) {
-      // For fiat amounts, validate that the converted token amount doesn't exceed spendable balance
-      if (!tokenPrice || tokenPrice.isZero()) {
-        return true; // Allow if no price available
-      }
-      const convertedTokenAmount = amountBN.dividedBy(tokenPrice);
-      return convertedTokenAmount.isLessThanOrEqualTo(spendableBalance);
-    }
-    return amountBN.isLessThanOrEqualTo(spendableBalance);
-  };
-
-  /**
    * Handles numeric input and deletion for display-formatted values
    *
    * @param {string} key - The key pressed (number or empty string for delete)
    */
   const handleDisplayAmountChange = (key: string) => {
     if (showFiatAmount) {
-      const newAmount = formatNumericInput(
-        fiatAmountDisplay,
-        key,
-        FIAT_DECIMALS,
-      );
+      const newAmount = formatFiatInput(fiatAmountDisplay, key);
 
       // Check if the new amount exceeds max spendable
-      const internalAmount = parseDisplayNumber(newAmount, FIAT_DECIMALS);
-      if (!validateAmount(internalAmount, true)) {
-        return; // Don't update if it exceeds max spendable
+      // For fiat input, we need to parse it differently since it's raw input, not locale-formatted
+      let internalAmount = newAmount.replace(",", ".");
+      // Remove trailing decimal separator for internal value
+      if (internalAmount.endsWith(".")) {
+        internalAmount = internalAmount.slice(0, -1);
       }
 
+      // Always allow typing - validation will be handled by the UI to show errors
       // Update display value immediately to preserve formatting
       setFiatAmountDisplay(newAmount);
       setFiatAmount(internalAmount);
@@ -142,16 +172,21 @@ export const useTokenFiatConverter = ({
         DEFAULT_DECIMALS,
       );
 
-      // Check if the new amount exceeds max spendable
+      // Always allow typing - validation will be handled by the UI to show errors
       const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
-      if (!validateAmount(internalAmount, false)) {
-        return; // Don't update if it exceeds max spendable
-      }
 
       // Update display value immediately to preserve formatting
       setTokenAmountDisplay(newAmount);
       setTokenAmount(internalAmount);
     }
+  };
+
+  // Helper function to update fiat display when setting programmatically
+  const updateFiatDisplay = (amount: string) => {
+    setFiatAmount(amount);
+    // Convert dot to comma for display to match user's locale input format
+    const displayAmount = amount.replace(".", ",");
+    setFiatAmountDisplay(displayAmount);
   };
 
   return {
@@ -164,5 +199,6 @@ export const useTokenFiatConverter = ({
     handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
+    updateFiatDisplay,
   };
 };

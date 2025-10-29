@@ -274,7 +274,7 @@ describe("formatAmount helpers", () => {
 
   describe("formatPercentageAmount", () => {
     it("should format positive string values with plus sign", () => {
-      expect(formatPercentageAmount("0.1")).toBe("+0.1%");
+      expect(formatPercentageAmount("0.1")).toBe("+0.10%");
       expect(formatPercentageAmount("1.23")).toBe("+1.23%");
       expect(formatPercentageAmount("10")).toBe("+10.00%");
     });
@@ -330,13 +330,13 @@ describe("formatAmount helpers", () => {
     });
 
     it("should format negative string values with minus sign", () => {
-      expect(formatPercentageAmount("-0.1")).toBe("-0.1%");
+      expect(formatPercentageAmount("-0.1")).toBe("-0.10%");
       expect(formatPercentageAmount("-1.23")).toBe("-1.23%");
       expect(formatPercentageAmount("-10")).toBe("-10.00%");
     });
 
     it("should format string values", () => {
-      expect(formatPercentageAmount("0.1")).toBe("+0.1%");
+      expect(formatPercentageAmount("0.1")).toBe("+0.10%");
       expect(formatPercentageAmount("-1.23")).toBe("-1.23%");
     });
 

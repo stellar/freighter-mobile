@@ -69,9 +69,9 @@ const formatNumber = (
       if (minimumFractionDigits === 0) {
         trimmedDecimal = decimalPart.replace(/0+$/, "");
       } else {
-        // When minimumFractionDigits is set, preserve trailing zeros up to that minimum
+        // When minimumFractionDigits is set, pad with zeros to reach minimum length
         const minLength = Math.max(minimumFractionDigits, decimalPart.length);
-        trimmedDecimal = decimalPart.substring(0, minLength);
+        trimmedDecimal = decimalPart.padEnd(minLength, "0");
       }
     }
     // For very high precision numbers (more than 20 decimal places), preserve all digits
