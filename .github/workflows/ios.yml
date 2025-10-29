@@ -85,6 +85,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
       - name: Set xcode version
         run: sudo xcode-select -s /Applications/Xcode.app
 
@@ -126,8 +129,8 @@ jobs:
           echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
           echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
 
-      - name: Make scripts executable
-        run: find scripts -type f -exec chmod +x {} \;
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Set up Node
         uses: actions/setup-node@v6
