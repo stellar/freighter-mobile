@@ -137,9 +137,14 @@ end
 
 platform :android do
   before_all do
-    # Deep clean gradle build artifacts
-    UI.message "🧹 Performing deep Gradle clean..."
-    sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    # Gradle clean in CI environment shouldn't be needed
+    # so leaving it here as an option for local testing.
+    if ENV.fetch("FORCE_GRADLE_CLEAN") == "1"
+      UI.message "🧹 Performing deep Gradle clean..."
+      sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    else
+      UI.message "⏩ Skipping deep Gradle clean (default)"
+    end
 
     create_json_secret_file
   end

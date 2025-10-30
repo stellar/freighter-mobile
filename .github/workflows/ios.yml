@@ -86,12 +86,7 @@ jobs:
 
     steps:
       - name: List installed Xcodes
-        run: |
-          ls -1 /Applications | grep -i Xcode || true
-          xcode-select -p
-          xcodebuild -version
-          xcodebuild -showsdks
-          system_profiler SPDeveloperToolsDataType
+        run: ls -1 /Applications | grep -i Xcode || true
 
       - name: Set xcode version
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
