@@ -90,11 +90,11 @@ platform :ios do
       in_house: false
     )
 
-    update_code_signing_settings(
-      use_automatic_signing: false,
-      path: "ios/freighter-mobile.xcodeproj",
-      team_id: "4JWM8JNM37",
-    )
+    # update_code_signing_settings(
+    #   use_automatic_signing: false,
+    #   path: "ios/freighter-mobile.xcodeproj",
+    #   team_id: "4JWM8JNM37",
+    # )
 
     match(
       type: "appstore",
@@ -105,12 +105,12 @@ platform :ios do
       verbose: false
     )
 
-    update_code_signing_settings(
-      use_automatic_signing: true,
-      path: "ios/freighter-mobile.xcodeproj",
-      team_id: "4JWM8JNM37",
-      code_sign_identity: "Apple Distribution",
-    )
+    # update_code_signing_settings(
+    #   use_automatic_signing: true,
+    #   path: "ios/freighter-mobile.xcodeproj",
+    #   team_id: "4JWM8JNM37",
+    #   code_sign_identity: "Apple Distribution",
+    # )
   end
 
   lane :upload_build do
