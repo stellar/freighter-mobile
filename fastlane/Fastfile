@@ -90,12 +90,6 @@ platform :ios do
       in_house: false
     )
 
-    # update_code_signing_settings(
-    #   use_automatic_signing: false,
-    #   path: "ios/freighter-mobile.xcodeproj",
-    #   team_id: "4JWM8JNM37",
-    # )
-
     match(
       type: "appstore",
       readonly: true,
@@ -104,13 +98,6 @@ platform :ios do
       git_branch: "main",
       verbose: false
     )
-
-    # update_code_signing_settings(
-    #   use_automatic_signing: true,
-    #   path: "ios/freighter-mobile.xcodeproj",
-    #   team_id: "4JWM8JNM37",
-    #   code_sign_identity: "Apple Distribution",
-    # )
   end
 
   lane :upload_build do
@@ -140,7 +127,9 @@ platform :ios do
   lane :prod do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
+      export_method: "app-store",
       scheme: "freighter-mobile",
+      configuration: "Release",
       buildlog_path: "/tmp/build",
       output_directory: "/tmp/build",
       output_name: "Freighter"
