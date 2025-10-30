@@ -1,0 +1,184 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# frozen_string_literal: true
+
+opt_out_usage
+
+default_platform(:android)
+
+def create_json_secret_file
+  key_file_contents = Base64.strict_decode64(
+    ENV.fetch("GOOGLE_JSON_SECRET_CONTENT") { raise "GOOGLE_JSON_SECRET_CONTENT environment variable is required" }
+  )
+
+  key_file = "google-fastlane-secret.json"
+
+  File.open(key_file, "w") {|io| io << key_file_contents }
+  File.chmod(0o600, key_file)
+end
+
+def create_keystore_file(env)
+  key_file_contents = Base64.strict_decode64(
+    ENV.fetch("ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT") { raise "ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT environment variable is required" }
+  )
+
+  key_file = File.expand_path(
+    "#{Dir.pwd}/../android/keystores/#{env.to_s.downcase}-release.keystore"
+  )
+
+  File.open(key_file, "wb") {|io| io << key_file_contents }
+  File.chmod(0o600, key_file)
+end
+
+def increment_version_code(gradle_file_path)
+  file_path = File.join(Dir.pwd, gradle_file_path)
+  contents = File.read(file_path)
+  
+  # Find and increment the versionCode
+  contents.gsub!(/versionCode\s+(\d+)/) do |match|
+    current_version = $1.to_i
+    new_version = current_version + 1
+    UI.success "📱 Incrementing versionCode: #{current_version} → #{new_version}"
+    "versionCode #{new_version}"
+  end
+  
+  File.write(file_path, contents)
+end
+
+def replace_in_file(file, find:, replace:)
+  contents = File.read(file)
+  contents.gsub!(find, replace)
+  File.open(file, "w") {|io| io << contents }
+end
+
+def testflight?
+  ENV["UPLOAD_TO_TESTFLIGHT"] != "no"
+end
+
+def google_play?
+  ENV["UPLOAD_TO_GOOGLE_PLAY"] != "no"
+end
+
+platform :ios do
+  before_all do
+    setup_ci
+    
+    build_version = ENV.fetch("BUILD_VERSION")
+    replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
+                    find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
+                    replace: "CURRENT_PROJECT_VERSION = #{build_version}"
+
+    app_store_connect_api_key(
+      key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },
+      issuer_id: ENV.fetch("APPLE_CONNECT_ISSUER_ID") { raise "APPLE_CONNECT_ISSUER_ID environment variable is required" },
+      key_content: ENV.fetch("APPLE_CONNECT_KEY_CONTENT") { raise "APPLE_CONNECT_KEY_CONTENT environment variable is required" },
+      is_key_content_base64: true,
+      duration: 1200,
+      in_house: false
+    )
+
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" },
+      git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
+      git_branch: "main",
+      verbose: false
+    ) 
+  end
+
+  lane :upload_build do
+    if testflight?
+      upload_to_testflight(skip_waiting_for_build_processing: true)
+    else
+      UI.important "⚠️  Not uploading build to Apple Testflight"
+    end
+  end
+
+  desc "Push a new Dev build to TestFlight"
+  lane :dev do
+    build_app(
+      workspace: "ios/freighter-mobile.xcworkspace",
+      scheme: "freighter-mobile-dev",
+      buildlog_path: "/tmp/build",
+      output_directory: "/tmp/build",
+      output_name: "Freighter-Dev"
+    ) 
+    
+    upload_build
+  end
+
+  desc "Push a new Prod build to TestFlight"
+  lane :prod do
+    build_app(
+      workspace: "ios/freighter-mobile.xcworkspace",
+      scheme: "freighter-mobile",
+      buildlog_path: "/tmp/build",
+      output_directory: "/tmp/build",
+      output_name: "Freighter"
+    ) 
+    
+    upload_build
+  end
+end
+
+platform :android do
+  before_all do
+    # Deep clean gradle build artifacts
+    UI.message "🧹 Performing deep Gradle clean..."
+    sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+
+    create_json_secret_file
+  end
+
+  lane :upload_build do
+    if google_play?
+      upload_to_play_store(
+        track: "internal",
+        track_promote_to: "internal"
+      )
+    else
+      UI.important "⚠️  Not uploading build to Google Play store"
+    end
+  end
+
+  desc "Push a new Dev build to the Google Play"
+  lane :dev do
+    create_keystore_file("dev")
+    
+    gradle(
+      task: "bundle",
+      flavor: "dev",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "android/"
+    )
+
+    upload_build
+  end
+
+  desc "Push a new Prod build to the Google Play"
+  lane :prod do
+    create_keystore_file("prod")
+    
+    gradle(
+      task: "bundle",
+      flavor: "prod",
+      build_type: "Release",
+      print_command: false,
+      project_dir: "android/"
+    )
+
+    upload_build
+  end
+end
