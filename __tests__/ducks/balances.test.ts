@@ -12,10 +12,9 @@ import {
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
-import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
 
-import { beningTokenScan } from "../../__mocks__/blockaid-response";
+import { benignTokenScan } from "../../__mocks__/blockaid-response";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
@@ -49,9 +48,6 @@ describe("balances duck", () => {
     typeof fetchBalances
   >;
   const mockGetItem = jest.fn();
-  const mockScanBulkTokens = scanBulkTokens as jest.MockedFunction<
-    typeof scanBulkTokens
-  >;
 
   // Helper function to create a mock prices store state
   const createMockPricesStore = (
@@ -97,6 +93,7 @@ describe("balances duck", () => {
     limit: new BigNumber("1000"),
     buyingLiabilities: "0",
     sellingLiabilities: "0",
+    blockaidData: benignTokenScan,
   };
 
   const mockBalances = {
@@ -373,39 +370,67 @@ describe("balances duck", () => {
       ).toBeUndefined();
     });
 
-    it("should update scanResults state on successful scan", async () => {
+    it("should extract scanResults from backend balance data", async () => {
       mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
       (usePricesStore.getState as jest.Mock).mockReturnValue(
         createMockPricesStore({ prices: mockPrices }),
       );
 
-      const mockScanResponse = {
-        results: {
-          "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-            beningTokenScan,
-        },
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      // Should extract scan results from blockaidData in balances
+      expect(result.current.scanResults).toEqual({
+        "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          benignTokenScan,
+      });
+      unmount();
+    });
+
+    it("should extract scan results only from mainnet balances", async () => {
+      const mockBalancesWithBlockaid = {
+        ...mockBalances,
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          mockTokenBalance,
       };
 
-      mockScanBulkTokens.mockResolvedValueOnce(mockScanResponse);
-
-      const { result, unmount } = renderHook(() => useBalancesStore());
-
-      await act(async () => {
-        await result.current.fetchAccountBalances(mockParamsPubnet);
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalancesWithBlockaid,
       });
-
-      expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
-      expect(result.current.scanResults).toEqual(mockScanResponse.results);
-      unmount();
-    });
-
-    it("should retain existing scan results in failure case", async () => {
-      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
       (usePricesStore.getState as jest.Mock).mockReturnValue(
         createMockPricesStore({ prices: mockPrices }),
       );
 
-      mockScanBulkTokens.mockRejectedValueOnce(new Error("scan failed"));
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      // On testnet, should not extract scan results
+      expect(result.current.scanResults).toEqual({});
+      unmount();
+    });
+
+    it("should not extract scan results for native tokens or liquidity pools", async () => {
+      const mockNativeWithBlockaid = {
+        ...mockNativeBalance,
+        blockaidData: benignTokenScan,
+      };
+
+      const mockBalancesWithoutTokens = {
+        XLM: mockNativeWithBlockaid,
+      };
+
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalancesWithoutTokens,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
 
       const { result, unmount } = renderHook(() => useBalancesStore());
 
@@ -413,22 +438,27 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParamsPubnet);
       });
 
-      expect(mockScanBulkTokens).toHaveBeenCalled();
-      expect(result.current.scanResults).toStrictEqual({});
+      // Should not extract scan results for XLM (native token)
+      expect(result.current.scanResults).toEqual({});
       unmount();
     });
 
-    it("should batch scans in chunks of 20 tokens by default", async () => {
+    it("should extract scan results from multiple balances", async () => {
       const manyBalances = {} as BalanceMap;
-      for (let i = 0; i < 25; i++) {
-        manyBalances[`TOKEN${i}:ISSUER${i}`] = {
+      const expectedScanResults: Record<string, typeof benignTokenScan> = {};
+
+      for (let i = 0; i < 5; i++) {
+        const tokenId = `TOKEN${i}:ISSUER${i}`;
+        manyBalances[tokenId] = {
           ...mockTokenBalance,
           token: {
             ...mockTokenBalance.token,
             code: `TOKEN${i}`,
             issuer: { key: `ISSUER${i}` },
           },
+          blockaidData: benignTokenScan,
         };
+        expectedScanResults[`TOKEN${i}-ISSUER${i}`] = benignTokenScan;
       }
 
       mockFetchBalances.mockResolvedValueOnce({ balances: manyBalances });
@@ -436,16 +466,15 @@ describe("balances duck", () => {
         createMockPricesStore({ prices: {} }),
       );
 
-      mockScanBulkTokens.mockResolvedValue({ results: {} });
-
       const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParamsPubnet);
       });
 
-      // Should call scan twice (20 + 5)
-      expect(mockScanBulkTokens).toHaveBeenCalledTimes(2);
+      // Should extract scan results for all tokens with blockaidData
+      expect(result.current.scanResults).toEqual(expectedScanResults);
+      expect(Object.keys(result.current.scanResults)).toHaveLength(5);
       unmount();
     });
   });
