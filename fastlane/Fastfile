@@ -97,7 +97,13 @@ platform :ios do
       git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
       verbose: false
-    ) 
+    )
+
+    automatic_code_signing(
+      path: "ios/freighter-mobile.xcodeproj",
+      use_automatic_signing: true,
+      team_id: "4JWM8JNM37"
+    )
   end
 
   lane :upload_build do
