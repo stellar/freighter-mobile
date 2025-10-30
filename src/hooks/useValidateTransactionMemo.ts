@@ -11,9 +11,20 @@ import { usePreferencesStore } from "ducks/preferences";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { cachedFetch } from "helpers/cachedFetch";
 import { isMainnet } from "helpers/networks";
+import { SOROBAN_OPERATION_TYPES } from "helpers/soroban";
 import { getApiStellarExpertIsMemoRequiredListUrl } from "helpers/stellarExpert";
 import { useEffect, useMemo, useState } from "react";
 import { stellarSdkServer } from "services/stellar";
+
+/**
+ * Checks if a transaction is a Soroban transaction by examining its operations
+ */
+const isSorobanTransaction = (
+  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+): boolean =>
+  transaction.operations.some((operation) =>
+    SOROBAN_OPERATION_TYPES.includes(operation.type),
+  );
 
 /**
  * Checks if a memo is required by querying cached memo-required accounts
@@ -104,11 +115,20 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   /**
    * Determines if memo validation should be performed
    * Only validates on mainnet when the feature is enabled in preferences
+   * Skip validation for Soroban transactions
    */
-  const shouldValidateMemo = useMemo(
-    () => !!(isMemoValidationEnabled && isMainnet(network)),
-    [isMemoValidationEnabled, network],
-  );
+  const shouldValidateMemo = useMemo(() => {
+    if (!isMemoValidationEnabled || !isMainnet(network)) {
+      return false;
+    }
+
+    // Skip validation for Soroban transactions
+    if (localTransaction && isSorobanTransaction(localTransaction)) {
+      return false;
+    }
+
+    return true;
+  }, [isMemoValidationEnabled, network, localTransaction]);
   const [isMemoMissing, setIsMemoMissing] = useState(shouldValidateMemo);
 
   /**

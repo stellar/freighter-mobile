@@ -22,6 +22,7 @@ import {
   parseDisplayNumber,
   formatNumberForDisplay,
 } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -30,7 +31,7 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
@@ -55,6 +56,8 @@ const TransactionSettingsBottomSheet: React.FC<
     transactionMemo,
     transactionFee,
     transactionTimeout,
+    selectedTokenId,
+    recipientAddress,
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
@@ -73,6 +76,15 @@ const TransactionSettingsBottomSheet: React.FC<
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  // Check if selected token is a Soroban token (contract ID) or recipient is a Soroban contract
+  const isSorobanToken = selectedTokenId
+    ? isContractId(selectedTokenId)
+    : false;
+  const isSorobanRecipient = recipientAddress
+    ? isContractId(recipientAddress)
+    : false;
+  const isSorobanTransaction = isSorobanToken || isSorobanRecipient;
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -104,6 +116,14 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
+  // Clear memo when Soroban token is selected or recipient is a Soroban contract
+  useEffect(() => {
+    if (isSorobanTransaction && context !== TransactionContext.Swap) {
+      saveTransactionMemo("");
+      setLocalMemo("");
+    }
+  }, [isSorobanTransaction, context, saveTransactionMemo]);
+
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
@@ -113,11 +133,11 @@ const TransactionSettingsBottomSheet: React.FC<
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
-      if (context === TransactionContext.Send) {
+      if (context === TransactionContext.Send && !isSorobanTransaction) {
         saveTransactionMemo(value);
       }
     },
-    [context, saveTransactionMemo],
+    [context, saveTransactionMemo, isSorobanTransaction],
   );
 
   const saveFee = useCallback(
@@ -179,9 +199,15 @@ const TransactionSettingsBottomSheet: React.FC<
     const numericValue = enforceSettingInputDecimalSeparator(text);
     setLocalSlippage(numericValue);
   }, []);
-  const handleMemoChange = useCallback((text: string) => {
-    setLocalMemo(text);
-  }, []);
+  const handleMemoChange = useCallback(
+    (text: string) => {
+      // Prevent memo changes for Soroban transactions
+      if (!isSorobanTransaction) {
+        setLocalMemo(text);
+      }
+    },
+    [isSorobanTransaction],
+  );
 
   const handleFeeChange = useCallback((text: string) => {
     const normalizedText = enforceSettingInputDecimalSeparator(text);
@@ -241,8 +267,18 @@ const TransactionSettingsBottomSheet: React.FC<
   };
 
   // Render functions
-  const getMemoRow = useCallback(
-    () => (
+  const getMemoRow = useCallback(() => {
+    // Recalculate in case values changed
+    const isSorobanTokenCheck = selectedTokenId
+      ? isContractId(selectedTokenId)
+      : false;
+    const isSorobanRecipientCheck = recipientAddress
+      ? isContractId(recipientAddress)
+      : false;
+    const isSorobanTransactionCheck =
+      isSorobanTokenCheck || isSorobanRecipientCheck;
+
+    return (
       <View className="flex-col gap-2 mt-[24px]">
         <View className="flex flex-row items-center gap-2">
           <Text sm secondary>
@@ -262,11 +298,28 @@ const TransactionSettingsBottomSheet: React.FC<
           value={localMemo}
           onChangeText={handleMemoChange}
           error={memoError}
+          editable={!isSorobanTransactionCheck}
+          note={
+            isSorobanTransactionCheck ? (
+              <View className="flex flex-row items-center gap-2 mt-1">
+                <Text sm secondary color={themeColors.status.warning}>
+                  {t("transactionSettings.memoInfo.sorobanNote")}
+                </Text>
+              </View>
+            ) : undefined
+          }
         />
       </View>
-    ),
-    [localMemo, memoError, t, handleMemoChange],
-  );
+    );
+  }, [
+    localMemo,
+    memoError,
+    t,
+    handleMemoChange,
+    selectedTokenId,
+    recipientAddress,
+    themeColors.status.warning,
+  ]);
 
   const getSlippageRow = useCallback(
     () => (
@@ -462,6 +515,10 @@ const TransactionSettingsBottomSheet: React.FC<
         {
           key: "additionalInfo",
           value: t("transactionSettings.memoInfo.additionalInfo"),
+        },
+        {
+          key: "sorobanInfo",
+          value: t("transactionSettings.memoInfo.sorobanInfo"),
         },
       ],
     },
