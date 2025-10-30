@@ -102,7 +102,7 @@ platform :ios do
       git_url: ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" },
       git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
-      verbose: true
+      verbose: false
     )
 
     update_code_signing_settings(
