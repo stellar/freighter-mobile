@@ -15,7 +15,7 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
-import { BiometricsSource, STORAGE_KEYS, LoginType } from "config/constants";
+import { BiometricsSource, STORAGE_KEYS } from "config/constants";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -132,9 +132,12 @@ export const RootNavigator = () => {
     isBiometricsEnabled,
   ]);
 
-  // Set hasTriggeredAppOpenBiometricsLogin to true when user becomes authenticated
   useEffect(() => {
-    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    if (initializing) {
+      return;
+    }
+
+    if (authStatus === AUTH_STATUS.AUTHENTICATED || !isBiometricsEnabled) {
       setHasTriggeredAppOpenBiometricsLogin(true);
 
       return;
@@ -142,10 +145,7 @@ export const RootNavigator = () => {
 
     if (
       authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
-      isBiometricsEnabled &&
-      !hasTriggeredAppOpenBiometricsLogin &&
-      signInMethod !== LoginType.PASSWORD &&
-      !initializing
+      !hasTriggeredAppOpenBiometricsLogin
     ) {
       setHasTriggeredAppOpenBiometricsLogin(true);
 
