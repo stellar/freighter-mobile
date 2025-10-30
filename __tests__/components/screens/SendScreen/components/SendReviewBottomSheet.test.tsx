@@ -198,41 +198,12 @@ describe("SendReviewBottomSheet", () => {
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
-    it("prioritizes malicious over unable to scan in banner", () => {
-      const { getByText } = renderWithProviders(
-        <SendReviewBottomSheet
-          {...defaultProps}
-          isMalicious
-          isUnableToScan
-          bannerText="This address was flagged as malicious"
-          bannerVariant="error"
-        />,
-      );
-
-      expect(getByText("This address was flagged as malicious")).toBeTruthy();
-    });
-
-    it("prioritizes suspicious over unable to scan in banner", () => {
-      const { getByText } = renderWithProviders(
-        <SendReviewBottomSheet
-          {...defaultProps}
-          isSuspicious
-          isUnableToScan
-          bannerText="This address was flagged as suspicious"
-          bannerVariant="warning"
-        />,
-      );
-
-      expect(getByText("This address was flagged as suspicious")).toBeTruthy();
-    });
-
     it("shows banner when multiple security states are true", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
           isMalicious
           isSuspicious
-          isUnableToScan
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,

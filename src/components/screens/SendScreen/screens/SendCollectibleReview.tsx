@@ -349,6 +349,7 @@ const SendCollectibleReviewScreen: React.FC<
       isRequiredMemoMissing: false,
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
+      isUnableToScan: transactionSecurityAssessment.isUnableToScan,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
     }),
@@ -356,6 +357,7 @@ const SendCollectibleReviewScreen: React.FC<
       handleCancelReview,
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
+      transactionSecurityAssessment.isUnableToScan,
       handleTransactionConfirmation,
       isValidatingMemo,
     ],
@@ -420,8 +422,26 @@ const SendCollectibleReviewScreen: React.FC<
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
+    isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
   });
+
+  const handleConfirmAnyway = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+
+    const isUnableToScan =
+      !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
+
+    if (isUnableToScan) {
+      reviewBottomSheetModalRef.current?.present();
+    } else {
+      handleTransactionConfirmation();
+    }
+  }, [
+    handleTransactionConfirmation,
+    transactionScanResult,
+    transactionSecurityAssessment.isUnableToScan,
+  ]);
 
   if (isProcessing) {
     return (
@@ -434,19 +454,19 @@ const SendCollectibleReviewScreen: React.FC<
     );
   }
 
-  const handleConfirmAnyway = () => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
-    handleTransactionConfirmation();
-  };
-
   const handleContinueButtonPress = () => {
     if (!recipientAddress) {
       navigateToSelectContactScreen();
       return;
     }
 
-    prepareTransaction(true);
+    // Only open security detail sheet first for "unable to scan" cases
+    if (transactionSecurityAssessment.isUnableToScan) {
+      prepareTransaction(false);
+      transactionSecurityWarningBottomSheetModalRef.current?.present();
+    } else {
+      prepareTransaction(true);
+    }
   };
 
   const getContinueButtonText = () => {
@@ -506,6 +526,7 @@ const SendCollectibleReviewScreen: React.FC<
             isRequiredMemoMissing={false}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
@@ -571,7 +592,11 @@ const SendCollectibleReviewScreen: React.FC<
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

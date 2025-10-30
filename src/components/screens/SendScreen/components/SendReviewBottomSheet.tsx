@@ -190,9 +190,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <Banner
-        variant={
-          isSuspicious || isUnableToScan ? "warning" : bannerVariant || "error"
-        }
+        variant={bannerVariant || "error"}
         text={bannerText}
         onPress={onBannerPress}
       />

@@ -52,6 +52,7 @@ jest.mock("components/CollectibleImage", () => ({
 
 // Store props from mock component for testing
 let mockSendReviewBottomSheetProps: Record<string, unknown> = {};
+let mockSecurityDetailBottomSheetProps: Record<string, unknown> = {};
 
 jest.mock("components/screens/SendScreen/components", () => ({
   SendReviewBottomSheet: function MockSendReviewBottomSheet(
@@ -75,6 +76,15 @@ jest.mock(
     })),
   }),
 );
+jest.mock("components/blockaid/SecurityDetailBottomSheet", () => ({
+  __esModule: true,
+  default: function MockSecurityDetailBottomSheet(
+    props: Record<string, unknown>,
+  ) {
+    mockSecurityDetailBottomSheetProps = props;
+    return null;
+  },
+}));
 jest.mock("components/sds/Icon", () => ({
   __esModule: true,
   default: new Proxy({}, { get: () => "View" }),
@@ -194,6 +204,110 @@ const mockUseValidateTransactionMemo =
   useValidateTransactionMemo.useValidateTransactionMemo as jest.MockedFunction<
     typeof useValidateTransactionMemo.useValidateTransactionMemo
   >;
+
+// Helper function to set up default mocks
+const setupDefaultMocks = () => {
+  const mockPublicKey =
+    "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+  const mockRecipientAddress =
+    "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
+  const mockXDR = "mockTransactionXDR";
+
+  const mockCollectible = {
+    tokenId: "1",
+    collectionAddress: "0xABCDEF123456789",
+    collectionName: "Test Collection",
+    name: "Test NFT",
+    image: "https://example.com/nft.png",
+  };
+
+  const mockTransactionBuilderState = {
+    buildSendCollectibleTransaction: jest.fn().mockResolvedValue(mockXDR),
+    signTransaction: jest.fn(),
+    submitTransaction: jest.fn().mockResolvedValue(true),
+    resetTransaction: jest.fn(),
+    isBuilding: false,
+    isSigning: false,
+    isSubmitting: false,
+    transactionXDR: mockXDR,
+    transaction: null,
+    network: NETWORKS.TESTNET,
+  };
+
+  const mockTransactionSettingsState = {
+    transactionMemo: "",
+    transactionFee: "0.00001",
+    transactionTimeout: 30,
+    recipientAddress: mockRecipientAddress,
+    selectedTokenId: "",
+    selectedCollectibleDetails: {
+      tokenId: "1",
+      collectionAddress: "0xABCDEF123456789",
+    },
+    saveMemo: jest.fn(),
+    saveTransactionFee: jest.fn(),
+    saveTransactionTimeout: jest.fn(),
+    saveRecipientAddress: jest.fn(),
+    saveSelectedTokenId: jest.fn(),
+    saveSelectedCollectibleDetails: jest.fn(),
+    resetSettings: jest.fn(),
+  };
+
+  const mockAuthState = {
+    publicKey: mockPublicKey,
+    network: NETWORKS.TESTNET,
+  };
+
+  const mockCollectiblesState = {
+    collections: [
+      {
+        collectionAddress: "0xABCDEF123456789",
+        collectionName: "Test Collection",
+        items: [mockCollectible],
+      },
+    ],
+  };
+
+  mockUseTransactionBuilderStore.mockReturnValue(mockTransactionBuilderState);
+  mockUseTransactionSettingsStore.mockReturnValue(mockTransactionSettingsState);
+  mockUseAuthenticationStore.mockReturnValue(mockAuthState);
+  mockUseCollectiblesStore.mockReturnValue(mockCollectiblesState);
+
+  mockUseGetActiveAccount.mockReturnValue({
+    account: {
+      publicKey: mockPublicKey,
+      privateKey: "mockPrivateKey",
+      accountName: "Test Account",
+      id: "test-id",
+      subentryCount: 0,
+    } as ActiveAccount,
+    isLoading: false,
+    error: null,
+    refreshAccount: jest.fn(),
+    signTransaction: jest.fn(),
+  });
+
+  mockUseRightHeaderMenu.mockReturnValue(undefined);
+  mockUseHistoryStore.mockReturnValue({
+    fetchAccountHistory: jest.fn(),
+  });
+  mockUseSendRecipientStore.mockReturnValue({
+    resetSendRecipient: jest.fn(),
+  });
+
+  mockScanTransaction.mockReturnValue({
+    scanTransaction: jest.fn().mockResolvedValue({
+      warnings: [],
+      malicious: false,
+      suspicious: false,
+    }),
+  });
+
+  mockUseValidateTransactionMemo.mockReturnValue({
+    isValidatingMemo: false,
+    isMemoMissing: false,
+  });
+};
 
 // Mock navigation and route
 const mockGoBack = jest.fn();
@@ -539,5 +653,87 @@ describe("SendCollectibleReview - Banner Content", () => {
     // Try to find a text element that should be rendered
     const reviewButton = getByText("transactionAmountScreen.reviewButton");
     expect(reviewButton).toBeTruthy();
+  });
+});
+
+describe("SendCollectibleReview - Unable to Scan States", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it("should show unable to scan banner content when transaction is unable to scan", () => {
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.UNABLE_TO_SCAN,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: true,
+    });
+
+    mockExtractSecurityWarnings.mockReturnValue([
+      {
+        id: "unable-to-scan",
+        description: "Unable to scan transaction",
+      },
+    ]);
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    // Should have unable to scan banner content
+    expect(mockSendReviewBottomSheetProps.bannerText).toBe(
+      "securityWarning.proceedWithCaution",
+    );
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
+    expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
+    expect(typeof mockSendReviewBottomSheetProps.onBannerPress).toBe(
+      "function",
+    );
+  });
+
+  it("should pass unable to scan props to SendReviewBottomSheet", () => {
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.UNABLE_TO_SCAN,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: true,
+    });
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    // Check unable to scan props are passed correctly
+    expect(mockSendReviewBottomSheetProps.isUnableToScan).toBe(true);
+    expect(mockSendReviewBottomSheetProps.isMalicious).toBe(false);
+    expect(mockSendReviewBottomSheetProps.isSuspicious).toBe(false);
+  });
+
+  it("should show 'Continue' button text for unable to scan in SecurityDetailBottomSheet", () => {
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.UNABLE_TO_SCAN,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: true,
+    });
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    // Check SecurityDetailBottomSheet props
+    expect(mockSecurityDetailBottomSheetProps.proceedAnywayText).toBe(
+      "common.continue",
+    );
   });
 });

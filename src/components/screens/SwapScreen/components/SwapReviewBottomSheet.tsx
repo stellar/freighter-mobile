@@ -388,7 +388,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       onSettingsPress,
     } = props;
 
-    const isTrusted = !isMalicious && !isSuspicious && !isUnableToScanToken;
+    const isTrusted = !isMalicious && !isSuspicious;
     const isDisabled = !transactionXDR || isBuilding;
 
     const renderButtons = () => {

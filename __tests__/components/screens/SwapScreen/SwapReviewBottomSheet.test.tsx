@@ -373,41 +373,5 @@ describe("SwapReviewBottomSheet", () => {
 
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
     });
-
-    it("prioritizes malicious over unable to scan in banner", () => {
-      const maliciousTransactionScan = {
-        validation: {
-          result_type: "Malicious",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={maliciousTransactionScan}
-          sourceTokenScanResult={undefined}
-        />,
-      );
-
-      expect(getByText("This address was flagged as malicious")).toBeTruthy();
-    });
-
-    it("prioritizes suspicious over unable to scan in banner", () => {
-      const suspiciousTransactionScan = {
-        validation: {
-          result_type: "Warning",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={suspiciousTransactionScan}
-          sourceTokenScanResult={undefined}
-        />,
-      );
-
-      expect(getByText("This address was flagged as suspicious")).toBeTruthy();
-    });
   });
 });
