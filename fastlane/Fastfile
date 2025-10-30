@@ -109,6 +109,7 @@ platform :ios do
       use_automatic_signing: true,
       path: "ios/freighter-mobile.xcodeproj",
       team_id: "4JWM8JNM37",
+      code_sign_identity: "Apple Distribution",
     )
   end
 
