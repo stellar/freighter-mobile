@@ -169,23 +169,11 @@ jobs:
         run: |
           yarn postinstall
 
-      - name: Show Xcode signing settings before building
-        run:
-          xcodebuild -showBuildSettings -workspace
-          ios/freighter-mobile.xcworkspace -scheme freighter-mobile-dev | egrep
-          'CONFIGURATION|CODE_SIGN|PROVISIONING|DEVELOPMENT_TEAM'
-
       - name: Build and Distribute Application
         id: fastlane
         run: |
           bundle exec fastlane --version
           bundle exec fastlane ios ${{ env.FASTLANE_LANE }}
-
-      - name: Show Xcode signing settings after building
-        run:
-          xcodebuild -showBuildSettings -workspace
-          ios/freighter-mobile.xcworkspace -scheme freighter-mobile-dev | egrep
-          'CONFIGURATION|CODE_SIGN|PROVISIONING|DEVELOPMENT_TEAM'
 
       # Dev builds: Short retention for rapid iteration
       - name: Upload dev build artifacts
