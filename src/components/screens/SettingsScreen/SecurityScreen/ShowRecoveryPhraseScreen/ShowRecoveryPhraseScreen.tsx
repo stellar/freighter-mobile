@@ -167,7 +167,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
             {t("showRecoveryPhraseScreen.showPhrase")}
           </Button>
           <View className="mt-4">
-            <BiometricToggleButton size="sm" />
+            <BiometricToggleButton size="xl" />
           </View>
           <View className="mb-10" />
         </ScrollView>
