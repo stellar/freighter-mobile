@@ -314,12 +314,14 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         throw new Error("No balances returned from API");
       }
 
+      // Set the "raw" balances right away as they don't depend on prices being fetched
       set({
         balances,
         isFunded: isFunded ?? false,
         subentryCount: subentryCount ?? 0,
       });
 
+      // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
       const pricedBalances = await fetchPricedBalances(
         set,
