@@ -1,0 +1,184 @@
+---
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref_name:
+        description: A git commit/hash/tag (optional)
+        type: string
+        default: ""
+      scheme:
+        description: The iOS scheme that will be built (optional)
+        type: choice
+        default: ""
+        options:
+          - ""
+          - freighter-mobile-dev
+          - freighter-mobile
+      upload_to_testflight:
+        description: Upload app file to Apple Testflight
+        type: choice
+        default: "yes"
+        options:
+          - "yes"
+          - "no"
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  RUBY_VERSION: 3.0.0
+
+  # Apple Connect API variables (for app_store_connect_api_key)
+  APPLE_CONNECT_KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+  APPLE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+  APPLE_CONNECT_KEY_CONTENT: ${{ secrets.APPLE_CONNECT_KEY_CONTENT }}
+
+  # Fastlane Match variables
+  FASTLANE_GIT_URL: ${{ secrets.FASTLANE_GIT_URL }}
+  FASTLANE_GIT_DEPLOY_KEY: ${{ secrets.FASTLANE_GIT_DEPLOY_KEY }}
+  MATCH_PASSWORD: ${{ secrets.FASTLANE_MATCH_PASSWORD }}
+
+  # Sentry configuration
+  SENTRY_PROPERTIES_CONTENT: ${{ secrets.SENTRY_PROPERTIES_CONTENT }}
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  # Amplitude Analytics
+  AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_API_KEY }}
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY:
+    ${{ secrets.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY }}
+
+  # Backend URLs
+  FREIGHTER_BACKEND_V1_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V1_PROD_URL }}
+  FREIGHTER_BACKEND_V1_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V1_STG_URL }}
+  FREIGHTER_BACKEND_V1_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V1_DEV_URL }}
+  FREIGHTER_BACKEND_V2_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V2_PROD_URL }}
+  FREIGHTER_BACKEND_V2_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V2_STG_URL }}
+  FREIGHTER_BACKEND_V2_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V2_DEV_URL }}
+
+  # Wallet Kit Configuration (Production)
+  WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_PROD }}
+  WALLET_KIT_MT_NAME_PROD: ${{ secrets.WALLET_KIT_MT_NAME_PROD }}
+  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_PROD }}
+  WALLET_KIT_MT_URL_PROD: ${{ secrets.WALLET_KIT_MT_URL_PROD }}
+  WALLET_KIT_MT_ICON_PROD: ${{ secrets.WALLET_KIT_MT_ICON_PROD }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
+    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
+
+  # Wallet Kit Configuration (Development)
+  WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+  WALLET_KIT_MT_NAME_DEV: ${{ secrets.WALLET_KIT_MT_NAME_DEV }}
+  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_DEV }}
+  WALLET_KIT_MT_URL_DEV: ${{ secrets.WALLET_KIT_MT_URL_DEV }}
+  WALLET_KIT_MT_ICON_DEV: ${{ secrets.WALLET_KIT_MT_ICON_DEV }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
+    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+
+jobs:
+  build:
+    name: Build iOS
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Set xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Set ref
+        run: |
+          if [[ "${{ github.event.inputs.ref_name }}" != "" ]]; then
+            echo "REF_NAME=${{ github.event.inputs.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "REF_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.REF_NAME }}
+
+      - name: Set env
+        run: |
+          echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}" >> $GITHUB_ENV
+          export IOS_SCHEME="${{ github.event.inputs.scheme }}"
+          ./scripts/gh-ios-env >> $GITHUB_ENV
+
+      - name: Decode and save sentry.properties
+        run: |
+          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode > ./ios/sentry.properties
+
+      # Most of the vars below are set on the ./scripts/gh-ios-env script.
+      - name: Debug info
+        run: |
+          echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}"
+          echo "BUILD_VERSION=${BUILD_VERSION}"
+          echo "REF_NAME=${REF_NAME}"
+          echo "APP_VERSION=${APP_VERSION}"
+          echo "APP_ID=${APP_ID}"
+          echo "APP_NAME=${APP_NAME}"
+          echo "IOS_SCHEME=${IOS_SCHEME}"
+          echo "FASTLANE_LANE=${FASTLANE_LANE}"
+
+          echo "SENTRY_PROPERTIES_CONTENT=$(echo -n $SENTRY_PROPERTIES_CONTENT | md5)" 
+          echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
+          echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Cache Cocoapods
+        uses: actions/cache@v4
+        id: cocoapods-cache
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+
+      - name: Run Yarn Install
+        run: |
+          yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: |
+          yarn postinstall
+
+      - name: Build and Distribute Application
+        id: fastlane
+        run: |
+          bundle exec fastlane --version
+          bundle exec fastlane ios ${{ env.FASTLANE_LANE }}
+
+      # Dev builds: Short retention for rapid iteration
+      - name: Upload dev build artifacts
+        uses: actions/upload-artifact@v4
+        if: always() && env.IOS_SCHEME == 'freighter-mobile-dev'
+        with:
+          name: ios-build-dev-${{ env.BUILD_VERSION }}
+          path: /tmp/build
+          retention-days: 7
+
+      # Production builds: Extended retention given less frequent uploads
+      - name: Upload prod build artifacts
+        uses: actions/upload-artifact@v4
+        if: always() && env.IOS_SCHEME == 'freighter-mobile'
+        with:
+          name: ios-build-prod-${{ env.BUILD_VERSION }}
+          path: /tmp/build
+          retention-days: 30
