@@ -15,6 +15,10 @@ import {
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
+import {
+  useSendBannerContent,
+  useTransactionSecurity,
+} from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -31,6 +35,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -51,11 +56,6 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -81,7 +81,7 @@ const SendCollectibleReviewScreen: React.FC<
   const { recipientAddress, saveSelectedCollectibleDetails, resetSettings } =
     useTransactionSettingsStore();
   const { collections } = useCollectiblesStore();
-
+  const { overriddenBlockaidResponse } = useDebugStore();
   const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
@@ -162,10 +162,11 @@ const SendCollectibleReviewScreen: React.FC<
     navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
 
-  const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
-  );
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
 
   const selectedCollectible = useMemo(() => {
     const collection = collections.find(
@@ -337,37 +338,6 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
-  const transactionSecurityWarnings = useMemo(() => {
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
-    ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionScanResult,
-  ]);
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-  ]);
-
   const handleCancelReview = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
   }, []);
@@ -443,6 +413,16 @@ const SendCollectibleReviewScreen: React.FC<
     [selectedCollectible, themeColors.text.secondary, t],
   );
 
+  const openSecurityWarningBottomSheet = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
+
+  const bannerContent = useSendBannerContent({
+    isMalicious: transactionSecurityAssessment.isMalicious,
+    isSuspicious: transactionSecurityAssessment.isSuspicious,
+    onSecurityWarningPress: openSecurityWarningBottomSheet,
+  });
+
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
@@ -458,10 +438,6 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     handleTransactionConfirmation();
-  };
-
-  const onBannerPress = () => {
-    transactionSecurityWarningBottomSheetModalRef.current?.present();
   };
 
   const handleContinueButtonPress = () => {
@@ -525,11 +501,13 @@ const SendCollectibleReviewScreen: React.FC<
           <SendReviewBottomSheet
             type={SendType.Collectible}
             selectedCollectible={selectedCollectible}
-            onBannerPress={onBannerPress}
+            onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={false}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            bannerText={bannerContent?.text}
+            bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
           />
         }

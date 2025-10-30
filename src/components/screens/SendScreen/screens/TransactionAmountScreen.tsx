@@ -16,6 +16,10 @@ import {
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
+import {
+  useSendBannerContent,
+  useTransactionSecurity,
+} from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
@@ -63,11 +67,7 @@ import React, {
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
+import { SecurityContext } from "services/blockaid/constants";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -210,14 +210,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
-  const transactionSecurityAssessment = useMemo(
-    () =>
-      assessTransactionSecurity(
-        transactionScanResult,
-        overriddenBlockaidResponse,
-      ),
-    [transactionScanResult, overriddenBlockaidResponse],
-  );
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
 
   const {
     tokenAmount,
@@ -357,11 +354,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               logger.info("TransactionAmountScreen", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
 
-              const assessment = assessTransactionSecurity(
-                scanResult,
-                overriddenBlockaidResponse,
-              );
-              const isUnableToScan = !scanResult || assessment.isUnableToScan;
+              const isUnableToScan =
+                !scanResult || transactionSecurityAssessment.isUnableToScan;
 
               if (isUnableToScan) {
                 transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -390,7 +384,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
-      overriddenBlockaidResponse,
+      transactionSecurityAssessment,
     ],
   );
 
@@ -490,55 +484,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
-  const transactionSecurityWarnings = useMemo(() => {
-    if (transactionSecurityAssessment.isUnableToScan) {
-      // For "Unable to scan" cases, always provide a warning so the list renders
-      return [
-        {
-          id: "unable-to-scan",
-          description:
-            transactionSecurityAssessment.details ||
-            t("blockaid.unableToScan.info"),
-        },
-      ];
-    }
-
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
-    ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
-    transactionSecurityAssessment.details,
-    transactionScanResult,
-    t,
-  ]);
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-    if (transactionSecurityAssessment.isUnableToScan)
-      return SecurityLevel.UNABLE_TO_SCAN;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
-  ]);
-
   const handleCancelReview = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
   }, []);
@@ -608,55 +553,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
 
-  const bannerContent = useMemo(() => {
-    const shouldShowNoticeBanner =
-      isRequiredMemoMissing ||
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious ||
-      transactionSecurityAssessment.isUnableToScan;
-
-    if (!shouldShowNoticeBanner) {
-      return undefined;
-    }
-
-    if (transactionSecurityAssessment.isMalicious) {
-      return {
-        text: t("transactionAmountScreen.errors.malicious"),
-        variant: "error" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    if (transactionSecurityAssessment.isSuspicious) {
-      return {
-        text: t("transactionAmountScreen.errors.suspicious"),
-        variant: "warning" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    if (transactionSecurityAssessment.isUnableToScan) {
-      return {
-        text: t("securityWarning.proceedWithCaution"),
-        variant: "warning" as const,
-        onPress: openSecurityWarningBottomSheet,
-      };
-    }
-
-    return {
-      text: t("transactionAmountScreen.errors.memoMissing"),
-      variant: "error" as const,
-      onPress: openAddMemoExplanationBottomSheet,
-    };
-  }, [
+  const bannerContent = useSendBannerContent({
+    isMalicious: transactionSecurityAssessment.isMalicious,
+    isSuspicious: transactionSecurityAssessment.isSuspicious,
+    isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
-    t,
-    openSecurityWarningBottomSheet,
-    openAddMemoExplanationBottomSheet,
-  ]);
+    onSecurityWarningPress: openSecurityWarningBottomSheet,
+    onMemoMissingPress: openAddMemoExplanationBottomSheet,
+  });
 
   if (isProcessing) {
     return (

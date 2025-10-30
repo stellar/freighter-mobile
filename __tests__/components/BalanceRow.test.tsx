@@ -10,7 +10,7 @@ import React from "react";
 import { Text } from "react-native";
 
 import {
-  beningTokenScan,
+  benignTokenScan,
   maliciousTokenScan,
   suspiciousTokenScan,
 } from "../../__mocks__/blockaid-response";
@@ -81,7 +81,7 @@ describe("BalanceRow", () => {
 
   it("should render basic balance information", () => {
     const { getByText } = render(
-      <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+      <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
     );
 
     expect(getByText("XLM")).toBeTruthy();
@@ -90,7 +90,7 @@ describe("BalanceRow", () => {
 
   it("should render default right content with fiat values", () => {
     const { getByText } = render(
-      <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+      <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
     );
 
     expect(getByText("$50.25")).toBeTruthy();
@@ -104,7 +104,7 @@ describe("BalanceRow", () => {
         balance={mockBalance}
         rightContent={<Text>{customContent}</Text>}
         rightSectionWidth={100}
-        scanResult={beningTokenScan}
+        scanResult={benignTokenScan}
       />,
     );
 
@@ -218,14 +218,14 @@ describe("BalanceRow", () => {
 
     it("should not show alert icon for benign tokens", () => {
       const { UNSAFE_getByType } = render(
-        <BalanceRow balance={mockBalance} scanResult={beningTokenScan} />,
+        <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
       );
 
       try {
         UNSAFE_getByType(Icon.AlertCircle);
       } catch (error: unknown) {
         expect((error as Error).message).toBe(
-          "No instances found with node type: \"Unknown\"",
+          'No instances found with node type: "Unknown"',
         );
       }
     });

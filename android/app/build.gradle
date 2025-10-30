@@ -87,21 +87,21 @@ android {
 
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
+            storeFile file('../keystores/debug.keystore')
             storePassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
             keyAlias project.env.get('ANDROID_DEBUG_KEYSTORE_ALIAS')
             keyPassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
         }
 
         dev {
-            storeFile file('dev-release.keystore')
+            storeFile file('../keystores/dev-release.keystore')
             storePassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
             keyAlias project.env.get('ANDROID_DEV_KEYSTORE_ALIAS')
             keyPassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
         }
 
         prod {
-            storeFile file('prod-release.keystore')
+            storeFile file('../keystores/prod-release.keystore')
             storePassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
             keyAlias project.env.get('ANDROID_PROD_KEYSTORE_ALIAS')
             keyPassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
@@ -131,7 +131,7 @@ android {
         resValue "string", "build_config_package", "org.stellar.freighterwallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 33
+        versionCode 39
         versionName "1.6.23"
     }
 

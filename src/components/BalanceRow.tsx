@@ -66,6 +66,15 @@ interface BalanceRowProps {
   spendableAmount?: BigNumber;
 }
 
+const getBlockaidDataFromBalance = (
+  balance: PricedBalance,
+): Blockaid.TokenBulk.TokenBulkScanResponse.Results | undefined => {
+  if ("blockaidData" in balance && balance.blockaidData) {
+    return balance.blockaidData as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
+  }
+  return undefined;
+};
+
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   balance,
 }) => {
@@ -124,7 +133,7 @@ const renderContent = (
 
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
-  scanResult,
+  scanResult: scanResultFromProps,
   customTextContent,
   rightContent,
   rightSectionWidth,
@@ -133,6 +142,10 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   spendableAmount,
 }) => {
   const { overriddenBlockaidResponse } = useDebugStore();
+
+  const scanResultFromBalance = getBlockaidDataFromBalance(balance);
+  const scanResult = scanResultFromBalance || scanResultFromProps;
+
   const { isMalicious, isSuspicious } = assessTokenSecurity(
     scanResult,
     overriddenBlockaidResponse,
