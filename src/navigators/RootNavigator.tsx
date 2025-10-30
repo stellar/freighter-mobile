@@ -15,7 +15,7 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
-import { BiometricsSource, STORAGE_KEYS } from "config/constants";
+import { BiometricsSource, STORAGE_KEYS, LoginType } from "config/constants";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -69,7 +69,15 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const {
+    authStatus,
+    getAuthStatus,
+    verifyActionWithBiometrics,
+    signInMethod,
+    signIn,
+    hasTriggeredAppOpenBiometricsLogin,
+    setHasTriggeredAppOpenBiometricsLogin,
+  } = useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -89,39 +97,73 @@ export const RootNavigator = () => {
       await getAuthStatus();
     };
 
-    const triggerFaceIdOnboarding = () => {
-      if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    const triggerFaceIdOnboarding = async () => {
+      const hasSeenBiometricsEnableScreenStorage = await dataStorage.getItem(
+        STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
+      );
+      if (
+        authStatus === AUTH_STATUS.AUTHENTICATED &&
+        hasSeenBiometricsEnableScreenStorage !== "true"
+      ) {
         setTimeout(() => {
-          dataStorage
-            .getItem(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN)
-            .then(async (hasSeenBiometricsEnableScreenStorage) => {
-              const type = await checkBiometrics();
-              if (
-                !isBiometricsEnabled &&
-                hasSeenBiometricsEnableScreenStorage !== "true" &&
-                !!type
-              ) {
-                navigation.navigate(
-                  AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
-                  {
-                    source: BiometricsSource.POST_ONBOARDING,
-                  },
-                );
-              }
-            });
+          checkBiometrics().then((type) => {
+            if (!isBiometricsEnabled && !!type) {
+              navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+                source: BiometricsSource.POST_ONBOARDING,
+              });
+            }
+          });
         }, 3000);
       }
     };
 
-    initializeApp().then(() => {
-      triggerFaceIdOnboarding();
-    });
+    initializeApp()
+      .then(() => {
+        triggerFaceIdOnboarding();
+      })
+      .catch(() => {
+        // Handle initialization error silently
+      });
   }, [
     getAuthStatus,
     navigation,
     authStatus,
     checkBiometrics,
     isBiometricsEnabled,
+  ]);
+
+  // Set hasTriggeredAppOpenBiometricsLogin to true when user becomes authenticated
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      setHasTriggeredAppOpenBiometricsLogin(true);
+
+      return;
+    }
+
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      isBiometricsEnabled &&
+      !hasTriggeredAppOpenBiometricsLogin &&
+      signInMethod !== LoginType.PASSWORD &&
+      !initializing
+    ) {
+      setHasTriggeredAppOpenBiometricsLogin(true);
+
+      verifyActionWithBiometrics(async (biometricPassword?: string) => {
+        if (biometricPassword) {
+          await signIn({ password: biometricPassword });
+        }
+      });
+    }
+  }, [
+    authStatus,
+    isBiometricsEnabled,
+    signInMethod,
+    initializing,
+    hasTriggeredAppOpenBiometricsLogin,
+    setHasTriggeredAppOpenBiometricsLogin,
+    verifyActionWithBiometrics,
+    signIn,
   ]);
 
   // Wait for all initialization states to complete
