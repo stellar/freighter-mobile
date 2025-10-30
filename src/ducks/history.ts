@@ -1,5 +1,9 @@
 import { Horizon } from "@stellar/stellar-sdk";
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import {
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+  HISTORY_FETCH_POLLING_INTERVAL,
+} from "config/constants";
 import { logger } from "config/logger";
 import { BalanceMap } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -13,8 +17,6 @@ import {
 } from "helpers/history";
 import { getAccountHistory } from "services/backend";
 import { create } from "zustand";
-
-const POLLING_INTERVAL = 30000;
 
 let pollingIntervalId: NodeJS.Timeout | null = null;
 
@@ -298,20 +300,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         ...params,
         isBackgroundRefresh: true,
       });
-    }, POLLING_INTERVAL);
-
-    logger.info("startPolling", "History polling started", {
-      interval: POLLING_INTERVAL,
-      publicKey: params.publicKey,
-      network: params.network,
-    });
+    }, HISTORY_FETCH_POLLING_INTERVAL);
   },
   stopPolling: () => {
     if (pollingIntervalId) {
       clearInterval(pollingIntervalId);
       pollingIntervalId = null;
-
-      logger.info("stopPolling", "History polling stopped");
     }
   },
 }));

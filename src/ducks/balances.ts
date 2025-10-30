@@ -15,15 +15,10 @@ import {
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
-import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
-// Polling interval in milliseconds
-const POLLING_INTERVAL = 30000;
-
 // Keep track of the polling interval ID
-let pollingIntervalId: NodeJS.Timeout | null = null;
 
 /**
  * Balances State Interface
@@ -40,8 +35,6 @@ let pollingIntervalId: NodeJS.Timeout | null = null;
  * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
- * @property {Function} startPolling - Function to start polling for balance updates
- * @property {Function} stopPolling - Function to stop polling for balance updates
  */
 interface BalancesState {
   balances: BalanceMap;
@@ -56,8 +49,6 @@ interface BalancesState {
     network: NETWORKS;
     contractIds?: string[];
   }) => Promise<void>;
-  startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
-  stopPolling: () => void;
   getBalances: () => BalanceMap;
 }
 
@@ -196,75 +187,45 @@ const fetchPricedBalances = async (
 };
 
 /**
- * Scans all balances
+ * Extracts scan results from balances returned by the backend
+ * Backend already performs Blockaid scans and includes blockaidData in each balance
  *
- * @param balances The balances for assets to scan
- * @param network The current network, used to scan
- * @returns An array of scan results for current balances
+ * @param balances The balances with blockaidData from backend
+ * @param network The current network
+ * @returns An object with scan results extracted from balance blockaidData
  */
-const scanBalances = async (
-  set: (
-    partial:
-      | Partial<BalancesState>
-      | ((state: BalancesState) => Partial<BalancesState>),
-  ) => void,
-  balances: BalanceMap,
+const extractScanResultsFromBalances = (
+  pricedBalances: PricedBalanceMap,
   network: NETWORKS,
-  batchSize = 20,
 ) => {
   if (!isMainnet(network)) {
-    return Promise.resolve({
-      results: {} as Record<
-        string,
-        Blockaid.TokenBulk.TokenBulkScanResponse.Results
-      >,
-      error: null,
-    });
+    return {};
   }
-  try {
-    const entries = Object.entries(balances); // [tokenIdentifier, Balance][]
 
-    const scanResults: Record<
-      string,
-      Blockaid.TokenBulk.TokenBulkScanResponse.Results
-    > = {};
-    for (let i = 0; i < entries.length; i += batchSize) {
-      const batchEntries = entries.slice(i, i + batchSize);
+  const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
-      const addressList = batchEntries
-        .filter(
-          ([tokenIdentifier]) =>
-            tokenIdentifier !== NATIVE_TOKEN_CODE &&
-            !tokenIdentifier.includes("lp"),
-        )
-        .map(([tokenIdentifier]) =>
-          tokenIdentifier.includes(":")
-            ? tokenIdentifier.replace(":", "-")
-            : tokenIdentifier,
-        );
-
-      /* eslint-disable-next-line no-await-in-loop */
-      const { results } = await scanBulkTokens({ addressList, network });
-
-      set((state) => ({
-        scanResults: {
-          ...state.scanResults,
-          ...results,
-        },
-      }));
-      Object.assign(scanResults, results);
+  Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
+    if (
+      tokenIdentifier === NATIVE_TOKEN_CODE ||
+      tokenIdentifier.includes("lp")
+    ) {
+      return;
     }
 
-    return { results: scanResults, error: null };
-  } catch (error) {
-    return {
-      results: {} as Record<
-        string,
-        Blockaid.TokenBulk.TokenBulkScanResponse.Results
-      >,
-      error,
-    };
-  }
+    const blockaidData =
+      "blockaidData" in balance
+        ? (balance as { blockaidData?: Blockaid.Token.TokenScanResponse })
+            .blockaidData
+        : undefined;
+    if (blockaidData) {
+      const scanKey = tokenIdentifier.includes(":")
+        ? tokenIdentifier.replace(":", "-")
+        : tokenIdentifier;
+      scanResults[scanKey] = blockaidData;
+    }
+  });
+
+  return { results: scanResults, error: null };
 };
 
 /**
@@ -353,7 +314,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         throw new Error("No balances returned from API");
       }
 
-      // Set the "raw" balances right away as they don't depend on prices
+      // Set the "raw" balances right away as they don't depend on prices being fetched
       set({
         balances,
         isFunded: isFunded ?? false,
@@ -362,20 +323,25 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
+      const pricedBalances = await fetchPricedBalances(
+        set,
+        balances,
+        statePricedBalances,
+        params,
+      );
 
-      // Run priced balances + scans in parallel
-      const [pricedBalances, scanResult] = await Promise.all([
-        fetchPricedBalances(set, balances, statePricedBalances, params),
-        scanBalances(set, balances, params.network),
-      ]);
+      const scanResult = extractScanResultsFromBalances(
+        pricedBalances,
+        params.network,
+      );
 
-      if (scanResult.error) {
-        logger.error(
-          "scanBalances",
-          "Error scanning balances:",
-          scanResult.error,
-        );
-      }
+      // Update scan results in state
+      set((state) => ({
+        scanResults: {
+          ...state.scanResults,
+          ...scanResult.results,
+        },
+      }));
 
       set({
         pricedBalances,
@@ -388,23 +354,6 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
           error instanceof Error ? error.message : "Failed to fetch balances",
         isLoading: false,
       });
-    }
-  },
-  startPolling: (params) => {
-    // Clear any existing polling
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-    }
-
-    // Start polling after initial interval
-    pollingIntervalId = setInterval(() => {
-      get().fetchAccountBalances(params);
-    }, POLLING_INTERVAL);
-  },
-  stopPolling: () => {
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-      pollingIntervalId = null;
     }
   },
   getBalances: () => get().balances,
