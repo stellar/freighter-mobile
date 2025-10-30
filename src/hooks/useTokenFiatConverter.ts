@@ -7,6 +7,7 @@ import {
 } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { useMemo, useState, useEffect } from "react";
+import { getNumberFormatSettings } from "react-native-localize";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
@@ -15,12 +16,14 @@ interface UseTokenFiatConverterProps {
 interface UseTokenFiatConverterResult {
   tokenAmount: string; // Internal value (dot notation)
   tokenAmountDisplay: string; // Display value (locale-formatted)
-  fiatAmount: string;
+  fiatAmount: string; // Internal value (dot notation)
+  fiatAmountDisplay: string; // Display value (locale-formatted)
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
   handleDisplayAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
+  updateFiatDisplay: (amount: string) => void;
 }
 
 /**
@@ -39,7 +42,60 @@ export const useTokenFiatConverter = ({
   const [tokenAmount, setTokenAmount] = useState("0");
   const [tokenAmountDisplay, setTokenAmountDisplay] = useState("0");
   const [fiatAmount, setFiatAmount] = useState("0");
-  const [showFiatAmount, setShowFiatAmount] = useState(false);
+  const [fiatAmountDisplay, setFiatAmountDisplay] = useState("0");
+  const [useFiatAmountInput, setUseFiatAmountInput] = useState(false);
+
+  const formatFiatInputTemplate = (prevValue: string, key: string): string => {
+    // Handle delete key - only remove last character, don't reformat
+    if (key === "") {
+      const newValue = prevValue.slice(0, -1);
+
+      // If the deleted character was a decimal separator, also remove the digit before it
+      if (prevValue.endsWith(".") || prevValue.endsWith(",")) {
+        return newValue.slice(0, -1);
+      }
+
+      return newValue === "" ? "0" : newValue;
+    }
+
+    // Handle decimal separator - preserve user's input (comma or dot)
+    if (key === "." || key === ",") {
+      // Allow only one decimal separator
+      if (prevValue.includes(".") || prevValue.includes(",")) {
+        return prevValue;
+      }
+      // Add separator to the value
+      return `${prevValue}${key}`;
+    }
+
+    // Handle digit keys ("0" - "9")
+    if (/^[0-9]$/.test(key)) {
+      // Handle leading zero replacement
+      if (prevValue === "0") {
+        return key; // Replace "0" with the new digit
+      }
+
+      // Check if we have a decimal separator and limit decimal places
+      const decimalIndex = Math.max(
+        prevValue.lastIndexOf("."),
+        prevValue.lastIndexOf(","),
+      );
+      if (decimalIndex !== -1) {
+        const decimalPartLength = prevValue.length - decimalIndex - 1;
+        if (decimalPartLength >= FIAT_DECIMALS) {
+          return prevValue;
+        }
+      }
+
+      if (prevValue.length >= 20) {
+        return prevValue;
+      }
+
+      return prevValue + key;
+    }
+
+    return prevValue;
+  };
 
   // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
@@ -59,20 +115,29 @@ export const useTokenFiatConverter = ({
 
   // Update fiat amount when token amount changes
   useEffect(() => {
-    if (!showFiatAmount) {
+    if (!useFiatAmountInput && tokenPrice) {
       const bnTokenAmount = new BigNumber(tokenAmount);
-      if (bnTokenAmount.isFinite()) {
+      if (bnTokenAmount.isFinite() && !bnTokenAmount.isZero()) {
         const newFiatAmount = tokenPrice.multipliedBy(bnTokenAmount);
         setFiatAmount(newFiatAmount.toFixed(FIAT_DECIMALS));
       } else {
         setFiatAmount("0");
       }
     }
-  }, [tokenAmount, tokenPrice, showFiatAmount]);
+  }, [tokenAmount, tokenPrice, useFiatAmountInput]);
+
+  // Update fiatAmountDisplay when fiatAmount changes in token mode
+  useEffect(() => {
+    if (!useFiatAmountInput) {
+      const { decimalSeparator } = getNumberFormatSettings();
+      const displayAmount = fiatAmount.replace(".", decimalSeparator);
+      setFiatAmountDisplay(displayAmount);
+    }
+  }, [fiatAmount, useFiatAmountInput]);
 
   // Update token amount when fiat amount changes
   useEffect(() => {
-    if (showFiatAmount) {
+    if (useFiatAmountInput && tokenPrice) {
       const bnFiatAmount = new BigNumber(fiatAmount);
       if (bnFiatAmount.isFinite()) {
         const newTokenAmount = tokenPrice.isZero()
@@ -83,7 +148,7 @@ export const useTokenFiatConverter = ({
         setTokenAmount("0");
       }
     }
-  }, [fiatAmount, tokenPrice, showFiatAmount]);
+  }, [fiatAmount, tokenPrice, useFiatAmountInput]);
 
   /**
    * Handles numeric input and deletion for display-formatted values
@@ -91,34 +156,50 @@ export const useTokenFiatConverter = ({
    * @param {string} key - The key pressed (number or empty string for delete)
    */
   const handleDisplayAmountChange = (key: string) => {
-    if (showFiatAmount) {
-      const newAmount = formatNumericInput(fiatAmount, key, FIAT_DECIMALS);
-      // Update display value immediately to preserve formatting
+    if (useFiatAmountInput) {
+      const newAmount = formatFiatInputTemplate(fiatAmountDisplay, key);
 
-      setFiatAmount(parseDisplayNumber(newAmount, FIAT_DECIMALS));
+      let internalAmount = newAmount.replace(",", ".");
+      // Remove trailing decimal separator for internal value
+      if (internalAmount.endsWith(".")) {
+        internalAmount = internalAmount.slice(0, -1);
+      }
+
+      // Update display value immediately to preserve formatting
+      setFiatAmountDisplay(newAmount);
+      setFiatAmount(internalAmount);
     } else {
       const newAmount = formatNumericInput(
         tokenAmountDisplay,
         key,
         DEFAULT_DECIMALS,
       );
+
+      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
+
       // Update display value immediately to preserve formatting
       setTokenAmountDisplay(newAmount);
-      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
       setTokenAmount(internalAmount);
     }
+  };
 
-    // Reset typing flag after a short delay
+  const updateFiatDisplay = (amount: string) => {
+    setFiatAmount(amount);
+    const { decimalSeparator } = getNumberFormatSettings();
+    const displayAmount = amount.replace(".", decimalSeparator);
+    setFiatAmountDisplay(displayAmount);
   };
 
   return {
     tokenAmount,
     tokenAmountDisplay,
     fiatAmount,
-    showFiatAmount,
-    setShowFiatAmount,
+    fiatAmountDisplay,
+    showFiatAmount: useFiatAmountInput,
+    setShowFiatAmount: setUseFiatAmountInput,
     handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
+    updateFiatDisplay,
   };
 };

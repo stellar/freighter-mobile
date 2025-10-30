@@ -36,7 +36,8 @@ describe("useTokenFiatConverter", () => {
     );
 
     expect(result.current.tokenAmount).toBe("0");
-    expect(result.current.fiatAmount).toBe("0.00");
+    expect(result.current.fiatAmount).toBe("0");
+    expect(result.current.fiatAmountDisplay).toBe("0");
     expect(result.current.showFiatAmount).toBe(false);
   });
 
@@ -137,5 +138,247 @@ describe("useTokenFiatConverter", () => {
     expect(result.current.fiatAmount).toBe(
       new BigNumber(100).toFixed(FIAT_DECIMALS),
     );
+  });
+
+  describe("Decimal separator handling", () => {
+    it("should handle dot as decimal separator in token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange(".");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      expect(result.current.tokenAmountDisplay).toBe("10.5");
+      expect(result.current.tokenAmount).toBe("10.5");
+    });
+  });
+
+  describe("Mid-typing scenarios", () => {
+    it("should preserve typing state when typing '100.' in token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange(".");
+      });
+
+      expect(result.current.tokenAmountDisplay).toBe("100.");
+      expect(result.current.tokenAmount).toBe("100");
+    });
+
+    it("should handle deletion in fiat amounts by removing only the last character", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      act(() => {
+        result.current.updateFiatDisplay("31.71");
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("31.7");
+      expect(result.current.fiatAmount).toBe("31.7");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("31.");
+      expect(result.current.fiatAmount).toBe("31");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("3");
+      expect(result.current.fiatAmount).toBe("3");
+    });
+
+    it("should handle deletion after Max button press", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      act(() => {
+        result.current.updateFiatDisplay("31.71");
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("31.7");
+      expect(result.current.fiatAmount).toBe("31.7");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("31.");
+      expect(result.current.fiatAmount).toBe("31");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("3");
+      expect(result.current.fiatAmount).toBe("3");
+    });
+
+    it("should allow typing double digits in fiat amounts", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("5");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("55");
+
+      act(() => {
+        result.current.handleDisplayAmountChange(",");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("55,");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("55,0");
+
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("55,00");
+    });
+
+    it("should delete decimal separator and preceding digit when deleting from decimal separator", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      act(() => {
+        result.current.updateFiatDisplay("55,");
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("5");
+      expect(result.current.fiatAmount).toBe("5");
+
+      act(() => {
+        result.current.updateFiatDisplay("55.");
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("5");
+      expect(result.current.fiatAmount).toBe("5");
+    });
+  });
+
+  describe("Max spendable validation", () => {
+    it("should allow typing amounts exceeding max spendable in token mode", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      expect(result.current.tokenAmountDisplay).toBe("100");
+      expect(result.current.tokenAmount).toBe("100");
+    });
+
+    it("should allow typing amounts exceeding max spendable in fiat mode", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      act(() => {
+        result.current.handleDisplayAmountChange("2");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+
+      expect(result.current.fiatAmountDisplay).toBe("200");
+      expect(result.current.fiatAmount).toBe("200");
+    });
   });
 });
