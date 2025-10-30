@@ -99,10 +99,9 @@ platform :ios do
       verbose: false
     )
 
-    automatic_code_signing(
-      path: "ios/freighter-mobile.xcodeproj",
+    update_code_signing_settings(
       use_automatic_signing: true,
-      team_id: "4JWM8JNM37"
+      path: "ios/freighter-mobile.xcodeproj",
     )
   end
 
