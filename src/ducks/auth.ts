@@ -208,6 +208,7 @@ interface AuthState {
 
   // Biometric authentication state
   signInMethod: LoginType;
+  hasTriggeredAppOpenBiometricsLogin: boolean;
 }
 
 /**
@@ -308,6 +309,7 @@ interface AuthActions {
 
   // Biometric authentication actions
   setSignInMethod: (method: LoginType) => void;
+  setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => void;
 }
 
 /**
@@ -337,6 +339,7 @@ const initialState: Omit<AuthState, "network"> = {
   navigationRef: null,
   // Biometric authentication initial state
   signInMethod: LoginType.PASSWORD,
+  hasTriggeredAppOpenBiometricsLogin: false,
 };
 
 /**
@@ -2291,6 +2294,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
     setSignInMethod: (method: LoginType) => {
       set({ signInMethod: method });
+    },
+
+    setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => {
+      set({ hasTriggeredAppOpenBiometricsLogin: hasTriggered });
     },
   };
 });

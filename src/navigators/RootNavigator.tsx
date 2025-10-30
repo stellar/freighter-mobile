@@ -69,7 +69,15 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const {
+    authStatus,
+    getAuthStatus,
+    verifyActionWithBiometrics,
+    signInMethod,
+    signIn,
+    hasTriggeredAppOpenBiometricsLogin,
+    setHasTriggeredAppOpenBiometricsLogin,
+  } = useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -122,6 +130,40 @@ export const RootNavigator = () => {
     authStatus,
     checkBiometrics,
     isBiometricsEnabled,
+  ]);
+
+  useEffect(() => {
+    if (initializing) {
+      return;
+    }
+
+    if (authStatus === AUTH_STATUS.AUTHENTICATED || !isBiometricsEnabled) {
+      setHasTriggeredAppOpenBiometricsLogin(true);
+
+      return;
+    }
+
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      !hasTriggeredAppOpenBiometricsLogin
+    ) {
+      setHasTriggeredAppOpenBiometricsLogin(true);
+
+      verifyActionWithBiometrics(async (biometricPassword?: string) => {
+        if (biometricPassword) {
+          await signIn({ password: biometricPassword });
+        }
+      });
+    }
+  }, [
+    authStatus,
+    isBiometricsEnabled,
+    signInMethod,
+    initializing,
+    hasTriggeredAppOpenBiometricsLogin,
+    setHasTriggeredAppOpenBiometricsLogin,
+    verifyActionWithBiometrics,
+    signIn,
   ]);
 
   // Wait for all initialization states to complete
