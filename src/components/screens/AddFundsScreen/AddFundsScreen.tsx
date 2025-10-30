@@ -47,6 +47,7 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
         title={t("addFundsScreen.title")}
         description={t("addFundsScreen.bottomSheet.description")}
         modalRef={bottomSheetModalRef}
+        icon="PlusCircle"
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
       <View className="flex-1 justify-start align-start pt-5">
