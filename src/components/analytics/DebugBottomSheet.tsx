@@ -19,6 +19,7 @@ import { getVersion } from "react-native-device-info";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 import { analytics } from "services/analytics";
 import { DEBUG_CONSTANTS } from "services/analytics/debug";
+import { SecurityLevel } from "services/blockaid/constants";
 
 interface DebugBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
@@ -38,6 +39,9 @@ const CustomContent: React.FC<{
     overriddenAppVersion,
     setOverriddenAppVersion,
     clearOverriddenAppVersion,
+    overriddenBlockaidResponse,
+    setOverriddenBlockaidResponse,
+    clearOverriddenBlockaidResponse,
   } = useDebugStore();
   const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
   const [currentVersion] = useState(getVersion());
@@ -249,6 +253,95 @@ const CustomContent: React.FC<{
                 {t("debug.appVersionOverride.clearUpdateDismissalFlag")}
               </Button>
             </View>
+          </View>
+
+          {/* Blockaid Response Override Section */}
+          <View className="gap-3 mb-4">
+            <Text lg medium>
+              {t("debug.blockaidOverride.title")}
+            </Text>
+            <Text xs color={themeColors.text.secondary}>
+              {t("debug.blockaidOverride.description")}
+            </Text>
+
+            {overriddenBlockaidResponse && (
+              <View className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <Text xs color={themeColors.status.warning}>
+                  {t("debug.blockaidOverride.overriddenResponse", {
+                    response: overriddenBlockaidResponse,
+                  })}
+                </Text>
+              </View>
+            )}
+
+            <View className="flex flex-row gap-2 flex-wrap">
+              <Button
+                variant={
+                  overriddenBlockaidResponse === SecurityLevel.SAFE
+                    ? "primary"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  const level: SecurityLevel = SecurityLevel.SAFE;
+                  setOverriddenBlockaidResponse(level);
+                }}
+              >
+                {t("debug.blockaidOverride.safe")}
+              </Button>
+              <Button
+                variant={
+                  overriddenBlockaidResponse === SecurityLevel.SUSPICIOUS
+                    ? "primary"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  const level: SecurityLevel = SecurityLevel.SUSPICIOUS;
+                  setOverriddenBlockaidResponse(level);
+                }}
+              >
+                {t("debug.blockaidOverride.suspicious")}
+              </Button>
+              <Button
+                variant={
+                  overriddenBlockaidResponse === SecurityLevel.MALICIOUS
+                    ? "primary"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  const level: SecurityLevel = SecurityLevel.MALICIOUS;
+                  setOverriddenBlockaidResponse(level);
+                }}
+              >
+                {t("debug.blockaidOverride.malicious")}
+              </Button>
+              <Button
+                variant={
+                  overriddenBlockaidResponse === SecurityLevel.UNABLE_TO_SCAN
+                    ? "primary"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  const level: SecurityLevel = SecurityLevel.UNABLE_TO_SCAN;
+                  setOverriddenBlockaidResponse(level);
+                }}
+              >
+                {t("debug.blockaidOverride.unableToScan")}
+              </Button>
+            </View>
+
+            {overriddenBlockaidResponse && (
+              <Button
+                variant="tertiary"
+                sm
+                onPress={clearOverriddenBlockaidResponse}
+              >
+                {t("debug.blockaidOverride.clearOverride")}
+              </Button>
+            )}
           </View>
 
           <View className="gap-3 mb-4">

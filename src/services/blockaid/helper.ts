@@ -5,7 +5,9 @@ import {
   BLOCKAID_RESULT_TYPES,
   SecurityLevel,
   SECURITY_LEVEL_MAP,
-  SECURITY_MESSAGE_KEYS,
+  TOKEN_SECURITY_LEVEL_MESSAGE_KEYS,
+  SITE_SECURITY_LEVEL_MESSAGE_KEYS,
+  TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS,
   ValidationSeverity,
 } from "services/blockaid/constants";
 
@@ -27,6 +29,7 @@ export interface SecurityAssessment {
   level: SecurityLevel;
   isSuspicious: boolean;
   isMalicious: boolean;
+  isUnableToScan: boolean;
   details?: string;
 }
 
@@ -49,8 +52,11 @@ export const createSecurityAssessment = (
 ): SecurityAssessment => ({
   level,
   isSuspicious:
-    level !== SecurityLevel.SAFE && level !== SecurityLevel.MALICIOUS,
+    level !== SecurityLevel.SAFE &&
+    level !== SecurityLevel.MALICIOUS &&
+    level !== SecurityLevel.UNABLE_TO_SCAN,
   isMalicious: level === SecurityLevel.MALICIOUS,
+  isUnableToScan: level === SecurityLevel.UNABLE_TO_SCAN,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
     : undefined,
@@ -60,35 +66,48 @@ export const createSecurityAssessment = (
  * Token Security Assessment
  *
  * Evaluates token scan results using result_type for consistent security classification.
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid token scan result
  * @returns SecurityAssessment with type-safe level and localized details
  */
 export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
+  debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
-  if (!scanResult?.result_type) {
+  // Check for debug override first
+  if (debugOverride) {
+    const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
+    return createSecurityAssessment(
+      debugOverride,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  // If scanResult is null/undefined, it means the scan failed
+  if (!scanResult) {
+    const messageKeys =
+      TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.UNABLE_TO_SCAN];
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  if (!scanResult.result_type) {
     return createSecurityAssessment(SecurityLevel.SAFE);
   }
 
   const level = getSecurityLevel(scanResult.result_type);
+  const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[level];
 
-  switch (level) {
-    case SecurityLevel.MALICIOUS:
-      return createSecurityAssessment(
-        level,
-        SECURITY_MESSAGE_KEYS.TOKEN_MALICIOUS,
-      );
-
-    case SecurityLevel.SUSPICIOUS:
-      return createSecurityAssessment(
-        level,
-        SECURITY_MESSAGE_KEYS.TOKEN_SUSPICIOUS,
-      );
-
-    default:
-      return createSecurityAssessment(SecurityLevel.SAFE);
-  }
+  return createSecurityAssessment(
+    level,
+    messageKeys.title,
+    messageKeys.description,
+  );
 };
 
 /**
@@ -96,85 +115,133 @@ export const assessTokenSecurity = (
  *
  * Evaluates site scan results using status + is_malicious for site-specific logic.
  * miss = suspicious (warning), hit with is_malicious = malicious (error), hit with is_malicious = false (safe).
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid site scan result
  * @returns SecurityAssessment with type-safe level and localized details
  */
 export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
+  debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
+  // Check for debug override first
+  if (debugOverride) {
+    const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
+    return createSecurityAssessment(
+      debugOverride,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  // If scanResult is null/undefined, it means the scan failed
   if (!scanResult) {
-    return createSecurityAssessment(SecurityLevel.SAFE);
+    const messageKeys =
+      SITE_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.UNABLE_TO_SCAN];
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      messageKeys.title,
+      messageKeys.description,
+    );
   }
 
   // Site not found in database = suspicious (warning)
   if (scanResult.status === "miss") {
+    const messageKeys =
+      SITE_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
       SecurityLevel.SUSPICIOUS,
-      SECURITY_MESSAGE_KEYS.SITE_SUSPICIOUS,
+      messageKeys.title,
+      messageKeys.description,
     );
   }
 
   if (scanResult.is_malicious) {
+    const messageKeys =
+      SITE_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.MALICIOUS];
     return createSecurityAssessment(
       SecurityLevel.MALICIOUS,
-      SECURITY_MESSAGE_KEYS.SITE_MALICIOUS,
+      messageKeys.title,
+      messageKeys.description,
     );
   }
 
   // Site found but not malicious = safe
-  return createSecurityAssessment(SecurityLevel.SAFE);
+  const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SAFE];
+  return createSecurityAssessment(
+    SecurityLevel.SAFE,
+    messageKeys.title,
+    messageKeys.description,
+  );
 };
 
 /**
  * Transaction Security Assessment
  *
  * Evaluates transaction scan results using simulation + validation for transaction-specific logic.
+ * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid transaction scan result
  * @returns SecurityAssessment with type-safe level and localized details
  */
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
+  debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
+  // Check for debug override first
+  if (debugOverride) {
+    const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
+    return createSecurityAssessment(
+      debugOverride,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  // If scanResult is null/undefined, it means the scan failed
   if (!scanResult) {
-    return createSecurityAssessment(SecurityLevel.SAFE);
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.UNABLE_TO_SCAN];
+    return createSecurityAssessment(
+      SecurityLevel.UNABLE_TO_SCAN as SecurityLevel,
+      messageKeys.title,
+      messageKeys.description,
+    );
   }
 
   const { simulation, validation } = scanResult;
 
   // Check for simulation errors = suspicious
   if (simulation && "error" in simulation) {
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
       SecurityLevel.SUSPICIOUS,
-      SECURITY_MESSAGE_KEYS.TRANSACTION_SIMULATION_FAILED,
+      messageKeys.title,
+      messageKeys.description,
     );
   }
 
   // Check validation result_type
   if (validation && "result_type" in validation) {
     const level = getSecurityLevel(validation.result_type);
+    const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[level];
 
-    switch (level) {
-      case SecurityLevel.MALICIOUS:
-        return createSecurityAssessment(
-          level,
-          SECURITY_MESSAGE_KEYS.TRANSACTION_MALICIOUS,
-        );
-
-      case SecurityLevel.SUSPICIOUS:
-        return createSecurityAssessment(
-          level,
-          SECURITY_MESSAGE_KEYS.TRANSACTION_WARNING,
-        );
-
-      default:
-        return createSecurityAssessment(SecurityLevel.SAFE);
-    }
+    return createSecurityAssessment(
+      level,
+      messageKeys.title,
+      messageKeys.description,
+    );
   }
 
   // No validation data = safe (no message)
-  return createSecurityAssessment(SecurityLevel.SAFE);
+  const messageKeys =
+    TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SAFE];
+  return createSecurityAssessment(
+    SecurityLevel.SAFE,
+    messageKeys.title,
+    messageKeys.description,
+  );
 };
 
 /**

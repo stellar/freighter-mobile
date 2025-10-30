@@ -28,6 +28,7 @@ export enum SecurityLevel {
   SAFE = "SAFE",
   SUSPICIOUS = "SUSPICIOUS",
   MALICIOUS = "MALICIOUS",
+  UNABLE_TO_SCAN = "UNABLE_TO_SCAN",
 }
 
 /**
@@ -56,6 +57,72 @@ export const SECURITY_MESSAGE_KEYS = {
     "blockaid.security.transaction.simulationFailed",
   TRANSACTION_MALICIOUS: "blockaid.security.transaction.malicious",
   TRANSACTION_WARNING: "blockaid.security.transaction.warning",
+  // Unable to scan message keys
+  UNABLE_TO_SCAN_TOKEN: "blockaid.unableToScan.token",
+  UNABLE_TO_SCAN_SITE_TITLE: "blockaid.unableToScan.site.title",
+  UNABLE_TO_SCAN_SITE_DESCRIPTION: "blockaid.unableToScan.site.description",
+  UNABLE_TO_SCAN_TRANSACTION_TITLE: "blockaid.unableToScan.transaction",
+  UNABLE_TO_SCAN_TRANSACTION_DESCRIPTION: "blockaid.unableToScan.info",
+} as const;
+
+/**
+ * Security message keys organized by SecurityLevel for different contexts
+ */
+export const TOKEN_SECURITY_LEVEL_MESSAGE_KEYS = {
+  [SecurityLevel.SAFE]: {
+    title: undefined,
+    description: undefined,
+  },
+  [SecurityLevel.SUSPICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.TOKEN_SUSPICIOUS,
+    description: SECURITY_MESSAGE_KEYS.TOKEN_SUSPICIOUS,
+  },
+  [SecurityLevel.MALICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.TOKEN_MALICIOUS,
+    description: SECURITY_MESSAGE_KEYS.TOKEN_MALICIOUS,
+  },
+  [SecurityLevel.UNABLE_TO_SCAN]: {
+    title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
+    description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
+  },
+} as const;
+
+export const SITE_SECURITY_LEVEL_MESSAGE_KEYS = {
+  [SecurityLevel.SAFE]: {
+    title: undefined,
+    description: undefined,
+  },
+  [SecurityLevel.SUSPICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.SITE_SUSPICIOUS,
+    description: SECURITY_MESSAGE_KEYS.SITE_SUSPICIOUS,
+  },
+  [SecurityLevel.MALICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.SITE_MALICIOUS,
+    description: SECURITY_MESSAGE_KEYS.SITE_MALICIOUS,
+  },
+  [SecurityLevel.UNABLE_TO_SCAN]: {
+    title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_SITE_TITLE,
+    description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_SITE_DESCRIPTION,
+  },
+} as const;
+
+export const TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS = {
+  [SecurityLevel.SAFE]: {
+    title: undefined,
+    description: undefined,
+  },
+  [SecurityLevel.SUSPICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.TRANSACTION_WARNING,
+    description: SECURITY_MESSAGE_KEYS.TRANSACTION_WARNING,
+  },
+  [SecurityLevel.MALICIOUS]: {
+    title: SECURITY_MESSAGE_KEYS.TRANSACTION_MALICIOUS,
+    description: SECURITY_MESSAGE_KEYS.TRANSACTION_MALICIOUS,
+  },
+  [SecurityLevel.UNABLE_TO_SCAN]: {
+    title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TRANSACTION_TITLE,
+    description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TRANSACTION_DESCRIPTION,
+  },
 } as const;
 
 /**

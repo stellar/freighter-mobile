@@ -69,6 +69,7 @@ export const SecurityDetailBottomSheet: React.FC<
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
+  const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
 
   const getHeaderIcon = () => {
     const baseClasses =
@@ -78,6 +79,14 @@ export const SecurityDetailBottomSheet: React.FC<
       return (
         <View className={`${baseClasses} bg-red-3 border border-red-6`}>
           <Icon.AlertOctagon themeColor="red" />
+        </View>
+      );
+    }
+
+    if (isUnableToScan) {
+      return (
+        <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
+          <Icon.AlertCircle themeColor="amber" />
         </View>
       );
     }
@@ -99,8 +108,73 @@ export const SecurityDetailBottomSheet: React.FC<
       ),
     }));
 
+  const renderButtons = () => {
+    // Unable to scan state - side by side without biometrics
+    if (isUnableToScan) {
+      return (
+        <View className="flex-row gap-3">
+          {onCancel && (
+            <View className="flex-1">
+              <Button xl isFullWidth onPress={onCancel} variant="secondary">
+                {t("common.cancel")}
+              </Button>
+            </View>
+          )}
+          {onProceedAnyway && (
+            <View className="flex-1">
+              <Button
+                xl
+                isFullWidth
+                onPress={onProceedAnyway}
+                variant="tertiary"
+              >
+                {proceedAnywayText}
+              </Button>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Malicious/Suspicious state - stacked layout with TextButton
+    return (
+      <View className="gap-[12px]">
+        {onCancel && (
+          <Button
+            xl
+            isFullWidth
+            onPress={onCancel}
+            variant={isMalicious ? "destructive" : "tertiary"}
+          >
+            {t("common.cancel")}
+          </Button>
+        )}
+        {onProceedAnyway && (
+          <TextButton
+            text={proceedAnywayText}
+            onPress={onProceedAnyway}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        )}
+      </View>
+    );
+  };
+
   const getDescription = useMemo(
     () => () => {
+      if (isUnableToScan) {
+        switch (securityContext) {
+          case SecurityContext.TOKEN:
+            return t("securityWarning.token");
+          case SecurityContext.SITE:
+            return t("blockaid.unableToScan.site.description");
+          case SecurityContext.TRANSACTION:
+            return t("securityWarning.unsafeTransaction");
+          default:
+            return t("blockaid.unableToScan.info");
+        }
+      }
+
       switch (securityContext) {
         case SecurityContext.TOKEN:
           return t("securityWarning.token");
@@ -112,7 +186,7 @@ export const SecurityDetailBottomSheet: React.FC<
           return "";
       }
     },
-    [securityContext, t],
+    [securityContext, t, isUnableToScan],
   );
 
   return (
@@ -124,9 +198,11 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
       <Text xl primary>
-        {isMalicious
-          ? t("securityWarning.doNotProceed")
-          : t("securityWarning.suspiciousRequest")}
+        {(() => {
+          if (isMalicious) return t("securityWarning.doNotProceed");
+          if (isUnableToScan) return t("securityWarning.proceedWithCaution");
+          return t("securityWarning.suspiciousRequest");
+        })()}
       </Text>
       <Text md secondary regular>
         {getDescription()}
@@ -159,25 +235,7 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="gap-[12px]">
-        {onCancel && (
-          <Button
-            xl
-            isFullWidth
-            onPress={onCancel}
-            variant={isMalicious ? "destructive" : "tertiary"}
-          >
-            {t("common.cancel")}
-          </Button>
-        )}
-        {onProceedAnyway && (
-          <TextButton
-            text={proceedAnywayText}
-            onPress={onProceedAnyway}
-            variant={isMalicious ? "error" : "secondary"}
-          />
-        )}
-      </View>
+      {renderButtons()}
     </View>
   );
 };

@@ -13,20 +13,37 @@ import {
  */
 export function useTransactionSecurity(
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined,
+  overriddenBlockaidResponse?: SecurityLevel | null,
 ) {
   const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
+    () =>
+      assessTransactionSecurity(
+        transactionScanResult,
+        overriddenBlockaidResponse,
+      ),
+    [transactionScanResult, overriddenBlockaidResponse],
   );
 
   const transactionSecurityWarnings = useMemo(() => {
+    if (transactionSecurityAssessment.isUnableToScan) {
+      // For "Unable to scan" cases, always provide a warning so the list renders
+      return [
+        {
+          id: "unable-to-scan",
+          description:
+            transactionSecurityAssessment.details ||
+            "Unable to scan transaction",
+        },
+      ];
+    }
+
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious
     ) {
       const warnings = extractSecurityWarnings(transactionScanResult);
 
-      if (warnings.length > 0) {
+      if (Array.isArray(warnings) && warnings.length > 0) {
         return warnings;
       }
     }
@@ -35,6 +52,8 @@ export function useTransactionSecurity(
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
+    transactionSecurityAssessment.details,
     transactionScanResult,
   ]);
 
@@ -45,11 +64,14 @@ export function useTransactionSecurity(
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
+    if (transactionSecurityAssessment.isUnableToScan)
+      return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
   ]);
 
   return {
@@ -68,6 +90,7 @@ export interface BannerContent {
 export interface UseSendBannerContentParams {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
@@ -80,6 +103,7 @@ export interface UseSendBannerContentParams {
 export function useSendBannerContent({
   isMalicious,
   isSuspicious,
+  isUnableToScan = false,
   isRequiredMemoMissing = false,
   onSecurityWarningPress,
   onMemoMissingPress,
@@ -88,7 +112,7 @@ export function useSendBannerContent({
 
   return useMemo(() => {
     const shouldShowNoticeBanner =
-      isRequiredMemoMissing || isMalicious || isSuspicious;
+      isRequiredMemoMissing || isMalicious || isSuspicious || isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
       return undefined;
@@ -110,6 +134,14 @@ export function useSendBannerContent({
       };
     }
 
+    if (isUnableToScan) {
+      return {
+        text: t("securityWarning.proceedWithCaution"),
+        variant: "warning" as const,
+        onPress: onSecurityWarningPress,
+      };
+    }
+
     if (isRequiredMemoMissing && onMemoMissingPress) {
       return {
         text: t("transactionAmountScreen.errors.memoMissing"),
@@ -123,6 +155,7 @@ export function useSendBannerContent({
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
+    isUnableToScan,
     t,
     onSecurityWarningPress,
     onMemoMissingPress,

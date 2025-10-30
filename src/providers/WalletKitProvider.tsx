@@ -11,6 +11,7 @@ import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   useWalletKitStore,
@@ -83,6 +84,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
+  const { overriddenBlockaidResponse } = useDebugStore();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -168,8 +170,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @type {SecurityAssessment}
    */
   const siteSecurityAssessment = useMemo(
-    () => assessSiteSecurity(siteScanResult),
-    [siteScanResult],
+    () => assessSiteSecurity(siteScanResult, overriddenBlockaidResponse),
+    [siteScanResult, overriddenBlockaidResponse],
   );
 
   /**
@@ -177,8 +179,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @type {SecurityAssessment}
    */
   const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
+    () =>
+      assessTransactionSecurity(
+        transactionScanResult,
+        overriddenBlockaidResponse,
+      ),
+    [transactionScanResult, overriddenBlockaidResponse],
   );
 
   const signTransactionDetails = useSignTransactionDetails({ xdr });
