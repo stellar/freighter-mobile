@@ -97,33 +97,33 @@ export const RootNavigator = () => {
       await getAuthStatus();
     };
 
-    const triggerFaceIdOnboarding = async () => {
-      const hasSeenBiometricsEnableScreenStorage = await dataStorage.getItem(
-        STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
-      );
-      if (
-        authStatus === AUTH_STATUS.AUTHENTICATED &&
-        hasSeenBiometricsEnableScreenStorage !== "true"
-      ) {
+    const triggerFaceIdOnboarding = () => {
+      if (authStatus === AUTH_STATUS.AUTHENTICATED) {
         setTimeout(() => {
-          checkBiometrics().then((type) => {
-            if (!isBiometricsEnabled && !!type) {
-              navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-                source: BiometricsSource.POST_ONBOARDING,
-              });
-            }
-          });
+          dataStorage
+            .getItem(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN)
+            .then(async (hasSeenBiometricsEnableScreenStorage) => {
+              const type = await checkBiometrics();
+              if (
+                !isBiometricsEnabled &&
+                hasSeenBiometricsEnableScreenStorage !== "true" &&
+                !!type
+              ) {
+                navigation.navigate(
+                  AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
+                  {
+                    source: BiometricsSource.POST_ONBOARDING,
+                  },
+                );
+              }
+            });
         }, 3000);
       }
     };
 
-    initializeApp()
-      .then(() => {
-        triggerFaceIdOnboarding();
-      })
-      .catch(() => {
-        // Handle initialization error silently
-      });
+    initializeApp().then(() => {
+      triggerFaceIdOnboarding();
+    });
   }, [
     getAuthStatus,
     navigation,
