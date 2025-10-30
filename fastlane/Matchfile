@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+git_url(ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" })
+git_branch("main")
+storage_mode("git")
+type("appstore")
+app_identifier(["org.stellar.freighterdev", "org.stellar.freighterwallet"])
