@@ -44,17 +44,17 @@ const AddMemoExplanationBottomSheet = ({
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
+        <Text md regular secondary textAlign="left">
           {t("addMemoExplanationBottomSheet.description")}
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
+        <Text md regular secondary textAlign="left">
           {t("addMemoExplanationBottomSheet.disabledWarning")}
         </Text>
       </View>
       <View className="mt-[24px] pr-8">
-        <Text md medium secondary textAlign="left">
+        <Text md regular secondary textAlign="left">
           {t("addMemoExplanationBottomSheet.checkMemoRequirements")}
         </Text>
       </View>

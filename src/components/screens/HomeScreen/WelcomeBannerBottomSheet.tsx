@@ -39,7 +39,6 @@ const CustomContent: React.FC<{
           {t("welcomeBanner.welcomeMessage")}
         </Text>
         <View className="h-4" />
-        <View className="h-px mb-4 bg-border-primary" />
         <View className="mb-5">
           <Text md medium>
             <Text md medium secondary>

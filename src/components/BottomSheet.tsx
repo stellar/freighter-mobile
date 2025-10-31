@@ -22,6 +22,14 @@ import { track } from "services/analytics/core";
 import type { AnalyticsProps } from "services/analytics/types";
 
 const Icons = {
+  Plus: {
+    icon: "Plus",
+    color: "lilac",
+  },
+  PlusCircle: {
+    icon: "PlusCircle",
+    color: "lilac",
+  },
   Tokens: {
     icon: "Coins01",
     color: "mint",
@@ -82,7 +90,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   scrollable = false,
 }) => {
   const { themeColors } = useColors();
-  const IconData = icon ? Icons[icon] : null;
+  const IconData = icon ? Icons[icon] : Icons.Announcement;
   const insets = useSafeAreaInsets();
   const [footerHeight, setFooterHeight] = useState(0);
 
@@ -132,42 +140,46 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const renderContent = useCallback(
     () =>
       customContent || (
-        <>
+        <View className="gap-4">
           {IconData && (
             <View className="flex-row items-center justify-between">
-              <View>
+              <View className="size-10 rounded-lg items-center justify-center">
                 {React.createElement(Icon[IconData.icon], {
-                  size: 25,
                   themeColor: IconData.color,
                   withBackground: true,
+                  square: true,
+                  size: 24,
                 })}
               </View>
-              <TouchableOpacity onPress={handleCloseModal}>
-                <Icon.X color={themeColors.base[1]} />
+              <TouchableOpacity
+                onPress={handleCloseModal}
+                className="size-10 items-center justify-center rounded-full bg-gray-3"
+              >
+                <Icon.X color={themeColors.gray[9]} />
               </TouchableOpacity>
             </View>
           )}
-          <View className="flex-row items-center justify-between">
+          <View>
             <Text xl medium>
               {title}
             </Text>
             {!IconData && (
               <TouchableOpacity onPress={handleCloseModal}>
-                <Icon.X color={themeColors.base[1]} />
+                <Icon.X color={themeColors.gray[9]} />
               </TouchableOpacity>
             )}
+            <View className="h-4" />
+            <Text md regular secondary>
+              {description}
+            </Text>
           </View>
-          <View className="h-px bg-gray-8" />
-          <Text md medium secondary>
-            {description}
-          </Text>
-        </>
+        </View>
       ),
     [
       customContent,
       IconData,
       handleCloseModal,
-      themeColors.base,
+      themeColors.gray,
       title,
       description,
     ],

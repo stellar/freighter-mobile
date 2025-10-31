@@ -45,6 +45,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
         title={t("addAnotherWalletScreen.helperBottomSheet.title")}
         description={t("addAnotherWalletScreen.helperBottomSheet.description")}
         modalRef={bottomSheetModalRef}
+        icon="PlusCircle"
         handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
       />
       <View>

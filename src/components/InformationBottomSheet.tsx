@@ -99,7 +99,7 @@ const InformationBottomSheet = ({
       </View>
       {texts.map((text) => (
         <View className="mt-[24px] pr-8" key={text.key}>
-          <Text md medium secondary textAlign="left">
+          <Text md regular secondary textAlign="left">
             {text.value}
           </Text>
         </View>

@@ -2381,6 +2381,7 @@ export const Icons = {
 export interface IconProps {
   name?: keyof typeof Icons;
   circle?: boolean;
+  square?: boolean;
   size?: number;
   color?: string;
   testID?: string;
@@ -2438,6 +2439,7 @@ const IconComponent: React.FC<IconProps> = ({
   size = DEFAULT_ICON_SIZE,
   color = THEME.colors.primary,
   circle,
+  square,
   testID,
   onPress,
   themeColor,
@@ -2485,11 +2487,11 @@ const IconComponent: React.FC<IconProps> = ({
   if (withBackground && themeColor) {
     return (
       <View
-        className="items-center justify-center rounded-full"
+        className={`items-center justify-center ${square ? "rounded-lg" : "rounded-full"}`}
         style={{
           backgroundColor: themeColors[themeColor][3],
-          width: pxValue(size * 2),
-          height: pxValue(size * 2),
+          width: pxValue(square ? size * 1.5 : size * 2),
+          height: pxValue(square ? size * 1.5 : size * 2),
         }}
       >
         {iconElement}
