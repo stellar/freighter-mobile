@@ -179,15 +179,13 @@ export const getTokenInvocationArgs = (
   };
 };
 
-/**
- * Checks if an operation type is a Soroban operation type
- * Can be used with both Horizon operation records and transaction operations
- */
-export const isSorobanOperationType = (operationType: string): boolean =>
-  SOROBAN_OPERATION_TYPES.includes(operationType);
+export const isSorobanOp = (
+  operation: Horizon.ServerApi.OperationRecord | Operation,
+) => SOROBAN_OPERATION_TYPES.includes(operation.type);
 
-const isSorobanOp = (operation: Horizon.ServerApi.OperationRecord) =>
-  isSorobanOperationType(operation.type);
+export const hasSorobanOperations = (
+  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+) => transaction.operations.some((operation) => isSorobanOp(operation));
 
 export const getAttrsFromSorobanHorizonOp = (
   operation: Horizon.ServerApi.OperationRecord,

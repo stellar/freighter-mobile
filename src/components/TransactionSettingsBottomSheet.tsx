@@ -117,7 +117,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Clear memo for Soroban transactions (collectible transfers or Soroban contract recipients)
   useEffect(() => {
-    if (isSorobanTransaction && context !== TransactionContext.Swap) {
+    if (isSorobanTransaction) {
       saveTransactionMemo("");
       setLocalMemo("");
     }
@@ -266,19 +266,8 @@ const TransactionSettingsBottomSheet: React.FC<
   };
 
   // Render functions
-  const getMemoRow = useCallback(() => {
-    // Recalculate in case values changed (avoid shadowing outer scope)
-    const isCollectibleTransferCheck =
-      selectedCollectibleDetails?.collectionAddress &&
-      selectedCollectibleDetails?.tokenId;
-
-    const isSorobanRecipientCheck =
-      recipientAddress && isContractId(recipientAddress);
-
-    const isSorobanTransactionCheck =
-      isCollectibleTransferCheck || isSorobanRecipientCheck;
-
-    return (
+  const getMemoRow = useCallback(
+    () => (
       <View className="flex-col gap-2 mt-[24px]">
         <View className="flex flex-row items-center gap-2">
           <Text sm secondary>
@@ -298,9 +287,9 @@ const TransactionSettingsBottomSheet: React.FC<
           value={localMemo}
           onChangeText={handleMemoChange}
           error={memoError}
-          editable={!isSorobanTransactionCheck}
+          editable={!isSorobanTransaction}
           note={
-            isSorobanTransactionCheck ? (
+            isSorobanTransaction ? (
               <View className="flex flex-row items-center gap-2 mt-1">
                 <Text sm secondary color={themeColors.status.warning}>
                   {t("transactionSettings.memoInfo.sorobanNote")}
@@ -310,16 +299,16 @@ const TransactionSettingsBottomSheet: React.FC<
           }
         />
       </View>
-    );
-  }, [
-    localMemo,
-    memoError,
-    t,
-    handleMemoChange,
-    recipientAddress,
-    selectedCollectibleDetails,
-    themeColors.status.warning,
-  ]);
+    ),
+    [
+      localMemo,
+      memoError,
+      t,
+      handleMemoChange,
+      themeColors.status.warning,
+      isSorobanTransaction,
+    ],
+  );
 
   const getSlippageRow = useCallback(
     () => (
