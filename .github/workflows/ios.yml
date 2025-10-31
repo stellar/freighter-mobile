@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - name: List installed Xcodes
+      - name: List available Xcode versions
         run: ls -1 /Applications | grep -i Xcode || true
 
       - name: Set xcode version
