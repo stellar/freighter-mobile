@@ -160,6 +160,43 @@ jobs:
           distribution: zulu
           cache: gradle
 
+      - name: Set up Android SDK and NDK
+        run: |
+          # GitHub Actions runners have Android SDK pre-installed at /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
+          ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}
+
+          # Set Android SDK environment variables
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+
+          # NDK path - Gradle will download NDK 28.2.13676358 if needed (specified in build.gradle)
+          # The NDK will be at $ANDROID_SDK_ROOT/ndk/<version>
+          NDK_PATH="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
+          echo "NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
+
+          echo "Android SDK: $ANDROID_SDK_ROOT"
+          echo "NDK Path (expected): $NDK_PATH"
+
+          # If NDK doesn't exist yet, Gradle will download it during build
+          # but for postinstall scripts, we try to install it now via sdkmanager
+          if [ ! -d "$NDK_PATH" ]; then
+            echo "NDK not found, attempting to install via sdkmanager..."
+            SDK_MANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            if [ -f "$SDK_MANAGER" ]; then
+              yes | "$SDK_MANAGER" --licenses || true
+              "$SDK_MANAGER" "ndk;28.2.13676358" || {
+                echo "⚠️  NDK installation via sdkmanager failed, Gradle will download it during build"
+              }
+            else
+              echo "⚠️  sdkmanager not found, Gradle will download NDK during build"
+            fi
+          else
+            echo "✅ NDK 28.2.13676358 is already available"
+          fi
+
       - name: Run Yarn Install
         run: |
           yarn install --frozen-lockfile --immutable

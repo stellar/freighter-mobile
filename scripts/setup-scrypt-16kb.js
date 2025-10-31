@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+/**
+ * Google Play requires all new apps and updates targeting Android 15 and higher
+ * to support 16 KB page sizes on 64-bit devices, effective November 1, 2025.
+ *
+ * This requirement is intended to optimize device performance and efficiency,
+ * especially as devices incorporate larger amounts of physical memory (RAM).
+ */
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -48,15 +55,7 @@ try {
   execSync(`node "${buildScript}"`, { stdio: "inherit" });
   console.log("=> 16KB page size alignment setup complete!");
 } catch (error) {
-  // Check if we're in CI environment
-  if (process.env.CI || process.env.GITHUB_ACTIONS) {
-    console.log(
-      "⚠️  Skipping 16KB alignment build - expected in CI environments.",
-    );
-    console.log("=> 16KB page size alignment setup skipped.");
-  } else {
-    console.error("=> Error during 16KB page size alignment setup.");
-    console.error(error.message);
-    process.exit(1);
-  }
+  console.error("=> Error during 16KB page size alignment setup.");
+  console.error(error.message);
+  process.exit(1);
 }
