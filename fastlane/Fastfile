@@ -78,7 +78,7 @@ platform :ios do
     UI.message "🔄 Setting build version: #{build_version}"
 
     replace_in_file(
-      file: "../ios/freighter-mobile.xcodeproj/project.pbxproj",
+      "../ios/freighter-mobile.xcodeproj/project.pbxproj",
       find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
       replace: "CURRENT_PROJECT_VERSION = #{build_version}"
     )
@@ -157,7 +157,7 @@ platform :android do
     UI.message "🔄 Setting build version: #{build_version}"
 
     replace_in_file(
-      file: "../android/app/build.gradle",
+      "../android/app/build.gradle",
       find: /versionCode\s+\d+/,
       replace: "versionCode #{build_version}"
     )
