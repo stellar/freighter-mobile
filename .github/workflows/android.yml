@@ -116,8 +116,9 @@ jobs:
           ./scripts/gh-android-env >> $GITHUB_ENV
 
       - name: Decode and save sentry.properties
-        run: |
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode > ./android/sentry.properties
+        run:
+          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          ./android/sentry.properties
 
       # Most of the vars below are set on the ./scripts/gh-android-env script.
       - name: Debug info
@@ -164,12 +165,10 @@ jobs:
         run: ./scripts/setup-android-ndk-16kb
 
       - name: Run Yarn Install
-        run: |
-          yarn install --frozen-lockfile --immutable
+        run: yarn install --frozen-lockfile --immutable
 
       - name: Run Post Install
-        run: |
-          yarn postinstall
+        run: yarn postinstall
 
       - name: Build and Distribute Application
         id: fastlane
