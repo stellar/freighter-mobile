@@ -123,8 +123,9 @@ jobs:
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Decode and save sentry.properties
-        run: |
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode > ./ios/sentry.properties
+        run:
+          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          ./ios/sentry.properties
 
       # Most of the vars below are set on the ./scripts/gh-ios-env script.
       - name: Debug info
@@ -169,12 +170,10 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
 
       - name: Run Yarn Install
-        run: |
-          yarn install --frozen-lockfile --immutable
+        run: yarn install --frozen-lockfile --immutable
 
       - name: Run Post Install
-        run: |
-          yarn postinstall
+        run: yarn postinstall
 
       - name: Build and Distribute Application
         id: fastlane
