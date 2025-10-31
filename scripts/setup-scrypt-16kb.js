@@ -10,6 +10,24 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const os = require("os");
+
+// This script changes only Android files so it's safe to skip on iOS
+const isIOSOnlyEnvironment =
+  // CI: Check if we're in iOS workflow (skip for Android workflow)
+  !!process.env.APPLE_CONNECT_KEY_ID ||
+  // Local: macOS without Android SDK suggests iOS-only development
+  (os.platform() === "darwin" &&
+    !process.env.ANDROID_HOME &&
+    !process.env.ANDROID_SDK_ROOT &&
+    !process.env.ANDROID_NDK_HOME);
+
+if (isIOSOnlyEnvironment) {
+  console.log(
+    "=> Skipping Android 16KB page size alignment setup (iOS-only environment detected)",
+  );
+  process.exit(0);
+}
 
 console.log("Setting up react-native-scrypt for 16KB page size alignment...");
 
