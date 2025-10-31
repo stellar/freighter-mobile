@@ -22,6 +22,10 @@ import { track } from "services/analytics/core";
 import type { AnalyticsProps } from "services/analytics/types";
 
 const Icons = {
+  Plus: {
+    icon: "Plus",
+    color: "lilac",
+  },
   PlusCircle: {
     icon: "PlusCircle",
     color: "lilac",
