@@ -292,7 +292,9 @@ const TransactionSettingsBottomSheet: React.FC<
             isSorobanTransaction ? (
               <View className="flex flex-row items-center gap-2 mt-1">
                 <Text sm secondary color={themeColors.status.warning}>
-                  {t("transactionSettings.memoInfo.sorobanNote")}
+                  {isCollectibleTransfer
+                    ? t("transactionSettings.memoInfo.sorobanNoteCollectible")
+                    : t("transactionSettings.memoInfo.sorobanNoteTransaction")}
                 </Text>
               </View>
             ) : undefined
@@ -307,6 +309,7 @@ const TransactionSettingsBottomSheet: React.FC<
       handleMemoChange,
       themeColors.status.warning,
       isSorobanTransaction,
+      isCollectibleTransfer,
     ],
   );
 

@@ -672,7 +672,8 @@
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
       "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient.",
       "sorobanInfo": "Memo is not allowed on Soroban transactions, such as collectible transfers or \"C\" addresses",
-      "sorobanNote": "Memo not allowed for Soroban transactions"
+      "sorobanNoteTransaction": "Memo not allowed for Soroban transactions",
+      "sorobanNoteCollectible": "Memo is not allowed for collectible transfers"
     },
     "slippageInfo": {
       "title": "Allowed slippage",

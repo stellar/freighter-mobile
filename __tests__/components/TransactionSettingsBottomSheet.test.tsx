@@ -323,7 +323,9 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    expect(getByText("transactionSettings.memoInfo.sorobanNote")).toBeTruthy();
+    expect(
+      getByText("transactionSettings.memoInfo.sorobanNoteTransaction"),
+    ).toBeTruthy();
   });
 
   it("should clear memo automatically for Soroban transactions", async () => {
