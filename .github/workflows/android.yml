@@ -93,6 +93,9 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
       - name: Set ref
         run: |
           if [[ "${{ github.event.inputs.ref_name }}" != "" ]]; then

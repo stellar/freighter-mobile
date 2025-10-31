@@ -3,7 +3,7 @@ import { DEFAULT_REFRESH_DELAY, NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { getTokenType } from "helpers/balances";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface UseBalancesListResult {
   balanceItems: Array<
@@ -30,8 +30,6 @@ export const useBalancesList = ({
   searchTerm,
 }: UseBalancesListProps): UseBalancesListResult => {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isMounting, setIsMounting] = useState(true);
-  const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
 
   const {
     pricedBalances,
@@ -44,27 +42,9 @@ export const useBalancesList = ({
 
   const noBalances = Object.keys(pricedBalances).length === 0;
 
-  // Initial data fetch
-  const fetchInitialData = useCallback(async () => {
-    try {
-      await fetchAccountBalances({
-        publicKey,
-        network,
-      });
-    } finally {
-      setHasAttemptedInitialLoad(true);
-      setIsMounting(false);
-    }
-  }, [fetchAccountBalances, publicKey, network]);
-
-  useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
-
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
 
-    // Start fetching balances and prices
     fetchAccountBalances({
       publicKey,
       network,
@@ -125,14 +105,13 @@ export const useBalancesList = ({
   );
 
   // Only show error if we're not in the initial loading state and there is an error
-  const shouldShowError =
-    !isMounting && hasAttemptedInitialLoad && balancesError;
+  const shouldShowError = !isBalancesLoading && balancesError;
 
   return useMemo(
     () => ({
       balanceItems,
       scanResults,
-      isLoading: isBalancesLoading || isMounting,
+      isLoading: isBalancesLoading,
       error: shouldShowError ? balancesError : null,
       noBalances,
       isRefreshing,
@@ -143,7 +122,6 @@ export const useBalancesList = ({
       balanceItems,
       scanResults,
       isBalancesLoading,
-      isMounting,
       shouldShowError,
       balancesError,
       noBalances,

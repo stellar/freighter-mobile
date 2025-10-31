@@ -1,6 +1,7 @@
-import { NETWORKS } from "config/constants";
+import { BALANCES_FETCH_POLLING_INTERVAL, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
-import { useEffect } from "react";
+import { useFocusedPolling } from "hooks/useFocusedPolling";
+import { useCallback } from "react";
 
 interface UsePricedBalancesPollingParams {
   publicKey: string;
@@ -9,8 +10,7 @@ interface UsePricedBalancesPollingParams {
 
 /**
  * Hook to manage polling of priced balances
- * Automatically starts polling when mounted and stops when unmounted
- *
+ * Uses focused polling to start and stop polling when the screen is focused and app is active
  * @param params - Parameters for the polling
  * @param params.publicKey - The public key to fetch balances for
  * @param params.network - The network to fetch balances from
@@ -19,21 +19,17 @@ export const usePricedBalancesPolling = ({
   publicKey,
   network,
 }: UsePricedBalancesPollingParams) => {
-  const { startPolling, stopPolling } = useBalancesStore();
+  const { fetchAccountBalances } = useBalancesStore();
 
-  useEffect(() => {
-    // Start polling when component mounts
-    startPolling({
+  const handlePoll = useCallback(() => {
+    fetchAccountBalances({
       publicKey,
       network,
     });
+  }, [publicKey, network, fetchAccountBalances]);
 
-    // Cleanup polling when component unmounts
-    return () => {
-      // Previous polling (if any) will be automatically stopped by React
-      // before this effect runs again with new publicKey or network values
-      stopPolling();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publicKey, network]);
+  useFocusedPolling({
+    onPoll: handlePoll,
+    interval: BALANCES_FETCH_POLLING_INTERVAL,
+  });
 };

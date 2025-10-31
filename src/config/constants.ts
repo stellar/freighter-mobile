@@ -29,6 +29,12 @@ export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
 // This is used to prevent flickering while refreshing lists with "pull to refresh" action
 export const DEFAULT_REFRESH_DELAY = 1000;
 
+// Balances polling interval in milliseconds
+export const BALANCES_FETCH_POLLING_INTERVAL = 30000;
+
+// History polling interval in milliseconds
+export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
@@ -81,10 +87,8 @@ export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
-export const STELLAR_FOUNDATION_TERMS_URL =
-  "https://stellar.org/terms-of-service";
-export const STELLAR_FOUNDATION_PRIVACY_URL =
-  "https://stellar.org/privacy-policy";
+export const FREIGHTER_TERMS_URL = "https://www.freighter.app/terms";
+export const FREIGHTER_PRIVACY_URL = "https://www.freighter.app/privacy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
