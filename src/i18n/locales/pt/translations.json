@@ -635,7 +635,7 @@
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
-      "sorobanInfo": "Memo não é permitido em transações Soroban, como transferências de colecionáveis ou endereços \"C\"",
+      "sorobanInfo": "Memo não é permitido em transações Soroban, como transferências de colecionáveis ou endereços \"C\".",
       "sorobanNoteTransaction": "Memo não permitido para transações Soroban",
       "sorobanNoteCollectible": "Memo não é permitido para transferências de colecionáveis"
     },
