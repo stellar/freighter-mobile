@@ -90,7 +90,7 @@ jobs:
   build:
     name: Build Android
     runs-on: "ubuntu-latest-16-cores"
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Set ref

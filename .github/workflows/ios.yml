@@ -82,7 +82,7 @@ jobs:
   build:
     name: Build iOS
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: List installed Xcodes
