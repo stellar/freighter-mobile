@@ -8,8 +8,8 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      flavor:
-        description: The Android flavor that will be built (optional)
+      env:
+        description: The Android env that will be built (optional)
         type: choice
         default: ""
         options:
@@ -17,7 +17,7 @@ on:
           - dev
           - prod
       upload_to_google_play:
-        description: Upload app to Google Play
+        description: Upload build to Google Play
         type: choice
         default: "yes"
         options:
@@ -111,7 +111,8 @@ jobs:
       - name: Set env
         run: |
           echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
-          export ANDROID_FLAVOR="${{ github.event.inputs.flavor }}"
+          # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
+          export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
           ./scripts/gh-android-env >> $GITHUB_ENV
 
       - name: Decode and save sentry.properties
