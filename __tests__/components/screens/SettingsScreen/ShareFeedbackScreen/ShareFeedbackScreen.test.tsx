@@ -67,7 +67,7 @@ describe("ShareFeedbackScreen", () => {
 
     expect(mockOpenURL).toHaveBeenCalledTimes(1);
     expect(mockOpenURL).toHaveBeenCalledWith(FREIGHTER_DISCORD_URL);
-  }, 10000);
+  });
 
   it("calls Linking.openURL with GitHub URL when GitHub option is pressed", async () => {
     renderWithProviders(
@@ -79,5 +79,5 @@ describe("ShareFeedbackScreen", () => {
 
     expect(mockOpenURL).toHaveBeenCalledTimes(1);
     expect(mockOpenURL).toHaveBeenCalledWith(FREIGHTER_GITHUB_ISSUE_URL);
-  }, 10000);
+  });
 });

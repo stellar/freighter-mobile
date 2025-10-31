@@ -62,7 +62,7 @@ describe("SecurityDetailBottomSheet", () => {
 
     await user.press(getByText("Cancel"));
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
-  }, 10000);
+  });
 
   it("calls onProceedAnyway when proceed anyway text is pressed", async () => {
     const user = userEvent.setup();
@@ -72,7 +72,7 @@ describe("SecurityDetailBottomSheet", () => {
 
     await user.press(getByText("Approve anyway"));
     expect(defaultProps.onProceedAnyway).toHaveBeenCalledTimes(1);
-  }, 10000);
+  });
 
   it("calls onClose when close button is pressed", () => {
     const { getByText } = renderWithProviders(

@@ -73,6 +73,8 @@
 		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false />
 	</dict>
 </plist>
 

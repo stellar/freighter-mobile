@@ -73,5 +73,7 @@
 		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false />
 	</dict>
 </plist>

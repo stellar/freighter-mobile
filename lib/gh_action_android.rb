@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "env_file_creator"
+
 class GHActionAndroid
   BUILD_GRADLE = File.read("./android/app/build.gradle")
 
@@ -36,6 +38,7 @@ class GHActionAndroid
 
   def call
     create_env
+    create_env_file
     output_env
   end
 
@@ -45,6 +48,11 @@ class GHActionAndroid
     set_app_id
     set_app_version
     set_app_name
+  end
+
+  def create_env_file
+    EnvFileCreator.create(env: @env)
+    build_env[:envfile] = ".env"
   end
 
   def set_fastlane
@@ -71,12 +79,13 @@ class GHActionAndroid
     ref_name = @env.fetch("REF_NAME")
     android_flavor = @env.fetch("ANDROID_FLAVOR")
 
+    # If the flavor is set in the workflow dispatch, use it
     if android_flavor.to_s != ""
       build_env[:android_flavor] = android_flavor
       return
     end
 
-    # Default flavor based on ref_name
+    # Otherwise, default flavor based on the ref_name
     # Production builds are tagged with version numbers (e.g., v1.6.23)
     # Development builds use other patterns
     build_env[:android_flavor] = if ref_name.match?(/^v?\d+\.\d+\.\d+$/)

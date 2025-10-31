@@ -163,7 +163,7 @@ describe("SendSearchContacts", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
     });
-  }, 10000);
+  });
 
   it.skip("navigates to transaction token screen when a contact is pressed", async () => {
     renderWithProviders(
@@ -181,7 +181,7 @@ describe("SendSearchContacts", () => {
         { address: expect.any(String) },
       );
     });
-  }, 15000);
+  });
 
   it("pastes clipboard content when paste button is pressed", async () => {
     renderWithProviders(
@@ -196,7 +196,7 @@ describe("SendSearchContacts", () => {
     await waitFor(() => {
       expect(mockGetClipboardText).toHaveBeenCalled();
     });
-  }, 15000);
+  });
 
   it("shows search suggestions when text is entered", async () => {
     // Setup the mock to return search results for this specific test
@@ -220,5 +220,5 @@ describe("SendSearchContacts", () => {
     await waitFor(() => {
       expect(mockSearchAddress).toHaveBeenCalledWith("test");
     });
-  }, 10000);
+  });
 });

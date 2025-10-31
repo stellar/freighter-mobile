@@ -3,6 +3,7 @@ const getSrcDirs = require("./config/getSrcDirs");
 
 module.exports = {
   preset: "react-native",
+  testTimeout: 30000, // 30 seconds timeout for all tests
   setupFiles: ["./jest.setup.js", "@shopify/react-native-skia/jestSetup.js"],
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),

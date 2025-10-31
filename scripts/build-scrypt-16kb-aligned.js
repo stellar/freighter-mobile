@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+/**
+ * Google Play requires all new apps and updates targeting Android 15 and higher
+ * to support 16 KB page sizes on 64-bit devices, effective November 1, 2025.
+ *
+ * This requirement is intended to optimize device performance and efficiency,
+ * especially as devices incorporate larger amounts of physical memory (RAM).
+ */
+
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -43,31 +51,18 @@ async function main() {
     }
 
     if (!ndkPath) {
-      if (process.env.CI || process.env.GITHUB_ACTIONS) {
-        console.log(
-          "⚠️  Android NDK not found, but running in CI environment.",
-        );
-        console.log(
-          "⚠️  Skipping 16KB alignment build - using original libraries.",
-        );
-        console.log(
-          "⚠️  This is expected in CI environments that don't build Android apps.",
-        );
-        process.exit(0);
-      } else {
-        console.error("Error: Android NDK not found in common locations:");
-        commonPaths.forEach((p) => console.error(`  ${p}`));
-        console.error("");
-        console.error("Please set one of these environment variables:");
-        console.error("  ANDROID_NDK_HOME");
-        console.error("  ANDROID_NDK_ROOT");
-        console.error("  NDK_ROOT");
-        console.error("");
-        console.error(
-          "Or install Android NDK in one of the common locations above.",
-        );
-        process.exit(1);
-      }
+      console.error("Error: Android NDK not found in common locations:");
+      commonPaths.forEach((p) => console.error(`  ${p}`));
+      console.error("");
+      console.error("Please set one of these environment variables:");
+      console.error("  ANDROID_NDK_HOME");
+      console.error("  ANDROID_NDK_ROOT");
+      console.error("  NDK_ROOT");
+      console.error("");
+      console.error(
+        "Or install Android NDK in one of the common locations above.",
+      );
+      process.exit(1);
     }
   }
 

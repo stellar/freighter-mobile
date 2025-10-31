@@ -6,25 +6,52 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  NODE_VERSION: "20"
+  RUBY_VERSION: 3.1.4
+  JAVA_VERSION: "17"
+
 jobs:
   test:
     name: test
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-latest-16-cores"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
 
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+          cache: gradle
+
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
+      - name: Run Yarn Install
+        run: yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
 
       - name: Run tests
         run: yarn test --ci

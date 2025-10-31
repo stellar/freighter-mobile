@@ -198,7 +198,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/enter word #2/i)).toBeTruthy();
     });
-  }, 30000);
+  });
 
   it("completes validation flow with all 3 correct selections and calls signUp", async () => {
     renderScreen();
@@ -233,7 +233,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
           "test phrase one two three four five six seven eight nine ten eleven twelve",
       });
     });
-  }, 30000);
+  });
 
   it("completes validation flow with all 3 correct words and navigates to biometrics when available", async () => {
     // Mock useBiometrics to return a biometryType for this test
@@ -304,7 +304,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     // Verify signUp was NOT called since we navigated to biometrics instead
     expect(mockSignUp).not.toHaveBeenCalled();
-  }, 30000);
+  });
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();

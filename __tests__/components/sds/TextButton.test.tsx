@@ -27,7 +27,7 @@ describe("TextButton", () => {
     await user.press(getByText("Test Button"));
 
     expect(mockOnPress).toHaveBeenCalledTimes(1);
-  }, 10000);
+  });
 
   it("shows spinner when isLoading is true", () => {
     const { getByTestId } = renderWithProviders(
