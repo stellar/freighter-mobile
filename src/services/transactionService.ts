@@ -349,11 +349,12 @@ export const buildPaymentTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    if (memo) {
+    const isToContractAddress = isContractId(recipientAddress);
+
+    // Only add memo for non-Soroban transactions
+    if (memo && !isToContractAddress) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
-
-    const isToContractAddress = isContractId(recipientAddress);
 
     if (isToContractAddress) {
       const token = getTokenForPayment(selectedBalance);
@@ -527,7 +528,6 @@ export const buildSendCollectibleTransaction = async (
     collectionAddress,
     transactionFee,
     transactionTimeout,
-    transactionMemo,
     tokenId,
     network,
     recipientAddress,
@@ -566,10 +566,6 @@ export const buildSendCollectibleTransaction = async (
       xdr.ScVal.scvU32(tokenId), // token_id
     ];
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
-
-    if (transactionMemo) {
-      txBuilder.addMemo(Memo.text(transactionMemo));
-    }
 
     const transaction = txBuilder.build();
     return { tx: transaction, xdr: transaction.toXDR() };

@@ -22,6 +22,7 @@ import {
   parseDisplayNumber,
   formatNumberForDisplay,
 } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -30,7 +31,7 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
@@ -55,6 +56,8 @@ const TransactionSettingsBottomSheet: React.FC<
     transactionMemo,
     transactionFee,
     transactionTimeout,
+    recipientAddress,
+    selectedCollectibleDetails,
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
@@ -73,6 +76,14 @@ const TransactionSettingsBottomSheet: React.FC<
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const isCollectibleTransfer =
+    selectedCollectibleDetails?.collectionAddress &&
+    selectedCollectibleDetails?.tokenId;
+
+  const isSorobanRecipient = recipientAddress && isContractId(recipientAddress);
+
+  const isSorobanTransaction = isCollectibleTransfer || isSorobanRecipient;
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -104,6 +115,14 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
+  // Clear memo for Soroban transactions (collectible transfers or Soroban contract recipients)
+  useEffect(() => {
+    if (isSorobanTransaction) {
+      saveTransactionMemo("");
+      setLocalMemo("");
+    }
+  }, [isSorobanTransaction, context, saveTransactionMemo]);
+
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
@@ -113,11 +132,11 @@ const TransactionSettingsBottomSheet: React.FC<
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
-      if (context === TransactionContext.Send) {
+      if (context === TransactionContext.Send && !isSorobanTransaction) {
         saveTransactionMemo(value);
       }
     },
-    [context, saveTransactionMemo],
+    [context, saveTransactionMemo, isSorobanTransaction],
   );
 
   const saveFee = useCallback(
@@ -179,9 +198,15 @@ const TransactionSettingsBottomSheet: React.FC<
     const numericValue = enforceSettingInputDecimalSeparator(text);
     setLocalSlippage(numericValue);
   }, []);
-  const handleMemoChange = useCallback((text: string) => {
-    setLocalMemo(text);
-  }, []);
+  const handleMemoChange = useCallback(
+    (text: string) => {
+      // Prevent memo changes for Soroban transactions
+      if (!isSorobanTransaction) {
+        setLocalMemo(text);
+      }
+    },
+    [isSorobanTransaction],
+  );
 
   const handleFeeChange = useCallback((text: string) => {
     const normalizedText = enforceSettingInputDecimalSeparator(text);
@@ -262,10 +287,30 @@ const TransactionSettingsBottomSheet: React.FC<
           value={localMemo}
           onChangeText={handleMemoChange}
           error={memoError}
+          editable={!isSorobanTransaction}
+          note={
+            isSorobanTransaction ? (
+              <View className="flex flex-row items-center gap-2 mt-1">
+                <Text sm secondary color={themeColors.status.warning}>
+                  {isCollectibleTransfer
+                    ? t("transactionSettings.memoInfo.sorobanNoteCollectible")
+                    : t("transactionSettings.memoInfo.sorobanNoteTransaction")}
+                </Text>
+              </View>
+            ) : undefined
+          }
         />
       </View>
     ),
-    [localMemo, memoError, t, handleMemoChange],
+    [
+      localMemo,
+      memoError,
+      t,
+      handleMemoChange,
+      themeColors.status.warning,
+      isSorobanTransaction,
+      isCollectibleTransfer,
+    ],
   );
 
   const getSlippageRow = useCallback(
@@ -462,6 +507,10 @@ const TransactionSettingsBottomSheet: React.FC<
         {
           key: "additionalInfo",
           value: t("transactionSettings.memoInfo.additionalInfo"),
+        },
+        {
+          key: "sorobanInfo",
+          value: t("transactionSettings.memoInfo.sorobanInfo"),
         },
       ],
     },
