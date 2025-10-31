@@ -56,8 +56,8 @@ const TransactionSettingsBottomSheet: React.FC<
     transactionMemo,
     transactionFee,
     transactionTimeout,
-    selectedTokenId,
     recipientAddress,
+    selectedCollectibleDetails,
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
@@ -77,14 +77,13 @@ const TransactionSettingsBottomSheet: React.FC<
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  // Check if selected token is a Soroban token (contract ID) or recipient is a Soroban contract
-  const isSorobanToken = selectedTokenId
-    ? isContractId(selectedTokenId)
-    : false;
-  const isSorobanRecipient = recipientAddress
-    ? isContractId(recipientAddress)
-    : false;
-  const isSorobanTransaction = isSorobanToken || isSorobanRecipient;
+  const isCollectibleTransfer =
+    selectedCollectibleDetails?.collectionAddress &&
+    selectedCollectibleDetails?.tokenId;
+
+  const isSorobanRecipient = recipientAddress && isContractId(recipientAddress);
+
+  const isSorobanTransaction = isCollectibleTransfer || isSorobanRecipient;
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -116,7 +115,7 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
-  // Clear memo when Soroban token is selected or recipient is a Soroban contract
+  // Clear memo for Soroban transactions (collectible transfers or Soroban contract recipients)
   useEffect(() => {
     if (isSorobanTransaction && context !== TransactionContext.Swap) {
       saveTransactionMemo("");
@@ -268,15 +267,16 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Render functions
   const getMemoRow = useCallback(() => {
-    // Recalculate in case values changed
-    const isSorobanTokenCheck = selectedTokenId
-      ? isContractId(selectedTokenId)
-      : false;
-    const isSorobanRecipientCheck = recipientAddress
-      ? isContractId(recipientAddress)
-      : false;
+    // Recalculate in case values changed (avoid shadowing outer scope)
+    const isCollectibleTransferCheck =
+      selectedCollectibleDetails?.collectionAddress &&
+      selectedCollectibleDetails?.tokenId;
+
+    const isSorobanRecipientCheck =
+      recipientAddress && isContractId(recipientAddress);
+
     const isSorobanTransactionCheck =
-      isSorobanTokenCheck || isSorobanRecipientCheck;
+      isCollectibleTransferCheck || isSorobanRecipientCheck;
 
     return (
       <View className="flex-col gap-2 mt-[24px]">
@@ -316,8 +316,8 @@ const TransactionSettingsBottomSheet: React.FC<
     memoError,
     t,
     handleMemoChange,
-    selectedTokenId,
     recipientAddress,
+    selectedCollectibleDetails,
     themeColors.status.warning,
   ]);
 
