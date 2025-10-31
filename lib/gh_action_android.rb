@@ -79,12 +79,13 @@ class GHActionAndroid
     ref_name = @env.fetch("REF_NAME")
     android_flavor = @env.fetch("ANDROID_FLAVOR")
 
+    # If the flavor is set in the workflow dispatch, use it
     if android_flavor.to_s != ""
       build_env[:android_flavor] = android_flavor
       return
     end
 
-    # Default flavor based on ref_name
+    # Otherwise, default flavor based on the ref_name
     # Production builds are tagged with version numbers (e.g., v1.6.23)
     # Development builds use other patterns
     build_env[:android_flavor] = if ref_name.match?(/^v?\d+\.\d+\.\d+$/)

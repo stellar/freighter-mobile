@@ -140,7 +140,7 @@ android {
         resValue "string", "build_config_package", "org.stellar.freighterwallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
+        versionCode 1234567890
         versionName "1.6.23"
     }
 
