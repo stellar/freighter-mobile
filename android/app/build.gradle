@@ -76,6 +76,15 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
+
+/**
+ * Helper function to get environment variables.
+ * First checks System.getenv() (for CI/CD), then falls back to project.env.get() (for .env file).
+ */
+def GetEnv(String key) {
+    return System.getenv(key) ?: project.env.get(key)
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -88,23 +97,23 @@ android {
     signingConfigs {
         debug {
             storeFile file('../keystores/debug.keystore')
-            storePassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
-            keyAlias project.env.get('ANDROID_DEBUG_KEYSTORE_ALIAS')
-            keyPassword project.env.get('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+            storePassword GetEnv('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_DEBUG_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_DEBUG_KEYSTORE_PASSWORD')
         }
 
         dev {
             storeFile file('../keystores/dev-release.keystore')
-            storePassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
-            keyAlias project.env.get('ANDROID_DEV_KEYSTORE_ALIAS')
-            keyPassword project.env.get('ANDROID_DEV_KEYSTORE_PASSWORD')
+            storePassword GetEnv('ANDROID_DEV_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_DEV_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_DEV_KEYSTORE_PASSWORD')
         }
 
         prod {
             storeFile file('../keystores/prod-release.keystore')
-            storePassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
-            keyAlias project.env.get('ANDROID_PROD_KEYSTORE_ALIAS')
-            keyPassword project.env.get('ANDROID_PROD_KEYSTORE_PASSWORD')
+            storePassword GetEnv('ANDROID_PROD_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_PROD_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_PROD_KEYSTORE_PASSWORD')
         }
     }
 
