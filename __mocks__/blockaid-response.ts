@@ -1,6 +1,7 @@
 import Blockaid from "@blockaid/client";
+import { BLOCKAID_RESULT_TYPES } from "services/blockaid/constants";
 
-export const beningTokenScan: Blockaid.TokenScanResponse = {
+export const benignTokenScan: Blockaid.TokenScanResponse = {
   address: "",
   chain: "stellar",
   attack_types: {},
@@ -9,8 +10,14 @@ export const beningTokenScan: Blockaid.TokenScanResponse = {
   metadata: {},
   financial_stats: {},
   trading_limits: {},
-  result_type: "Benign",
-  features: [{ description: "", feature_id: "METADATA", type: "Benign" }],
+  result_type: BLOCKAID_RESULT_TYPES.BENIGN,
+  features: [
+    {
+      description: "",
+      feature_id: "METADATA",
+      type: BLOCKAID_RESULT_TYPES.BENIGN,
+    },
+  ],
 };
 
 export const maliciousTokenScan: Blockaid.TokenScanResponse = {
@@ -22,8 +29,14 @@ export const maliciousTokenScan: Blockaid.TokenScanResponse = {
   metadata: {},
   financial_stats: {},
   trading_limits: {},
-  result_type: "Malicious",
-  features: [{ description: "", feature_id: "METADATA", type: "Malicious" }],
+  result_type: BLOCKAID_RESULT_TYPES.MALICIOUS,
+  features: [
+    {
+      description: "",
+      feature_id: "METADATA",
+      type: BLOCKAID_RESULT_TYPES.MALICIOUS,
+    },
+  ],
 };
 
 export const suspiciousTokenScan: Blockaid.TokenScanResponse = {
@@ -35,6 +48,12 @@ export const suspiciousTokenScan: Blockaid.TokenScanResponse = {
   metadata: {},
   financial_stats: {},
   trading_limits: {},
-  result_type: "Warning",
-  features: [{ description: "", feature_id: "METADATA", type: "Warning" }],
+  result_type: BLOCKAID_RESULT_TYPES.WARNING,
+  features: [
+    {
+      description: "",
+      feature_id: "METADATA",
+      type: BLOCKAID_RESULT_TYPES.WARNING,
+    },
+  ],
 };

@@ -1,3 +1,4 @@
+import Blockaid from "@blockaid/client";
 import { AssetType as TokenType, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
@@ -125,9 +126,7 @@ export type NativeBalance = BaseBalance & {
   minimumBalance: BigNumber;
   buyingLiabilities: string;
   sellingLiabilities: string;
-
-  // TODO: Handle blockaidData later once we add support for it
-  // blockaidData: BlockAidScanTokenResult;
+  blockaidData?: Blockaid.Token.TokenScanResponse;
 };
 
 export type ClassicBalance = BaseBalance & {
@@ -138,9 +137,7 @@ export type ClassicBalance = BaseBalance & {
   buyingLiabilities: string;
   sellingLiabilities: string;
   sponsor?: string;
-
-  // TODO: Handle blockaidData later once we add support for it
-  // blockaidData: BlockAidScanTokenResult;
+  blockaidData?: Blockaid.Token.TokenScanResponse;
 };
 
 export type SorobanBalance = BaseBalance & {
@@ -151,6 +148,7 @@ export type SorobanBalance = BaseBalance & {
   name: string;
   symbol: string;
   decimals: number;
+  blockaidData?: Blockaid.Token.TokenScanResponse;
 };
 
 // Liquidity Pool balances doesn't have a "token" property
