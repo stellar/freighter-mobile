@@ -15,7 +15,6 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
-import { BiometricsSource, STORAGE_KEYS } from "config/constants";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -35,7 +34,9 @@ import {
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
 } from "helpers/navigationOptions";
+import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
+import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -52,7 +53,6 @@ import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
-import { dataStorage } from "services/storage/storageFactory";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -69,15 +69,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const {
-    authStatus,
-    getAuthStatus,
-    verifyActionWithBiometrics,
-    signInMethod,
-    signIn,
-    hasTriggeredAppOpenBiometricsLogin,
-    setHasTriggeredAppOpenBiometricsLogin,
-  } = useAuthenticationStore();
+  const { authStatus, getAuthStatus } = useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -92,37 +84,25 @@ export const RootNavigator = () => {
     previousState: initializing ? undefined : "none",
   });
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      await getAuthStatus();
-    };
+  useAppOpenBiometricsLogin(initializing);
 
-    const triggerFaceIdOnboarding = () => {
-      if (authStatus === AUTH_STATUS.AUTHENTICATED) {
-        setTimeout(() => {
-          dataStorage
-            .getItem(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN)
-            .then(async (hasSeenBiometricsEnableScreenStorage) => {
-              const type = await checkBiometrics();
-              if (
-                !isBiometricsEnabled &&
-                hasSeenBiometricsEnableScreenStorage !== "true" &&
-                !!type
-              ) {
-                navigation.navigate(
-                  AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
-                  {
-                    source: BiometricsSource.POST_ONBOARDING,
-                  },
-                );
-              }
-            });
-        }, 3000);
+  useEffect(() => {
+    const initializeApp = async (
+      postInitializeCallback?: () => void,
+    ): Promise<void> => {
+      await getAuthStatus();
+      if (postInitializeCallback) {
+        postInitializeCallback();
       }
     };
 
-    initializeApp().then(() => {
-      triggerFaceIdOnboarding();
+    initializeApp(() => {
+      triggerFaceIdOnboarding(
+        navigation,
+        authStatus,
+        checkBiometrics,
+        isBiometricsEnabled ?? false,
+      );
     });
   }, [
     getAuthStatus,
@@ -130,40 +110,6 @@ export const RootNavigator = () => {
     authStatus,
     checkBiometrics,
     isBiometricsEnabled,
-  ]);
-
-  useEffect(() => {
-    if (initializing) {
-      return;
-    }
-
-    if (authStatus === AUTH_STATUS.AUTHENTICATED || !isBiometricsEnabled) {
-      setHasTriggeredAppOpenBiometricsLogin(true);
-
-      return;
-    }
-
-    if (
-      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
-      !hasTriggeredAppOpenBiometricsLogin
-    ) {
-      setHasTriggeredAppOpenBiometricsLogin(true);
-
-      verifyActionWithBiometrics(async (biometricPassword?: string) => {
-        if (biometricPassword) {
-          await signIn({ password: biometricPassword });
-        }
-      });
-    }
-  }, [
-    authStatus,
-    isBiometricsEnabled,
-    signInMethod,
-    initializing,
-    hasTriggeredAppOpenBiometricsLogin,
-    setHasTriggeredAppOpenBiometricsLogin,
-    verifyActionWithBiometrics,
-    signIn,
   ]);
 
   // Wait for all initialization states to complete
