@@ -256,11 +256,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                   {t("manageTokensScreen.moreInfo.title")}
                 </Text>
                 <View className="h-4" />
-                <Text md medium secondary>
+                <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block1")}
                 </Text>
                 <View className="h-4" />
-                <Text md medium secondary>
+                <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block2")}
                 </Text>
               </View>
