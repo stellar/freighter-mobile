@@ -47,7 +47,7 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
   }}px;
   padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    return $insets.bottom + pxValue(DEFAULT_PADDING);
+    return $insets.bottom;
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.left) return 0;
