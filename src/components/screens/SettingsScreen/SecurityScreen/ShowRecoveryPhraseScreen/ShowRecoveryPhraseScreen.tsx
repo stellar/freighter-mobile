@@ -9,9 +9,10 @@ import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
+import { DeviceSize, useDeviceSize } from "helpers/deviceSize";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, ScrollView } from "react-native";
 
 type ShowRecoveryPhraseScreenProps = NativeStackScreenProps<
@@ -33,6 +34,14 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { getKeyFromKeyManager, signInMethod } = useAuthenticationStore();
   const { setMnemonicPhrase } = useLoginDataStore();
+  const deviceSize = useDeviceSize();
+
+  const biometricButtonSize = useMemo(() => {
+    if (deviceSize === DeviceSize.XS) {
+      return "lg";
+    }
+    return "xl";
+  }, [deviceSize]);
 
   const showRecoveryPhraseAction = async (password: string) => {
     try {
@@ -167,7 +176,7 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
             {t("showRecoveryPhraseScreen.showPhrase")}
           </Button>
           <View className="mt-4">
-            <BiometricToggleButton size="xl" />
+            <BiometricToggleButton size={biometricButtonSize} />
           </View>
           <View className="mb-10" />
         </ScrollView>
