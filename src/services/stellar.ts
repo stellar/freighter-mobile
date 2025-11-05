@@ -158,7 +158,6 @@ export const submitTx = async (
     throw e;
   }
 
-  console.log("SUBMITTED", submittedTx);
   return submittedTx;
 };
 
