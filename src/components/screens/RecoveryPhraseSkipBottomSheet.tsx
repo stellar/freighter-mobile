@@ -46,12 +46,12 @@ const CustomContent: React.FC<CustomContentProps> = ({
         </Text>
         <View className="h-px bg-border-primary" />
         <View className="gap-4">
-          <Text md medium secondary>
+          <Text md regular secondary>
             {t("recoverySkipModal.description1")}
           </Text>
-          <Text md medium secondary>
+          <Text md regular secondary>
             {t("recoverySkipModal.description2")}
-            <Text md medium>
+            <Text md regular>
               {t("recoverySkipModal.description3")}
             </Text>
           </Text>

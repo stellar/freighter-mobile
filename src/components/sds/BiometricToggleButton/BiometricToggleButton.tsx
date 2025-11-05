@@ -4,14 +4,15 @@ import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import React, { useCallback, useMemo } from "react";
+import { View } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 
 /**
  * Props for the BiometricToggleButton component
  */
 interface BiometricToggleButtonProps {
-  /** Size variant of the button (sm, md, lg) */
-  size?: "sm" | "md" | "lg";
+  /** Size variant of the button (sm, md, lg, xl) */
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 /**
@@ -27,13 +28,13 @@ interface BiometricToggleButtonProps {
  * @example
  * Basic usage:
  * ```tsx
- * <BiometricToggleButton size="md" />
+ * <BiometricToggleButton size="xl" />
  * ```
  *
  * @example
  * With custom size:
  * ```tsx
- * <BiometricToggleButton size="lg" />
+ * <BiometricToggleButton size="xl" />
  * ```
  *
  * @param props - Component props
@@ -41,7 +42,7 @@ interface BiometricToggleButtonProps {
  * @returns React component for toggling between authentication methods, or null if biometrics unavailable
  */
 export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
-  size = "sm",
+  size = "xl",
 }) => {
   const { t } = useAppTranslation();
   const { signInMethod, setSignInMethod } = useAuthenticationStore();
@@ -89,18 +90,22 @@ export const BiometricToggleButton: React.FC<BiometricToggleButtonProps> = ({
   // If currently using password, show the biometric option
   if (signInMethod === LoginType.PASSWORD) {
     return (
-      <Button minimal size={size} onPress={handleToggle}>
-        {biometryType && fallbackButtonText[biometryType]
-          ? fallbackButtonText[biometryType]
-          : t("lockScreen.enterPasswordInstead")}
-      </Button>
+      <View className={size === "xl" ? "-mt-2 -mb-2" : undefined}>
+        <Button minimal size={size} onPress={handleToggle}>
+          {biometryType && fallbackButtonText[biometryType]
+            ? fallbackButtonText[biometryType]
+            : t("lockScreen.enterPasswordInstead")}
+        </Button>
+      </View>
     );
   }
 
   // If currently using biometrics, show the password option
   return (
-    <Button minimal size={size} onPress={handleToggle}>
-      {t("lockScreen.enterPasswordInstead")}
-    </Button>
+    <View className={size === "xl" ? "-mt-2 -mb-2" : undefined}>
+      <Button minimal size={size} onPress={handleToggle}>
+        {t("lockScreen.enterPasswordInstead")}
+      </Button>
+    </View>
   );
 };

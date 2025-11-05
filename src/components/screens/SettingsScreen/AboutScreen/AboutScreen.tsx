@@ -7,8 +7,8 @@ import { Text } from "components/sds/Typography";
 import {
   FREIGHTER_BASE_URL,
   STELLAR_FOUNDATION_BASE_URL,
-  STELLAR_FOUNDATION_TERMS_URL,
-  STELLAR_FOUNDATION_PRIVACY_URL,
+  FREIGHTER_TERMS_URL,
+  FREIGHTER_PRIVACY_URL,
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { getAppVersionAndBuildNumber } from "helpers/version";
@@ -44,12 +44,12 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.privacyPolicy"),
-      onPress: () => openInAppBrowser(STELLAR_FOUNDATION_PRIVACY_URL),
+      onPress: () => openInAppBrowser(FREIGHTER_PRIVACY_URL),
     },
     {
       icon: <Icon.Link02 size={20} color={themeColors.foreground.primary} />,
       title: t("aboutScreen.links.termsOfService"),
-      onPress: () => openInAppBrowser(STELLAR_FOUNDATION_TERMS_URL),
+      onPress: () => openInAppBrowser(FREIGHTER_TERMS_URL),
     },
   ];
 

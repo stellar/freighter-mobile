@@ -68,7 +68,7 @@ describe("ShareFeedbackScreen", () => {
 
     expect(mockOpenInAppBrowser).toHaveBeenCalledTimes(1);
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(FREIGHTER_DISCORD_URL);
-  }, 10000);
+  });
 
   it("calls inAppBrowser.open with GitHub URL when GitHub option is pressed", async () => {
     renderWithProviders(
@@ -82,5 +82,5 @@ describe("ShareFeedbackScreen", () => {
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
       FREIGHTER_GITHUB_ISSUE_URL,
     );
-  }, 10000);
+  });
 });
