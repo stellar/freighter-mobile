@@ -17,10 +17,24 @@ module EnvFileCreator
         .freeze
   end
 
-  # Environment variables that should be included in the .env file
+  # Environment variables that must be included in the .env file
   ENV_VARS = load_env_vars_from_example.freeze
 
   def self.create(env:)
+    # Validate that all required .env file variables exist and have non-empty values
+    missing_vars = ENV_VARS.select do |var_name|
+      !env.key?(var_name) || env[var_name].nil? || env[var_name].to_s.empty?
+    end
+    
+    unless missing_vars.empty?
+      $stderr.puts "❌ Error: Missing required environment variables:"
+      missing_vars.each do |var_name|
+        $stderr.puts "  - #{var_name}"
+      end
+      $stderr.puts "\nPlease ensure all required variables are set in your repository variables/secrets."
+      raise "Missing required environment variables: #{missing_vars.join(', ')}"
+    end
+
     # Create .env file with non-empty values
     File.open(".env", "w") do |file|
       ENV_VARS.each do |var_name|
