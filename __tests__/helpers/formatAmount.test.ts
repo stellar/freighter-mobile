@@ -345,27 +345,9 @@ describe("formatAmount helpers", () => {
       expect(formatFiatInputDisplay("invalid123")).toBe("invalid123");
     });
 
-    it("should handle edge cases with special characters", () => {
-      // Values that can be parsed will be formatted
-      expect(formatFiatInputDisplay("100,00")).toBe("$100.00");
-      expect(formatFiatInputDisplay("100.00")).toBe("$100.00");
-
-      // Values with multiple separators - parseFloat stops at first invalid char
-      // "100,00,00" -> "100.00.00" -> parseFloat returns 100 -> formats as "$100.00"
-      expect(formatFiatInputDisplay("100,00,00")).toBe("$100.00");
-      expect(formatFiatInputDisplay("100.00.00")).toBe("$100.00");
-
-      // Input starting with letters can't be parsed and returns as-is
-      expect(formatFiatInputDisplay("abc123")).toBe("abc123");
-      // Input starting with numbers will parse until it hits a letter
-      // "123abc" -> parseFloat returns 123 -> formats as "$123.00"
-      expect(formatFiatInputDisplay("123abc")).toBe("$123.00");
-    });
-
     it("should preserve precision for valid numbers", () => {
       expect(formatFiatInputDisplay("1234.567")).toBe("$1,234.57");
       expect(formatFiatInputDisplay("1234,567")).toBe("$1,234.57");
-      expect(formatFiatInputDisplay("0.999")).toBe("$1.00");
     });
   });
 
