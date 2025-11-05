@@ -27,6 +27,7 @@ import { analytics } from "services/analytics";
  * @property {boolean} isConnecting - Whether a connection is currently being established
  * @property {boolean} isMalicious - Whether the dApp is malicious
  * @property {boolean} isSuspicious - Whether the dApp is suspicious
+ * @property {boolean} isUnableToScan - Whether the site scan failed
  */
 type DappConnectionBottomSheetContentProps = {
   proposalEvent: WalletKitSessionProposal | null;
@@ -36,7 +37,9 @@ type DappConnectionBottomSheetContentProps = {
   isConnecting: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
   securityWarningAction?: () => void;
+  proceedAnywayAction?: () => void;
 };
 
 /**
@@ -57,12 +60,34 @@ const DappConnectionBottomSheetContent: React.FC<
   isConnecting,
   isMalicious,
   isSuspicious,
+  isUnableToScan,
   securityWarningAction,
+  proceedAnywayAction,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
+
+  const getBannerText = useMemo(() => {
+    if (isMalicious) {
+      return t("dappConnectionBottomSheetContent.maliciousFlag");
+    }
+    if (isSuspicious) {
+      return t("dappConnectionBottomSheetContent.suspiciousFlag");
+    }
+    if (isUnableToScan) {
+      return t("securityWarning.proceedWithCaution");
+    }
+    return "";
+  }, [isMalicious, isSuspicious, isUnableToScan, t]);
+
+  const getBannerVariant = useMemo(() => {
+    if (isMalicious) {
+      return "error" as const;
+    }
+    return "warning" as const;
+  }, [isMalicious]);
 
   const listItems = useMemo(() => {
     if (!dappMetadata || !account) return [];
@@ -127,28 +152,86 @@ const DappConnectionBottomSheetContent: React.FC<
   };
 
   const renderButtons = () => {
-    const cancelButton = (
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
-      >
-        <Button
-          tertiary={isSuspicious}
-          destructive={isMalicious}
-          secondary={!isMalicious && !isSuspicious}
-          xl
-          isFullWidth
-          onPress={handleUserCancel}
-          disabled={isConnecting}
-        >
-          {t("common.cancel")}
-        </Button>
-      </View>
-    );
-
-    if (isMalicious || isSuspicious) {
+    // Normal state - side by side with biometrics
+    if (!isMalicious && !isSuspicious && !isUnableToScan) {
       return (
-        <>
-          {cancelButton}
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={handleUserCancel}
+              disabled={isConnecting}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => onConnection()}
+              isLoading={isConnecting}
+              disabled={isConnecting}
+            >
+              {t("dappConnectionBottomSheetContent.connect")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    if (isUnableToScan) {
+      return (
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={handleUserCancel}
+              disabled={isConnecting}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => {
+                proceedAnywayAction?.();
+              }}
+              isLoading={isConnecting}
+              disabled={isConnecting}
+            >
+              {t("common.continue")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View className="flex-col gap-3">
+        <View className="w-full">
+          <Button
+            tertiary={isSuspicious}
+            destructive={isMalicious}
+            xl
+            isFullWidth
+            onPress={handleUserCancel}
+            disabled={isConnecting}
+          >
+            {t("common.cancel")}
+          </Button>
+        </View>
+        <View className="w-full">
           <TextButton
             text={t("dappConnectionBottomSheetContent.connectAnyway")}
             onPress={onConnection}
@@ -156,27 +239,8 @@ const DappConnectionBottomSheetContent: React.FC<
             disabled={isConnecting}
             variant={isMalicious ? "error" : "secondary"}
           />
-        </>
-      );
-    }
-
-    return (
-      <>
-        {cancelButton}
-        <View className="flex-1">
-          <Button
-            biometric
-            tertiary
-            xl
-            isFullWidth
-            onPress={() => onConnection()}
-            isLoading={isConnecting}
-            disabled={isConnecting}
-          >
-            {t("dappConnectionBottomSheetContent.connect")}
-          </Button>
         </View>
-      </>
+      </View>
     );
   };
 
@@ -210,14 +274,10 @@ const DappConnectionBottomSheetContent: React.FC<
         </Badge>
       </View>
 
-      {(isMalicious || isSuspicious) && (
+      {(isMalicious || isSuspicious || isUnableToScan) && (
         <Banner
-          variant={isMalicious ? "error" : "warning"}
-          text={
-            isMalicious
-              ? t("dappConnectionBottomSheetContent.maliciousFlag")
-              : t("dappConnectionBottomSheetContent.suspiciousFlag")
-          }
+          variant={getBannerVariant}
+          text={getBannerText}
           onPress={securityWarningAction}
         />
       )}
@@ -232,17 +292,13 @@ const DappConnectionBottomSheetContent: React.FC<
         <List items={listItems} variant="secondary" />
       </View>
 
-      {!isMalicious && !isSuspicious && (
+      {!isMalicious && !isSuspicious && !isUnableToScan && (
         <Text sm secondary textAlign="center">
           {t("blockaid.security.site.confirmTrust")}
         </Text>
       )}
 
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px]`}
-      >
-        {renderButtons()}
-      </View>
+      <View className="w-full">{renderButtons()}</View>
     </View>
   );
 };

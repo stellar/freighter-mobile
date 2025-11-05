@@ -194,6 +194,18 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @type {SecurityWarning[]}
    */
   const siteSecurityWarnings = useMemo(() => {
+    if (siteSecurityAssessment.isUnableToScan) {
+      // For "Unable to scan" cases, always provide a warning so the list renders
+      return [
+        {
+          id: "unable-to-scan",
+          description:
+            siteSecurityAssessment.details ||
+            t("blockaid.unableToScan.site.description"),
+        },
+      ];
+    }
+
     if (
       siteSecurityAssessment.isMalicious ||
       siteSecurityAssessment.isSuspicious
@@ -209,10 +221,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [
     siteSecurityAssessment.isMalicious,
     siteSecurityAssessment.isSuspicious,
+    siteSecurityAssessment.isUnableToScan,
+    siteSecurityAssessment.details,
     siteScanResult,
+    t,
   ]);
 
   const transactionSecurityWarnings = useMemo(() => {
+    if (transactionSecurityAssessment.isUnableToScan) {
+      // For "Unable to scan" cases, always provide a warning so the list renders
+      return [
+        {
+          id: "unable-to-scan",
+          description:
+            transactionSecurityAssessment.details ||
+            t("securityWarning.unsafeTransaction"),
+        },
+      ];
+    }
+
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious
@@ -228,7 +255,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
+    transactionSecurityAssessment.details,
     transactionScanResult,
+    t,
   ]);
 
   /**
@@ -238,20 +268,29 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const siteSecuritySeverity = useMemo(() => {
     if (siteSecurityAssessment.isMalicious) return SecurityLevel.MALICIOUS;
     if (siteSecurityAssessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (siteSecurityAssessment.isUnableToScan)
+      return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
-  }, [siteSecurityAssessment.isMalicious, siteSecurityAssessment.isSuspicious]);
+  }, [
+    siteSecurityAssessment.isMalicious,
+    siteSecurityAssessment.isSuspicious,
+    siteSecurityAssessment.isUnableToScan,
+  ]);
 
   const transactionSecuritySeverity = useMemo(() => {
     if (transactionSecurityAssessment.isMalicious)
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
+    if (transactionSecurityAssessment.isUnableToScan)
+      return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
   ]);
 
   // =============================================================================
@@ -273,13 +312,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     [securityWarningContext, siteSecuritySeverity, transactionSecuritySeverity],
   );
 
-  const getProceedAnywayText = useCallback(
-    (): string =>
+  const getProceedAnywayText = useCallback((): string => {
+    const isUnableToScan =
       securityWarningContext === SecurityContext.SITE
-        ? t("dappConnectionBottomSheetContent.connectAnyway")
-        : t("dappRequestBottomSheetContent.confirmAnyway"),
-    [securityWarningContext, t],
-  );
+        ? siteSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN
+        : transactionSecurityAssessment.level === SecurityLevel.UNABLE_TO_SCAN;
+
+    if (isUnableToScan) {
+      return t("common.continue");
+    }
+
+    return securityWarningContext === SecurityContext.SITE
+      ? t("dappConnectionBottomSheetContent.connectAnyway")
+      : t("dappRequestBottomSheetContent.confirmAnyway");
+  }, [
+    securityWarningContext,
+    siteSecurityAssessment.level,
+    transactionSecurityAssessment.level,
+    t,
+  ]);
 
   /**
    * Clears the dApp connection bottom sheet and resets connection state
@@ -391,12 +442,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   /**
    * Handles security warning action
    * Opens the security warning bottom sheet with detailed information
-   * @function handleSecurityWarning
+   * For connection requests, dismisses the main sheet first
+   * For transaction requests, overlays security detail on top (dismissing would cancel the request)
+   * @function presentSecurityWarningDetail
    * @returns {void}
    */
   const presentSecurityWarningDetail = useCallback(
     (context: SecurityContext) => {
       setSecurityWarningContext(context);
+
+      // For connection requests, dismiss the main sheet before showing security detail
+      // For transaction requests, don't dismiss - it would cancel the request
+      if (context === SecurityContext.SITE) {
+        dappConnectionBottomSheetModalRef.current?.dismiss();
+      }
 
       siteSecurityWarningBottomSheetModalRef.current?.present();
     },
@@ -409,9 +468,23 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleProceedAnyway = (): void => {
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    if (securityWarningContext === SecurityContext.SITE) {
-      handleDappConnection();
+    const isUnableToScan =
+      securityWarningContext === SecurityContext.SITE
+        ? siteSecurityAssessment.isUnableToScan
+        : transactionSecurityAssessment.isUnableToScan;
 
+    if (securityWarningContext === SecurityContext.SITE) {
+      if (isUnableToScan) {
+        dappConnectionBottomSheetModalRef.current?.present();
+        return;
+      }
+
+      handleDappConnection();
+      return;
+    }
+
+    if (isUnableToScan) {
+      dappRequestBottomSheetModalRef.current?.present();
       return;
     }
 
@@ -494,12 +567,31 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       scanSite(dappDomain)
         .then((scanResult) => {
           setSiteScanResult(scanResult);
+          // Check security assessment inline to decide which sheet to open
+          const securityAssessment = assessSiteSecurity(
+            scanResult,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            // For unable to scan, open security detail sheet first (main sheet not opened yet)
+            setSecurityWarningContext(SecurityContext.SITE);
+            siteSecurityWarningBottomSheetModalRef.current?.present();
+          } else {
+            dappConnectionBottomSheetModalRef.current?.present();
+          }
         })
         .catch(() => {
           setSiteScanResult(undefined);
-        })
-        .finally(() => {
-          dappConnectionBottomSheetModalRef.current?.present();
+          const securityAssessment = assessSiteSecurity(
+            undefined,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            setSecurityWarningContext(SecurityContext.SITE);
+            siteSecurityWarningBottomSheetModalRef.current?.present();
+          } else {
+            dappConnectionBottomSheetModalRef.current?.present();
+          }
         });
     }
 
@@ -575,16 +667,45 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
           setTransactionScanResult(scanResult);
+          // Check security assessment inline to decide which sheet to open
+          const securityAssessment = assessTransactionSecurity(
+            scanResult,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            // For unable to scan, open security detail sheet first (main sheet not opened yet)
+            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            siteSecurityWarningBottomSheetModalRef.current?.present();
+          } else {
+            dappRequestBottomSheetModalRef.current?.present();
+          }
         })
         .catch(() => {
           setTransactionScanResult(undefined);
-        })
-        .finally(() => {
-          dappRequestBottomSheetModalRef.current?.present();
+          // If scan fails, treat as unable to scan
+          const securityAssessment = assessTransactionSecurity(
+            undefined,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            // For unable to scan, open security detail sheet first (main sheet not opened yet)
+            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            siteSecurityWarningBottomSheetModalRef.current?.present();
+          } else {
+            dappRequestBottomSheetModalRef.current?.present();
+          }
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessions, event.type, authStatus, transactionMemo]);
+  }, [
+    activeSessions,
+    event.type,
+    authStatus,
+    transactionMemo,
+    overriddenBlockaidResponse,
+  ]);
 
   const onCancelAddMemo = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -615,7 +736,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancel={handleClearDappConnection}
             isMalicious={siteSecurityAssessment.isMalicious}
             isSuspicious={siteSecurityAssessment.isSuspicious}
+            isUnableToScan={siteSecurityAssessment.isUnableToScan}
             securityWarningAction={() =>
+              presentSecurityWarningDetail(SecurityContext.SITE)
+            }
+            proceedAnywayAction={() =>
               presentSecurityWarningDetail(SecurityContext.SITE)
             }
           />
@@ -641,8 +766,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancelRequest={handleClearDappRequest}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             transactionScanResult={transactionScanResult}
             securityWarningAction={() =>
+              presentSecurityWarningDetail(SecurityContext.TRANSACTION)
+            }
+            proceedAnywayAction={() =>
               presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }
             signTransactionDetails={signTransactionDetails}
@@ -669,6 +798,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
+            securityContext={securityWarningContext}
             severity={getSeverity()}
             proceedAnywayText={getProceedAnywayText()}
           />
