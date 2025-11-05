@@ -18,6 +18,7 @@ import {
   FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -55,9 +56,11 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   const listItems = useMemo(() => {
     if (!token) return [];
 
-    const tokenContractId = new Asset(token.tokenCode, token.issuer).contractId(
-      networkPassphrase,
-    );
+    // If issuer is already a contract ID, use it directly
+    // Otherwise, create an Asset and get its contract ID
+    const tokenContractId = isContractId(token.issuer)
+      ? token.issuer
+      : new Asset(token.tokenCode, token.issuer).contractId(networkPassphrase);
 
     const items = [
       {

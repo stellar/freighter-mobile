@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Setup Android SDK and NDK for CI environments
+# Sets up Android SDK/NDK paths and installs NDK 28.2.13676358 if needed
+
+set -u
+
+# GitHub Actions runners have Android SDK pre-installed at /usr/local/lib/android/sdk
+ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
+ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}
+
+# Set Android SDK environment variables (for GitHub Actions, output to GITHUB_ENV)
+if [ -n "${GITHUB_ENV:-}" ]; then
+  echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+  echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+else
+  export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
+  export ANDROID_HOME=$ANDROID_HOME
+fi
+
+# NDK path - The build script expects NDK_ROOT to point to the base NDK directory
+# (containing version subdirectories), not the specific version directory.
+# The NDK will be at $ANDROID_SDK_ROOT/ndk/<version>
+NDK_BASE_DIR="$ANDROID_SDK_ROOT/ndk"
+NDK_VERSION="28.2.13676358"
+NDK_VERSION_PATH="$NDK_BASE_DIR/$NDK_VERSION"
+
+# Set NDK environment variables to point to the base NDK directory
+# (build script will find and use the version automatically)
+if [ -n "${GITHUB_ENV:-}" ]; then
+  echo "ANDROID_NDK_HOME=$NDK_BASE_DIR" >> "$GITHUB_ENV"
+  echo "ANDROID_NDK_ROOT=$NDK_BASE_DIR" >> "$GITHUB_ENV"
+  echo "NDK_ROOT=$NDK_BASE_DIR" >> "$GITHUB_ENV"
+else
+  export ANDROID_NDK_HOME=$NDK_BASE_DIR
+  export ANDROID_NDK_ROOT=$NDK_BASE_DIR
+  export NDK_ROOT=$NDK_BASE_DIR
+fi
+
+echo "Android SDK: $ANDROID_SDK_ROOT"
+echo "NDK Base Directory: $NDK_BASE_DIR"
+echo "NDK Version Path (expected): $NDK_VERSION_PATH"
+
+# If NDK version doesn't exist yet, Gradle will download it during build
+# but for postinstall scripts, we try to install it now via sdkmanager
+if [ ! -d "$NDK_VERSION_PATH" ]; then
+  echo "NDK version $NDK_VERSION not found, attempting to install via sdkmanager..."
+  SDK_MANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+  if [ -f "$SDK_MANAGER" ]; then
+    yes | "$SDK_MANAGER" --licenses || true
+    "$SDK_MANAGER" "ndk;$NDK_VERSION" || {
+      echo "⚠️  NDK installation via sdkmanager failed, Gradle will download it during build"
+    }
+  else
+    echo "⚠️  sdkmanager not found, Gradle will download NDK during build"
+  fi
+else
+  echo "✅ NDK $NDK_VERSION is already available at $NDK_VERSION_PATH"
+fi
+

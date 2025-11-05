@@ -74,6 +74,7 @@ describe("useManageToken", () => {
       decimals: mockDecimals,
       issuer: mockIssuer,
       name: mockName,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     });
     expect(mockBottomSheetAdd.current.dismiss).toHaveBeenCalled();
   });

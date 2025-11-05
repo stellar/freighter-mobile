@@ -106,7 +106,7 @@ describe("Toggle", () => {
       await userEvent.press(toggle);
 
       expect(mockOnChange).toHaveBeenCalledTimes(1);
-    }, 30000);
+    });
 
     it("does not call onChange when disabled", async () => {
       const { getByTestId } = renderWithProviders(
