@@ -6,6 +6,7 @@ import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { PALETTE, THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
+import useKeyboardVisible from "hooks/useKeyboardVisible";
 import { t } from "i18next";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,13 +33,17 @@ interface OnboardLayoutProps {
 
 interface StyledProps {
   $insets: EdgeInsets;
+  $isKeyboardVisible: boolean;
 }
 
 const StyledContainer = styled.View<StyledProps>`
   padding-left: ${px(24)};
   padding-right: ${px(24)};
-  padding-bottom: ${({ $insets }: StyledProps) =>
-    $insets.bottom + pxValue(DEFAULT_PADDING)}px;
+  padding-bottom: ${({ $insets, $isKeyboardVisible }: StyledProps) =>
+    // Use fixed DEFAULT_PADDING when keyboard is visible for consistent spacing across platforms
+    $isKeyboardVisible
+      ? pxValue(DEFAULT_PADDING)
+      : $insets.bottom + pxValue(DEFAULT_PADDING)}px;
   flex: 1;
   justify-content: space-between;
   background-color: ${THEME.colors.background.default};
@@ -196,10 +201,11 @@ export const OnboardLayout = ({
   defaultActionButtonIconPosition,
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
+  const isKeyboardVisible = useKeyboardVisible();
 
   return (
     <ScrollableKeyboardView>
-      <StyledContainer $insets={insets}>
+      <StyledContainer $insets={insets} $isKeyboardVisible={isKeyboardVisible}>
         <StyledContentContainer>
           {icon}
           {title && <Display medium>{title}</Display>}
