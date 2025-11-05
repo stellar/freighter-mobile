@@ -18,6 +18,7 @@ import {
   SEND_PAYMENT_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -50,6 +51,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -106,7 +108,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   };
   const scanResult = scanResults[tokenId.replace(":", "-")];
-  const { isMalicious, isSuspicious } = assessTokenSecurity(scanResult);
+  const { isMalicious, isSuspicious } = assessTokenSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
+  );
 
   const securityWarnings = useMemo(() => {
     if (isMalicious || isSuspicious) {

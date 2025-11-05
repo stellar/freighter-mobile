@@ -554,8 +554,10 @@
     "confirmTrust": "Only confirm if you trust this token",
     "maliciousToken": "This token was flagged as malicious",
     "suspiciousToken": "This token was flagged as suspicious",
+    "unableToScanToken": "Unable to scan token",
     "tokenAddress": "Token Address",
     "approveAnyway": "Approve anyway",
+    "unableToScanBanner": "Unable to scan for malicious tokens",
     "toastSuccess": "{{tokenCode}} successfully added as a token",
     "toastError": "Error adding token {{tokenCode}}",
     "emptyState": "No tokens found",
@@ -564,8 +566,9 @@
   "securityWarning": {
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
-    "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
-    "token": "This token does not appear safe for the following reasons.",
+    "proceedWithCaution": "Proceed with caution",
+    "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
+    "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
     "connectAnyway": "Connect anyway",
     "poweredBy": "Powered by",
@@ -635,7 +638,8 @@
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these tokens"
-    }
+    },
+    "proceedAnyway": "Proceed anyway"
   },
   "swapProcessingScreen": {
     "swapping": "Swapping",
@@ -1016,6 +1020,16 @@
       "overriddenVersion": "Overridden version: {{version}}",
       "clearOverride": "Clear Override",
       "clearUpdateDismissalFlag": "Clear update dismissal flag"
+    },
+    "blockaidOverride": {
+      "title": "Blockaid Response Override",
+      "description": "Override Blockaid security responses for testing different security states (DEV only)",
+      "overriddenResponse": "Overridden response: {{response}}",
+      "safe": "Safe",
+      "suspicious": "Suspicious",
+      "malicious": "Malicious",
+      "unableToScan": "Unable to Scan",
+      "clearOverride": "Clear Override"
     }
   },
   "blockaid": {
@@ -1039,6 +1053,21 @@
         "unableToSimulate": "Unable to simulate transaction",
         "noBalanceChanges": "No balance changes detected"
       }
+    },
+    "unableToScan": {
+      "default": {
+        "title": "Unable to scan",
+        "description": "We were unable to scan this item for security threats. Proceed with caution."
+      },
+      "token": "Unable to scan token",
+      "site": {
+        "title": "Unable to scan site",
+        "description": "We were unable to scan this site for security threats. The site may be safe, but we cannot verify its security status."
+      },
+      "transaction": "Unable to scan transaction",
+      "sourceToken": "Unable to scan source token",
+      "destinationToken": "Unable to scan destination token",
+      "info": "This does not mean the item is malicious - it simply means we cannot verify its security status."
     }
   },
   "signTransactionDetails": {

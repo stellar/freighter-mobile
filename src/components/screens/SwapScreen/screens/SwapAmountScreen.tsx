@@ -26,6 +26,7 @@ import {
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -78,6 +79,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
@@ -378,9 +380,55 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     prepareSwapTransaction(false);
   }, [prepareSwapTransaction]);
 
+  const transactionSecurityAssessment = useMemo(
+    () =>
+      assessTransactionSecurity(
+        transactionScanResult,
+        overriddenBlockaidResponse,
+      ),
+    [transactionScanResult, overriddenBlockaidResponse],
+  );
+
+  const sourceBalanceSecurityAssessment = useMemo(
+    () =>
+      assessTokenSecurity(
+        sourceBalance
+          ? scanResults[sourceBalance.id.replace(":", "-")]
+          : undefined,
+        overriddenBlockaidResponse,
+      ),
+    [sourceBalance, scanResults, overriddenBlockaidResponse],
+  );
+
+  const destBalanceSecurityAssessment = useMemo(
+    () =>
+      assessTokenSecurity(
+        destinationBalance
+          ? scanResults[destinationBalance.id.replace(":", "-")]
+          : undefined,
+        overriddenBlockaidResponse,
+      ),
+    [destinationBalance, scanResults, overriddenBlockaidResponse],
+  );
+
+  const showSecurityWarningForSource = useMemo(
+    () =>
+      sourceBalanceSecurityAssessment.isUnableToScan && sourceTokenId !== "XLM",
+    [sourceBalanceSecurityAssessment.isUnableToScan, sourceTokenId],
+  );
+
   const handleMainButtonPress = useCallback(async () => {
     if (destinationBalance) {
-      await prepareSwapTransaction(true);
+      const isUnableToScan =
+        showSecurityWarningForSource ||
+        destBalanceSecurityAssessment.isUnableToScan;
+
+      if (isUnableToScan) {
+        await prepareSwapTransaction(false);
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        await prepareSwapTransaction(true);
+      }
     } else {
       navigateToSelectDestinationTokenScreen();
     }
@@ -388,6 +436,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationBalance,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
+    destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForSource,
   ]);
 
   // Reset everything on unmount
@@ -404,32 +454,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
-  const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
-  );
-
-  const sourceBalanceSecurityAssessment = useMemo(
-    () =>
-      assessTokenSecurity(
-        sourceBalance
-          ? scanResults[sourceBalance.id.replace(":", "-")]
-          : undefined,
-      ),
-    [sourceBalance, scanResults],
-  );
-
-  const destBalanceSecurityAssessment = useMemo(
-    () =>
-      assessTokenSecurity(
-        destinationBalance
-          ? scanResults[destinationBalance.id.replace(":", "-")]
-          : undefined,
-      ),
-    [destinationBalance, scanResults],
-  );
-
   const securityWarnings = useMemo(() => {
+    const warnings = [];
+
+    // Add warnings for malicious and suspicious cases
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious ||
@@ -438,17 +466,31 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       destBalanceSecurityAssessment.isMalicious ||
       destBalanceSecurityAssessment.isSuspicious
     ) {
-      const warnings = [
+      const extractedWarnings = [
         ...extractSecurityWarnings(transactionScanResult),
         ...Object.values(scanResults).map(extractSecurityWarnings),
       ].flat();
 
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
+      if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
+        warnings.push(...extractedWarnings);
       }
     }
 
-    return [];
+    if (showSecurityWarningForSource) {
+      warnings.push({
+        id: "unable-to-scan-source",
+        description: t("blockaid.unableToScan.sourceToken"),
+      });
+    }
+
+    if (destBalanceSecurityAssessment.isUnableToScan) {
+      warnings.push({
+        id: "unable-to-scan-destination",
+        description: t("blockaid.unableToScan.destinationToken"),
+      });
+    }
+
+    return warnings;
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
@@ -456,20 +498,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalanceSecurityAssessment.isSuspicious,
     destBalanceSecurityAssessment.isMalicious,
     destBalanceSecurityAssessment.isSuspicious,
+    destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForSource,
     transactionScanResult,
     scanResults,
-  ]);
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
+    t,
   ]);
 
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
@@ -481,10 +514,36 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
 
+  const isUnableToScan =
+    showSecurityWarningForSource ||
+    destBalanceSecurityAssessment.isUnableToScan;
+
+  const transactionSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious)
+      return SecurityLevel.MALICIOUS;
+    if (transactionSecurityAssessment.isSuspicious)
+      return SecurityLevel.SUSPICIOUS;
+    if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
+
+    return undefined;
+  }, [
+    transactionSecurityAssessment.isMalicious,
+    transactionSecurityAssessment.isSuspicious,
+    isUnableToScan,
+  ]);
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleConfirmSwap();
+    const isUnableToScanConfirm =
+      showSecurityWarningForSource ||
+      destBalanceSecurityAssessment.isUnableToScan;
+
+    if (isUnableToScanConfirm) {
+      swapReviewBottomSheetModalRef.current?.present();
+    } else {
+      handleConfirmSwap();
+    }
   };
 
   const handleCancelSwap = useCallback(() => {
@@ -676,7 +735,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 ? scanResults[destinationBalance.id.replace(":", "-")]
                 : undefined
             }
-            onBannerPress={() =>
+            onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }
           />
@@ -693,7 +752,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+            proceedAnywayText={
+              isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

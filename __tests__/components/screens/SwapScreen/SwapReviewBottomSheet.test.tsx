@@ -97,7 +97,7 @@ describe("SwapReviewBottomSheet", () => {
   const defaultProps = {
     onCancel: jest.fn(),
     onConfirm: jest.fn(),
-    onBannerPress: jest.fn(),
+    onSecurityWarningPress: jest.fn(),
     transactionScanResult: undefined,
     sourceTokenScanResult: undefined,
     destTokenScanResult: undefined,
@@ -177,7 +177,7 @@ describe("SwapReviewBottomSheet", () => {
       );
 
       await user.press(getByText("This address was flagged as malicious"));
-      expect(defaultProps.onBannerPress).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -245,6 +245,92 @@ describe("SwapReviewBottomSheet", () => {
     });
   });
 
+  describe("Unable to scan states", () => {
+    it("shows unable to scan banner when transaction scan fails", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when source token scan fails", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          sourceTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when destination token scan fails", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows warning variant banner for unable to scan states", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("calls onSecurityWarningPress when unable to scan banner is pressed", async () => {
+      const user = userEvent.setup();
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+        />,
+      );
+
+      await user.press(getByText("Proceed with caution"));
+      expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
+    }, 10000);
+
+    it("prioritizes transaction unable to scan over token unable to scan", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+          sourceTokenScanResult={undefined}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
+    it("shows unable to scan banner when multiple scans fail", () => {
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionScanResult={undefined}
+          sourceTokenScanResult={undefined}
+          destTokenScanResult={undefined}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+  });
+
   describe("Combined scan states", () => {
     it("prioritizes transaction malicious over asset malicious in banner", () => {
       const maliciousTransactionScan = {
@@ -265,7 +351,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show transaction malicious message, not asset malicious
       expect(getByText("This address was flagged as malicious")).toBeTruthy();
     });
 
@@ -286,7 +371,6 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      // Should show asset malicious banner
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
     });
   });

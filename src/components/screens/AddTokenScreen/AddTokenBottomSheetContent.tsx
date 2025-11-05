@@ -35,6 +35,8 @@ type AddTokenBottomSheetContentProps = {
   isAddingToken: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isUnableToScanToken?: boolean;
+  onSecurityWarningPress?: () => void;
 };
 
 const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
@@ -46,12 +48,111 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   isAddingToken,
   isMalicious = false,
   isSuspicious = false,
+  isUnableToScanToken = false,
+  onSecurityWarningPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
+
+  const renderButtons = () => {
+    // Normal state - side by side with biometrics
+    if (!isMalicious && !isSuspicious && !isUnableToScanToken) {
+      return (
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={onCancel}
+              disabled={isAddingToken}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => onAddToken()}
+              isLoading={isAddingToken}
+            >
+              {t("addTokenScreen.addTokenButton")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    // Unable to scan state - side by side with biometrics
+    if (isUnableToScanToken) {
+      return (
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={onCancel}
+              disabled={isAddingToken}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => {
+                proceedAnywayAction?.();
+              }}
+              isLoading={isAddingToken}
+              disabled={isAddingToken}
+            >
+              {t("common.continue")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    // Malicious/Suspicious state - stacked layout with TextButton
+    return (
+      <View className="flex-col gap-3">
+        <View className="w-full">
+          <Button
+            tertiary={isSuspicious}
+            destructive={isMalicious}
+            xl
+            isFullWidth
+            onPress={onCancel}
+            disabled={isAddingToken}
+          >
+            {t("common.cancel")}
+          </Button>
+        </View>
+        <View className="w-full">
+          <TextButton
+            text={t("addTokenScreen.approveAnyway")}
+            biometric
+            onPress={() => {
+              proceedAnywayAction?.();
+            }}
+            isLoading={isAddingToken}
+            disabled={isAddingToken}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        </View>
+      </View>
+    );
+  };
 
   const listItems = useMemo(() => {
     if (!token) return [];
@@ -175,15 +276,15 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         {t("addTokenScreen.addToken")}
       </Badge>
 
-      {(isMalicious || isSuspicious) && (
+      {(isMalicious || isSuspicious || isUnableToScanToken) && (
         <Banner
           variant={isMalicious ? "error" : "warning"}
-          text={
-            isMalicious
-              ? t("addTokenScreen.maliciousToken")
-              : t("addTokenScreen.suspiciousToken")
-          }
-          onPress={onAddToken}
+          text={(() => {
+            if (isMalicious) return t("addTokenScreen.maliciousToken");
+            if (isSuspicious) return t("addTokenScreen.suspiciousToken");
+            return t("securityWarning.proceedWithCaution");
+          })()}
+          onPress={onSecurityWarningPress}
           className="mt-4"
         />
       )}
@@ -198,7 +299,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         <List items={listItems} variant="secondary" />
       </View>
 
-      {!isMalicious && !isSuspicious && (
+      {!isMalicious && !isSuspicious && !isUnableToScanToken && (
         <View className="mt-4 px-6">
           <Text sm secondary textAlign="center">
             {t("addTokenScreen.confirmTrust")}
@@ -206,48 +307,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         </View>
       )}
 
-      <View
-        className={`w-full mt-6 ${isMalicious || isSuspicious ? "flex-col gap-3" : "flex-row justify-between gap-3"}`}
-      >
-        <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
-          <Button
-            tertiary={isSuspicious}
-            destructive={isMalicious}
-            secondary={!isMalicious && !isSuspicious}
-            xl
-            isFullWidth
-            onPress={onCancel}
-            disabled={isAddingToken}
-          >
-            {t("common.cancel")}
-          </Button>
-        </View>
-        <View className={isMalicious || isSuspicious ? "w-full" : "flex-1"}>
-          {isMalicious || isSuspicious ? (
-            <TextButton
-              text={t("addTokenScreen.approveAnyway")}
-              biometric
-              onPress={() => {
-                proceedAnywayAction?.();
-              }}
-              isLoading={isAddingToken}
-              disabled={isAddingToken}
-              variant={isMalicious ? "error" : "secondary"}
-            />
-          ) : (
-            <Button
-              biometric
-              tertiary
-              xl
-              isFullWidth
-              onPress={() => onAddToken()}
-              isLoading={isAddingToken}
-            >
-              {t("addTokenScreen.addTokenButton")}
-            </Button>
-          )}
-        </View>
-      </View>
+      <View className="w-full mt-6">{renderButtons()}</View>
     </View>
   );
 };

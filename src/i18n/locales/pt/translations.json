@@ -518,8 +518,10 @@
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",
+    "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
+    "unableToScanBanner": "Não foi possível escanear tokens maliciosos",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
     "toastError": "Erro ao adicionar token {{tokenCode}}",
     "emptyState": "Nenhum token encontrado",
@@ -528,8 +530,9 @@
   "securityWarning": {
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
-    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
-    "token": "Este token não parece seguro pelos seguintes motivos.",
+    "proceedWithCaution": "Proceda com cautela",
+    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
+    "token": "Este token não parece seguro pelos seguintes motivos:",
     "cancel": "Cancelar",
     "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",
@@ -599,7 +602,8 @@
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens"
-    }
+    },
+    "proceedAnyway": "Prosseguir mesmo assim"
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",
@@ -1017,6 +1021,16 @@
       "overriddenVersion": "Versão substituída: {{version}}",
       "clearOverride": "Limpar Substituição",
       "clearUpdateDismissalFlag": "Limpar flag de dispensa de atualização"
+    },
+    "blockaidOverride": {
+      "title": "Substituição da Resposta do Blockaid",
+      "description": "Substituir respostas de segurança do Blockaid para testar diferentes estados de segurança (apenas DEV)",
+      "overriddenResponse": "Resposta substituída: {{response}}",
+      "safe": "Seguro",
+      "suspicious": "Suspeito",
+      "malicious": "Malicioso",
+      "unableToScan": "Não foi possível escanear",
+      "clearOverride": "Limpar Substituição"
     }
   },
   "blockaid": {
@@ -1040,6 +1054,21 @@
         "unableToSimulate": "Não foi possível simular a transação",
         "noBalanceChanges": "Nenhuma mudança de saldo detectada"
       }
+    },
+    "unableToScan": {
+      "default": {
+        "title": "Não foi possível escanear",
+        "description": "Não conseguimos escanear este item em busca de ameaças de segurança. Prossiga com cautela."
+      },
+      "token": "Não foi possível escanear o token",
+      "site": {
+        "title": "Não foi possível escanear o site",
+        "description": "Não conseguimos escanear este site em busca de ameaças de segurança. O site pode ser seguro, mas não podemos verificar seu status de segurança."
+      },
+      "transaction": "Não foi possível escanear a transação",
+      "sourceToken": "Não foi possível escanear o token de origem",
+      "destinationToken": "Não foi possível escanear o token de destino",
+      "info": "Isso não significa que o item é malicioso - simplesmente significa que não podemos verificar seu status de segurança."
     }
   },
   "signTransactionDetails": {
