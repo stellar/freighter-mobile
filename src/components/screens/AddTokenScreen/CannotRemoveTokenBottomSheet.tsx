@@ -41,8 +41,10 @@ const CannotRemoveTokenBottomSheet: React.FC<
         <Text xl testID="bottom-sheet-content-title">
           {title}
         </Text>
-        <View className="gap-4" />
-        <Text secondary>{description}</Text>
+        <View className="h-4" />
+        <Text md regular secondary>
+          {description}
+        </Text>
         <View className="gap-4" />
       </View>
     </View>
