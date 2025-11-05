@@ -46,13 +46,11 @@ interface UseTokenFiatConverterResult {
 export const useTokenFiatConverter = ({
   selectedBalance,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
-  // Memoize token price to prevent unnecessary recalculations
   const tokenPrice = useMemo(
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
 
-  // Create reducer with token price
   const reducer = useMemo(
     () => createTokenFiatConverterReducer(tokenPrice),
     [tokenPrice],
@@ -60,7 +58,6 @@ export const useTokenFiatConverter = ({
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Derive tokenAmountDisplay from tokenAmount when not actively typing
   const tokenAmountDisplayDerived = useMemo(
     () =>
       formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
@@ -76,8 +73,6 @@ export const useTokenFiatConverter = ({
       ? state.tokenAmountDisplayRaw
       : tokenAmountDisplayDerived;
 
-  // Derive fiatAmountDisplay from fiatAmount when not in fiat input mode
-  // or when user is not actively typing
   const fiatAmountDisplayDerived = useMemo(() => {
     const { decimalSeparator } = getNumberFormatSettings();
     return state.fiatAmount.replace(".", decimalSeparator);
@@ -126,8 +121,6 @@ export const useTokenFiatConverter = ({
     return rawValue;
   }, []);
 
-  // Use raw input when user is typing in fiat mode, otherwise use derived value
-  // Always format the raw value to handle edge cases (empty, just comma/dot, ",0")
   const fiatAmountDisplay = useMemo(() => {
     if (state.showFiatAmount && state.fiatAmountDisplayRaw !== null) {
       return formatFiatDisplay(state.fiatAmountDisplayRaw);

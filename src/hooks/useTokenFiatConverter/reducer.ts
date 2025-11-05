@@ -73,9 +73,6 @@ export type TokenFiatConverterAction =
   | ConvertTokenToFiatAction
   | ConvertFiatToTokenAction;
 
-/**
- * Initial state for the token/fiat converter reducer
- */
 export const initialState: TokenFiatConverterState = {
   tokenAmount: "0",
   fiatAmount: "0",
