@@ -89,6 +89,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const resetPageState = useCallback(() => {
     handleRefresh();
     resetSearch();
+    setSearchTerm("");
   }, [handleRefresh, resetSearch]);
 
   const { addToken, removeToken, isAddingToken, isRemovingToken } =

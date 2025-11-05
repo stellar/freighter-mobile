@@ -244,13 +244,13 @@
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
     "forgotPasswordButtonText": "Esqueci minha senha",
-    "useFaceIdInstead": "Usar Face ID ao invés",
-    "useFingerprintInstead": "Usar Impressão Digital ao invés",
-    "useFaceRecognitionInstead": "Usar Reconhecimento Facial ao invés",
-    "useTouchIdInstead": "Usar Touch ID ao invés",
-    "useOpticIdInstead": "Usar Optic ID ao invés",
-    "useIrisInstead": "Usar Iris ao invés",
-    "enterPasswordInstead": "Usar senha ao invés"
+    "useFaceIdInstead": "Usar Face ID",
+    "useFingerprintInstead": "Usar Impressão Digital",
+    "useFaceRecognitionInstead": "Usar Reconhecimento Facial",
+    "useTouchIdInstead": "Usar Touch ID",
+    "useOpticIdInstead": "Usar Optic ID",
+    "useIrisInstead": "Usar Iris",
+    "enterPasswordInstead": "Usar senha"
   },
   "onboarding": {
     "continue": "Continuar",
