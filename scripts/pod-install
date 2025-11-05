@@ -15,7 +15,7 @@ pod_install() {
       echo ""
     else
       echo ""
-      echo "=> 🔄 Updating CocoaPods..."
+      echo "=> 📦 Installing CocoaPods dependencies..."
       echo ""
     fi
 

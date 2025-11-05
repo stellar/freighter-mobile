@@ -8,6 +8,7 @@ import {
   POSITIVE_PRICE_CHANGE_THRESHOLD,
 } from "config/constants";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
@@ -64,6 +65,15 @@ interface BalanceRowProps {
   customTextContent?: string;
   spendableAmount?: BigNumber;
 }
+
+const getBlockaidDataFromBalance = (
+  balance: PricedBalance,
+): Blockaid.TokenBulk.TokenBulkScanResponse.Results | undefined => {
+  if ("blockaidData" in balance && balance.blockaidData) {
+    return balance.blockaidData as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
+  }
+  return undefined;
+};
 
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   balance,
@@ -123,7 +133,7 @@ const renderContent = (
 
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
-  scanResult,
+  scanResult: scanResultFromProps,
   customTextContent,
   rightContent,
   rightSectionWidth,
@@ -131,7 +141,15 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   isSingleRow = false,
   spendableAmount,
 }) => {
-  const { isMalicious, isSuspicious } = assessTokenSecurity(scanResult);
+  const { overriddenBlockaidResponse } = useDebugStore();
+
+  const scanResultFromBalance = getBlockaidDataFromBalance(balance);
+  const scanResult = scanResultFromBalance || scanResultFromProps;
+
+  const { isMalicious, isSuspicious } = assessTokenSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
+  );
   return renderContent(
     <BalanceRowContainer isSingleRow={isSingleRow}>
       <LeftSection>

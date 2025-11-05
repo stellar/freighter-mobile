@@ -36,6 +36,7 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.MALICIOUS,
         isMalicious: true,
         isSuspicious: false,
+        isUnableToScan: false,
       });
 
       mockExtractSecurityWarnings.mockReturnValue([
@@ -50,6 +51,7 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.MALICIOUS,
         isMalicious: true,
         isSuspicious: false,
+        isUnableToScan: false,
       });
 
       expect(result.current.transactionSecurityWarnings).toHaveLength(1);
@@ -63,6 +65,7 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.SAFE,
         isMalicious: false,
         isSuspicious: false,
+        isUnableToScan: false,
       });
 
       const { result } = renderHook(() => useTransactionSecurity(undefined));
@@ -78,6 +81,7 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.SUSPICIOUS,
         isMalicious: false,
         isSuspicious: true,
+        isUnableToScan: false,
       });
 
       mockExtractSecurityWarnings.mockReturnValue([

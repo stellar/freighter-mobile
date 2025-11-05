@@ -695,7 +695,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
           "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
       }),
     );
-  }, 15000);
+  });
 
   it("should render the main UI components", () => {
     const { getByText } = render(

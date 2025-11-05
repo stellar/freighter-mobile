@@ -39,6 +39,7 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -68,6 +69,7 @@ import React, {
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
+import { SecurityContext } from "services/blockaid/constants";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -92,6 +94,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
   const {
     transactionFee,
     recipientAddress,
@@ -227,7 +230,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useTransactionSecurity(transactionScanResult);
+  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
 
   const {
     tokenAmount,
@@ -381,12 +384,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             .then((scanResult) => {
               logger.info("TransactionAmountScreen", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
+
+              const isUnableToScan =
+                !scanResult || transactionSecurityAssessment.isUnableToScan;
+
+              if (isUnableToScan) {
+                transactionSecurityWarningBottomSheetModalRef.current?.present();
+              } else {
+                reviewBottomSheetModalRef.current?.present();
+              }
             })
             .catch(() => {
               setTransactionScanResult(undefined);
-            })
-            .finally(() => {
-              reviewBottomSheetModalRef.current?.present();
+              transactionSecurityWarningBottomSheetModalRef.current?.present();
             });
         }
       } catch (error) {
@@ -405,6 +415,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
+      transactionSecurityAssessment,
     ],
   );
 
@@ -551,8 +562,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handleConfirmAnyway = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    handleTransactionConfirmation();
-  }, [handleTransactionConfirmation]);
+    const isUnableToScan =
+      !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
+
+    if (isUnableToScan) {
+      reviewBottomSheetModalRef.current?.present();
+    } else {
+      handleTransactionConfirmation();
+    }
+  }, [
+    handleTransactionConfirmation,
+    transactionScanResult,
+    transactionSecurityAssessment.isUnableToScan,
+  ]);
 
   const openSecurityWarningBottomSheet = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -565,6 +587,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
+    isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
@@ -745,6 +768,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             isRequiredMemoMissing={isRequiredMemoMissing}
             isMalicious={transactionSecurityAssessment.isMalicious}
             isSuspicious={transactionSecurityAssessment.isSuspicious}
+            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
@@ -810,7 +834,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+            securityContext={SecurityContext.TRANSACTION}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

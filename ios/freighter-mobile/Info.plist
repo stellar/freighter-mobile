@@ -17,7 +17,7 @@
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
-		<string>$(MARKETING_VERSION)</string>
+		<string>1.6.23</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
 		<key>CFBundleURLTypes</key>
@@ -73,5 +73,7 @@
 		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false />
 	</dict>
 </plist>
