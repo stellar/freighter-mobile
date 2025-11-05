@@ -8,16 +8,16 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      scheme:
-        description: The iOS scheme that will be built (optional)
+      env:
+        description: The iOS env that will be built (optional)
         type: choice
         default: ""
         options:
           - ""
-          - freighter-mobile-dev
-          - freighter-mobile
+          - dev
+          - prod
       upload_to_testflight:
-        description: Upload app file to Apple Testflight
+        description: Upload build to Apple Testflight
         type: choice
         default: "yes"
         options:
@@ -31,15 +31,15 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  RUBY_VERSION: 3.0.0
+  RUBY_VERSION: 3.1.4
 
-  # Apple Connect API variables (for app_store_connect_api_key)
+  # Apple Connect API configuration (for app_store_connect_api_key)
   APPLE_CONNECT_KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
   APPLE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
   APPLE_CONNECT_KEY_CONTENT: ${{ secrets.APPLE_CONNECT_KEY_CONTENT }}
 
-  # Fastlane Match variables
-  FASTLANE_GIT_URL: ${{ secrets.FASTLANE_GIT_URL }}
+  # Fastlane Match configuration
+  FASTLANE_GIT_URL: ${{ vars.FASTLANE_GIT_URL }}
   FASTLANE_GIT_DEPLOY_KEY: ${{ secrets.FASTLANE_GIT_DEPLOY_KEY }}
   MATCH_PASSWORD: ${{ secrets.FASTLANE_MATCH_PASSWORD }}
 
@@ -47,49 +47,52 @@ env:
   SENTRY_PROPERTIES_CONTENT: ${{ secrets.SENTRY_PROPERTIES_CONTENT }}
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-  # Amplitude Analytics
+  # Amplitude Analytics configuration
   AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_API_KEY }}
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY:
     ${{ secrets.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY }}
 
-  # Backend URLs
-  FREIGHTER_BACKEND_V1_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V1_PROD_URL }}
-  FREIGHTER_BACKEND_V1_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V1_STG_URL }}
-  FREIGHTER_BACKEND_V1_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V1_DEV_URL }}
-  FREIGHTER_BACKEND_V2_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V2_PROD_URL }}
-  FREIGHTER_BACKEND_V2_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V2_STG_URL }}
-  FREIGHTER_BACKEND_V2_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V2_DEV_URL }}
+  # Backend URLs configuration
+  FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+  FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+  FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_DEV_URL }}
+  FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+  FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+  FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_DEV_URL }}
 
   # Wallet Kit Configuration (Production)
   WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_PROD }}
-  WALLET_KIT_MT_NAME_PROD: ${{ secrets.WALLET_KIT_MT_NAME_PROD }}
-  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_PROD }}
-  WALLET_KIT_MT_URL_PROD: ${{ secrets.WALLET_KIT_MT_URL_PROD }}
-  WALLET_KIT_MT_ICON_PROD: ${{ secrets.WALLET_KIT_MT_ICON_PROD }}
+  WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_PROD }}
+  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_PROD }}
+  WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_PROD }}
+  WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_PROD }}
   WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
-    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
 
   # Wallet Kit Configuration (Development)
   WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
-  WALLET_KIT_MT_NAME_DEV: ${{ secrets.WALLET_KIT_MT_NAME_DEV }}
-  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_DEV }}
-  WALLET_KIT_MT_URL_DEV: ${{ secrets.WALLET_KIT_MT_URL_DEV }}
-  WALLET_KIT_MT_ICON_DEV: ${{ secrets.WALLET_KIT_MT_ICON_DEV }}
+  WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+  WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+  WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
   WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
-    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
 
 jobs:
   build:
     name: Build iOS
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Make scripts executable
-        run: find scripts -type f -exec chmod +x {} \;
+      - name: List available Xcode versions
+        run: ls -1 /Applications | grep -i Xcode || true
 
       - name: Set xcode version
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
+
+      - name: Verify Xcode Version
+        run: xcodebuild -version
 
       - name: Set ref
         run: |
@@ -103,15 +106,26 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
       - name: Set env
         run: |
           echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}" >> $GITHUB_ENV
-          export IOS_SCHEME="${{ github.event.inputs.scheme }}"
+          # Translate env input to iOS scheme
+          if [[ "${{ github.event.inputs.env }}" == "dev" ]]; then
+            export IOS_SCHEME="freighter-mobile-dev"
+          elif [[ "${{ github.event.inputs.env }}" == "prod" ]]; then
+            export IOS_SCHEME="freighter-mobile"
+          else
+            export IOS_SCHEME=""
+          fi
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Decode and save sentry.properties
-        run: |
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode > ./ios/sentry.properties
+        run:
+          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          ./ios/sentry.properties
 
       # Most of the vars below are set on the ./scripts/gh-ios-env script.
       - name: Debug info
@@ -126,8 +140,12 @@ jobs:
           echo "FASTLANE_LANE=${FASTLANE_LANE}"
 
           echo "SENTRY_PROPERTIES_CONTENT=$(echo -n $SENTRY_PROPERTIES_CONTENT | md5)" 
+          echo "APPLE_CONNECT_KEY_ID=$(echo -n $APPLE_CONNECT_KEY_ID | md5)"
+          echo "APPLE_CONNECT_ISSUER_ID=$(echo -n $APPLE_CONNECT_ISSUER_ID | md5)"
           echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
+          echo "FASTLANE_GIT_URL=$(echo -n $FASTLANE_GIT_URL | md5)"
           echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
+          echo "MATCH_PASSWORD=$(echo -n $MATCH_PASSWORD | md5)"
 
       - name: Enable Corepack
         run: corepack enable
@@ -152,12 +170,10 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
 
       - name: Run Yarn Install
-        run: |
-          yarn install --frozen-lockfile --immutable
+        run: yarn install --frozen-lockfile --immutable
 
       - name: Run Post Install
-        run: |
-          yarn postinstall
+        run: yarn postinstall
 
       - name: Build and Distribute Application
         id: fastlane

@@ -74,9 +74,14 @@ platform :ios do
     setup_ci
     
     build_version = ENV.fetch("BUILD_VERSION")
-    replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
-                    find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
-                    replace: "CURRENT_PROJECT_VERSION = #{build_version}"
+
+    UI.message "🔄 Setting build version: #{build_version}"
+
+    replace_in_file(
+      "../ios/freighter-mobile.xcodeproj/project.pbxproj",
+      find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
+      replace: "CURRENT_PROJECT_VERSION = #{build_version}"
+    )
 
     app_store_connect_api_key(
       key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },
@@ -94,7 +99,7 @@ platform :ios do
       git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
       verbose: false
-    ) 
+    )
   end
 
   lane :upload_build do
@@ -109,7 +114,9 @@ platform :ios do
   lane :dev do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
+      export_method: "app-store",
       scheme: "freighter-mobile-dev",
+      configuration: "Release",
       buildlog_path: "/tmp/build",
       output_directory: "/tmp/build",
       output_name: "Freighter-Dev"
@@ -122,7 +129,9 @@ platform :ios do
   lane :prod do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
+      export_method: "app-store",
       scheme: "freighter-mobile",
+      configuration: "Release",
       buildlog_path: "/tmp/build",
       output_directory: "/tmp/build",
       output_name: "Freighter"
@@ -134,9 +143,24 @@ end
 
 platform :android do
   before_all do
-    # Deep clean gradle build artifacts
-    UI.message "🧹 Performing deep Gradle clean..."
-    sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    # Gradle clean in CI environment shouldn't be needed
+    # so leaving it here as an option for local testing.
+    if ENV.fetch("FORCE_GRADLE_CLEAN") == "1"
+      UI.message "🧹 Performing deep Gradle clean..."
+      sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    else
+      UI.message "⏩ Skipping deep Gradle clean (default)"
+    end
+
+    build_version = ENV.fetch("BUILD_VERSION")
+    
+    UI.message "🔄 Setting build version: #{build_version}"
+
+    replace_in_file(
+      "../android/app/build.gradle",
+      find: /versionCode\s+\d+/,
+      replace: "versionCode #{build_version}"
+    )
 
     create_json_secret_file
   end

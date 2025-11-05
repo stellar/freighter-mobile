@@ -103,7 +103,7 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
-  }, 15000);
+  });
 
   it("disables analytics when toggle is pressed while enabled", async () => {
     mockUseAnalyticsPermissions.mockReturnValue({
@@ -126,7 +126,7 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
-  }, 15000);
+  });
 
   it("handles rapid toggle presses correctly", async () => {
     const { getByTestId } = renderPreferencesScreen();
@@ -139,7 +139,7 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(3);
-  }, 15000);
+  });
 
   it("calls handleAnalyticsToggle when toggle is pressed", async () => {
     const { getByTestId } = renderPreferencesScreen();
@@ -148,7 +148,7 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
-  }, 15000);
+  });
 
   it("shows loading spinner when permission is being checked", () => {
     mockUseAnalyticsPermissions.mockReturnValue({
@@ -166,5 +166,5 @@ describe("PreferencesScreen", () => {
     const { getByTestId } = renderPreferencesScreen();
 
     expect(getByTestId("analytics-toggle-loading")).toBeTruthy();
-  }, 15000);
+  });
 });
