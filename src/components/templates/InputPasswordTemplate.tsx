@@ -12,7 +12,6 @@ import {
   PASSWORD_MIN_LENGTH,
 } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { DeviceSize, useDeviceSize } from "helpers/deviceSize";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -51,14 +50,6 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const { signInMethod } = useAuthenticationStore();
-  const deviceSize = useDeviceSize();
-
-  const biometricButtonSize = useMemo(() => {
-    if (deviceSize === DeviceSize.XS) {
-      return "lg";
-    }
-    return "xl";
-  }, [deviceSize]);
 
   const canContinue = useMemo(
     () =>
@@ -133,7 +124,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}
             </Button>
-            <BiometricToggleButton size={biometricButtonSize} />
+            <BiometricToggleButton size="xl" />
           </View>
         </View>
 
