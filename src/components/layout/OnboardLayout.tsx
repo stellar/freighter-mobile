@@ -40,8 +40,10 @@ const StyledContainer = styled.View<StyledProps>`
   padding-left: ${px(24)};
   padding-right: ${px(24)};
   padding-bottom: ${({ $insets, $isKeyboardVisible }: StyledProps) =>
-    // Add DEFAULT_PADDING when keyboard is hidden, remove it when keyboard is visible
-    $insets.bottom + ($isKeyboardVisible ? 0 : pxValue(DEFAULT_PADDING))}px;
+    // Use fixed DEFAULT_PADDING when keyboard is visible for consistent spacing across platforms
+    $isKeyboardVisible
+      ? pxValue(DEFAULT_PADDING)
+      : $insets.bottom + pxValue(DEFAULT_PADDING)}px;
   flex: 1;
   justify-content: space-between;
   background-color: ${THEME.colors.background.default};

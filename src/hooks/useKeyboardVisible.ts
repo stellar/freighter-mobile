@@ -1,5 +1,6 @@
+import { isIOS } from "helpers/device";
 import { useEffect, useState } from "react";
-import { Keyboard, Platform } from "react-native";
+import { Keyboard } from "react-native";
 
 /**
  * Hook to track keyboard visibility state
@@ -25,10 +26,8 @@ export default function useKeyboardVisible(): boolean {
   useEffect(() => {
     // Use 'Will' events on iOS for smoother transitions (fires before animation)
     // Use 'Did' events on Android (no 'Will' events available)
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = isIOS ? "keyboardWillHide" : "keyboardDidHide";
 
     const keyboardShowListener = Keyboard.addListener(showEvent, () => {
       setKeyboardVisible(true);

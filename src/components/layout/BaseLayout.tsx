@@ -53,8 +53,10 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     $isKeyboardVisible,
   }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    // Add DEFAULT_PADDING when keyboard is hidden, remove it when keyboard is visible
-    return $insets.bottom + ($isKeyboardVisible ? 0 : pxValue(DEFAULT_PADDING));
+    // Use fixed DEFAULT_PADDING when keyboard is visible for consistent spacing across platforms
+    return $isKeyboardVisible
+      ? pxValue(DEFAULT_PADDING)
+      : $insets.bottom + pxValue(DEFAULT_PADDING);
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.left) return 0;
