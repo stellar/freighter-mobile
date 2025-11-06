@@ -110,6 +110,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     // Clear collectible details when entering token flow to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    // Clear recipient address when entering the screen
+    saveRecipientAddress("");
 
     if (tokenId) {
       saveSelectedTokenId(tokenId);
@@ -117,7 +119,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       // If no tokenId in route, ensure token is cleared
       saveSelectedTokenId("");
     }
-  }, [tokenId, saveSelectedTokenId, saveSelectedCollectibleDetails]);
+  }, [
+    tokenId,
+    saveSelectedTokenId,
+    saveSelectedCollectibleDetails,
+    saveRecipientAddress,
+  ]);
 
   useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
