@@ -234,12 +234,10 @@ const SendCollectibleReviewScreen: React.FC<
 
         if (!xdr) return;
 
-        // Always scan the transaction to keep the hook updated
         scanTransaction(xdr, "internal")
           .then((scanResult) => {
             setTransactionScanResult(scanResult);
 
-            // Only open sheets if shouldOpenReview is true
             if (shouldOpenReview) {
               handleTransactionScanSuccess(scanResult);
             }
@@ -270,7 +268,6 @@ const SendCollectibleReviewScreen: React.FC<
     ],
   );
 
-  // Automatically scan transaction when parameters change
   useEffect(() => {
     if (recipientAddress && selectedCollectible) {
       prepareTransaction(false);

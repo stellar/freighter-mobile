@@ -116,7 +116,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     if (tokenId) {
       saveSelectedTokenId(tokenId);
     } else {
-      // If no tokenId in route, ensure token is cleared
       saveSelectedTokenId("");
     }
   }, [
@@ -345,7 +344,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       logger.info("TransactionAmountScreen", "scanResult", scanResult);
       setTransactionScanResult(scanResult);
 
-      // Only open sheets if shouldOpenReview is true
       if (shouldOpenReview) {
         const security = getTransactionSecurity(
           scanResult,
@@ -432,7 +430,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     ],
   );
 
-  // Automatically scan transaction when parameters change
   useEffect(() => {
     const numberTokenAmount = new BigNumber(tokenAmount);
     const hasRequiredParams =
