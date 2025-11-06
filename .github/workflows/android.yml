@@ -23,6 +23,9 @@ on:
         options:
           - "yes"
           - "no"
+  schedule:
+    # Temporary test: trigger once at 20:54 UTC (≈5 minutes from now).
+    - cron: "54 20 * * *"
 
 concurrency:
   group:
@@ -87,7 +90,31 @@ env:
     ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
 
 jobs:
+  # Scheduled nightly builds should not overwrite the dev build
+  # when a release candidate branch is active (release/v*).
+  check_release_branch:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check for active release branch
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Active release branch detected. Skipping scheduled daily dev build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check_release_branch
+    if: needs.check_release_branch.outputs.skip == 'false'
     name: Build Android
     runs-on: "ubuntu-latest-16-cores"
     timeout-minutes: 45
