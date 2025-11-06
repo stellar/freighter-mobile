@@ -24,8 +24,8 @@ on:
           - "yes"
           - "no"
   schedule:
-    # Temporary test: trigger once at 21:15 UTC (≈10 minutes from now).
-    - cron: "15 21 * * *"
+    # Temporary test: trigger once at 21:40 UTC
+    - cron: "40 21 * * *"
 
 concurrency:
   group:
@@ -137,9 +137,16 @@ jobs:
 
       - name: Set env
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
-          # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
-          export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
+          # If the workflow is triggered by a scheduled event, always upload to Google Play
+          # and use the 'dev' Android flavor
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "UPLOAD_TO_GOOGLE_PLAY=yes" >> $GITHUB_ENV
+            export ANDROID_FLAVOR="dev"
+          else
+            echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
+            # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
+            export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
+          fi
           ./scripts/gh-android-env >> $GITHUB_ENV
 
       - name: Decode and save sentry.properties
