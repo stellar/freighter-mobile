@@ -25,7 +25,7 @@ on:
           - "no"
   schedule:
     # Temporary test: trigger once at 20:54 UTC (≈5 minutes from now).
-    - cron: "54 20 * * *"
+    - cron: "59 20 * * *"
 
 concurrency:
   group:
