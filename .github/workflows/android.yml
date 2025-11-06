@@ -157,7 +157,7 @@ jobs:
       # Most of the vars below are set on the ./scripts/gh-android-env script.
       - name: Debug info
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}"
+          echo "UPLOAD_TO_GOOGLE_PLAY=${UPLOAD_TO_GOOGLE_PLAY}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
           echo "REF_NAME=${REF_NAME}"
           echo "APP_VERSION=${APP_VERSION}"
