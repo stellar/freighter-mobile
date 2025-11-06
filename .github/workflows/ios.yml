@@ -164,7 +164,7 @@ jobs:
       # Most of the vars below are set on the ./scripts/gh-ios-env script.
       - name: Debug info
         run: |
-          echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}"
+          echo "UPLOAD_TO_TESTFLIGHT=${UPLOAD_TO_TESTFLIGHT}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
           echo "REF_NAME=${REF_NAME}"
           echo "APP_VERSION=${APP_VERSION}"
