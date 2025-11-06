@@ -1,28 +1,27 @@
 import { I18nManager, Platform, Settings } from "react-native";
 
-const SUPPORTED_LOCALES = ["en-US", "pt-BR"];
+const SUPPORTED_LANGUAGES = ["pt", "en"];
 
-export const isSupportedLocale = (locale: string): boolean =>
-  SUPPORTED_LOCALES.includes(locale);
+export const isSupportedLanguage = (language: string): boolean =>
+  SUPPORTED_LANGUAGES.includes(language);
 
 /**
- * Retrieves the current device locale identifier
+ * Retrieves the current device language as a two-letter language code
  *
- * This function detects the device's full locale setting and returns it as a locale identifier
- * (e.g., 'en-US', 'fr-FR', 'de-DE'). This is used for locale-aware number formatting.
- * Normalizes locale format from native modules (en_US) to BCP 47 format (en-US).
+ * This function detects the device's language setting and returns it as an ISO 639-1
+ * two-letter language code (e.g., 'en', 'pt'). The implementation varies by platform
+ * to accommodate the different ways Android and iOS expose language settings.
  *
- * @returns {string} Full locale identifier or 'en-US' as fallback
+ * @returns {string} Two-letter language code or 'en' as fallback
  *
  * @example
- * // Get the user's device locale
- * const locale = getDeviceLocale(); // Returns 'en-US', 'de-DE', etc.
+ * // Get the user's device language
+ * const language = getDeviceLanguage(); // Returns 'en', 'pt', etc.
  *
- * // Use for number formatting
- * const formatted = number.toLocaleString(locale);
+ * // Use the language for localization
  */
-export function getDeviceLocale(): string {
-  let locale = "en-US"; // fallback
+export function getDeviceLanguage(): string {
+  let locale = "en"; // fallback
 
   if (Platform.OS === "android") {
     const androidLocale = I18nManager.getConstants().localeIdentifier;
@@ -45,30 +44,12 @@ export function getDeviceLocale(): string {
   // e.g., "en_US" -> "en-US", "de_DE" -> "de-DE"
   const normalizedLocale = locale.replace(/_/g, "-");
 
-  if (!isSupportedLocale(normalizedLocale)) {
-    return "en-US";
+  // Extract language code from locale (e.g., 'en-US' -> 'en', 'pt-BR' -> 'pt')
+  const languageCode = normalizedLocale.substring(0, 2);
+
+  if (!isSupportedLanguage(languageCode)) {
+    return "en";
   }
 
-  return normalizedLocale;
-}
-
-/**
- * Retrieves the current device language as a two-letter language code
- *
- * This function detects the device's language setting and returns it as an ISO 639-1
- * two-letter language code (e.g., 'en', 'fr', 'ja'). The implementation varies by platform
- * to accommodate the different ways Android and iOS expose language settings.
- *
- * @returns {string} Two-letter language code or 'en' as fallback
- *
- * @example
- * // Get the user's device language
- * const language = getDeviceLanguage(); // Returns 'en', 'fr', etc.
- *
- * // Use the language for localization
- */
-export function getDeviceLanguage(): string {
-  const locale = getDeviceLocale();
-  // Extract language code from locale (e.g., 'en-US' -> 'en')
-  return locale.substring(0, 2);
+  return languageCode;
 }

@@ -6,8 +6,7 @@ import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 // Mock the OS locale detection for consistent test behavior
 jest.mock("helpers/localeUtils", () => ({
   getDeviceLanguage: jest.fn().mockReturnValue("en"),
-  getDeviceLocale: jest.fn().mockReturnValue("en-US"),
-  isSupportedLocale: jest.fn().mockReturnValue(true),
+  isSupportedLanguage: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock("hooks/useAppTranslation", () => () => ({

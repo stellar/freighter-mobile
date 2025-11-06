@@ -1,10 +1,10 @@
-import { getDeviceLocale } from "helpers/localeUtils";
+import { getDeviceLanguage } from "helpers/localeUtils";
 
 // Note: January has index 0, and December has index 11
 export const getMonthLabel = (monthIndex: number, locale?: string) => {
   const date = new Date(2000, monthIndex, 1); // 2000-{month}-01
   // Use current locale for month labels
-  const monthLabel = date.toLocaleString(locale ?? getDeviceLocale(), {
+  const monthLabel = date.toLocaleString(locale ?? getDeviceLanguage(), {
     month: "long",
   });
   return monthLabel;
@@ -21,7 +21,7 @@ export const formatDate = ({
 }) => {
   const dateObj = new Date(date);
 
-  return new Intl.DateTimeFormat(locale ?? getDeviceLocale(), {
+  return new Intl.DateTimeFormat(locale ?? getDeviceLanguage(), {
     dateStyle: "medium",
     ...(includeTime && {
       timeStyle: "short",
@@ -50,21 +50,21 @@ export const formatTransactionDate = (
 
   if (!includeTime) {
     // Simple format for history lists: "Dec 13"
-    return dateObj.toLocaleDateString(getDeviceLocale(), {
+    return dateObj.toLocaleDateString(getDeviceLanguage(), {
       month: "short",
       day: "numeric",
     });
   }
 
   // Comprehensive format for transaction details: "Dec 13, 2023 · 2:30pm"
-  const formattedDate = dateObj.toLocaleDateString(getDeviceLocale(), {
+  const formattedDate = dateObj.toLocaleDateString(getDeviceLanguage(), {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
   const formattedTime = dateObj
-    .toLocaleTimeString(getDeviceLocale(), {
+    .toLocaleTimeString(getDeviceLanguage(), {
       hour: "numeric",
       minute: "2-digit",
     })
