@@ -5,6 +5,7 @@ export enum BundleIds {
   freighterDev = "org.stellar.freighterdev",
 }
 
-export const isDev = (getBundleId() as BundleIds) === BundleIds.freighterDev;
+export const isDev =
+  (getBundleId() as BundleIds) === BundleIds.freighterDev || __DEV__;
 
 export const isProd = (getBundleId() as BundleIds) === BundleIds.freighterProd;

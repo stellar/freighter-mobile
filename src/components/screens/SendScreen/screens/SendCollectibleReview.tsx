@@ -17,7 +17,7 @@ import {
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import {
   useSendBannerContent,
-  useTransactionSecurity,
+  getTransactionSecurity,
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -166,7 +166,11 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
+  } = useMemo(
+    () =>
+      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
+    [transactionScanResult, overriddenBlockaidResponse],
+  );
 
   const selectedCollectible = useMemo(() => {
     const collection = collections.find(
@@ -179,6 +183,26 @@ const SendCollectibleReviewScreen: React.FC<
     }
     return undefined;
   }, [collections, collectionAddress, tokenId]);
+
+  const handleTransactionScanSuccess = useCallback(
+    (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      const security = getTransactionSecurity(
+        scanResult,
+        overriddenBlockaidResponse,
+      );
+      if (security.transactionSecurityAssessment.isUnableToScan) {
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        reviewBottomSheetModalRef.current?.present();
+      }
+    },
+    [overriddenBlockaidResponse],
+  );
+
+  const handleTransactionScanError = useCallback(() => {
+    setTransactionScanResult(undefined);
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
@@ -210,19 +234,22 @@ const SendCollectibleReviewScreen: React.FC<
 
         if (!xdr) return;
 
-        if (shouldOpenReview) {
-          scanTransaction(xdr, "internal")
-            .then((scanResult) => {
-              logger.info("TransactionAmountScreen", "scanResult", scanResult);
-              setTransactionScanResult(scanResult);
-            })
-            .catch(() => {
-              setTransactionScanResult(undefined);
-            })
-            .finally(() => {
-              reviewBottomSheetModalRef.current?.present();
-            });
-        }
+        // Always scan the transaction to keep the hook updated
+        scanTransaction(xdr, "internal")
+          .then((scanResult) => {
+            setTransactionScanResult(scanResult);
+
+            // Only open sheets if shouldOpenReview is true
+            if (shouldOpenReview) {
+              handleTransactionScanSuccess(scanResult);
+            }
+          })
+          .catch(() => {
+            setTransactionScanResult(undefined);
+            if (shouldOpenReview) {
+              handleTransactionScanError();
+            }
+          });
       } catch (error) {
         logger.error(
           "TransactionAmountScreen",
@@ -238,8 +265,25 @@ const SendCollectibleReviewScreen: React.FC<
       buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
+      handleTransactionScanSuccess,
+      handleTransactionScanError,
     ],
   );
+
+  // Automatically scan transaction when parameters change
+  useEffect(() => {
+    if (recipientAddress && selectedCollectible) {
+      prepareTransaction(false);
+    } else {
+      setTransactionScanResult(undefined);
+    }
+  }, [
+    tokenId,
+    collectionAddress,
+    recipientAddress,
+    selectedCollectible,
+    prepareTransaction,
+  ]);
 
   const handleSettingsChange = () => {
     // Settings have changed, rebuild the transaction with new values
@@ -460,13 +504,7 @@ const SendCollectibleReviewScreen: React.FC<
       return;
     }
 
-    // Only open security detail sheet first for "unable to scan" cases
-    if (transactionSecurityAssessment.isUnableToScan) {
-      prepareTransaction(false);
-      transactionSecurityWarningBottomSheetModalRef.current?.present();
-    } else {
-      prepareTransaction(true);
-    }
+    prepareTransaction(true);
   };
 
   const getContinueButtonText = () => {
