@@ -12,6 +12,8 @@
 
 # frozen_string_literal: true
 
+require "fileutils"
+
 opt_out_usage
 
 default_platform(:android)
@@ -61,6 +63,35 @@ def replace_in_file(file, find:, replace:)
   File.open(file, "w") {|io| io << contents }
 end
 
+# Returns release notes with a timestamp, last commit title, and commit hash.
+#
+# Example output:
+#
+# Release generated at 2024-06-08 16:50:12 UTC
+# Fix bug in transaction logic
+# Commit: 8ae5cba5bceda52bffb80c7ea1713c987826d346
+def default_release_notes
+  @default_release_notes ||= begin
+    timestamp = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+    commit_title = sh("git log -1 --pretty=%s", log: false).strip
+    commit_hash = sh("git rev-parse HEAD", log: false).strip
+
+    [
+      "Release generated at #{timestamp}",
+      commit_title,
+      "Commit: #{commit_hash}"
+    ].reject(&:empty?).join("\n")
+  end
+end
+
+def write_android_changelog(notes)
+  changelog_dir = File.expand_path("metadata/android/en-US/changelogs", __dir__)
+  FileUtils.mkdir_p(changelog_dir)
+
+  default_path = File.join(changelog_dir, "default.txt")
+  File.write(default_path, notes)
+end
+
 def testflight?
   ENV["UPLOAD_TO_TESTFLIGHT"] != "no"
 end
@@ -104,7 +135,12 @@ platform :ios do
 
   lane :upload_build do
     if testflight?
-      upload_to_testflight(skip_waiting_for_build_processing: true)
+      notes = default_release_notes
+      UI.message "📝 Using TestFlight release notes:\n#{notes}"
+      upload_to_testflight(
+        skip_waiting_for_build_processing: true,
+        changelog: notes
+      )
     else
       UI.important "⚠️  Not uploading build to Apple Testflight"
     end
@@ -167,6 +203,9 @@ platform :android do
 
   lane :upload_build do
     if google_play?
+      notes = default_release_notes
+      UI.message "📝 Using Google Play release notes:\n#{notes}"
+      write_android_changelog(notes)
       upload_to_play_store(
         track: "internal",
         track_promote_to: "internal"
