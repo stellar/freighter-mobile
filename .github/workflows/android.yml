@@ -24,9 +24,8 @@ on:
           - "yes"
           - "no"
   schedule:
-    # Temporary test: trigger once in a few minutes and then again in 20 minutes
-    - cron: "25 22 * * *"
-    - cron: "45 22 * * *"
+    # Runs every day at midnight PST/PDT time
+    - cron: "0 8 * * *"
 
 concurrency:
   group:
