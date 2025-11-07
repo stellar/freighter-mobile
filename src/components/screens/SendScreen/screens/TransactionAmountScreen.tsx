@@ -430,24 +430,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     ],
   );
 
-  useEffect(() => {
-    const numberTokenAmount = new BigNumber(tokenAmount);
-    const hasRequiredParams =
-      recipientAddress && selectedBalance && numberTokenAmount.isGreaterThan(0);
-
-    if (hasRequiredParams) {
-      prepareTransaction(false);
-    } else {
-      setTransactionScanResult(undefined);
-    }
-  }, [
-    selectedTokenId,
-    recipientAddress,
-    tokenAmount,
-    selectedBalance,
-    prepareTransaction,
-  ]);
-
   const handleSettingsChange = () => {
     // Settings have changed, rebuild the transaction with new values
     prepareTransaction(false);

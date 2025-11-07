@@ -268,20 +268,6 @@ const SendCollectibleReviewScreen: React.FC<
     ],
   );
 
-  useEffect(() => {
-    if (recipientAddress && selectedCollectible) {
-      prepareTransaction(false);
-    } else {
-      setTransactionScanResult(undefined);
-    }
-  }, [
-    tokenId,
-    collectionAddress,
-    recipientAddress,
-    selectedCollectible,
-    prepareTransaction,
-  ]);
-
   const handleSettingsChange = () => {
     // Settings have changed, rebuild the transaction with new values
     prepareTransaction(false);
