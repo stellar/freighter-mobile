@@ -32,8 +32,8 @@ export function getDeviceLanguage(): string {
 
   if (Platform.OS === "ios") {
     const deviceLanguage =
-      (Settings.get("AppleLocale") as string) ||
-      (Settings.get("AppleLanguages") as string[])[0];
+      (Settings.get("AppleLanguages") as string[])[0] ||
+      (Settings.get("AppleLocale") as string);
 
     if (deviceLanguage) {
       locale = deviceLanguage;
