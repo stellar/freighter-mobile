@@ -23,6 +23,10 @@ on:
         options:
           - "yes"
           - "no"
+      release_notes:
+        description: Optional release notes override (supports Markdown)
+        type: string
+        default: ""
   schedule:
     # Runs every day at midnight PST/PDT time (8am UTC/GMT)
     - cron: "0 8 * * *"
@@ -153,6 +157,13 @@ jobs:
             else
               export IOS_SCHEME=""
             fi
+          fi
+          if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event.inputs.release_notes }}" != "" ]]; then
+            {
+              echo "RELEASE_NOTES_OVERRIDE<<EOF"
+              echo "${{ github.event.inputs.release_notes }}"
+              echo "EOF"
+            } >> $GITHUB_ENV
           fi
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
