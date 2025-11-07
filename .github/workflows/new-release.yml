@@ -63,16 +63,18 @@ jobs:
 
           description="## Changes\n\n$commits"
 
+          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
+
           {
-            echo "description<<'EOF'"
+            echo "description<<$OUTPUT_DELIM"
             echo "$description"
-            echo "EOF"
+            echo "$OUTPUT_DELIM"
           } >> "$GITHUB_OUTPUT"
 
           {
-            echo "RELEASE_DESCRIPTION<<'EOF'"
+            echo "RELEASE_DESCRIPTION<<$OUTPUT_DELIM"
             echo "$description"
-            echo "EOF"
+            echo "$OUTPUT_DELIM"
           } >> "$GITHUB_ENV"
 
       - name: Commit changes
