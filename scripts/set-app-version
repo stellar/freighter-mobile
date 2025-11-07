@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+function usage(message) {
+  if (message) {
+    console.error(`Error: ${message}`);
+  }
+  console.error("Usage: scripts/set-app-version <version>");
+  process.exit(1);
+}
+
+const [, , version] = process.argv;
+
+if (!version) {
+  usage("Version is required");
+}
+
+const rootDir = path.join(__dirname, "..");
+
+function updateFile(filePath, updater) {
+  const absolutePath = path.join(rootDir, filePath);
+  const original = fs.readFileSync(absolutePath, "utf8");
+  const updated = updater(original);
+
+  if (original === updated) {
+    console.warn(`⚠️  No changes applied to ${filePath}`);
+  } else {
+    fs.writeFileSync(absolutePath, updated, "utf8");
+    console.log(`✅ Updated ${filePath}`);
+  }
+}
+
+const plistRegex = new RegExp(
+  "(<key>CFBundleShortVersionString</key>\\s*<string>)([^<]+)(</string>)",
+  "g",
+);
+
+updateFile("android/app/build.gradle", (contents) =>
+  contents.replace(/versionName\s+"[^"]+"/g, `versionName "${version}"`),
+);
+
+updateFile("ios/freighter-mobile/Info.plist", (contents) =>
+  contents.replace(plistRegex, `$1${version}$3`),
+);
+
+updateFile("ios/freighter-mobile/Info-Dev.plist", (contents) =>
+  contents.replace(plistRegex, `$1${version}$3`),
+);
+
+updateFile("ios/freighter-mobile.xcodeproj/project.pbxproj", (contents) =>
+  contents.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${version};`),
+);
+
+console.log(`🎯 App version set to ${version}`);
+

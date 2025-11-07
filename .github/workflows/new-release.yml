@@ -1,0 +1,86 @@
+---
+name: New Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: App version (e.g. 1.8.24)
+        required: true
+        type: string
+
+jobs:
+  create_release_branch:
+    name: Prepare Release Branch
+    runs-on: ubuntu-latest
+
+    env:
+      APP_VERSION: ${{ inputs.app_version }}
+      RELEASE_BRANCH: ${{ format('release/v{0}', inputs.app_version) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create release branch
+        run: |
+          git checkout -b "$RELEASE_BRANCH"
+
+      - name: Update app version
+        run: |
+          node ./scripts/set-app-version "$APP_VERSION"
+
+      - name: Commit changes
+        run: |
+          git status
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected after running set-app-version."
+            exit 1
+          fi
+          git add .
+          git commit -m "chore: bump app version to v$APP_VERSION"
+
+      - name: Push release branch
+        run: |
+          git push --set-upstream origin "$RELEASE_BRANCH"
+
+      - name: Create pull request
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        with:
+          script: |
+            const title = `v${process.env.APP_VERSION}`;
+            const branch = process.env.RELEASE_BRANCH;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            try {
+              const { data } = await github.rest.pulls.create({
+                owner,
+                repo,
+                head: branch,
+                base: "main",
+                title,
+                body: `Automated release for v${process.env.APP_VERSION}.`
+              });
+              core.notice(`Pull request created: ${data.html_url}`);
+            } catch (error) {
+              if (error.status === 422) {
+                core.warning(`Pull request could not be created automatically: ${error.message}`);
+              } else {
+                throw error;
+              }
+            }
