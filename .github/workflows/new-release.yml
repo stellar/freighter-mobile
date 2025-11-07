@@ -47,8 +47,8 @@ jobs:
         run: |
           set -eo pipefail
 
-          release_commit_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+'
-          last_release_commit=$(git rev-list --grep "$release_commit_pattern" --max-count=1 HEAD || true)
+          release_commit_pattern='^v[0-9]+\.[0-9]+\.[0-9]+'
+          last_release_commit=$(git rev-list --extended-regexp --grep "$release_commit_pattern" --max-count=1 HEAD || true)
 
           if [ -n "$last_release_commit" ]; then
             log_range="${last_release_commit}..HEAD"
