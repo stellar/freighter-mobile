@@ -47,21 +47,36 @@ jobs:
         run: |
           set -eo pipefail
 
-          last_release_commit=$(git log --grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' --pretty=format:%H -n 1 || true)
+          release_commit_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+'
+          last_release_commit=$(git log --pretty=format:%H -n 1 --grep "$release_commit_pattern" || true)
 
-          if [ -n "$last_release_commit" ]; then
-            commits=$(git log "${last_release_commit}..HEAD" --pretty=format:'- %s' --no-merges || true)
-          else
-            commits=$(git log --pretty=format:'- %s' --no-merges || true)
+          if [ -z "$last_release_commit" ]; then
+            last_release_commit=$(git log --pretty=format:%H -n 1 --grep '^chore: bump app version to v[0-9]\+\.[0-9]\+\.[0-9]\+' || true)
           fi
 
-          commits=$(printf '%s\n' "$commits" | sed '/^$/d')
+          if [ -n "$last_release_commit" ]; then
+            log_range="${last_release_commit}..HEAD"
+          else
+            log_range="HEAD"
+          fi
+
+          commits=""
+          while IFS= read -r line; do
+            trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [ -z "$trimmed" ]; then
+              continue
+            fi
+            if echo "$trimmed" | grep -Eq "$release_commit_pattern"; then
+              continue
+            fi
+            commits="${commits}- ${trimmed}"$'\n'
+          done < <(git log "$log_range" --pretty=format:'%s' --no-merges 2>/dev/null || true)
 
           if [ -z "$commits" ]; then
             commits="- No commits since last release"
           fi
 
-          description="## Changes\n\n$commits"
+          description="## Changes\n\n${commits%$'\n'}"
 
           OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
 
