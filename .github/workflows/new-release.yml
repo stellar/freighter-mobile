@@ -14,7 +14,8 @@ on:
           reused for the pull request body, TestFlight notes, and Google Play
           notes.
         required: false
-        default: ""
+        default: |-
+
         type: string
 
 jobs:
