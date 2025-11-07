@@ -22,16 +22,18 @@ export const NoticeBanner: React.FC<NoticeBannerProps> = ({
 
   return (
     <TouchableOpacity
-      className="flex-row items-center justify-center bg-gray-6 px-3 py-2"
+      className="bg-gray-6 px-3 py-2"
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <View className="mr-2">
-        <Icon.InfoCircle size={16} color={themeColors.lilac[9]} />
+      <View className="flex-row items-center justify-center mr-3 ml-3">
+        <View className="mr-2">
+          <Icon.InfoCircle size={16} color={themeColors.lilac[9]} />
+        </View>
+        <Text sm color={themeColors.gray[12]}>
+          {text}
+        </Text>
       </View>
-      <Text sm color={themeColors.gray[12]}>
-        {text}
-      </Text>
     </TouchableOpacity>
   );
 };
