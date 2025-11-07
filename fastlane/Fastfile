@@ -64,20 +64,21 @@ def replace_in_file(file, find:, replace:)
 end
 
 # Returns release notes with a timestamp, last commit title, and commit hash.
-#
 # Example output:
 #
-# Release generated at 2024-06-08 16:50:12 UTC
+# v1.6.23 (1234567890) at 2025-11-07 19:27:05 UTC
 # Fix bug in transaction logic
 # Commit: 8ae5cba5bceda52bffb80c7ea1713c987826d346
 def default_release_notes
   @default_release_notes ||= begin
     timestamp = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+    app_version = ENV["APP_VERSION"].to_s.strip
+    build_version = ENV["BUILD_VERSION"].to_s.strip
     commit_title = sh("git log -1 --pretty=%s", log: false).strip
     commit_hash = sh("git rev-parse HEAD", log: false).strip
-
+    
     [
-      "Release generated at #{timestamp}",
+      "v#{app_version} (#{build_version}) at #{timestamp}",
       commit_title,
       "Commit: #{commit_hash}"
     ].reject(&:empty?).join("\n")
