@@ -62,7 +62,8 @@ jobs:
             commits="- No commits since last release"
           fi
 
-          description="## Changes\n\n${commits%$'\n'}"
+          printf -v description '## Release Changes\n\n%s' "$commits"
+          description=${description%$'\n'}
 
           OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
 
