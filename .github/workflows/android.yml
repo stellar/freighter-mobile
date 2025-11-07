@@ -24,7 +24,7 @@ on:
           - "yes"
           - "no"
   schedule:
-    # Runs every day at midnight PST/PDT time
+    # Runs every day at midnight PST/PDT time (8am UTC/GMT)
     - cron: "0 8 * * *"
 
 concurrency:
