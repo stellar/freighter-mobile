@@ -93,6 +93,25 @@ def write_android_changelog(notes)
   File.write(default_path, notes)
 end
 
+def release_notes
+  return @release_notes if defined?(@release_notes)
+
+  override = ENV["RELEASE_NOTES_OVERRIDE"]
+
+  if override.to_s.strip.empty?
+    @release_notes_source = :default
+    @release_notes = default_release_notes
+  else
+    @release_notes_source = :override
+    @release_notes = override
+  end
+end
+
+def release_notes_override?
+  release_notes
+  @release_notes_source == :override
+end
+
 def testflight?
   ENV["UPLOAD_TO_TESTFLIGHT"] != "no"
 end
@@ -136,8 +155,9 @@ platform :ios do
 
   lane :upload_build do
     if testflight?
-      notes = default_release_notes
-      UI.message "📝 Using TestFlight release notes:\n#{notes}"
+      notes = release_notes
+      header = release_notes_override? ? "📝 Using release notes override for TestFlight:" : "📝 Using default TestFlight release notes:"
+      UI.message "#{header}\n#{notes}"
       upload_to_testflight(
         skip_waiting_for_build_processing: true,
         changelog: notes
@@ -204,8 +224,9 @@ platform :android do
 
   lane :upload_build do
     if google_play?
-      notes = default_release_notes
-      UI.message "📝 Using Google Play release notes:\n#{notes}"
+      notes = release_notes
+      header = release_notes_override? ? "📝 Using release notes override for Google Play:" : "📝 Using default Google Play release notes:"
+      UI.message "#{header}\n#{notes}"
       write_android_changelog(notes)
       upload_to_play_store(
         track: "internal",

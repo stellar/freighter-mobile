@@ -23,6 +23,10 @@ on:
         options:
           - "yes"
           - "no"
+      release_notes:
+        description: Optional release notes override (supports Markdown)
+        type: string
+        default: ""
   schedule:
     # Runs every day at midnight PST/PDT time (8am UTC/GMT)
     - cron: "0 8 * * *"
@@ -146,6 +150,13 @@ jobs:
             echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
             # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
             export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
+          fi
+          if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event.inputs.release_notes }}" != "" ]]; then
+            {
+              echo "RELEASE_NOTES_OVERRIDE<<EOF"
+              echo "${{ github.event.inputs.release_notes }}"
+              echo "EOF"
+            } >> $GITHUB_ENV
           fi
           ./scripts/gh-android-env >> $GITHUB_ENV
 

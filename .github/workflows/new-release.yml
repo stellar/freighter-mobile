@@ -8,6 +8,14 @@ on:
         description: App version (e.g. 1.8.24)
         required: true
         type: string
+      release_description:
+        description: >
+          Release notes / PR description (supports Markdown). This content is
+          reused for the pull request body, TestFlight notes, and Google Play
+          notes.
+        required: false
+        default: ""
+        type: string
 
 jobs:
   create_release_branch:
@@ -57,15 +65,26 @@ jobs:
           git push --set-upstream origin "$RELEASE_BRANCH"
 
       - name: Create pull request
+        id: create_pr
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          PR_DESCRIPTION: ${{ inputs.release_description }}
         with:
           script: |
             const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const rawBody = process.env.PR_DESCRIPTION || "";
+            const trimmedBody = rawBody.trim();
+            const body = trimmedBody.length > 0 ? rawBody : `Automated release for v${process.env.APP_VERSION}.`;
+
+            async function setOutputs(pr) {
+              core.notice(`Pull request ready: ${pr.html_url}`);
+              core.setOutput("pr_number", pr.number.toString());
+              core.setOutput("pr_url", pr.html_url);
+            }
 
             try {
               const { data } = await github.rest.pulls.create({
@@ -74,13 +93,73 @@ jobs:
                 head: branch,
                 base: "main",
                 title,
-                body: `Automated release for v${process.env.APP_VERSION}.`
+                body
               });
-              core.notice(`Pull request created: ${data.html_url}`);
+              await setOutputs(data);
             } catch (error) {
               if (error.status === 422) {
                 core.warning(`Pull request could not be created automatically: ${error.message}`);
+                const { data: existing } = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  head: `${owner}:${branch}`,
+                  base: "main",
+                  state: "open"
+                });
+
+                if (existing.length > 0) {
+                  await setOutputs(existing[0]);
+                } else {
+                  throw error;
+                }
               } else {
                 throw error;
               }
+            }
+
+      - name: Trigger dev builds (initial QA)
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          PR_DESCRIPTION: ${{ inputs.release_description }}
+        with:
+          script: |
+            const branch = process.env.RELEASE_BRANCH;
+            const rawDescription = process.env.PR_DESCRIPTION || "";
+            const releaseNotes = rawDescription.trim().length > 0 ? rawDescription : "";
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            const workflows = [
+              {
+                workflow_id: "ios.yml",
+                name: "iOS Release",
+                inputs: {
+                  ref_name: branch,
+                  env: "dev",
+                  upload_to_testflight: "yes",
+                  release_notes: releaseNotes
+                }
+              },
+              {
+                workflow_id: "android.yml",
+                name: "Android Release",
+                inputs: {
+                  ref_name: branch,
+                  env: "dev",
+                  upload_to_google_play: "yes",
+                  release_notes: releaseNotes
+                }
+              }
+            ];
+
+            for (const workflow of workflows) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: workflow.workflow_id,
+                ref: branch,
+                inputs: workflow.inputs
+              });
+              core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${branch}`);
             }
