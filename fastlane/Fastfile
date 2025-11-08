@@ -42,47 +42,10 @@ def create_keystore_file(env)
   File.chmod(0o600, key_file)
 end
 
-def increment_version_code(gradle_file_path)
-  file_path = File.join(Dir.pwd, gradle_file_path)
-  contents = File.read(file_path)
-  
-  # Find and increment the versionCode
-  contents.gsub!(/versionCode\s+(\d+)/) do |match|
-    current_version = $1.to_i
-    new_version = current_version + 1
-    UI.success "📱 Incrementing versionCode: #{current_version} → #{new_version}"
-    "versionCode #{new_version}"
-  end
-  
-  File.write(file_path, contents)
-end
-
 def replace_in_file(file, find:, replace:)
   contents = File.read(file)
   contents.gsub!(find, replace)
   File.open(file, "w") {|io| io << contents }
-end
-
-# Returns release notes with a timestamp, last commit title, and commit hash.
-# Example output:
-#
-# v1.6.23 (1234567890) at 2025-11-07 19:27:05 UTC
-# Fix bug in transaction logic
-# Commit: 8ae5cba5bceda52bffb80c7ea1713c987826d346
-def default_release_notes
-  @default_release_notes ||= begin
-    timestamp = Time.now.utc.strftime("%Y-%m-%d %H:%M:%S UTC")
-    app_version = ENV["APP_VERSION"].to_s.strip
-    build_version = ENV["BUILD_VERSION"].to_s.strip
-    commit_title = sh("git log -1 --pretty=%s", log: false).strip
-    commit_hash = sh("git rev-parse HEAD", log: false).strip
-    
-    [
-      "v#{app_version} (#{build_version}) at #{timestamp}",
-      commit_title,
-      "Commit: #{commit_hash}"
-    ].reject(&:empty?).join("\n")
-  end
 end
 
 def write_android_changelog(notes)
@@ -96,20 +59,19 @@ end
 def release_notes
   return @release_notes if defined?(@release_notes)
 
-  override = ENV["RELEASE_NOTES_OVERRIDE"]
+  notes = ENV.fetch("RELEASE_NOTES") { UI.user_error!("RELEASE_NOTES env variable is required but missing or empty") }
+  UI.user_error!("RELEASE_NOTES env variable cannot be empty") if notes.to_s.strip.empty?
 
-  if override.to_s.strip.empty?
-    @release_notes_source = :default
-    @release_notes = default_release_notes
-  else
-    @release_notes_source = :override
-    @release_notes = override
-  end
+  @release_notes = notes
 end
 
-def release_notes_override?
-  release_notes
-  @release_notes_source == :override
+def truncated_release_notes(max_length: nil)
+  notes = release_notes
+  return notes if max_length.nil? || notes.length <= max_length
+
+  ellipsis = "…"
+  truncated = notes[0, max_length - ellipsis.length]
+  "#{truncated}#{ellipsis}"
 end
 
 def testflight?
@@ -156,8 +118,7 @@ platform :ios do
   lane :upload_build do
     if testflight?
       notes = release_notes
-      header = release_notes_override? ? "📝 Using release notes override for TestFlight:" : "📝 Using default TestFlight release notes:"
-      UI.message "#{header}\n#{notes}"
+      UI.message "📝 Using release notes for TestFlight:\n#{notes}"
       upload_to_testflight(
         skip_waiting_for_build_processing: true,
         changelog: notes
@@ -224,10 +185,11 @@ platform :android do
 
   lane :upload_build do
     if google_play?
-      notes = release_notes
-      header = release_notes_override? ? "📝 Using release notes override for Google Play:" : "📝 Using default Google Play release notes:"
-      UI.message "#{header}\n#{notes}"
-      write_android_changelog(notes)
+      # Google Play release notes are limited to around 500 characters
+      # so let's truncate them to 450 characters to prevent upload errors.
+      display_notes = truncated_release_notes(max_length: 450)
+      UI.message "📝 Using release notes for Google Play (truncated to 450 chars):\n#{display_notes}"
+      write_android_changelog(display_notes)
       upload_to_play_store(
         track: "internal",
         track_promote_to: "internal"

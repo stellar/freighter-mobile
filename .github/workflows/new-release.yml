@@ -8,14 +8,6 @@ on:
         description: App version (e.g. 1.8.24)
         required: true
         type: string
-      release_description:
-        description: >
-          Release notes / PR description (supports Markdown). This content is
-          reused for the pull request body, TestFlight notes, and Google Play
-          notes.
-        required: false
-        default: ""
-        type: string
 
 jobs:
   create_release_branch:
@@ -50,6 +42,43 @@ jobs:
         run: |
           node ./scripts/set-app-version "$APP_VERSION"
 
+      - name: Generate release notes
+        id: release_notes_step
+        run: |
+          set -eo pipefail
+
+          release_commit_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+'
+          last_release_commit=$(git log --grep "$release_commit_pattern" --pretty=format:%H -n 1 || true)
+
+          if [ -n "$last_release_commit" ]; then
+            commits=$(git log "${last_release_commit}..HEAD" --pretty=format:'- %s' --no-merges 2>/dev/null || true)
+          else
+            commits=$(git log --pretty=format:'- %s' --no-merges 2>/dev/null || true)
+          fi
+
+          commits=$(printf '%s\n' "$commits" | sed '/^$/d')
+
+          if [ -z "$commits" ]; then
+            commits="- No commits since last release"
+          fi
+
+          printf -v release_notes '## Release Changes\n\n%s' "$commits"
+          release_notes=${release_notes%$'\n'}
+
+          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
+
+          {
+            echo "release_notes<<$OUTPUT_DELIM"
+            echo "$release_notes"
+            echo "$OUTPUT_DELIM"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "RELEASE_NOTES<<$OUTPUT_DELIM"
+            echo "$release_notes"
+            echo "$OUTPUT_DELIM"
+          } >> "$GITHUB_ENV"
+
       - name: Commit changes
         run: |
           git status
@@ -70,15 +99,14 @@ jobs:
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
-          PR_DESCRIPTION: ${{ inputs.release_description }}
         with:
           script: |
             const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-            const rawBody = process.env.PR_DESCRIPTION || "";
-            const trimmedBody = rawBody.trim();
-            const body = trimmedBody.length > 0 ? rawBody : `Automated release for v${process.env.APP_VERSION}.`;
+            const releaseNotes = process.env.RELEASE_NOTES || "";
+            const trimmedBody = releaseNotes.trim();
+            const body = trimmedBody.length > 0 ? releaseNotes : `Automated release for v${process.env.APP_VERSION}.`;
 
             async function setOutputs(pr) {
               core.notice(`Pull request ready: ${pr.html_url}`);
@@ -122,12 +150,11 @@ jobs:
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
-          PR_DESCRIPTION: ${{ inputs.release_description }}
         with:
           script: |
             const branch = process.env.RELEASE_BRANCH;
-            const rawDescription = process.env.PR_DESCRIPTION || "";
-            const releaseNotes = rawDescription.trim().length > 0 ? rawDescription : "";
+            const rawNotes = process.env.RELEASE_NOTES || "";
+            const releaseNotes = rawNotes.trim().length > 0 ? rawNotes : "";
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
             const workflows = [
