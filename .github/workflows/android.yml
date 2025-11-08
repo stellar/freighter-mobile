@@ -9,7 +9,7 @@ on:
         type: string
         default: ""
       buildEnv:
-        description: The Android env to build (optional)
+        description: The Android env to be built (optional)
         type: choice
         default: ""
         options:

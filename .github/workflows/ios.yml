@@ -9,7 +9,7 @@ on:
         type: string
         default: ""
       buildEnv:
-        description: The iOS env to build (optional)
+        description: The iOS env to be built (optional)
         type: choice
         default: ""
         options:
