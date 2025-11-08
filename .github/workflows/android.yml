@@ -8,7 +8,7 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      env:
+      buildEnv:
         description: The Android env that will be built (optional)
         type: choice
         default: ""
@@ -24,7 +24,7 @@ on:
           - "yes"
           - "no"
       release_notes:
-        description: Optional release notes override (supports Markdown)
+        description: Optional Google Play release notes override
         type: string
         default: ""
   schedule:
@@ -148,8 +148,8 @@ jobs:
             export ANDROID_FLAVOR="dev"
           else
             echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
-            # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
-            export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
+            # Translate buildEnv input to Android flavor (dev/prod map directly to flavor dimension)
+            export ANDROID_FLAVOR="${{ github.event.inputs.buildEnv }}"
           fi
           ./scripts/gh-android-env >> $GITHUB_ENV
 
