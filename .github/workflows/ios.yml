@@ -9,7 +9,7 @@ on:
         type: string
         default: ""
       buildEnv:
-        description: The iOS env that will be built (optional)
+        description: The iOS env to build (optional)
         type: choice
         default: ""
         options:
@@ -24,7 +24,7 @@ on:
           - "yes"
           - "no"
       release_notes:
-        description: Optional TestFlight release notes override
+        description: TestFlight release notes (optional)
         type: string
         default: ""
   schedule:

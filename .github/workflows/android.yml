@@ -9,7 +9,7 @@ on:
         type: string
         default: ""
       buildEnv:
-        description: The Android env that will be built (optional)
+        description: The Android env to build (optional)
         type: choice
         default: ""
         options:
@@ -24,7 +24,7 @@ on:
           - "yes"
           - "no"
       release_notes:
-        description: Optional Google Play release notes override
+        description: Google Play release notes (optional)
         type: string
         default: ""
   schedule:
