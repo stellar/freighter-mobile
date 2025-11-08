@@ -158,14 +158,29 @@ jobs:
               export IOS_SCHEME=""
             fi
           fi
-          if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event.inputs.release_notes }}" != "" ]]; then
-            {
-              echo "RELEASE_NOTES_OVERRIDE<<EOF"
-              echo "${{ github.event.inputs.release_notes }}"
-              echo "EOF"
-            } >> $GITHUB_ENV
-          fi
           ./scripts/gh-ios-env >> $GITHUB_ENV
+
+      - name: Generate release notes
+        env:
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes || '' }}
+        run: |
+          if [[ -n "$INPUT_RELEASE_NOTES" ]]; then
+            notes="$INPUT_RELEASE_NOTES"
+          else
+            timestamp=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+            app_version="${APP_VERSION:-}"
+            build_version="${BUILD_VERSION:-}"
+            commit_title=$(git log -1 --pretty=%s 2>/dev/null || echo "")
+            commit_hash=$(git rev-parse HEAD 2>/dev/null || echo "")
+            notes=$(printf "v%s (%s) at %s\n%s\nCommit: %s" "$app_version" "$build_version" "$timestamp" "$commit_title" "$commit_hash")
+          fi
+
+          delimiter="RELEASE_NOTES_BLOCK"
+          {
+            echo "RELEASE_NOTES<<$delimiter"
+            echo "$notes"
+            echo "$delimiter"
+          } >> "$GITHUB_ENV"
 
       - name: Decode and save sentry.properties
         run:
