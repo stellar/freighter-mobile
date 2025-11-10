@@ -167,7 +167,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { recommendedFee } = useNetworkFees();
 
   useEffect(() => {
-    // Set here instead of review screen to calculate the max spendable. It is reset when screen unmounts and will be set again on next open.
+    // Set here instead of review screen to calculate the max spendable. Unchanged afterwards for consistency. Only reset when a transaction is completed (resetSettings)
     if (recommendedFee && transactionFee === MIN_TRANSACTION_FEE) {
       saveTransactionFee(recommendedFee);
     }
