@@ -135,25 +135,25 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const isRecipientContract =
           params.recipientAddress && isContractId(params.recipientAddress);
 
+        // Use the final destination from buildPaymentTransaction if available (may be muxed)
+        const finalDestination =
+          builtTxResult.finalDestination || params.recipientAddress!;
+
         // If sending to a contract, prepare (simulate) the transaction
         if (isRecipientContract && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
+
           finalXdr = await simulateContractTransfer({
             transaction: builtTxResult.tx,
             networkDetails,
             memo: params.transactionMemo || "",
             params: {
               publicKey: params.senderAddress,
-              destination: params.recipientAddress!,
+              destination: finalDestination, // Use the final destination (may be muxed)
               amount: xlmToStroop(params.tokenAmount).toString(),
             },
             contractAddress: builtTxResult.contractId!,
           });
-        } else {
-          logger.warn(
-            "TransactionBuilderStore",
-            "Recipient is not a contract, using standard transaction XDR.",
-          );
         }
 
         // Only update store if this build request is still the latest one.
@@ -281,11 +281,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           senderAddress: params.senderAddress,
         });
 
+        console.log({ builtTxResult });
+
         if (!builtTxResult) {
           throw new Error("Failed to build send collectible transaction");
         }
 
         const networkDetails = mapNetworkToNetworkDetails(params.network);
+
         const finalXdr = await simulateCollectibleTransfer({
           transactionXdr: builtTxResult.tx.toXDR(),
           networkDetails,
@@ -307,11 +310,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        logger.error(
-          "TransactionBuilderStore",
-          "Failed to build send collectible transaction",
-          error,
-        );
 
         // Only set error state if this send collectible build is still current.
         // Prevents stale send collectible error from overwriting newer transaction state.

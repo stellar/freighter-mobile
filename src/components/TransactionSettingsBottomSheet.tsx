@@ -23,6 +23,7 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
+import { isMuxedAccount } from "helpers/stellar";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -85,6 +86,14 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const isSorobanTransaction = isCollectibleTransfer || isSorobanRecipient;
 
+  // Check if destination is already a muxed account (M address)
+  const isDestinationMuxed =
+    recipientAddress && isMuxedAccount(recipientAddress);
+
+  // If destination is already muxed, disable memo (memo is already embedded in the address)
+  // If destination is G or C, allow memo (will create muxed account on submit)
+  const isMemoDisabled = !!isDestinationMuxed;
+
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
   const fee = context === TransactionContext.Swap ? swapFee : transactionFee;
@@ -115,13 +124,13 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
-  // Clear memo for Soroban transactions (collectible transfers or Soroban contract recipients)
+  // Clear memo if destination is already muxed (memo is embedded in the address)
   useEffect(() => {
-    if (isSorobanTransaction) {
-      saveTransactionMemo("");
+    if (isMemoDisabled && localMemo) {
       setLocalMemo("");
+      saveTransactionMemo("");
     }
-  }, [isSorobanTransaction, context, saveTransactionMemo]);
+  }, [isMemoDisabled, localMemo, saveTransactionMemo]);
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
@@ -132,11 +141,12 @@ const TransactionSettingsBottomSheet: React.FC<
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
-      if (context === TransactionContext.Send && !isSorobanTransaction) {
+      // Only save memo if it's not disabled (destination is not already muxed)
+      if (!isMemoDisabled) {
         saveTransactionMemo(value);
       }
     },
-    [context, saveTransactionMemo, isSorobanTransaction],
+    [saveTransactionMemo, isMemoDisabled],
   );
 
   const saveFee = useCallback(
@@ -200,12 +210,12 @@ const TransactionSettingsBottomSheet: React.FC<
   }, []);
   const handleMemoChange = useCallback(
     (text: string) => {
-      // Prevent memo changes for Soroban transactions
-      if (!isSorobanTransaction) {
+      // Prevent memo changes if destination is already muxed
+      if (!isMemoDisabled) {
         setLocalMemo(text);
       }
     },
-    [isSorobanTransaction],
+    [isMemoDisabled],
   );
 
   const handleFeeChange = useCallback((text: string) => {
@@ -287,9 +297,15 @@ const TransactionSettingsBottomSheet: React.FC<
           value={localMemo}
           onChangeText={handleMemoChange}
           error={memoError}
-          editable={!isSorobanTransaction}
+          editable={!isMemoDisabled}
           note={
-            isSorobanTransaction ? (
+            isDestinationMuxed ? (
+              <View className="flex flex-row items-center gap-2 mt-1">
+                <Text sm secondary color={themeColors.status.warning}>
+                  {t("transactionSettings.memoInfo.memoNotAllowedForMuxed")}
+                </Text>
+              </View>
+            ) : isSorobanTransaction && localMemo ? (
               <View className="flex flex-row items-center gap-2 mt-1">
                 <Text sm secondary color={themeColors.status.warning}>
                   {isCollectibleTransfer
@@ -308,8 +324,10 @@ const TransactionSettingsBottomSheet: React.FC<
       t,
       handleMemoChange,
       themeColors.status.warning,
+      isDestinationMuxed,
       isSorobanTransaction,
       isCollectibleTransfer,
+      isMemoDisabled,
     ],
   );
 
@@ -508,10 +526,22 @@ const TransactionSettingsBottomSheet: React.FC<
           key: "additionalInfo",
           value: t("transactionSettings.memoInfo.additionalInfo"),
         },
-        {
-          key: "sorobanInfo",
-          value: t("transactionSettings.memoInfo.sorobanInfo"),
-        },
+        ...(isSorobanTransaction
+          ? [
+              {
+                key: "sorobanInfo",
+                value: t("transactionSettings.memoInfo.sorobanInfo"),
+              },
+            ]
+          : []),
+        ...(isDestinationMuxed
+          ? [
+              {
+                key: "muxedAddressInfo",
+                value: t("transactionSettings.memoInfo.muxedAddressInfo"),
+              },
+            ]
+          : []),
       ],
     },
     {

@@ -671,9 +671,11 @@
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
       "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient.",
-      "sorobanInfo": "Memo is not allowed on Soroban transactions, such as collectible transfers or \"C\" addresses.",
-      "sorobanNoteTransaction": "Memo not allowed for Soroban transactions",
-      "sorobanNoteCollectible": "Memo is not allowed for collectible transfers"
+      "sorobanInfo": "Memo is not allowed on Soroban transactions, such as collectible transfers or \"C\" addresses, unless using a muxed address (M... format).",
+      "sorobanNoteTransaction": "Make sure the target destination supports memo.",
+      "sorobanNoteCollectible": "Make sure the target destination supports memo.",
+      "muxedAddressInfo": "As of CAP-0067, Soroban transfers support memo through muxed addresses (M... format). The memo will be embedded in the destination address. Note: Some exchanges may not yet support muxed addresses for deposits.",
+      "memoNotAllowedForMuxed": "Memo is not allowed for muxed addresses."
     },
     "slippageInfo": {
       "title": "Allowed slippage",

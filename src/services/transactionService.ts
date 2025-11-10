@@ -18,11 +18,18 @@ import {
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
-import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
+import {
+  isValidStellarAddress,
+  isSameAccount,
+  createMuxedAccount,
+  getBaseAccount,
+  isMuxedAccount,
+} from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
@@ -253,6 +260,10 @@ interface IBuildSorobanTransferOperation {
 
 /**
  * Builds a Soroban token transfer operation for sending to contract addresses
+ * Supports muxed addresses (M... format) for CAP-0067 memo support
+ *
+ * @param params Transfer operation parameters
+ * @returns TransactionBuilder with the transfer operation added
  */
 export const buildSorobanTransferOperation = (
   params: IBuildSorobanTransferOperation,
@@ -296,6 +307,7 @@ interface BuildPaymentTransactionResult {
   tx: Transaction;
   xdr: string;
   contractId?: string;
+  finalDestination?: string; // The actual destination used (may be muxed if memo was provided)
 }
 
 /**
@@ -362,6 +374,22 @@ export const buildPaymentTransaction = async (
         ? getContractIdForNativeToken(network)
         : recipientAddress;
 
+      // For CAP-0067: If memo is provided for Soroban transfer, create muxed address
+      let finalDestination = recipientAddress;
+      if (memo) {
+        // Extract base account if recipient is already muxed
+        const baseAccount = isMuxedAccount(recipientAddress)
+          ? getBaseAccount(recipientAddress)
+          : recipientAddress;
+
+        if (baseAccount) {
+          const muxedWithMemo = createMuxedAccount(baseAccount, memo);
+          if (muxedWithMemo) {
+            finalDestination = muxedWithMemo;
+          }
+        }
+      }
+
       const decimals =
         "decimals" in selectedBalance
           ? selectedBalance.decimals
@@ -372,7 +400,7 @@ export const buildPaymentTransaction = async (
 
       buildSorobanTransferOperation({
         sourceAccount: senderAddress,
-        destinationAddress: recipientAddress,
+        destinationAddress: finalDestination,
         amount: amountInBaseUnits,
         token,
         transactionBuilder,
@@ -381,15 +409,30 @@ export const buildPaymentTransaction = async (
 
       const transaction = transactionBuilder.build();
 
-      return { tx: transaction, xdr: transaction.toXDR(), contractId };
+      return {
+        tx: transaction,
+        xdr: transaction.toXDR(),
+        contractId,
+        finalDestination, // Return the final destination (may be muxed)
+      };
     }
 
     const token = getTokenForPayment(selectedBalance);
 
+    // For classic payments, extract base account from muxed address if needed
+    // Classic operations don't support muxed addresses directly
+    let paymentDestination = recipientAddress;
+    if (isMuxedAccount(recipientAddress)) {
+      const baseAccount = getBaseAccount(recipientAddress);
+      if (baseAccount) {
+        paymentDestination = baseAccount;
+      }
+    }
+
     // Check if destination is funded, but only for XLM transfers
     if (token.isNative()) {
       try {
-        await server.loadAccount(recipientAddress);
+        await server.loadAccount(paymentDestination);
       } catch (e) {
         const error = e as AxiosError;
 
@@ -401,14 +444,18 @@ export const buildPaymentTransaction = async (
 
           transactionBuilder.addOperation(
             Operation.createAccount({
-              destination: recipientAddress,
+              destination: paymentDestination, // Use base account for operation
               startingBalance: amount,
             }),
           );
 
           const transaction = transactionBuilder.build();
 
-          return { tx: transaction, xdr: transaction.toXDR() };
+          return {
+            tx: transaction,
+            xdr: transaction.toXDR(),
+            finalDestination: recipientAddress, // Keep original muxed address for tracking
+          };
         }
 
         throw error;
@@ -418,14 +465,19 @@ export const buildPaymentTransaction = async (
     // If account is funded or asset is not XLM, use standard payment
     transactionBuilder.addOperation(
       Operation.payment({
-        destination: recipientAddress,
+        destination: paymentDestination, // Use base account for operation
         asset: token,
         amount,
       }),
     );
 
     const transaction = transactionBuilder.build();
-    return { tx: transaction, xdr: transaction.toXDR() };
+
+    return {
+      tx: transaction,
+      xdr: transaction.toXDR(),
+      finalDestination: recipientAddress, // Keep original muxed address for tracking
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -516,6 +568,7 @@ export const buildSwapTransaction = async (
 interface BuildSendCollectibleTransactionResult {
   tx: Transaction;
   xdr: string;
+  finalDestination?: string;
 }
 
 /**
@@ -532,6 +585,7 @@ export const buildSendCollectibleTransaction = async (
     network,
     recipientAddress,
     senderAddress,
+    transactionMemo,
   } = params;
 
   try {
@@ -560,15 +614,46 @@ export const buildSendCollectibleTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
+    // For CAP-0067: If memo is provided for collectible transfer, create muxed address
+    // Note: If destination is already muxed, memo is ignored (either-or situation)
+    let finalDestination = recipientAddress;
+    const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
+
+    // Only create muxed address if:
+    // 1. Recipient is NOT already muxed (G or C address)
+    // 2. A valid memo is provided
+    if (!isRecipientAlreadyMuxed) {
+      const hasValidMemo =
+        transactionMemo &&
+        typeof transactionMemo === "string" &&
+        transactionMemo.length > 0;
+
+      if (hasValidMemo) {
+        const muxedWithMemo = createMuxedAccount(
+          recipientAddress,
+          transactionMemo,
+        );
+        if (muxedWithMemo) {
+          finalDestination = muxedWithMemo;
+        }
+      }
+    }
+
     const transferParams = [
-      new Address(senderAddress).toScVal(), // from
-      new Address(recipientAddress).toScVal(), // to
-      xdr.ScVal.scvU32(tokenId), // token_id
+      new Address(senderAddress).toScVal(),
+      new Address(finalDestination).toScVal(),
+      xdr.ScVal.scvU32(tokenId),
     ];
+
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
 
     const transaction = txBuilder.build();
-    return { tx: transaction, xdr: transaction.toXDR() };
+
+    return {
+      tx: transaction,
+      xdr: transaction.toXDR(),
+      finalDestination,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -606,14 +691,18 @@ export const simulateContractTransfer = async ({
   }
 
   try {
+    // Note: If destination is already muxed (from buildPaymentTransaction),
+    // it will be passed through here. The memo parameter is kept for backward compatibility
+    // but for CAP-0067, memo should be embedded in the muxed address.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,
-      memo,
+      memo, // This may be redundant if destination is muxed, but kept for compatibility
       params,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
     });
+
     return result.preparedTx.toXDR();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -643,11 +732,49 @@ export const simulateCollectibleTransfer = async ({
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
     });
+
     return result.preparedTransaction;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
+    // Handle ApiError structure from apiFactory - data can be string or object
+    let errorData: string | null = null;
+    if (error && typeof error === "object" && "data" in error) {
+      const data = (error as { data?: unknown }).data;
+      if (typeof data === "string") {
+        errorData = data;
+      } else if (data) {
+        // Try to stringify if it's an object
+        try {
+          errorData = JSON.stringify(data, null, 2);
+        } catch {
+          errorData = String(data);
+        }
+      }
+    }
+    // Also check if error message itself contains the data (sometimes it's nested)
+    const errorString = JSON.stringify(error, null, 2);
+    // Combine message, data, and stringified error for comprehensive error detection
+    const fullErrorText = [errorMessage, errorData, errorString]
+      .filter(Boolean)
+      .join(" ");
+
+    // Check if error is related to muxed address support
+    const isMuxedAddressError =
+      fullErrorText.includes("UnreachableCodeReached") ||
+      fullErrorText.includes("Unreachable") ||
+      fullErrorText.includes("muxed") ||
+      fullErrorText.includes("Muxed") ||
+      fullErrorText.includes("scAddressTypeMuxedAccount") ||
+      fullErrorText.includes("MuxedAccount") ||
+      fullErrorText.includes("InvalidAction");
+
     analytics.trackSimulationError(errorMessage, "collectible_transfer");
+
+    // Attach the muxed address error flag to the error object so the transaction builder can detect it
+    if (isMuxedAddressError && error && typeof error === "object") {
+      (error as { isMuxedAddressError?: boolean }).isMuxedAddressError = true;
+    }
 
     throw error;
   }

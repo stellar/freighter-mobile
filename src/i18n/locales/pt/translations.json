@@ -635,9 +635,11 @@
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
-      "sorobanInfo": "Memo não é permitido em transações Soroban, como transferências de colecionáveis ou endereços \"C\".",
-      "sorobanNoteTransaction": "Memo não permitido para transações Soroban",
-      "sorobanNoteCollectible": "Memo não é permitido para transferências de colecionáveis"
+      "sorobanInfo": "Memo não é permitido em transações Soroban, como transferências de colecionáveis ou endereços \"C\", a menos que seja usado um endereço muxed (formato M...).",
+      "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
+      "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
+      "muxedAddressInfo": "A partir do CAP-0067, transferências Soroban suportam memo através de endereços muxed (formato M...). O memo será incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
+      "memoNotAllowedForMuxed": "Memo não é permitido para endereços muxed."
     },
     "slippageInfo": {
       "title": "Deslizamento permitido",

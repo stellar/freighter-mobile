@@ -1,4 +1,4 @@
-import { MuxedAccount, StrKey } from "@stellar/stellar-sdk";
+import { Account, MuxedAccount, StrKey } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 
@@ -38,6 +38,63 @@ export const getBaseAccount = (muxedAddress: string): string | null => {
   } catch (error) {
     logger.error("StellarHelper", "Error extracting base account:", error);
 
+    return null;
+  }
+};
+
+/**
+ * Creates a muxed account address from a base account and a muxed ID (memo)
+ * This is used for CAP-0067 to support memo in Soroban transfers
+ *
+ * @param baseAccount The base ED25519 account (G...)
+ * @param muxedId The muxed ID (memo) as a string or number
+ * @returns The muxed account address (M...) or null if conversion fails
+ */
+export const createMuxedAccount = (
+  baseAccount: string,
+  muxedId: string | number,
+): string | null => {
+  try {
+    if (!StrKey.isValidEd25519PublicKey(baseAccount)) {
+      logger.error(
+        "StellarHelper",
+        "Invalid base account for muxed account creation",
+        { baseAccount },
+      );
+      return null;
+    }
+
+    // Create a minimal Account object for MuxedAccount constructor
+    const account = new Account(baseAccount, "0");
+    const muxedAccount = new MuxedAccount(account, String(muxedId));
+    const muxedAddress = muxedAccount.accountId();
+
+    return muxedAddress;
+  } catch (error) {
+    logger.error("StellarHelper", "Error creating muxed account", error, {
+      baseAccount,
+      muxedId: String(muxedId),
+    });
+    return null;
+  }
+};
+
+/**
+ * Gets the muxed ID from a muxed account address
+ *
+ * @param muxedAddress The muxed account address (M...)
+ * @returns The muxed ID (memo) as a string or null if extraction fails
+ */
+export const getMuxedId = (muxedAddress: string): string | null => {
+  try {
+    if (!isMuxedAccount(muxedAddress)) {
+      return null;
+    }
+    const mAccount = MuxedAccount.fromAddress(muxedAddress, "0");
+    const muxedId = mAccount.id();
+
+    return muxedId;
+  } catch (error) {
     return null;
   }
 };

@@ -207,12 +207,14 @@ const SendCollectibleReviewScreen: React.FC<
           senderAddress: publicKey,
         });
 
-        if (!xdr) return;
+        if (!xdr) {
+          return;
+        }
 
         if (shouldOpenReview) {
           scanTransaction(xdr, "internal")
             .then((scanResult) => {
-              logger.info("TransactionAmountScreen", "scanResult", scanResult);
+              logger.info("SendCollectibleReview", "scanResult", scanResult);
               setTransactionScanResult(scanResult);
             })
             .catch(() => {
@@ -224,8 +226,8 @@ const SendCollectibleReviewScreen: React.FC<
         }
       } catch (error) {
         logger.error(
-          "TransactionAmountScreen",
-          "Failed to build transaction:",
+          "SendCollectibleReview",
+          "Failed to build collectible transaction",
           error,
         );
       }
