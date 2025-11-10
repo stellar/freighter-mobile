@@ -314,7 +314,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             )}
           {type === SendType.Collectible && selectedCollectible && (
             <View className="w-full flex-row items-center gap-[16px]">
-              <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
+              <View className="w-[40px] h-[40px] rounded-[8px] bg-background-tertiary overflow-hidden">
                 <CollectibleImage
                   imageUri={selectedCollectible?.image}
                   placeholderIconSize={25}

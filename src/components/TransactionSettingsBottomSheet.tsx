@@ -30,7 +30,7 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
@@ -76,7 +76,12 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
-  const fee = context === TransactionContext.Swap ? swapFee : transactionFee;
+  const storeFee =
+    context === TransactionContext.Swap ? swapFee : transactionFee;
+  const fee =
+    storeFee === MIN_TRANSACTION_FEE && recommendedFee
+      ? recommendedFee
+      : storeFee;
   const timeout =
     context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
   const slippage = context === TransactionContext.Swap ? swapSlippage : 1;
@@ -95,14 +100,19 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(
-    formatNumberForDisplay(fee ?? recommendedFee),
-  );
+  const [localFee, setLocalFee] = useState(formatNumberForDisplay(fee));
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
+
+  useEffect(() => {
+    if (recommendedFee && storeFee === MIN_TRANSACTION_FEE) {
+      // visual only -> Fee is set on SendCollectibleReview, and TransactionAmountScreen when first opened. Only saved to store if "Save" is pressed
+      setLocalFee(formatNumberForDisplay(recommendedFee));
+    }
+  }, [recommendedFee, storeFee]);
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
