@@ -151,12 +151,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveSelectedTokenId("");
       saveRecipientAddress("");
       resetSendRecipient();
+      resetSettings();
     },
     [
       resetTransaction,
       saveSelectedTokenId,
       saveRecipientAddress,
       resetSendRecipient,
+      resetSettings,
     ],
   );
 
@@ -167,7 +169,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { recommendedFee } = useNetworkFees();
 
   useEffect(() => {
-    // Set here instead of review screen to calculate the max spendable. Unchanged afterwards for consistency. Only reset when a transaction is completed (resetSettings)
+    // Set here instead of review screen to calculate the max spendable
     if (recommendedFee && transactionFee === MIN_TRANSACTION_FEE) {
       saveTransactionFee(recommendedFee);
     }
