@@ -526,8 +526,6 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          {/* className="w-full rounded-[32px] overflow-hidden mt-2 mb-6"
-        style={{ height: windowWidth - 2 * pxValue(DEFAULT_PADDING) }} */}
           <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
