@@ -20,7 +20,6 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
-  MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
   SWAP_SELECTION_TYPES,
   TransactionContext,
@@ -47,6 +46,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
@@ -81,8 +81,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapSlippage, resetToDefaults, saveSwapFee } =
-    useSwapSettingsStore();
+  const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
@@ -262,11 +261,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
-  useEffect(() => {
-    if (recommendedFee && swapFee === MIN_TRANSACTION_FEE) {
-      saveSwapFee(recommendedFee);
-    }
-  }, [recommendedFee, swapFee, saveSwapFee]);
+  // Initialize fee if default (handles automatic initialization for current flow)
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
 
   useEffect(() => {
     if (swapError) {

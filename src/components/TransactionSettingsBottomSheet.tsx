@@ -25,12 +25,13 @@ import {
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
@@ -69,6 +70,11 @@ const TransactionSettingsBottomSheet: React.FC<
     saveSwapSlippage,
   } = useSwapSettingsStore();
 
+  const { markAsManuallyChanged } = useInitialRecommendedFee(
+    recommendedFee,
+    context,
+  );
+
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -78,6 +84,7 @@ const TransactionSettingsBottomSheet: React.FC<
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
   const storeFee =
     context === TransactionContext.Swap ? swapFee : transactionFee;
+  // Use recommended fee if store fee is at default (visual only)
   const fee =
     storeFee === MIN_TRANSACTION_FEE && recommendedFee
       ? recommendedFee
@@ -106,13 +113,6 @@ const TransactionSettingsBottomSheet: React.FC<
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
-
-  useEffect(() => {
-    if (recommendedFee && storeFee === MIN_TRANSACTION_FEE) {
-      // visual only -> Fee is set on SendCollectibleReview, and TransactionAmountScreen when first opened. Only saved to store if "Save" is pressed
-      setLocalFee(formatNumberForDisplay(recommendedFee));
-    }
-  }, [recommendedFee, storeFee]);
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
@@ -231,8 +231,10 @@ const TransactionSettingsBottomSheet: React.FC<
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
       saveSlippage(Number(parseDisplayNumber(localSlippage))),
-    [TransactionSetting.Fee]: () =>
-      saveFee(parseDisplayNumber(localFee).toString()),
+    [TransactionSetting.Fee]: () => {
+      markAsManuallyChanged();
+      saveFee(parseDisplayNumber(localFee).toString());
+    },
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
   };
 
@@ -365,11 +367,12 @@ const TransactionSettingsBottomSheet: React.FC<
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={() =>
+            onPress={() => {
+              markAsManuallyChanged();
               setLocalFee(
                 formatNumberForDisplay(recommendedFee || MIN_TRANSACTION_FEE),
-              )
-            }
+              );
+            }}
           >
             <Text sm medium color={themeColors.lilac[11]}>
               {t("transactionSettings.resetFee")}
@@ -421,6 +424,7 @@ const TransactionSettingsBottomSheet: React.FC<
       getLocalizedCongestionLevel,
       handleFeeChange,
       recommendedFee,
+      markAsManuallyChanged,
     ],
   );
 

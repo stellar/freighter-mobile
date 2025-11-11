@@ -29,7 +29,6 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   FIAT_DECIMALS,
-  MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
@@ -54,6 +53,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
@@ -103,7 +103,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveRecipientAddress,
     saveSelectedCollectibleDetails,
     resetSettings,
-    saveTransactionFee,
   } = useTransactionSettingsStore();
 
   const { resetSendRecipient } = useSendRecipientStore();
@@ -168,12 +167,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { scanTransaction } = useBlockaidTransaction();
   const { recommendedFee } = useNetworkFees();
 
-  useEffect(() => {
-    // Set here instead of review screen to calculate the max spendable
-    if (recommendedFee && transactionFee === MIN_TRANSACTION_FEE) {
-      saveTransactionFee(recommendedFee);
-    }
-  }, [recommendedFee, transactionFee, saveTransactionFee]);
+  // Initialize fee if default (handles automatic initialization for current flow)
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);

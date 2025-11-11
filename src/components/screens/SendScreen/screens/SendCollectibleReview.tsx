@@ -25,7 +25,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { MIN_TRANSACTION_FEE, TransactionContext } from "config/constants";
+import { TransactionContext } from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -44,6 +44,7 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -79,13 +80,8 @@ const SendCollectibleReviewScreen: React.FC<
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const {
-    recipientAddress,
-    saveSelectedCollectibleDetails,
-    resetSettings,
-    saveTransactionFee,
-    transactionFee,
-  } = useTransactionSettingsStore();
+  const { recipientAddress, saveSelectedCollectibleDetails, resetSettings } =
+    useTransactionSettingsStore();
   const { collections } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { resetSendRecipient } = useSendRecipientStore();
@@ -99,11 +95,8 @@ const SendCollectibleReviewScreen: React.FC<
 
   const { recommendedFee } = useNetworkFees();
 
-  useEffect(() => {
-    if (recommendedFee && transactionFee === MIN_TRANSACTION_FEE) {
-      saveTransactionFee(recommendedFee);
-    }
-  }, [recommendedFee, transactionFee, saveTransactionFee]);
+  // Initialize fee if default (handles automatic initialization for current flow)
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const {
     buildSendCollectibleTransaction,
