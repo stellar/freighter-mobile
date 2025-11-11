@@ -85,10 +85,6 @@ const TransactionSettingsBottomSheet: React.FC<
   const storeFee =
     context === TransactionContext.Swap ? swapFee : transactionFee;
 
-  const fee =
-    storeFee === MIN_TRANSACTION_FEE && recommendedFee
-      ? recommendedFee
-      : storeFee;
   const timeout =
     context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
   const slippage = context === TransactionContext.Swap ? swapSlippage : 1;
@@ -107,7 +103,7 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(formatNumberForDisplay(fee));
+  const [localFee, setLocalFee] = useState(formatNumberForDisplay(storeFee));
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
