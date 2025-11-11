@@ -44,6 +44,8 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import React, {
@@ -90,6 +92,10 @@ const SendCollectibleReviewScreen: React.FC<
       saveSelectedCollectibleDetails({ tokenId, collectionAddress });
     }
   }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
+
+  const { recommendedFee } = useNetworkFees();
+
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const {
     buildSendCollectibleTransaction,
@@ -512,7 +518,7 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-2xl bg-background-tertiary p-1">
+          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}

@@ -53,6 +53,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -148,12 +150,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveSelectedTokenId("");
       saveRecipientAddress("");
       resetSendRecipient();
+      resetSettings();
     },
     [
       resetTransaction,
       saveSelectedTokenId,
       saveRecipientAddress,
       resetSendRecipient,
+      resetSettings,
     ],
   );
 
@@ -161,6 +165,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
+  const { recommendedFee } = useNetworkFees();
+
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);

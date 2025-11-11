@@ -46,6 +46,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -98,6 +100,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     publicKey: account?.publicKey ?? "",
     network,
   });
+
+  const { recommendedFee } = useNetworkFees();
 
   const {
     sourceTokenId,
@@ -256,6 +260,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceAmount,
     setDestinationToken,
   ]);
+
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
 
   useEffect(() => {
     if (swapError) {
