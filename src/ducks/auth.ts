@@ -600,6 +600,44 @@ const appendAccount = async (account: Account) => {
 };
 
 /**
+ * Adds multiple accounts to the account list
+ *
+ * @param {Account[]} accounts - The accounts to add to the list
+ * @returns {Promise<void>}
+ */
+const appendAccounts = async (accounts: Account[]) => {
+  if (accounts.length === 0) {
+    return;
+  }
+
+  const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
+  const accountList = accountListRaw
+    ? (JSON.parse(accountListRaw) as Account[])
+    : [];
+
+  const knownAccountIds = new Set(accountList.map((item) => item.id));
+  const accountsToAdd: Account[] = [];
+
+  accounts.forEach((account) => {
+    if (knownAccountIds.has(account.id)) {
+      return;
+    }
+
+    knownAccountIds.add(account.id);
+    accountsToAdd.push(account);
+  });
+
+  if (accountsToAdd.length === 0) {
+    return;
+  }
+
+  await dataStorage.setItem(
+    STORAGE_KEYS.ACCOUNT_LIST,
+    JSON.stringify([...accountList, ...accountsToAdd]),
+  );
+};
+
+/**
  * Generate and store a unique hash key derived from the password
  *
  * Creates a hash key from the password using a random salt, sets an expiration
@@ -952,12 +990,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   const newAccounts = await Promise.all(prepareKeyStorePromises);
 
   // Add all accounts to the account list
-  const appendAccountPromises = newAccounts.map(({ account }) =>
-    appendAccount(account),
-  );
-
-  // Wait for all accounts to be added to the account list
-  await Promise.all(appendAccountPromises);
+  await appendAccounts(newAccounts.map(({ account }) => account));
 
   // Now update the temporary store with all new private keys at once
   const hashKey = await getHashKey();
