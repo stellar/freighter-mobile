@@ -1395,21 +1395,20 @@ const createAccount = async (password: string): Promise<void> => {
   // length considering ONLY the DERIVED accounts otherwise it could skip an
   // index by mistake if there are accounts imported from secret key in the way
   let index = derivedAccountsOnly.length;
-  let keyPair = deriveKeyPair({
-    mnemonicPhrase,
-    index,
-  });
-  let hasAccount = hasAccountInAccountList(allAccounts, keyPair);
-  let round = 0;
+  let round: number = 0;
+  let keyPair: KeyPair;
+  let hasAccount: boolean;
 
+  // The do {} block always executes at least once
   do {
-    index++;
     keyPair = deriveKeyPair({
       mnemonicPhrase,
       index,
     });
 
     hasAccount = hasAccountInAccountList(allAccounts, keyPair);
+
+    index++;
     round++;
   } while (hasAccount && round < 50);
 
