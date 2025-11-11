@@ -167,7 +167,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { scanTransaction } = useBlockaidTransaction();
   const { recommendedFee } = useNetworkFees();
 
-  // Initialize fee if default (handles automatic initialization for current flow)
   useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const publicKey = account?.publicKey;

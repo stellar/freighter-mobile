@@ -95,7 +95,6 @@ const SendCollectibleReviewScreen: React.FC<
 
   const { recommendedFee } = useNetworkFees();
 
-  // Initialize fee if default (handles automatic initialization for current flow)
   useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const {

@@ -84,7 +84,7 @@ const TransactionSettingsBottomSheet: React.FC<
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
   const storeFee =
     context === TransactionContext.Swap ? swapFee : transactionFee;
-  // Use recommended fee if store fee is at default (visual only)
+
   const fee =
     storeFee === MIN_TRANSACTION_FEE && recommendedFee
       ? recommendedFee

@@ -261,7 +261,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
-  // Initialize fee if default (handles automatic initialization for current flow)
   useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
 
   useEffect(() => {
