@@ -512,8 +512,8 @@
     "tokenAddressCopied": "Token address copied!",
     "moreInfo": {
       "title": "Manage Tokens",
-      "block1": "When you manage tokens on the Stellar blockchain, you're creating and controlling digital representations of value, such as currencies or tokens.",
-      "block2": "This involves setting up token approvals, which allow users to hold and trade your tokens, and configuring flags to control access and usage. By leveraging these features, you can securely issue, distribute, and manage your tokens while maintaining compliance and flexibility."
+      "block1": "When you manage tokens, you're choosing which tokens your wallet can hold and use on the Stellar network. For Stellar Classic, adding a token creates a trustline, allowing your wallet to recognize and interact with it. Soroban tokens don't use trustlines but can still be managed and accessed here.",
+      "block2": "Verified tokens come from trusted token lists from the ecosystem. Unverified tokens aren't included in those lists, so proceed with caution when adding or transacting with them."
     },
     "actions": {
       "copyAddress": "Copy address",
@@ -557,6 +557,8 @@
     "unableToScanToken": "Unable to scan token",
     "tokenAddress": "Token Address",
     "approveAnyway": "Approve anyway",
+    "verified": "Verified",
+    "unverified": "Unverified",
     "unableToScanBanner": "Unable to scan for malicious tokens",
     "toastSuccess": "{{tokenCode}} successfully added as a token",
     "toastError": "Error adding token {{tokenCode}}",
