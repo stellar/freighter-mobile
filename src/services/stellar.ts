@@ -131,7 +131,6 @@ export const submitTx = async (
 ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> => {
   const { network, tx } = input;
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
-  const server = stellarSdkServer(networkUrl);
 
   const transaction =
     typeof tx === "string"
@@ -143,9 +142,15 @@ export const submitTx = async (
   console.log("TRANSACTION", transaction);
 
   try {
+    const server = new Horizon.Server(networkUrl, {
+      allowHttp: getIsAllowHttp(networkUrl),
+    });
+
     submittedTx = await server.submitTransaction(transaction);
+    console.log("SUBMITTED", submittedTx);
+    return submittedTx;
   } catch (e: unknown) {
-    console.log("ERROR", e);
+    console.log("ERROR", JSON.stringify(e));
     if (isHorizonError(e) && e.response.status === 504) {
       // in case of 504, retry with exponential backoff up to max attempts
       // https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout

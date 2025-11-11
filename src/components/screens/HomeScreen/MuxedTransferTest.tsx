@@ -2,11 +2,10 @@ import { BigNumber } from "bignumber.js";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useToast } from "providers/ToastProvider";
 import React, { useState } from "react";
 import { View } from "react-native";
-import { signTransaction, submitTx } from "services/stellar";
-import { buildPaymentTransaction } from "services/transactionService";
 
 /**
  * Test component for muxed address Soroban transfer
@@ -17,7 +16,9 @@ import { buildPaymentTransaction } from "services/transactionService";
  */
 export const MuxedTransferTest: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { network, account } = useAuthenticationStore();
+  const { account, network } = useAuthenticationStore();
+  const { buildTransaction, signTransaction, submitTransaction } =
+    useTransactionBuilderStore();
   const { showToast } = useToast();
 
   // Hardcoded test values
@@ -68,13 +69,14 @@ export const MuxedTransferTest: React.FC = () => {
         symbol: "LFX",
       } as any;
 
-      // Build the transaction using buildPaymentTransaction directly
-      // This will detect it's a custom token and create the muxed address at the last step
-      const result = await buildPaymentTransaction({
+      // Build the transaction using the transaction builder store
+      // This will use buildPaymentTransaction which will detect it's a custom token
+      // and create the muxed address at the last step
+      const xdr = await buildTransaction({
         tokenAmount: AMOUNT,
         selectedBalance: mockBalance,
         recipientAddress: DESTINATION_ADDRESS, // Pass G address, memo will be added separately
-        transactionMemo: MEMO, // Pass memo - buildSorobanTransferOperation will create muxed address
+        transactionMemo: MEMO, // Pass memo - transaction service will create muxed address
         transactionFee: TRANSACTION_FEE,
         transactionTimeout: TRANSACTION_TIMEOUT,
         network,
@@ -82,40 +84,38 @@ export const MuxedTransferTest: React.FC = () => {
       });
 
       console.log("[MuxedTransferTest] Transaction built", {
-        hasXDR: !!result.xdr,
-        contractId: result.contractId,
-        finalDestination: result.finalDestination,
+        hasXDR: !!xdr,
       });
 
-      if (!result.xdr) {
+      if (!xdr) {
         throw new Error("Failed to build transaction");
       }
 
       // Sign the transaction
       const signedXDR = signTransaction({
-        tx: result.xdr,
         secretKey: account.privateKey,
         network,
       });
 
-      console.log("[MuxedTransferTest] Transaction signed", {
-        hasSignedXDR: !!signedXDR,
-      });
+      if (!signedXDR) {
+        throw new Error("Failed to sign transaction");
+      }
+
+      console.log("[MuxedTransferTest] Transaction signed");
 
       // Submit the transaction
-      const submitResult = await submitTx({
-        tx: signedXDR,
+      const hash = await submitTransaction({
         network,
       });
 
-      if (submitResult && submitResult.hash) {
+      if (hash) {
         console.log("[MuxedTransferTest] Transaction submitted successfully", {
-          hash: submitResult.hash,
+          hash,
         });
         showToast({
           variant: "success",
           title: "Test transfer successful!",
-          message: `Hash: ${submitResult.hash.substring(0, 8)}...`,
+          message: `Hash: ${hash.substring(0, 8)}...`,
           duration: 5000,
         });
       } else {
