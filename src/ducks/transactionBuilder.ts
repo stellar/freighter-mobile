@@ -139,6 +139,18 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const finalDestination =
           builtTxResult.finalDestination || params.recipientAddress!;
 
+        console.log(
+          "[TransactionBuilderStore] buildTransaction: Transaction built",
+          {
+            hasXDR: !!finalXdr,
+            finalDestination,
+            originalRecipient: params.recipientAddress,
+            isRecipientContract,
+            contractId: builtTxResult.contractId,
+            xdrLength: finalXdr?.length || 0,
+          },
+        );
+
         // If sending to a contract, prepare (simulate) the transaction
         if (isRecipientContract && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
@@ -368,11 +380,38 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({ isSubmitting: true, error: null, requestId: currentRequestId });
 
       try {
-        const { signedTransactionXDR } = get();
+        const { signedTransactionXDR, transactionXDR } = get();
+
+        console.log(
+          "[TransactionBuilderStore] submitTransaction: Starting submission",
+          {
+            hasSignedXDR: !!signedTransactionXDR,
+            hasXDR: !!transactionXDR,
+            network: params.network,
+            signedXdrLength: signedTransactionXDR?.length || 0,
+            xdrLength: transactionXDR?.length || 0,
+            requestId: currentRequestId,
+          },
+        );
 
         if (!signedTransactionXDR) {
+          console.error(
+            "[TransactionBuilderStore] submitTransaction: No signed transaction to submit",
+            {
+              signedTransactionXDR,
+              transactionXDR,
+            },
+          );
           throw new Error("No signed transaction to submit");
         }
+
+        console.log(
+          "[TransactionBuilderStore] submitTransaction: Calling submitTx",
+          {
+            network: params.network,
+            signedXdrLength: signedTransactionXDR.length,
+          },
+        );
 
         const result = await submitTx({
           tx: signedTransactionXDR,

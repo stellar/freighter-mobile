@@ -124,11 +124,142 @@ export const getContractSpecs = async ({
 
   const payload = response.data;
 
+  console.log("[BackendService] getContractSpecs: Response received", {
+    contractId,
+    hasPayload: !!payload,
+    hasPayloadData: !!payload?.data,
+    payloadKeys: payload ? Object.keys(payload) : [],
+    payloadDataKeys: payload?.data ? Object.keys(payload.data) : [],
+  });
+
   if (!payload || !payload.data) {
+    console.error(
+      "[BackendService] getContractSpecs: Invalid payload structure",
+      {
+        contractId,
+        payload,
+      },
+    );
     throw normalizeError(payload);
   }
 
-  return payload.data;
+  const specData = payload.data;
+  console.log("[BackendService] getContractSpecs: Returning spec data", {
+    contractId,
+    specDataKeys: Object.keys(specData),
+    hasDefinitions: !!specData.definitions,
+    definitionsKeys: specData.definitions
+      ? Object.keys(specData.definitions)
+      : [],
+  });
+
+  return specData;
+};
+
+/**
+ * Checks if a contract's transfer function supports muxed addresses (CAP-0067)
+ * by examining the contract specification.
+ *
+ * A contract supports muxed addresses if the transfer function has a `to_muxed` parameter.
+ * This is the CAP-0067 pattern where the transfer signature is:
+ * transfer(from: Address, to_muxed: MuxedAddress, amount: i128)
+ *
+ * @param contractId - The contract ID to check
+ * @param networkDetails - Network details
+ * @returns Promise resolving to true if contract supports muxed addresses, false otherwise
+ */
+export const checkContractSupportsMuxed = async ({
+  contractId,
+  networkDetails,
+}: {
+  contractId: string;
+  networkDetails: NetworkDetails;
+}): Promise<boolean> => {
+  try {
+    const spec = await getContractSpecs({ contractId, networkDetails });
+
+    console.log("[BackendService] checkContractSupportsMuxed: Spec received", {
+      contractId,
+      specKeys: Object.keys(spec || {}),
+      hasDefinitions: !!spec.definitions,
+      definitionsKeys: spec.definitions ? Object.keys(spec.definitions) : [],
+      transferDefExists: !!spec.definitions?.transfer,
+    });
+
+    // Check if transfer function exists
+    const transferDef = spec.definitions?.transfer;
+    if (!transferDef) {
+      console.log(
+        "[BackendService] checkContractSupportsMuxed: No transfer definition found",
+        {
+          contractId,
+          availableDefinitions: spec.definitions
+            ? Object.keys(spec.definitions)
+            : [],
+        },
+      );
+      return false;
+    }
+
+    // Get args properties and required array
+    const argsProperties = transferDef.properties?.args?.properties;
+    const required = transferDef.properties?.args?.required;
+
+    console.log(
+      "[BackendService] checkContractSupportsMuxed: Checking for to_muxed",
+      {
+        contractId,
+        hasArgsProperties: !!argsProperties,
+        argsPropertiesKeys: argsProperties ? Object.keys(argsProperties) : [],
+        hasToMuxedKey: argsProperties ? "to_muxed" in argsProperties : false,
+        toMuxedParam: argsProperties?.to_muxed,
+        toMuxedParamType: typeof argsProperties?.to_muxed,
+        required,
+        requiredIncludesToMuxed:
+          Array.isArray(required) && required.includes("to_muxed"),
+        fullArgsProperties: JSON.stringify(argsProperties, null, 2),
+      },
+    );
+
+    // Check if 'to_muxed' parameter exists in properties (CAP-0067 pattern)
+    // Use 'in' operator to check if key exists, regardless of value
+    if (argsProperties && "to_muxed" in argsProperties) {
+      console.log(
+        "[BackendService] checkContractSupportsMuxed: Found to_muxed in properties - contract supports muxed",
+        { contractId, toMuxedParam: argsProperties.to_muxed },
+      );
+      return true;
+    }
+
+    // Also check if to_muxed is in the required array (even if property doesn't exist)
+    if (Array.isArray(required) && required.includes("to_muxed")) {
+      console.log(
+        "[BackendService] checkContractSupportsMuxed: Found to_muxed in required array - contract supports muxed",
+        { contractId, required },
+      );
+      return true;
+    }
+
+    console.log(
+      "[BackendService] checkContractSupportsMuxed: No muxed support found",
+      {
+        contractId,
+        argsPropertiesKeys: transferDef.properties?.args?.properties
+          ? Object.keys(transferDef.properties.args.properties)
+          : [],
+        required,
+      },
+    );
+
+    return false;
+  } catch (error) {
+    // If we can't fetch the spec, assume no muxed support for safety
+    console.warn(
+      "[BackendService] Failed to check muxed support, assuming false",
+      { contractId, error },
+    );
+    return false;
+  }
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

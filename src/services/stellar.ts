@@ -140,9 +140,12 @@ export const submitTx = async (
 
   let submittedTx;
 
+  console.log("TRANSACTION", transaction);
+
   try {
     submittedTx = await server.submitTransaction(transaction);
   } catch (e: unknown) {
+    console.log("ERROR", e);
     if (isHorizonError(e) && e.response.status === 504) {
       // in case of 504, retry with exponential backoff up to max attempts
       // https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout

@@ -15,7 +15,9 @@ import {
   TransactionContext,
   TransactionSetting,
 } from "config/constants";
+import { mapNetworkToNetworkDetails } from "config/constants";
 import { NetworkCongestion } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
@@ -34,6 +36,7 @@ import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { checkContractSupportsMuxed } from "services/backend";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -78,6 +81,8 @@ const TransactionSettingsBottomSheet: React.FC<
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  const { network } = useAuthenticationStore();
+
   const isCollectibleTransfer =
     selectedCollectibleDetails?.collectionAddress &&
     selectedCollectibleDetails?.tokenId;
@@ -90,9 +95,85 @@ const TransactionSettingsBottomSheet: React.FC<
   const isDestinationMuxed =
     recipientAddress && isMuxedAccount(recipientAddress);
 
-  // If destination is already muxed, disable memo (memo is already embedded in the address)
-  // If destination is G or C, allow memo (will create muxed account on submit)
-  const isMemoDisabled = !!isDestinationMuxed;
+  // Check if contract supports muxed addresses (for Soroban transactions)
+  const [contractSupportsMuxed, setContractSupportsMuxed] = useState<
+    boolean | null
+  >(null);
+  const [isCheckingContract, setIsCheckingContract] = useState(false);
+
+  useEffect(() => {
+    const checkContract = async () => {
+      if (!isSorobanTransaction || !recipientAddress || !network) {
+        setContractSupportsMuxed(null);
+        return;
+      }
+
+      setIsCheckingContract(true);
+      try {
+        const networkDetails = mapNetworkToNetworkDetails(network);
+        let contractId: string;
+
+        if (isCollectibleTransfer) {
+          contractId = selectedCollectibleDetails?.collectionAddress || "";
+        } else if (isSorobanRecipient) {
+          contractId = recipientAddress;
+        } else {
+          setContractSupportsMuxed(null);
+          setIsCheckingContract(false);
+          return;
+        }
+
+        if (!contractId) {
+          setContractSupportsMuxed(null);
+          setIsCheckingContract(false);
+          return;
+        }
+
+        const supportsMuxed = await checkContractSupportsMuxed({
+          contractId,
+          networkDetails,
+        });
+        setContractSupportsMuxed(supportsMuxed);
+      } catch (error) {
+        console.warn(
+          "[TransactionSettingsBottomSheet] Failed to check contract muxed support",
+          error,
+        );
+        // On error, assume no support for safety
+        setContractSupportsMuxed(false);
+      } finally {
+        setIsCheckingContract(false);
+      }
+    };
+
+    void checkContract();
+  }, [
+    isSorobanTransaction,
+    recipientAddress,
+    network,
+    isCollectibleTransfer,
+    isSorobanRecipient,
+    selectedCollectibleDetails?.collectionAddress,
+  ]);
+
+  // Determine if memo should be disabled based on contract support
+  // Note: Even if user provides M address, we allow memo input - if they add a memo,
+  // we'll extract the base G address and rebuild a new muxed address with the new memo
+  let isMemoDisabled = false;
+  if (isSorobanTransaction) {
+    if (contractSupportsMuxed === null) {
+      // Still checking - disable memo temporarily to be safe
+      isMemoDisabled = true;
+    } else if (!contractSupportsMuxed) {
+      // Contract doesn't support muxed - always disable memo
+      isMemoDisabled = true;
+    }
+    // If contract supports muxed, allow memo even if user has M address
+    // (we'll extract base G and rebuild with new memo if needed)
+  } else {
+    // Classic transaction - memo is always allowed (handled separately)
+    isMemoDisabled = false;
+  }
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -124,7 +205,7 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
-  // Clear memo if destination is already muxed (memo is embedded in the address)
+  // Clear memo only if contract doesn't support muxed (not if user has M address)
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
       setLocalMemo("");
@@ -299,18 +380,19 @@ const TransactionSettingsBottomSheet: React.FC<
           error={memoError}
           editable={!isMemoDisabled}
           note={
-            isDestinationMuxed ? (
-              <View className="flex flex-row items-center gap-2 mt-1">
-                <Text sm secondary color={themeColors.status.warning}>
-                  {t("transactionSettings.memoInfo.memoNotAllowedForMuxed")}
-                </Text>
-              </View>
-            ) : isSorobanTransaction && localMemo ? (
+            isSorobanTransaction && localMemo ? (
               <View className="flex flex-row items-center gap-2 mt-1">
                 <Text sm secondary color={themeColors.status.warning}>
                   {isCollectibleTransfer
                     ? t("transactionSettings.memoInfo.sorobanNoteCollectible")
                     : t("transactionSettings.memoInfo.sorobanNoteTransaction")}
+                </Text>
+              </View>
+            ) : isDestinationMuxed && contractSupportsMuxed ? (
+              <View className="flex flex-row items-center gap-2 mt-1">
+                <Text sm secondary>
+                  {t("transactionSettings.memoInfo.muxedAddressInfo") ||
+                    "If you add a memo, a new muxed address will be created with the memo."}
                 </Text>
               </View>
             ) : undefined
@@ -328,6 +410,7 @@ const TransactionSettingsBottomSheet: React.FC<
       isSorobanTransaction,
       isCollectibleTransfer,
       isMemoDisabled,
+      contractSupportsMuxed,
     ],
   );
 
