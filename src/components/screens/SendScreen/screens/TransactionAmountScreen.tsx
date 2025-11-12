@@ -394,35 +394,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         const { privateKey } = account;
 
-        // Get fresh transaction XDR before signing
-        const { transactionXDR } = useTransactionBuilderStore.getState();
-        console.log(
-          "[TransactionAmountScreen] handleTransactionConfirmation: Before signing",
-          {
-            hasTransactionXDR: !!transactionXDR,
-            recipientAddress,
-            selectedBalanceTokenCode: selectedBalance.tokenCode,
-            network,
-            xdrLength: transactionXDR?.length || 0,
-          },
-        );
-
         signTransaction({
           secretKey: privateKey,
           network,
         });
-
-        // Get signed XDR before submission
-        const { signedTransactionXDR } = useTransactionBuilderStore.getState();
-        console.log(
-          "[TransactionAmountScreen] handleTransactionConfirmation: Before submitting",
-          {
-            hasSignedXDR: !!signedTransactionXDR,
-            recipientAddress,
-            network,
-            signedXdrLength: signedTransactionXDR?.length || 0,
-          },
-        );
 
         const success = await submitTransaction({
           network,

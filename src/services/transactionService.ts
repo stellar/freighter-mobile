@@ -18,7 +18,6 @@ import {
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
@@ -293,70 +292,59 @@ export const buildSorobanTransferOperation = (
     const contract = new Contract(contractId);
 
     // Determine final destination at the very last step - right before building the operation
-    // If contract supports muxed, recipient is G address, and memo exists, create muxed address
+    // Follow the behavior matrix for muxed address handling
     let finalDestination = destinationAddress;
     const isRecipientGAddress =
       isValidStellarAddress(destinationAddress) &&
       !isContractId(destinationAddress);
     const isRecipientAlreadyMuxed = isMuxedAccount(destinationAddress);
+    const hasValidMemo = memo && typeof memo === "string" && memo.length > 0;
 
-    if (contractSupportsMuxed && memo && isRecipientGAddress) {
-      // Extract base account if recipient is already muxed, otherwise use recipient as-is
-      const baseAccount = isRecipientAlreadyMuxed
-        ? getBaseAccount(destinationAddress)
-        : destinationAddress;
-
-      if (baseAccount && isValidStellarAddress(baseAccount) && !isContractId(baseAccount)) {
-        const muxedWithMemo = createMuxedAccount(baseAccount, memo);
+    if (contractSupportsMuxed) {
+      // Contract supports muxed addresses
+      if (isRecipientGAddress && hasValidMemo) {
+        // ✅ Yes + G/C + ✅ Yes → Create muxed with memo
+        const muxedWithMemo = createMuxedAccount(destinationAddress, memo);
         if (muxedWithMemo) {
           finalDestination = muxedWithMemo;
-          console.log(
-            "[TransactionService] buildSorobanTransferOperation: Created muxed address for transfer",
-            {
-              originalDestination: destinationAddress,
-              baseAccount,
-              muxedAddress: finalDestination,
-              memo,
-            },
-          );
-        } else {
-          console.warn(
-            "[TransactionService] buildSorobanTransferOperation: Failed to create muxed address, using base account",
-            { baseAccount },
-          );
         }
+      } else if (isRecipientGAddress && !hasValidMemo) {
+        // ✅ Yes + G/C + ❌ No → Use G/C as-is
+        finalDestination = destinationAddress;
+      } else if (isRecipientAlreadyMuxed && hasValidMemo) {
+        // ✅ Yes + M + ✅ Yes → Extract base G, create new muxed with new memo
+        const baseAccount = getBaseAccount(destinationAddress);
+        if (
+          baseAccount &&
+          isValidStellarAddress(baseAccount) &&
+          !isContractId(baseAccount)
+        ) {
+          const muxedWithNewMemo = createMuxedAccount(baseAccount, memo);
+          if (muxedWithNewMemo) {
+            finalDestination = muxedWithNewMemo;
+          }
+        }
+      } else if (isRecipientAlreadyMuxed && !hasValidMemo) {
+        // ✅ Yes + M + ❌ No → Use M address as-is
+        finalDestination = destinationAddress;
       }
-    } else if (isRecipientAlreadyMuxed && !memo) {
-      // User provided M address but no memo - use it as-is
-      finalDestination = destinationAddress;
-      console.log(
-        "[TransactionService] buildSorobanTransferOperation: Using provided muxed address as-is (no memo)",
-        { finalDestination },
-      );
-    } else if (!contractSupportsMuxed && isRecipientAlreadyMuxed) {
-      // Contract doesn't support muxed, extract base account
+    } else if (isRecipientAlreadyMuxed) {
+      // Contract doesn't support muxed addresses
+      // ❌ No + M → Extract base G (or error)
       const baseAccount = getBaseAccount(destinationAddress);
-      if (baseAccount) {
+      if (
+        baseAccount &&
+        isValidStellarAddress(baseAccount) &&
+        !isContractId(baseAccount)
+      ) {
         finalDestination = baseAccount;
-        console.log(
-          "[TransactionService] buildSorobanTransferOperation: Contract doesn't support muxed, extracting base account",
-          { baseAccount, originalMuxed: destinationAddress },
+      } else {
+        throw new Error(
+          "Contract does not support muxed addresses. Please use a regular address (G... or C...).",
         );
       }
+      // ❌ No + G/C + memo → Memo disabled in UI (shouldn't reach here with memo, but if it does, ignore it)
     }
-
-    console.log(
-      "[TransactionService] buildSorobanTransferOperation: Building transfer operation",
-      {
-        sourceAccount,
-        finalDestination,
-        originalDestination: destinationAddress,
-        amount,
-        contractId,
-        contractSupportsMuxed,
-        hasMemo: !!memo,
-      },
-    );
 
     const transaction = contract.call(
       "transfer",
@@ -447,36 +435,12 @@ export const buildPaymentTransaction = async (
     // Recipient being a contract address also uses Soroban transfer
     const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
 
-    console.log(
-      "[TransactionService] buildPaymentTransaction: Initial checks",
-      {
-        recipientAddress,
-        isToContractAddress,
-        isCustomToken,
-        shouldUseSorobanTransfer,
-        hasMemo: !!memo,
-        memo,
-        selectedBalanceTokenCode: selectedBalance.tokenCode,
-        contractId: isCustomToken ? selectedBalance.contractId : undefined,
-        network,
-      },
-    );
-
     // Only add memo for non-Soroban transactions
     if (memo && !shouldUseSorobanTransfer) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
 
     if (shouldUseSorobanTransfer) {
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Using Soroban transfer",
-        {
-          isCustomToken,
-          isToContractAddress,
-          recipientAddress,
-        },
-      );
-
       // Determine contract ID and token
       let contractId: string;
       let token: SdkToken;
@@ -504,73 +468,11 @@ export const buildPaymentTransaction = async (
         }
       }
 
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Contract ID determined",
-        {
-          contractId,
-          isNative: token.isNative(),
-          recipientAddress,
-        },
-      );
-
-      const networkDetails = mapNetworkToNetworkDetails(network);
-
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Checking if contract supports muxed addresses",
-        { contractId, network: networkDetails.network },
-      );
-
       // Check if contract supports muxed addresses (CAP-0067)
-      const contractSupportsMuxed = true;
-
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Contract muxed support check result",
-        {
-          contractId,
-          contractSupportsMuxed,
-          hasMemo: !!memo,
-          memo,
-        },
-      );
-
-      // For CAP-0067: Handle muxed addresses based on contract support
-      // We'll determine the final destination right before building the operation
-      const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
-      const isRecipientGAddress =
-        isValidStellarAddress(recipientAddress) &&
-        !isContractId(recipientAddress);
-
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Muxed address handling",
-        {
-          contractSupportsMuxed,
-          isRecipientAlreadyMuxed,
-          isRecipientGAddress,
-          recipientAddress,
-          hasMemo: !!memo,
-          memo,
-        },
-      );
-
-      if (!contractSupportsMuxed) {
-        // Contract doesn't support muxed addresses
-        if (isRecipientAlreadyMuxed) {
-          // User provided M address but contract doesn't support it - extract base account
-          const baseAccount = getBaseAccount(recipientAddress);
-          if (baseAccount) {
-            // Use base account, memo will be ignored
-            console.warn(
-              "[TransactionService] buildPaymentTransaction: Contract doesn't support muxed, extracting base account",
-              { baseAccount, originalMuxed: recipientAddress },
-            );
-          } else {
-            throw new Error(
-              "Contract does not support muxed addresses. Please use a regular address (G... or C...).",
-            );
-          }
-        }
-        // If recipient is G/C and contract doesn't support muxed, memo will be ignored (handled in UI)
-      }
+      const contractSupportsMuxed = await checkContractSupportsMuxed({
+        contractId,
+        networkDetails,
+      });
 
       const decimals =
         "decimals" in selectedBalance
@@ -580,99 +482,31 @@ export const buildPaymentTransaction = async (
         .shiftedBy(decimals)
         .toFixed(0);
 
-      // Determine final destination at the last step - right before building the operation
-      // If contract supports muxed, recipient is G address, and memo exists, create muxed address
-      let finalDestination = recipientAddress;
-
-      if (contractSupportsMuxed) {
-        const hasValidMemo =
-          memo && typeof memo === "string" && memo.length > 0;
-
-        if (hasValidMemo && isRecipientGAddress) {
-          // Extract base account if recipient is already muxed, otherwise use recipient as-is
-          const baseAccount = isRecipientAlreadyMuxed
-            ? getBaseAccount(recipientAddress)
-            : recipientAddress;
-
-          if (
-            baseAccount &&
-            isValidStellarAddress(baseAccount) &&
-            !isContractId(baseAccount)
-          ) {
-            const muxedWithMemo = createMuxedAccount(baseAccount, memo);
-            if (muxedWithMemo) {
-              finalDestination = muxedWithMemo;
-              console.log(
-                "[TransactionService] buildPaymentTransaction: Created muxed address for transfer",
-                {
-                  originalRecipient: recipientAddress,
-                  baseAccount,
-                  muxedAddress: finalDestination,
-                  memo,
-                },
-              );
-            } else {
-              console.warn(
-                "[TransactionService] buildPaymentTransaction: Failed to create muxed address, using base account",
-                { baseAccount },
-              );
-            }
-          }
-        } else if (isRecipientAlreadyMuxed && !hasValidMemo) {
-          // User provided M address but no memo - use it as-is
-          finalDestination = recipientAddress;
-          console.log(
-            "[TransactionService] buildPaymentTransaction: Using provided muxed address as-is (no memo)",
-            { finalDestination },
-          );
-        }
-      } else if (isRecipientAlreadyMuxed) {
-        // Contract doesn't support muxed, extract base account
-        const baseAccount = getBaseAccount(recipientAddress);
-        if (baseAccount) {
-          finalDestination = baseAccount;
-        }
-      }
-
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Building Soroban transfer operation",
-        {
-          sourceAccount: senderAddress,
-          destinationAddress: finalDestination,
-          amount: amountInBaseUnits,
-          contractId,
-          contractSupportsMuxed,
-          originalRecipient: recipientAddress,
-        },
-      );
-
+      // Muxed address creation happens at the very last step in buildSorobanTransferOperation
       buildSorobanTransferOperation({
         sourceAccount: senderAddress,
-        destinationAddress: finalDestination,
+        destinationAddress: recipientAddress, // Pass original recipient, muxing happens here
         amount: amountInBaseUnits,
         token,
         transactionBuilder,
         network,
+        memo, // Pass memo to buildSorobanTransferOperation
+        contractSupportsMuxed, // Pass contractSupportsMuxed to buildSorobanTransferOperation
       });
 
       const transaction = transactionBuilder.build();
       const transactionXDR = transaction.toXDR();
 
-      console.log(
-        "[TransactionService] buildPaymentTransaction: Transaction built successfully",
-        {
-          finalDestination,
-          contractId,
-          xdrLength: transactionXDR.length,
-          hasOperations: transaction.operations.length > 0,
-        },
-      );
+      // Note: finalDestination is determined in buildSorobanTransferOperation
+      // We need to track it, but since it's created at the last step, we'll use recipientAddress
+      // The actual muxed address is embedded in the transaction operation
+      const finalDestination = recipientAddress; // Original recipient, muxing happens in operation
 
       return {
         tx: transaction,
         xdr: transactionXDR,
         contractId,
-        finalDestination, // Return the final destination (may be muxed)
+        finalDestination,
       };
     }
 
@@ -874,51 +708,74 @@ export const buildSendCollectibleTransaction = async (
     });
 
     // Check if contract supports muxed addresses (CAP-0067)
+    // This is the same check done for custom tokens - collectibles are also Soroban transactions
     const contractSupportsMuxed = await checkContractSupportsMuxed({
       contractId: collectionAddress,
       networkDetails,
     });
 
     // For CAP-0067: Handle muxed addresses based on contract support
+    // Follow the behavior matrix for muxed address handling
     let finalDestination = recipientAddress;
+    const isRecipientGAddress =
+      isValidStellarAddress(recipientAddress) &&
+      !isContractId(recipientAddress);
     const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
+    const hasValidMemo =
+      transactionMemo &&
+      typeof transactionMemo === "string" &&
+      transactionMemo.length > 0;
 
-    if (!contractSupportsMuxed) {
-      // Contract doesn't support muxed addresses
-      if (isRecipientAlreadyMuxed) {
-        // User provided M address but contract doesn't support it - extract base account
-        const baseAccount = getBaseAccount(recipientAddress);
-        if (baseAccount) {
-          finalDestination = baseAccount;
-        } else {
-          throw new Error(
-            "This collectible contract does not support muxed addresses. Please use a regular address (G... or C...).",
-          );
-        }
-      }
-      // If recipient is G/C and contract doesn't support muxed, memo will be ignored (handled in UI)
-    } else {
+    if (contractSupportsMuxed) {
       // Contract supports muxed addresses
-      if (isRecipientAlreadyMuxed) {
-        // User already provided M address - use it as-is, memo is embedded
+      if (isRecipientGAddress && hasValidMemo) {
+        // ✅ Yes + G/C + ✅ Yes → Create muxed with memo
+        const muxedWithMemo = createMuxedAccount(
+          recipientAddress,
+          transactionMemo,
+        );
+        if (muxedWithMemo) {
+          finalDestination = muxedWithMemo;
+        }
+      } else if (isRecipientGAddress && !hasValidMemo) {
+        // ✅ Yes + G/C + ❌ No → Use G/C as-is
         finalDestination = recipientAddress;
-      } else {
-        // User provided G/C address - create muxed address if memo is provided
-        const hasValidMemo =
-          transactionMemo &&
-          typeof transactionMemo === "string" &&
-          transactionMemo.length > 0;
-
-        if (hasValidMemo) {
-          const muxedWithMemo = createMuxedAccount(
-            recipientAddress,
+      } else if (isRecipientAlreadyMuxed && hasValidMemo) {
+        // ✅ Yes + M + ✅ Yes → Extract base G, create new muxed with new memo
+        const baseAccount = getBaseAccount(recipientAddress);
+        if (
+          baseAccount &&
+          isValidStellarAddress(baseAccount) &&
+          !isContractId(baseAccount)
+        ) {
+          const muxedWithNewMemo = createMuxedAccount(
+            baseAccount,
             transactionMemo,
           );
-          if (muxedWithMemo) {
-            finalDestination = muxedWithMemo;
+          if (muxedWithNewMemo) {
+            finalDestination = muxedWithNewMemo;
           }
         }
+      } else if (isRecipientAlreadyMuxed && !hasValidMemo) {
+        // ✅ Yes + M + ❌ No → Use M address as-is
+        finalDestination = recipientAddress;
       }
+    } else if (isRecipientAlreadyMuxed) {
+      // Contract doesn't support muxed addresses
+      // ❌ No + M → Extract base G (or error)
+      const baseAccount = getBaseAccount(recipientAddress);
+      if (
+        baseAccount &&
+        isValidStellarAddress(baseAccount) &&
+        !isContractId(baseAccount)
+      ) {
+        finalDestination = baseAccount;
+      } else {
+        throw new Error(
+          "This collectible contract does not support muxed addresses. Please use a regular address (G... or C...).",
+        );
+      }
+      // ❌ No + G/C + memo → Memo disabled in UI (shouldn't reach here with memo, but if it does, ignore it)
     }
 
     const transferParams = [
@@ -1022,7 +879,7 @@ export const simulateCollectibleTransfer = async ({
     // Handle ApiError structure from apiFactory - data can be string or object
     let errorData: string | null = null;
     if (error && typeof error === "object" && "data" in error) {
-      const data = (error as { data?: unknown }).data;
+      const { data } = error as { data?: unknown };
       if (typeof data === "string") {
         errorData = data;
       } else if (data) {

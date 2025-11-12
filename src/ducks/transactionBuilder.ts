@@ -135,24 +135,22 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const isRecipientContract =
           params.recipientAddress && isContractId(params.recipientAddress);
 
+        // Check if this is a custom token (SorobanBalance with contractId)
+        const isCustomToken =
+          params.selectedBalance &&
+          "contractId" in params.selectedBalance &&
+          params.selectedBalance.contractId;
+
         // Use the final destination from buildPaymentTransaction if available (may be muxed)
         const finalDestination =
           builtTxResult.finalDestination || params.recipientAddress!;
 
-        console.log(
-          "[TransactionBuilderStore] buildTransaction: Transaction built",
-          {
-            hasXDR: !!finalXdr,
-            finalDestination,
-            originalRecipient: params.recipientAddress,
-            isRecipientContract,
-            contractId: builtTxResult.contractId,
-            xdrLength: finalXdr?.length || 0,
-          },
-        );
+        // If sending to a contract OR using a custom token, prepare (simulate) the transaction
+        // Custom tokens (SorobanBalance) always need simulation for proper fees and resources
+        const shouldSimulate =
+          (isRecipientContract || isCustomToken) && builtTxResult.contractId;
 
-        // If sending to a contract, prepare (simulate) the transaction
-        if (isRecipientContract && params.network && params.senderAddress) {
+        if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
 
           finalXdr = await simulateContractTransfer({
@@ -293,14 +291,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           senderAddress: params.senderAddress,
         });
 
-        console.log({ builtTxResult });
-
         if (!builtTxResult) {
           throw new Error("Failed to build send collectible transaction");
         }
 
         const networkDetails = mapNetworkToNetworkDetails(params.network);
 
+        // Simulate the collectible transfer transaction to get proper fees and resources
+        // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
+        // which checks contract muxed support and creates muxed addresses according to the behavior matrix
         const finalXdr = await simulateCollectibleTransfer({
           transactionXdr: builtTxResult.tx.toXDR(),
           networkDetails,
@@ -380,38 +379,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({ isSubmitting: true, error: null, requestId: currentRequestId });
 
       try {
-        const { signedTransactionXDR, transactionXDR } = get();
-
-        console.log(
-          "[TransactionBuilderStore] submitTransaction: Starting submission",
-          {
-            hasSignedXDR: !!signedTransactionXDR,
-            hasXDR: !!transactionXDR,
-            network: params.network,
-            signedXdrLength: signedTransactionXDR?.length || 0,
-            xdrLength: transactionXDR?.length || 0,
-            requestId: currentRequestId,
-          },
-        );
+        const { signedTransactionXDR } = get();
 
         if (!signedTransactionXDR) {
-          console.error(
-            "[TransactionBuilderStore] submitTransaction: No signed transaction to submit",
-            {
-              signedTransactionXDR,
-              transactionXDR,
-            },
-          );
           throw new Error("No signed transaction to submit");
         }
-
-        console.log(
-          "[TransactionBuilderStore] submitTransaction: Calling submitTx",
-          {
-            network: params.network,
-            signedXdrLength: signedTransactionXDR.length,
-          },
-        );
 
         const result = await submitTx({
           tx: signedTransactionXDR,

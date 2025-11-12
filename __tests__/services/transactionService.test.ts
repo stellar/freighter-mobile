@@ -42,6 +42,7 @@ jest.mock("i18next", () => ({
 
 jest.mock("services/backend", () => ({
   simulateTransaction: jest.fn(),
+  checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
 }));
 
 describe("buildSendCollectibleTransaction", () => {

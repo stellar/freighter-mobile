@@ -54,6 +54,9 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
 }));
+jest.mock("services/backend", () => ({
+  checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
+}));
 
 const mockUseTransactionSettingsStore =
   useTransactionSettingsStore as jest.MockedFunction<
@@ -302,7 +305,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     expect(memoInput.props.editable).toBe(false);
   });
 
-  it("should show warning note for Soroban transactions", () => {
+  it("should disable memo for Soroban contract addresses", async () => {
     const sorobanContractAddress =
       "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
     const mockState = createMockState({
@@ -314,7 +317,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       (address) => address === sorobanContractAddress,
     );
 
-    const { getByText } = renderWithProviders(
+    const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
         onCancel={mockOnCancel}
         onConfirm={mockOnConfirm}
@@ -323,9 +326,14 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    expect(
-      getByText("transactionSettings.memoInfo.sorobanNoteTransaction"),
-    ).toBeTruthy();
+    // Wait for async operations to complete
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      // Memo input should be disabled for contract addresses
+      expect(memoInput.props.editable).toBe(false);
+    });
   });
 
   it("should clear memo automatically for Soroban transactions", async () => {

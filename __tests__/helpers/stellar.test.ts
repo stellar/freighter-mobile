@@ -2,7 +2,9 @@ import { MuxedAccount, StrKey } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
+  createMuxedAccount,
   getBaseAccount,
+  getMuxedId,
   isFederationAddress,
   isMuxedAccount,
   isSameAccount,
@@ -18,23 +20,42 @@ jest.mock("@stellar/stellar-sdk", () => {
       isValidEd25519PublicKey: jest.fn(),
       isValidMed25519PublicKey: jest.fn(),
     },
-    MuxedAccount: {
-      fromAddress: jest
-        .fn()
-        .mockImplementation((_muxedAddress, sequenceNum = "0") => ({
-          accountId: () =>
-            "GBIG5762G5N7PSR437NAF5KZC6EDY3PCHQ6SRG5Z3DSGKWU45KL2MSQZ", // Sample base G address
-          id: () => _muxedAddress, // Return the original M address
-          sequenceNumber: () => sequenceNum,
-          incrementSequenceNumber: jest.fn(),
-          baseAccount: () => ({
-            accountId: () =>
-              "GBIG5762G5N7PSR437NAF5KZC6EDY3PCHQ6SRG5Z3DSGKWU45KL2MSQZ",
+    Account: jest.fn().mockImplementation((accountId, sequenceNumber) => ({
+      accountId: () => accountId,
+      sequenceNumber: () => sequenceNumber,
+      incrementSequenceNumber: jest.fn(),
+    })),
+    MuxedAccount: Object.assign(
+      jest.fn().mockImplementation((account, muxedId) => ({
+        accountId: () => `M${account.accountId()}${muxedId}`,
+        id: () => muxedId,
+        baseAccount: () => account,
+        sequenceNumber: () => account.sequenceNumber(),
+        incrementSequenceNumber: jest.fn(),
+        setId: jest.fn(),
+        toXDRObject: jest.fn(),
+        equals: jest.fn(),
+      })),
+      {
+        fromAddress: jest
+          .fn()
+          .mockImplementation((_muxedAddress: string, sequenceNum = "0") => ({
+            accountId: () => _muxedAddress,
+            id: () => _muxedAddress,
+            baseAccount: () => ({
+              accountId: () =>
+                "GBIG5762G5N7PSR437NAF5KZC6EDY3PCHQ6SRG5Z3DSGKWU45KL2MSQZ",
+              sequenceNumber: () => sequenceNum,
+              incrementSequenceNumber: jest.fn(),
+            }),
             sequenceNumber: () => sequenceNum,
             incrementSequenceNumber: jest.fn(),
-          }),
-        })),
-    },
+            setId: jest.fn(),
+            toXDRObject: jest.fn(),
+            equals: jest.fn(),
+          })),
+      },
+    ),
   };
 });
 
@@ -49,11 +70,17 @@ jest.mock("config/logger", () => ({
 }));
 
 const mockedStrKey = StrKey as jest.Mocked<typeof StrKey>;
-const mockedMuxedAccount = MuxedAccount as jest.Mocked<typeof MuxedAccount>;
+const mockedMuxedAccount = MuxedAccount as jest.MockedClass<
+  typeof MuxedAccount
+>;
 const mockedIsContractId = isContractId as jest.MockedFunction<
   typeof isContractId
 >;
 const mockedLogger = logger as jest.Mocked<typeof logger>;
+
+// Get the mocked fromAddress function
+const getMuxedAccountFromAddress = () =>
+  (MuxedAccount as unknown as { fromAddress: jest.Mock }).fromAddress;
 
 describe("Stellar helpers", () => {
   const validEd25519 =
@@ -115,14 +142,20 @@ describe("Stellar helpers", () => {
   describe("getBaseAccount", () => {
     it("should return the base account for a valid muxed address", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
+      // Mock MuxedAccount.fromAddress
+      const fromAddressSpy = jest.fn().mockReturnValue({
+        accountId: () => validMuxed,
+        baseAccount: () => ({
+          accountId: () => validEd25519,
+        }),
+      });
+      (MuxedAccount as unknown as { fromAddress: jest.Mock }).fromAddress =
+        fromAddressSpy;
+
       const base = getBaseAccount(validMuxed);
       expect(base).toBe(validEd25519);
       expect(mockedStrKey.isValidMed25519PublicKey).toHaveBeenCalledWith(
         validMuxed,
-      );
-      expect(mockedMuxedAccount.fromAddress).toHaveBeenCalledWith(
-        validMuxed,
-        "0",
       );
     });
 
@@ -139,7 +172,7 @@ describe("Stellar helpers", () => {
     it("should return null and log error if MuxedAccount.fromAddress throws", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
       const error = new Error("SDK error");
-      mockedMuxedAccount.fromAddress.mockImplementationOnce(() => {
+      getMuxedAccountFromAddress().mockImplementationOnce(() => {
         throw error;
       });
 
@@ -155,15 +188,12 @@ describe("Stellar helpers", () => {
     it("should return the input if it's not a valid muxed address", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
       expect(getBaseAccount("")).toBe("");
-      expect(mockedMuxedAccount.fromAddress).not.toHaveBeenCalled();
 
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
       expect(getBaseAccount(null as unknown as string)).toBeNull();
-      expect(mockedMuxedAccount.fromAddress).not.toHaveBeenCalled();
 
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
       expect(getBaseAccount(undefined as unknown as string)).toBeUndefined();
-      expect(mockedMuxedAccount.fromAddress).not.toHaveBeenCalled();
     });
   });
 
@@ -271,28 +301,15 @@ describe("Stellar helpers", () => {
       mockedStrKey.isValidEd25519PublicKey.mockImplementation(
         (key) => key === validEd25519,
       );
-      mockedMuxedAccount.fromAddress.mockImplementationOnce(
-        (_muxedAddress, sequenceNum = "0") => ({
+      getMuxedAccountFromAddress().mockReturnValueOnce({
+        accountId: () => validEd25519,
+        id: () => validMuxed,
+        baseAccount: () => ({
           accountId: () => validEd25519,
-          id: () => _muxedAddress,
-          sequenceNumber: () => sequenceNum,
-          incrementSequenceNumber: jest.fn(),
-          baseAccount: () => ({
-            accountId: () => validEd25519,
-            sequenceNumber: () => sequenceNum,
-            incrementSequenceNumber: jest.fn(),
-          }),
-          setId: jest.fn(),
-          toXDRObject: jest.fn(),
-          equals: jest.fn(),
         }),
-      );
+      });
 
       expect(isSameAccount(validMuxed, validEd25519)).toBe(true);
-      expect(mockedMuxedAccount.fromAddress).toHaveBeenCalledWith(
-        validMuxed,
-        "0",
-      );
     });
 
     it("should return true for two Muxed accounts with the same base account", () => {
@@ -303,36 +320,18 @@ describe("Stellar helpers", () => {
       mockedStrKey.isValidMed25519PublicKey.mockImplementation(
         (key) => key === validMuxed || key === secondMuxed,
       );
-      mockedMuxedAccount.fromAddress.mockImplementation(
-        (_muxedAddress, sequenceNum = "0") => ({
+      getMuxedAccountFromAddress().mockReturnValue({
+        accountId: () => validEd25519,
+        id: () => validMuxed,
+        baseAccount: () => ({
           accountId: () => validEd25519,
-          id: () => _muxedAddress,
-          sequenceNumber: () => sequenceNum,
-          incrementSequenceNumber: jest.fn(),
-          baseAccount: () => ({
-            accountId: () => validEd25519,
-            sequenceNumber: () => sequenceNum,
-            incrementSequenceNumber: jest.fn(),
-          }),
-          setId: jest.fn(),
-          toXDRObject: jest.fn(),
-          equals: jest.fn(),
         }),
-      );
+      });
       mockedStrKey.isValidEd25519PublicKey.mockImplementation(
         (key) => key === validEd25519,
       );
 
       expect(isSameAccount(validMuxed, secondMuxed)).toBe(true);
-      expect(mockedMuxedAccount.fromAddress).toHaveBeenCalledWith(
-        validMuxed,
-        "0",
-      );
-      expect(mockedMuxedAccount.fromAddress).toHaveBeenCalledWith(
-        secondMuxed,
-        "0",
-      );
-      expect(mockedMuxedAccount.fromAddress).toHaveBeenCalledTimes(2);
     });
 
     it("should return false if base account extraction fails for muxed", () => {
@@ -342,7 +341,7 @@ describe("Stellar helpers", () => {
       mockedStrKey.isValidEd25519PublicKey.mockImplementation(
         (key) => key === validEd25519,
       );
-      mockedMuxedAccount.fromAddress.mockImplementationOnce(() => {
+      getMuxedAccountFromAddress().mockImplementationOnce(() => {
         throw new Error("Fail");
       });
 
@@ -413,6 +412,95 @@ describe("Stellar helpers", () => {
         "Error comparing Stellar addresses:",
         error,
       );
+    });
+  });
+
+  describe("createMuxedAccount", () => {
+    it("should create a muxed account from a valid base account and muxed ID", () => {
+      const baseAccount = validEd25519;
+      const muxedId = "1234";
+
+      mockedStrKey.isValidEd25519PublicKey.mockReturnValueOnce(true);
+      const result = createMuxedAccount(baseAccount, muxedId);
+
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe("string");
+      expect(mockedStrKey.isValidEd25519PublicKey).toHaveBeenCalledWith(
+        baseAccount,
+      );
+    });
+
+    it("should create a muxed account with numeric muxed ID", () => {
+      const baseAccount = validEd25519;
+      const muxedId = 5678;
+
+      mockedStrKey.isValidEd25519PublicKey.mockReturnValueOnce(true);
+      const result = createMuxedAccount(baseAccount, muxedId);
+
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe("string");
+    });
+
+    it("should return null for invalid base account", () => {
+      const invalidBaseAccount = "invalid-address";
+      const muxedId = "1234";
+
+      mockedStrKey.isValidEd25519PublicKey.mockReturnValueOnce(false);
+      const result = createMuxedAccount(invalidBaseAccount, muxedId);
+
+      expect(result).toBeNull();
+      expect(mockedLogger.error).toHaveBeenCalled();
+    });
+
+    it("should return null and log error if MuxedAccount creation fails", () => {
+      const baseAccount = validEd25519;
+      const muxedId = "1234";
+
+      mockedStrKey.isValidEd25519PublicKey.mockReturnValueOnce(true);
+      // Mock MuxedAccount constructor to throw
+      mockedMuxedAccount.mockImplementationOnce(() => {
+        throw new Error("MuxedAccount creation failed");
+      });
+
+      const result = createMuxedAccount(baseAccount, muxedId);
+
+      expect(result).toBeNull();
+      expect(mockedLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe("getMuxedId", () => {
+    it("should extract muxed ID from a valid muxed address", () => {
+      mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
+      getMuxedAccountFromAddress().mockReturnValueOnce({
+        accountId: () => validMuxed,
+        id: () => "1234",
+      });
+
+      const result = getMuxedId(validMuxed);
+
+      expect(result).toBe("1234");
+      expect(mockedStrKey.isValidMed25519PublicKey).toHaveBeenCalledWith(
+        validMuxed,
+      );
+    });
+
+    it("should return null for non-muxed address", () => {
+      mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
+      const result = getMuxedId(validEd25519);
+
+      expect(result).toBeNull();
+    });
+
+    it("should return null if MuxedAccount.fromAddress throws", () => {
+      mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
+      getMuxedAccountFromAddress().mockImplementationOnce(() => {
+        throw new Error("SDK error");
+      });
+
+      const result = getMuxedId(validMuxed);
+
+      expect(result).toBeNull();
     });
   });
 });

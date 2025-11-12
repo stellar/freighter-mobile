@@ -137,20 +137,14 @@ export const submitTx = async (
       ? TransactionBuilder.fromXDR(tx, networkPassphrase)
       : tx;
 
-  let submittedTx;
-
-  console.log("TRANSACTION", transaction);
-
   try {
     const server = new Horizon.Server(networkUrl, {
       allowHttp: getIsAllowHttp(networkUrl),
     });
 
-    submittedTx = await server.submitTransaction(transaction);
-    console.log("SUBMITTED", submittedTx);
+    const submittedTx = await server.submitTransaction(transaction);
     return submittedTx;
   } catch (e: unknown) {
-    console.log("ERROR", JSON.stringify(e));
     if (isHorizonError(e) && e.response.status === 504) {
       // in case of 504, retry with exponential backoff up to max attempts
       // https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/timeout
@@ -165,9 +159,6 @@ export const submitTx = async (
     }
     throw e;
   }
-
-  console.log("SUBMITTED", submittedTx);
-  return submittedTx;
 };
 
 export const getNetworkFees = async (server: Horizon.Server) => {

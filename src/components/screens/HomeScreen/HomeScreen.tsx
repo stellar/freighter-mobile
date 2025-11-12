@@ -6,7 +6,6 @@ import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigge
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
-import { MuxedTransferTest } from "components/screens/HomeScreen/MuxedTransferTest";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -304,9 +303,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 />
               </View>
               <View className="w-full border-b mb-4 border-border-primary" />
-
-              {/* Muxed Transfer Test - Development Only */}
-              <MuxedTransferTest />
             </View>
           }
           ListFooterComponent={
