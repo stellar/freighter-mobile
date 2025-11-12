@@ -25,11 +25,7 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
-import {
-  getMuxedId,
-  isMuxedAccount,
-  isValidStellarAddress,
-} from "helpers/stellar";
+import { isMuxedAccount, isValidStellarAddress } from "helpers/stellar";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -58,6 +54,60 @@ type TransactionSettingsBottomSheetProps = {
 
 // Constants
 const STEP_SIZE_PERCENT = 0.5;
+
+const getMemoDisabledState = (
+  isSorobanTransaction: boolean,
+  isSorobanRecipient: boolean,
+  isRecipientGOrMAddress: boolean,
+  contractSupportsMuxed: boolean | null,
+  isDestinationMuxed: boolean,
+  t: ReturnType<typeof useAppTranslation>["t"],
+): { isMemoDisabled: boolean; memoDisabledMessage: string | undefined } => {
+  if (!isSorobanTransaction) {
+    return { isMemoDisabled: false, memoDisabledMessage: undefined };
+  }
+
+  if (isSorobanRecipient) {
+    return {
+      isMemoDisabled: true,
+      memoDisabledMessage: t(
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ),
+    };
+  }
+
+  if (!isRecipientGOrMAddress) {
+    return {
+      isMemoDisabled: true,
+      memoDisabledMessage: t(
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ),
+    };
+  }
+
+  if (contractSupportsMuxed === null) {
+    return { isMemoDisabled: true, memoDisabledMessage: undefined };
+  }
+
+  if (contractSupportsMuxed === false) {
+    if (isDestinationMuxed) {
+      return {
+        isMemoDisabled: true,
+        memoDisabledMessage: t(
+          "transactionSettings.memoInfo.muxedNotSupportedBaseGWillBeUsed",
+        ),
+      };
+    }
+    return {
+      isMemoDisabled: true,
+      memoDisabledMessage: t(
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ),
+    };
+  }
+
+  return { isMemoDisabled: false, memoDisabledMessage: undefined };
+};
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
@@ -103,32 +153,38 @@ const TransactionSettingsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
-  const isCustomToken =
+  const isCustomToken = Boolean(
     selectedBalance &&
-    "contractId" in selectedBalance &&
-    selectedBalance.contractId;
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId),
+  );
 
   const isCollectibleTransfer =
-    selectedCollectibleDetails?.collectionAddress &&
-    selectedCollectibleDetails?.tokenId;
+    Boolean(selectedCollectibleDetails?.collectionAddress) &&
+    Boolean(selectedCollectibleDetails?.tokenId);
 
-  const isSorobanRecipient = recipientAddress && isContractId(recipientAddress);
+  const isSorobanRecipient = Boolean(
+    recipientAddress && isContractId(recipientAddress),
+  );
 
   // Soroban transaction: collectible transfer, custom token, or recipient is contract address
-  const isSorobanTransaction =
-    isCollectibleTransfer || isCustomToken || isSorobanRecipient;
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
+  );
 
   // Check if destination is a G or M address (not C address)
   // C addresses (contract addresses) cannot be muxed
-  const isRecipientGOrMAddress =
+  const isRecipientGOrMAddress = Boolean(
     recipientAddress &&
-    !isContractId(recipientAddress) &&
-    (isValidStellarAddress(recipientAddress) ||
-      isMuxedAccount(recipientAddress));
+      !isContractId(recipientAddress) &&
+      (isValidStellarAddress(recipientAddress) ||
+        isMuxedAccount(recipientAddress)),
+  );
 
   // Check if destination is already a muxed account (M address)
-  const isDestinationMuxed =
-    recipientAddress && isMuxedAccount(recipientAddress);
+  const isDestinationMuxed = Boolean(
+    recipientAddress && isMuxedAccount(recipientAddress),
+  );
 
   // Check if contract supports muxed addresses (for Soroban transactions)
   const [contractSupportsMuxed, setContractSupportsMuxed] = useState<
@@ -199,57 +255,14 @@ const TransactionSettingsBottomSheet: React.FC<
     selectedBalance,
   ]);
 
-  // Determine if memo should be disabled based on behavior matrix:
-  // 1. ✅ Yes + G/C + ✅ Yes → Create muxed with memo (no warning, memo enabled)
-  // 2. ✅ Yes + G/C + ❌ No → Use G/C as-is (no warning, memo enabled)
-  // 3. ✅ Yes + M + ✅ Yes → Extract base G, create new muxed with new memo (prefill memo with ID, no warning)
-  // 4. ✅ Yes + M + ❌ No → Use M address as-is (memo extracted from MUX address, memo enabled)
-  // 5. ❌ No + G/C + ✅ Yes → Disable memo with message "Memo is not supported for this operation"
-  // 6. ❌ No + M → Disable with warning "Base G account will be used. Muxed address not supported for this operation"
-  // C address as destination → Disable memo
-  let isMemoDisabled = false;
-  let memoDisabledMessage: string | undefined;
-  if (isSorobanTransaction) {
-    // C addresses (contract addresses) cannot be muxed
-    if (isSorobanRecipient) {
-      // Recipient is a contract address - disable memo
-      isMemoDisabled = true;
-      memoDisabledMessage = t(
-        "transactionSettings.memoInfo.memoNotSupportedForOperation",
-      );
-    } else if (isRecipientGOrMAddress) {
-      // Recipient is G or M address - check contract muxed support
-      if (contractSupportsMuxed === null) {
-        // Still checking - disable memo temporarily to be safe
-        isMemoDisabled = true;
-      } else if (!contractSupportsMuxed) {
-        // Contract doesn't support muxed - disable memo
-        isMemoDisabled = true;
-        if (isDestinationMuxed) {
-          // Case 6: M address but contract doesn't support muxed
-          memoDisabledMessage = t(
-            "transactionSettings.memoInfo.muxedNotSupportedBaseGWillBeUsed",
-          );
-        } else {
-          // Case 5: G/C address but contract doesn't support muxed
-          memoDisabledMessage = t(
-            "transactionSettings.memoInfo.memoNotSupportedForOperation",
-          );
-        }
-      }
-      // If contract supports muxed, enable memo (for both G and M addresses)
-      // If user has M address and adds memo, we'll extract base G and rebuild with new memo
-    } else {
-      // Invalid address or unknown type - disable memo for safety
-      isMemoDisabled = true;
-      memoDisabledMessage = t(
-        "transactionSettings.memoInfo.memoNotSupportedForOperation",
-      );
-    }
-  } else {
-    // Classic transaction - memo is always allowed (handled separately)
-    isMemoDisabled = false;
-  }
+  const { isMemoDisabled, memoDisabledMessage } = getMemoDisabledState(
+    isSorobanTransaction,
+    isSorobanRecipient,
+    isRecipientGOrMAddress,
+    contractSupportsMuxed,
+    isDestinationMuxed,
+    t,
+  );
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -281,29 +294,6 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
-  // Prefill memo with ID extracted from muxed address when M address is provided and contract supports muxed
-  useEffect(() => {
-    if (
-      isDestinationMuxed &&
-      contractSupportsMuxed &&
-      recipientAddress &&
-      !localMemo
-    ) {
-      const muxedId = getMuxedId(recipientAddress);
-      if (muxedId) {
-        setLocalMemo(muxedId);
-        saveTransactionMemo(muxedId);
-      }
-    }
-  }, [
-    isDestinationMuxed,
-    contractSupportsMuxed,
-    recipientAddress,
-    localMemo,
-    saveTransactionMemo,
-  ]);
-
-  // Clear memo only if contract doesn't support muxed (not if user has M address)
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
       setLocalMemo("");

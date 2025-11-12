@@ -635,7 +635,7 @@
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
-      "sorobanInfo": "Para transações Soroban (transferências de colecionáveis, tokens personalizados ou endereços \"C\"), o suporte a memo depende do contrato de destino:\n\n• Se o contrato suporta endereços muxed (CAP-0067), você pode usar um endereço muxed (formato M...) ou criar um inserindo um memo com um endereço G.\n• Se o contrato não suporta endereços muxed, o memo não está disponível. Endereços M serão convertidos para seu endereço G base.",
+      "sorobanInfo": "Para transações Soroban (transferências de colecionáveis, tokens personalizados ou endereços \"C\"), o suporte a memo depende do contrato de destino:\n\n• Se o contrato suporta endereços muxed (CAP-0067), endereços muxed (formato M...) serão usados. Você também pode criar um endereço muxed inserindo um memo com um endereço G.\n• Se o contrato não suporta endereços muxed, endereços regulares (formato G...) serão usados e o memo não está disponível.",
       "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
       "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
       "muxedAddressInfo": "A partir do CAP-0067, transferências Soroban suportam memo através de endereços muxed (formato M...). O memo será incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
