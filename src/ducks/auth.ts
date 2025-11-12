@@ -605,7 +605,7 @@ const appendAccount = async (account: Account) => {
  * @param {Account[]} accounts - The accounts to add to the list
  * @returns {Promise<void>}
  */
-const appendAccounts = async (accounts: Account[]) => {
+export const appendAccounts = async (accounts: Account[]) => {
   if (accounts.length === 0) {
     return;
   }
