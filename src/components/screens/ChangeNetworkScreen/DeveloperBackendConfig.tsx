@@ -3,10 +3,10 @@ import SegmentedControl from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import {
   DevBackendEnvironment,
-  getBackendV1Environment,
-  getBackendV2Environment,
-  setBackendV1Environment,
-  setBackendV2Environment,
+  getDevBackendV1Environment,
+  getDevBackendV2Environment,
+  setDevBackendV1Environment,
+  setDevBackendV2Environment,
 } from "config/devBackendConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -35,8 +35,8 @@ const DeveloperBackendConfig: React.FC = () => {
   // Load saved backend environments on mount
   useEffect(() => {
     const loadBackendEnvironments = async () => {
-      const v1Env = await getBackendV1Environment();
-      const v2Env = await getBackendV2Environment();
+      const v1Env = await getDevBackendV1Environment();
+      const v2Env = await getDevBackendV2Environment();
       setBackendV1Env(v1Env);
       setBackendV2Env(v2Env);
     };
@@ -46,12 +46,12 @@ const DeveloperBackendConfig: React.FC = () => {
 
   const handleSetBackendV1Environment = (env: DevBackendEnvironment) => {
     setBackendV1Env(env);
-    setBackendV1Environment(env);
+    setDevBackendV1Environment(env);
   };
 
   const handleSetBackendV2Environment = (env: DevBackendEnvironment) => {
     setBackendV2Env(env);
-    setBackendV2Environment(env);
+    setDevBackendV2Environment(env);
   };
 
   const backendEnvironmentOptions = [

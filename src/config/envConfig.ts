@@ -1,7 +1,7 @@
 import {
   DevBackendEnvironment,
-  getBackendV1Environment,
-  getBackendV2Environment,
+  getDevBackendV1Environment,
+  getDevBackendV2Environment,
 } from "config/devBackendConfig";
 import { isProd } from "helpers/isEnv";
 import Config from "react-native-config";
@@ -108,7 +108,7 @@ const getEnvConfig = (): EnvConfigType => ({
 /**
  * Get the backend V1 URL based on the selected environment
  */
-const getBackendV1Url = (environment?: DevBackendEnvironment): string => {
+const getDevBackendV1Url = (environment?: DevBackendEnvironment): string => {
   switch (environment) {
     case DevBackendEnvironment.PROD:
       return Config.FREIGHTER_BACKEND_V1_PROD_URL;
@@ -124,7 +124,7 @@ const getBackendV1Url = (environment?: DevBackendEnvironment): string => {
 /**
  * Get the backend V2 URL based on the selected environment
  */
-const getBackendV2Url = (environment?: DevBackendEnvironment): string => {
+const getDevBackendV2Url = (environment?: DevBackendEnvironment): string => {
   switch (environment) {
     case DevBackendEnvironment.PROD:
       return Config.FREIGHTER_BACKEND_V2_PROD_URL;
@@ -152,12 +152,12 @@ const getBackendEnvConfig = async (): Promise<BackendEnvConfigType> => {
   }
 
   // For dev builds, get the selected backend environment from AsyncStorage
-  const backendV1Env = await getBackendV1Environment();
-  const backendV2Env = await getBackendV2Environment();
+  const devBackendV1Env = await getDevBackendV1Environment();
+  const devBackendV2Env = await getDevBackendV2Environment();
 
   return {
-    FREIGHTER_BACKEND_V1_URL: getBackendV1Url(backendV1Env),
-    FREIGHTER_BACKEND_V2_URL: getBackendV2Url(backendV2Env),
+    FREIGHTER_BACKEND_V1_URL: getDevBackendV1Url(devBackendV1Env),
+    FREIGHTER_BACKEND_V2_URL: getDevBackendV2Url(devBackendV2Env),
   };
 };
 

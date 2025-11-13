@@ -46,7 +46,7 @@ const DEFAULT_BACKEND_V2_ENVIRONMENT = DevBackendEnvironment.STG;
  * Get the selected Backend V1 environment from AsyncStorage
  * Returns PROD as default if nothing is stored
  */
-export const getBackendV1Environment =
+export const getDevBackendV1Environment =
   async (): Promise<DevBackendEnvironment> => {
     try {
       const value = await asyncStorage.getItem(
@@ -67,7 +67,7 @@ export const getBackendV1Environment =
  * Get the selected Backend V2 environment from AsyncStorage
  * Returns PROD as default if nothing is stored
  */
-export const getBackendV2Environment =
+export const getDevBackendV2Environment =
   async (): Promise<DevBackendEnvironment> => {
     try {
       const value = await asyncStorage.getItem(
@@ -87,7 +87,7 @@ export const getBackendV2Environment =
 /**
  * Set the Backend V1 environment in AsyncStorage
  */
-export const setBackendV1Environment = async (
+export const setDevBackendV1Environment = async (
   environment: DevBackendEnvironment,
 ): Promise<void> => {
   try {
@@ -107,7 +107,7 @@ export const setBackendV1Environment = async (
 /**
  * Set the Backend V2 environment in AsyncStorage
  */
-export const setBackendV2Environment = async (
+export const setDevBackendV2Environment = async (
   environment: DevBackendEnvironment,
 ): Promise<void> => {
   try {
