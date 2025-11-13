@@ -7,6 +7,9 @@ import { create } from "zustand";
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 
+// Amplitude variant values that are considered "on"
+const ON_VARIANT_VALUES = ["on", "true", "enabled", "yes"];
+
 // Feature flags configuration arrays
 const BOOLEAN_FLAGS = [
   "swap_enabled",
@@ -120,7 +123,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
           if (BOOLEAN_FLAGS.includes(key as (typeof BOOLEAN_FLAGS)[number])) {
             const booleanKey = key as keyof BooleanFeatureFlags;
             (updates as BooleanFeatureFlags)[booleanKey] =
-              variant.value === "on";
+              ON_VARIANT_VALUES.includes(variant.value);
           }
           // Handle version flags - use value directly after parsing version strings
           else if (
@@ -136,7 +139,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
             COMPLEX_FLAGS.includes(key as (typeof COMPLEX_FLAGS)[number])
           ) {
             const complexKey = key as keyof ComplexFeatureFlags;
-            const enabled = variant.value === "on";
+            const enabled = ON_VARIANT_VALUES.includes(variant.value);
             const flagValue = {
               enabled,
               payload: enabled ? variant.payload : undefined,

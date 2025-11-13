@@ -7,72 +7,61 @@ import {
   extractSecurityWarnings,
 } from "services/blockaid/helper";
 
+function getTransactionSecurityWarnings(
+  assessment: ReturnType<typeof assessTransactionSecurity>,
+  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
+) {
+  if (assessment.isUnableToScan) {
+    return [
+      {
+        id: "unable-to-scan",
+        description: assessment.details || "Unable to scan transaction",
+      },
+    ];
+  }
+
+  if (assessment.isMalicious || assessment.isSuspicious) {
+    const warnings = extractSecurityWarnings(scanResult);
+
+    if (Array.isArray(warnings) && warnings.length > 0) {
+      return warnings;
+    }
+  }
+
+  return [];
+}
+
+function getTransactionSecuritySeverity(
+  assessment: ReturnType<typeof assessTransactionSecurity>,
+): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined {
+  if (assessment.isMalicious) return SecurityLevel.MALICIOUS;
+  if (assessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
+  if (assessment.isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
+
+  return undefined;
+}
+
 /**
- * Hook for managing transaction security assessment
- * Extracts security warnings and determines severity level
+ * Function for getting transaction security assessment
+ * Can be called at runtime with scanResult as parameter
  */
-export function useTransactionSecurity(
-  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined,
+export function getTransactionSecurity(
+  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
   overriddenBlockaidResponse?: SecurityLevel | null,
 ) {
-  const transactionSecurityAssessment = useMemo(
-    () =>
-      assessTransactionSecurity(
-        transactionScanResult,
-        overriddenBlockaidResponse,
-      ),
-    [transactionScanResult, overriddenBlockaidResponse],
+  const transactionSecurityAssessment = assessTransactionSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
   );
 
-  const transactionSecurityWarnings = useMemo(() => {
-    if (transactionSecurityAssessment.isUnableToScan) {
-      // For "Unable to scan" cases, always provide a warning so the list renders
-      return [
-        {
-          id: "unable-to-scan",
-          description:
-            transactionSecurityAssessment.details ||
-            "Unable to scan transaction",
-        },
-      ];
-    }
+  const transactionSecurityWarnings = getTransactionSecurityWarnings(
+    transactionSecurityAssessment,
+    scanResult,
+  );
 
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
-    ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
-    transactionSecurityAssessment.details,
-    transactionScanResult,
-  ]);
-
-  const transactionSecuritySeverity:
-    | Exclude<SecurityLevel, SecurityLevel.SAFE>
-    | undefined = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-    if (transactionSecurityAssessment.isUnableToScan)
-      return SecurityLevel.UNABLE_TO_SCAN;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionSecurityAssessment.isUnableToScan,
-  ]);
+  const transactionSecuritySeverity = getTransactionSecuritySeverity(
+    transactionSecurityAssessment,
+  );
 
   return {
     transactionSecurityAssessment,
