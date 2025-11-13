@@ -644,6 +644,7 @@
       "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
       "muxedAddressInfo": "Endereços muxed (formato M-) permitem incluir um memo diretamente no endereço. O memo é incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
       "memoEmbeddedInMuxedAddress": "O memo já está incluído neste endereço e será usado automaticamente.",
+      "memoDisabledForTransaction": "O memo está desabilitado para esta transação.",
       "memoNotSupportedForOperation": "Memo não é suportado para esta operação.",
       "muxedNotSupportedBaseGWillBeUsed": "A conta G base será usada. Endereço muxed não é suportado para esta operação."
     },
@@ -714,9 +715,8 @@
       "memoMissing": "Esta transação requer um memo",
       "muxedAddressNotSupported": "Endereço muxed não suportado",
       "muxedAddressWarning": {
-        "title": "Endereço muxed (M-) não suportado para esta operação",
-        "description": "Ao prosseguir, a conta G- base será usada. O token pode ser perdido durante a transferência se as informações estiverem incorretas.",
-        "confirmAnyway": "Confirmar mesmo assim"
+        "title": "Endereço muxed não suportado",
+        "description": "Este token não suporta endereço muxed (M-) como destino. Prosseguir com esta transação pode resultar na perda do token durante a transferência."
       },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",

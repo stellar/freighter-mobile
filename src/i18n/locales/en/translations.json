@@ -680,6 +680,7 @@
       "sorobanNoteCollectible": "Make sure the target destination supports memo.",
       "muxedAddressInfo": "Muxed addresses (M- format) allow you to include a memo directly in the address. The memo is embedded in the destination address. Note: Some exchanges may not yet support muxed addresses for deposits.",
       "memoEmbeddedInMuxedAddress": "Memo is embedded in the muxed address (M-) and will be extracted automatically.",
+      "memoDisabledForTransaction": "Memo is disabled for this transaction.",
       "memoNotSupportedForOperation": "Memo is not supported for this operation.",
       "muxedNotSupportedBaseGWillBeUsed": "Base G account will be used. Muxed address not supported for this operation."
     },
@@ -750,9 +751,8 @@
       "memoMissing": "This transaction requires a memo",
       "muxedAddressNotSupported": "Muxed address not supported",
       "muxedAddressWarning": {
-        "title": "Muxed address (M-) not supported for this operation",
-        "description": "By proceeding, the base G- account will be used. The token might be lost during the transfer if the information is incorrect.",
-        "confirmAnyway": "Confirm anyway"
+        "title": "Muxed address not supported",
+        "description": "This token does not support muxed address (M-) as a target destination. Proceeding with this transaction could result in the loss of the token during the transfer."
       },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",

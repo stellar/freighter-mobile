@@ -1,12 +1,36 @@
 import { fireEvent, waitFor } from "@testing-library/react-native";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import { TransactionContext } from "config/constants";
+import { TransactionContext, NETWORKS } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isContractId } from "helpers/soroban";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 jest.mock("ducks/transactionSettings");
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(),
+}));
+jest.mock("hooks/useBalancesList", () => ({
+  useBalancesList: jest.fn(() => ({
+    balanceItems: [],
+  })),
+}));
+jest.mock("ducks/swapSettings", () => ({
+  useSwapSettingsStore: jest.fn(() => ({
+    swapFee: "100",
+    swapTimeout: 30,
+    swapSlippage: 1,
+    saveSwapFee: jest.fn(),
+    saveSwapTimeout: jest.fn(),
+    saveSwapSlippage: jest.fn(),
+  })),
+}));
+jest.mock("hooks/useInitialRecommendedFee", () => ({
+  useInitialRecommendedFee: jest.fn(() => ({
+    markAsManuallyChanged: jest.fn(),
+  })),
+}));
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
   default: () => ({
@@ -54,14 +78,23 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
 }));
-jest.mock("services/backend", () => ({
-  checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
+
+const mockGetMemoDisabledState = jest.fn().mockResolvedValue({
+  isMemoDisabled: false,
+  memoDisabledMessage: undefined,
+});
+
+jest.mock("helpers/muxedAddress", () => ({
+  getMemoDisabledState: (...args: unknown[]) =>
+    mockGetMemoDisabledState(...args),
 }));
 
 const mockUseTransactionSettingsStore =
   useTransactionSettingsStore as jest.MockedFunction<
     typeof useTransactionSettingsStore
   >;
+const mockUseAuthenticationStore =
+  useAuthenticationStore as jest.MockedFunction<typeof useAuthenticationStore>;
 
 const mockIsContractId = isContractId as jest.MockedFunction<
   typeof isContractId
@@ -98,7 +131,17 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     mockUseTransactionSettingsStore.mockReturnValue(
       mockTransactionSettingsState,
     );
+    mockUseAuthenticationStore.mockReturnValue({
+      account: {
+        publicKey: "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      },
+      network: NETWORKS.PUBLIC,
+    } as any);
     mockIsContractId.mockReturnValue(false);
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: false,
+      memoDisabledMessage: undefined,
+    });
   });
 
   it("should call onSettingsChange when confirm is pressed", async () => {
@@ -248,9 +291,19 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsContractId.mockReturnValue(false);
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: false,
+      memoDisabledMessage: undefined,
+    });
+    mockUseAuthenticationStore.mockReturnValue({
+      account: {
+        publicKey: "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      },
+      network: NETWORKS.PUBLIC,
+    } as any);
   });
 
-  it("should disable memo field when recipient is a Soroban contract address", () => {
+  it("should disable memo field when recipient is a Soroban contract address", async () => {
     const sorobanContractAddress =
       "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
     const mockState = createMockState({
@@ -261,6 +314,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -271,14 +329,19 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    const memoInput = getByPlaceholderText(
-      "transactionSettings.memoPlaceholder",
+    // Wait for the async useEffect to complete and state to update
+    await waitFor(
+      () => {
+        const memoInput = getByPlaceholderText(
+          "transactionSettings.memoPlaceholder",
+        );
+        expect(memoInput.props.editable).toBe(false);
+      },
+      { timeout: 1000 },
     );
-
-    expect(memoInput.props.editable).toBe(false);
   });
 
-  it("should disable memo field for collectible transfers", () => {
+  it("should disable memo field for collectible transfers", async () => {
     const mockState = createMockState({
       selectedCollectibleDetails: {
         collectionAddress:
@@ -288,6 +351,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -298,11 +366,12 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    const memoInput = getByPlaceholderText(
-      "transactionSettings.memoPlaceholder",
-    );
-
-    expect(memoInput.props.editable).toBe(false);
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      expect(memoInput.props.editable).toBe(false);
+    });
   });
 
   it("should disable memo for Soroban contract addresses", async () => {
@@ -316,6 +385,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -337,6 +411,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
   });
 
   it("should clear memo automatically for Soroban transactions", async () => {
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
     const sorobanContractAddress =
       "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
     const mockState = createMockState({
@@ -348,6 +427,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -374,6 +458,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     const { getByPlaceholderText, getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -384,22 +473,27 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    const memoInput = getByPlaceholderText(
-      "transactionSettings.memoPlaceholder",
-    );
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      expect(memoInput.props.editable).toBe(false);
+    });
+
     const confirmButton = getByText("common.save");
 
-    fireEvent.changeText(memoInput, "Test memo");
+    // Since memo is disabled, we can't change the text, but let's verify it stays empty
     fireEvent.press(confirmButton);
 
     await waitFor(() => {
       expect(mockOnConfirm).toHaveBeenCalled();
     });
 
+    // Memo should not be saved when disabled (it should be cleared or not saved)
     expect(mockState.saveMemo).not.toHaveBeenCalledWith("Test memo");
   });
 
-  it("should disable memo for collectible transfer with collection address", () => {
+  it("should disable memo for collectible transfer with collection address", async () => {
     const mockState = createMockState({
       selectedCollectibleDetails: {
         collectionAddress:
@@ -409,6 +503,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
 
     const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -419,14 +518,15 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    const memoInput = getByPlaceholderText(
-      "transactionSettings.memoPlaceholder",
-    );
-
-    expect(memoInput.props.editable).toBe(false);
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      expect(memoInput.props.editable).toBe(false);
+    });
   });
 
-  it("should enable memo for regular (non-Soroban) transactions", () => {
+  it("should enable memo for regular (non-Soroban) transactions", async () => {
     const regularAddress =
       "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
     const mockState = createMockState({
@@ -439,6 +539,10 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
     mockIsContractId.mockReturnValue(false);
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: false,
+      memoDisabledMessage: undefined,
+    });
 
     const { getByPlaceholderText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -449,10 +553,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       />,
     );
 
-    const memoInput = getByPlaceholderText(
-      "transactionSettings.memoPlaceholder",
-    );
-
-    expect(memoInput.props.editable).toBe(true);
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      expect(memoInput.props.editable).toBe(true);
+    });
   });
 });

@@ -21,21 +21,20 @@ import {
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
+import {
+  determineMuxedDestination,
+  checkContractMuxedSupport,
+} from "helpers/muxedAddress";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import {
   isValidStellarAddress,
   isSameAccount,
-  createMuxedAccount,
-  getBaseAccount,
   isMuxedAccount,
+  getBaseAccount,
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
-import {
-  simulateTokenTransfer,
-  simulateTransaction,
-  checkContractSupportsMuxed,
-} from "services/backend";
+import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
@@ -292,59 +291,11 @@ export const buildSorobanTransferOperation = (
     const contract = new Contract(contractId);
 
     // Determine final destination at the very last step - right before building the operation
-    // Follow the behavior matrix for muxed address handling
-    let finalDestination = destinationAddress;
-    const isRecipientGAddress =
-      isValidStellarAddress(destinationAddress) &&
-      !isContractId(destinationAddress);
-    const isRecipientAlreadyMuxed = isMuxedAccount(destinationAddress);
-    const hasValidMemo = memo && typeof memo === "string" && memo.length > 0;
-
-    if (contractSupportsMuxed) {
-      // Contract supports muxed addresses
-      if (isRecipientGAddress && hasValidMemo) {
-        // ✅ Yes + G/C + ✅ Yes → Create muxed with memo
-        const muxedWithMemo = createMuxedAccount(destinationAddress, memo);
-        if (muxedWithMemo) {
-          finalDestination = muxedWithMemo;
-        }
-      } else if (isRecipientGAddress && !hasValidMemo) {
-        // ✅ Yes + G/C + ❌ No → Use G/C as-is
-        finalDestination = destinationAddress;
-      } else if (isRecipientAlreadyMuxed && hasValidMemo) {
-        // ✅ Yes + M + ✅ Yes → Extract base G, create new muxed with new memo
-        const baseAccount = getBaseAccount(destinationAddress);
-        if (
-          baseAccount &&
-          isValidStellarAddress(baseAccount) &&
-          !isContractId(baseAccount)
-        ) {
-          const muxedWithNewMemo = createMuxedAccount(baseAccount, memo);
-          if (muxedWithNewMemo) {
-            finalDestination = muxedWithNewMemo;
-          }
-        }
-      } else if (isRecipientAlreadyMuxed && !hasValidMemo) {
-        // ✅ Yes + M + ❌ No → Use M address as-is
-        finalDestination = destinationAddress;
-      }
-    } else if (isRecipientAlreadyMuxed) {
-      // Contract doesn't support muxed addresses
-      // ❌ No + M → Extract base G (or error)
-      const baseAccount = getBaseAccount(destinationAddress);
-      if (
-        baseAccount &&
-        isValidStellarAddress(baseAccount) &&
-        !isContractId(baseAccount)
-      ) {
-        finalDestination = baseAccount;
-      } else {
-        throw new Error(
-          "Contract does not support muxed addresses. Please use a regular address (G... or C...).",
-        );
-      }
-      // ❌ No + G/C + memo → Memo disabled in UI (shouldn't reach here with memo, but if it does, ignore it)
-    }
+    const finalDestination = determineMuxedDestination({
+      recipientAddress: destinationAddress,
+      transactionMemo: memo,
+      contractSupportsMuxed,
+    });
 
     const transaction = contract.call(
       "transfer",
@@ -471,7 +422,7 @@ export const buildPaymentTransaction = async (
       }
 
       // Check if contract supports muxed addresses (CAP-0067)
-      const contractSupportsMuxed = await checkContractSupportsMuxed({
+      const contractSupportsMuxed = await checkContractMuxedSupport({
         contractId,
         networkDetails,
       });
@@ -713,74 +664,17 @@ export const buildSendCollectibleTransaction = async (
 
     // Check if contract supports muxed addresses (CAP-0067)
     // This is the same check done for custom tokens - collectibles are also Soroban transactions
-    const contractSupportsMuxed = await checkContractSupportsMuxed({
+    const contractSupportsMuxed = await checkContractMuxedSupport({
       contractId: collectionAddress,
       networkDetails,
     });
 
     // For CAP-0067: Handle muxed addresses based on contract support
-    // Follow the behavior matrix for muxed address handling
-    let finalDestination = recipientAddress;
-    const isRecipientGAddress =
-      isValidStellarAddress(recipientAddress) &&
-      !isContractId(recipientAddress);
-    const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
-    const hasValidMemo =
-      transactionMemo &&
-      typeof transactionMemo === "string" &&
-      transactionMemo.length > 0;
-
-    if (contractSupportsMuxed) {
-      // Contract supports muxed addresses
-      if (isRecipientGAddress && hasValidMemo) {
-        // ✅ Yes + G/C + ✅ Yes → Create muxed with memo
-        const muxedWithMemo = createMuxedAccount(
-          recipientAddress,
-          transactionMemo,
-        );
-        if (muxedWithMemo) {
-          finalDestination = muxedWithMemo;
-        }
-      } else if (isRecipientGAddress && !hasValidMemo) {
-        // ✅ Yes + G/C + ❌ No → Use G/C as-is
-        finalDestination = recipientAddress;
-      } else if (isRecipientAlreadyMuxed && hasValidMemo) {
-        // ✅ Yes + M + ✅ Yes → Extract base G, create new muxed with new memo
-        const baseAccount = getBaseAccount(recipientAddress);
-        if (
-          baseAccount &&
-          isValidStellarAddress(baseAccount) &&
-          !isContractId(baseAccount)
-        ) {
-          const muxedWithNewMemo = createMuxedAccount(
-            baseAccount,
-            transactionMemo,
-          );
-          if (muxedWithNewMemo) {
-            finalDestination = muxedWithNewMemo;
-          }
-        }
-      } else if (isRecipientAlreadyMuxed && !hasValidMemo) {
-        // ✅ Yes + M + ❌ No → Use M address as-is
-        finalDestination = recipientAddress;
-      }
-    } else if (isRecipientAlreadyMuxed) {
-      // Contract doesn't support muxed addresses
-      // ❌ No + M → Extract base G (or error)
-      const baseAccount = getBaseAccount(recipientAddress);
-      if (
-        baseAccount &&
-        isValidStellarAddress(baseAccount) &&
-        !isContractId(baseAccount)
-      ) {
-        finalDestination = baseAccount;
-      } else {
-        throw new Error(
-          "This collectible contract does not support muxed addresses. Please use a regular address (G... or C...).",
-        );
-      }
-      // ❌ No + G/C + memo → Memo disabled in UI (shouldn't reach here with memo, but if it does, ignore it)
-    }
+    const finalDestination = determineMuxedDestination({
+      recipientAddress,
+      transactionMemo,
+      contractSupportsMuxed,
+    });
 
     const transferParams = [
       new Address(senderAddress).toScVal(),
@@ -880,45 +774,7 @@ export const simulateCollectibleTransfer = async ({
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Handle ApiError structure from apiFactory - data can be string or object
-    let errorData: string | null = null;
-    if (error && typeof error === "object" && "data" in error) {
-      const { data } = error as { data?: unknown };
-      if (typeof data === "string") {
-        errorData = data;
-      } else if (data) {
-        // Try to stringify if it's an object
-        try {
-          errorData = JSON.stringify(data, null, 2);
-        } catch {
-          errorData = String(data);
-        }
-      }
-    }
-    // Also check if error message itself contains the data (sometimes it's nested)
-    const errorString = JSON.stringify(error, null, 2);
-    // Combine message, data, and stringified error for comprehensive error detection
-    const fullErrorText = [errorMessage, errorData, errorString]
-      .filter(Boolean)
-      .join(" ");
-
-    // Check if error is related to muxed address support
-    const isMuxedAddressError =
-      fullErrorText.includes("UnreachableCodeReached") ||
-      fullErrorText.includes("Unreachable") ||
-      fullErrorText.includes("muxed") ||
-      fullErrorText.includes("Muxed") ||
-      fullErrorText.includes("scAddressTypeMuxedAccount") ||
-      fullErrorText.includes("MuxedAccount") ||
-      fullErrorText.includes("InvalidAction");
-
     analytics.trackSimulationError(errorMessage, "collectible_transfer");
-
-    // Attach the muxed address error flag to the error object so the transaction builder can detect it
-    if (isMuxedAddressError && error && typeof error === "object") {
-      (error as { isMuxedAddressError?: boolean }).isMuxedAddressError = true;
-    }
-
     throw error;
   }
 };

@@ -1,6 +1,5 @@
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -8,7 +7,6 @@ import { View } from "react-native";
 
 export interface MuxedAddressWarningBottomSheetProps {
   onCancel?: () => void;
-  onProceedAnyway?: () => void;
   onClose: () => void;
 }
 
@@ -19,13 +17,12 @@ export interface MuxedAddressWarningBottomSheetProps {
  * @example
  * <MuxedAddressWarningBottomSheet
  *   onCancel={handleCancel}
- *   onProceedAnyway={handleProceed}
  *   onClose={handleClose}
  * />
  */
 export const MuxedAddressWarningBottomSheet: React.FC<
   MuxedAddressWarningBottomSheetProps
-> = ({ onCancel, onProceedAnyway, onClose }) => {
+> = ({ onCancel, onClose }) => {
   const { t } = useAppTranslation();
 
   return (
@@ -50,15 +47,6 @@ export const MuxedAddressWarningBottomSheet: React.FC<
           <Button xl isFullWidth onPress={onCancel} variant="destructive">
             {t("common.cancel")}
           </Button>
-        )}
-        {onProceedAnyway && (
-          <TextButton
-            text={t(
-              "transactionAmountScreen.errors.muxedAddressWarning.confirmAnyway",
-            )}
-            onPress={onProceedAnyway}
-            variant="error"
-          />
         )}
       </View>
     </View>

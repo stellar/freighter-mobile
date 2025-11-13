@@ -50,6 +50,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
+import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -72,7 +73,6 @@ import React, {
 import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { checkContractSupportsMuxed } from "services/backend";
 import { SecurityContext } from "services/blockaid/constants";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
@@ -254,24 +254,30 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   // Check if contract supports muxed addresses (for custom tokens)
+  // Extract contractId to avoid dependency on entire selectedBalance object
+  const contractId = useMemo(() => {
+    if (
+      selectedBalance &&
+      "contractId" in selectedBalance &&
+      selectedBalance.contractId
+    ) {
+      return selectedBalance.contractId;
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBalance?.id, selectedBalance]);
+
   useEffect(() => {
     const checkContract = async () => {
-      if (
-        !isCustomToken ||
-        !recipientAddress ||
-        !network ||
-        !selectedBalance ||
-        !("contractId" in selectedBalance) ||
-        !selectedBalance.contractId
-      ) {
+      if (!isCustomToken || !recipientAddress || !network || !contractId) {
         setContractSupportsMuxed(null);
         return;
       }
 
       try {
         const networkDetails = mapNetworkToNetworkDetails(network);
-        const supportsMuxed = await checkContractSupportsMuxed({
-          contractId: selectedBalance.contractId,
+        const supportsMuxed = await checkContractMuxedSupport({
+          contractId,
           networkDetails,
         });
         setContractSupportsMuxed(supportsMuxed);
@@ -282,7 +288,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     };
 
     checkContract();
-  }, [isCustomToken, recipientAddress, network, selectedBalance]);
+  }, [isCustomToken, recipientAddress, network, contractId]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
@@ -670,11 +676,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     muxedAddressInfoBottomSheetModalRef.current?.dismiss();
   }, []);
 
-  const handleProceedAnywayMuxedAddress = useCallback(() => {
-    muxedAddressInfoBottomSheetModalRef.current?.dismiss();
-    // Transaction will proceed with base G address
-  }, []);
-
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
@@ -920,7 +921,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <MuxedAddressWarningBottomSheet
             onCancel={handleCancelMuxedAddressWarning}
-            onProceedAnyway={handleProceedAnywayMuxedAddress}
             onClose={handleCancelMuxedAddressWarning}
           />
         }

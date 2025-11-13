@@ -159,13 +159,13 @@ export function useSendBannerContent({
     }
 
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
     isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
-    t,
     onSecurityWarningPress,
     onMemoMissingPress,
     onMuxedAddressWithoutMemoSupportPress,

@@ -44,6 +44,7 @@ import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -63,7 +64,6 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { checkContractSupportsMuxed } from "services/backend";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -215,7 +215,7 @@ const SendCollectibleReviewScreen: React.FC<
 
       try {
         const networkDetails = mapNetworkToNetworkDetails(network);
-        const supportsMuxed = await checkContractSupportsMuxed({
+        const supportsMuxed = await checkContractMuxedSupport({
           contractId: collectionAddress,
           networkDetails,
         });
@@ -485,11 +485,6 @@ const SendCollectibleReviewScreen: React.FC<
     muxedAddressInfoBottomSheetModalRef.current?.dismiss();
   }, []);
 
-  const handleProceedAnywayMuxedAddress = useCallback(() => {
-    muxedAddressInfoBottomSheetModalRef.current?.dismiss();
-    // Transaction will proceed with base G address
-  }, []);
-
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
@@ -652,7 +647,6 @@ const SendCollectibleReviewScreen: React.FC<
         customContent={
           <MuxedAddressWarningBottomSheet
             onCancel={handleCancelMuxedAddressWarning}
-            onProceedAnyway={handleProceedAnywayMuxedAddress}
             onClose={handleCancelMuxedAddressWarning}
           />
         }
