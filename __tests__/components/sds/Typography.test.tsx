@@ -607,25 +607,15 @@ describe("Typography", () => {
     });
 
     it("handles platform-specific font families", () => {
-      jest.mock("react-native/Libraries/Utilities/Platform", () => ({
-        select: jest.fn((obj) => obj.android),
-      }));
-
       const { getByText } = renderWithProviders(
         <Text weight="bold">Android Text</Text>,
       );
       const element = getByText("Android Text");
 
-      expect(element.props.style.fontFamily).toBe("Inter-Bold");
+      expect(element.props.style.fontFamily).toBe("Inter-Variable");
     });
 
     it("opens the link when the text is pressed", async () => {
-      jest
-        .spyOn(Linking, "canOpenURL")
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        .mockImplementation((url: string) => Promise.resolve(true));
-      const openURLSpy = jest.spyOn(Linking, "openURL");
-
       const { getByText } = renderWithProviders(
         <Text url="https://example.com">Link Text</Text>,
       );
@@ -636,7 +626,7 @@ describe("Typography", () => {
         fireEvent.press(element);
       });
 
-      expect(openURLSpy).toHaveBeenCalledWith("https://example.com");
+      expect(Linking.openURL).toHaveBeenCalledWith("https://example.com");
     });
   });
 });

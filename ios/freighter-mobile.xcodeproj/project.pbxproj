@@ -9,20 +9,14 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		153F939388F35C5CC4D3FF0B /* libPods-freighter-mobile-freighter-mobile-dev.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A52DDB7E15C8F92AC3DE4102 /* libPods-freighter-mobile-freighter-mobile-dev.a */; };
-		37FAF0580CF841D4A66C64CA /* Inter-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BE3DD2A38FDF490B8902728A /* Inter-Bold.ttf */; };
-		39698F2DFE8D470C85CD8214 /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0CD67D6730C74635991EDEFF /* Inter-Regular.ttf */; };
 		3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EA47F7F1A9043699AECB850 /* Colors.xcassets */; };
-		45E4ECDFC1E44ACBAC326AE6 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AFA1D0A6FE1E4E61A68B2CE8 /* Inter-Medium.ttf */; };
 		4C1900C63580B5D670E4E67B /* libPods-freighter-mobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 57FA3985442F69076EFBCA2A /* libPods-freighter-mobile.a */; };
 		732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */; };
 		75BAEB762E32B39B0084934A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 75BAEB742E32B39B0084934A /* InfoPlist.strings */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A020C2C89FD30438BCD65DF0 /* libPods-freighter-mobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 57FA3985442F69076EFBCA2A /* libPods-freighter-mobile.a */; };
-		A2041D19B8E0479689872965 /* Inter-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6962430A58434A4F99BDACDC /* Inter-Light.ttf */; };
-		C92BC0E45A0344A499E724C4 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */; };
 		D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		D8E3BC1680FC4B7C9D639125 /* Inter-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 302D33B0FE4D45C9ABEC3073 /* Inter-VariableFont_opsz,wght.ttf */; };
 		EC8D0BF92E8DDA8100429D7F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		EC8D0BFD2E8DDA8100429D7F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		EC8D0BFE2E8DDA8100429D7F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 75BAEB742E32B39B0084934A /* InfoPlist.strings */; };
@@ -259,12 +253,6 @@
 				75BAEB762E32B39B0084934A /* InfoPlist.strings in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */,
-				37FAF0580CF841D4A66C64CA /* Inter-Bold.ttf in Resources */,
-				A2041D19B8E0479689872965 /* Inter-Light.ttf in Resources */,
-				45E4ECDFC1E44ACBAC326AE6 /* Inter-Medium.ttf in Resources */,
-				39698F2DFE8D470C85CD8214 /* Inter-Regular.ttf in Resources */,
-				C92BC0E45A0344A499E724C4 /* Inter-SemiBold.ttf in Resources */,
-				D8E3BC1680FC4B7C9D639125 /* Inter-VariableFont_opsz,wght.ttf in Resources */,
 				732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */,
 				3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */,
 			);
@@ -306,7 +294,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT \\\"/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode.sh $REACT_NATIVE_XCODE\\\"\"\n";
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nSENTRY_XCODE=\"../node_modules/@sentry/react-native/scripts/sentry-xcode.sh\"\n\n# RN 0.81.1+\n/bin/sh -c \"$WITH_ENVIRONMENT $SENTRY_XCODE\"\n";
 		};
 		1B7C4B7AAF36E117AAEABD4B /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -448,7 +436,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT \\\"/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode.sh $REACT_NATIVE_XCODE\\\"\"\n";
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nSENTRY_XCODE=\"../node_modules/@sentry/react-native/scripts/sentry-xcode.sh\"\n\n# RN 0.81.1+\n/bin/sh -c \"$WITH_ENVIRONMENT $SENTRY_XCODE\"\n";
 		};
 		EC8D0C0A2E8DDA8100429D7F /* Upload Debug Symbols to Sentry */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -503,6 +491,7 @@
 			baseConfigurationReference = 87C4DD51580C7F62D544B174 /* Pods-freighter-mobile.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -526,6 +515,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "freighter-mobile-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_PRECOMPILE_BRIDGING_HEADER = NO;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -536,6 +526,7 @@
 			baseConfigurationReference = EC0984E5FFD5FF5490DEB006 /* Pods-freighter-mobile.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
@@ -561,6 +552,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match AppStore org.stellar.freighterwallet";
 				SWIFT_OBJC_BRIDGING_HEADER = "freighter-mobile-Bridging-Header.h";
+				SWIFT_PRECOMPILE_BRIDGING_HEADER = NO;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

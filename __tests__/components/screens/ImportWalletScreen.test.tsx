@@ -4,6 +4,28 @@ import { ImportWalletScreen } from "components/screens/ImportWalletScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
+// Mock RecoveryPhraseInput to prevent act warnings from useEffect state updates
+jest.mock("components/RecoveryPhraseInput", () => ({
+  RecoveryPhraseInput: ({
+    value,
+    onChangeText,
+    placeholder,
+    ...props
+  }: any) => {
+    const { TextInput } = jest.requireActual("react-native");
+
+    return (
+      <TextInput
+        {...props}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        testID="recovery-phrase-input"
+      />
+    );
+  },
+}));
+
 describe("ImportWalletScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
