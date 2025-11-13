@@ -3,6 +3,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
+import { isMuxedAccount } from "helpers/stellar";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -153,14 +154,28 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
 
+          // For custom tokens, use the amount in base units from buildPaymentTransaction
+          // For native tokens sent to contract addresses, use stroops
+          const amountForSimulation =
+            isCustomToken && builtTxResult.amountInBaseUnits
+              ? builtTxResult.amountInBaseUnits
+              : xlmToStroop(params.tokenAmount).toString();
+
+          // If destination is muxed, memo is already embedded in the address (CAP-0067)
+          // Don't pass memo separately to avoid duplicate memo in transaction
+          const isDestinationMuxed = isMuxedAccount(finalDestination);
+          const memoForSimulation = isDestinationMuxed
+            ? ""
+            : params.transactionMemo || "";
+
           finalXdr = await simulateContractTransfer({
             transaction: builtTxResult.tx,
             networkDetails,
-            memo: params.transactionMemo || "",
+            memo: memoForSimulation,
             params: {
               publicKey: params.senderAddress,
               destination: finalDestination, // Use the final destination (may be muxed)
-              amount: xlmToStroop(params.tokenAmount).toString(),
+              amount: amountForSimulation,
             },
             contractAddress: builtTxResult.contractId!,
           });

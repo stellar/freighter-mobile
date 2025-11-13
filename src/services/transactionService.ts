@@ -12,7 +12,6 @@ import {
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
-  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -267,11 +266,12 @@ interface IBuildSorobanTransferOperation {
  * Supports muxed addresses (M... format) for CAP-0067 memo support
  *
  * @param params Transfer operation parameters
- * @returns TransactionBuilder with the transfer operation added
+ * @returns Final destination address (may be muxed if memo was provided and contract supports it)
+ * @note transactionBuilder is mutated in place, so it doesn't need to be returned
  */
 export const buildSorobanTransferOperation = (
   params: IBuildSorobanTransferOperation,
-): TransactionBuilder => {
+): string => {
   const {
     sourceAccount,
     destinationAddress,
@@ -304,7 +304,10 @@ export const buildSorobanTransferOperation = (
       nativeToScVal(amount, { type: "i128" }),
     );
 
+    // transactionBuilder is mutated in place
     transactionBuilder.addOperation(transaction);
+
+    return finalDestination;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -312,8 +315,6 @@ export const buildSorobanTransferOperation = (
       `Error building Soroban transfer operation: ${errorMessage}`,
     );
   }
-
-  return transactionBuilder;
 };
 
 interface BuildPaymentTransactionResult {
@@ -321,6 +322,7 @@ interface BuildPaymentTransactionResult {
   xdr: string;
   contractId?: string;
   finalDestination?: string; // The actual destination used (may be muxed if memo was provided)
+  amountInBaseUnits?: string; // Amount in base units (for custom tokens, needed for simulation)
 }
 
 /**
@@ -427,16 +429,30 @@ export const buildPaymentTransaction = async (
         networkDetails,
       });
 
-      const decimals =
-        "decimals" in selectedBalance
-          ? selectedBalance.decimals
-          : DEFAULT_DECIMALS;
+      // Get decimals from balance - SorobanBalance always has decimals property
+      // For custom tokens, we must use the actual decimals from the balance
+      // Using wrong decimals would cause incorrect amounts (e.g., 0 decimals token with 7 decimals = 10Mx multiplier)
+      if (
+        !("decimals" in selectedBalance) ||
+        typeof selectedBalance.decimals !== "number"
+      ) {
+        throw new Error(
+          `Missing or invalid decimals for custom token. Contract: ${contractId}`,
+        );
+      }
+      const { decimals } = selectedBalance;
+
+      // Convert amount to base units by shifting by decimals
+      // e.g., 1 token with 7 decimals = 10,000,000 base units
+      // e.g., 1 token with 0 decimals = 1 base unit
+      // The amount parameter is in human-readable format (e.g., "1" for 1 token)
       const amountInBaseUnits = BigNumber(amount)
         .shiftedBy(decimals)
         .toFixed(0);
 
       // Muxed address creation happens at the very last step in buildSorobanTransferOperation
-      buildSorobanTransferOperation({
+      // transactionBuilder is mutated in place, so we just need the finalDestination
+      const finalDestination = buildSorobanTransferOperation({
         sourceAccount: senderAddress,
         destinationAddress: recipientAddress, // Pass original recipient, muxing happens here
         amount: amountInBaseUnits,
@@ -450,16 +466,12 @@ export const buildPaymentTransaction = async (
       const transaction = transactionBuilder.build();
       const transactionXDR = transaction.toXDR();
 
-      // Note: finalDestination is determined in buildSorobanTransferOperation
-      // We need to track it, but since it's created at the last step, we'll use recipientAddress
-      // The actual muxed address is embedded in the transaction operation
-      const finalDestination = recipientAddress; // Original recipient, muxing happens in operation
-
       return {
         tx: transaction,
         xdr: transactionXDR,
         contractId,
         finalDestination,
+        amountInBaseUnits, // Return amount in base units for simulation
       };
     }
 
@@ -740,7 +752,9 @@ export const simulateContractTransfer = async ({
       network_passphrase: networkDetails.networkPassphrase,
     });
 
-    return result.preparedTx.toXDR();
+    // Use the preparedTransaction XDR directly from the backend
+    // The backend builds, simulates, and prepares the transaction
+    return result.preparedTransaction;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
