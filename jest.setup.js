@@ -110,7 +110,6 @@ jest.mock("react-native-safe-area-context", () => {
   };
   return {
     SafeAreaProvider: jest.fn(({ children }) => children),
-    SafeAreaView: jest.fn(({ children }) => children),
     useSafeAreaInsets: jest.fn(() => inset),
   };
 });
