@@ -17,7 +17,7 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
@@ -170,8 +170,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
   const isUnableToScanToken =
-    (sourceSecurityAssessment.isUnableToScan && sourceTokenId !== "XLM") ||
-    destSecurityAssessment.isUnableToScan;
+    (sourceSecurityAssessment.isUnableToScan &&
+      sourceTokenId !== NATIVE_TOKEN_CODE) ||
+    (destSecurityAssessment.isUnableToScan &&
+      destinationTokenId !== NATIVE_TOKEN_CODE);
 
   const bannerText = useMemo(() => {
     if (isTxMalicious) {
