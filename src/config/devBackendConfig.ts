@@ -1,15 +1,20 @@
 import { logger } from "config/logger";
 import { asyncStorage } from "services/storage/asyncStorage";
 
+/*
+ * NOTE: The contents of this file should only be used for the "Freighter Dev" builds.
+ * It should never be used in the "Freighter" production builds.
+ */
+
 /**
- * Enum representing the available backend environments.
+ * Enum representing the available backend environments for Dev builds.
  *
  * @enum {string}
  * @property {string} PROD - Production environment.
  * @property {string} STG - Staging environment.
  * @property {string} DEV - Development environment.
  */
-export enum BackendEnvironment {
+export enum DevBackendEnvironment {
   PROD = "PROD",
   STG = "STG",
   DEV = "DEV",
@@ -33,26 +38,28 @@ const STORAGE_KEYS = {
   BACKEND_V2_ENVIRONMENT: "@backend-config:v2-environment",
 } as const;
 
-const DEFAULT_BACKEND_ENVIRONMENT = BackendEnvironment.PROD;
+// NOTE: We should switch to STG for V1 as well as soon as it's publicly available.
+const DEFAULT_BACKEND_V1_ENVIRONMENT = DevBackendEnvironment.PROD;
+const DEFAULT_BACKEND_V2_ENVIRONMENT = DevBackendEnvironment.STG;
 
 /**
  * Get the selected Backend V1 environment from AsyncStorage
  * Returns PROD as default if nothing is stored
  */
 export const getBackendV1Environment =
-  async (): Promise<BackendEnvironment> => {
+  async (): Promise<DevBackendEnvironment> => {
     try {
       const value = await asyncStorage.getItem(
         STORAGE_KEYS.BACKEND_V1_ENVIRONMENT,
       );
-      return (value as BackendEnvironment) || DEFAULT_BACKEND_ENVIRONMENT;
+      return (value as DevBackendEnvironment) || DEFAULT_BACKEND_V1_ENVIRONMENT;
     } catch (error) {
       logger.error(
         "backendConfig",
         "Failed to get Backend V1 environment",
         error,
       );
-      return DEFAULT_BACKEND_ENVIRONMENT;
+      return DEFAULT_BACKEND_V1_ENVIRONMENT;
     }
   };
 
@@ -61,19 +68,19 @@ export const getBackendV1Environment =
  * Returns PROD as default if nothing is stored
  */
 export const getBackendV2Environment =
-  async (): Promise<BackendEnvironment> => {
+  async (): Promise<DevBackendEnvironment> => {
     try {
       const value = await asyncStorage.getItem(
         STORAGE_KEYS.BACKEND_V2_ENVIRONMENT,
       );
-      return (value as BackendEnvironment) || DEFAULT_BACKEND_ENVIRONMENT;
+      return (value as DevBackendEnvironment) || DEFAULT_BACKEND_V2_ENVIRONMENT;
     } catch (error) {
       logger.error(
         "backendConfig",
         "Failed to get Backend V2 environment",
         error,
       );
-      return DEFAULT_BACKEND_ENVIRONMENT;
+      return DEFAULT_BACKEND_V2_ENVIRONMENT;
     }
   };
 
@@ -81,7 +88,7 @@ export const getBackendV2Environment =
  * Set the Backend V1 environment in AsyncStorage
  */
 export const setBackendV1Environment = async (
-  environment: BackendEnvironment,
+  environment: DevBackendEnvironment,
 ): Promise<void> => {
   try {
     await asyncStorage.setItem(
@@ -101,7 +108,7 @@ export const setBackendV1Environment = async (
  * Set the Backend V2 environment in AsyncStorage
  */
 export const setBackendV2Environment = async (
-  environment: BackendEnvironment,
+  environment: DevBackendEnvironment,
 ): Promise<void> => {
   try {
     await asyncStorage.setItem(

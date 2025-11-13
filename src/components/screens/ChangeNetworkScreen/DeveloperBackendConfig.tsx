@@ -2,12 +2,12 @@ import Icon from "components/sds/Icon";
 import SegmentedControl from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import {
-  BackendEnvironment,
+  DevBackendEnvironment,
   getBackendV1Environment,
   getBackendV2Environment,
   setBackendV1Environment,
   setBackendV2Environment,
-} from "config/backendConfig";
+} from "config/devBackendConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
@@ -25,11 +25,11 @@ const DeveloperBackendConfig: React.FC = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const [backendV1Env, setBackendV1Env] = useState<BackendEnvironment>(
-    BackendEnvironment.DEV,
+  const [backendV1Env, setBackendV1Env] = useState<DevBackendEnvironment>(
+    DevBackendEnvironment.DEV,
   );
-  const [backendV2Env, setBackendV2Env] = useState<BackendEnvironment>(
-    BackendEnvironment.DEV,
+  const [backendV2Env, setBackendV2Env] = useState<DevBackendEnvironment>(
+    DevBackendEnvironment.DEV,
   );
 
   // Load saved backend environments on mount
@@ -44,20 +44,20 @@ const DeveloperBackendConfig: React.FC = () => {
     loadBackendEnvironments();
   }, []);
 
-  const handleSetBackendV1Environment = (env: BackendEnvironment) => {
+  const handleSetBackendV1Environment = (env: DevBackendEnvironment) => {
     setBackendV1Env(env);
     setBackendV1Environment(env);
   };
 
-  const handleSetBackendV2Environment = (env: BackendEnvironment) => {
+  const handleSetBackendV2Environment = (env: DevBackendEnvironment) => {
     setBackendV2Env(env);
     setBackendV2Environment(env);
   };
 
   const backendEnvironmentOptions = [
-    { label: "PROD", value: BackendEnvironment.PROD },
-    { label: "STG", value: BackendEnvironment.STG },
-    { label: "DEV", value: BackendEnvironment.DEV },
+    { label: "PROD", value: DevBackendEnvironment.PROD },
+    { label: "STG", value: DevBackendEnvironment.STG },
+    { label: "DEV", value: DevBackendEnvironment.DEV },
   ];
 
   return (
@@ -80,7 +80,7 @@ const DeveloperBackendConfig: React.FC = () => {
           options={backendEnvironmentOptions}
           selectedValue={backendV1Env}
           onValueChange={(value) =>
-            handleSetBackendV1Environment(value as BackendEnvironment)
+            handleSetBackendV1Environment(value as DevBackendEnvironment)
           }
         />
       </View>
@@ -93,7 +93,7 @@ const DeveloperBackendConfig: React.FC = () => {
           options={backendEnvironmentOptions}
           selectedValue={backendV2Env}
           onValueChange={(value) =>
-            handleSetBackendV2Environment(value as BackendEnvironment)
+            handleSetBackendV2Environment(value as DevBackendEnvironment)
           }
         />
       </View>

@@ -1,8 +1,8 @@
 import {
-  BackendEnvironment,
+  DevBackendEnvironment,
   getBackendV1Environment,
   getBackendV2Environment,
-} from "config/backendConfig";
+} from "config/devBackendConfig";
 import { isProd } from "helpers/isEnv";
 import Config from "react-native-config";
 
@@ -108,13 +108,13 @@ const getEnvConfig = (): EnvConfigType => ({
 /**
  * Get the backend V1 URL based on the selected environment
  */
-const getBackendV1Url = (environment?: BackendEnvironment): string => {
+const getBackendV1Url = (environment?: DevBackendEnvironment): string => {
   switch (environment) {
-    case BackendEnvironment.PROD:
+    case DevBackendEnvironment.PROD:
       return Config.FREIGHTER_BACKEND_V1_PROD_URL;
-    case BackendEnvironment.STG:
+    case DevBackendEnvironment.STG:
       return Config.FREIGHTER_BACKEND_V1_STG_URL;
-    case BackendEnvironment.DEV:
+    case DevBackendEnvironment.DEV:
       return Config.FREIGHTER_BACKEND_V1_DEV_URL;
     default:
       return Config.FREIGHTER_BACKEND_V1_DEV_URL;
@@ -124,13 +124,13 @@ const getBackendV1Url = (environment?: BackendEnvironment): string => {
 /**
  * Get the backend V2 URL based on the selected environment
  */
-const getBackendV2Url = (environment?: BackendEnvironment): string => {
+const getBackendV2Url = (environment?: DevBackendEnvironment): string => {
   switch (environment) {
-    case BackendEnvironment.PROD:
+    case DevBackendEnvironment.PROD:
       return Config.FREIGHTER_BACKEND_V2_PROD_URL;
-    case BackendEnvironment.STG:
+    case DevBackendEnvironment.STG:
       return Config.FREIGHTER_BACKEND_V2_STG_URL;
-    case BackendEnvironment.DEV:
+    case DevBackendEnvironment.DEV:
       return Config.FREIGHTER_BACKEND_V2_DEV_URL;
     default:
       return Config.FREIGHTER_BACKEND_V2_DEV_URL;
@@ -146,8 +146,8 @@ const getBackendEnvConfig = async (): Promise<BackendEnvConfigType> => {
   if (isProd) {
     // For prod builds, always use production backend (synchronous)
     return {
-      FREIGHTER_BACKEND_V1_URL: getBackendV1Url(BackendEnvironment.PROD),
-      FREIGHTER_BACKEND_V2_URL: getBackendV2Url(BackendEnvironment.PROD),
+      FREIGHTER_BACKEND_V1_URL: Config.FREIGHTER_BACKEND_V1_PROD_URL,
+      FREIGHTER_BACKEND_V2_URL: Config.FREIGHTER_BACKEND_V2_PROD_URL,
     };
   }
 
