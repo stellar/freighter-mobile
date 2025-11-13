@@ -8,8 +8,8 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      env:
-        description: The iOS env that will be built (optional)
+      buildEnv:
+        description: The iOS env to be built (optional)
         type: choice
         default: ""
         options:
@@ -23,6 +23,10 @@ on:
         options:
           - "yes"
           - "no"
+      release_notes:
+        description: TestFlight release notes (optional)
+        type: string
+        default: ""
   schedule:
     # Runs every day at midnight PST/PDT time (8am UTC/GMT)
     - cron: "0 8 * * *"
@@ -138,23 +142,25 @@ jobs:
 
       - name: Set env
         run: |
-          # If the workflow is triggered by a scheduled event, always upload to TestFlight
-          # and use the 'freighter-mobile-dev' iOS scheme
+          # If the workflow is triggered by a scheduled event, always upload to TestFlight.
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "UPLOAD_TO_TESTFLIGHT=yes" >> $GITHUB_ENV
-            export IOS_SCHEME="freighter-mobile-dev"
           else
             echo "UPLOAD_TO_TESTFLIGHT=${{ github.event.inputs.upload_to_testflight }}" >> $GITHUB_ENV
-            # Translate env input to iOS scheme
-            if [[ "${{ github.event.inputs.env }}" == "dev" ]]; then
-              export IOS_SCHEME="freighter-mobile-dev"
-            elif [[ "${{ github.event.inputs.env }}" == "prod" ]]; then
-              export IOS_SCHEME="freighter-mobile"
-            else
-              export IOS_SCHEME=""
-            fi
+          fi
+
+          # Translate buildEnv input to iOS scheme
+          if [[ "${{ github.event.inputs.buildEnv }}" == "prod" ]]; then
+            export IOS_SCHEME="freighter-mobile"
+          else
+            export IOS_SCHEME="freighter-mobile-dev"
           fi
           ./scripts/gh-ios-env >> $GITHUB_ENV
+
+      - name: Generate release notes
+        env:
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes || '' }}
+        run: scripts/generate-release-notes.sh
 
       - name: Decode and save sentry.properties
         run:

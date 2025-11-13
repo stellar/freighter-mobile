@@ -7,8 +7,12 @@ import {
   LoginType,
 } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
-import { AUTH_STATUS } from "config/types";
-import { useAuthenticationStore, ActiveAccount } from "ducks/auth";
+import { Account, AUTH_STATUS } from "config/types";
+import {
+  useAuthenticationStore,
+  ActiveAccount,
+  appendAccounts,
+} from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
 import {
   encryptDataWithPassword,
@@ -149,6 +153,9 @@ describe("auth duck", () => {
     mnemonicPhrase: mockMnemonicPhrase,
   });
 
+  let dataStorageMemory: Record<string, string>;
+  let accountCounter = 0;
+
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
@@ -187,19 +194,25 @@ describe("auth duck", () => {
       });
     });
 
-    // Setup storage mocks to return empty/initial state
-    (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
-      if (key === STORAGE_KEYS.ACCOUNT_LIST) {
-        return Promise.resolve(null); // No accounts exist
-      }
-      if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
-        return Promise.resolve(null);
-      }
+    dataStorageMemory = {};
+    accountCounter = 0;
+
+    (dataStorage.getItem as jest.Mock).mockImplementation((key: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       if (key === STORAGE_KEYS.ACTIVE_NETWORK) {
-        return Promise.resolve(NETWORKS.PUBLIC);
+        return Promise.resolve(dataStorageMemory[key] ?? NETWORKS.PUBLIC);
       }
-      return Promise.resolve(null);
+
+      return Promise.resolve(dataStorageMemory[key] ?? null);
     });
+
+    (dataStorage.setItem as jest.Mock).mockImplementation(
+      (key: string, value: string) => {
+        dataStorageMemory[key] = value;
+
+        return Promise.resolve();
+      },
+    );
 
     (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
       if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
@@ -344,6 +357,131 @@ describe("auth duck", () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe("Signup failed");
       expect(result.current.authStatus).toBe(AUTH_STATUS.NOT_AUTHENTICATED);
+    });
+  });
+
+  describe("appendAccounts", () => {
+    const createAccount = (overrides: Partial<Account> = {}): Account => {
+      accountCounter += 1;
+      return {
+        id: `account-${accountCounter}`,
+        name: `Account ${accountCounter}`,
+        publicKey: `GACCOUNT${accountCounter}`,
+        importedFromSecretKey: false,
+        ...overrides,
+      };
+    };
+
+    it("should append new accounts when storage is empty", async () => {
+      const accounts = [
+        createAccount({ id: "account-1", publicKey: "GA1", name: "Account 1" }),
+        createAccount({ id: "account-2", publicKey: "GA2", name: "Account 2" }),
+      ];
+
+      await appendAccounts(accounts);
+
+      expect(JSON.parse(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST])).toEqual(
+        accounts,
+      );
+      expect(dataStorage.setItem).toHaveBeenCalledTimes(1);
+    });
+
+    it("should append new accounts to storage without duplicating existing ones", async () => {
+      const existingAccounts = [
+        {
+          id: "account-existing",
+          name: "Existing Account",
+          publicKey: "GEXISTING",
+          importedFromSecretKey: false,
+        },
+      ];
+      const duplicatedAccount = {
+        id: "account-existing",
+        name: "Existing Account Updated Name (ignored)",
+        publicKey: "GEXISTING",
+        importedFromSecretKey: false,
+      };
+      const newAccount = {
+        id: "account-new",
+        name: "New Account",
+        publicKey: "GNEWACCOUNT",
+        importedFromSecretKey: false,
+      };
+
+      dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] =
+        JSON.stringify(existingAccounts);
+
+      await appendAccounts([duplicatedAccount, newAccount]);
+
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.ACCOUNT_LIST,
+        JSON.stringify([...existingAccounts, newAccount]),
+      );
+      expect(JSON.parse(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST])).toEqual([
+        ...existingAccounts,
+        newAccount,
+      ]);
+    });
+
+    it("should ignore duplicates and prevent multiple writes when nothing new is added", async () => {
+      const existingAccount = createAccount({
+        id: "account-existing",
+        publicKey: "GEXISTING",
+        name: "Existing Account",
+      });
+
+      dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+        existingAccount,
+      ]);
+
+      await appendAccounts([existingAccount]);
+
+      // appendAccounts should return early without calling setItem again
+      expect(dataStorage.setItem).not.toHaveBeenCalled();
+      expect(JSON.parse(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST])).toEqual([
+        existingAccount,
+      ]);
+    });
+
+    it("should maintain existing order and append multiple new accounts at the end", async () => {
+      const existingAccounts = [
+        createAccount({
+          id: "account-1",
+          publicKey: "GA_EXISTING_1",
+          name: "Existing Account 1",
+        }),
+      ];
+
+      const newAccounts = [
+        createAccount({
+          id: "account-2",
+          publicKey: "GA_NEW_1",
+          name: "New Account 1",
+        }),
+        createAccount({
+          id: "account-3",
+          publicKey: "GA_NEW_2",
+          name: "New Account 2",
+        }),
+      ];
+
+      dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] =
+        JSON.stringify(existingAccounts);
+
+      await appendAccounts([
+        newAccounts[0],
+        ...existingAccounts,
+        newAccounts[1],
+      ]);
+
+      expect(JSON.parse(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST])).toEqual([
+        ...existingAccounts,
+        ...newAccounts,
+      ]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.ACCOUNT_LIST,
+        JSON.stringify([...existingAccounts, ...newAccounts]),
+      );
     });
   });
 

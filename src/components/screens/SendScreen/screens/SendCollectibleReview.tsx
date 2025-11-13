@@ -17,7 +17,7 @@ import {
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import {
   useSendBannerContent,
-  useTransactionSecurity,
+  getTransactionSecurity,
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -44,6 +44,8 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
 import React, {
@@ -90,6 +92,10 @@ const SendCollectibleReviewScreen: React.FC<
       saveSelectedCollectibleDetails({ tokenId, collectionAddress });
     }
   }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
+
+  const { recommendedFee } = useNetworkFees();
+
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const {
     buildSendCollectibleTransaction,
@@ -166,7 +172,11 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
+  } = useMemo(
+    () =>
+      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
+    [transactionScanResult, overriddenBlockaidResponse],
+  );
 
   const selectedCollectible = useMemo(() => {
     const collection = collections.find(
@@ -179,6 +189,26 @@ const SendCollectibleReviewScreen: React.FC<
     }
     return undefined;
   }, [collections, collectionAddress, tokenId]);
+
+  const handleTransactionScanSuccess = useCallback(
+    (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      const security = getTransactionSecurity(
+        scanResult,
+        overriddenBlockaidResponse,
+      );
+      if (security.transactionSecurityAssessment.isUnableToScan) {
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        reviewBottomSheetModalRef.current?.present();
+      }
+    },
+    [overriddenBlockaidResponse],
+  );
+
+  const handleTransactionScanError = useCallback(() => {
+    setTransactionScanResult(undefined);
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
@@ -210,19 +240,20 @@ const SendCollectibleReviewScreen: React.FC<
 
         if (!xdr) return;
 
-        if (shouldOpenReview) {
-          scanTransaction(xdr, "internal")
-            .then((scanResult) => {
-              logger.info("TransactionAmountScreen", "scanResult", scanResult);
-              setTransactionScanResult(scanResult);
-            })
-            .catch(() => {
-              setTransactionScanResult(undefined);
-            })
-            .finally(() => {
-              reviewBottomSheetModalRef.current?.present();
-            });
-        }
+        scanTransaction(xdr, "internal")
+          .then((scanResult) => {
+            setTransactionScanResult(scanResult);
+
+            if (shouldOpenReview) {
+              handleTransactionScanSuccess(scanResult);
+            }
+          })
+          .catch(() => {
+            setTransactionScanResult(undefined);
+            if (shouldOpenReview) {
+              handleTransactionScanError();
+            }
+          });
       } catch (error) {
         logger.error(
           "TransactionAmountScreen",
@@ -238,6 +269,8 @@ const SendCollectibleReviewScreen: React.FC<
       buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
+      handleTransactionScanSuccess,
+      handleTransactionScanError,
     ],
   );
 
@@ -460,13 +493,7 @@ const SendCollectibleReviewScreen: React.FC<
       return;
     }
 
-    // Only open security detail sheet first for "unable to scan" cases
-    if (transactionSecurityAssessment.isUnableToScan) {
-      prepareTransaction(false);
-      transactionSecurityWarningBottomSheetModalRef.current?.present();
-    } else {
-      prepareTransaction(true);
-    }
+    prepareTransaction(true);
   };
 
   const getContinueButtonText = () => {
@@ -491,7 +518,7 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-2xl bg-background-tertiary p-1">
+          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}
