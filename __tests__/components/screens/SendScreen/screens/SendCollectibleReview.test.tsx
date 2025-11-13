@@ -511,8 +511,6 @@ describe("SendCollectibleReview - Banner Content", () => {
     );
     expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
     expect(mockSendReviewBottomSheetProps.isRequiredMemoMissing).toBe(false);
-    expect(mockSendReviewBottomSheetProps.isMalicious).toBe(false);
-    expect(mockSendReviewBottomSheetProps.isSuspicious).toBe(true);
     expect(mockSendReviewBottomSheetProps.bannerText).toBe(
       "transactionAmountScreen.errors.suspicious",
     );

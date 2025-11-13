@@ -635,11 +635,11 @@
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
-      "sorobanInfo": "Para transações Soroban (transferências de colecionáveis, tokens personalizados ou endereços \"C\"), o suporte a memo depende do contrato de destino:\n\n• Se o contrato suporta endereços muxed (CAP-0067), endereços muxed (formato M...) serão usados. Você também pode criar um endereço muxed inserindo um memo com um endereço G.\n• Se o contrato não suporta endereços muxed, endereços regulares (formato G...) serão usados e o memo não está disponível.",
+      "sorobanInfo": "Para transações Soroban (como transferências de colecionáveis ou tokens personalizados), o suporte a memo depende do contrato de destino.",
       "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
       "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
-      "muxedAddressInfo": "A partir do CAP-0067, transferências Soroban suportam memo através de endereços muxed (formato M...). O memo será incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
-      "memoNotAllowedForMuxed": "Memo não é permitido para endereços muxed.",
+      "muxedAddressInfo": "Endereços muxed (formato M-) permitem incluir um memo diretamente no endereço. O memo é incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
+      "memoEmbeddedInMuxedAddress": "O memo já está incluído neste endereço e será usado automaticamente.",
       "memoNotSupportedForOperation": "Memo não é suportado para esta operação.",
       "muxedNotSupportedBaseGWillBeUsed": "A conta G base será usada. Endereço muxed não é suportado para esta operação."
     },
@@ -708,6 +708,12 @@
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
       "memoMissing": "Esta transação requer um memo",
+      "muxedAddressNotSupported": "Endereço muxed não suportado",
+      "muxedAddressWarning": {
+        "title": "Endereço muxed (M-) não suportado para esta operação",
+        "description": "Ao prosseguir, a conta G- base será usada. O token pode ser perdido durante a transferência se as informações estiverem incorretas.",
+        "confirmAnyway": "Confirmar mesmo assim"
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousTransaction": "Esta transação foi marcada como maliciosa",

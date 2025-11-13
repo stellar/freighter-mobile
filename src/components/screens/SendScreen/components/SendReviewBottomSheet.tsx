@@ -48,8 +48,6 @@ type SendReviewBottomSheetProps = {
    * Typically opens a modal to explain why the memo is required
    */
   onBannerPress?: () => void;
-  isMalicious?: boolean;
-  isSuspicious?: boolean;
   /**
    * Text to display in the banner
    */
@@ -84,8 +82,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedCollectible,
   isRequiredMemoMissing,
   onBannerPress,
-  isMalicious,
-  isSuspicious,
   bannerText,
   bannerVariant,
   signTransactionDetails,
@@ -172,10 +168,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
    */
   const renderBanner = () => {
-    if (!isRequiredMemoMissing && !isMalicious && !isSuspicious) {
-      return null;
-    }
-
     if (!bannerText) {
       return null;
     }
@@ -361,6 +353,7 @@ type SendReviewFooterProps = {
   isMalicious?: boolean;
   isValidatingMemo?: boolean;
   isSuspicious?: boolean;
+  isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
 };
 
@@ -377,10 +370,12 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isMalicious,
       isValidatingMemo,
       isSuspicious,
+      isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
     } = props;
 
-    const isTrusted = !isMalicious && !isSuspicious;
+    const isTrusted =
+      !isMalicious && !isSuspicious && !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
 
@@ -466,7 +461,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
-          variant={isMalicious ? "error" : "secondary"}
+          variant={
+            isMalicious || isMuxedAddressWithoutMemoSupport
+              ? "error"
+              : "secondary"
+          }
         />
       );
 
@@ -491,6 +490,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isTrusted,
       isSuspicious,
       isMalicious,
+      isMuxedAddressWithoutMemoSupport,
       onCancel,
       isRequiredMemoMissing,
       isDisabled,

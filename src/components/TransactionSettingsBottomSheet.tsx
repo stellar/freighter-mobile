@@ -63,6 +63,18 @@ const getMemoDisabledState = (
   isDestinationMuxed: boolean,
   t: ReturnType<typeof useAppTranslation>["t"],
 ): { isMemoDisabled: boolean; memoDisabledMessage: string | undefined } => {
+  // If destination is M address, memo is embedded in the address
+  // This applies to both classic and Soroban transactions
+  if (isDestinationMuxed) {
+    return {
+      isMemoDisabled: true,
+      memoDisabledMessage: t(
+        "transactionSettings.memoInfo.memoEmbeddedInMuxedAddress",
+      ),
+    };
+  }
+
+  // For classic transactions, memo is allowed
   if (!isSorobanTransaction) {
     return { isMemoDisabled: false, memoDisabledMessage: undefined };
   }
@@ -450,11 +462,9 @@ const TransactionSettingsBottomSheet: React.FC<
     // Only show message when memo is disabled
     if (isMemoDisabled && memoDisabledMessage) {
       return (
-        <View className="flex flex-row items-center gap-2 mt-1">
-          <Text sm secondary color={themeColors.status.warning}>
-            {memoDisabledMessage}
-          </Text>
-        </View>
+        <Text sm color={themeColors.status.warning}>
+          {memoDisabledMessage}
+        </Text>
       );
     }
     return undefined;
@@ -480,21 +490,13 @@ const TransactionSettingsBottomSheet: React.FC<
           placeholder={t("transactionSettings.memoPlaceholder")}
           value={localMemo}
           onChangeText={handleMemoChange}
-          error={isMemoDisabled ? memoDisabledMessage : memoError}
+          error={isMemoDisabled ? undefined : memoError}
           editable={!isMemoDisabled}
           note={memoNote}
         />
       </View>
     ),
-    [
-      localMemo,
-      memoError,
-      t,
-      handleMemoChange,
-      memoNote,
-      isMemoDisabled,
-      memoDisabledMessage,
-    ],
+    [localMemo, memoError, t, handleMemoChange, memoNote, isMemoDisabled],
   );
 
   const getSlippageRow = useCallback(
@@ -692,11 +694,15 @@ const TransactionSettingsBottomSheet: React.FC<
           key: "additionalInfo",
           value: t("transactionSettings.memoInfo.additionalInfo"),
         },
-        ...(isSorobanTransaction
+        {
+          key: "sorobanInfo",
+          value: t("transactionSettings.memoInfo.sorobanInfo"),
+        },
+        ...(isDestinationMuxed
           ? [
               {
-                key: "sorobanInfo",
-                value: t("transactionSettings.memoInfo.sorobanInfo"),
+                key: "muxedAddressInfo",
+                value: t("transactionSettings.memoInfo.muxedAddressInfo"),
               },
             ]
           : []),

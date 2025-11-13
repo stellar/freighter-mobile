@@ -436,7 +436,9 @@ export const buildPaymentTransaction = async (
     const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
 
     // Only add memo for non-Soroban transactions
-    if (memo && !shouldUseSorobanTransfer) {
+    // Don't add memo if recipient is M address (memo is embedded in address)
+    const isRecipientMuxed = isMuxedAccount(recipientAddress);
+    if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
 
@@ -512,20 +514,20 @@ export const buildPaymentTransaction = async (
 
     const token = getTokenForPayment(selectedBalance);
 
-    // For classic payments, extract base account from muxed address if needed
-    // Classic operations don't support muxed addresses directly
-    let paymentDestination = recipientAddress;
-    if (isMuxedAccount(recipientAddress)) {
-      const baseAccount = getBaseAccount(recipientAddress);
-      if (baseAccount) {
-        paymentDestination = baseAccount;
-      }
-    }
+    // For classic payments, use M address directly (like extension does)
+    // Only decompose for createAccount and account loading (which need base G address)
+    const paymentDestination = recipientAddress; // Use M address directly for payment operation
 
     // Check if destination is funded, but only for XLM transfers
+    // Use base G address for account check (M addresses map to G addresses on network)
+    // Get base address once if recipient is muxed (used for both account check and createAccount)
+    const baseAccount = isMuxedAccount(recipientAddress)
+      ? getBaseAccount(recipientAddress) || recipientAddress
+      : recipientAddress;
+
     if (token.isNative()) {
       try {
-        await server.loadAccount(paymentDestination);
+        await server.loadAccount(baseAccount);
       } catch (e) {
         const error = e as AxiosError;
 
@@ -535,9 +537,10 @@ export const buildPaymentTransaction = async (
             throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
           }
 
+          // For createAccount, use base G address (like extension does)
           transactionBuilder.addOperation(
             Operation.createAccount({
-              destination: paymentDestination, // Use base account for operation
+              destination: baseAccount, // Use base G address for createAccount
               startingBalance: amount,
             }),
           );
@@ -547,7 +550,7 @@ export const buildPaymentTransaction = async (
           return {
             tx: transaction,
             xdr: transaction.toXDR(),
-            finalDestination: recipientAddress, // Keep original muxed address for tracking
+            finalDestination: recipientAddress, // Keep original M address for tracking
           };
         }
 
@@ -556,9 +559,10 @@ export const buildPaymentTransaction = async (
     }
 
     // If account is funded or asset is not XLM, use standard payment
+    // Use M address directly (Stellar SDK supports M addresses in payment operations)
     transactionBuilder.addOperation(
       Operation.payment({
-        destination: paymentDestination, // Use base account for operation
+        destination: paymentDestination, // Use M address directly
         asset: token,
         amount,
       }),
