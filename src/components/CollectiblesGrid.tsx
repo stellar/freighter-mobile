@@ -106,7 +106,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const renderCollection = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: Collection }) => (
-        <View className="mb-6">
+        <View key={item.collectionAddress} className="mb-6">
           <View
             className="flex-row items-center gap-2 mb-3"
             style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
