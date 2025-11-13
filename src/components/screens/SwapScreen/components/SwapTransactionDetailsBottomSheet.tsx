@@ -18,7 +18,11 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatAmount,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -26,8 +30,9 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useMemo } from "react";
-import { View, Linking } from "react-native";
+import { View } from "react-native";
 import { TransactionDetail } from "services/stellar";
 
 type SwapTransactionDetailsBottomSheetProps = {
@@ -52,13 +57,15 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   const { copyToClipboard } = useClipboard();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
-  const { swapFee, swapSlippage } = useSwapSettingsStore();
+  const { swapSlippage } = useSwapSettingsStore();
+
+  const actualFee = stroopToXlm(transactionDetails?.fee ?? 0).toString();
 
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
   const {
     transactionXDR,
@@ -110,7 +117,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
 
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
-    Linking.openURL(explorerUrl).catch((err) =>
+    openInAppBrowser(explorerUrl).catch((err) =>
       logger.error(
         "[Linking - openURL]",
         "Error opening transaction explorer:",
@@ -174,31 +181,30 @@ const SwapTransactionDetailsBottomSheet: React.FC<
       </View>
 
       <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row items-center">
+          <TokenIcon token={sourceToken} size="lg" />
+          <View className="ml-[16px]">
             <Text xl medium primary>
-              {formatTokenAmount(actualSourceAmount, sourceToken.code)}
+              {formatTokenForDisplay(actualSourceAmount, sourceToken.code)}
             </Text>
             <Text md medium secondary>
               {sourceTokenFiatAmount}
             </Text>
           </View>
-          <TokenIcon token={sourceToken} size="lg" />
         </View>
 
-        <View>
+        <View className="w-[40px] flex items-center py-1">
           <Icon.ChevronDownDouble
             size={20}
             color={themeColors.foreground.primary}
-            circle
-            circleBackground={themeColors.background.tertiary}
           />
         </View>
 
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row items-center">
+          <TokenIcon token={destinationToken} size="lg" />
+          <View className="ml-[16px]">
             <Text xl medium primary>
-              {formatTokenAmount(
+              {formatTokenForDisplay(
                 actualDestinationAmount,
                 destinationToken.code,
               )}
@@ -207,7 +213,6 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               {destinationTokenFiatAmount}
             </Text>
           </View>
-          <TokenIcon token={destinationToken} size="lg" />
         </View>
       </View>
 
@@ -262,10 +267,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
             ),
             trailingContent: (
               <Text md medium>
-                {formatTokenAmount(
-                  displayMinimumReceived,
-                  destinationToken.code,
-                )}
+                {`${displayMinimumReceived} ${destinationToken.code}`}
               </Text>
             ),
           },
@@ -282,7 +284,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <View className="flex-row items-center gap-[4px]">
                 <StellarLogo width={16} height={16} />
                 <Text md medium>
-                  {formatTokenAmount(swapFee, NATIVE_TOKEN_CODE)}
+                  {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                 </Text>
               </View>
             ),

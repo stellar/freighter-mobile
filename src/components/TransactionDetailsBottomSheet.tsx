@@ -1,7 +1,10 @@
+import { TransactionBuilder } from "@stellar/stellar-sdk";
 import StellarLogo from "assets/logos/stellar-logo.svg";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
+import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
+import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import Avatar from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -10,10 +13,15 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTransactionDate } from "helpers/date";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatAmount,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -21,8 +29,9 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useEffect, useState } from "react";
-import { View, Linking } from "react-native";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
+import React, { useEffect, useMemo, useState } from "react";
+import { View } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 /**
@@ -31,7 +40,8 @@ import { getTransactionDetails, TransactionDetail } from "services/stellar";
  * @prop {string} [transactionAmount] - Transaction amount
  */
 type TransactionDetailsBottomSheetProps = {
-  transactionAmount: string;
+  type: "token" | "collectible";
+  transactionAmount?: string;
 };
 
 /**
@@ -44,15 +54,20 @@ type TransactionDetailsBottomSheetProps = {
  */
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
-> = ({ transactionAmount }) => {
+> = ({ transactionAmount, type }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
-  const { recipientAddress, selectedTokenId, transactionMemo, transactionFee } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    selectedTokenId,
+    transactionMemo,
+    selectedCollectibleDetails,
+  } = useTransactionSettingsStore();
 
   const {
     transactionXDR,
@@ -64,16 +79,41 @@ const TransactionDetailsBottomSheet: React.FC<
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
+  const { collections } = useCollectiblesStore();
 
   const selectedBalance = balanceItems.find(
     (item) => item.id === selectedTokenId,
   );
 
+  const selectedCollectible = useMemo(() => {
+    const collection = collections.find(
+      (c) =>
+        c.collectionAddress === selectedCollectibleDetails.collectionAddress,
+    );
+    if (collection) {
+      return collection.items.find(
+        (collectible) =>
+          collectible.tokenId === selectedCollectibleDetails.tokenId,
+      );
+    }
+    return undefined;
+  }, [collections, selectedCollectibleDetails]);
+
+  const transaction = TransactionBuilder.fromXDR(
+    transactionXDR as string,
+    network,
+  );
+
+  const memo =
+    "memo" in transaction && transaction.memo.value
+      ? String(transaction.memo.value)
+      : (transactionMemo ?? "");
+
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
+  const actualFee = stroopToXlm(transactionDetails?.fee ?? 0).toString();
 
   useEffect(() => {
     if (transactionHash) {
@@ -135,7 +175,7 @@ const TransactionDetailsBottomSheet: React.FC<
 
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
 
-    Linking.openURL(explorerUrl).catch((err) =>
+    openInAppBrowser(explorerUrl).catch((err) =>
       logger.error(
         "[Linking - openURL]",
         "Error opening transaction explorer:",
@@ -147,12 +187,25 @@ const TransactionDetailsBottomSheet: React.FC<
   return (
     <View className="gap-[24px]">
       <View className="flex-row gap-[16px]">
-        {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
+        {type === SendType.Token && selectedBalance && (
+          <TokenIcon token={selectedBalance} size="lg" />
+        )}
+        {type === SendType.Collectible && selectedCollectible && (
+          <View className="w-[40px] h-[40px] rounded-[8px] bg-background-tertiary overflow-hidden">
+            <CollectibleImage
+              imageUri={selectedCollectible?.image}
+              placeholderIconSize={25}
+            />
+          </View>
+        )}
         <View>
           <Text md medium primary>
-            {t("transactionDetailsBottomSheet.sent", {
-              tokenCode: selectedBalance?.tokenCode,
-            })}
+            {type === SendType.Token &&
+              t("transactionDetailsBottomSheet.sent", {
+                tokenCode: selectedBalance?.tokenCode,
+              })}
+            {type === SendType.Collectible &&
+              t("transactionDetailsBottomSheet.sentCollectible")}
           </Text>
           <View className="flex-row items-center gap-[4px]">
             <Icon.ArrowCircleUp size={16} color={themeColors.text.secondary} />
@@ -164,26 +217,49 @@ const TransactionDetailsBottomSheet: React.FC<
       </View>
 
       <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text xl medium primary>
-              {formatTokenAmount(transactionAmount, selectedBalance?.tokenCode)}
-            </Text>
-            <Text md medium secondary>
-              {selectedBalance?.currentPrice
-                ? formatFiatAmount(
-                    new BigNumber(transactionAmount).times(
-                      selectedBalance.currentPrice,
-                    ),
-                  )
-                : "--"}
-            </Text>
+        {type === SendType.Token && transactionAmount && (
+          <View className="flex-row items-center">
+            {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
+            <View className="ml-[16px]">
+              <Text xl medium primary>
+                {formatTokenForDisplay(
+                  transactionAmount,
+                  selectedBalance?.tokenCode,
+                )}
+              </Text>
+              <Text md medium secondary>
+                {selectedBalance?.currentPrice
+                  ? formatFiatAmount(
+                      new BigNumber(transactionAmount).times(
+                        selectedBalance.currentPrice,
+                      ),
+                    )
+                  : "--"}
+              </Text>
+            </View>
           </View>
-          {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
-        </View>
+        )}
+        {type === SendType.Collectible && selectedCollectible && (
+          <View className="w-full flex-row items-center gap-[16px]">
+            <View className="w-[40px] h-[40px] rounded-[8px] bg-background-tertiary overflow-hidden">
+              <CollectibleImage
+                imageUri={selectedCollectible?.image}
+                placeholderIconSize={25}
+              />
+            </View>
+            <View className="flex-1">
+              <Text xl medium>
+                {selectedCollectible.name}
+              </Text>
+              <Text md medium secondary>
+                {`${selectedCollectible.collectionName} #${selectedCollectible.tokenId}`}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View>
-          <View className="w-[32px] h-[32px] rounded-full bg-tertiary justify-center items-center border border-gray-6">
+          <View className="w-[40px] h-[40px] rounded-full bg-tertiary justify-center items-center">
             <Icon.ChevronDownDouble
               size={20}
               color={themeColors.foreground.primary}
@@ -191,13 +267,13 @@ const TransactionDetailsBottomSheet: React.FC<
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row items-center">
+          <Avatar size="lg" publicAddress={recipientAddress} />
+          <View className="ml-[16px]">
             <Text xl medium primary>
               {slicedAddress}
             </Text>
           </View>
-          <Avatar size="lg" publicAddress={recipientAddress} />
         </View>
       </View>
 
@@ -232,8 +308,8 @@ const TransactionDetailsBottomSheet: React.FC<
               </Text>
             ),
             trailingContent: (
-              <Text md medium secondary={!transactionMemo}>
-                {transactionMemo || t("common.none")}
+              <Text md medium secondary={!memo}>
+                {memo || t("common.none")}
               </Text>
             ),
           },
@@ -250,7 +326,7 @@ const TransactionDetailsBottomSheet: React.FC<
               <View className="flex-row items-center gap-[4px]">
                 <StellarLogo width={16} height={16} />
                 <Text md medium>
-                  {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
+                  {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                 </Text>
               </View>
             ),

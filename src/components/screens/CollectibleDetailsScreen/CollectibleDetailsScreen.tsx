@@ -8,14 +8,20 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SEND_PAYMENT_ROUTES,
+} from "config/routes";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCollectibleDetailsHeader } from "hooks/useCollectibleDetailsHeader";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useMemo, useCallback } from "react";
-import { Dimensions, Linking, ScrollView, View } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 
 // Get window width once at module level for better performance
 const { width: windowWidth } = Dimensions.get("window");
@@ -65,12 +71,15 @@ type CollectibleDetailsScreenProps = NativeStackScreenProps<
  * ```
  */
 export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
-  React.memo(({ route }) => {
+  React.memo(({ route, navigation }) => {
     const { collectionAddress, tokenId } = route.params;
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { getCollectible, isLoading: isCollectiblesLoading } =
       useCollectiblesStore();
+    const { open: openInAppBrowser } = useInAppBrowser();
+    const { saveSelectedCollectibleDetails, saveSelectedTokenId } =
+      useTransactionSettingsStore();
 
     const basicInfoTitleColor = themeColors.text.secondary;
 
@@ -147,19 +156,35 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
      *
      * @param {string} url - The external URL to open
      */
-    const handleViewInBrowser = useCallback(async (url?: string) => {
-      if (!url) return;
+    const handleViewInBrowser = useCallback(
+      async (url?: string) => {
+        if (!url) return;
 
-      try {
-        await Linking.openURL(url);
-      } catch (error) {
-        logger.error(
-          "CollectibleDetailsScreen",
-          "Failed to open externalUrl in browser:",
-          error,
-        );
+        try {
+          await openInAppBrowser(url);
+        } catch (error) {
+          logger.error(
+            "CollectibleDetailsScreen",
+            "Failed to open externalUrl in browser:",
+            error,
+          );
+        }
+      },
+      [openInAppBrowser],
+    );
+
+    const handleGoToSend = () => {
+      // we only need to check this to appease the type checker, if !collectible,
+      // the send button is not rendered.
+      if (collectible) {
+        saveSelectedCollectibleDetails(collectible);
+        // Clear token selection when entering collectible flow to prevent cross-flow contamination
+        saveSelectedTokenId("");
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+          screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+        });
       }
-    }, []);
+    };
 
     // Show loading spinner when collectibles are being fetched
     if (isCollectiblesLoading) {
@@ -253,25 +278,33 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           )}
         </ScrollView>
 
-        {/* View in browser button */}
-        {collectible?.externalUrl && (
-          <View className="mt-7">
-            <Button
-              tertiary
-              xl
-              isFullWidth
-              icon={
-                <Icon.LinkExternal01
-                  size={18}
-                  color={themeColors.foreground.primary}
-                />
-              }
-              onPress={() => handleViewInBrowser(collectible?.externalUrl)}
-            >
-              {t("collectibleDetails.view")}
-            </Button>
+        <View className="pb-3 gap-7">
+          <View className={collectible?.externalUrl ? "flex-row gap-3" : ""}>
+            {collectible?.externalUrl && (
+              <View className="flex-1">
+                <Button
+                  tertiary
+                  xl
+                  isFullWidth
+                  icon={
+                    <Icon.LinkExternal01
+                      size={18}
+                      color={themeColors.foreground.primary}
+                    />
+                  }
+                  onPress={() => handleViewInBrowser(collectible?.externalUrl)}
+                >
+                  {t("collectibleDetails.view")}
+                </Button>
+              </View>
+            )}
+            <View className={collectible?.externalUrl ? "flex-1" : ""}>
+              <Button tertiary xl isFullWidth onPress={handleGoToSend}>
+                {t("tokenDetailsScreen.send")}
+              </Button>
+            </View>
           </View>
-        )}
+        </View>
       </BaseLayout>
     );
   });

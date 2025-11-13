@@ -1,4 +1,6 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/stellar/freighter-mobile)
+<a href="https://deepwiki.com/stellar/freighter-mobile"><img height="24" alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
+<a href="https://play.google.com/store/apps/details?id=org.stellar.freighterwallet"><img height="24" alt="Get app on Google Play" src="https://github.com/user-attachments/assets/67fa5ac5-b77e-4019-8bc0-4cc9d43dc69b" /></a>
+<a href="https://apps.apple.com/app/freighter/id6743947720"><img height="24" alt="Get app on App Store" src="https://github.com/user-attachments/assets/2b002c9f-4ec5-49f2-8f4d-d04b7e4cd34a" /></a>
 
 ## Quick Start Dev Environment Setup
 
@@ -75,11 +77,10 @@ tools.
     2. Add the required environment variables:
 
        ```
-       FREIGHTER_BACKEND_URL=your_backend_url_here
-       FREIGHTER_BACKEND_V2_URL=your_backend_v2_url_here
+       FREIGHTER_BACKEND_V1_PROD_URL=your_backend_v1_prod_url_here
+       FREIGHTER_BACKEND_V2_PROD_URL=your_backend_v2_prod_url_here
 
-       WALLET_KIT_PROJECT_ID=your_project_id_here
-       WALLET_KIT_MT_NAME=your_wallet_name_here
+       WALLET_KIT_PROJECT_ID_PROD=your_prod_project_id_here
        other variables...
        ```
 
@@ -87,11 +88,10 @@ tools.
        without values:
 
        ```
-       FREIGHTER_BACKEND_URL=
-       FREIGHTER_BACKEND_V2_URL=
+       FREIGHTER_BACKEND_V1_PROD_URL=
+       FREIGHTER_BACKEND_V2_PROD_URL=
 
-       WALLET_KIT_PROJECT_ID=
-       WALLET_KIT_MT_NAME=
+       WALLET_KIT_PROJECT_ID_PROD=
        other variables...
        ```
 
@@ -109,25 +109,51 @@ clean/install commands.
 
 ### Running the App
 
+The app supports two different bundle IDs for different environments:
+
+- **Production**: `org.stellar.freighterwallet` (default)
+- **Development**: `org.stellar.freighterdev`
+
 **Run on Android:**
 
-- In a new terminal window, navigate to the project root and run:
+- **Development variant:**
+
   ```bash
   yarn android
+  or
+  yarn android-dev
+  ```
+
+- **Production variant:**
+  ```bash
+  yarn android-prod
   ```
 
 **Run on iOS (macOS only):**
 
-- In a new terminal window, navigate to the project root and run:
+- **Development variant:**
+
   ```bash
   yarn ios
+  or
+  yarn ios-dev
+  ```
+
+- **Production variant:**
+  ```bash
+  yarn ios-prod
   ```
 
 **Important**
 
-- in both cases it should prompt you to open a new terminal tab to run Metro
-  bundler and that tab should be kept open while runing the app.
-- if you don't have a emulator open it will try to open the first one available
+- The Metro bundler should automatically launch in a separate terminal window
+  while running the `yarn ios` or `yarn android` scripts. You can also launch
+  Metro manually through the `yarn start` command if needed
+- If you don't have an iOS simulator or Android emulator booted it will try to
+  boot the most recent one available while running the `yarn ios` or
+  `yarn android` scripts
+- The development variant will have "Dev" in the app name to distinguish it from
+  production
 
 This should get you up and running with the Freighter Mobile app in your
 development environment. If you encounter any issues, please refer to the React

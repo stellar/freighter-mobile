@@ -1,4 +1,4 @@
-import { userEvent } from "@testing-library/react-native";
+import { userEvent, act } from "@testing-library/react-native";
 import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -57,6 +57,10 @@ jest.mock("components/primitives/Menu", () => {
 });
 
 // Mock the stores
+const mockFetchAccountBalances = jest.fn().mockResolvedValue(undefined);
+const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
+const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
+
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
     const mockState = {
@@ -65,9 +69,7 @@ jest.mock("ducks/balances", () => ({
       isLoading: false,
       isFunded: true,
       error: null,
-      fetchAccountBalances: jest
-        .fn()
-        .mockImplementation(() => Promise.resolve()),
+      fetchAccountBalances: mockFetchAccountBalances,
     };
     return selector ? selector(mockState) : mockState;
   }),
@@ -80,6 +82,32 @@ jest.mock("ducks/prices", () => ({
     error: null,
     lastUpdated: null,
     fetchPricesForBalances: jest.fn(),
+  })),
+}));
+
+jest.mock("ducks/collectibles", () => ({
+  useCollectiblesStore: jest.fn(() => ({
+    collections: [],
+    isLoading: false,
+    error: null,
+    fetchCollectibles: mockFetchCollectibles,
+  })),
+}));
+
+jest.mock("ducks/walletKit", () => ({
+  useWalletKitStore: jest.fn(() => ({
+    activeSessions: [],
+    isLoading: false,
+    error: null,
+    fetchActiveSessions: mockFetchActiveSessions,
+  })),
+}));
+
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: jest.fn(() => ({
+    swapEnabled: true,
+    isLoading: false,
+    error: null,
   })),
 }));
 
@@ -108,7 +136,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "home.buy": "Buy",
       "home.send": "Send",
       "home.swap": "Swap",
-      "home.copy": "Copy",
+      "common.copy": "Copy",
       accountAddressCopied: "Address copied",
       "home.actions.settings": "Settings",
       "home.actions.manageTokens": "Manage Tokens",
@@ -165,6 +193,11 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   const renderHomeScreen = () =>
@@ -196,7 +229,7 @@ describe("HomeScreen", () => {
     expect(mockCopyToClipboard).toHaveBeenCalledWith("test-public-key", {
       notificationMessage: "Address copied",
     });
-  }, 20000);
+  });
 
   it("renders action buttons correctly", () => {
     const { getByText } = renderHomeScreen();
@@ -204,5 +237,34 @@ describe("HomeScreen", () => {
     expect(getByText("Buy")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();
     expect(getByText("Copy")).toBeTruthy();
+  });
+
+  it("calls all fetch functions when refresh is triggered", async () => {
+    const { getByTestId } = renderHomeScreen();
+
+    const scrollView = getByTestId("home-screen-scrollview");
+
+    const { refreshControl } = scrollView.props;
+
+    await act(async () => {
+      await refreshControl.props.onRefresh();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockFetchAccountBalances).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "TESTNET",
+    });
+    expect(mockFetchCollectibles).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "TESTNET",
+    });
+    expect(mockFetchActiveSessions).toHaveBeenCalledWith(
+      "test-public-key",
+      "TESTNET",
+    );
   });
 });

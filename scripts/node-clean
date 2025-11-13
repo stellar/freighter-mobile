@@ -1,3 +1,25 @@
 #!/bin/bash
 
-rm -rf node_modules;
+export LANG=en_US.UTF-8
+if [ -d "node_modules" ]; then
+  echo "🧹 Cleaning node_modules directory..."
+  echo "   This may take 30-60 seconds, please wait..."
+  
+  # Try to delete everything with find (depth-first)
+  find node_modules -depth -delete 2>/dev/null
+  
+  # If node_modules still exists, force remove it
+  if [ -d "node_modules" ]; then
+    echo "   Removing remaining files..."
+    chmod -R u+w node_modules 2>/dev/null
+    rm -rf node_modules 2>/dev/null
+  fi
+  
+  if [ ! -d "node_modules" ]; then
+    echo "✅ node_modules cleaned successfully!"
+  else
+    echo "⚠️  Some files remain in node_modules (this is OK, yarn will handle it)"
+  fi
+else
+  echo "✅ node_modules already clean (doesn't exist)"
+fi

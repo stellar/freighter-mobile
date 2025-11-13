@@ -1,8 +1,6 @@
-import { Horizon } from "@stellar/stellar-sdk";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor, act } from "@testing-library/react-native";
 import { PUBLIC_NETWORK_DETAILS } from "config/constants";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
-import * as backendService from "services/backend";
 
 jest.mock("services/backend");
 jest.mock("ducks/balances", () => ({
@@ -12,14 +10,24 @@ jest.mock("ducks/balances", () => ({
   }),
 }));
 
-const mockBackendService = backendService as jest.Mocked<typeof backendService>;
+// Mock the history store with a mock implementation
+const mockFetchAccountHistory = jest.fn().mockResolvedValue(undefined);
+const mockStartPolling = jest.fn();
+const mockStopPolling = jest.fn();
 
-type TestOperationRecord = Horizon.ServerApi.OperationRecord & {
-  transaction_attr?: {
-    operation_count?: number;
-    successful?: boolean;
-  };
-};
+jest.mock("ducks/history", () => ({
+  useHistoryStore: () => ({
+    rawHistoryData: null,
+    isLoading: false,
+    error: null,
+    hasRecentTransaction: false,
+    isFetching: false,
+    fetchAccountHistory: mockFetchAccountHistory,
+    getFilteredHistoryData: jest.fn(() => null),
+    startPolling: mockStartPolling,
+    stopPolling: mockStopPolling,
+  }),
+}));
 
 describe("useGetHistoryData - Hide create claimable balance spam", () => {
   const mockPublicKey =
@@ -27,205 +35,148 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetchAccountHistory.mockClear();
+    mockStartPolling.mockClear();
+    mockStopPolling.mockClear();
   });
 
-  it("should filter out create_claimable_balance operations with more than 50 operations", async () => {
-    const mockHistoryData: TestOperationRecord[] = [
-      {
-        amount: "0.0010000",
-        asset_code: "USDC",
-        asset_issuer:
-          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-        asset_type: "credit_alphanum4",
-        created_at: "2025-03-21T22:28:46Z",
-        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        id: "164007621169153",
-        paging_token: "164007621169153",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        to: mockPublicKey,
-        transaction_attr: {},
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "payment",
-        type_i: 1,
-      } as TestOperationRecord,
-      {
-        amount: "0.0020000",
-        asset_code: "USDC",
-        asset_issuer:
-          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-        asset_type: "credit_alphanum4",
-        created_at: "2025-03-20T22:28:46Z",
-        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        id: "164007621169154",
-        paging_token: "164007621169154",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        to: mockPublicKey,
-        transaction_attr: {},
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "payment",
-        type_i: 1,
-      } as TestOperationRecord,
-      {
-        amount: "0.0010000",
-        asset: "USDC",
-        created_at: "2025-03-19T22:28:46Z",
-        id: "164007621169155",
-        paging_token: "164007621169155",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        transaction_attr: {
-          operation_count: 100,
-          successful: true,
-        },
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "create_claimable_balance",
-        type_i: 14,
-      } as TestOperationRecord,
-      {
-        amount: "0.0010000",
-        asset: "USDC",
-        created_at: "2025-03-18T22:28:46Z",
-        id: "164007621169156",
-        paging_token: "164007621169156",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        transaction_attr: {
-          operation_count: 100,
-          successful: false,
-        },
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: false,
-        type: "create_claimable_balance",
-        type_i: 14,
-      } as TestOperationRecord,
-    ];
-
-    mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
-
+  it("should call fetchAccountHistory with correct parameters", async () => {
     const { result } = renderHook(() =>
-      useGetHistoryData(mockPublicKey, PUBLIC_NETWORK_DETAILS),
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
     );
 
-    await result.current.fetchData({ isRefresh: false });
-
-    await waitFor(() => {
-      expect(result.current.historyData).not.toBeNull();
+    await act(async () => {
+      await result.current.fetchData({ isRefresh: false });
     });
 
-    const { historyData } = result.current;
-    expect(historyData).not.toBeNull();
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+    });
+  });
 
-    if (historyData) {
-      const totalOperations = historyData.history.reduce(
-        (total, section) => total + section.operations.length,
-        0,
-      );
+  // Polling is now handled centrally in TabNavigator, so these tests are no longer relevant
 
-      expect(totalOperations).toBe(2);
+  it("should call fetchAccountHistory with tokenId when provided", async () => {
+    const tokenId = "test-token-id";
 
-      historyData.history.forEach((section) => {
-        section.operations.forEach((operation) => {
-          expect(operation.type).toBe("payment");
-        });
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.fetchData({ isRefresh: false });
+    });
+
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+    });
+  });
+
+  // Polling is now handled centrally in TabNavigator, so this test is no longer relevant
+
+  it("should handle background refresh correctly", async () => {
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
+
+    // Test that fetchData can be called with isBackgroundRefresh
+    await act(async () => {
+      await result.current.fetchData({
+        isRefresh: true,
+        isBackgroundRefresh: true,
       });
-    }
-  });
-
-  it("should filter out dust payments when isHideDustEnabled is true", async () => {
-    const mockHistoryData: TestOperationRecord[] = [
-      {
-        amount: "0.0010000",
-        asset_code: "USDC",
-        asset_issuer:
-          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-        asset_type: "native",
-        created_at: "2025-03-21T22:28:46Z",
-        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        id: "164007621169153",
-        paging_token: "164007621169153",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        to: mockPublicKey,
-        transaction_attr: {},
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "payment",
-        type_i: 1,
-      } as TestOperationRecord,
-      {
-        amount: "0.0000001",
-        asset_code: "USDC",
-        asset_issuer:
-          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-        asset_type: "native",
-        created_at: "2025-03-21T22:28:46Z",
-        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        id: "164007621169153",
-        paging_token: "164007621169153",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        to: mockPublicKey,
-        transaction_attr: {},
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "payment",
-        type_i: 1,
-      } as TestOperationRecord,
-      {
-        amount: "0.1000001",
-        asset_code: "USDC",
-        asset_issuer:
-          "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-        asset_type: "native",
-        created_at: "2025-03-21T22:28:46Z",
-        from: "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        id: "164007621169153",
-        paging_token: "164007621169153",
-        source_account:
-          "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY",
-        to: mockPublicKey,
-        transaction_attr: {},
-        transaction_hash:
-          "686601028de9ddf40a1c24461a6a9c0415d60a39255c35eccad0b52ac1e700a5",
-        transaction_successful: true,
-        type: "payment",
-        type_i: 1,
-      } as TestOperationRecord,
-    ];
-
-    mockBackendService.getAccountHistory.mockResolvedValue(mockHistoryData);
-
-    const { result } = renderHook(() =>
-      useGetHistoryData(mockPublicKey, PUBLIC_NETWORK_DETAILS),
-    );
-
-    await result.current.fetchData({ isRefresh: false });
-
-    await waitFor(() => {
-      expect(result.current.historyData).not.toBeNull();
     });
 
-    const { historyData } = result.current;
-    expect(historyData).not.toBeNull();
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+      isBackgroundRefresh: true,
+    });
+  });
 
-    if (historyData) {
-      const totalOperations = historyData.history.reduce(
-        (total, section) => total + section.operations.length,
-        0,
-      );
+  it("should handle refresh without background flag", async () => {
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
 
-      expect(totalOperations).toBe(1);
-    }
+    await act(async () => {
+      await result.current.fetchData({ isRefresh: true });
+    });
+
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+      isBackgroundRefresh: false,
+    });
+  });
+
+  it("should return correct loading states", async () => {
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
+
+    // Wait for the initial mount to complete
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isRefreshing).toBe(false);
+    expect(result.current.isNavigationRefresh).toBe(false);
+    expect(result.current.error).toBe(null);
+    expect(result.current.historyData).toBe(null);
+  });
+
+  it("should handle fetchData with different parameter combinations", async () => {
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
+
+    // Test fetchData with no parameters
+    await act(async () => {
+      await result.current.fetchData();
+    });
+
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+      isBackgroundRefresh: false,
+    });
+
+    // Test fetchData with only isRefresh
+    await act(async () => {
+      await result.current.fetchData({ isRefresh: true });
+    });
+
+    expect(mockFetchAccountHistory).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+      isBackgroundRefresh: false,
+    });
   });
 });

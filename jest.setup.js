@@ -110,7 +110,6 @@ jest.mock("react-native-safe-area-context", () => {
   };
   return {
     SafeAreaProvider: jest.fn(({ children }) => children),
-    SafeAreaView: jest.fn(({ children }) => children),
     useSafeAreaInsets: jest.fn(() => inset),
   };
 });
@@ -159,9 +158,10 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
-jest.mock("helpers/getOsLanguage", () =>
-  jest.fn().mockImplementationOnce(() => "en"),
-);
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  isSupportedLanguage: jest.fn().mockReturnValue(true),
+}));
 
 // Mock stellarExpert service to avoid import issues
 jest.mock("services/stellarExpert", () => ({
@@ -226,6 +226,8 @@ jest.mock("react-native-vision-camera", () => ({
     requestPermission: jest.fn(),
   }),
 }));
+
+jest.mock("zeego/dropdown-menu");
 
 jest.mock("ducks/walletKit", () => ({
   WalletKitEventTypes: {
@@ -382,6 +384,23 @@ jest.mock("react-native-biometrics", () => ({
 }));
 
 // Mock the useBiometrics hook
+jest.mock("hooks/useBiometrics", () => ({
+  useBiometrics: jest.fn(() => ({
+    biometryType: null,
+    setIsBiometricsEnabled: jest.fn(),
+    isBiometricsEnabled: false,
+    enableBiometrics: jest.fn(() => Promise.resolve(true)),
+    disableBiometrics: jest.fn(() => Promise.resolve(true)),
+    checkBiometrics: jest.fn(() => Promise.resolve(null)),
+    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
+    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
+    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
+    getButtonIcon: jest.fn(() => null),
+    getButtonText: jest.fn(() => ""),
+    getButtonColor: jest.fn(() => "#000000"),
+    getBiometricButtonIcon: jest.fn(() => null),
+  })),
+}));
 
 jest.mock("react-native-keychain", () => ({
   BIOMETRY_TYPE: {
@@ -424,7 +443,7 @@ jest.mock("react-native-keychain", () => ({
     SECURE_SOFTWARE: "SecurityLevelSecureSoftware",
     SECURE_HARDWARE: "SecurityLevelSecureHardware",
   },
-  getSupportedBiometryType: jest.fn(() => Promise.resolve("FaceID")),
+  getSupportedBiometryType: jest.fn(() => Promise.resolve(null)),
   getInternetCredentials: jest.fn(() => Promise.resolve(null)),
   setInternetCredentials: jest.fn(() => Promise.resolve()),
   resetInternetCredentials: jest.fn(() => Promise.resolve()),
@@ -475,6 +494,43 @@ jest.mock("react-native-fast-opencv", () => ({
   },
 }));
 
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    account: {
+      publicKey: "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG",
+      privateKey: "mock-private-key",
+      accountName: "Test Account",
+      id: "test-account-id",
+      subentryCount: 0,
+    },
+    isLoading: false,
+    error: null,
+    refreshAccount: jest.fn(),
+    signTransaction: jest.fn(),
+  })),
+}));
+
+jest.mock("hooks/useBalancesList", () => ({
+  useBalancesList: jest.fn(() => ({
+    balanceItems: [],
+    scanResults: {},
+    isLoading: false,
+    error: null,
+    noBalances: true,
+    isRefreshing: false,
+    isFunded: false,
+    handleRefresh: jest.fn(),
+  })),
+}));
+
+jest.mock("hooks/useWelcomeBanner", () => ({
+  useWelcomeBanner: jest.fn(() => ({
+    welcomeBannerBottomSheetModalRef: { current: null },
+    handleWelcomeBannerDismiss: jest.fn(),
+  })),
+}));
+
 // Mock Sentry for Jest tests
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
@@ -486,4 +542,56 @@ jest.mock("@sentry/react-native", () => ({
   setTag: jest.fn(),
   setExtra: jest.fn(),
   wrap: jest.fn((component) => component), // Return component as-is for testing
+}));
+
+// Mock react-native-localize
+const mockGetNumberFormatSettings = jest.fn(() => ({
+  decimalSeparator: ".",
+  groupingSeparator: ",",
+}));
+
+jest.mock("react-native-localize", () => ({
+  getNumberFormatSettings: mockGetNumberFormatSettings,
+  getLocales: jest.fn(() => [
+    {
+      countryCode: "US",
+      languageTag: "en-US",
+      languageCode: "en",
+      isRTL: false,
+    },
+  ]),
+  getCurrencies: jest.fn(() => ["USD"]),
+  getTimeZone: jest.fn(() => "America/New_York"),
+  uses24HourClock: jest.fn(() => false),
+  usesMetricSystem: jest.fn(() => false),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+}));
+
+// Export the mock function so tests can modify it
+global.mockGetNumberFormatSettings = mockGetNumberFormatSettings;
+
+// Mock config/envConfig to avoid async initialization issues in tests
+jest.mock("config/envConfig", () => ({
+  EnvConfig: {
+    AMPLITUDE_API_KEY: "mock-amplitude-key",
+    AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "mock-experiment-key",
+    SENTRY_DSN: "mock-sentry-dsn",
+    WALLET_KIT_PROJECT_ID: "mock-wallet-kit-project-id",
+    WALLET_KIT_MT_URL: "https://mock-wallet-kit.example.com",
+    WALLET_KIT_MT_ICON: "https://mock-icon.example.com/icon.png",
+    WALLET_KIT_MT_NAME: "Mock Freighter Wallet",
+    WALLET_KIT_MT_DESCRIPTION: "Mock wallet description",
+    WALLET_KIT_MT_REDIRECT_NATIVE: "mockfreighter://",
+    ANDROID_DEBUG_KEYSTORE_PASSWORD: "mock-debug-password",
+    ANDROID_DEBUG_KEYSTORE_ALIAS: "mock-debug-alias",
+    ANDROID_DEV_KEYSTORE_PASSWORD: "mock-dev-password",
+    ANDROID_DEV_KEYSTORE_ALIAS: "mock-dev-alias",
+    ANDROID_PROD_KEYSTORE_PASSWORD: "mock-prod-password",
+    ANDROID_PROD_KEYSTORE_ALIAS: "mock-prod-alias",
+  },
+  BackendEnvConfig: {
+    FREIGHTER_BACKEND_V1_URL: "https://mock-backend-v1-dev.example.com/api/v1",
+    FREIGHTER_BACKEND_V2_URL: "https://mock-backend-v2-dev.example.com/api/v1",
+  },
 }));

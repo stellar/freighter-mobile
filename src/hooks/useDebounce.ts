@@ -1,5 +1,5 @@
 import { DEFAULT_DEBOUNCE_DELAY } from "config/constants";
-import { debounce } from "lodash";
+import { debounce, DebouncedFunc } from "lodash";
 import { useEffect, useMemo, useRef } from "react";
 
 /**
@@ -27,23 +27,29 @@ import { useEffect, useMemo, useRef } from "react";
   return <Input onChange={onChange} value={value} />;
  * }
  */
-export default function useDebounce(
-  callback: () => void,
-  delay: number | undefined = DEFAULT_DEBOUNCE_DELAY,
-) {
-  const ref = useRef<() => void>(callback);
+export default function useDebounce<Args extends unknown[], R>(
+  callback: (...args: Args) => R,
+  delay: number = DEFAULT_DEBOUNCE_DELAY,
+): DebouncedFunc<(...args: Args) => R> {
+  const callbackRef = useRef(callback);
 
+  // Keep the latest callback in ref
   useEffect(() => {
-    ref.current = callback;
+    callbackRef.current = callback;
   }, [callback]);
 
-  const debouncedCallback = useMemo(() => {
-    const func = () => {
-      ref.current?.();
+  // Create the debounced function
+  const debounced = useMemo(() => {
+    const debouncedFunc = (...args: Args) => {
+      callbackRef.current(...args);
     };
-
-    return debounce(func, delay);
+    return debounce(debouncedFunc, delay) as DebouncedFunc<
+      (...args: Args) => R
+    >;
   }, [delay]);
 
-  return debouncedCallback;
+  // Cleanup on unmount
+  useEffect(() => () => debounced.cancel(), [debounced]);
+
+  return debounced;
 }

@@ -30,15 +30,19 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
+    "addMemoShorthand": "Add. memo",
     "addMemo": "Adicionar memo",
-    "wallet": "Carteira"
+    "wallet": "Carteira",
+    "copy": "Copiar",
+    "name": "Nome",
+    "collection": "Coleção",
+    "tokenId": "ID do Token"
   },
   "home": {
     "title": "Início",
     "buy": "Adicionar",
     "send": "Enviar",
     "swap": "Trocar",
-    "copy": "Copiar",
     "actions": {
       "settings": "Configurações",
       "manageTokens": "Gerenciar tokens",
@@ -96,7 +100,7 @@
     },
     "hideDust": {
       "title": "Ocultar pagamentos pequenos",
-      "description": "Ocultar pagamentos menores que 0,1 XLM"
+      "description": "Ocultar pagamentos recebidos menores que 0,1 XLM"
     },
     "memoValidation": {
       "title": "Verificação com stellar.expert",
@@ -123,7 +127,13 @@
   "changeNetworkScreen": {
     "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
-    "networkSettings": "Configurações de Rede"
+    "networkSettings": "Configurações de Rede",
+    "developerSettings": {
+      "title": "Configurações do Desenvolvedor",
+      "warning": "As alterações de backend entrarão em vigor após reiniciar o aplicativo.",
+      "backendV1Environment": "Ambiente do Backend V1",
+      "backendV2Environment": "Ambiente do Backend V2"
+    }
   },
   "networkSettingsScreen": {
     "title": "Configurações de Rede",
@@ -234,13 +244,13 @@
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
     "forgotPasswordButtonText": "Esqueci minha senha",
-    "useFaceIdInstead": "Usar Face ID ao invés",
-    "useFingerprintInstead": "Usar Impressão Digital ao invés",
-    "useFaceRecognitionInstead": "Usar Reconhecimento Facial ao invés",
-    "useTouchIdInstead": "Usar Touch ID ao invés",
-    "useOpticIdInstead": "Usar Optic ID ao invés",
-    "useIrisInstead": "Usar Iris ao invés",
-    "enterPasswordInstead": "Usar senha ao invés"
+    "useFaceIdInstead": "Usar Face ID",
+    "useFingerprintInstead": "Usar Impressão Digital",
+    "useFaceRecognitionInstead": "Usar Reconhecimento Facial",
+    "useTouchIdInstead": "Usar Touch ID",
+    "useOpticIdInstead": "Usar Optic ID",
+    "useIrisInstead": "Usar Iris",
+    "enterPasswordInstead": "Usar senha"
   },
   "onboarding": {
     "continue": "Continuar",
@@ -296,7 +306,11 @@
       "minted": "Emitido",
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
       "unknown": "Desconhecido",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Colecionável desconhecido",
+        "unknownCollection": "Coleção {{contractId}}"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "Ver no stellar.expert",
@@ -490,7 +504,7 @@
     "title": "Adicionar um token",
     "addTokenButton": "Aprovar",
     "removeTokenButton": "Aprovar",
-    "searchPlaceholder": "Pesquisar nome ou endereço do token",
+    "searchPlaceholder": "Nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
     "tokenAddressCopied": "Endereço do token copiado!",
     "popular": "Popular",
@@ -504,8 +518,10 @@
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",
+    "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
+    "unableToScanBanner": "Não foi possível escanear tokens maliciosos",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
     "toastError": "Erro ao adicionar token {{tokenCode}}",
     "emptyState": "Nenhum token encontrado",
@@ -514,7 +530,9 @@
   "securityWarning": {
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
-    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos.",
+    "proceedWithCaution": "Proceda com cautela",
+    "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
+    "token": "Este token não parece seguro pelos seguintes motivos:",
     "cancel": "Cancelar",
     "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",
@@ -556,7 +574,7 @@
     "swapFrom": "Trocar de",
     "swapTo": "Trocar para",
     "title": "Trocar",
-    "searchTokenInputPlaceholder": "Pesquisar nome ou endereço do token",
+    "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
     "setMax": "Definir máximo",
     "receive": "Receber",
     "chooseToken": "Escolher token",
@@ -584,7 +602,8 @@
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens"
-    }
+    },
+    "proceedAnyway": "Prosseguir mesmo assim"
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",
@@ -604,15 +623,27 @@
   "transactionTokenScreen": {
     "title": "Enviando"
   },
-  "transactionSettingsBottomSheet": {
+  "transactionSettings": {
     "title": "Configurações da transação",
     "feeTitle": "Taxa da transação",
     "memoTitle": "Memo",
+    "slippageTitle": "Deslizamento permitido",
     "timeoutTitle": "Tempo limite da transação",
+    "resetFee": "Redefinir",
+    "memoPlaceholder": "Digite seu memo",
+    "slippagePlaceholder": "% Personalizado",
+    "timeoutPlaceholder": "Digite o tempo limite",
+    "seconds": "segundos",
+    "congestion": "Congestionamento {{networkCongestion}}",
     "memoInfo": {
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido."
+    },
+    "slippageInfo": {
+      "title": "Deslizamento permitido",
+      "description": "O deslizamento é a diferença entre o preço esperado de uma negociação e o preço real pelo qual a negociação é executada.",
+      "additionalInfo": "Uma tolerância de deslizamento maior significa que você está disposto a aceitar uma diferença de preço maior, o que pode ajudar a garantir que sua negociação seja executada, mas pode resultar em um preço menos favorável."
     },
     "timeoutInfo": {
       "title": "Tempo limite da transação",
@@ -623,6 +654,28 @@
       "title": "Taxa da transação",
       "description": "Todas as transações na rede Stellar incluem uma pequena taxa para ajudar a manter a rede segura.",
       "additionalInfo": "Você pode escolher aumentar essa taxa se quiser que sua transação seja priorizada e processada mais rapidamente pela rede."
+    },
+    "errors": {
+      "memo": {
+        "invalid": "Formato de memo inválido",
+        "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
+      },
+      "slippage": {
+        "customRequired": "Slippage personalizado é obrigatório",
+        "invalidNumber": "Número inválido",
+        "minSlippage": "Slippage deve ser pelo menos {{min}}%",
+        "maxSlippage": "Slippage deve ser menor que {{max}}%"
+      },
+      "timeout": {
+        "required": "Tempo limite da transação é obrigatório",
+        "invalid": "Tempo limite da transação inválido",
+        "greaterThanZero": "O tempo limite deve ser maior que 0"
+      },
+      "fee": {
+        "required": "Taxa de transação é obrigatória",
+        "invalid": "Taxa de transação inválida",
+        "tooLow": "A taxa deve ser maior que {{min}}"
+      }
     }
   },
   "transactionAmountScreen": {
@@ -653,7 +706,11 @@
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
       "memoMissing": "Esta transação requer um memo",
       "malicious": "Este endereço foi marcado como malicioso",
-      "suspicious": "Este endereço foi marcado como suspeito"
+      "suspicious": "Este endereço foi marcado como suspeito",
+      "maliciousTransaction": "Esta transação foi marcada como maliciosa",
+      "maliciousAsset": "Um ativo foi marcado como malicioso",
+      "suspiciousTransaction": "Esta transação foi marcada como suspeita",
+      "suspiciousAsset": "Um ativo foi marcado como suspeito"
     },
     "confirmAnyway": "Confirmar mesmo assim"
   },
@@ -697,36 +754,6 @@
     "maliciousFlag": "Este site foi marcado como malicioso",
     "suspiciousFlag": "Este site foi marcado como suspeito"
   },
-  "transactionMemoScreen": {
-    "title": "Memo",
-    "placeholder": "Digite seu memo",
-    "optional": "(opcional)",
-    "errors": {
-      "invalid": "Formato de memo inválido",
-      "tooLong": "Memo é muito longo (máximo {{max}} bytes)"
-    }
-  },
-  "transactionTimeoutScreen": {
-    "title": "Tempo Limite da Transação",
-    "seconds": "segundos",
-    "setRecommended": "Definir recomendado",
-    "inputPlaceholder": "Digite o tempo limite",
-    "errors": {
-      "required": "Tempo limite da transação é obrigatório",
-      "invalid": "Tempo limite da transação inválido",
-      "greaterThanZero": "O tempo limite deve ser maior que 0"
-    }
-  },
-  "transactionFeeScreen": {
-    "title": "Taxa da Transação",
-    "setRecommended": "Definir recomendado",
-    "congestion": "Congestionamento {{networkCongestion}}",
-    "errors": {
-      "required": "Taxa de transação é obrigatória",
-      "invalid": "Taxa de transação inválida",
-      "tooLow": "A taxa deve ser maior que {{min}}"
-    }
-  },
   "low": "baixo",
   "medium": "médio",
   "high": "alto",
@@ -749,6 +776,7 @@
   },
   "transactionDetailsBottomSheet": {
     "sent": "Enviado {{tokenCode}}",
+    "sentCollectible": "Enviado Colecionável",
     "firstTimeSend": "Primeiro envio",
     "status": "Status",
     "statusSuccess": "Sucesso",
@@ -917,17 +945,6 @@
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
     "copyButton": "Copiar para a área de transferência"
   },
-  "slippageScreen": {
-    "title": "Slippage Permitido",
-    "customPlaceholder": "% Personalizado",
-    "setDefault": "Definir padrão",
-    "errors": {
-      "customRequired": "Slippage personalizado é obrigatório",
-      "invalidNumber": "Número inválido",
-      "minSlippage": "Slippage deve ser pelo menos {{min}}%",
-      "maxSlippage": "Slippage deve ser menor que {{max}}%"
-    }
-  },
   "transaction": {
     "errors": {
       "amountRequired": "O valor de origem deve ser maior que 0",
@@ -994,6 +1011,28 @@
       "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
     }
   },
+  "debug": {
+    "title": "Debug",
+    "appVersionOverride": {
+      "title": "Substituição da Versão do App",
+      "description": "Substituir versão do app para testar atualizações (apenas DEV)",
+      "placeholder": "Digite a versão (ex: 1.0.0)",
+      "currentVersion": "Versão atual: {{version}}",
+      "overriddenVersion": "Versão substituída: {{version}}",
+      "clearOverride": "Limpar Substituição",
+      "clearUpdateDismissalFlag": "Limpar flag de dispensa de atualização"
+    },
+    "blockaidOverride": {
+      "title": "Substituição da Resposta do Blockaid",
+      "description": "Substituir respostas de segurança do Blockaid para testar diferentes estados de segurança (apenas DEV)",
+      "overriddenResponse": "Resposta substituída: {{response}}",
+      "safe": "Seguro",
+      "suspicious": "Suspeito",
+      "malicious": "Malicioso",
+      "unableToScan": "Não foi possível escanear",
+      "clearOverride": "Limpar Substituição"
+    }
+  },
   "blockaid": {
     "brand": "Blockaid",
     "security": {
@@ -1015,6 +1054,21 @@
         "unableToSimulate": "Não foi possível simular a transação",
         "noBalanceChanges": "Nenhuma mudança de saldo detectada"
       }
+    },
+    "unableToScan": {
+      "default": {
+        "title": "Não foi possível escanear",
+        "description": "Não conseguimos escanear este item em busca de ameaças de segurança. Prossiga com cautela."
+      },
+      "token": "Não foi possível escanear o token",
+      "site": {
+        "title": "Não foi possível escanear o site",
+        "description": "Não conseguimos escanear este site em busca de ameaças de segurança. O site pode ser seguro, mas não podemos verificar seu status de segurança."
+      },
+      "transaction": "Não foi possível escanear a transação",
+      "sourceToken": "Não foi possível escanear o token de origem",
+      "destinationToken": "Não foi possível escanear o token de destino",
+      "info": "Isso não significa que o item é malicioso - simplesmente significa que não podemos verificar seu status de segurança."
     }
   },
   "signTransactionDetails": {
@@ -1040,6 +1094,7 @@
       "destination": "Destino",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
+      "token": "Token",
       "amount": "Valor",
       "sendMax": "Enviar máximo",
       "destinationToken": "Token de destino",
@@ -1114,6 +1169,17 @@
       "not": "Não",
       "beforeRelativeTime": "Antes do tempo relativo",
       "beforeAbsoluteTime": "Antes do tempo absoluto"
+    }
+  },
+  "appUpdate": {
+    "defaultMessage": "Por favor atualize seu app para a última versão.",
+    "forceUpdate": {
+      "title": "Atualização Necessária",
+      "description": "Uma nova versão do Freighter está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
+      "updateButton": "Atualizar app",
+      "laterButton": "Vou atualizar depois",
+      "skipTitle": "Continuar sem atualizar?",
+      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
     }
   }
 }

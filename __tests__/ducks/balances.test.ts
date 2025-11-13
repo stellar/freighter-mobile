@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { act, renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
@@ -6,11 +7,14 @@ import {
   ClassicBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
+  BalanceMap,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
+
+import { benignTokenScan } from "../../__mocks__/blockaid-response";
 
 // Mock the fetchBalances service and usePricesStore
 jest.mock("services/backend", () => ({
@@ -33,6 +37,10 @@ jest.mock("ducks/prices", () => ({
       lastUpdated: null,
     }),
   },
+}));
+
+jest.mock("services/blockaid/api", () => ({
+  scanBulkTokens: jest.fn(),
 }));
 
 describe("balances duck", () => {
@@ -85,6 +93,7 @@ describe("balances duck", () => {
     limit: new BigNumber("1000"),
     buyingLiabilities: "0",
     sellingLiabilities: "0",
+    blockaidData: benignTokenScan,
   };
 
   const mockBalances = {
@@ -109,6 +118,11 @@ describe("balances duck", () => {
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
   };
+  const mockParamsPubnet = {
+    contractIds: [],
+    publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+    network: NETWORKS.PUBLIC,
+  };
 
   beforeEach(() => {
     // Reset the store before each test
@@ -116,6 +130,7 @@ describe("balances duck", () => {
       useBalancesStore.setState({
         balances: {},
         pricedBalances: {},
+        scanResults: {},
         isLoading: false,
         error: null,
       });
@@ -293,7 +308,7 @@ describe("balances duck", () => {
       const errorMessage = "Network error";
       mockFetchBalances.mockRejectedValueOnce(new Error(errorMessage));
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -303,12 +318,13 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe(errorMessage);
+      unmount();
     });
 
     it("should update error state when fetch fails with non-Error", async () => {
       mockFetchBalances.mockRejectedValueOnce("Some non-error rejection");
 
-      const { result } = renderHook(() => useBalancesStore());
+      const { result, unmount } = renderHook(() => useBalancesStore());
 
       await act(async () => {
         await result.current.fetchAccountBalances(mockParams);
@@ -318,6 +334,7 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe("Failed to fetch balances");
+      unmount();
     });
 
     it("should handle price fetch errors gracefully", async () => {
@@ -351,6 +368,114 @@ describe("balances duck", () => {
       expect(
         result.current.pricedBalances.XLM.percentagePriceChange24h,
       ).toBeUndefined();
+    });
+
+    it("should extract scanResults from backend balance data", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      // Should extract scan results from blockaidData in balances
+      expect(result.current.scanResults).toEqual({
+        "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          benignTokenScan,
+      });
+      unmount();
+    });
+
+    it("should extract scan results only from mainnet balances", async () => {
+      const mockBalancesWithBlockaid = {
+        ...mockBalances,
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
+          mockTokenBalance,
+      };
+
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalancesWithBlockaid,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      // On testnet, should not extract scan results
+      expect(result.current.scanResults).toEqual({});
+      unmount();
+    });
+
+    it("should not extract scan results for native tokens or liquidity pools", async () => {
+      const mockNativeWithBlockaid = {
+        ...mockNativeBalance,
+        blockaidData: benignTokenScan,
+      };
+
+      const mockBalancesWithoutTokens = {
+        XLM: mockNativeWithBlockaid,
+      };
+
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalancesWithoutTokens,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: mockPrices }),
+      );
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      // Should not extract scan results for XLM (native token)
+      expect(result.current.scanResults).toEqual({});
+      unmount();
+    });
+
+    it("should extract scan results from multiple balances", async () => {
+      const manyBalances = {} as BalanceMap;
+      const expectedScanResults: Record<string, typeof benignTokenScan> = {};
+
+      for (let i = 0; i < 5; i++) {
+        const tokenId = `TOKEN${i}:ISSUER${i}`;
+        manyBalances[tokenId] = {
+          ...mockTokenBalance,
+          token: {
+            ...mockTokenBalance.token,
+            code: `TOKEN${i}`,
+            issuer: { key: `ISSUER${i}` },
+          },
+          blockaidData: benignTokenScan,
+        };
+        expectedScanResults[`TOKEN${i}-ISSUER${i}`] = benignTokenScan;
+      }
+
+      mockFetchBalances.mockResolvedValueOnce({ balances: manyBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({ prices: {} }),
+      );
+
+      const { result, unmount } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      // Should extract scan results for all tokens with blockaidData
+      expect(result.current.scanResults).toEqual(expectedScanResults);
+      expect(Object.keys(result.current.scanResults)).toHaveLength(5);
+      unmount();
     });
   });
 });

@@ -11,6 +11,12 @@ jest.mock("@react-navigation/native", () => ({
   }),
 }));
 
+// Mock the OS locale detection for consistent test behavior
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  isSupportedLanguage: jest.fn().mockReturnValue(true),
+}));
+
 // Define a basic type for our test data
 interface OperationItem {
   id: string;
@@ -104,7 +110,10 @@ describe("HistoryScreen", () => {
       .useGetHistoryData.mockReturnValueOnce({
         historyData: null,
         fetchData: jest.fn(),
-        status: "loading",
+        isLoading: true,
+        error: null,
+        isRefreshing: false,
+        isNavigationRefresh: false,
       });
 
     const { getByTestId } = renderWithProviders(
@@ -134,7 +143,10 @@ describe("HistoryScreen", () => {
       .useGetHistoryData.mockReturnValueOnce({
         historyData: { history: [], balances: {} },
         fetchData: jest.fn(),
-        status: "success",
+        isLoading: false,
+        error: null,
+        isRefreshing: false,
+        isNavigationRefresh: false,
       });
 
     const { getByText } = renderWithProviders(
@@ -153,7 +165,10 @@ describe("HistoryScreen", () => {
       .useGetHistoryData.mockReturnValueOnce({
         historyData: null,
         fetchData: jest.fn(),
-        status: "error",
+        isLoading: false,
+        error: "Error loading history",
+        isRefreshing: false,
+        isNavigationRefresh: false,
       });
 
     const { getByText } = renderWithProviders(

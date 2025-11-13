@@ -613,11 +613,8 @@ describe("collectibles helpers", () => {
     });
 
     it("throws error when transformation fails", async () => {
-      const invalidCollections = null as any;
-
-      await expect(
-        transformBackendCollections(invalidCollections),
-      ).rejects.toThrow();
+      // @ts-expect-error Testing invalid input type
+      await expect(transformBackendCollections(null)).rejects.toThrow();
 
       expect(logger.error).toHaveBeenCalledWith(
         "transformBackendCollections",

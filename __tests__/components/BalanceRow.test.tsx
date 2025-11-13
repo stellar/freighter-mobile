@@ -1,10 +1,26 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable @typescript-eslint/naming-convention */
 import { render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
+import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
 import * as balancesHelpers from "helpers/balances";
 import React from "react";
 import { Text } from "react-native";
+
+import {
+  benignTokenScan,
+  maliciousTokenScan,
+  suspiciousTokenScan,
+} from "../../__mocks__/blockaid-response";
+
+// Mock react-i18next
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
 
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
@@ -22,13 +38,19 @@ jest.mock("hooks/useColors", () => ({
       text: {
         secondary: "#a0a0a0",
       },
+      amber: {
+        9: "amber",
+      },
+      red: {
+        9: "red",
+      },
     },
   }),
 }));
 
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
-  formatTokenAmount: jest.fn((amount) => amount.toString()),
+  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
   formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";
@@ -65,14 +87,18 @@ describe("BalanceRow", () => {
   });
 
   it("should render basic balance information", () => {
-    const { getByText } = render(<BalanceRow balance={mockBalance} />);
+    const { getByText } = render(
+      <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
+    );
 
     expect(getByText("XLM")).toBeTruthy();
     expect(getByText("100.5")).toBeTruthy();
   });
 
   it("should render default right content with fiat values", () => {
-    const { getByText } = render(<BalanceRow balance={mockBalance} />);
+    const { getByText } = render(
+      <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
+    );
 
     expect(getByText("$50.25")).toBeTruthy();
     expect(getByText("+0.02%")).toBeTruthy();
@@ -85,6 +111,7 @@ describe("BalanceRow", () => {
         balance={mockBalance}
         rightContent={<Text>{customContent}</Text>}
         rightSectionWidth={100}
+        scanResult={benignTokenScan}
       />,
     );
 
@@ -122,7 +149,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementAbove = getByTextAbove("+0.02%");
 
-      expect(priceChangeElementAbove.props.style.color).toBe("#30a46c");
+      expect(priceChangeElementAbove.props.style).toMatchObject({
+        color: "#30a46c",
+      });
 
       const balanceAtThreshold = {
         ...mockBalance,
@@ -133,7 +162,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementAt = getByTextAt("+0.01%");
 
-      expect(priceChangeElementAt.props.style.color).toBe("#30a46c");
+      expect(priceChangeElementAt.props.style).toMatchObject({
+        color: "#30a46c",
+      });
     });
 
     it("should use secondary color for negative price changes and positive changes below threshold", () => {
@@ -146,7 +177,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementNegative = getByTextNegative("-0.02%");
 
-      expect(priceChangeElementNegative.props.style.color).toBe("#a0a0a0");
+      expect(priceChangeElementNegative.props.style).toMatchObject({
+        color: "#a0a0a0",
+      });
 
       const balanceBelowThreshold = {
         ...mockBalance,
@@ -157,7 +190,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementBelow = getByTextBelow("+0.00%");
 
-      expect(priceChangeElementBelow.props.style.color).toBe("#a0a0a0");
+      expect(priceChangeElementBelow.props.style).toMatchObject({
+        color: "#a0a0a0",
+      });
     });
 
     it("should adjust width for liquidity pool tokens", () => {
@@ -174,6 +209,40 @@ describe("BalanceRow", () => {
       // Check if the RightSection has the correct width
       const rightSection = getByTestId("right-section");
       expect(rightSection.props.width).toBe(20);
+    });
+
+    it("should show alert icon for malicious tokens", () => {
+      const { UNSAFE_getByType: getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={maliciousTokenScan} />,
+      );
+
+      const icon = getByType(Icon.AlertCircle);
+      expect(icon).toBeTruthy();
+      expect(icon.props.themeColor).toBe("red");
+    });
+
+    it("should show alert icon for suspicious tokens", () => {
+      const { UNSAFE_getByType: getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={suspiciousTokenScan} />,
+      );
+
+      const icon = getByType(Icon.AlertCircle);
+      expect(icon).toBeTruthy();
+      expect(icon.props.themeColor).toBe("amber");
+    });
+
+    it("should not show alert icon for benign tokens", () => {
+      const { UNSAFE_getByType: getByType } = render(
+        <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
+      );
+
+      try {
+        getByType(Icon.AlertCircle);
+      } catch (error: unknown) {
+        expect((error as Error).message).toBe(
+          'No instances found with node type: "Unknown"',
+        );
+      }
     });
   });
 });

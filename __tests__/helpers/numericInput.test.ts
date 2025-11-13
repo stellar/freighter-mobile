@@ -1,5 +1,11 @@
 import { formatNumericInput } from "helpers/numericInput";
 
+// Mock the OS locale detection for consistent test behavior
+jest.mock("helpers/localeUtils", () => ({
+  getDeviceLanguage: jest.fn().mockReturnValue("en"),
+  isSupportedLanguage: jest.fn().mockReturnValue(true),
+}));
+
 describe("formatNumericInput", () => {
   it("should handle initial input", () => {
     expect(formatNumericInput("0", "1")).toBe("1");

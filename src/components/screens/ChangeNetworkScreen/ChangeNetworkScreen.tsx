@@ -5,6 +5,7 @@ import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ChangeNetworkBottomSheetContent from "components/screens/ChangeNetworkScreen/ChangeNetworkBottomSheet";
+import DeveloperBackendConfig from "components/screens/ChangeNetworkScreen/DeveloperBackendConfig";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -14,6 +15,7 @@ import {
 } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { isDev } from "helpers/isEnv";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useNetworkColors from "hooks/useNetworkColors";
@@ -114,6 +116,9 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
           </Text>
           <List className="mt-5" items={networkSettingsListItems} />
         </View>
+
+        {/* Backend configuration - only visible in dev builds */}
+        {isDev && <DeveloperBackendConfig />}
       </View>
     </BaseLayout>
   );

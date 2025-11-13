@@ -33,7 +33,16 @@ export const trackSendPaymentSuccess = (
 ): void => {
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
     sourceAsset: data.sourceToken,
-    transactionType: data.transactionType,
+    operationType: data.operationType,
+  });
+};
+
+export const trackSendCollectibleSuccess = (
+  data: TransactionSuccessEvent,
+): void => {
+  track(AnalyticsEvent.SEND_COLLECTIBLE_SUCCESS, {
+    collectionAddress: data.collectionAddress,
+    tokenId: data.tokenId,
   });
 };
 
@@ -54,7 +63,7 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   track(event, {
     error: data.error,
     errorCode: data.errorCode,
-    transactionType: data.transactionType,
+    operationType: data.operationType,
     isSwap: data.isSwap,
   });
 };

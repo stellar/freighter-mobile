@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import * as Sentry from "@sentry/react-native";
 import { debug } from "helpers/debug";
+import { isDev } from "helpers/isEnv";
 
 /**
  * Log levels supported by the logger
@@ -251,7 +252,7 @@ export interface LoggerAdapter {
  */
 const consoleAdapter: LoggerAdapter = {
   debug: (context: string, message: string, ...args: unknown[]) => {
-    if (__DEV__) {
+    if (isDev) {
       debug(`[${context}] ${message}`, ...args);
     }
   },
@@ -467,5 +468,5 @@ const combinedAdapter: LoggerAdapter = {
 export const initializeSentryLogger = (): void => {
   // Use combined adapter for development (console + Sentry for Spotlight),
   // Sentry only for production
-  logger.setAdapter(__DEV__ ? combinedAdapter : sentryAdapter);
+  logger.setAdapter(isDev ? combinedAdapter : sentryAdapter);
 };

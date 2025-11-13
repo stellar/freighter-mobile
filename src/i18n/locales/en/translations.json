@@ -23,6 +23,7 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
+    "addMemoShorthand": "Add memo",
     "addMemo": "Add memo",
     "yes": "Yes",
     "allow": "Allow",
@@ -31,14 +32,17 @@
     "token": "Token",
     "hash": "Hash",
     "salt": "Salt",
-    "wallet": "Wallet"
+    "wallet": "Wallet",
+    "copy": "Copy",
+    "name": "Name",
+    "collection": "Collection",
+    "tokenId": "Token ID"
   },
   "home": {
     "title": "Home",
     "buy": "Add",
     "send": "Send",
     "swap": "Swap",
-    "copy": "Copy",
     "actions": {
       "settings": "Settings",
       "manageTokens": "Manage tokens",
@@ -71,7 +75,7 @@
     "about": "About",
     "security": "Security",
     "deleteAccount": "Delete account",
-    "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and can not be deleted. However you can remove any account from your Freighter App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
+    "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Freighter App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
     "deleteAccountConfirmTitle": "Are you sure?",
     "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
   },
@@ -96,7 +100,7 @@
     },
     "hideDust": {
       "title": "Hide small payments",
-      "description": "Hide payments smaller than 0.1 XLM"
+      "description": "Hide received payments smaller than 0.1 XLM"
     },
     "memoValidation": {
       "title": "Verification with stellar.expert",
@@ -160,7 +164,13 @@
   "changeNetworkScreen": {
     "title": "Switch Network",
     "currentNetwork": "Current network",
-    "networkSettings": "Network Settings"
+    "networkSettings": "Network Settings",
+    "developerSettings": {
+      "title": "Developer Settings",
+      "warning": "Backend changes will take effect after restarting the app.",
+      "backendV1Environment": "Backend V1 Environment",
+      "backendV2Environment": "Backend V2 Environment"
+    }
   },
   "networkSettingsScreen": {
     "title": "Network Settings",
@@ -332,7 +342,11 @@
       "minted": "Minted",
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
-      "ops": "ops"
+      "ops": "ops",
+      "collectibleTransfer": {
+        "unknownCollectible": "Unknown Collectible",
+        "unknownCollection": "Collection {{contractId}}"
+      }
     },
     "transactionDetails": {
       "viewOnStellarExpert": "View on stellar.expert",
@@ -540,8 +554,10 @@
     "confirmTrust": "Only confirm if you trust this token",
     "maliciousToken": "This token was flagged as malicious",
     "suspiciousToken": "This token was flagged as suspicious",
+    "unableToScanToken": "Unable to scan token",
     "tokenAddress": "Token Address",
     "approveAnyway": "Approve anyway",
+    "unableToScanBanner": "Unable to scan for malicious tokens",
     "toastSuccess": "{{tokenCode}} successfully added as a token",
     "toastError": "Error adding token {{tokenCode}}",
     "emptyState": "No tokens found",
@@ -550,7 +566,9 @@
   "securityWarning": {
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
-    "unsafeTransaction": "This transaction does not appear safe for the following reasons.",
+    "proceedWithCaution": "Proceed with caution",
+    "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
+    "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
     "connectAnyway": "Connect anyway",
     "poweredBy": "Powered by",
@@ -592,7 +610,7 @@
     "swapFrom": "Swap from",
     "swapTo": "Swap to",
     "title": "Swap",
-    "searchTokenInputPlaceholder": "Search token name or address",
+    "searchTokenInputPlaceholder": "Token name or address",
     "setMax": "Set max",
     "receive": "Receive",
     "chooseToken": "Choose token",
@@ -620,7 +638,8 @@
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these tokens"
-    }
+    },
+    "proceedAnyway": "Proceed anyway"
   },
   "swapProcessingScreen": {
     "swapping": "Swapping",
@@ -640,15 +659,27 @@
   "transactionTokenScreen": {
     "title": "Sending"
   },
-  "transactionSettingsBottomSheet": {
+  "transactionSettings": {
     "title": "Transaction settings",
     "feeTitle": "Transaction fee",
     "memoTitle": "Memo",
+    "slippageTitle": "Slippage",
     "timeoutTitle": "Transaction timeout",
+    "resetFee": "Reset",
+    "memoPlaceholder": "Type your memo",
+    "slippagePlaceholder": "Custom %",
+    "timeoutPlaceholder": "Enter timeout",
+    "seconds": "seconds",
+    "congestion": "{{networkCongestion}} congestion",
     "memoInfo": {
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
       "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+    },
+    "slippageInfo": {
+      "title": "Allowed slippage",
+      "description": "The maximum price change (in percentage) you are willing to accept between initiating and confirming your swap. If the market price moves beyond this tolerance, the transaction will not execute.",
+      "additionalInfo": "A higher slippage tolerance means you're willing to accept a larger price difference, which can help ensure your trade executes but may result in a less favorable price."
     },
     "timeoutInfo": {
       "title": "Transaction timeout",
@@ -659,6 +690,28 @@
       "title": "Transaction fee",
       "description": "Every transaction on the Stellar network includes a small fee to help keep the network secure.",
       "additionalInfo": "You can choose to increase this fee if you want your transaction to be prioritized and processed faster by the network."
+    },
+    "errors": {
+      "memo": {
+        "invalid": "Invalid memo format",
+        "tooLong": "Memo is too long (maximum {{max}} bytes)"
+      },
+      "slippage": {
+        "customRequired": "Custom slippage is required",
+        "invalidNumber": "Invalid number",
+        "minSlippage": "Slippage must be at least {{min}}%",
+        "maxSlippage": "Slippage must be below {{max}}%"
+      },
+      "timeout": {
+        "required": "Transaction timeout is required",
+        "invalid": "Invalid transaction timeout",
+        "greaterThanZero": "Timeout must be greater than 0"
+      },
+      "fee": {
+        "required": "Transaction fee is required",
+        "invalid": "Invalid transaction fee",
+        "tooLow": "Fee must be greater than {{min}}"
+      }
     }
   },
   "transactionAmountScreen": {
@@ -689,7 +742,11 @@
       "amountTooHigh": "The amount entered is greater than the available balance",
       "memoMissing": "This transaction requires a memo",
       "malicious": "This address was flagged as malicious",
-      "suspicious": "This address was flagged as suspicious"
+      "suspicious": "This address was flagged as suspicious",
+      "maliciousTransaction": "This transaction was flagged as malicious",
+      "maliciousAsset": "An asset was flagged as malicious",
+      "suspiciousTransaction": "This transaction was flagged as suspicious",
+      "suspiciousAsset": "An asset was flagged as suspicious"
     },
     "confirmAnyway": "Confirm anyway"
   },
@@ -733,36 +790,6 @@
     "maliciousFlag": "This site was flagged as malicious",
     "suspiciousFlag": "This site was flagged as suspicious"
   },
-  "transactionMemoScreen": {
-    "title": "Memo",
-    "placeholder": "Type your memo",
-    "optional": "(optional)",
-    "errors": {
-      "invalid": "Invalid memo format",
-      "tooLong": "Memo is too long (maximum {{max}} bytes)"
-    }
-  },
-  "transactionTimeoutScreen": {
-    "title": "Transaction Timeout",
-    "seconds": "seconds",
-    "setRecommended": "Set recommended",
-    "inputPlaceholder": "Enter timeout",
-    "errors": {
-      "required": "Transaction timeout is required",
-      "invalid": "Invalid transaction timeout",
-      "greaterThanZero": "Timeout must be greater than 0"
-    }
-  },
-  "transactionFeeScreen": {
-    "title": "Transaction Fee",
-    "setRecommended": "Set recommended",
-    "congestion": "{{networkCongestion}} congestion",
-    "errors": {
-      "required": "Transaction fee is required",
-      "invalid": "Invalid transaction fee",
-      "tooLow": "Fee must be greater than {{min}}"
-    }
-  },
   "low": "Low",
   "medium": "Medium",
   "high": "High",
@@ -785,6 +812,7 @@
   },
   "transactionDetailsBottomSheet": {
     "sent": "Sent {{tokenCode}}",
+    "sentCollectible": "Sent Collectible",
     "firstTimeSend": "First time sent",
     "status": "Status",
     "statusSuccess": "Success",
@@ -916,17 +944,6 @@
     "securityNote": "These words are your wallet's keys—store them securely to keep your funds safe.",
     "copyButton": "Copy to clipboard"
   },
-  "slippageScreen": {
-    "title": "Allowed Slippage",
-    "customPlaceholder": "Custom %",
-    "setDefault": "Set default",
-    "errors": {
-      "customRequired": "Custom slippage is required",
-      "invalidNumber": "Invalid number",
-      "minSlippage": "Slippage must be at least {{min}}%",
-      "maxSlippage": "Slippage must be below {{max}}%"
-    }
-  },
   "transaction": {
     "errors": {
       "amountRequired": "Source amount must be greater than 0",
@@ -993,6 +1010,28 @@
       "simulateSessionExpiry": "⏰ Simulate Session Expiry"
     }
   },
+  "debug": {
+    "title": "Debug",
+    "appVersionOverride": {
+      "title": "App Version Override",
+      "description": "Override app version for testing updates (DEV only)",
+      "placeholder": "Enter version (e.g., 1.0.0)",
+      "currentVersion": "Current version: {{version}}",
+      "overriddenVersion": "Overridden version: {{version}}",
+      "clearOverride": "Clear Override",
+      "clearUpdateDismissalFlag": "Clear update dismissal flag"
+    },
+    "blockaidOverride": {
+      "title": "Blockaid Response Override",
+      "description": "Override Blockaid security responses for testing different security states (DEV only)",
+      "overriddenResponse": "Overridden response: {{response}}",
+      "safe": "Safe",
+      "suspicious": "Suspicious",
+      "malicious": "Malicious",
+      "unableToScan": "Unable to Scan",
+      "clearOverride": "Clear Override"
+    }
+  },
   "blockaid": {
     "brand": "Blockaid",
     "security": {
@@ -1014,6 +1053,21 @@
         "unableToSimulate": "Unable to simulate transaction",
         "noBalanceChanges": "No balance changes detected"
       }
+    },
+    "unableToScan": {
+      "default": {
+        "title": "Unable to scan",
+        "description": "We were unable to scan this item for security threats. Proceed with caution."
+      },
+      "token": "Unable to scan token",
+      "site": {
+        "title": "Unable to scan site",
+        "description": "We were unable to scan this site for security threats. The site may be safe, but we cannot verify its security status."
+      },
+      "transaction": "Unable to scan transaction",
+      "sourceToken": "Unable to scan source token",
+      "destinationToken": "Unable to scan destination token",
+      "info": "This does not mean the item is malicious - it simply means we cannot verify its security status."
     }
   },
   "signTransactionDetails": {
@@ -1039,6 +1093,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
+      "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",
       "destinationToken": "Destination Token",
@@ -1113,6 +1168,17 @@
       "not": "Not",
       "beforeRelativeTime": "Before Relative Time",
       "beforeAbsoluteTime": "Before Absolute Time"
+    }
+  },
+  "appUpdate": {
+    "defaultMessage": "Please update your app to the latest version.",
+    "forceUpdate": {
+      "title": "Update Required",
+      "description": "A new version of Freighter is available. Please update to ensure your wallet performs correctly and securely. Your funds are not affected.",
+      "updateButton": "Update app",
+      "laterButton": "I'll update later",
+      "skipTitle": "Proceed without update?",
+      "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
     }
   }
 }

@@ -17,6 +17,7 @@
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { NetworkDetails, NETWORKS } from "config/constants";
+import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
   TokenTypeWithCustomToken,
@@ -31,15 +32,14 @@ import {
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
-import Config from "react-native-config";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isRequestCanceled } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
-export const freighterBackend = createApiService({
-  baseURL: Config.FREIGHTER_BACKEND_URL,
+export const freighterBackendV1 = createApiService({
+  baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V1_URL,
 });
 export const freighterBackendV2 = createApiService({
-  baseURL: Config.FREIGHTER_BACKEND_V2_URL,
+  baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -113,7 +113,7 @@ export const getContractSpecs = async ({
   contractId: string;
   networkDetails: NetworkDetails;
 }): Promise<Record<string, any>> => {
-  const response = await freighterBackend.get<{ data: Record<string, any> }>(
+  const response = await freighterBackendV1.get<{ data: Record<string, any> }>(
     `/contract-spec/${contractId}`,
     {
       params: {
@@ -207,7 +207,7 @@ export const fetchBalances = async ({
     });
   }
 
-  const { data } = await freighterBackend.get<FetchBalancesResponse>(
+  const { data } = await freighterBackendV1.get<FetchBalancesResponse>(
     `/account-balances/${publicKey}?${params.toString()}`,
   );
 
@@ -289,7 +289,7 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  const { data } = await freighterBackend.post<TokenPricesResponse>(
+  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
     "/token-prices",
     {
       tokens: filteredTokens,
@@ -378,17 +378,19 @@ export const getTokenDetails = async ({
   contractId,
   publicKey,
   network,
+  signal,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
 
-    const response = await freighterBackend.get<TokenDetailsResponse>(
+    const response = await freighterBackendV1.get<TokenDetailsResponse>(
       `/token-details/${contractId}`,
       {
         params: {
           pub_key: publicKey,
           network,
         },
+        signal,
       },
     );
 
@@ -399,15 +401,17 @@ export const getTokenDetails = async ({
     return response.data;
   } catch (error) {
     if ((error as AxiosError).status === 400) {
-      // That means the contract is not a SAC token.
+      // That means the contract is not SEP-41 compliant.
       return null;
     }
 
-    logger.error(
-      "backendApi.getTokenDetails",
-      "Error fetching token details",
-      error,
-    );
+    if (!isRequestCanceled(error)) {
+      logger.error(
+        "backendApi.getTokenDetails",
+        "Error fetching token details",
+        error,
+      );
+    }
 
     return null;
   }
@@ -444,7 +448,7 @@ export const isSacContractExecutable = async (
   // TODO: Add verification for custom network.
 
   try {
-    const response = await freighterBackend.get<{ isSacContract: boolean }>(
+    const response = await freighterBackendV1.get<{ isSacContract: boolean }>(
       `/is-sac-contract/${contractId}`,
       {
         params: {
@@ -502,7 +506,7 @@ export const getIndexerAccountHistory = async ({
   networkDetails: NetworkDetails;
 }): Promise<Horizon.ServerApi.OperationRecord[]> => {
   try {
-    const response = await freighterBackend.get<
+    const response = await freighterBackendV1.get<
       Horizon.ServerApi.OperationRecord[]
     >(`/account-history/${publicKey}`, {
       params: {
@@ -592,6 +596,7 @@ export const handleContractLookup = async (
   contractId: string,
   network: NETWORKS,
   publicKey?: string,
+  signal?: AbortSignal,
 ): Promise<FormattedSearchTokenRecord | null> => {
   const nativeContractDetails = getNativeContractDetails(network);
 
@@ -610,6 +615,7 @@ export const handleContractLookup = async (
     contractId,
     publicKey: publicKey ?? "",
     network,
+    signal,
   });
 
   if (!tokenDetails) {
@@ -709,7 +715,7 @@ export interface SimulateTransactionResponse {
 export const simulateTokenTransfer = async (
   params: SimulateTokenTransferParams,
 ) => {
-  const { data } = await freighterBackend.post<SimulateTransactionResponse>(
+  const { data } = await freighterBackendV1.post<SimulateTransactionResponse>(
     "/simulate-token-transfer",
     params,
   );
@@ -721,6 +727,104 @@ export const simulateTokenTransfer = async (
       params.network_passphrase,
     ),
   };
+};
+
+/**
+ * Parameters for operation simulation
+ * @interface SimulateTransactionParams
+ * @property {string} xdr - prebuilt xdr to simulate on the network
+ * @property {string} network_url - Network URL for simulation
+ * @property {string} network_passphrase - Network passphrase
+ */
+export interface SimulateTransactionParams {
+  xdr: string;
+  network_url: string;
+  network_passphrase: string;
+}
+
+/**
+ * Simulates an operation
+ * @async
+ * @function simulateTransaction
+ * @param {SimulateTransactionParams} params - Simulation parameters
+ * @returns {Promise<Object>} Promise resolving to simulation result with prepared transaction
+ *
+ * @description
+ * Simulates an operation:
+ * - Returns simulation response and prepared transaction
+ * - Converts XDR to TransactionBuilder for easy manipulation
+ *
+ * @throws {Error} When the simulation fails
+ *
+ * @example
+ * ```ts
+ * const result = await simulateTransaction({
+ *   xdr: "...",
+ *   network_url: "https://horizon.stellar.org",
+ *   network_passphrase: "Public Global Stellar Network"
+ * });
+ * ```
+ */
+export const simulateTransaction = async (
+  params: SimulateTransactionParams,
+) => {
+  const { data } = await freighterBackendV1.post<SimulateTransactionResponse>(
+    "/simulate-tx",
+    params,
+  );
+
+  return data;
+};
+
+/**
+ * Body for submitting a transaction
+ * @interface SubmitTransactionBody
+ * @property {string} signed_xdr - xdr to submit
+ * @property {string} network_url - Network URL for submission
+ * @property {string} network_passphrase - Network passphrase
+ */
+export interface SubmitTransactionBody {
+  signed_xdr: string;
+  network_url: string;
+  network_passphrase: string;
+}
+
+/**
+ * submits an transaction
+ * @async
+ * @function submitTransaction
+ * @param {SubmitTransactionBody} params - Submission details
+ * @returns {Promise<Object>} Promise resolving to a HorizonApi.SubmitTransactionResponse
+ *
+ * @description
+ * Submits a transaction to the network:
+ *
+ * @throws {Error} When the submission fails
+ *
+ * @example
+ * ```ts
+ * const _params = [
+ *  new Sdk.Address(params.publicKey).toScVal(),
+ *  new Sdk.Address(params.destination).toScVal(),
+ *  new Sdk.XdrLargeInt("i128", params.amount).toI128(),
+ * ];
+ * const result = await submitTransaction({
+ *   body: {
+ *    signed_xdr: "...",
+ *    network_url: "https://horizon.stellar.org",
+ *    network_passphrase: "Public Global Stellar Network"
+ *  }
+ * });
+ * ```
+ */
+export const submitTransaction = async (body: SubmitTransactionBody) => {
+  const { data } =
+    await freighterBackendV1.post<Horizon.HorizonApi.SubmitTransactionResponse>(
+      "/submit-tx",
+      body,
+    );
+
+  return data;
 };
 
 /**

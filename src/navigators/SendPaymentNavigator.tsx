@@ -3,12 +3,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import {
-  TransactionMemoScreen,
   TransactionTokenScreen,
-  TransactionFeeScreen,
-  TransactionTimeoutScreen,
   TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
+import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -46,24 +44,10 @@ export const SendPaymentStackNavigator = () => {
         }}
       />
       <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN}
-        component={TransactionMemoScreen}
+        name={SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW}
+        component={SendCollectibleReviewScreen}
         options={{
-          headerTitle: t("transactionMemoScreen.title"),
-        }}
-      />
-      <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN}
-        component={TransactionTimeoutScreen}
-        options={{
-          headerTitle: t("transactionTimeoutScreen.title"),
-        }}
-      />
-      <SendPaymentStack.Screen
-        name={SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN}
-        component={TransactionFeeScreen}
-        options={{
-          headerTitle: t("transactionFeeScreen.title"),
+          headerTitle: t("transactionAmountScreen.title"),
         }}
       />
     </SendPaymentStack.Navigator>

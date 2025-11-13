@@ -10,11 +10,11 @@ import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
+import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
-import { BiometricsSource, STORAGE_KEYS } from "config/constants";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -28,13 +28,17 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
 } from "helpers/navigationOptions";
+import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
+import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
 import {
   AuthNavigator,
@@ -48,7 +52,7 @@ import {
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
-import { dataStorage } from "services/storage/storageFactory";
+import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -66,48 +70,39 @@ export const RootNavigator = () => {
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
   const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const remoteConfigInitialized = useRemoteConfigStore(
+    (state) => state.isInitialized,
+  );
   const [initializing, setInitializing] = useState(true);
+  const [showForceUpdate, setShowForceUpdate] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
+  const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
+    useAppUpdate();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
   });
 
+  useAppOpenBiometricsLogin(initializing);
+
   useEffect(() => {
-    const initializeApp = async () => {
+    const initializeApp = async (
+      postInitializeCallback?: () => void,
+    ): Promise<void> => {
       await getAuthStatus();
-
-      setInitializing(false);
-      RNBootSplash.hide({ fade: true });
-    };
-
-    const triggerFaceIdOnboarding = () => {
-      if (authStatus === AUTH_STATUS.AUTHENTICATED) {
-        setTimeout(() => {
-          dataStorage
-            .getItem(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN)
-            .then(async (hasSeenBiometricsEnableScreenStorage) => {
-              const type = await checkBiometrics();
-              if (
-                !isBiometricsEnabled &&
-                hasSeenBiometricsEnableScreenStorage !== "true" &&
-                !!type
-              ) {
-                navigation.navigate(
-                  AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
-                  {
-                    source: BiometricsSource.POST_ONBOARDING,
-                  },
-                );
-              }
-            });
-        }, 3000);
+      if (postInitializeCallback) {
+        postInitializeCallback();
       }
     };
 
-    initializeApp().then(() => {
-      triggerFaceIdOnboarding();
+    initializeApp(() => {
+      triggerFaceIdOnboarding(
+        navigation,
+        authStatus,
+        checkBiometrics,
+        isBiometricsEnabled ?? false,
+      );
     });
   }, [
     getAuthStatus,
@@ -116,6 +111,21 @@ export const RootNavigator = () => {
     checkBiometrics,
     isBiometricsEnabled,
   ]);
+
+  // Wait for all initialization states to complete
+  useEffect(() => {
+    if (isAnalyticsInitialized() && remoteConfigInitialized) {
+      setInitializing(false);
+      RNBootSplash.hide({ fade: true });
+    }
+  }, [remoteConfigInitialized]);
+
+  // Show force update screen when needed
+  useEffect(() => {
+    if (showFullScreenUpdateNotice) {
+      setShowForceUpdate(true);
+    }
+  }, [showFullScreenUpdateNotice]);
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
@@ -132,6 +142,18 @@ export const RootNavigator = () => {
 
   if (initializing) {
     return <LoadingScreen />;
+  }
+
+  // Show force update screen if required
+  if (showForceUpdate) {
+    return (
+      <ForceUpdateScreen
+        onDismiss={() => {
+          dismissFullScreenNotice();
+          setShowForceUpdate(false);
+        }}
+      />
+    );
   }
 
   return (

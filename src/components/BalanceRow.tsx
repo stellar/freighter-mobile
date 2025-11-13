@@ -1,20 +1,25 @@
+import Blockaid from "@blockaid/client";
+import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
   DEFAULT_PRESS_DELAY,
   POSITIVE_PRICE_CHANGE_THRESHOLD,
 } from "config/constants";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
-  formatTokenAmount,
+  formatTokenForDisplay,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
+import { assessTokenSecurity } from "services/blockaid/helper";
 import styled from "styled-components/native";
 
 const BalanceRowContainer = styled.View<{ isSingleRow?: boolean }>`
@@ -52,12 +57,23 @@ const RightSection = styled.View<RightSectionProps>`
 
 interface BalanceRowProps {
   balance: PricedBalance;
+  scanResult?: Blockaid.TokenBulk.TokenBulkScanResponse.Results;
   rightContent?: ReactNode;
   rightSectionWidth?: number;
   onPress?: () => void;
   isSingleRow?: boolean;
   customTextContent?: string;
+  spendableAmount?: BigNumber;
 }
+
+const getBlockaidDataFromBalance = (
+  balance: PricedBalance,
+): Blockaid.TokenBulk.TokenBulkScanResponse.Results | undefined => {
+  if ("blockaidData" in balance && balance.blockaidData) {
+    return balance.blockaidData as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
+  }
+  return undefined;
+};
 
 export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   balance,
@@ -117,23 +133,49 @@ const renderContent = (
 
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
+  scanResult: scanResultFromProps,
   customTextContent,
   rightContent,
   rightSectionWidth,
   onPress,
   isSingleRow = false,
-}) =>
-  renderContent(
+  spendableAmount,
+}) => {
+  const { overriddenBlockaidResponse } = useDebugStore();
+
+  const scanResultFromBalance = getBlockaidDataFromBalance(balance);
+  const scanResult = scanResultFromBalance || scanResultFromProps;
+
+  const { isMalicious, isSuspicious } = assessTokenSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
+  );
+  return renderContent(
     <BalanceRowContainer isSingleRow={isSingleRow}>
       <LeftSection>
-        <TokenIcon token={balance} />
+        <View className="relative z-0">
+          <TokenIcon token={balance} />
+          {(isMalicious || isSuspicious) && (
+            <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
+              <Icon.AlertCircle
+                size={8}
+                testID="alert-icon"
+                themeColor={isMalicious ? "red" : "amber"}
+                withBackground
+              />
+            </View>
+          )}
+        </View>
         <TokenTextContainer>
           <Text medium numberOfLines={1}>
             {balance.displayName}
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatTokenAmount(balance.total, balance.tokenCode)}
+              formatTokenForDisplay(
+                spendableAmount || balance.total,
+                balance.tokenCode,
+              )}
           </Text>
         </TokenTextContainer>
       </LeftSection>
@@ -148,3 +190,4 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
     onPress,
     isSingleRow,
   );
+};

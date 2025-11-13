@@ -9,10 +9,11 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -30,6 +31,7 @@ import { View } from "react-native";
  * @property {boolean} isSigning - Whether a transaction is currently being signed
  * @property {boolean} isMalicious - Whether the transaction is malicious
  * @property {boolean} isSuspicious - Whether the transaction is suspicious
+ * @property {boolean} isUnableToScan - Whether the transaction scan failed
  * @property {ListItemProps[]} transactionBalanceListItems - The list of transaction balance items
  * @property {() => void} securityWarningAction - Function to handle security warning
  * @property {SignTransactionDetailsInterface} signTransactionDetails - The sign transaction details
@@ -45,8 +47,10 @@ interface DappRequestBottomSheetContentProps {
   isSigning: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
   transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;
+  proceedAnywayAction?: () => void;
   signTransactionDetails?: SignTransactionDetailsInterface | null;
   isMemoMissing?: boolean;
   isValidatingMemo?: boolean;
@@ -71,8 +75,10 @@ const DappRequestBottomSheetContent: React.FC<
   isSigning,
   isMalicious,
   isSuspicious,
+  isUnableToScan,
   transactionScanResult,
   securityWarningAction,
+  proceedAnywayAction,
   signTransactionDetails,
   isMemoMissing,
   isValidatingMemo,
@@ -86,10 +92,30 @@ const DappRequestBottomSheetContent: React.FC<
     signTransactionDetails,
   );
 
+  const bannerText = useMemo(() => {
+    if (isMalicious) {
+      return t("dappConnectionBottomSheetContent.maliciousFlag");
+    }
+    if (isSuspicious) {
+      return t("dappConnectionBottomSheetContent.suspiciousFlag");
+    }
+    if (isUnableToScan) {
+      return t("securityWarning.proceedWithCaution");
+    }
+    return "";
+  }, [isMalicious, isSuspicious, isUnableToScan, t]);
+
+  const bannerVariant = useMemo(() => {
+    if (isMalicious) {
+      return "error" as const;
+    }
+    return "warning" as const;
+  }, [isMalicious]);
+
   const formatFeeAmount = (feeXlm?: string | number) => {
     if (!feeXlm) return "--";
 
-    return formatTokenAmount(String(feeXlm), NATIVE_TOKEN_CODE);
+    return formatTokenForDisplay(String(feeXlm), NATIVE_TOKEN_CODE);
   };
 
   const accountDetailList = useMemo(
@@ -142,28 +168,85 @@ const DappRequestBottomSheetContent: React.FC<
   const dAppFavicon = dappMetadata.icons[0];
 
   const renderButtons = () => {
-    const cancelButton = (
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
-      >
-        <Button
-          tertiary={isSuspicious}
-          destructive={isMalicious}
-          secondary={!isMalicious && !isSuspicious}
-          xl
-          isFullWidth
-          onPress={onCancelRequest}
-          disabled={isSigning}
-        >
-          {t("common.cancel")}
-        </Button>
-      </View>
-    );
-
-    if (isMalicious || isSuspicious) {
+    if (!isMalicious && !isSuspicious && !isUnableToScan) {
       return (
-        <>
-          {cancelButton}
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={onCancelRequest}
+              disabled={isSigning || !!isValidatingMemo}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => onConfirm?.()}
+              isLoading={isSigning || !!isValidatingMemo}
+              disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
+            >
+              {t("dappRequestBottomSheetContent.confirm")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    if (isUnableToScan) {
+      return (
+        <View className="flex-row justify-between gap-3">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={onCancelRequest}
+              disabled={isSigning || !!isValidatingMemo}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              biometric
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => {
+                proceedAnywayAction?.();
+              }}
+              isLoading={isSigning || !!isValidatingMemo}
+              disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
+            >
+              {t("common.continue")}
+            </Button>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View className="flex-col gap-3">
+        <View className="w-full">
+          <Button
+            tertiary={isSuspicious}
+            destructive={isMalicious}
+            xl
+            isFullWidth
+            onPress={onCancelRequest}
+            disabled={isSigning}
+          >
+            {t("common.cancel")}
+          </Button>
+        </View>
+        <View className="w-full">
           <TextButton
             text={t("dappRequestBottomSheetContent.confirmAnyway")}
             biometric
@@ -174,27 +257,8 @@ const DappRequestBottomSheetContent: React.FC<
             disabled={isSigning}
             variant={isMalicious ? "error" : "secondary"}
           />
-        </>
-      );
-    }
-
-    return (
-      <>
-        {cancelButton}
-        <View className="flex-1">
-          <Button
-            biometric
-            tertiary
-            xl
-            isFullWidth
-            onPress={() => onConfirm?.()}
-            isLoading={isSigning || !!isValidatingMemo}
-            disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
-          >
-            {t("dappRequestBottomSheetContent.confirm")}
-          </Button>
         </View>
-      </>
+      </View>
     );
   };
 
@@ -220,14 +284,10 @@ const DappRequestBottomSheetContent: React.FC<
           onPress={onBannerPress}
         />
       )}
-      {(isMalicious || isSuspicious) && (
+      {(isMalicious || isSuspicious || isUnableToScan) && (
         <Banner
-          variant={isMalicious ? "error" : "warning"}
-          text={
-            isMalicious
-              ? t("dappConnectionBottomSheetContent.maliciousFlag")
-              : t("dappConnectionBottomSheetContent.suspiciousFlag")
-          }
+          variant={bannerVariant}
+          text={bannerText}
           onPress={securityWarningAction}
         />
       )}
@@ -235,21 +295,20 @@ const DappRequestBottomSheetContent: React.FC<
         <List variant="secondary" items={transactionBalanceListItems} />
         <List variant="secondary" items={accountDetailList} />
         {signTransactionDetails && (
-          <SignTransactionDetails data={signTransactionDetails} />
+          <SignTransactionDetails
+            data={signTransactionDetails}
+            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+          />
         )}
       </View>
 
-      {!isMalicious && !isSuspicious && (
+      {!isMalicious && !isSuspicious && !isUnableToScan && (
         <Text sm secondary textAlign="center">
           {t("blockaid.security.site.confirmTrust")}
         </Text>
       )}
 
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px]`}
-      >
-        {renderButtons()}
-      </View>
+      <View className="w-full">{renderButtons()}</View>
     </View>
   );
 };

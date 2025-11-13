@@ -6,7 +6,9 @@ import { isContractId } from "helpers/soroban";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
+  buildSendCollectibleTransaction,
   buildSwapTransaction,
+  simulateCollectibleTransfer,
   simulateContractTransfer,
 } from "services/transactionService";
 import { create } from "zustand";
@@ -44,10 +46,22 @@ interface TransactionBuilderState {
     path: string[];
     destinationAmount: string;
     destinationAmountMin: string;
+    transactionMemo?: string;
     transactionFee?: string;
     transactionTimeout?: number;
     network?: NETWORKS;
     senderAddress?: string;
+  }) => Promise<string | null>;
+
+  buildSendCollectibleTransaction: (params: {
+    collectionAddress: string;
+    destinationAccount: string;
+    tokenId: number;
+    transactionFee: string;
+    transactionTimeout: number;
+    transactionMemo?: string;
+    network: NETWORKS;
+    senderAddress: string;
   }) => Promise<string | null>;
 
   signTransaction: (params: {
@@ -64,6 +78,7 @@ const initialState: Omit<
   TransactionBuilderState,
   | "buildTransaction"
   | "buildSwapTransaction"
+  | "buildSendCollectibleTransaction"
   | "signTransaction"
   | "submitTransaction"
   | "resetTransaction"
@@ -232,6 +247,74 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         // Only set error state if this swap build is still current.
         // Prevents stale swap error from overwriting newer transaction state.
+        if (get().requestId === newRequestId) {
+          set({
+            error: errorMessage,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
+
+        return null;
+      }
+    },
+
+    /**
+     * Builds a send collectible transaction and stores the XDR
+     */
+    buildSendCollectibleTransaction: async (params) => {
+      // Tag this build cycle
+      const newRequestId = createRequestId();
+
+      // Mark new cycle and reset flags
+      set({ isBuilding: true, error: null, requestId: newRequestId });
+
+      try {
+        const builtTxResult = await buildSendCollectibleTransaction({
+          collectionAddress: params.collectionAddress,
+          tokenId: params.tokenId,
+          recipientAddress: params.destinationAccount,
+          transactionMemo: params.transactionMemo,
+          transactionFee: params.transactionFee,
+          transactionTimeout: params.transactionTimeout,
+          network: params.network,
+          senderAddress: params.senderAddress,
+        });
+
+        if (!builtTxResult) {
+          throw new Error("Failed to build send collectible transaction");
+        }
+
+        const networkDetails = mapNetworkToNetworkDetails(params.network);
+        const finalXdr = await simulateCollectibleTransfer({
+          transactionXdr: builtTxResult.tx.toXDR(),
+          networkDetails,
+        });
+
+        // Only update store if this build request is still the latest one.
+        // This prevents race conditions where a slow async response from
+        // an older transaction overwrites state from a newer one.
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: finalXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
+
+        return finalXdr;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build send collectible transaction",
+          error,
+        );
+
+        // Only set error state if this send collectible build is still current.
+        // Prevents stale send collectible error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {
           set({
             error: errorMessage,

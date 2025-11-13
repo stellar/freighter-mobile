@@ -3,7 +3,7 @@ import { NETWORKS } from "config/constants";
 import { logger, normalizeError } from "config/logger";
 import { SearchTokenResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isRequestCanceled } from "services/apiFactory";
 
 const stellarExpertApiTestnet = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.TESTNET),
@@ -13,7 +13,11 @@ const stellarExpertApiPublic = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.PUBLIC),
 });
 
-export const searchToken = async (token: string, network: NETWORKS) => {
+export const searchToken = async (
+  token: string,
+  network: NETWORKS,
+  signal?: AbortSignal,
+) => {
   const stellarExpertApi =
     network === NETWORKS.TESTNET
       ? stellarExpertApiTestnet
@@ -24,6 +28,7 @@ export const searchToken = async (token: string, network: NETWORKS) => {
       params: {
         search: token,
       },
+      signal,
     });
 
     if (!response.data || !response.data._embedded) {
@@ -32,7 +37,9 @@ export const searchToken = async (token: string, network: NETWORKS) => {
 
     return response.data;
   } catch (error) {
-    logger.error("stellarExpert", "Error searching token", error);
+    if (!isRequestCanceled(error)) {
+      logger.error("stellarExpert", "Error searching token", error);
+    }
 
     return null;
   }

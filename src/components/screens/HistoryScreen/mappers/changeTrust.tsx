@@ -20,7 +20,9 @@ interface ChangeTrustHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -31,7 +33,9 @@ export const mapChangeTrustHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
+  xdr,
 }: ChangeTrustHistoryItemData): HistoryItemData => {
   const {
     asset_code: destTokenCode,
@@ -73,6 +77,8 @@ export const mapChangeTrustHistoryItem = ({
     IconComponent,
     ActionIconComponent,
     fee,
+    memo,
+    xdr,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
   };
 

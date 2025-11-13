@@ -3,10 +3,7 @@ import { FreighterLogo } from "components/FreighterLogo";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
-import {
-  STELLAR_FOUNDATION_TERMS_URL,
-  STELLAR_FOUNDATION_PRIVACY_URL,
-} from "config/constants";
+import { FREIGHTER_TERMS_URL, FREIGHTER_PRIVACY_URL } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -77,11 +74,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
         <View>
           <StyledTermsText md secondary medium>
             {t("welcomeScreen.terms.byProceeding")}
-            <Text md medium url={STELLAR_FOUNDATION_TERMS_URL}>
+            <Text md medium url={FREIGHTER_TERMS_URL}>
               {t("welcomeScreen.terms.termsOfService")}
             </Text>
             {t("common.and")}
-            <Text md medium url={STELLAR_FOUNDATION_PRIVACY_URL}>
+            <Text md medium url={FREIGHTER_PRIVACY_URL}>
               {t("welcomeScreen.terms.privacyPolicy")}
             </Text>
           </StyledTermsText>

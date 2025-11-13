@@ -1,4 +1,5 @@
 import * as amplitude from "@amplitude/analytics-react-native";
+import { Experiment } from "@amplitude/experiment-react-native-client";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
@@ -13,6 +14,7 @@ import {
 } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
   DEBUG_CONFIG,
   TIMING,
   ANALYTICS_CONFIG,
@@ -28,22 +30,81 @@ import type {
 // -----------------------------------------------------------------------------
 
 let hasInitialised = false;
+let experimentClient: ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null = null;
+
+/**
+ * Sets persistent user properties in Amplitude.
+ * These are attributes that don't change frequently (e.g. "Bundle Id")
+ * Other attributes like "Platform", "OS" and "Version" appear to be
+ * automatically assigned by Amplitude.
+ */
+const setAmplitudeUserProperties = (): void => {
+  try {
+    const identify = new amplitude.Identify();
+
+    // Let's set bundle id as a user property so we could easily
+    // filter mobile Prod and Dev users in Amplitude.
+    identify.set(ANALYTICS_CONFIG.BUNDLE_ID_KEY, getBundleId());
+
+    amplitude.identify(identify);
+
+    logger.debug(DEBUG_CONFIG.LOG_PREFIX, "User properties set in Amplitude");
+  } catch (error) {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to set Amplitude user properties",
+      error,
+    );
+  }
+};
 
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
   if (!AMPLITUDE_API_KEY) {
-    logger.error(
-      DEBUG_CONFIG.LOG_PREFIX,
-      "missing amplitude config error",
-      "Missing AMPLITUDE_API_KEY in environment",
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.error(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "missing amplitude config error",
+        "Missing AMPLITUDE_API_KEY in environment",
+      );
+    }
 
+    // Mark as initialized even without API key to prevent infinite loading
+    hasInitialised = true;
     return;
   }
 
   try {
-    amplitude.init(AMPLITUDE_API_KEY);
+    amplitude.init(AMPLITUDE_API_KEY, undefined, {
+      trackingOptions: {
+        carrier: false,
+      },
+      disableCookies: true,
+    });
+
+    // Initialize Experiments
+    if (AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY) {
+      experimentClient = Experiment.initializeWithAmplitudeAnalytics(
+        AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
+      );
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment client initialized with deployment key",
+      );
+    } else {
+      logger.warn(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Experiment deployment key missing, feature flags will use defaults",
+      );
+    }
+
+    // Set user properties that don't change
+    setAmplitudeUserProperties();
 
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
@@ -62,6 +123,10 @@ export const initAnalytics = (): void => {
 };
 
 export const isInitialized = (): boolean => hasInitialised;
+
+export const getExperimentClient = (): ReturnType<
+  typeof Experiment.initializeWithAmplitudeAnalytics
+> | null => experimentClient;
 
 // -----------------------------------------------------------------------------
 // SETTINGS MANAGEMENT
@@ -181,10 +246,14 @@ const dispatchUnthrottled = (
   }
 
   if (!AMPLITUDE_API_KEY) {
-    logger.debug(
-      DEBUG_CONFIG.LOG_PREFIX,
-      `Skipping event due to missing API key: ${event}`,
-    );
+    // We should only report this error when not in development
+    // since in development we purposely don't have the amplitude api key set
+    if (!__DEV__) {
+      logger.debug(
+        DEBUG_CONFIG.LOG_PREFIX,
+        `Skipping event due to missing API key: ${event}`,
+      );
+    }
 
     return;
   }

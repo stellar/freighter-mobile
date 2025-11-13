@@ -8,7 +8,8 @@ import {
   HookStatus,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { Icon, useTokenIconsStore } from "ducks/tokenIcons";
+import { useDebugStore } from "ducks/debug";
+import { Icon } from "ducks/tokenIcons";
 import {
   formatTokenIdentifier,
   getTokenIdentifier,
@@ -16,12 +17,14 @@ import {
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
-import useDebounce from "hooks/useDebounce";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { handleContractLookup } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
 import { SecurityLevel } from "services/blockaid/constants";
-import { assessTokenSecurity } from "services/blockaid/helper";
+import {
+  assessTokenSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 import { searchToken } from "services/stellarExpert";
 
 interface UseTokenLookupProps {
@@ -37,13 +40,13 @@ export const useTokenLookup = ({
   publicKey,
   balanceItems,
 }: UseTokenLookupProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const latestRequestRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [searchResults, setSearchResults] = useState<
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
-
-  const { cacheTokenIcons } = useTokenIconsStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
   const groupTokensBySecurityLevel = (
@@ -54,6 +57,7 @@ export const useTokenLookup = ({
         [SecurityLevel.SAFE]: [],
         [SecurityLevel.SUSPICIOUS]: [],
         [SecurityLevel.MALICIOUS]: [],
+        [SecurityLevel.UNABLE_TO_SCAN]: [],
       };
 
     // Preserve original order by adding tokens to groups as they appear
@@ -65,11 +69,12 @@ export const useTokenLookup = ({
       targetGroup.push(token);
     });
 
-    // Return in security priority order: Safe → Suspicious → Malicious
+    // Return in security priority order: Safe → Suspicious → Malicious → Unable to Scan
     return [
       ...securityGroups[SecurityLevel.SAFE],
       ...securityGroups[SecurityLevel.SUSPICIOUS],
       ...securityGroups[SecurityLevel.MALICIOUS],
+      ...securityGroups[SecurityLevel.UNABLE_TO_SCAN],
     ];
   };
 
@@ -84,13 +89,18 @@ export const useTokenLookup = ({
         : token.tokenCode;
 
       const scanResult = scanResults.results?.[tokenIdentifier];
-      const securityInfo = assessTokenSecurity(scanResult);
+      const securityInfo = assessTokenSecurity(
+        scanResult,
+        overriddenBlockaidResponse,
+      );
 
       return {
         ...token,
         isSuspicious: securityInfo.isSuspicious,
         isMalicious: securityInfo.isMalicious,
+        isUnableToScan: securityInfo.isUnableToScan,
         securityLevel: securityInfo.level,
+        securityWarnings: extractSecurityWarnings(scanResult),
       };
     });
 
@@ -117,12 +127,22 @@ export const useTokenLookup = ({
       | SearchTokenResponse["_embedded"]["records"]
       | FormattedSearchTokenRecord[],
     userBalances: (PricedBalance & { id: string })[],
+    icons: Record<string, Icon> = {},
   ): FormattedSearchTokenRecord[] =>
     rawSearchResults.map((result) => {
       if ("tokenCode" in result) {
         // came from freighter-backend
+        const tokenIdentifier = getTokenIdentifier({
+          type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          code: result.tokenCode,
+          issuer: {
+            key: result.issuer,
+          },
+        });
+        const iconUrl = icons[tokenIdentifier]?.imageUrl;
         return {
           ...result,
+          iconUrl,
           hasTrustline: hasExistingTrustline(
             userBalances,
             result.tokenCode,
@@ -133,47 +153,67 @@ export const useTokenLookup = ({
 
       // came from stellar.expert
       const [tokenCode, issuer] = result.asset.split("-");
+      const tokenIdentifier = getTokenIdentifier({
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code: tokenCode,
+        issuer: {
+          key: issuer,
+        },
+      });
+      const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
       return {
         tokenCode,
         domain: result.domain ?? "",
         hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        iconUrl,
         issuer: issuer ?? "",
         isNative: result.asset === NATIVE_TOKEN_CODE,
         tokenType: getTokenType(`${tokenCode}:${issuer}`),
       };
     });
 
-  const debouncedSearch = useDebounce(() => {
-    const performSearch = async () => {
-      if (!searchTerm) {
-        setStatus(HookStatus.IDLE);
-        setSearchResults([]);
-        return;
-      }
+  const performSearch = async (term: string) => {
+    const requestId = ++latestRequestRef.current;
+    // Cancel previous request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
 
-      setStatus(HookStatus.LOADING);
+    if (!term) {
+      if (latestRequestRef.current === requestId) setStatus(HookStatus.IDLE);
+      setSearchResults([]);
+      return;
+    }
 
-      let resJson;
+    if (latestRequestRef.current === requestId) setStatus(HookStatus.LOADING);
 
-      if (isContractId(searchTerm)) {
-        const lookupResult = await handleContractLookup(
-          searchTerm,
-          network,
-          publicKey,
-        ).catch(() => {
-          setStatus(HookStatus.ERROR);
-          return null;
-        });
+    let resJson;
+    let icons = {} as Record<string, Icon> | undefined;
 
-        resJson = lookupResult ? [lookupResult] : [];
-      } else {
-        const response = await searchToken(searchTerm, network);
+    if (isContractId(term)) {
+      const lookupResult = await handleContractLookup(
+        term,
+        network,
+        publicKey,
+        signal,
+      ).catch(() => {
+        if (signal.aborted) return null;
+        setStatus(HookStatus.ERROR);
+        return null;
+      });
+
+      if (signal.aborted) return;
+      resJson = lookupResult ? [lookupResult] : [];
+    } else {
+      try {
+        const response = await searchToken(term, network, signal);
+        if (signal.aborted) return;
 
         resJson = response && response._embedded && response._embedded.records;
 
-        // Cache icons from stellar expert results so that TokenIcon can render them
-        const icons = resJson?.reduce(
+        icons = resJson?.reduce(
           (prev, curr) => {
             const tokenIdentifier = getTokenIdentifier({
               type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
@@ -193,94 +233,89 @@ export const useTokenLookup = ({
           },
           {} as Record<string, Icon>,
         );
-
-        if (icons) {
-          cacheTokenIcons({ icons });
-        }
-      }
-
-      if (!resJson) {
+      } catch (error) {
+        if (signal.aborted) return;
         setStatus(HookStatus.ERROR);
         return;
       }
+    }
 
-      const formattedRecords = formatTokensFromSearchResults(
-        resJson,
-        balanceItems,
-      );
-
-      if (formattedRecords.length > 0 && isMainnet(network)) {
-        try {
-          const addressList = formattedRecords.map((token) =>
-            token.issuer
-              ? `${token.tokenCode}-${token.issuer}`
-              : token.tokenCode,
-          );
-
-          const bulkScanResult = await scanBulkTokens({ addressList, network });
-          const enhancedSearchResults = enhanceWithSecurityInfo(
-            formattedRecords,
-            bulkScanResult,
-          );
-          const groupedSearchResults = groupTokensBySecurityLevel(
-            enhancedSearchResults,
-          );
-
-          setSearchResults(groupedSearchResults);
-        } catch (error) {
-          // If security scan fails, mark tokens as suspicious since we can't verify their safety
-          const fallbackSearchResults: FormattedSearchTokenRecord[] =
-            formattedRecords.map((token) => ({
-              ...token,
-              isSuspicious: true,
-              isMalicious: false,
-              securityLevel: SecurityLevel.SUSPICIOUS,
-            }));
-
-          const groupedFallbackResults = groupTokensBySecurityLevel(
-            fallbackSearchResults,
-          );
-
-          setSearchResults(groupedFallbackResults);
-        }
-      } else {
-        const defaultSearchResults: FormattedSearchTokenRecord[] =
-          formattedRecords.map((token) => ({
-            ...token,
-            isSuspicious: false,
-            isMalicious: false,
-            securityLevel: SecurityLevel.SAFE,
-          }));
-
-        const groupedDefaultResults =
-          groupTokensBySecurityLevel(defaultSearchResults);
-
-        setSearchResults(groupedDefaultResults);
-      }
-
-      setStatus(HookStatus.SUCCESS);
-    };
-
-    performSearch();
-  });
-
-  const handleSearch = (text: string) => {
-    if (text === searchTerm) {
+    if (!resJson) {
+      setStatus(HookStatus.ERROR);
       return;
     }
 
-    setSearchTerm(text);
-    debouncedSearch();
+    const formattedRecords = formatTokensFromSearchResults(
+      resJson,
+      balanceItems,
+      icons,
+    );
+
+    if (formattedRecords.length > 0 && isMainnet(network)) {
+      try {
+        const addressList = formattedRecords
+          .filter((record) => record.issuer)
+          .map((token) => `${token.tokenCode}-${token.issuer}`);
+
+        const bulkScanResult = await scanBulkTokens(
+          { addressList, network },
+          signal,
+        );
+        const enhancedSearchResults = enhanceWithSecurityInfo(
+          formattedRecords,
+          bulkScanResult,
+        );
+        const groupedSearchResults = groupTokensBySecurityLevel(
+          enhancedSearchResults,
+        );
+
+        if (signal.aborted) return;
+        setSearchResults(groupedSearchResults);
+      } catch (error) {
+        const fallbackSearchResults: FormattedSearchTokenRecord[] =
+          formattedRecords.map((token) => ({
+            ...token,
+            isSuspicious: true,
+            isMalicious: false,
+            securityLevel: SecurityLevel.SUSPICIOUS,
+          }));
+
+        const groupedFallbackResults = groupTokensBySecurityLevel(
+          fallbackSearchResults,
+        );
+
+        if (signal.aborted) return;
+        setSearchResults(groupedFallbackResults);
+      }
+    } else {
+      const defaultSearchResults: FormattedSearchTokenRecord[] =
+        formattedRecords.map((token) => ({
+          ...token,
+          isSuspicious: false,
+          isMalicious: false,
+          securityLevel: SecurityLevel.SAFE,
+        }));
+
+      const groupedDefaultResults =
+        groupTokensBySecurityLevel(defaultSearchResults);
+
+      setSearchResults(groupedDefaultResults);
+    }
+
+    setStatus(HookStatus.SUCCESS);
+  };
+
+  const handleSearch = (text: string) => {
+    performSearch(text);
   };
 
   const resetSearch = () => {
+    abortControllerRef.current?.abort();
     setStatus(HookStatus.IDLE);
     setSearchResults([]);
-    setSearchTerm("");
   };
 
   return {
-    searchTerm,
     searchResults,
     status,
     handleSearch,

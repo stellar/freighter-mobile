@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
@@ -20,7 +19,6 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_BLOCKAID_SCAN_DELAY } from "config/constants";
 import {
   MANAGE_TOKENS_ROUTES,
   ManageTokensStackParamList,
@@ -28,11 +26,11 @@ import {
 import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { getTokenIdentifier } from "helpers/balances";
-import { useBlockaidToken } from "hooks/blockaid/useBlockaidToken";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageToken } from "hooks/useManageToken";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -40,16 +38,15 @@ import { useTokenLookup } from "hooks/useTokenLookup";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTokenSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import { createSecurityAssessment } from "services/blockaid/helper";
 
 type AddTokenScreenProps = NativeStackScreenProps<
   ManageTokensStackParamList,
   typeof MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN
 >;
+
+const DEBOUNCE_SEARCH_BACKOFF_MS = 500;
 
 const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { network } = useAuthenticationStore();
@@ -58,10 +55,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { getClipboardText } = useClipboard();
   const [selectedToken, setSelectedToken] =
     useState<FormattedSearchTokenRecord | null>(null);
-  const [scannedToken, setScannedToken] = useState<
-    Blockaid.TokenScanResponse | undefined
-  >(undefined);
-  const [isScanning, setIsScanning] = useState(false);
+  const [scannedToken, setScannedToken] = useState(
+    createSecurityAssessment(SecurityLevel.SAFE),
+  );
   const moreInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const addTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -69,48 +65,55 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { balanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
-    shouldPoll: false,
   });
   const { themeColors } = useColors();
 
-  const { searchTerm, searchResults, status, handleSearch, resetSearch } =
-    useTokenLookup({
-      network,
-      publicKey: account?.publicKey,
-      balanceItems,
-    });
+  const [searchTerm, setSearchTerm] = useState("");
+  const { searchResults, status, handleSearch, resetSearch } = useTokenLookup({
+    network,
+    publicKey: account?.publicKey,
+    balanceItems,
+  });
 
-  const { scanToken } = useBlockaidToken();
-
-  const securityAssessment = useMemo(
-    () => assessTokenSecurity(scannedToken),
-    [scannedToken],
+  const hasUnableToScanTokens = useMemo(
+    () => searchResults.some((token) => token.isUnableToScan),
+    [searchResults],
   );
-  const isTokenMalicious = securityAssessment.isMalicious;
-  const isTokenSuspicious = securityAssessment.isSuspicious;
+
+  const isTokenMalicious = scannedToken.isMalicious;
+  const isTokenSuspicious = scannedToken.isSuspicious;
+  const isUnableToScanToken = scannedToken.isUnableToScan;
+
+  const securityWarnings = useMemo(() => {
+    if (isUnableToScanToken) {
+      return [
+        {
+          id: "unable-to-scan",
+          description: scannedToken.details || t("blockaid.unableToScan.token"),
+        },
+      ];
+    }
+
+    return selectedToken?.securityWarnings || [];
+  }, [
+    isUnableToScanToken,
+    scannedToken.details,
+    selectedToken?.securityWarnings,
+    t,
+  ]);
 
   const securitySeverity = useMemo(() => {
     if (isTokenMalicious) return SecurityLevel.MALICIOUS;
     if (isTokenSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (isUnableToScanToken) return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
-  }, [isTokenMalicious, isTokenSuspicious]);
-
-  const securityWarnings = useMemo(() => {
-    if (isTokenMalicious || isTokenSuspicious) {
-      const warnings = extractSecurityWarnings(scannedToken);
-
-      if (Array.isArray(warnings) && warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [isTokenMalicious, isTokenSuspicious, scannedToken]);
+  }, [isTokenMalicious, isTokenSuspicious, isUnableToScanToken]);
 
   const resetPageState = useCallback(() => {
     handleRefresh();
     resetSearch();
+    setSearchTerm("");
   }, [handleRefresh, resetSearch]);
 
   const { addToken, removeToken, isAddingToken, isRemovingToken } =
@@ -139,29 +142,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     getClipboardText().then(handleSearch);
   }, [getClipboardText, handleSearch]);
 
-  const handleAddToken = useCallback(
-    (token: FormattedSearchTokenRecord) => {
-      setSelectedToken(token);
-      setIsScanning(true);
-      setScannedToken(undefined);
+  const handleAddToken = useCallback((token: FormattedSearchTokenRecord) => {
+    setSelectedToken(token);
+    setScannedToken({
+      isMalicious: token?.isMalicious || false,
+      isSuspicious: token?.isSuspicious || false,
+      isUnableToScan: token?.isUnableToScan || false,
+      level: token?.securityLevel || SecurityLevel.SAFE,
+    });
 
-      scanToken(token.tokenCode, token.issuer)
-        .then((scanResult) => {
-          setScannedToken(scanResult);
-        })
-        .catch(() => {
-          setScannedToken(undefined);
-        })
-        .finally(() => {
-          setIsScanning(false);
-        });
-
-      setTimeout(() => {
-        addTokenBottomSheetModalRef.current?.present();
-      }, DEFAULT_BLOCKAID_SCAN_DELAY);
-    },
-    [scanToken],
-  );
+    if (token?.isUnableToScan) {
+      securityWarningBottomSheetModalRef.current?.present();
+    } else {
+      addTokenBottomSheetModalRef.current?.present();
+    }
+  }, []);
 
   const handleCancelTokenAddition = useCallback(() => {
     if (selectedToken) {
@@ -171,15 +166,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     addTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedToken]);
 
-  const handleSecurityWarning = useCallback(() => {
-    securityWarningBottomSheetModalRef.current?.present();
-  }, []);
-
   const handleProceedAnyway = useCallback(() => {
     securityWarningBottomSheetModalRef.current?.dismiss();
 
-    addToken();
-  }, [addToken]);
+    // If it's unable to scan, show the AddTokenBottomSheetContent with banner
+    if (isUnableToScanToken) {
+      addTokenBottomSheetModalRef.current?.present();
+    } else {
+      addToken();
+    }
+  }, [addToken, isUnableToScanToken]);
+
+  const handleSecurityWarningPress = useCallback(() => {
+    addTokenBottomSheetModalRef.current?.dismiss();
+    securityWarningBottomSheetModalRef.current?.present();
+  }, []);
 
   const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
     setSelectedToken(token);
@@ -255,6 +256,20 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     selectedToken,
   ]);
 
+  const debouncedHandleSearch = useDebounce((text: string) => {
+    handleSearch(text);
+  }, DEBOUNCE_SEARCH_BACKOFF_MS);
+
+  const handleAddTokenMemo = useCallback(
+    (token: FormattedSearchTokenRecord) => handleAddToken(token),
+    [handleAddToken],
+  );
+
+  const handleRemoveTokenMemo = useCallback(
+    (token: FormattedSearchTokenRecord) => handleRemoveToken(token),
+    [handleRemoveToken],
+  );
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
@@ -278,11 +293,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                   {t("manageTokensScreen.moreInfo.title")}
                 </Text>
                 <View className="h-4" />
-                <Text md medium secondary>
+                <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block1")}
                 </Text>
                 <View className="h-4" />
-                <Text md medium secondary>
+                <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block2")}
                 </Text>
               </View>
@@ -298,21 +313,19 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             addTokenBottomSheetModalRef.current?.dismiss();
           }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY}
-          shouldCloseOnPressBackdrop={!isScanning && !!selectedToken}
+          shouldCloseOnPressBackdrop={!!selectedToken}
           customContent={
             <AddTokenBottomSheetContent
               token={selectedToken}
               account={account}
               onCancel={handleCancelTokenAddition}
-              onAddToken={
-                isTokenMalicious || isTokenSuspicious
-                  ? handleSecurityWarning
-                  : addToken
-              }
+              onAddToken={addToken}
               proceedAnywayAction={addToken}
               isAddingToken={isAddingToken}
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}
+              isUnableToScanToken={isUnableToScanToken}
+              onSecurityWarningPress={handleSecurityWarningPress}
             />
           }
         />
@@ -340,15 +353,25 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
               onClose={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
-              severity={securitySeverity}
-              proceedAnywayText={t("addTokenScreen.approveAnyway")}
+              severity={
+                securitySeverity as Exclude<SecurityLevel, SecurityLevel.SAFE>
+              }
+              securityContext={SecurityContext.TOKEN}
+              proceedAnywayText={
+                isUnableToScanToken
+                  ? t("common.continue")
+                  : t("addTokenScreen.approveAnyway")
+              }
             />
           }
         />
         <Input
           placeholder={t("addTokenScreen.searchPlaceholder")}
           value={searchTerm}
-          onChangeText={handleSearch}
+          onChangeText={(text: string) => {
+            setSearchTerm(text);
+            debouncedHandleSearch(text);
+          }}
           fieldSize="lg"
           autoCapitalize="none"
           autoCorrect={false}
@@ -365,15 +388,24 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             alwaysBounceVertical={false}
           >
             {searchResults.length > 0 ? (
-              searchResults.map((token) => (
-                <TokenItem
-                  key={`${token.tokenCode}:${token.issuer}`}
-                  token={token}
-                  handleAddToken={() => handleAddToken(token)}
-                  handleRemoveToken={() => handleRemoveToken(token)}
-                  isScanningToken={isScanning}
-                />
-              ))
+              <>
+                {hasUnableToScanTokens && (
+                  <View className="mb-4 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2">
+                    <Icon.Cube01 size={16} color={themeColors.gray[11]} />
+                    <Text sm color={themeColors.gray[11]}>
+                      {t("addTokenScreen.unableToScanBanner")}
+                    </Text>
+                  </View>
+                )}
+                {searchResults.map((token) => (
+                  <TokenItem
+                    key={`${token.tokenCode}:${token.issuer}`}
+                    token={token}
+                    handleAddToken={handleAddTokenMemo}
+                    handleRemoveToken={handleRemoveTokenMemo}
+                  />
+                ))}
+              </>
             ) : (
               <EmptyState />
             )}

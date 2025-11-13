@@ -10,12 +10,16 @@ import {
 import { useTokenLookup } from "hooks/useTokenLookup";
 
 // Mock helpers
-jest.mock("helpers/balances", () => ({
-  formatTokenIdentifier: (tokenId: string) => {
-    const [tokenCode, issuer] = tokenId.split(":");
-    return { tokenCode, issuer };
-  },
-}));
+jest.mock("helpers/balances", () => {
+  const originalModule = jest.requireActual("helpers/balances");
+  return {
+    ...originalModule,
+    formatTokenIdentifier: (tokenId: string) => {
+      const [tokenCode, issuer] = tokenId.split(":");
+      return { tokenCode, issuer };
+    },
+  };
+});
 
 jest.mock("helpers/soroban", () => ({
   isContractId: (value: string) => value.startsWith("C") && value.length === 56,
@@ -156,7 +160,6 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
   });
@@ -171,40 +174,18 @@ describe("useTokenLookup", () => {
     );
 
     // Set some search state
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("test");
+      await flushPromises();
     });
-
-    await flushPromises();
 
     // Now reset
     act(() => {
       result.current.resetSearch();
     });
 
-    expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
-  });
-
-  it("should search for tokens and update results", async () => {
-    const { result } = renderHook(() =>
-      useTokenLookup({
-        network: mockNetwork,
-        publicKey: mockPublicKey,
-        balanceItems: mockBalanceItems,
-      }),
-    );
-
-    act(() => {
-      result.current.handleSearch("USDC");
-    });
-
-    // Wait longer for async operations
-    await flushPromises();
-
-    // Only test the search term, not the status which may take longer to update
-    expect(result.current.searchTerm).toBe("USDC");
   });
 
   it("should handle error when search fails", async () => {
@@ -216,63 +197,12 @@ describe("useTokenLookup", () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.handleSearch("error");
+      await flushPromises();
     });
 
-    await flushPromises();
-
-    expect(result.current.searchTerm).toBe("error");
-  });
-
-  it("should search for contract tokens", async () => {
-    const contractId =
-      "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
-
-    const { result } = renderHook(() =>
-      useTokenLookup({
-        network: mockNetwork,
-        publicKey: mockPublicKey,
-        balanceItems: mockBalanceItems,
-      }),
-    );
-
-    act(() => {
-      result.current.handleSearch(contractId);
-    });
-
-    await flushPromises();
-
-    expect(result.current.searchTerm).toBe(contractId);
-  });
-
-  it("should do nothing if search term is the same as current term", async () => {
-    const { result } = renderHook(() =>
-      useTokenLookup({
-        network: mockNetwork,
-        publicKey: mockPublicKey,
-        balanceItems: mockBalanceItems,
-      }),
-    );
-
-    // First search
-    act(() => {
-      result.current.handleSearch("test");
-    });
-
-    await flushPromises();
-
-    const prevResultsLength = result.current.searchResults.length;
-    const prevStatus = result.current.status;
-
-    // Call again with the same search term
-    act(() => {
-      result.current.handleSearch("test");
-    });
-
-    // Should not change the state
-    expect(result.current.searchResults.length).toBe(prevResultsLength);
-    expect(result.current.status).toBe(prevStatus);
+    expect(result.current.status).toBe(HookStatus.ERROR);
   });
 
   it("should clear results when empty search term is provided", () => {
@@ -288,8 +218,72 @@ describe("useTokenLookup", () => {
       result.current.handleSearch("");
     });
 
-    expect(result.current.searchTerm).toBe("");
     expect(result.current.searchResults).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
+  });
+
+  it("should return formatted search results for a valid term", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("USDC");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults.length).toBeGreaterThan(0);
+
+    const usdcResult = result.current.searchResults.find(
+      (t) => t.tokenCode === "USDC",
+    );
+    expect(usdcResult).toBeDefined();
+    expect(usdcResult?.hasTrustline).toBe(true);
+  });
+
+  it("should handle request cancellation correctly", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("test");
+      result.current.handleSearch("USDC");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    const tokens = result.current.searchResults.map((t) => t.tokenCode);
+    expect(tokens).toContain("USDC");
+    expect(tokens).not.toContain("FOO");
+  });
+
+  it("should handle contract ID search", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch(
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+      );
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults[0].tokenCode).toBe("TOKEN");
   });
 });

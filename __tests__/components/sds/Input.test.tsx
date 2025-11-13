@@ -1,28 +1,48 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import { fireEvent } from "@testing-library/react-native";
-import { Input } from "components/sds/Input";
+import { Input, StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
-import { fsValue, pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+
+jest.mock("i18next", () => ({
+  t: (key: string) => key,
+  use: jest.fn(() => ({
+    init: jest.fn(),
+  })),
+  init: jest.fn(),
+}));
+
+jest.mock("@react-native-clipboard/clipboard", () => ({
+  setString: jest.fn(),
+  getString: jest.fn(),
+}));
+
+const mockCopyToClipboard = jest.fn();
+
+jest.mock("hooks/useClipboard", () => ({
+  useClipboard: () => ({
+    copyToClipboard: mockCopyToClipboard,
+    getClipboardText: jest.fn(),
+  }),
+}));
 
 describe("Input", () => {
   const onChangeTextMock = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCopyToClipboard.mockClear();
   });
 
   describe("Size handling", () => {
-    it("applies correct styles for each field size", () => {
-      const sizes = {
-        sm: { fontSize: 12, lineHeight: 18, paddingVertical: 4 },
-        md: { fontSize: 14, lineHeight: 20, paddingVertical: 6 },
-        lg: { fontSize: 16, lineHeight: 24, paddingVertical: 8 },
+    it("applies correct classes for each field size", () => {
+      const sizeMap = {
+        sm: "text-xs",
+        md: "text-sm",
+        lg: "text-base",
       };
 
-      Object.entries(sizes).forEach(([size, metrics]) => {
+      Object.entries(sizeMap).forEach(([size]) => {
         const { getByTestId } = renderWithProviders(
           <Input
             fieldSize={size as "sm" | "md" | "lg"}
@@ -32,10 +52,17 @@ describe("Input", () => {
         );
         const input = getByTestId("test-input");
 
-        expect(input.props.style).toMatchObject({
-          fontSize: fsValue(metrics.fontSize),
-          height: pxValue(metrics.lineHeight + 3 * metrics.paddingVertical),
-        });
+        // Check that the input has the correct font size in style object
+        let expectedFontSize;
+        if (size === "sm") expectedFontSize = 12;
+        else if (size === "md") expectedFontSize = 14;
+        else expectedFontSize = 16;
+
+        expect(input.props.style).toContainEqual(
+          expect.objectContaining({
+            fontSize: expectedFontSize,
+          }),
+        );
       });
     });
 
@@ -45,10 +72,12 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
 
-      expect(input.props.style).toMatchObject({
-        fontSize: fsValue(16), // lg size
-        height: pxValue(48), // lineHeight(24) + 3 * paddingVertical(8)
-      });
+      // Check that the input has the correct font size in style object
+      expect(input.props.style).toContainEqual(
+        expect.objectContaining({
+          fontSize: 16,
+        }),
+      );
     });
   });
 
@@ -76,26 +105,22 @@ describe("Input", () => {
   });
 
   describe("Error state", () => {
-    it("applies error styles when isError is true", () => {
+    it("applies error classes when isError is true", () => {
       const { getByTestId } = renderWithProviders(
         <Input isError testID="test-input" value="" />,
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(inputContainer.props.className).toContain("border-status-error");
     });
 
-    it("applies error styles when error message is provided", () => {
+    it("applies error classes when error message is provided", () => {
       const { getByTestId, getByText } = renderWithProviders(
         <Input error="Error message" testID="test-input" value="" />,
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        borderColor: THEME.colors.status.error,
-      });
+      expect(inputContainer.props.className).toContain("border-status-error");
       expect(getByText("Error message")).toBeTruthy();
     });
   });
@@ -131,34 +156,25 @@ describe("Input", () => {
 
     it("renders copy button on the left when specified", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "left", showLabel: true }}
-          value="test"
-        />,
+        <Input copyButtonPosition="left" value="test" />,
       );
-      expect(getByText("Copy")).toBeTruthy();
+      expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("renders copy button on the right when specified", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "right", showLabel: true }}
-          value="test"
-        />,
+        <Input copyButtonPosition="right" value="test" />,
       );
-      expect(getByText("Copy")).toBeTruthy();
+      expect(getByText("common.copy")).toBeTruthy();
     });
 
     it("copies text to clipboard when copy button is pressed", () => {
       const { getByText } = renderWithProviders(
-        <Input
-          copyButton={{ position: "right", showLabel: true }}
-          value="test value"
-        />,
+        <Input copyButtonPosition="right" value="test value" />,
       );
 
-      fireEvent.press(getByText("Copy"));
-      expect(Clipboard.setString).toHaveBeenCalledWith("test value");
+      fireEvent.press(getByText("common.copy"));
+      expect(mockCopyToClipboard).toHaveBeenCalledWith("test value");
     });
   });
 
@@ -178,9 +194,9 @@ describe("Input", () => {
       );
 
       const inputContainer = getByTestId("test-input-container");
-      expect(inputContainer.props.style).toMatchObject({
-        backgroundColor: THEME.colors.background.secondary,
-      });
+      expect(inputContainer.props.className).toContain(
+        "bg-background-secondary",
+      );
     });
   });
 
@@ -207,6 +223,77 @@ describe("Input", () => {
       );
       const input = getByTestId("test-input");
       expect(input.props.secureTextEntry).toBe(true);
+    });
+  });
+
+  describe("Custom styling", () => {
+    it("applies custom style when provided", () => {
+      const customStyle = {
+        borderColor: "#ff0000",
+        borderWidth: 2,
+        borderRadius: 10,
+        paddingHorizontal: 16,
+      };
+
+      const { getByTestId } = renderWithProviders(
+        <Input testID="test-input" value="" style={customStyle} />,
+      );
+      const input = getByTestId("test-input");
+
+      // Style is now an array [inputStyles, customStyle]
+      expect(input.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fontFamily: "Inter-Variable",
+            fontSize: 16,
+            fontWeight: "400",
+          }),
+          expect.objectContaining(customStyle),
+        ]),
+      );
+    });
+  });
+
+  describe("StyledTextInput", () => {
+    it("renders as standalone TextInputComponent", () => {
+      const { getByTestId } = renderWithProviders(
+        <StyledTextInput testID="test-styled-input" value="test" />,
+      );
+      const input = getByTestId("test-styled-input");
+
+      expect(input).toBeTruthy();
+      expect(input.props.className).toContain("flex-1");
+      expect(input.props.className).toContain("text-text-primary");
+    });
+
+    it("applies custom style when provided", () => {
+      const customStyle = {
+        borderColor: "#00ff00",
+        borderWidth: 1,
+        borderRadius: 5,
+        flex: 1,
+      };
+
+      const { getByTestId } = renderWithProviders(
+        <StyledTextInput
+          testID="test-styled-input"
+          value=""
+          style={customStyle}
+        />,
+      );
+      const input = getByTestId("test-styled-input");
+
+      // StyledTextInput now directly returns TextInputComponent with custom style applied
+      expect(input.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fontFamily: "Inter-Variable",
+            fontSize: 16,
+            fontWeight: "400",
+          }),
+          expect.objectContaining(customStyle),
+        ]),
+      );
     });
   });
 });

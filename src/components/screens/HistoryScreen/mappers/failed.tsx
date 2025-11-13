@@ -15,7 +15,9 @@ interface FailedTransactionHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -26,7 +28,9 @@ export const mapFailedTransactionHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
+  xdr,
 }: FailedTransactionHistoryItemData): HistoryItemData => {
   const { id } = operation;
 
@@ -34,9 +38,7 @@ export const mapFailedTransactionHistoryItem = ({
     <Icon.Wallet03 size={26} circle color={themeColors.foreground.primary} />
   );
 
-  const ActionIconComponent = (
-    <Icon.XCircle size={16} color={themeColors.status.error} />
-  );
+  const ActionIconComponent = <Icon.XCircle size={16} themeColor="red" />;
 
   const transactionDetails: TransactionDetails = {
     operation,
@@ -46,6 +48,8 @@ export const mapFailedTransactionHistoryItem = ({
     IconComponent,
     ActionIconComponent,
     fee,
+    memo,
+    xdr,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
   };
 

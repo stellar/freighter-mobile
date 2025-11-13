@@ -19,12 +19,13 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const mockOpenURL = jest.fn();
-jest.mock("react-native/Libraries/Linking/Linking", () => ({
-  openURL: mockOpenURL,
-  canOpenURL: jest.fn().mockResolvedValue(true),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
+const mockOpenInAppBrowser = jest.fn();
+
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: mockOpenInAppBrowser,
+    isAvailable: jest.fn().mockResolvedValue(true),
+  }),
 }));
 
 type ShareFeedbackScreenProps = NativeStackScreenProps<
@@ -45,7 +46,7 @@ const mockRoute = {
 
 describe("ShareFeedbackScreen", () => {
   beforeEach(() => {
-    mockOpenURL.mockClear();
+    mockOpenInAppBrowser.mockClear();
   });
 
   it("renders correctly with Discord and GitHub options", () => {
@@ -57,7 +58,7 @@ describe("ShareFeedbackScreen", () => {
     expect(screen.getByText("GitHub")).toBeTruthy();
   });
 
-  it("calls Linking.openURL with Discord URL when Discord option is pressed", async () => {
+  it("calls inAppBrowser.open with Discord URL when Discord option is pressed", async () => {
     renderWithProviders(
       <ShareFeedbackScreen navigation={mockNavigation} route={mockRoute} />,
     );
@@ -65,11 +66,11 @@ describe("ShareFeedbackScreen", () => {
     const discordOption = screen.getByText("Discord");
     await userEvent.press(discordOption);
 
-    expect(mockOpenURL).toHaveBeenCalledTimes(1);
-    expect(mockOpenURL).toHaveBeenCalledWith(FREIGHTER_DISCORD_URL);
-  }, 10000);
+    expect(mockOpenInAppBrowser).toHaveBeenCalledTimes(1);
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(FREIGHTER_DISCORD_URL);
+  });
 
-  it("calls Linking.openURL with GitHub URL when GitHub option is pressed", async () => {
+  it("calls inAppBrowser.open with GitHub URL when GitHub option is pressed", async () => {
     renderWithProviders(
       <ShareFeedbackScreen navigation={mockNavigation} route={mockRoute} />,
     );
@@ -77,7 +78,9 @@ describe("ShareFeedbackScreen", () => {
     const githubOption = screen.getByText("GitHub");
     await userEvent.press(githubOption);
 
-    expect(mockOpenURL).toHaveBeenCalledTimes(1);
-    expect(mockOpenURL).toHaveBeenCalledWith(FREIGHTER_GITHUB_ISSUE_URL);
-  }, 10000);
+    expect(mockOpenInAppBrowser).toHaveBeenCalledTimes(1);
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      FREIGHTER_GITHUB_ISSUE_URL,
+    );
+  });
 });

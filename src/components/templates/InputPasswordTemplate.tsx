@@ -124,7 +124,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}
             </Button>
-            <BiometricToggleButton size="sm" />
+            <BiometricToggleButton size="xl" />
           </View>
         </View>
 

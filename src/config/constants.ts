@@ -8,6 +8,12 @@ import { BIOMETRY_TYPE } from "react-native-keychain";
 export const APP_VERSION = getAppVersion();
 
 export const DEFAULT_PADDING = 24;
+
+export enum Comparison {
+  SAME = 0,
+  LOWER = -1,
+  GREATER = 1,
+}
 export const DEFAULT_ICON_SIZE = 24;
 export const DEFAULT_DEBOUNCE_DELAY = 500;
 export const DEFAULT_RECOMMENDED_STELLAR_FEE = "100";
@@ -23,6 +29,12 @@ export const DEFAULT_BLOCKAID_SCAN_DELAY = 1000;
 // This is used to prevent flickering while refreshing lists with "pull to refresh" action
 export const DEFAULT_REFRESH_DELAY = 1000;
 
+// Balances polling interval in milliseconds
+export const BALANCES_FETCH_POLLING_INTERVAL = 30000;
+
+// History polling interval in milliseconds
+export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
+
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
@@ -34,11 +46,24 @@ export const DEFAULT_SLIPPAGE = 1;
 export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 
+// Transaction settings
+export enum TransactionSetting {
+  Memo = "memo",
+  Slippage = "slippage",
+  Fee = "fee",
+  Timeout = "timeout",
+}
+
+export enum TransactionContext {
+  Swap = "swap",
+  Send = "send",
+}
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
-export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 5;
+export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
@@ -62,10 +87,8 @@ export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
-export const STELLAR_FOUNDATION_TERMS_URL =
-  "https://stellar.org/terms-of-service";
-export const STELLAR_FOUNDATION_PRIVACY_URL =
-  "https://stellar.org/privacy-policy";
+export const FREIGHTER_TERMS_URL = "https://www.freighter.app/terms";
+export const FREIGHTER_PRIVACY_URL = "https://www.freighter.app/privacy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
@@ -239,6 +262,13 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
+ *
+ * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
+ * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
+ * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
+ *
+ * NOTE: we also have the BACKEND_V1_ENVIRONMENT and BACKEND_V2_ENVIRONMENT storage keys for the backend environment which are
+ * handled separately in the backendConfig.ts file since those shouldn't be cleared or changed without the user's consent.
  * */
 export enum STORAGE_KEYS {
   ACTIVE_ACCOUNT_ID = "activeAccountId",
@@ -250,6 +280,7 @@ export enum STORAGE_KEYS {
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
+  APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
 }
 
 /**

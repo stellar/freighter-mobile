@@ -2,7 +2,7 @@ import Blockaid from "@blockaid/client";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { isMainnet } from "helpers/networks";
 import { analytics } from "services/analytics";
-import { freighterBackend } from "services/backend";
+import { freighterBackendV1 } from "services/backend";
 import {
   BLOCKAID_ENDPOINTS,
   BLOCKAID_ERROR_MESSAGES,
@@ -27,7 +27,6 @@ export const scanToken = async (
   params: ScanTokenParams,
 ): Promise<Blockaid.TokenScanResponse> => {
   const { tokenCode, tokenIssuer, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
@@ -35,9 +34,13 @@ export const scanToken = async (
 
     const address = formatAddress(tokenCode, tokenIssuer);
 
-    const response = await freighterBackend.get<
+    const response = await freighterBackendV1.get<
       BlockaidApiResponse<Blockaid.TokenScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_TOKEN}?address=${address}`);
+    >(BLOCKAID_ENDPOINTS.SCAN_TOKEN, {
+      params: {
+        address,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -46,7 +49,6 @@ export const scanToken = async (
     const scanResult = response.data.data as Blockaid.TokenScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
-      response: scanResult,
       tokenCode,
       network,
     });
@@ -59,6 +61,7 @@ export const scanToken = async (
 
 export const scanBulkTokens = async (
   params: ScanBulkTokensParams,
+  signal?: AbortSignal,
 ): Promise<Blockaid.TokenBulkScanResponse> => {
   const { addressList, network } = params;
 
@@ -73,10 +76,9 @@ export const scanBulkTokens = async (
       .join("&");
     const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
 
-    const response =
-      await freighterBackend.get<
-        BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
-      >(endpoint);
+    const response = await freighterBackendV1.get<
+      BlockaidApiResponse<Blockaid.TokenBulkScanResponse>
+    >(endpoint, { signal });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -85,7 +87,6 @@ export const scanBulkTokens = async (
     const scanResult = response.data.data as Blockaid.TokenBulkScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_BULK_TOKEN_SCAN, {
-      response: scanResult,
       addressList,
       network,
     });
@@ -100,15 +101,18 @@ export const scanSite = async (
   params: ScanSiteParams,
 ): Promise<Blockaid.SiteScanResponse> => {
   const { url, network } = params;
-
   try {
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    const response = await freighterBackend.get<
+    const response = await freighterBackendV1.get<
       BlockaidApiResponse<Blockaid.SiteScanResponse>
-    >(`${BLOCKAID_ENDPOINTS.SCAN_SITE}?url=${url}`);
+    >(BLOCKAID_ENDPOINTS.SCAN_SITE, {
+      params: {
+        url,
+      },
+    });
 
     if (response.data.error) {
       throw new Error(response.data.error);
@@ -117,7 +121,6 @@ export const scanSite = async (
     const scanResult = response.data.data as Blockaid.SiteScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_SITE_SCAN, {
-      response: scanResult,
       url,
       network,
     });
@@ -139,12 +142,12 @@ export const scanTransaction = async (
     }
 
     const transactionParams = {
-      url: encodeURIComponent(url),
+      url,
       tx_xdr: xdr,
       network,
     };
 
-    const response = await freighterBackend.post<
+    const response = await freighterBackendV1.post<
       BlockaidApiResponse<Blockaid.StellarTransactionScanResponse>
     >(BLOCKAID_ENDPOINTS.SCAN_TRANSACTION, transactionParams);
 
@@ -156,7 +159,6 @@ export const scanTransaction = async (
       .data as Blockaid.StellarTransactionScanResponse;
 
     analytics.track(AnalyticsEvent.BLOCKAID_TRANSACTION_SCAN, {
-      response: scanResult,
       xdr,
       url,
       network,

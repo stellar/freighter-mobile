@@ -2,13 +2,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/no-extraneous-dependencies */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import consistentImport from "@fnando/eslint-plugin-consistent-import";
 import translations from "eslint-plugin-translations";
 import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,7 @@ export default [
       "tsconfig.json",
       "shim.js",
       "src/eslint-plugin-translations/**/*",
+      "scripts/**/*.js",
     ],
   },
   {
@@ -120,6 +122,7 @@ export default [
           props: true,
         },
       ],
+      "no-unreachable": "error",
 
       "translations/missing-translations": "error",
     },

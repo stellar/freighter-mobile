@@ -44,7 +44,7 @@ setup_permissions([
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
+  use_frameworks! :linkage => :static
 end
 
 target 'freighter-mobile' do
@@ -69,4 +69,6 @@ target 'freighter-mobile' do
       # :ccache_enabled => true
     )
   end
+  
+  target "freighter-mobile-dev"
 end

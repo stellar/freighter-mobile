@@ -29,6 +29,7 @@ export enum AnalyticsEvent {
   VIEW_SEND_FEE = "loaded screen: send payment fee",
   VIEW_SEND_TIMEOUT = "loaded screen: send payment timeout",
   VIEW_SEND_CONFIRM = "loaded screen: send payment confirm",
+  VIEW_SEND_TRANSACTION_DETAILS = "loaded screen: send transaction details",
   VIEW_SEND_PROCESSING = "loaded screen: send payment processing",
   VIEW_SWAP = "loaded screen: swap",
   VIEW_SWAP_AMOUNT = "loaded screen: swap amount",
@@ -37,6 +38,7 @@ export enum AnalyticsEvent {
   VIEW_SWAP_TIMEOUT = "loaded screen: swap timeout",
   VIEW_SWAP_SETTINGS = "loaded screen: swap settings",
   VIEW_SWAP_CONFIRM = "loaded screen: swap confirm",
+  VIEW_SWAP_TRANSACTION_DETAILS = "loaded screen: swap transaction details",
   VIEW_SETTINGS = "loaded screen: settings",
   VIEW_PREFERENCES = "loaded screen: preferences",
   VIEW_CHANGE_NETWORK = "loaded screen: manage network",
@@ -79,6 +81,10 @@ export enum AnalyticsEvent {
   SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
   SWAP_SUCCESS = "swap: success",
   SWAP_FAIL = "swap: error",
+
+  // Send Collectible Events
+  SEND_COLLECTIBLE_SUCCESS = "send collectible: success",
+  SEND_COLLECTIBLE_FAIL = "send collectible: error",
 
   // Copy Events
   COPY_PUBLIC_KEY = "viewPublicKey: copied public key",
@@ -128,6 +134,11 @@ export enum AnalyticsEvent {
   // Mobile-Only Events
   QR_SCAN_SUCCESS = "mobile: qr scan success",
   QR_SCAN_ERROR = "mobile: qr scan error",
+
+  // App Update Events
+  APP_UPDATE_OPEN_STORE_FROM_BANNER = "app update: opened app store from banner",
+  APP_UPDATE_OPEN_STORE_FROM_SCREEN = "app update: opened app store from screen",
+  APP_UPDATE_CONFIRMED_SKIP_ON_SCREEN = "app update: confirmed skip on screen",
 
   // Blockaid Events
   BLOCKAID_BULK_TOKEN_SCAN = "blockaid: bulk scanned tokens",

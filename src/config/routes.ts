@@ -99,20 +99,15 @@ export const ADD_FUNDS_ROUTES = {
 } as const;
 
 export const SEND_PAYMENT_ROUTES = {
+  SEND_COLLECTIBLE_REVIEW: "SendCollectibleReview",
   SEND_SEARCH_CONTACTS_SCREEN: "SendSearchContactsScreen",
   TRANSACTION_TOKEN_SCREEN: "TransactionTokenScreen",
   TRANSACTION_AMOUNT_SCREEN: "TransactionAmountScreen",
-  TRANSACTION_MEMO_SCREEN: "TransactionMemoScreen",
-  TRANSACTION_TIMEOUT_SCREEN: "TransactionTimeoutScreen",
-  TRANSACTION_FEE_SCREEN: "TransactionFeeScreen",
 } as const;
 
 export const SWAP_ROUTES = {
   SWAP_SCREEN: "SwapScreen",
   SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
-  SWAP_FEE_SCREEN: "SwapFeeScreen",
-  SWAP_TIMEOUT_SCREEN: "SwapTimeoutScreen",
-  SWAP_SLIPPAGE_SCREEN: "SwapSlippageScreen",
 } as const;
 
 /**
@@ -171,28 +166,16 @@ export type AuthStackParamList = {
     isImporting?: boolean;
   };
   [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
-    password: string;
     isImporting?: boolean;
   };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: {
-    password: string;
-  };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: {
-    password: string;
-  };
-  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: {
-    password: string;
-  };
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
+  [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
-    password?: string;
-    mnemonicPhrase?: string;
     source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: {
-    password: string;
-    recoveryPhrase: string;
-  };
+  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {
@@ -217,9 +200,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.ABOUT_SCREEN]: undefined;
   [SETTINGS_ROUTES.SECURITY_SCREEN]: undefined;
   [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]: undefined;
-  [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: {
-    recoveryPhrase: string;
-  };
+  [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
 };
 
@@ -240,14 +221,15 @@ export type AddFundsStackParamList = {
 
 export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
+    tokenId: string;
+    collectionAddress: string;
+  };
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;
     recipientAddress?: string;
   };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_MEMO_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_TIMEOUT_SCREEN]: undefined;
-  [SEND_PAYMENT_ROUTES.TRANSACTION_FEE_SCREEN]: undefined;
 };
 
 export type SwapStackParamList = {
@@ -258,7 +240,4 @@ export type SwapStackParamList = {
     tokenId: string;
     tokenSymbol: string;
   };
-  [SWAP_ROUTES.SWAP_FEE_SCREEN]: undefined;
-  [SWAP_ROUTES.SWAP_TIMEOUT_SCREEN]: undefined;
-  [SWAP_ROUTES.SWAP_SLIPPAGE_SCREEN]: undefined;
 };

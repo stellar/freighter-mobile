@@ -7,21 +7,19 @@ import {
   TokenTypeWithCustomToken,
   FormattedSearchTokenRecord,
 } from "config/types";
-import React from "react";
+import React, { memo } from "react";
 import { View } from "react-native";
 
 type TokenItemProps = {
   token: FormattedSearchTokenRecord;
-  handleAddToken: () => void;
-  handleRemoveToken: () => void;
-  isScanningToken: boolean;
+  handleAddToken: (token: FormattedSearchTokenRecord) => void;
+  handleRemoveToken: (token: FormattedSearchTokenRecord) => void;
 };
 
 const TokenItem: React.FC<TokenItemProps> = ({
   token,
   handleAddToken,
   handleRemoveToken,
-  isScanningToken,
 }) => {
   const { isSuspicious, isMalicious } = {
     isSuspicious: token.isSuspicious || token.isMalicious,
@@ -33,6 +31,7 @@ const TokenItem: React.FC<TokenItemProps> = ({
       <View className="flex-row items-center flex-1">
         <View className="relative z-0">
           <TokenIcon
+            iconUrl={token.iconUrl}
             token={{
               type: token.tokenType as TokenTypeWithCustomToken,
               code: token.tokenCode,
@@ -66,15 +65,17 @@ const TokenItem: React.FC<TokenItemProps> = ({
             isNative: token.isNative,
             id: `${token.tokenCode}:${token.issuer}`,
           }}
-          handleRemoveToken={handleRemoveToken}
+          handleRemoveToken={() => handleRemoveToken(token)}
         />
       ) : (
-        <AddTokenRightContent
-          handleAddToken={handleAddToken}
-          isScanningToken={isScanningToken}
-        />
+        <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
       )}
     </View>
   );
 };
-export default TokenItem;
+export default memo(
+  TokenItem,
+  (prev, next) =>
+    prev.token.tokenCode === next.token.tokenCode &&
+    prev.token.issuer === next.token.issuer,
+);

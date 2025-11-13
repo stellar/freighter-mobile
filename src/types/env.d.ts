@@ -1,17 +1,38 @@
 declare module "react-native-config" {
   interface NativeConfig {
     AMPLITUDE_API_KEY: string;
+    AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: string;
+    
     SENTRY_DSN: string;
 
-    FREIGHTER_BACKEND_URL: string;
-    FREIGHTER_BACKEND_V2_URL: string;
+    FREIGHTER_BACKEND_V1_PROD_URL: string;
+    FREIGHTER_BACKEND_V1_STG_URL: string;
+    FREIGHTER_BACKEND_V1_DEV_URL: string;
 
-    WALLET_KIT_PROJECT_ID: string;
-    WALLET_KIT_MT_NAME: string;
-    WALLET_KIT_MT_DESCRIPTION: string;
-    WALLET_KIT_MT_URL: string;
-    WALLET_KIT_MT_ICON: string;
-    WALLET_KIT_MT_REDIRECT_NATIVE: string;
+    FREIGHTER_BACKEND_V2_PROD_URL: string;
+    FREIGHTER_BACKEND_V2_STG_URL: string;
+    FREIGHTER_BACKEND_V2_DEV_URL: string;
+
+    WALLET_KIT_PROJECT_ID_PROD: string;
+    WALLET_KIT_MT_URL_PROD: string;
+    WALLET_KIT_MT_ICON_PROD: string;
+    WALLET_KIT_MT_NAME_PROD: string;
+    WALLET_KIT_MT_DESCRIPTION_PROD: string;
+    WALLET_KIT_MT_REDIRECT_NATIVE_PROD: string;
+
+    WALLET_KIT_PROJECT_ID_DEV: string;
+    WALLET_KIT_MT_URL_DEV: string;
+    WALLET_KIT_MT_ICON_DEV: string;
+    WALLET_KIT_MT_NAME_DEV: string;
+    WALLET_KIT_MT_DESCRIPTION_DEV: string;
+    WALLET_KIT_MT_REDIRECT_NATIVE_DEV: string;
+
+    ANDROID_DEBUG_KEYSTORE_PASSWORD: string;
+    ANDROID_DEBUG_KEYSTORE_ALIAS: string;
+    ANDROID_DEV_KEYSTORE_PASSWORD: string;
+    ANDROID_DEV_KEYSTORE_ALIAS: string;
+    ANDROID_PROD_KEYSTORE_PASSWORD: string;
+    ANDROID_PROD_KEYSTORE_ALIAS: string;
   }
   const Config: NativeConfig;
   export default Config;

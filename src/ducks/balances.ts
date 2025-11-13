@@ -1,4 +1,5 @@
-import { NETWORKS, STORAGE_KEYS } from "config/constants";
+import Blockaid from "@blockaid/client";
+import { NATIVE_TOKEN_CODE, NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
@@ -12,15 +13,12 @@ import {
   isLiquidityPool,
   sortBalances,
 } from "helpers/balances";
+import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
-// Polling interval in milliseconds
-const POLLING_INTERVAL = 30000;
-
 // Keep track of the polling interval ID
-let pollingIntervalId: NodeJS.Timeout | null = null;
 
 /**
  * Balances State Interface
@@ -37,12 +35,11 @@ let pollingIntervalId: NodeJS.Timeout | null = null;
  * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
- * @property {Function} startPolling - Function to start polling for balance updates
- * @property {Function} stopPolling - Function to stop polling for balance updates
  */
 interface BalancesState {
   balances: BalanceMap;
   pricedBalances: PricedBalanceMap;
+  scanResults: Blockaid.TokenBulk.TokenBulkScanResponse["results"];
   isLoading: boolean;
   isFunded: boolean;
   subentryCount: number;
@@ -52,8 +49,6 @@ interface BalancesState {
     network: NETWORKS;
     contractIds?: string[];
   }) => Promise<void>;
-  startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
-  stopPolling: () => void;
   getBalances: () => BalanceMap;
 }
 
@@ -192,6 +187,48 @@ const fetchPricedBalances = async (
 };
 
 /**
+ * Extracts scan results from balances returned by the backend
+ * Backend already performs Blockaid scans and includes blockaidData in each balance
+ *
+ * @param balances The balances with blockaidData from backend
+ * @param network The current network
+ * @returns An object with scan results extracted from balance blockaidData
+ */
+const extractScanResultsFromBalances = (
+  pricedBalances: PricedBalanceMap,
+  network: NETWORKS,
+) => {
+  if (!isMainnet(network)) {
+    return {};
+  }
+
+  const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
+
+  Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
+    if (
+      tokenIdentifier === NATIVE_TOKEN_CODE ||
+      tokenIdentifier.includes("lp")
+    ) {
+      return;
+    }
+
+    const blockaidData =
+      "blockaidData" in balance
+        ? (balance as { blockaidData?: Blockaid.Token.TokenScanResponse })
+            .blockaidData
+        : undefined;
+    if (blockaidData) {
+      const scanKey = tokenIdentifier.includes(":")
+        ? tokenIdentifier.replace(":", "-")
+        : tokenIdentifier;
+      scanResults[scanKey] = blockaidData;
+    }
+  });
+
+  return { results: scanResults, error: null };
+};
+
+/**
  * Retrieves custom tokens from local storage
  *
  * @param params The network and publicKey to retrieve tokens for
@@ -242,6 +279,7 @@ const retrieveCustomTokens = async (params: {
 export const useBalancesStore = create<BalancesState>((set, get) => ({
   balances: {} as BalanceMap,
   pricedBalances: {} as PricedBalanceMap,
+  scanResults: {} as Blockaid.TokenBulk.TokenBulkScanResponse["results"],
   isLoading: false,
   isFunded: false,
   subentryCount: 0,
@@ -276,7 +314,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         throw new Error("No balances returned from API");
       }
 
-      // Set the "raw" balances right away as they don't depend on prices
+      // Set the "raw" balances right away as they don't depend on prices being fetched
       set({
         balances,
         isFunded: isFunded ?? false,
@@ -285,14 +323,25 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
-
-      // Fetch and process priced balances
       const pricedBalances = await fetchPricedBalances(
         set,
         balances,
         statePricedBalances,
         params,
       );
+
+      const scanResult = extractScanResultsFromBalances(
+        pricedBalances,
+        params.network,
+      );
+
+      // Update scan results in state
+      set((state) => ({
+        scanResults: {
+          ...state.scanResults,
+          ...scanResult.results,
+        },
+      }));
 
       set({
         pricedBalances,
@@ -307,23 +356,5 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       });
     }
   },
-  startPolling: (params) => {
-    // Clear any existing polling
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-    }
-
-    // Start polling after initial interval
-    pollingIntervalId = setInterval(() => {
-      get().fetchAccountBalances(params);
-    }, POLLING_INTERVAL);
-  },
-  stopPolling: () => {
-    if (pollingIntervalId) {
-      clearInterval(pollingIntervalId);
-      pollingIntervalId = null;
-    }
-  },
-
   getBalances: () => get().balances,
 }));

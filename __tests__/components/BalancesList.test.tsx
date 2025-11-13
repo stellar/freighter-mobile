@@ -5,6 +5,13 @@ import { NETWORKS } from "config/constants";
 import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
 
+// Mock react-i18next
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 // Mock the stores
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn(() => ({
@@ -22,6 +29,18 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: jest.fn(),
 }));
 
+jest.mock("ducks/transactionSettings", () => ({
+  useTransactionSettingsStore: jest.fn(() => ({
+    transactionFee: "0.00001",
+  })),
+}));
+
+jest.mock("ducks/swapSettings", () => ({
+  useSwapSettingsStore: jest.fn(() => ({
+    swapFee: "0.00001",
+  })),
+}));
+
 // Mock React Navigation's useFocusEffect
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn((callback) => {
@@ -29,6 +48,12 @@ jest.mock("@react-navigation/native", () => ({
     return () => {};
   }),
   useNavigation: jest.fn(),
+  createNavigationContainerRef: jest.fn(() => ({
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    reset: jest.fn(),
+    isReady: jest.fn(() => true),
+  })),
 }));
 
 // Mock balances helpers
@@ -40,6 +65,7 @@ jest.mock("helpers/balances", () => ({
     if (token.type === "native") return "XLM";
     return `${token.code}:${token.issuer.key}`;
   }),
+  calculateSpendableAmount: jest.fn(({ balance }) => balance.total),
 }));
 
 // Mock debug to avoid console logs in tests
@@ -49,7 +75,7 @@ jest.mock("helpers/debug", () => ({
 
 // Mock formatAmount helpers
 jest.mock("helpers/formatAmount", () => ({
-  formatTokenAmount: jest.fn((amount) => amount.toString()),
+  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
   formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
   formatPercentageAmount: jest.fn((amount) => {
     if (!amount) return "—";
@@ -68,6 +94,17 @@ jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
   default: () => ({
     t: (key: string) => key,
+  }),
+}));
+
+// Mock the useGetActiveAccount hook
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: () => ({
+    account: {
+      publicKey: "test-public-key",
+      subentryCount: 0,
+    },
   }),
 }));
 
@@ -101,6 +138,7 @@ describe("BalancesList", () => {
     jest.clearAllMocks();
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: mockBalanceItems,
+      scanResults: {},
       isLoading: false,
       error: null,
       noBalances: false,
@@ -113,6 +151,7 @@ describe("BalancesList", () => {
   it("should show loading state when fetching balances", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: true,
       error: null,
       noBalances: true,
@@ -130,6 +169,7 @@ describe("BalancesList", () => {
   it("should show error state when there is an error loading balances", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: false,
       error: "Failed to load balances",
       noBalances: true,
@@ -147,6 +187,7 @@ describe("BalancesList", () => {
   it("should show empty state with Friendbot button on testnet", () => {
     (useBalancesList as jest.Mock).mockReturnValue({
       balanceItems: [],
+      scanResults: {},
       isLoading: false,
       error: null,
       noBalances: true,
@@ -195,7 +236,6 @@ describe("BalancesList", () => {
     expect(useBalancesList).toHaveBeenCalledWith({
       publicKey: testPublicKey,
       network: NETWORKS.TESTNET,
-      shouldPoll: true,
     });
   });
 });

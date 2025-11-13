@@ -5,9 +5,6 @@
   @typescript-eslint/no-unsafe-return
 */
 
-/** Determines if debug logging is enabled (only in development mode) */
-const DEBUG = __DEV__;
-
 /**
  * Generates a formatted timestamp string in the format HH:MM:SS.mmm
  *
@@ -65,7 +62,7 @@ const formatArgs = (payload: any) => {
  * debug("User Action", "Button clicked", { id: "submit-btn" });
  */
 export const debug = (category: string, ...args: any[]) => {
-  if (!DEBUG) return;
+  if (!__DEV__) return;
 
   const timestamp = getTimestamp();
   const timeTag = `\x1b[32m[${timestamp}]\x1b[0m `;

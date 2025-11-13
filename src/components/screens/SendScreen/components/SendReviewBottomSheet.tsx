@@ -1,4 +1,5 @@
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
+import { CollectibleImage } from "components/CollectibleImage";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
@@ -9,12 +10,15 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { AnalyticsEvent } from "config/analyticsConfig";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance } from "config/types";
+import { Collectible as CollectibleType } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
-import { formatTokenAmount, formatFiatAmount } from "helpers/formatAmount";
+import { pxValue } from "helpers/dimensions";
+import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -22,22 +26,23 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+export enum SendType {
+  Token = "token",
+  Collectible = "collectible",
+}
 
 type SendReviewBottomSheetProps = {
+  type: SendType;
   selectedBalance?: PricedBalance;
-  tokenAmount: string;
-  onCancel?: () => void;
-  onConfirm?: () => void;
+  tokenAmount?: string;
+  selectedCollectible?: CollectibleType;
   /**
    * Indicates if a required memo is missing from the transaction
    * When true, shows a warning banner and may disable transaction confirmation
    */
   isRequiredMemoMissing?: boolean;
-  /**
-   * Indicates if memo validation is currently in progress
-   * Used to show loading states and prevent premature actions
-   */
-  isValidatingMemo?: boolean;
   /**
    * Callback function when the memo warning banner is pressed
    * Typically opens a modal to explain why the memo is required
@@ -45,6 +50,15 @@ type SendReviewBottomSheetProps = {
   onBannerPress?: () => void;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
+  /**
+   * Text to display in the banner
+   */
+  bannerText?: string;
+  /**
+   * Variant of the banner (error or warning)
+   */
+  bannerVariant?: "error" | "warning";
   signTransactionDetails?: SignTransactionDetailsInterface | null;
 };
 
@@ -65,15 +79,17 @@ type SendReviewBottomSheetProps = {
  * @returns {JSX.Element} The rendered bottom sheet component
  */
 const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
+  type,
   selectedBalance,
   tokenAmount,
-  onCancel,
-  onConfirm,
+  selectedCollectible,
   isRequiredMemoMissing,
-  isValidatingMemo,
   onBannerPress,
   isMalicious,
   isSuspicious,
+  isUnableToScan,
+  bannerText,
+  bannerVariant,
   signTransactionDetails,
 }) => {
   const { t } = useAppTranslation();
@@ -142,55 +158,44 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           {t("transactionAmountScreen.details.memo")}
         </Text>
         {isRequiredMemoMissing && (
-          <Icon.AlertTriangle size={16} color={themeColors.status.error} />
+          <Icon.AlertTriangle size={16} themeColor="red" />
         )}
       </View>
     );
-  }, [
-    isBuilding,
-    isRequiredMemoMissing,
-    t,
-    themeColors.status.error,
-    themeColors.text.secondary,
-  ]);
+  }, [isBuilding, isRequiredMemoMissing, t, themeColors.text.secondary]);
 
   /**
    * Renders a warning banner for the following cases:
    * - When a required memo is missing
    * - When the transaction is flagged as malicious
    * - When the transaction is flagged as suspicious
+   * - When the transaction is unable to scan
    * Includes a call-to-action button to add the required memo
    *
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
    */
   const renderBanner = () => {
-    if (!isRequiredMemoMissing && !isMalicious && !isSuspicious) {
+    if (
+      !isRequiredMemoMissing &&
+      !isMalicious &&
+      !isSuspicious &&
+      !isUnableToScan
+    ) {
       return null;
     }
 
-    const getBannerText = () => {
-      if (isMalicious) {
-        return t("transactionAmountScreen.errors.malicious");
-      }
-
-      if (isSuspicious) {
-        return t("transactionAmountScreen.errors.suspicious");
-      }
-
-      return t("transactionAmountScreen.errors.memoMissing");
-    };
+    if (!bannerText) {
+      return null;
+    }
 
     return (
       <Banner
-        variant={isSuspicious ? "warning" : "error"}
-        text={getBannerText()}
+        variant={bannerVariant || "error"}
+        text={bannerText}
         onPress={onBannerPress}
       />
     );
   };
-
-  const isLoading = isValidatingMemo || isBuilding;
-  const isDisabled = !transactionXDR || isLoading;
 
   /**
    * Renders the confirm button with different states based on memo validation
@@ -200,71 +205,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    *
    * @returns {JSX.Element} The appropriate button for the current state
    */
-  const renderConfirmButton = () => {
-    const getButtonText = () => {
-      if (isRequiredMemoMissing || isValidatingMemo) {
-        return t("common.addMemo");
-      }
-
-      return t("common.confirm");
-    };
-
-    return (
-      <View className="flex-1">
-        <Button
-          biometric
-          onPress={() => onConfirm?.()}
-          tertiary
-          xl
-          disabled={isBuilding || !transactionXDR || !!error}
-        >
-          {getButtonText()}
-        </Button>
-      </View>
-    );
-  };
-
-  const renderButtons = () => {
-    const cancelButton = (
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-1" : "w-full"}`}
-      >
-        <Button
-          tertiary={isSuspicious}
-          destructive={isMalicious}
-          secondary={!isMalicious && !isSuspicious}
-          xl
-          isFullWidth
-          onPress={onCancel}
-          disabled={isDisabled}
-        >
-          {t("common.cancel")}
-        </Button>
-      </View>
-    );
-
-    if (isMalicious || isSuspicious) {
-      return (
-        <>
-          {cancelButton}
-          <TextButton
-            text={t("transactionAmountScreen.confirmAnyway")}
-            onPress={onConfirm}
-            isLoading={isLoading}
-            disabled={isDisabled}
-            variant={isMalicious ? "error" : "secondary"}
-          />
-        </>
-      );
-    }
-
-    return (
-      <>
-        {cancelButton}
-        {renderConfirmButton()}
-      </>
-    );
-  };
 
   const transactionDetailsList: ListItemProps[] = useMemo(
     () => [
@@ -302,7 +242,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         titleColor: themeColors.text.secondary,
         trailingContent: (
           <Text md primary>
-            {formatTokenAmount(transactionFee, NATIVE_TOKEN_CODE)}
+            {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
           </Text>
         ),
       },
@@ -347,26 +287,50 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
-          {selectedBalance && !isLiquidityPool(selectedBalance) && (
+          {type === SendType.Token &&
+            selectedBalance &&
+            tokenAmount &&
+            !isLiquidityPool(selectedBalance) && (
+              <View className="w-full flex-row items-center gap-[16px]">
+                <TokenIcon token={selectedBalance} />
+                <View className="flex-1">
+                  <Text xl medium>
+                    {formatTokenForDisplay(
+                      tokenAmount,
+                      selectedBalance.tokenCode,
+                    )}
+                  </Text>
+                  <Text md medium secondary>
+                    {selectedBalance.currentPrice
+                      ? formatFiatAmount(
+                          new BigNumber(tokenAmount).times(
+                            selectedBalance.currentPrice,
+                          ),
+                        )
+                      : "--"}
+                  </Text>
+                </View>
+              </View>
+            )}
+          {type === SendType.Collectible && selectedCollectible && (
             <View className="w-full flex-row items-center gap-[16px]">
-              <TokenIcon token={selectedBalance} />
+              <View className="w-[40px] h-[40px] rounded-[8px] bg-background-tertiary overflow-hidden">
+                <CollectibleImage
+                  imageUri={selectedCollectible?.image}
+                  placeholderIconSize={25}
+                />
+              </View>
               <View className="flex-1">
                 <Text xl medium>
-                  {formatTokenAmount(tokenAmount, selectedBalance.tokenCode)}
+                  {selectedCollectible.name}
                 </Text>
                 <Text md medium secondary>
-                  {selectedBalance.currentPrice
-                    ? formatFiatAmount(
-                        new BigNumber(tokenAmount).times(
-                          selectedBalance.currentPrice,
-                        ),
-                      )
-                    : "--"}
+                  {`${selectedCollectible.collectionName} #${selectedCollectible.tokenId}`}
                 </Text>
               </View>
             </View>
           )}
-          <View className="w-[40px] flex items-center">
+          <View className="w-[40px] flex items-center py-1">
             <Icon.ChevronDownDouble
               size={16}
               color={themeColors.foreground.secondary}
@@ -389,15 +353,175 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       {renderBanner()}
       <List variant="secondary" items={transactionDetailsList} />
       {signTransactionDetails && (
-        <SignTransactionDetails data={signTransactionDetails} />
+        <SignTransactionDetails
+          data={signTransactionDetails}
+          analyticsEvent={AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS}
+        />
       )}
-      <View
-        className={`${!isMalicious && !isSuspicious ? "flex-row" : "flex-col"} w-full gap-[12px] mt-[4px]`}
-      >
-        {renderButtons()}
-      </View>
     </View>
   );
 };
+
+type SendReviewFooterProps = {
+  onCancel?: () => void;
+  onConfirm?: () => void;
+  isRequiredMemoMissing?: boolean;
+  isMalicious?: boolean;
+  isValidatingMemo?: boolean;
+  isSuspicious?: boolean;
+  onSettingsPress?: () => void;
+};
+
+export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
+  (props) => {
+    const { t } = useAppTranslation();
+    const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+    const insets = useSafeAreaInsets();
+
+    const {
+      onCancel,
+      onConfirm,
+      isRequiredMemoMissing,
+      isMalicious,
+      isValidatingMemo,
+      isSuspicious,
+      onSettingsPress,
+    } = props;
+
+    const isTrusted = !isMalicious && !isSuspicious;
+    const isLoading = isBuilding;
+    const isDisabled = !transactionXDR || isLoading;
+
+    const renderConfirmButton = useCallback(() => {
+      const getButtonText = () => {
+        if (isLoading || isValidatingMemo) {
+          return t("common.confirm");
+        }
+
+        if (isRequiredMemoMissing) {
+          return isTrusted ? t("common.addMemoShorthand") : t("common.addMemo");
+        }
+
+        return t("common.confirm");
+      };
+
+      const isConfirmDisabled =
+        isBuilding || !transactionXDR || !!error || isValidatingMemo;
+
+      return (
+        <View className="flex-1">
+          <Button
+            biometric={!isRequiredMemoMissing && !isConfirmDisabled}
+            onPress={() => onConfirm?.()}
+            isLoading={isLoading || isValidatingMemo}
+            tertiary
+            xl
+            disabled={isConfirmDisabled}
+          >
+            {getButtonText()}
+          </Button>
+        </View>
+      );
+    }, [
+      isRequiredMemoMissing,
+      isValidatingMemo,
+      onConfirm,
+      isTrusted,
+      isLoading,
+      t,
+      isBuilding,
+      transactionXDR,
+      error,
+    ]);
+
+    const renderButtons = useCallback(() => {
+      const settingsButton = (
+        <TouchableOpacity
+          onPress={onSettingsPress}
+          className="border border-gray-6 items-center justify-center"
+          style={{
+            height: pxValue(50),
+            borderRadius: pxValue(25),
+            width: pxValue(50),
+          }}
+        >
+          <Icon.Settings04 size={24} themeColor="gray" />
+        </TouchableOpacity>
+      );
+
+      const cancelButton = (
+        <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
+          <Button
+            tertiary={isSuspicious}
+            destructive={!isTrusted}
+            secondary={isTrusted}
+            isFullWidth
+            onPress={onCancel}
+            disabled={isDisabled}
+          >
+            {t("common.cancel")}
+          </Button>
+        </View>
+      );
+
+      const confirmAnywayButton = (
+        <TextButton
+          text={
+            isRequiredMemoMissing
+              ? t("common.addMemo")
+              : t("transactionAmountScreen.confirmAnyway")
+          }
+          onPress={onConfirm}
+          isLoading={isLoading}
+          disabled={isDisabled}
+          variant={isMalicious ? "error" : "secondary"}
+        />
+      );
+
+      if (!isTrusted) {
+        return (
+          <>
+            {cancelButton}
+            {confirmAnywayButton}
+          </>
+        );
+      }
+
+      return (
+        <>
+          {onSettingsPress && settingsButton}
+          {cancelButton}
+          {renderConfirmButton()}
+        </>
+      );
+    }, [
+      onSettingsPress,
+      isTrusted,
+      isSuspicious,
+      isMalicious,
+      onCancel,
+      isRequiredMemoMissing,
+      isDisabled,
+      t,
+      onConfirm,
+      isLoading,
+      renderConfirmButton,
+    ]);
+
+    return (
+      <View
+        className={`${
+          isTrusted ? "flex-row" : "flex-col"
+        } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
+        style={{
+          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          gap: pxValue(12),
+        }}
+      >
+        {renderButtons()}
+      </View>
+    );
+  },
+);
 
 export default SendReviewBottomSheet;

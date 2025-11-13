@@ -15,7 +15,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -28,7 +28,9 @@ interface PaymentHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
+  xdr: string;
 }
 
 /**
@@ -40,7 +42,9 @@ export const mapPaymentHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
+  xdr,
 }: PaymentHistoryItemData): HistoryItemData => {
   const {
     id,
@@ -54,7 +58,7 @@ export const mapPaymentHistoryItem = ({
 
   const isRecipient = to === publicKey && from !== publicKey;
   const paymentDifference = isRecipient ? "+" : "-";
-  const formattedAmount = `${paymentDifference}${formatTokenAmount(
+  const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),
     destTokenCode,
   )}`;
@@ -86,6 +90,8 @@ export const mapPaymentHistoryItem = ({
     transactionType: TransactionType.PAYMENT,
     status: TransactionStatus.SUCCESS,
     fee,
+    memo,
+    xdr,
     IconComponent,
     ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
@@ -124,15 +130,7 @@ export const PaymentTransactionDetailsContent: React.FC<{
 
   return (
     <TransactionDetailsContent>
-      <View className="flex-row justify-between items-center">
-        <View>
-          <Text xl primary medium numberOfLines={1}>
-            {formatTokenAmount(
-              transactionDetails.paymentDetails?.amount ?? "",
-              transactionDetails.paymentDetails?.tokenCode ?? "",
-            )}
-          </Text>
-        </View>
+      <View className="flex-row items-center">
         <TokenIcon
           token={{
             code: transactionDetails.paymentDetails?.tokenCode ?? "",
@@ -143,24 +141,34 @@ export const PaymentTransactionDetailsContent: React.FC<{
               ?.tokenType as TokenTypeWithCustomToken,
           }}
         />
+        <View className="ml-[16px]">
+          <Text xl primary medium numberOfLines={1}>
+            {formatTokenForDisplay(
+              transactionDetails.paymentDetails?.amount ?? "",
+              transactionDetails.paymentDetails?.tokenCode ?? "",
+            )}
+          </Text>
+        </View>
       </View>
 
-      <Icon.ChevronDownDouble
-        size={20}
-        color={themeColors.foreground.primary}
-        circle
-        circleBackground={themeColors.background.tertiary}
-      />
+      <View className="w-[40px] flex items-center py-1">
+        <Icon.ChevronDownDouble
+          size={20}
+          color={themeColors.foreground.primary}
+        />
+      </View>
 
-      <View className="flex-row justify-between items-center">
-        <Text xl primary medium numberOfLines={1}>
-          {truncateAddress(transactionDetails.paymentDetails?.to ?? "")}
-        </Text>
+      <View className="flex-row items-center">
         <Avatar
           hasDarkBackground
           publicAddress={transactionDetails.paymentDetails?.to ?? ""}
           size={AvatarSizes.LARGE}
         />
+        <View className="ml-[16px]">
+          <Text xl primary medium numberOfLines={1}>
+            {truncateAddress(transactionDetails.paymentDetails?.to ?? "")}
+          </Text>
+        </View>
       </View>
     </TransactionDetailsContent>
   );

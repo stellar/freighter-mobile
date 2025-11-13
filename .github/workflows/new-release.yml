@@ -1,0 +1,192 @@
+---
+name: New Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: App version (e.g. 1.8.24)
+        required: true
+        type: string
+
+jobs:
+  create_release_branch:
+    name: Prepare Release Branch
+    runs-on: ubuntu-latest
+
+    env:
+      APP_VERSION: ${{ inputs.app_version }}
+      RELEASE_BRANCH: ${{ format('release/v{0}', inputs.app_version) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create release branch
+        run: |
+          git checkout -b "$RELEASE_BRANCH"
+
+      - name: Update app version
+        run: |
+          node ./scripts/set-app-version "$APP_VERSION"
+
+      - name: Generate release notes
+        id: release_notes_step
+        run: |
+          set -eo pipefail
+
+          release_commit_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+'
+          last_release_commit=$(git log --grep "$release_commit_pattern" --pretty=format:%H -n 1 || true)
+
+          if [ -n "$last_release_commit" ]; then
+            commits=$(git log "${last_release_commit}..HEAD" --pretty=format:'- %s' --no-merges 2>/dev/null || true)
+          else
+            commits=$(git log --pretty=format:'- %s' --no-merges 2>/dev/null || true)
+          fi
+
+          commits=$(printf '%s\n' "$commits" | sed '/^$/d')
+
+          if [ -z "$commits" ]; then
+            commits="- No commits since last release"
+          fi
+
+          printf -v release_notes '## Release Changes\n\n%s' "$commits"
+          release_notes=${release_notes%$'\n'}
+
+          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
+
+          {
+            echo "release_notes<<$OUTPUT_DELIM"
+            echo "$release_notes"
+            echo "$OUTPUT_DELIM"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "RELEASE_NOTES<<$OUTPUT_DELIM"
+            echo "$release_notes"
+            echo "$OUTPUT_DELIM"
+          } >> "$GITHUB_ENV"
+
+      - name: Commit changes
+        run: |
+          git status
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected after running set-app-version."
+            exit 1
+          fi
+          git add .
+          git commit -m "chore: bump app version to v$APP_VERSION"
+
+      - name: Push release branch
+        run: |
+          git push --set-upstream origin "$RELEASE_BRANCH"
+
+      - name: Create pull request
+        id: create_pr
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        with:
+          script: |
+            const title = `v${process.env.APP_VERSION}`;
+            const branch = process.env.RELEASE_BRANCH;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const releaseNotes = process.env.RELEASE_NOTES || "";
+            const trimmedBody = releaseNotes.trim();
+            const body = trimmedBody.length > 0 ? releaseNotes : `Automated release for v${process.env.APP_VERSION}.`;
+
+            async function setOutputs(pr) {
+              core.notice(`Pull request ready: ${pr.html_url}`);
+              core.setOutput("pr_number", pr.number.toString());
+              core.setOutput("pr_url", pr.html_url);
+            }
+
+            try {
+              const { data } = await github.rest.pulls.create({
+                owner,
+                repo,
+                head: branch,
+                base: "main",
+                title,
+                body
+              });
+              await setOutputs(data);
+            } catch (error) {
+              if (error.status === 422) {
+                core.warning(`Pull request could not be created automatically: ${error.message}`);
+                const { data: existing } = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  head: `${owner}:${branch}`,
+                  base: "main",
+                  state: "open"
+                });
+
+                if (existing.length > 0) {
+                  await setOutputs(existing[0]);
+                } else {
+                  throw error;
+                }
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Trigger dev builds (initial QA)
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        with:
+          script: |
+            const branch = process.env.RELEASE_BRANCH;
+            const rawNotes = process.env.RELEASE_NOTES || "";
+            const releaseNotes = rawNotes.trim().length > 0 ? rawNotes : "";
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            const workflows = [
+              {
+                workflow_id: "ios.yml",
+                name: "iOS Release",
+                inputs: {
+                  ref_name: branch,
+                  env: "dev",
+                  upload_to_testflight: "yes",
+                  release_notes: releaseNotes
+                }
+              },
+              {
+                workflow_id: "android.yml",
+                name: "Android Release",
+                inputs: {
+                  ref_name: branch,
+                  env: "dev",
+                  upload_to_google_play: "yes",
+                  release_notes: releaseNotes
+                }
+              }
+            ];
+
+            for (const workflow of workflows) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: workflow.workflow_id,
+                ref: branch,
+                inputs: workflow.inputs
+              });
+              core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${branch}`);
+            }

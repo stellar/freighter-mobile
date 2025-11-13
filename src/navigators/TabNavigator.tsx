@@ -15,6 +15,7 @@ import { useFetchCollectibles } from "hooks/useFetchCollectibles";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
@@ -89,6 +90,12 @@ export const TabNavigator = () => {
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
+
+  // Start polling for history updates
+  useHistoryPolling({
     publicKey: publicKey ?? "",
     network: networkDetails.network,
   });

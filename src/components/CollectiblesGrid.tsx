@@ -33,6 +33,8 @@ interface CollectiblesGridProps {
     collectionAddress: string;
     tokenId: string;
   }) => void;
+  /** Whether to disable internal scrolling (for use in parent ScrollView) */
+  disableInnerScrolling?: boolean;
 }
 
 /**
@@ -56,7 +58,7 @@ interface CollectiblesGridProps {
  * @returns {JSX.Element} The collectibles grid component
  */
 export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
-  ({ onCollectiblePress }) => {
+  ({ onCollectiblePress, disableInnerScrolling = false }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
@@ -104,7 +106,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const renderCollection = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: Collection }) => (
-        <View className="mb-6">
+        <View key={item.collectionAddress} className="mb-6">
           <View
             className="flex-row items-center gap-2 mb-3"
             style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
@@ -145,6 +147,52 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
+    const renderErrorView = () => (
+      <View className="flex-1">
+        <View
+          className="pt-4"
+          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+        >
+          <Text md secondary>
+            {t("collectiblesGrid.error")}
+          </Text>
+        </View>
+      </View>
+    );
+
+    const renderEmptyView = () => (
+      <View className="flex-1">
+        <View
+          className="flex-row items-center justify-center pt-5 gap-2"
+          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+        >
+          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
+          <Text md medium secondary>
+            {t("collectiblesGrid.empty")}
+          </Text>
+        </View>
+      </View>
+    );
+
+    // When inner scrolling is disabled, render collections directly without FlatList
+    if (disableInnerScrolling) {
+      if (error) {
+        return renderErrorView();
+      }
+
+      if (!collections.length) {
+        return renderEmptyView();
+      }
+
+      return (
+        <View>
+          {collections.map((collection) =>
+            renderCollection({ item: collection }),
+          )}
+        </View>
+      );
+    }
+
     // For all other states, wrap content in FlatList with RefreshControl
     return (
       <FlatList
@@ -161,30 +209,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           />
         }
         ListFooterComponent={DefaultListFooter}
-        ListEmptyComponent={
-          <View className="flex-1">
-            {error ? (
-              <View
-                className="pt-4"
-                style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-              >
-                <Text md secondary>
-                  {t("collectiblesGrid.error")}
-                </Text>
-              </View>
-            ) : (
-              <View
-                className="flex-row items-center justify-center pt-5 gap-2"
-                style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-              >
-                <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-                <Text md medium secondary>
-                  {t("collectiblesGrid.empty")}
-                </Text>
-              </View>
-            )}
-          </View>
-        }
+        ListEmptyComponent={error ? renderErrorView() : renderEmptyView()}
       />
     );
   },

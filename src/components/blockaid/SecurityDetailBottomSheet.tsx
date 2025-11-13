@@ -7,16 +7,18 @@ import { Text } from "components/sds/Typography";
 import { BLOCKAID_FEEDBACK_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
-import { View, Linking } from "react-native";
-import { SecurityLevel } from "services/blockaid/constants";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
+import React, { useMemo } from "react";
+import { View } from "react-native";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
 export interface SecurityDetailBottomSheetProps {
   warnings: SecurityWarning[];
-  onCancel: () => void;
-  onProceedAnyway: () => void;
+  onCancel?: () => void;
+  onProceedAnyway?: () => void;
   onClose: () => void;
+  securityContext?: SecurityContext;
   severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
   /** The text to display for the "proceed anyway" button */
   proceedAnywayText: string;
@@ -54,17 +56,20 @@ export const SecurityDetailBottomSheet: React.FC<
   onCancel,
   onProceedAnyway,
   onClose,
+  securityContext = SecurityContext.TRANSACTION,
   severity = SecurityLevel.MALICIOUS,
   proceedAnywayText,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const handleFeedback = () => {
-    Linking.openURL(BLOCKAID_FEEDBACK_URL); // TODO: update this to use the backend feedback instead
+    openInAppBrowser(BLOCKAID_FEEDBACK_URL); // TODO: update this to use the backend feedback instead
   };
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
+  const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
 
   const getHeaderIcon = () => {
     const baseClasses =
@@ -74,6 +79,14 @@ export const SecurityDetailBottomSheet: React.FC<
       return (
         <View className={`${baseClasses} bg-red-3 border border-red-6`}>
           <Icon.AlertOctagon themeColor="red" />
+        </View>
+      );
+    }
+
+    if (isUnableToScan) {
+      return (
+        <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
+          <Icon.AlertCircle themeColor="amber" />
         </View>
       );
     }
@@ -95,6 +108,87 @@ export const SecurityDetailBottomSheet: React.FC<
       ),
     }));
 
+  const renderButtons = () => {
+    // Unable to scan state - side by side without biometrics
+    if (isUnableToScan) {
+      return (
+        <View className="flex-row gap-3">
+          {onCancel && (
+            <View className="flex-1">
+              <Button xl isFullWidth onPress={onCancel} variant="secondary">
+                {t("common.cancel")}
+              </Button>
+            </View>
+          )}
+          {onProceedAnyway && (
+            <View className="flex-1">
+              <Button
+                xl
+                isFullWidth
+                onPress={onProceedAnyway}
+                variant="tertiary"
+              >
+                {proceedAnywayText}
+              </Button>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Malicious/Suspicious state - stacked layout with TextButton
+    return (
+      <View className="gap-[12px]">
+        {onCancel && (
+          <Button
+            xl
+            isFullWidth
+            onPress={onCancel}
+            variant={isMalicious ? "destructive" : "tertiary"}
+          >
+            {t("common.cancel")}
+          </Button>
+        )}
+        {onProceedAnyway && (
+          <TextButton
+            text={proceedAnywayText}
+            onPress={onProceedAnyway}
+            variant={isMalicious ? "error" : "secondary"}
+          />
+        )}
+      </View>
+    );
+  };
+
+  const getDescription = useMemo(
+    () => () => {
+      if (isUnableToScan) {
+        switch (securityContext) {
+          case SecurityContext.TOKEN:
+            return t("securityWarning.token");
+          case SecurityContext.SITE:
+            return t("blockaid.unableToScan.site.description");
+          case SecurityContext.TRANSACTION:
+            return t("securityWarning.unsafeTransaction");
+          default:
+            return t("blockaid.unableToScan.info");
+        }
+      }
+
+      switch (securityContext) {
+        case SecurityContext.TOKEN:
+          return t("securityWarning.token");
+        case SecurityContext.SITE:
+        case SecurityContext.TRANSACTION:
+          return t("securityWarning.unsafeTransaction");
+
+        default:
+          return "";
+      }
+    },
+    [securityContext, t, isUnableToScan],
+  );
+
   return (
     <View className="flex-1 gap-[16px]">
       <View className="flex-row justify-between items-center">
@@ -104,12 +198,14 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
       <Text xl primary>
-        {isMalicious
-          ? t("securityWarning.doNotProceed")
-          : t("securityWarning.suspiciousRequest")}
+        {(() => {
+          if (isMalicious) return t("securityWarning.doNotProceed");
+          if (isUnableToScan) return t("securityWarning.proceedWithCaution");
+          return t("securityWarning.suspiciousRequest");
+        })()}
       </Text>
       <Text md secondary regular>
-        {t("securityWarning.unsafeTransaction")}
+        {getDescription()}
       </Text>
 
       <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
@@ -139,21 +235,7 @@ export const SecurityDetailBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="gap-[12px]">
-        <Button
-          xl
-          isFullWidth
-          onPress={onCancel}
-          variant={isMalicious ? "destructive" : "tertiary"}
-        >
-          {t("common.cancel")}
-        </Button>
-        <TextButton
-          text={proceedAnywayText}
-          onPress={onProceedAnyway}
-          variant={isMalicious ? "error" : "secondary"}
-        />
-      </View>
+      {renderButtons()}
     </View>
   );
 };

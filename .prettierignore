@@ -14,3 +14,6 @@ yarn.lock
 
 # Type declaration files
 *.d.ts
+
+# Pull request template
+.github/pull_request_template.md

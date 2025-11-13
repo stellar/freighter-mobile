@@ -1,9 +1,9 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BackendEnvConfig } from "config/envConfig";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey } from "ducks/auth";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useEffect, useState } from "react";
-import Config from "react-native-config";
 import { analytics } from "services/analytics";
 
 interface GetCoinBaseUrlParams {
@@ -35,7 +35,7 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       body: JSON.stringify({ address: publicKey }),
     };
 
-    const url = `${Config.FREIGHTER_BACKEND_URL}/onramp/token`;
+    const url = `${BackendEnvConfig.FREIGHTER_BACKEND_V1_URL}/onramp/token`;
     const response = await fetch(url, options);
     const { data } = (await response.json()) as {
       data: { token: string; error: string };

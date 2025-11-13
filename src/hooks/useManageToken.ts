@@ -47,7 +47,7 @@ export const useManageToken = ({
     if (!token) {
       return;
     }
-    const { code, decimals, issuer, name } = token;
+    const { code, decimals, issuer, name, type } = token;
     analytics.trackAddTokenConfirmed(token.code);
 
     await addTokenAction({
@@ -55,6 +55,7 @@ export const useManageToken = ({
       issuer,
       name,
       tokenCode: code,
+      tokenType: type,
     });
 
     if (bottomSheetRefAdd) {

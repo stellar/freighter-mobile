@@ -32,7 +32,7 @@ local.properties
 *.hprof
 .cxx/
 *.keystore
-!debug.keystore
+!android/keystores/debug.keystore
 .kotlin/
 
 # node.js
@@ -83,3 +83,12 @@ ios/sentry.properties
 
 # VSCode
 .vscode/
+
+# iOS dSYM files
+*.dSYM
+*.dSYM.zip
+*.dSYM.tar.gz
+
+# Fastlane secret files
+fastlane/*-secret.json
+ios/fastlane/*.p8

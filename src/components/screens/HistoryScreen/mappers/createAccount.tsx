@@ -14,7 +14,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { formatTokenAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -26,8 +26,10 @@ interface CreateAccountHistoryItemData {
   stellarExpertUrl: string;
   date: string;
   fee: string;
+  memo?: string;
   themeColors: ThemeColors;
   isCreateExternalAccount: boolean;
+  xdr: string;
 }
 
 /**
@@ -38,8 +40,10 @@ export const mapCreateAccountHistoryItem = ({
   stellarExpertUrl,
   date,
   fee,
+  memo,
   themeColors,
   isCreateExternalAccount,
+  xdr,
 }: CreateAccountHistoryItemData): HistoryItemData => {
   const { account, starting_balance: startingBalance, funder } = operation;
   const isRecipient = !isCreateExternalAccount;
@@ -63,6 +67,8 @@ export const mapCreateAccountHistoryItem = ({
       transactionTitle: NATIVE_TOKEN_CODE,
       transactionType: TransactionType.PAYMENT,
       fee,
+      memo,
+      xdr,
       status: TransactionStatus.SUCCESS,
       IconComponent: senderIcon,
       ActionIconComponent: senderActionIcon,
@@ -80,7 +86,7 @@ export const mapCreateAccountHistoryItem = ({
       transactionDetails,
       rowText: NATIVE_TOKEN_CODE,
       dateText: date,
-      amountText: `-${formatTokenAmount(startingBalance, NATIVE_TOKEN_CODE)}`,
+      amountText: `-${formatTokenForDisplay(startingBalance, NATIVE_TOKEN_CODE)}`,
       actionText: t("history.transactionHistory.sent"),
       ActionIconComponent: senderActionIcon,
       IconComponent: senderIcon,
@@ -90,7 +96,7 @@ export const mapCreateAccountHistoryItem = ({
   }
 
   // RECIPIENT's view: Show as "Account Funded"
-  const formattedAmount = `+${formatTokenAmount(
+  const formattedAmount = `+${formatTokenForDisplay(
     startingBalance,
     NATIVE_TOKEN_CODE,
   )}`;
@@ -104,6 +110,8 @@ export const mapCreateAccountHistoryItem = ({
     transactionTitle: t("history.transactionHistory.accountFunded"),
     transactionType: TransactionType.CREATE_ACCOUNT,
     fee,
+    memo,
+    xdr,
     status: TransactionStatus.SUCCESS,
     IconComponent: null,
     ActionIconComponent: recipientActionIcon,
@@ -143,7 +151,7 @@ export const CreateAccountTransactionDetailsContent: React.FC<{
         </Text>
         <Text sm secondary numberOfLines={1}>
           {t("history.transactionDetails.startingBalance")}{" "}
-          {formatTokenAmount(
+          {formatTokenForDisplay(
             transactionDetails.createAccountDetails?.startingBalance ?? "",
             NATIVE_TOKEN_CODE,
           )}

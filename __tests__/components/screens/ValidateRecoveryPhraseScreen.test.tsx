@@ -50,24 +50,6 @@ jest.mock("hooks/useWordSelection", () => {
   };
 });
 
-// Mock the useBiometrics hook
-jest.mock("hooks/useBiometrics", () => ({
-  useBiometrics: () => ({
-    biometryType: null,
-    setIsBiometricsEnabled: jest.fn(),
-    isBiometricsEnabled: false,
-    enableBiometrics: jest.fn(() => Promise.resolve(true)),
-    disableBiometrics: jest.fn(() => Promise.resolve(true)),
-    checkBiometrics: jest.fn(() => Promise.resolve(null)),
-    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
-    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
-    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
-    getButtonIcon: jest.fn(() => null),
-    getButtonText: jest.fn(() => ""),
-    getButtonColor: jest.fn(() => "#000000"),
-  }),
-}));
-
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: { number?: number }) => {
     const translations: Record<string, string> = {
@@ -112,12 +94,19 @@ jest.mock("ducks/auth", () => ({
   }),
 }));
 
-const mockRoute = {
-  params: {
+jest.mock("ducks/loginData", () => ({
+  useLoginDataStore: jest.fn(() => ({
     password: "test-password",
-    recoveryPhrase:
+    mnemonicPhrase:
       "test phrase one two three four five six seven eight nine ten eleven twelve",
-  },
+    setMnemonicPhrase: jest.fn(),
+    setPassword: jest.fn(),
+    clearLoginData: jest.fn(),
+  })),
+}));
+
+const mockRoute = {
+  params: {},
 };
 
 const user = userEvent.setup();
@@ -161,12 +150,20 @@ const renderScreen = () =>
   );
 
 describe("ValidateRecoveryPhraseScreen", () => {
-  const words = mockRoute.params.recoveryPhrase.split(" ");
+  const words =
+    "test phrase one two three four five six seven eight nine ten eleven twelve".split(
+      " ",
+    );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
     mockIsLoading = false;
     mockError = null;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("renders correctly with initial state", () => {
@@ -188,7 +185,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/enter word #2/i)).toBeTruthy();
     });
-  }, 30000);
+  });
 
   it("completes validation flow with all 3 correct selections and calls signUp", async () => {
     renderScreen();
@@ -219,10 +216,11 @@ describe("ValidateRecoveryPhraseScreen", () => {
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
         password: "test-password",
-        mnemonicPhrase: mockRoute.params.recoveryPhrase,
+        mnemonicPhrase:
+          "test phrase one two three four five six seven eight nine ten eleven twelve",
       });
     });
-  }, 30000);
+  });
 
   it("completes validation flow with all 3 correct words and navigates to biometrics when available", async () => {
     // Mock useBiometrics to return a biometryType for this test
@@ -286,8 +284,6 @@ describe("ValidateRecoveryPhraseScreen", () => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith(
         AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN,
         {
-          password: "test-password",
-          mnemonicPhrase: mockRoute.params.recoveryPhrase,
           source: BiometricsSource.ONBOARDING,
         },
       );
@@ -295,7 +291,7 @@ describe("ValidateRecoveryPhraseScreen", () => {
 
     // Verify signUp was NOT called since we navigated to biometrics instead
     expect(mockSignUp).not.toHaveBeenCalled();
-  }, 30000);
+  });
 
   it("shows error when incorrect word is entered", async () => {
     renderScreen();

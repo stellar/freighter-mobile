@@ -23,6 +23,7 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useLoginDataStore } from "ducks/loginData";
 import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -136,6 +137,7 @@ export const BiometricsOnboardingScreen: React.FC<
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
+  const { mnemonicPhrase, password, clearLoginData } = useLoginDataStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -144,7 +146,7 @@ export const BiometricsOnboardingScreen: React.FC<
 
   const enableBiometrics = useCallback(async () => {
     // In pre-auth flow, we need to store the password for biometrics and complete the signup
-    const { password, mnemonicPhrase, source } = route.params;
+    const { source } = route.params;
 
     if (source === BiometricsSource.POST_ONBOARDING) {
       await enableBiometricsAction(async () => {
@@ -189,6 +191,7 @@ export const BiometricsOnboardingScreen: React.FC<
           });
         }
 
+        clearLoginData(); // Clear sensitive data after successful authentication
         setIsBiometricsEnabled(true);
         return Promise.resolve();
       });
@@ -208,11 +211,14 @@ export const BiometricsOnboardingScreen: React.FC<
     importWallet,
     enableBiometricsAction,
     navigation,
+    mnemonicPhrase,
+    password,
+    clearLoginData,
   ]);
 
   const handleSkip = useCallback(async () => {
     setIsProcessing(true);
-    const { password, mnemonicPhrase, source } = route.params;
+    const { source } = route.params;
     await dataStorage.setItem(
       STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
       "true",
@@ -256,7 +262,14 @@ export const BiometricsOnboardingScreen: React.FC<
       );
       // Handle error appropriately
     }
-  }, [route.params, signUp, importWallet, navigation]);
+  }, [
+    route.params,
+    signUp,
+    importWallet,
+    navigation,
+    mnemonicPhrase,
+    password,
+  ]);
 
   const handleSkipPress = useCallback(async () => {
     setTimeout(() => {

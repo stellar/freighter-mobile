@@ -144,7 +144,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       <Text xl regular>
         {title}
       </Text>
-      <View className="mt-4 mb-8">
+      <View className="mt-4">
         <Text md regular secondary>
           {message}
         </Text>

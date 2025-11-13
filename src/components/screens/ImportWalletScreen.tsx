@@ -7,7 +7,7 @@ import { Text } from "components/sds/Typography";
 import { BiometricsSource } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { pxValue } from "helpers/dimensions";
+import { useLoginDataStore } from "ducks/loginData";
 import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -21,12 +21,13 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 >;
 
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
-  route,
   navigation,
 }) => {
   const { importWallet, error, clearError, verifyMnemonicPhrase } =
     useAuthenticationStore();
-  const [recoveryPhrase, setRecoveryPhrase] = useState("");
+  const [localMnemonicPhrase, setLocalMnemonicPhrase] = useState("");
+  const { setMnemonicPhrase, setPassword, clearLoginData } =
+    useLoginDataStore();
   const { biometryType } = useBiometrics();
   const { storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -34,7 +35,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [showMasked, setShowMasked] = useState(true);
 
-  const { password } = route.params;
+  const { password } = useLoginDataStore();
 
   useEffect(() => {
     clearError();
@@ -45,25 +46,28 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
 
     setTimeout(() => {
       (async () => {
-        const isValidMnemonicPhrase = verifyMnemonicPhrase(recoveryPhrase);
+        const isValidMnemonicPhrase = verifyMnemonicPhrase(localMnemonicPhrase);
         if (!isValidMnemonicPhrase) {
           setIsImporting(false);
           return;
         }
+
+        setMnemonicPhrase(localMnemonicPhrase);
+        setPassword(password);
+
         if (biometryType) {
-          storeBiometricPassword(password).then(() => {
+          storeBiometricPassword(password!).then(() => {
             navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-              password,
-              mnemonicPhrase: recoveryPhrase,
               source: BiometricsSource.IMPORT_WALLET,
             });
           });
         } else {
           // No biometrics available, proceed with normal import
           await importWallet({
-            mnemonicPhrase: recoveryPhrase,
-            password,
+            mnemonicPhrase: localMnemonicPhrase,
+            password: password!,
           });
+          clearLoginData(); // Clear sensitive data after successful import
         }
         setIsImporting(false);
       })();
@@ -71,16 +75,19 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   }, [
     navigation,
     password,
-    recoveryPhrase,
+    localMnemonicPhrase,
     verifyMnemonicPhrase,
     importWallet,
     biometryType,
     storeBiometricPassword,
+    setMnemonicPhrase,
+    setPassword,
+    clearLoginData,
   ]);
 
   const onPressPasteFromClipboard = async () => {
     const clipboardText = await Clipboard.getString();
-    setRecoveryPhrase(normalizeAndTrimRecoveryPhrase(clipboardText));
+    setLocalMnemonicPhrase(normalizeAndTrimRecoveryPhrase(clipboardText));
   };
 
   const handleToggleMasked = useCallback(() => {
@@ -90,10 +97,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const IconComponent = showMasked ? Icon.Eye : Icon.EyeOff;
   const pressableNote = (
     <Pressable onPress={handleToggleMasked} className="flex-row items-center">
-      <IconComponent
-        size={pxValue(20)}
-        color={themeColors.foreground.primary}
-      />
+      <IconComponent size={20} themeColor="gray" />
       <View className="ml-2">
         <Text sm color={themeColors.foreground.primary}>
           {t("importWalletScreen.textAreaNote")}
@@ -114,7 +118,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       title={t("importWalletScreen.title")}
       defaultActionButtonText={t("importWalletScreen.defaultActionButtonText")}
       onPressDefaultActionButton={handleContinue}
-      isDefaultActionButtonDisabled={!recoveryPhrase}
+      isDefaultActionButtonDisabled={!localMnemonicPhrase}
       hasClipboardButton
       onPressClipboardButton={onPressPasteFromClipboard}
       isLoading={isImporting}
@@ -123,8 +127,8 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         fieldSize="lg"
         placeholder={t("importWalletScreen.textAreaPlaceholder")}
         note={pressableNote}
-        value={recoveryPhrase}
-        setValue={setRecoveryPhrase}
+        value={localMnemonicPhrase}
+        setValue={setLocalMnemonicPhrase}
         error={error}
         showMasked={showMasked}
       />

@@ -2,18 +2,21 @@ import { fireEvent } from "@testing-library/react-native";
 import { CollectibleDetailsScreen } from "components/screens/CollectibleDetailsScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Linking } from "react-native";
-
-// Mock the Linking module
-jest.mock("react-native/Libraries/Linking/Linking", () => ({
-  openURL: jest.fn(),
-}));
 
 // Mock the useAppTranslation hook
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
   default: () => ({
     t: (key: string) => key,
+  }),
+}));
+
+// Mock the useInAppBrowser hook
+const mockOpenInAppBrowser = jest.fn();
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: mockOpenInAppBrowser,
+    isAvailable: jest.fn(() => Promise.resolve(true)),
   }),
 }));
 
@@ -73,23 +76,34 @@ jest.mock("hooks/useGetActiveAccount", () => ({
   }),
 }));
 
+const mockGetCollectible = jest.fn(() => ({
+  name: "Test Collectible",
+  collectionName: "Test Collection",
+  tokenId: "123",
+  image: "https://example.com/image.jpg",
+  description: "Test description",
+  traits: [
+    { name: "Color", value: "Blue" },
+    { name: "Rarity", value: "Common" },
+  ],
+  externalUrl: "https://example.com",
+}));
+
 // Mock the useCollectiblesStore hook
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({
     fetchCollectibles: jest.fn(),
-    getCollectible: jest.fn(() => ({
-      name: "Test Collectible",
-      collectionName: "Test Collection",
-      tokenId: "123",
-      image: "https://example.com/image.jpg",
-      description: "Test description",
-      traits: [
-        { name: "Color", value: "Blue" },
-        { name: "Rarity", value: "Common" },
-      ],
-      externalUrl: "https://example.com",
-    })),
+    getCollectible: mockGetCollectible,
     isLoading: false,
+  }),
+}));
+
+const mockSaveSelectedCollectibleDetails = jest.fn();
+const mockSaveSelectedTokenId = jest.fn();
+jest.mock("ducks/transactionSettings", () => ({
+  useTransactionSettingsStore: () => ({
+    saveSelectedCollectibleDetails: mockSaveSelectedCollectibleDetails,
+    saveSelectedTokenId: mockSaveSelectedTokenId,
   }),
 }));
 
@@ -163,10 +177,8 @@ describe("CollectibleDetailsScreen", () => {
   });
 
   it("opens external URL when view button is pressed", () => {
-    const mockOpenURL = Linking.openURL as jest.MockedFunction<
-      typeof Linking.openURL
-    >;
-    mockOpenURL.mockResolvedValue(undefined);
+    mockOpenInAppBrowser.mockClear();
+    mockOpenInAppBrowser.mockResolvedValue(undefined);
 
     const { getByText } = renderWithProviders(
       <CollectibleDetailsScreen
@@ -178,7 +190,7 @@ describe("CollectibleDetailsScreen", () => {
     const viewButton = getByText("collectibleDetails.view");
     fireEvent.press(viewButton);
 
-    expect(mockOpenURL).toHaveBeenCalledWith("https://example.com");
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith("https://example.com");
   });
 
   it("sets navigation title to collectible name", () => {
@@ -192,5 +204,82 @@ describe("CollectibleDetailsScreen", () => {
     expect(mockNavigationObject.setOptions).toHaveBeenCalledWith({
       headerTitle: "Test Collectible",
     });
+  });
+
+  it("renders the Send button", () => {
+    const { getByText } = renderWithProviders(
+      <CollectibleDetailsScreen
+        route={mockRoute as any}
+        navigation={mockNavigationObject as any}
+      />,
+    );
+
+    const sendButton = getByText("tokenDetailsScreen.send");
+    expect(sendButton).toBeTruthy();
+  });
+
+  it("navigates to send flow when Send button is pressed", () => {
+    mockNavigationObject.navigate.mockClear();
+    mockSaveSelectedCollectibleDetails.mockClear();
+
+    const collectibleData = mockGetCollectible();
+
+    const { getByText } = renderWithProviders(
+      <CollectibleDetailsScreen
+        route={mockRoute as any}
+        navigation={mockNavigationObject as any}
+      />,
+    );
+
+    const sendButton = getByText("tokenDetailsScreen.send");
+    fireEvent.press(sendButton);
+
+    expect(mockSaveSelectedCollectibleDetails).toHaveBeenCalledWith(
+      collectibleData,
+    );
+
+    expect(mockNavigationObject.navigate).toHaveBeenCalledWith(
+      "SendPaymentStack",
+      {
+        screen: "SendSearchContactsScreen",
+      },
+    );
+  });
+
+  it("renders View and Send buttons in a row when externalUrl exists", () => {
+    const { getByText } = renderWithProviders(
+      <CollectibleDetailsScreen
+        route={mockRoute as any}
+        navigation={mockNavigationObject as any}
+      />,
+    );
+
+    expect(getByText("collectibleDetails.view")).toBeTruthy();
+    expect(getByText("tokenDetailsScreen.send")).toBeTruthy();
+  });
+
+  it("renders only Send button when externalUrl is not present", () => {
+    mockGetCollectible.mockReturnValueOnce({
+      name: "Test Collectible",
+      collectionName: "Test Collection",
+      tokenId: "123",
+      image: "https://example.com/image.jpg",
+      description: "Test description",
+      traits: [
+        { name: "Color", value: "Blue" },
+        { name: "Rarity", value: "Common" },
+      ],
+      externalUrl: "",
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <CollectibleDetailsScreen
+        route={mockRoute as any}
+        navigation={mockNavigationObject as any}
+      />,
+    );
+
+    expect(getByText("tokenDetailsScreen.send")).toBeTruthy();
+    expect(queryByText("collectibleDetails.view")).toBeNull();
   });
 });

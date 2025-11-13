@@ -1,7 +1,9 @@
 apply plugin: "com.android.application"
-apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+
+// Apply react-native-config
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -74,43 +76,79 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
+
+/**
+ * Helper function to get environment variables.
+ * First checks System.getenv() (for CI/CD), then falls back to project.env.get() (for .env file).
+ */
+def GetEnv(String key) {
+    return System.getenv(key) ?: project.env.get(key)
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "org.stellar.freighterwallet"
-    defaultConfig {
-        applicationId "org.stellar.freighterwallet"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 24
-        versionName "1.2.23"
-    }
+
+    flavorDimensions "environment"
+
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+            storeFile file('../keystores/debug.keystore')
+            storePassword GetEnv('ANDROID_DEBUG_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_DEBUG_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_DEBUG_KEYSTORE_PASSWORD')
         }
-        release {
-            storeFile file('release.keystore')
-            // Replace with keystore password
-            storePassword '<release-keystore-password>'
-            keyAlias 'upload'
-            // Replace with keystore password
-            keyPassword '<release-keystore-password>'
+
+        dev {
+            storeFile file('../keystores/dev-release.keystore')
+            storePassword GetEnv('ANDROID_DEV_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_DEV_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_DEV_KEYSTORE_PASSWORD')
+        }
+
+        prod {
+            storeFile file('../keystores/prod-release.keystore')
+            storePassword GetEnv('ANDROID_PROD_KEYSTORE_PASSWORD')
+            keyAlias GetEnv('ANDROID_PROD_KEYSTORE_ALIAS')
+            keyPassword GetEnv('ANDROID_PROD_KEYSTORE_PASSWORD')
         }
     }
+
+    productFlavors {
+        dev {
+            dimension "environment"
+            applicationId "org.stellar.freighterdev"
+            resValue "string", "app_name", "Freighter Dev"
+            manifestPlaceholders = [deepLinkScheme: "freighterdev"]
+            signingConfig signingConfigs.dev
+        }
+
+        prod {
+            dimension "environment"
+            applicationId "org.stellar.freighterwallet"
+            resValue "string", "app_name", "Freighter"
+            manifestPlaceholders = [deepLinkScheme: "freighterwallet"]
+            signingConfig signingConfigs.prod
+        }
+    }
+
+    defaultConfig {
+        applicationId "org.stellar.freighterwallet"
+        resValue "string", "build_config_package", "org.stellar.freighterwallet"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1234567890
+        versionName "1.7.24"
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
