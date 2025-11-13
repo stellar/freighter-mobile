@@ -208,6 +208,7 @@ interface AuthState {
 
   // Biometric authentication state
   signInMethod: LoginType;
+  hasTriggeredAppOpenBiometricsLogin: boolean;
 }
 
 /**
@@ -308,6 +309,7 @@ interface AuthActions {
 
   // Biometric authentication actions
   setSignInMethod: (method: LoginType) => void;
+  setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => void;
 }
 
 /**
@@ -337,6 +339,7 @@ const initialState: Omit<AuthState, "network"> = {
   navigationRef: null,
   // Biometric authentication initial state
   signInMethod: LoginType.PASSWORD,
+  hasTriggeredAppOpenBiometricsLogin: false,
 };
 
 /**
@@ -593,6 +596,44 @@ const appendAccount = async (account: Account) => {
   await dataStorage.setItem(
     STORAGE_KEYS.ACCOUNT_LIST,
     JSON.stringify([...accountList, account]),
+  );
+};
+
+/**
+ * Adds multiple accounts to the account list
+ *
+ * @param {Account[]} accounts - The accounts to add to the list
+ * @returns {Promise<void>}
+ */
+export const appendAccounts = async (accounts: Account[]) => {
+  if (accounts.length === 0) {
+    return;
+  }
+
+  const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
+  const accountList = accountListRaw
+    ? (JSON.parse(accountListRaw) as Account[])
+    : [];
+
+  const knownAccountIds = new Set(accountList.map((item) => item.id));
+  const accountsToAdd: Account[] = [];
+
+  accounts.forEach((account) => {
+    if (knownAccountIds.has(account.id)) {
+      return;
+    }
+
+    knownAccountIds.add(account.id);
+    accountsToAdd.push(account);
+  });
+
+  if (accountsToAdd.length === 0) {
+    return;
+  }
+
+  await dataStorage.setItem(
+    STORAGE_KEYS.ACCOUNT_LIST,
+    JSON.stringify([...accountList, ...accountsToAdd]),
   );
 };
 
@@ -949,12 +990,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   const newAccounts = await Promise.all(prepareKeyStorePromises);
 
   // Add all accounts to the account list
-  const appendAccountPromises = newAccounts.map(({ account }) =>
-    appendAccount(account),
-  );
-
-  // Wait for all accounts to be added to the account list
-  await Promise.all(appendAccountPromises);
+  await appendAccounts(newAccounts.map(({ account }) => account));
 
   // Now update the temporary store with all new private keys at once
   const hashKey = await getHashKey();
@@ -1359,21 +1395,20 @@ const createAccount = async (password: string): Promise<void> => {
   // length considering ONLY the DERIVED accounts otherwise it could skip an
   // index by mistake if there are accounts imported from secret key in the way
   let index = derivedAccountsOnly.length;
-  let keyPair = deriveKeyPair({
-    mnemonicPhrase,
-    index,
-  });
-  let hasAccount = hasAccountInAccountList(allAccounts, keyPair);
-  let round = 0;
+  let round: number = 0;
+  let keyPair: KeyPair;
+  let hasAccount: boolean;
 
+  // The do {} block always executes at least once
   do {
-    index++;
     keyPair = deriveKeyPair({
       mnemonicPhrase,
       index,
     });
 
     hasAccount = hasAccountInAccountList(allAccounts, keyPair);
+
+    index++;
     round++;
   } while (hasAccount && round < 50);
 
@@ -2291,6 +2326,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
     setSignInMethod: (method: LoginType) => {
       set({ signInMethod: method });
+    },
+
+    setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => {
+      set({ hasTriggeredAppOpenBiometricsLogin: hasTriggered });
     },
   };
 });

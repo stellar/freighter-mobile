@@ -7,50 +7,61 @@ import {
   extractSecurityWarnings,
 } from "services/blockaid/helper";
 
-/**
- * Hook for managing transaction security assessment
- * Extracts security warnings and determines severity level
- */
-export function useTransactionSecurity(
-  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined,
+function getTransactionSecurityWarnings(
+  assessment: ReturnType<typeof assessTransactionSecurity>,
+  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
 ) {
-  const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(transactionScanResult),
-    [transactionScanResult],
+  if (assessment.isUnableToScan) {
+    return [
+      {
+        id: "unable-to-scan",
+        description: assessment.details || "Unable to scan transaction",
+      },
+    ];
+  }
+
+  if (assessment.isMalicious || assessment.isSuspicious) {
+    const warnings = extractSecurityWarnings(scanResult);
+
+    if (Array.isArray(warnings) && warnings.length > 0) {
+      return warnings;
+    }
+  }
+
+  return [];
+}
+
+function getTransactionSecuritySeverity(
+  assessment: ReturnType<typeof assessTransactionSecurity>,
+): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined {
+  if (assessment.isMalicious) return SecurityLevel.MALICIOUS;
+  if (assessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
+  if (assessment.isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
+
+  return undefined;
+}
+
+/**
+ * Function for getting transaction security assessment
+ * Can be called at runtime with scanResult as parameter
+ */
+export function getTransactionSecurity(
+  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
+  overriddenBlockaidResponse?: SecurityLevel | null,
+) {
+  const transactionSecurityAssessment = assessTransactionSecurity(
+    scanResult,
+    overriddenBlockaidResponse,
   );
 
-  const transactionSecurityWarnings = useMemo(() => {
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
-    ) {
-      const warnings = extractSecurityWarnings(transactionScanResult);
+  const transactionSecurityWarnings = getTransactionSecurityWarnings(
+    transactionSecurityAssessment,
+    scanResult,
+  );
 
-      if (warnings.length > 0) {
-        return warnings;
-      }
-    }
-
-    return [];
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    transactionScanResult,
-  ]);
-
-  const transactionSecuritySeverity:
-    | Exclude<SecurityLevel, SecurityLevel.SAFE>
-    | undefined = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-  ]);
+  const transactionSecuritySeverity = getTransactionSecuritySeverity(
+    transactionSecurityAssessment,
+  );
 
   return {
     transactionSecurityAssessment,
@@ -68,6 +79,7 @@ export interface BannerContent {
 export interface UseSendBannerContentParams {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   onSecurityWarningPress: () => void;
@@ -82,6 +94,7 @@ export interface UseSendBannerContentParams {
 export function useSendBannerContent({
   isMalicious,
   isSuspicious,
+  isUnableToScan = false,
   isRequiredMemoMissing = false,
   isMuxedAddressWithoutMemoSupport = false,
   onSecurityWarningPress,
@@ -95,7 +108,8 @@ export function useSendBannerContent({
       isRequiredMemoMissing ||
       isMalicious ||
       isSuspicious ||
-      isMuxedAddressWithoutMemoSupport;
+      isMuxedAddressWithoutMemoSupport ||
+      isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
       return undefined;
@@ -136,12 +150,21 @@ export function useSendBannerContent({
       };
     }
 
+    if (isUnableToScan && onSecurityWarningPress) {
+      return {
+        text: t("securityWarning.proceedWithCaution"),
+        variant: "warning" as const,
+        onPress: onSecurityWarningPress,
+      };
+    }
+
     return undefined;
   }, [
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
     isMuxedAddressWithoutMemoSupport,
+    isUnableToScan,
     t,
     onSecurityWarningPress,
     onMemoMissingPress,

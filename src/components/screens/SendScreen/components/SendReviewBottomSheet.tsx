@@ -163,6 +163,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * - When a required memo is missing
    * - When the transaction is flagged as malicious
    * - When the transaction is flagged as suspicious
+   * - When the transaction is unable to scan
    * Includes a call-to-action button to add the required memo
    *
    * @returns {JSX.Element | null} Warning banner or null if no warning needed
@@ -298,7 +299,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             )}
           {type === SendType.Collectible && selectedCollectible && (
             <View className="w-full flex-row items-center gap-[16px]">
-              <View className="w-[40px] h-[40px] rounded-2xl bg-background-tertiary p-1">
+              <View className="w-[40px] h-[40px] rounded-[8px] bg-background-tertiary overflow-hidden">
                 <CollectibleImage
                   imageUri={selectedCollectible?.image}
                   placeholderIconSize={25}
@@ -353,6 +354,7 @@ type SendReviewFooterProps = {
   isMalicious?: boolean;
   isValidatingMemo?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
 };
@@ -370,12 +372,16 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isMalicious,
       isValidatingMemo,
       isSuspicious,
+      isUnableToScan,
       isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
     } = props;
 
     const isTrusted =
-      !isMalicious && !isSuspicious && !isMuxedAddressWithoutMemoSupport;
+      !isMalicious &&
+      !isSuspicious &&
+      !isUnableToScan &&
+      !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
 
@@ -439,7 +445,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious}
+            tertiary={isSuspicious && !isUnableToScan}
             destructive={!isTrusted}
             secondary={isTrusted}
             isFullWidth
@@ -462,7 +468,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           isLoading={isLoading}
           disabled={isDisabled}
           variant={
-            isMalicious || isMuxedAddressWithoutMemoSupport
+            isMalicious || isMuxedAddressWithoutMemoSupport || isUnableToScan
               ? "error"
               : "secondary"
           }
@@ -490,6 +496,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isTrusted,
       isSuspicious,
       isMalicious,
+      isUnableToScan,
       isMuxedAddressWithoutMemoSupport,
       onCancel,
       isRequiredMemoMissing,

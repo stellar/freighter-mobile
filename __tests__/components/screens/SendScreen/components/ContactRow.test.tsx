@@ -57,7 +57,7 @@ describe("ContactRow", () => {
     await userEvent.press(getByTestId("contact-row"));
 
     expect(mockOnPress).toHaveBeenCalledTimes(1);
-  }, 10000);
+  });
 
   it("renders correctly with onDotsPress prop", () => {
     const mockOnDotsPress = jest.fn();

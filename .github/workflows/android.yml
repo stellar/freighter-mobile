@@ -8,8 +8,8 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      flavor:
-        description: The Android flavor that will be built (optional)
+      buildEnv:
+        description: The Android env to be built (optional)
         type: choice
         default: ""
         options:
@@ -17,12 +17,19 @@ on:
           - dev
           - prod
       upload_to_google_play:
-        description: Upload app to Google Play
+        description: Upload build to Google Play
         type: choice
         default: "yes"
         options:
           - "yes"
           - "no"
+      release_notes:
+        description: Google Play release notes (optional)
+        type: string
+        default: ""
+  schedule:
+    # Runs every day at midnight PST/PDT time (8am UTC/GMT)
+    - cron: "0 8 * * *"
 
 concurrency:
   group:
@@ -31,22 +38,25 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  RUBY_VERSION: 3.0.0
+  RUBY_VERSION: 3.1.4
   JAVA_VERSION: "17"
   SKIP_COCOAPODS: "yes"
 
-  # Google Play Console API (for upload_to_play_store)
+  # Google Play Console API configuration (for upload_to_play_store)
   GOOGLE_JSON_SECRET_CONTENT: ${{ secrets.GOOGLE_JSON_SECRET_CONTENT }}
 
-  # Android Keystores (for create_keystore_file)
+  # Android Keystores configuration (for create_keystore_file)
   ANDROID_DEV_KEYSTORE_CONTENT: ${{ secrets.ANDROID_DEV_KEYSTORE_CONTENT }}
   ANDROID_PROD_KEYSTORE_CONTENT: ${{ secrets.ANDROID_PROD_KEYSTORE_CONTENT }}
 
   # Android Keystore Passwords and Aliases (for build.gradle)
   ANDROID_DEV_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
-  ANDROID_DEV_KEYSTORE_ALIAS: ${{ secrets.ANDROID_DEV_KEYSTORE_ALIAS }}
+  ANDROID_DEV_KEYSTORE_ALIAS: ${{ vars.ANDROID_DEV_KEYSTORE_ALIAS }}
   ANDROID_PROD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_PROD_KEYSTORE_PASSWORD }}
-  ANDROID_PROD_KEYSTORE_ALIAS: ${{ secrets.ANDROID_PROD_KEYSTORE_ALIAS }}
+  ANDROID_PROD_KEYSTORE_ALIAS: ${{ vars.ANDROID_PROD_KEYSTORE_ALIAS }}
+
+  # Gradle clean configuration
+  FORCE_GRADLE_CLEAN: ${{ vars.FORCE_GRADLE_CLEAN }}
 
   # Sentry configuration
   SENTRY_PROPERTIES_CONTENT: ${{ secrets.SENTRY_PROPERTIES_CONTENT }}
@@ -58,41 +68,62 @@ env:
     ${{ secrets.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY }}
 
   # Backend URLs
-  FREIGHTER_BACKEND_V1_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V1_PROD_URL }}
-  FREIGHTER_BACKEND_V1_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V1_STG_URL }}
-  FREIGHTER_BACKEND_V1_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V1_DEV_URL }}
-  FREIGHTER_BACKEND_V2_PROD_URL: ${{ secrets.FREIGHTER_BACKEND_V2_PROD_URL }}
-  FREIGHTER_BACKEND_V2_STG_URL: ${{ secrets.FREIGHTER_BACKEND_V2_STG_URL }}
-  FREIGHTER_BACKEND_V2_DEV_URL: ${{ secrets.FREIGHTER_BACKEND_V2_DEV_URL }}
+  FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+  FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+  FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_DEV_URL }}
+  FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+  FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+  FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_DEV_URL }}
 
   # Wallet Kit Configuration (Production)
   WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_PROD }}
-  WALLET_KIT_MT_NAME_PROD: ${{ secrets.WALLET_KIT_MT_NAME_PROD }}
-  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_PROD }}
-  WALLET_KIT_MT_URL_PROD: ${{ secrets.WALLET_KIT_MT_URL_PROD }}
-  WALLET_KIT_MT_ICON_PROD: ${{ secrets.WALLET_KIT_MT_ICON_PROD }}
+  WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_PROD }}
+  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_PROD }}
+  WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_PROD }}
+  WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_PROD }}
   WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
-    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
 
   # Wallet Kit Configuration (Development)
   WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
-  WALLET_KIT_MT_NAME_DEV: ${{ secrets.WALLET_KIT_MT_NAME_DEV }}
-  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ secrets.WALLET_KIT_MT_DESCRIPTION_DEV }}
-  WALLET_KIT_MT_URL_DEV: ${{ secrets.WALLET_KIT_MT_URL_DEV }}
-  WALLET_KIT_MT_ICON_DEV: ${{ secrets.WALLET_KIT_MT_ICON_DEV }}
+  WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+  WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+  WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
   WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
-    ${{ secrets.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
 
 jobs:
+  # Scheduled nightly builds should not overwrite the dev build
+  # when a release candidate branch is active (release/v*).
+  check_release_branch:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check for active release branch
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Active release branch detected. Skipping scheduled daily dev build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check_release_branch
+    if: needs.check_release_branch.outputs.skip == 'false'
     name: Build Android
     runs-on: "ubuntu-latest-16-cores"
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Make scripts executable
-        run: find scripts -type f -exec chmod +x {} \;
-
       - name: Set ref
         run: |
           if [[ "${{ github.event.inputs.ref_name }}" != "" ]]; then
@@ -105,20 +136,40 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
       - name: Set env
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
-          export ANDROID_FLAVOR="${{ github.event.inputs.flavor }}"
+          # If the workflow is triggered by a scheduled event, always upload to Google Play.
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "UPLOAD_TO_GOOGLE_PLAY=yes" >> $GITHUB_ENV
+          else
+            echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
+          fi
+
+          # Translate buildEnv input to Android flavor
+          if [[ "${{ github.event.inputs.buildEnv }}" == "prod" ]]; then
+            export ANDROID_FLAVOR="prod"
+          else
+            export ANDROID_FLAVOR="dev"
+          fi
           ./scripts/gh-android-env >> $GITHUB_ENV
 
+      - name: Generate release notes
+        env:
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes || '' }}
+        run: scripts/generate-release-notes.sh
+
       - name: Decode and save sentry.properties
-        run: |
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode > ./android/sentry.properties
+        run:
+          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          ./android/sentry.properties
 
       # Most of the vars below are set on the ./scripts/gh-android-env script.
       - name: Debug info
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}"
+          echo "UPLOAD_TO_GOOGLE_PLAY=${UPLOAD_TO_GOOGLE_PLAY}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
           echo "REF_NAME=${REF_NAME}"
           echo "APP_VERSION=${APP_VERSION}"
@@ -156,13 +207,14 @@ jobs:
           distribution: zulu
           cache: gradle
 
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
       - name: Run Yarn Install
-        run: |
-          yarn install --frozen-lockfile --immutable
+        run: yarn install --frozen-lockfile --immutable
 
       - name: Run Post Install
-        run: |
-          yarn postinstall
+        run: yarn postinstall
 
       - name: Build and Distribute Application
         id: fastlane

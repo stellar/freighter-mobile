@@ -3,6 +3,7 @@ import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
+import useKeyboardVisible from "hooks/useKeyboardVisible";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
@@ -31,6 +32,7 @@ interface StyledViewProps {
     bottom?: boolean;
     left?: boolean;
   };
+  $isKeyboardVisible?: boolean;
 }
 
 const StyledSafeAreaView = styled.View<StyledViewProps>`
@@ -45,9 +47,16 @@ const StyledSafeAreaView = styled.View<StyledViewProps>`
     if (!$insetsConfig?.right) return 0;
     return $insets.right + pxValue(DEFAULT_PADDING);
   }}px;
-  padding-bottom: ${({ $insets, $insetsConfig }: StyledViewProps) => {
+  padding-bottom: ${({
+    $insets,
+    $insetsConfig,
+    $isKeyboardVisible,
+  }: StyledViewProps) => {
     if (!$insetsConfig?.bottom) return 0;
-    return $insets.bottom + pxValue(DEFAULT_PADDING);
+    // Use fixed DEFAULT_PADDING when keyboard is visible for consistent spacing across platforms
+    return $isKeyboardVisible
+      ? pxValue(DEFAULT_PADDING)
+      : $insets.bottom + pxValue(DEFAULT_PADDING);
   }}px;
   padding-left: ${({ $insets, $insetsConfig }: StyledViewProps) => {
     if (!$insetsConfig?.left) return 0;
@@ -76,6 +85,7 @@ export const BaseLayout = ({
   insets = DEFAULT_INSETS,
 }: BaseLayoutProps) => {
   const safeAreaInsets = useSafeAreaInsets();
+  const isKeyboardVisible = useKeyboardVisible();
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
 
   // Merge provided insets with defaults to maintain default values for unspecified props
@@ -88,6 +98,7 @@ export const BaseLayout = ({
           $insets={safeAreaInsets}
           $backgroundColor={backgroundColor}
           $insetsConfig={mergedInsets}
+          $isKeyboardVisible={isKeyboardVisible}
         >
           {children}
         </Container>
@@ -100,6 +111,7 @@ export const BaseLayout = ({
       $insets={safeAreaInsets}
       $backgroundColor={backgroundColor}
       $insetsConfig={mergedInsets}
+      $isKeyboardVisible={isKeyboardVisible}
     >
       {children}
     </Container>

@@ -12,6 +12,8 @@
 
 # frozen_string_literal: true
 
+require "fileutils"
+
 opt_out_usage
 
 default_platform(:android)
@@ -40,25 +42,36 @@ def create_keystore_file(env)
   File.chmod(0o600, key_file)
 end
 
-def increment_version_code(gradle_file_path)
-  file_path = File.join(Dir.pwd, gradle_file_path)
-  contents = File.read(file_path)
-  
-  # Find and increment the versionCode
-  contents.gsub!(/versionCode\s+(\d+)/) do |match|
-    current_version = $1.to_i
-    new_version = current_version + 1
-    UI.success "📱 Incrementing versionCode: #{current_version} → #{new_version}"
-    "versionCode #{new_version}"
-  end
-  
-  File.write(file_path, contents)
-end
-
 def replace_in_file(file, find:, replace:)
   contents = File.read(file)
   contents.gsub!(find, replace)
   File.open(file, "w") {|io| io << contents }
+end
+
+def write_android_changelog(notes)
+  changelog_dir = File.expand_path("metadata/android/en-US/changelogs", __dir__)
+  FileUtils.mkdir_p(changelog_dir)
+
+  default_path = File.join(changelog_dir, "default.txt")
+  File.write(default_path, notes)
+end
+
+def release_notes
+  return @release_notes if defined?(@release_notes)
+
+  notes = ENV.fetch("RELEASE_NOTES") { UI.user_error!("RELEASE_NOTES env variable is required but missing or empty") }
+  UI.user_error!("RELEASE_NOTES env variable cannot be empty") if notes.to_s.strip.empty?
+
+  @release_notes = notes
+end
+
+def truncated_release_notes(max_length: nil)
+  notes = release_notes
+  return notes if max_length.nil? || notes.length <= max_length
+
+  ellipsis = "…"
+  truncated = notes[0, max_length - ellipsis.length]
+  "#{truncated}#{ellipsis}"
 end
 
 def testflight?
@@ -74,9 +87,14 @@ platform :ios do
     setup_ci
     
     build_version = ENV.fetch("BUILD_VERSION")
-    replace_in_file "../ios/freighter-mobile.xcodeproj/project.pbxproj",
-                    find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
-                    replace: "CURRENT_PROJECT_VERSION = #{build_version}"
+
+    UI.message "🔄 Setting build version: #{build_version}"
+
+    replace_in_file(
+      "../ios/freighter-mobile.xcodeproj/project.pbxproj",
+      find: /CURRENT_PROJECT_VERSION = [0-9a-z]*/i,
+      replace: "CURRENT_PROJECT_VERSION = #{build_version}"
+    )
 
     app_store_connect_api_key(
       key_id: ENV.fetch("APPLE_CONNECT_KEY_ID") { raise "APPLE_CONNECT_KEY_ID environment variable is required" },
@@ -94,12 +112,17 @@ platform :ios do
       git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
       git_branch: "main",
       verbose: false
-    ) 
+    )
   end
 
   lane :upload_build do
     if testflight?
-      upload_to_testflight(skip_waiting_for_build_processing: true)
+      notes = release_notes
+      UI.message "📝 Using release notes for TestFlight:\n#{notes}"
+      upload_to_testflight(
+        skip_waiting_for_build_processing: true,
+        changelog: notes
+      )
     else
       UI.important "⚠️  Not uploading build to Apple Testflight"
     end
@@ -109,7 +132,9 @@ platform :ios do
   lane :dev do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
+      export_method: "app-store",
       scheme: "freighter-mobile-dev",
+      configuration: "Release",
       buildlog_path: "/tmp/build",
       output_directory: "/tmp/build",
       output_name: "Freighter-Dev"
@@ -122,7 +147,9 @@ platform :ios do
   lane :prod do
     build_app(
       workspace: "ios/freighter-mobile.xcworkspace",
+      export_method: "app-store",
       scheme: "freighter-mobile",
+      configuration: "Release",
       buildlog_path: "/tmp/build",
       output_directory: "/tmp/build",
       output_name: "Freighter"
@@ -134,15 +161,35 @@ end
 
 platform :android do
   before_all do
-    # Deep clean gradle build artifacts
-    UI.message "🧹 Performing deep Gradle clean..."
-    sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    # Gradle clean in CI environment shouldn't be needed
+    # so leaving it here as an option for local testing.
+    if ENV.fetch("FORCE_GRADLE_CLEAN") == "1"
+      UI.message "🧹 Performing deep Gradle clean..."
+      sh("cd .. && yarn gradle-clean") rescue UI.error("Clean failed, continuing anyway...")
+    else
+      UI.message "⏩ Skipping deep Gradle clean (default)"
+    end
+
+    build_version = ENV.fetch("BUILD_VERSION")
+    
+    UI.message "🔄 Setting build version: #{build_version}"
+
+    replace_in_file(
+      "../android/app/build.gradle",
+      find: /versionCode\s+\d+/,
+      replace: "versionCode #{build_version}"
+    )
 
     create_json_secret_file
   end
 
   lane :upload_build do
     if google_play?
+      # Google Play release notes are limited to around 500 characters
+      # so let's truncate them to 450 characters to prevent upload errors.
+      display_notes = truncated_release_notes(max_length: 450)
+      UI.message "📝 Using release notes for Google Play (truncated to 450 chars):\n#{display_notes}"
+      write_android_changelog(display_notes)
       upload_to_play_store(
         track: "internal",
         track_promote_to: "internal"

@@ -17,9 +17,10 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
@@ -39,14 +40,14 @@ import {
 } from "services/blockaid/helper";
 
 type SwapReviewBottomSheetProps = {
-  onBannerPress?: () => void;
+  onSecurityWarningPress?: () => void;
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
   sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
   destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
-  onBannerPress,
+  onSecurityWarningPress,
   transactionScanResult,
   sourceTokenScanResult,
   destTokenScanResult,
@@ -55,6 +56,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { overriddenBlockaidResponse } = useDebugStore();
 
   const {
     sourceAmount,
@@ -145,14 +147,33 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const publicKey = account?.publicKey;
 
+  const transactionSecurityAssessment = assessTransactionSecurity(
+    transactionScanResult,
+    overriddenBlockaidResponse,
+  );
+  const sourceSecurityAssessment = assessTokenSecurity(
+    sourceTokenScanResult,
+    overriddenBlockaidResponse,
+  );
+  const destSecurityAssessment = assessTokenSecurity(
+    destTokenScanResult,
+    overriddenBlockaidResponse,
+  );
+
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
-    assessTransactionSecurity(transactionScanResult);
+    transactionSecurityAssessment;
   const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
-    assessTokenSecurity(sourceTokenScanResult);
+    sourceSecurityAssessment;
   const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
-    assessTokenSecurity(destTokenScanResult);
+    destSecurityAssessment;
+
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
+  const isUnableToScanToken =
+    (sourceSecurityAssessment.isUnableToScan &&
+      sourceTokenId !== NATIVE_TOKEN_CODE) ||
+    (destSecurityAssessment.isUnableToScan &&
+      destinationTokenId !== NATIVE_TOKEN_CODE);
 
   const bannerText = useMemo(() => {
     if (isTxMalicious) {
@@ -171,6 +192,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       return t("transactionAmountScreen.errors.suspiciousAsset");
     }
 
+    if (isUnableToScanToken) {
+      return t("securityWarning.proceedWithCaution");
+    }
+
     return t("transactionAmountScreen.errors.malicious");
   }, [
     t,
@@ -180,6 +205,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     isSourceMalicious,
     isDestSuspicious,
     isSourceSuspicious,
+    isUnableToScanToken,
   ]);
 
   return (
@@ -250,12 +276,12 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      {(isMalicious || isSuspicious) && (
+      {(isMalicious || isSuspicious || isUnableToScanToken) && (
         <Banner
           className="mt-[16px]"
-          variant={isSuspicious ? "warning" : "error"}
+          variant={isSuspicious || isUnableToScanToken ? "warning" : "error"}
           text={bannerText}
-          onPress={onBannerPress}
+          onPress={onSecurityWarningPress}
         />
       )}
 
@@ -340,6 +366,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 type SwapReviewFooterProps = {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isUnableToScanToken?: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   isBuilding?: boolean;
@@ -355,6 +382,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
     const {
       isMalicious,
       isSuspicious,
+      isUnableToScanToken = false,
       onCancel,
       onConfirm,
       isBuilding = false,
@@ -397,8 +425,8 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
             tertiary={isSuspicious}
+            secondary={isUnableToScanToken || isTrusted}
             destructive={isMalicious}
-            secondary={isTrusted}
             xl
             isFullWidth
             onPress={onCancel}
@@ -408,7 +436,13 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         </View>
       );
 
-      const confirmAnywayButton = (
+      const confirmAnywayButton = isUnableToScanToken ? (
+        <View className="flex-1">
+          <Button xl isFullWidth onPress={onConfirm} variant="tertiary">
+            {t("transactionAmountScreen.confirmAnyway")}
+          </Button>
+        </View>
+      ) : (
         <TextButton
           text={t("transactionAmountScreen.confirmAnyway")}
           onPress={onConfirm}
@@ -418,10 +452,12 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
       if (!isTrusted) {
         return (
-          <>
+          <View
+            className={`${isUnableToScanToken ? "flex-row gap-3" : "gap-3"}`}
+          >
             {cancelButton}
             {confirmAnywayButton}
-          </>
+          </View>
         );
       }
 

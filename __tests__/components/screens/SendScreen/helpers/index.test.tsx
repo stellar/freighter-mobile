@@ -2,7 +2,7 @@ import Blockaid from "@blockaid/client";
 import { renderHook } from "@testing-library/react-native";
 import {
   useSendBannerContent,
-  useTransactionSecurity,
+  getTransactionSecurity,
 } from "components/screens/SendScreen/helpers";
 import { SecurityLevel } from "services/blockaid/constants";
 import * as blockaidHelper from "services/blockaid/helper";
@@ -28,7 +28,7 @@ describe("SendScreen Helpers", () => {
     jest.clearAllMocks();
   });
 
-  describe("useTransactionSecurity", () => {
+  describe("getTransactionSecurity", () => {
     it("should return security assessment, warnings, and severity", () => {
       const mockScanResult = {} as Blockaid.StellarTransactionScanResponse;
 
@@ -36,26 +36,26 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.MALICIOUS,
         isMalicious: true,
         isSuspicious: false,
+        isUnableToScan: false,
+        details: undefined,
       });
 
       mockExtractSecurityWarnings.mockReturnValue([
         { id: "test-warning", description: "Test warning" },
       ]);
 
-      const { result } = renderHook(() =>
-        useTransactionSecurity(mockScanResult),
-      );
+      const result = getTransactionSecurity(mockScanResult);
 
-      expect(result.current.transactionSecurityAssessment).toEqual({
+      expect(result.transactionSecurityAssessment).toEqual({
         level: SecurityLevel.MALICIOUS,
         isMalicious: true,
         isSuspicious: false,
+        isUnableToScan: false,
+        details: undefined,
       });
 
-      expect(result.current.transactionSecurityWarnings).toHaveLength(1);
-      expect(result.current.transactionSecuritySeverity).toBe(
-        SecurityLevel.MALICIOUS,
-      );
+      expect(result.transactionSecurityWarnings).toHaveLength(1);
+      expect(result.transactionSecuritySeverity).toBe(SecurityLevel.MALICIOUS);
     });
 
     it("should return empty warnings when transaction is not malicious or suspicious", () => {
@@ -63,12 +63,14 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.SAFE,
         isMalicious: false,
         isSuspicious: false,
+        isUnableToScan: false,
+        details: undefined,
       });
 
-      const { result } = renderHook(() => useTransactionSecurity(undefined));
+      const result = getTransactionSecurity(undefined);
 
-      expect(result.current.transactionSecurityWarnings).toEqual([]);
-      expect(result.current.transactionSecuritySeverity).toBeUndefined();
+      expect(result.transactionSecurityWarnings).toEqual([]);
+      expect(result.transactionSecuritySeverity).toBeUndefined();
     });
 
     it("should return suspicious severity when transaction is suspicious but not malicious", () => {
@@ -78,20 +80,18 @@ describe("SendScreen Helpers", () => {
         level: SecurityLevel.SUSPICIOUS,
         isMalicious: false,
         isSuspicious: true,
+        isUnableToScan: false,
+        details: undefined,
       });
 
       mockExtractSecurityWarnings.mockReturnValue([
         { id: "suspicious-warning", description: "Suspicious activity" },
       ]);
 
-      const { result } = renderHook(() =>
-        useTransactionSecurity(mockScanResult),
-      );
+      const result = getTransactionSecurity(mockScanResult);
 
-      expect(result.current.transactionSecuritySeverity).toBe(
-        SecurityLevel.SUSPICIOUS,
-      );
-      expect(result.current.transactionSecurityWarnings).toHaveLength(1);
+      expect(result.transactionSecuritySeverity).toBe(SecurityLevel.SUSPICIOUS);
+      expect(result.transactionSecurityWarnings).toHaveLength(1);
     });
   });
 

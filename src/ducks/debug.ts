@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isDev } from "helpers/isEnv";
+import { SecurityLevel } from "services/blockaid/constants";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -8,30 +9,42 @@ interface DebugState {
   overriddenAppVersion: string | null;
   setOverriddenAppVersion: (version: string | null) => void;
   clearOverriddenAppVersion: () => void;
+
+  // Blockaid response override for testing security states in DEV mode
+  overriddenBlockaidResponse: SecurityLevel | null;
+  setOverriddenBlockaidResponse: (response: SecurityLevel | null) => void;
+  clearOverriddenBlockaidResponse: () => void;
 }
 
 const INITIAL_DEBUG_STATE = {
   overriddenAppVersion: null,
+  overriddenBlockaidResponse: null,
 };
 
 export const useDebugStore = create<DebugState>()(
-  isDev
+  isDev || __DEV__
     ? persist(
         (set) => ({
           ...INITIAL_DEBUG_STATE,
           setOverriddenAppVersion: (version: string | null) =>
             set({ overriddenAppVersion: version }),
           clearOverriddenAppVersion: () => set({ overriddenAppVersion: null }),
+          setOverriddenBlockaidResponse: (response: SecurityLevel | null) =>
+            set({ overriddenBlockaidResponse: response }),
+          clearOverriddenBlockaidResponse: () =>
+            set({ overriddenBlockaidResponse: null }),
         }),
         {
           name: "debug-storage",
           storage: createJSONStorage(() => AsyncStorage),
         },
       )
-    : (set) => ({
+    : () => ({
         ...INITIAL_DEBUG_STATE,
-        setOverriddenAppVersion: (version: string | null) =>
-          set({ overriddenAppVersion: version }),
-        clearOverriddenAppVersion: () => set({ overriddenAppVersion: null }),
+        // In production, these functions are no-ops and don't change state
+        setOverriddenAppVersion: () => {},
+        clearOverriddenAppVersion: () => {},
+        setOverriddenBlockaidResponse: () => {},
+        clearOverriddenBlockaidResponse: () => {},
       }),
 );
