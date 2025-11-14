@@ -432,7 +432,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
-        transactionSecurityWarningBottomSheetModalRef.current?.present();
+        reviewBottomSheetModalRef.current?.present();
       }
     },
     [],

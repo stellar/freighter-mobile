@@ -12,6 +12,7 @@ import {
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
+  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -321,13 +322,10 @@ interface BuildPaymentTransactionResult {
   tx: Transaction;
   xdr: string;
   contractId?: string;
-  finalDestination?: string; // The actual destination used (may be muxed if memo was provided)
-  amountInBaseUnits?: string; // Amount in base units (for custom tokens, needed for simulation)
+  finalDestination?: string;
+  amountInBaseUnits?: string;
 }
 
-/**
- * Builds a payment transaction (standard or Soroban)
- */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
@@ -376,91 +374,59 @@ export const buildPaymentTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    // Check if this is a custom token (SorobanBalance with contractId)
     const isCustomToken =
       selectedBalance &&
       "contractId" in selectedBalance &&
       selectedBalance.contractId;
 
     const isToContractAddress = isContractId(recipientAddress);
-
-    // Custom tokens (SorobanBalance) always use Soroban transfer
-    // Recipient being a contract address also uses Soroban transfer
     const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
-
-    // Only add memo for non-Soroban transactions
-    // Don't add memo if recipient is M address (memo is embedded in address)
     const isRecipientMuxed = isMuxedAccount(recipientAddress);
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
 
     if (shouldUseSorobanTransfer) {
-      // Determine contract ID and token
       let contractId: string;
       let token: SdkToken;
 
       if (isCustomToken && selectedBalance.contractId) {
-        // Custom token - use its contractId
         contractId = selectedBalance.contractId;
-        // For custom tokens, we don't need a token object for the operation
-        token = SdkToken.native(); // Placeholder, won't be used
+        token = SdkToken.native();
       } else {
-        // Native token or recipient is contract address
         try {
           token = getTokenForPayment(selectedBalance);
           contractId = token.isNative()
             ? getContractIdForNativeToken(network)
             : recipientAddress;
         } catch (error) {
-          // If getTokenForPayment fails, it might be a custom token
           if (isCustomToken && selectedBalance.contractId) {
             contractId = selectedBalance.contractId;
-            token = SdkToken.native(); // Placeholder
+            token = SdkToken.native();
           } else {
             throw error;
           }
         }
       }
 
-      // Check if contract supports muxed addresses (CAP-0067)
       const contractSupportsMuxed = await checkContractMuxedSupport({
         contractId,
         networkDetails,
       });
 
-      // Get decimals from balance - SorobanBalance always has decimals property
-      // For custom tokens, we must use the actual decimals from the balance
-      // Using wrong decimals would cause incorrect amounts (e.g., 0 decimals token with 7 decimals = 10Mx multiplier)
-      if (
-        !("decimals" in selectedBalance) ||
-        typeof selectedBalance.decimals !== "number"
-      ) {
-        throw new Error(
-          `Missing or invalid decimals for custom token. Contract: ${contractId}`,
-        );
-      }
-      const { decimals } = selectedBalance;
+      const amountInBaseUnits = isCustomToken
+        ? amount
+        : BigNumber(amount).shiftedBy(DEFAULT_DECIMALS).toFixed(0);
 
-      // Convert amount to base units by shifting by decimals
-      // e.g., 1 token with 7 decimals = 10,000,000 base units
-      // e.g., 1 token with 0 decimals = 1 base unit
-      // The amount parameter is in human-readable format (e.g., "1" for 1 token)
-      const amountInBaseUnits = BigNumber(amount)
-        .shiftedBy(decimals)
-        .toFixed(0);
-
-      // Muxed address creation happens at the very last step in buildSorobanTransferOperation
-      // transactionBuilder is mutated in place, so we just need the finalDestination
       const finalDestination = buildSorobanTransferOperation({
         sourceAccount: senderAddress,
-        destinationAddress: recipientAddress, // Pass original recipient, muxing happens here
+        destinationAddress: recipientAddress,
         amount: amountInBaseUnits,
         token,
         transactionBuilder,
         network,
-        memo, // Pass memo to buildSorobanTransferOperation
-        contractSupportsMuxed, // Pass contractSupportsMuxed to buildSorobanTransferOperation
+        memo,
+        contractSupportsMuxed,
       });
 
       const transaction = transactionBuilder.build();
@@ -471,19 +437,13 @@ export const buildPaymentTransaction = async (
         xdr: transactionXDR,
         contractId,
         finalDestination,
-        amountInBaseUnits, // Return amount in base units for simulation
+        amountInBaseUnits,
       };
     }
 
     const token = getTokenForPayment(selectedBalance);
+    const paymentDestination = recipientAddress;
 
-    // For classic payments, use M address directly (like extension does)
-    // Only decompose for createAccount and account loading (which need base G address)
-    const paymentDestination = recipientAddress; // Use M address directly for payment operation
-
-    // Check if destination is funded, but only for XLM transfers
-    // Use base G address for account check (M addresses map to G addresses on network)
-    // Get base address once if recipient is muxed (used for both account check and createAccount)
     const baseAccount = isMuxedAccount(recipientAddress)
       ? getBaseAccount(recipientAddress) || recipientAddress
       : recipientAddress;
@@ -495,15 +455,13 @@ export const buildPaymentTransaction = async (
         const error = e as AxiosError;
 
         if (error.response && error.response.status === 404) {
-          // Ensure the amount is sufficient for account creation
           if (BigNumber(amount).isLessThan(1)) {
             throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
           }
 
-          // For createAccount, use base G address (like extension does)
           transactionBuilder.addOperation(
             Operation.createAccount({
-              destination: baseAccount, // Use base G address for createAccount
+              destination: baseAccount,
               startingBalance: amount,
             }),
           );
@@ -513,7 +471,7 @@ export const buildPaymentTransaction = async (
           return {
             tx: transaction,
             xdr: transaction.toXDR(),
-            finalDestination: recipientAddress, // Keep original M address for tracking
+            finalDestination: recipientAddress,
           };
         }
 
@@ -521,11 +479,9 @@ export const buildPaymentTransaction = async (
       }
     }
 
-    // If account is funded or asset is not XLM, use standard payment
-    // Use M address directly (Stellar SDK supports M addresses in payment operations)
     transactionBuilder.addOperation(
       Operation.payment({
-        destination: paymentDestination, // Use M address directly
+        destination: paymentDestination,
         asset: token,
         amount,
       }),
@@ -536,7 +492,7 @@ export const buildPaymentTransaction = async (
     return {
       tx: transaction,
       xdr: transaction.toXDR(),
-      finalDestination: recipientAddress, // Keep original muxed address for tracking
+      finalDestination: recipientAddress,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -545,9 +501,6 @@ export const buildPaymentTransaction = async (
   }
 };
 
-/**
- * Builds a swap transaction (path payment)
- */
 export const buildSwapTransaction = async (
   params: BuildSwapTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {

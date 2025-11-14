@@ -233,6 +233,7 @@ const SendCollectibleReviewScreen: React.FC<
   const isMuxedAddressWithoutMemoSupport = Boolean(
     isRecipientMuxed && contractSupportsMuxed === false,
   );
+
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
       const security = getTransactionSecurity(

@@ -158,16 +158,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   }, [isBuilding, isRequiredMemoMissing, t, themeColors.text.secondary]);
 
-  /**
-   * Renders a warning banner for the following cases:
-   * - When a required memo is missing
-   * - When the transaction is flagged as malicious
-   * - When the transaction is flagged as suspicious
-   * - When the transaction is unable to scan
-   * Includes a call-to-action button to add the required memo
-   *
-   * @returns {JSX.Element | null} Warning banner or null if no warning needed
-   */
   const renderBanner = () => {
     if (!bannerText) {
       return null;

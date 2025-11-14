@@ -131,19 +131,17 @@ export const submitTx = async (
 ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> => {
   const { network, tx } = input;
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
+  const server = stellarSdkServer(networkUrl);
 
   const transaction =
     typeof tx === "string"
       ? TransactionBuilder.fromXDR(tx, networkPassphrase)
       : tx;
 
-  try {
-    const server = new Horizon.Server(networkUrl, {
-      allowHttp: getIsAllowHttp(networkUrl),
-    });
+  let submittedTx;
 
-    const submittedTx = await server.submitTransaction(transaction);
-    return submittedTx;
+  try {
+    submittedTx = await server.submitTransaction(transaction);
   } catch (e: unknown) {
     if (isHorizonError(e) && e.response.status === 504) {
       // in case of 504, retry with exponential backoff up to max attempts
@@ -159,6 +157,8 @@ export const submitTx = async (
     }
     throw e;
   }
+
+  return submittedTx;
 };
 
 export const getNetworkFees = async (server: Horizon.Server) => {
