@@ -48,9 +48,6 @@ type SendReviewBottomSheetProps = {
    * Typically opens a modal to explain why the memo is required
    */
   onBannerPress?: () => void;
-  isMalicious?: boolean;
-  isSuspicious?: boolean;
-  isUnableToScan?: boolean;
   /**
    * Text to display in the banner
    */
@@ -85,9 +82,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   selectedCollectible,
   isRequiredMemoMissing,
   onBannerPress,
-  isMalicious,
-  isSuspicious,
-  isUnableToScan,
   bannerText,
   bannerVariant,
   signTransactionDetails,
@@ -164,26 +158,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     );
   }, [isBuilding, isRequiredMemoMissing, t, themeColors.text.secondary]);
 
-  /**
-   * Renders a warning banner for the following cases:
-   * - When a required memo is missing
-   * - When the transaction is flagged as malicious
-   * - When the transaction is flagged as suspicious
-   * - When the transaction is unable to scan
-   * Includes a call-to-action button to add the required memo
-   *
-   * @returns {JSX.Element | null} Warning banner or null if no warning needed
-   */
   const renderBanner = () => {
-    if (
-      !isRequiredMemoMissing &&
-      !isMalicious &&
-      !isSuspicious &&
-      !isUnableToScan
-    ) {
-      return null;
-    }
-
     if (!bannerText) {
       return null;
     }
@@ -369,6 +344,8 @@ type SendReviewFooterProps = {
   isMalicious?: boolean;
   isValidatingMemo?: boolean;
   isSuspicious?: boolean;
+  isUnableToScan?: boolean;
+  isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
 };
 
@@ -385,10 +362,16 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isMalicious,
       isValidatingMemo,
       isSuspicious,
+      isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
     } = props;
 
-    const isTrusted = !isMalicious && !isSuspicious;
+    const isTrusted =
+      !isMalicious &&
+      !isSuspicious &&
+      !isUnableToScan &&
+      !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
 
@@ -452,7 +435,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious}
+            tertiary={isSuspicious && !isUnableToScan}
             destructive={!isTrusted}
             secondary={isTrusted}
             isFullWidth
@@ -474,7 +457,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
-          variant={isMalicious ? "error" : "secondary"}
+          variant={
+            isMalicious || isMuxedAddressWithoutMemoSupport || isUnableToScan
+              ? "error"
+              : "secondary"
+          }
         />
       );
 
@@ -499,6 +486,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isTrusted,
       isSuspicious,
       isMalicious,
+      isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       onCancel,
       isRequiredMemoMissing,
       isDisabled,

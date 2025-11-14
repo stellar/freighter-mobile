@@ -25,7 +25,7 @@ import { THEME } from "config/theme";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
 import { formatTokenForDisplay, stroopToXlm } from "helpers/formatAmount";
-import { truncateAddress } from "helpers/stellar";
+import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -73,6 +73,18 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       });
     }
   }, [transactionDetails.xdr, copyToClipboard, t]);
+
+  // Check if destination is a muxed address (M- address)
+  // For payment transactions, check paymentDetails.to
+  // For contract transfers, check contractDetails.transferDetails.to or collectibleTransferDetails.to
+  const destinationAddress =
+    transactionDetails.paymentDetails?.to ||
+    transactionDetails.contractDetails?.transferDetails?.to ||
+    transactionDetails.contractDetails?.collectibleTransferDetails?.to;
+  const isDestinationMuxed = destinationAddress
+    ? isMuxedAccount(destinationAddress)
+    : false;
+
   const detailItems = useMemo(
     () =>
       [
@@ -99,21 +111,24 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
         },
-        {
-          icon: (
-            <Icon.File02 size={16} color={themeColors.foreground.primary} />
-          ),
-          titleComponent: (
-            <Text md secondary color={THEME.colors.text.secondary}>
-              {t("transactionAmountScreen.details.memo")}
-            </Text>
-          ),
-          trailingContent: (
-            <Text md medium secondary={!transactionDetails.memo}>
-              {transactionDetails.memo || t("common.none")}
-            </Text>
-          ),
-        },
+        // Hide memo line if destination is a muxed address (M- address)
+        !isDestinationMuxed
+          ? {
+              icon: (
+                <Icon.File02 size={16} color={themeColors.foreground.primary} />
+              ),
+              titleComponent: (
+                <Text md secondary color={THEME.colors.text.secondary}>
+                  {t("transactionAmountScreen.details.memo")}
+                </Text>
+              ),
+              trailingContent: (
+                <Text md medium secondary={!transactionDetails.memo}>
+                  {transactionDetails.memo || t("common.none")}
+                </Text>
+              ),
+            }
+          : undefined,
         transactionDetails.transactionType === TransactionType.SWAP
           ? {
               icon: <Icon.Divide03 size={16} themeColor="gray" />,
@@ -173,6 +188,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       themeColors.foreground.primary,
       transactionDetails.memo,
       transactionDetails.xdr,
+      isDestinationMuxed,
     ],
   ) as ListItemProps[];
 

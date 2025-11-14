@@ -6,6 +6,7 @@ import { CollectibleImage } from "components/CollectibleImage";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
+import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -25,7 +26,10 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { TransactionContext } from "config/constants";
+import {
+  TransactionContext,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import {
   SEND_PAYMENT_ROUTES,
@@ -40,6 +44,8 @@ import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -124,11 +130,15 @@ const SendCollectibleReviewScreen: React.FC<
   const [isProcessing, setIsProcessing] = useState(false);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const [contractSupportsMuxed, setContractSupportsMuxed] = useState<
+    boolean | null
+  >(null);
   const signTransactionDetails = useSignTransactionDetails({
     xdr: transactionXDR ?? "",
   });
@@ -190,6 +200,39 @@ const SendCollectibleReviewScreen: React.FC<
     return undefined;
   }, [collections, collectionAddress, tokenId]);
 
+  // Check if recipient is M address
+  const isRecipientMuxed = Boolean(
+    recipientAddress && isMuxedAccount(recipientAddress),
+  );
+
+  useEffect(() => {
+    const checkContract = async () => {
+      if (!collectionAddress || !recipientAddress || !network) {
+        setContractSupportsMuxed(null);
+        return;
+      }
+
+      try {
+        const networkDetails = mapNetworkToNetworkDetails(network);
+        const supportsMuxed = await checkContractMuxedSupport({
+          contractId: collectionAddress,
+          networkDetails,
+        });
+        setContractSupportsMuxed(supportsMuxed);
+      } catch (error) {
+        // On error, assume no support for safety
+        setContractSupportsMuxed(false);
+      }
+    };
+
+    checkContract();
+  }, [collectionAddress, recipientAddress, network]);
+
+  // Determine if M address + contract doesn't support muxed
+  const isMuxedAddressWithoutMemoSupport = Boolean(
+    isRecipientMuxed && contractSupportsMuxed === false,
+  );
+
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
       const security = getTransactionSecurity(
@@ -238,7 +281,9 @@ const SendCollectibleReviewScreen: React.FC<
           senderAddress: publicKey,
         });
 
-        if (!xdr) return;
+        if (!xdr) {
+          return;
+        }
 
         scanTransaction(xdr, "internal")
           .then((scanResult) => {
@@ -256,8 +301,8 @@ const SendCollectibleReviewScreen: React.FC<
           });
       } catch (error) {
         logger.error(
-          "TransactionAmountScreen",
-          "Failed to build transaction:",
+          "SendCollectibleReview",
+          "Failed to build collectible transaction",
           error,
         );
       }
@@ -383,6 +428,7 @@ const SendCollectibleReviewScreen: React.FC<
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
     }),
@@ -391,6 +437,7 @@ const SendCollectibleReviewScreen: React.FC<
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       handleTransactionConfirmation,
       isValidatingMemo,
     ],
@@ -452,11 +499,21 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarningBottomSheetModalRef.current?.present();
   }, []);
 
+  const openMuxedAddressWarningBottomSheet = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCancelMuxedAddressWarning = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.dismiss();
+  }, []);
+
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+    isMuxedAddressWithoutMemoSupport,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
+    onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
 
   const handleConfirmAnyway = useCallback(() => {
@@ -551,9 +608,6 @@ const SendCollectibleReviewScreen: React.FC<
             onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={false}
-            isMalicious={transactionSecurityAssessment.isMalicious}
-            isSuspicious={transactionSecurityAssessment.isSuspicious}
-            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
@@ -606,6 +660,16 @@ const SendCollectibleReviewScreen: React.FC<
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={muxedAddressInfoBottomSheetModalRef}
+        handleCloseModal={handleCancelMuxedAddressWarning}
+        customContent={
+          <MuxedAddressWarningBottomSheet
+            onCancel={handleCancelMuxedAddressWarning}
+            onClose={handleCancelMuxedAddressWarning}
           />
         }
       />

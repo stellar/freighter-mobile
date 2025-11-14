@@ -179,8 +179,13 @@ export const getTokenInvocationArgs = (
   };
 };
 
-const isSorobanOp = (operation: Horizon.ServerApi.OperationRecord) =>
-  SOROBAN_OPERATION_TYPES.includes(operation.type);
+export const isSorobanOp = (
+  operation: Horizon.ServerApi.OperationRecord | Operation,
+) => SOROBAN_OPERATION_TYPES.includes(operation.type);
+
+export const hasSorobanOperations = (
+  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+) => transaction.operations.some((operation) => isSorobanOp(operation));
 
 export const getAttrsFromSorobanHorizonOp = (
   operation: Horizon.ServerApi.OperationRecord,

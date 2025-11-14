@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BigNumber } from "bignumber.js";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
@@ -10,7 +11,10 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import {
+  isContractId,
+  formatTokenForDisplay as formatSorobanTokenAmount,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -39,8 +43,24 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const tokenBalance = pricedBalances[tokenId];
   const isSorobanToken = isContractId(tokenId);
+
+  // For Soroban tokens, balances are stored as SYMBOL:CONTRACTID, so we need to find by contractId
+  let tokenBalance: (typeof pricedBalances)[string] | undefined;
+  if (isSorobanToken) {
+    // Find balance by matching contractId
+    tokenBalance = Object.values(pricedBalances).find(
+      (balance) => "contractId" in balance && balance.contractId === tokenId,
+    );
+  } else {
+    // For classic tokens, use the tokenId directly
+    tokenBalance = pricedBalances[tokenId];
+  }
+
+  // Early return if tokenBalance is not available
+  if (!tokenBalance) {
+    return null;
+  }
 
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
     if (tokenId === "native") {
@@ -106,13 +126,55 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     );
   };
 
-  const renderBalanceInfo = () => (
-    <Display xs medium>
-      {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
-    </Display>
-  );
+  const renderBalanceInfo = () => {
+    const amountToDisplay = tokenBalance.total;
+    // For Soroban tokens, convert from base units to human-readable format
+    if (
+      "decimals" in tokenBalance &&
+      typeof tokenBalance.decimals === "number" &&
+      tokenBalance.decimals > 0
+    ) {
+      const humanReadableAmount = formatSorobanTokenAmount(
+        new BigNumber(amountToDisplay),
+        tokenBalance.decimals,
+      );
+      return (
+        <Display xs medium>
+          {formatTokenForDisplay(humanReadableAmount, tokenBalance.tokenCode)}
+        </Display>
+      );
+    }
+    return (
+      <Display xs medium>
+        {formatTokenForDisplay(amountToDisplay, tokenBalance.tokenCode)}
+      </Display>
+    );
+  };
 
   const renderBalanceDetails = () => {
+    const amountToDisplay = tokenBalance.total;
+    // For Soroban tokens, convert from base units to human-readable format
+    let balanceDisplay: string;
+    if (
+      "decimals" in tokenBalance &&
+      typeof tokenBalance.decimals === "number" &&
+      tokenBalance.decimals > 0
+    ) {
+      const humanReadableAmount = formatSorobanTokenAmount(
+        new BigNumber(amountToDisplay),
+        tokenBalance.decimals,
+      );
+      balanceDisplay = formatTokenForDisplay(
+        humanReadableAmount,
+        tokenBalance.tokenCode,
+      );
+    } else {
+      balanceDisplay = formatTokenForDisplay(
+        amountToDisplay,
+        tokenBalance.tokenCode,
+      );
+    }
+
     const baseRows = [
       {
         titleComponent: (
@@ -122,7 +184,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         ),
         trailingContent: (
           <Text md secondary color={THEME.colors.text.primary}>
-            {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
+            {balanceDisplay}
           </Text>
         ),
       },

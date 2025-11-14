@@ -6,6 +6,7 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
+import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
@@ -31,6 +32,7 @@ import {
   FIAT_DECIMALS,
   NATIVE_TOKEN_CODE,
   TransactionContext,
+  mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -48,6 +50,8 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
+import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -178,11 +182,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const [contractSupportsMuxed, setContractSupportsMuxed] = useState<
+    boolean | null
+  >(null);
   const signTransactionDetails = useSignTransactionDetails({
     xdr: transactionXDR ?? "",
   });
@@ -231,6 +239,58 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
+  );
+
+  // Check if selected balance is a custom token (SorobanBalance with contractId)
+  const isCustomToken = Boolean(
+    selectedBalance &&
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId),
+  );
+
+  // Check if recipient is M address
+  const isRecipientMuxed = Boolean(
+    recipientAddress && isMuxedAccount(recipientAddress),
+  );
+
+  const contractId = useMemo(() => {
+    if (
+      selectedBalance &&
+      "contractId" in selectedBalance &&
+      selectedBalance.contractId
+    ) {
+      return selectedBalance.contractId;
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBalance?.id, selectedBalance]);
+
+  useEffect(() => {
+    const checkContract = async () => {
+      if (!isCustomToken || !recipientAddress || !network || !contractId) {
+        setContractSupportsMuxed(null);
+        return;
+      }
+
+      try {
+        const networkDetails = mapNetworkToNetworkDetails(network);
+        const supportsMuxed = await checkContractMuxedSupport({
+          contractId,
+          networkDetails,
+        });
+        setContractSupportsMuxed(supportsMuxed);
+      } catch (error) {
+        // On error, assume no support for safety
+        setContractSupportsMuxed(false);
+      }
+    };
+
+    checkContract();
+  }, [isCustomToken, recipientAddress, network, contractId]);
+
+  // Determine if M address + contract doesn't support muxed
+  const isMuxedAddressWithoutMemoSupport = Boolean(
+    isRecipientMuxed && isCustomToken && contractSupportsMuxed === false,
   );
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
@@ -370,7 +430,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
-        transactionSecurityWarningBottomSheetModalRef.current?.present();
+        reviewBottomSheetModalRef.current?.present();
       }
     },
     [],
@@ -546,6 +606,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isRequiredMemoMissing,
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
+      isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
     }),
@@ -554,6 +616,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isRequiredMemoMissing,
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
+      transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       onConfirmAddMemo,
       handleTransactionConfirmation,
       isValidatingMemo,
@@ -602,13 +666,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
 
+  const openMuxedAddressWarningBottomSheet = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCancelMuxedAddressWarning = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.dismiss();
+  }, []);
+
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
+    isMuxedAddressWithoutMemoSupport,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
+    onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
 
   if (isProcessing) {
@@ -784,9 +858,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
-            isMalicious={transactionSecurityAssessment.isMalicious}
-            isSuspicious={transactionSecurityAssessment.isSuspicious}
-            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
@@ -839,6 +910,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={muxedAddressInfoBottomSheetModalRef}
+        handleCloseModal={handleCancelMuxedAddressWarning}
+        customContent={
+          <MuxedAddressWarningBottomSheet
+            onCancel={handleCancelMuxedAddressWarning}
+            onClose={handleCancelMuxedAddressWarning}
           />
         }
       />
