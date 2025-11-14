@@ -8,17 +8,18 @@ import {
   NativeBalance,
 } from "config/types";
 import { useTokenIconsStore } from "ducks/tokenIcons";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getIconUrl } from "helpers/getIconUrl";
-import {
-  fetchVerifiedTokens,
-  TokenListReponseItem,
-} from "services/verified-token-lists";
+import { TokenListReponseItem } from "services/verified-token-lists";
 
 // Mock verified tokens service
 jest.mock("services/verified-token-lists", () => ({
   fetchVerifiedTokens: jest.fn(),
   TOKEN_LISTS_API_SERVICES: {},
 }));
+
+// Mock the verified tokens store
+jest.mock("ducks/verifiedTokens");
 
 // Mock the getIconUrl helper
 jest.mock("helpers/getIconUrl", () => ({
@@ -27,9 +28,7 @@ jest.mock("helpers/getIconUrl", () => ({
 
 describe("tokenIcons store", () => {
   const mockGetIconUrl = getIconUrl as jest.MockedFunction<typeof getIconUrl>;
-  const mockFetchVerifiedTokens = fetchVerifiedTokens as jest.MockedFunction<
-    typeof fetchVerifiedTokens
-  >;
+  const mockGetVerifiedTokens = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,6 +37,10 @@ describe("tokenIcons store", () => {
       icons: {},
       lastRefreshed: null,
     });
+    // Reset verified tokens store mock
+    (useVerifiedTokensStore.getState as jest.Mock) = jest.fn(() => ({
+      getVerifiedTokens: mockGetVerifiedTokens,
+    }));
   });
 
   describe("fetchIconUrl", () => {
@@ -246,20 +249,27 @@ describe("tokenIcons store", () => {
 
   describe("cacheTokenListIcons", () => {
     it("should fetch verified tokens and cache their icons", async () => {
-      mockFetchVerifiedTokens.mockResolvedValue([
+      const mockVerifiedTokens: TokenListReponseItem[] = [
         {
           code: "USDC",
           issuer: "GA123",
           icon: "https://example.com/usdc.png",
           contract: "C123",
+          domain: "example.com",
+          decimals: 7,
         },
         {
           code: "BTC",
           issuer: "GB456",
           icon: "https://example.com/btc.png",
+          domain: "example.com",
+          decimals: 7,
+          contract: "",
           // no contract for BTC
         },
-      ] as TokenListReponseItem[]);
+      ];
+
+      mockGetVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
 
       await useTokenIconsStore
         .getState()
@@ -267,8 +277,7 @@ describe("tokenIcons store", () => {
 
       const { icons } = useTokenIconsStore.getState();
 
-      expect(mockFetchVerifiedTokens).toHaveBeenCalledWith({
-        tokenListsApiServices: expect.anything(),
+      expect(mockGetVerifiedTokens).toHaveBeenCalledWith({
         network: NETWORKS.PUBLIC,
       });
 
@@ -289,10 +298,14 @@ describe("tokenIcons store", () => {
     });
 
     it("should ignore tokens without icon field", async () => {
-      mockFetchVerifiedTokens.mockResolvedValue([
+      mockGetVerifiedTokens.mockResolvedValue([
         {
           code: "NOICON",
           issuer: "GA999",
+          contract: "",
+          domain: "example.com",
+          icon: "",
+          decimals: 7,
           // no icon
         },
       ] as TokenListReponseItem[]);

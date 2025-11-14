@@ -1,8 +1,5 @@
 import { NETWORKS } from "config/constants";
-import {
-  TOKEN_LISTS_API_SERVICES,
-  fetchVerifiedTokens,
-} from "services/verified-token-lists";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 
 /**
  * Retrieves the icon URL for a given asset from verified Stellar token lists.
@@ -36,10 +33,8 @@ export const getIconUrlFromTokensLists = async ({
   network: NETWORKS;
 }) => {
   const { contractId, issuer } = asset;
-  const verifiedTokens = await fetchVerifiedTokens({
-    tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
-    network,
-  });
+  const { getVerifiedTokens } = useVerifiedTokensStore.getState();
+  const verifiedTokens = await getVerifiedTokens({ network });
 
   const match = verifiedTokens.find(
     (token) =>

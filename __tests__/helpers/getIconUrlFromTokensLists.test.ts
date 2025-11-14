@@ -1,16 +1,11 @@
 import { NETWORKS } from "config/constants";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getIconUrlFromTokensLists } from "helpers/getIconUrlFromTokensLists";
-import {
-  fetchVerifiedTokens,
-  TOKEN_LISTS_API_SERVICES,
-} from "services/verified-token-lists";
 
-jest.mock("services/verified-token-lists", () => ({
-  fetchVerifiedTokens: jest.fn(),
-  TOKEN_LISTS_API_SERVICES: {},
-}));
+jest.mock("ducks/verifiedTokens");
 
 describe("getIconUrlFromTokensLists", () => {
+  const mockGetVerifiedTokens = jest.fn();
   const mockTokens = [
     { contract: "ABC123", issuer: "issuer1", icon: "icon-url-1" },
     { contract: "DEF456", issuer: "issuer2", icon: "icon-url-2" },
@@ -18,7 +13,11 @@ describe("getIconUrlFromTokensLists", () => {
   ];
 
   beforeEach(() => {
-    (fetchVerifiedTokens as jest.Mock).mockResolvedValue(mockTokens);
+    jest.clearAllMocks();
+    (useVerifiedTokensStore.getState as jest.Mock) = jest.fn(() => ({
+      getVerifiedTokens: mockGetVerifiedTokens,
+    }));
+    mockGetVerifiedTokens.mockResolvedValue(mockTokens);
   });
 
   afterEach(() => {
@@ -31,8 +30,7 @@ describe("getIconUrlFromTokensLists", () => {
       network: NETWORKS.PUBLIC,
     });
     expect(icon).toBe("icon-url-1");
-    expect(fetchVerifiedTokens).toHaveBeenCalledWith({
-      tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
+    expect(mockGetVerifiedTokens).toHaveBeenCalledWith({
       network: NETWORKS.PUBLIC,
     });
   });
@@ -43,6 +41,9 @@ describe("getIconUrlFromTokensLists", () => {
       network: NETWORKS.PUBLIC,
     });
     expect(icon).toBe("icon-url-2");
+    expect(mockGetVerifiedTokens).toHaveBeenCalledWith({
+      network: NETWORKS.PUBLIC,
+    });
   });
 
   it("returns undefined when no match is found", async () => {
