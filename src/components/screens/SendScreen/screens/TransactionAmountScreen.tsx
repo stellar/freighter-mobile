@@ -253,8 +253,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
-  // Check if contract supports muxed addresses (for custom tokens)
-  // Extract contractId to avoid dependency on entire selectedBalance object
   const contractId = useMemo(() => {
     if (
       selectedBalance &&

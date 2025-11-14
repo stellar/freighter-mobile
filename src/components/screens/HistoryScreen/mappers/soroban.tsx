@@ -25,11 +25,7 @@ import {
 import { isSacContract } from "helpers/balances";
 import { transformBackendCollections } from "helpers/collectibles";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import {
-  SorobanTokenInterface,
-  formatTokenForDisplay as formatSorobanTokenAmount,
-  getBalanceByKey,
-} from "helpers/soroban";
+import { SorobanTokenInterface, getBalanceByKey } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
@@ -178,10 +174,19 @@ const processSorobanMint = async ({
             })
           : `${t("history.transactionHistory.minted")} ${code}`;
 
-        const formattedTokenAmount = formatSorobanTokenAmount(
-          new BigNumber(sorobanAttributes.amount),
-          token.decimals,
-        );
+        // Convert amount to string to handle bigint values from blockchain
+        // The amount from blockchain is already in base units
+        let amountString: string;
+        if (typeof sorobanAttributes.amount === "bigint") {
+          amountString = sorobanAttributes.amount.toString();
+        } else if (typeof sorobanAttributes.amount === "number") {
+          amountString = sorobanAttributes.amount.toString();
+        } else {
+          amountString = String(sorobanAttributes.amount);
+        }
+
+        // Amount from blockchain is already in human-readable format
+        const formattedTokenAmount = new BigNumber(amountString).toString();
 
         const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenForDisplay(
           formattedTokenAmount,
@@ -290,10 +295,19 @@ const processSorobanMint = async ({
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
 
-    const formattedTokenAmount = formatSorobanTokenAmount(
-      new BigNumber(sorobanAttributes.amount),
-      Number(decimals),
-    );
+    // Convert amount to string to handle bigint values from blockchain
+    // The amount from blockchain is already in base units
+    let amountString: string;
+    if (typeof sorobanAttributes.amount === "bigint") {
+      amountString = sorobanAttributes.amount.toString();
+    } else if (typeof sorobanAttributes.amount === "number") {
+      amountString = sorobanAttributes.amount.toString();
+    } else {
+      amountString = String(sorobanAttributes.amount);
+    }
+
+    // Amount from blockchain is already in human-readable format
+    const formattedTokenAmount = new BigNumber(amountString).toString();
 
     const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenForDisplay(
       formattedTokenAmount,
@@ -384,10 +398,19 @@ const processSorobanTransfer = async ({
     const { symbol, decimals, name } = tokenDetailsResponse;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
-    const formattedTokenAmount = formatSorobanTokenAmount(
-      new BigNumber(sorobanAttributes.amount),
-      decimals,
-    );
+    // Convert amount to string to handle bigint values from blockchain
+    // The amount from blockchain is already in base units
+    let amountString: string;
+    if (typeof sorobanAttributes.amount === "bigint") {
+      amountString = sorobanAttributes.amount.toString();
+    } else if (typeof sorobanAttributes.amount === "number") {
+      amountString = sorobanAttributes.amount.toString();
+    } else {
+      amountString = String(sorobanAttributes.amount);
+    }
+
+    // Amount from blockchain is already in human-readable format
+    const formattedTokenAmount = new BigNumber(amountString).toString();
 
     const isRecipient =
       sorobanAttributes.to === publicKey &&
@@ -772,10 +795,21 @@ export const SorobanTokenTransferTransactionDetailsContent: React.FC<{
   transactionDetails: TransactionDetails;
 }> = ({ transactionDetails }) => {
   const { themeColors } = useColors();
-  const tokenAmount = formatSorobanTokenAmount(
-    new BigNumber(transactionDetails.contractDetails!.transferDetails!.amount),
-    transactionDetails.contractDetails!.contractDecimals!,
-  );
+  // Convert amount to string to handle bigint values from blockchain
+  // The amount is stored in base units from the blockchain
+  const rawAmount: string | number | bigint = transactionDetails
+    .contractDetails!.transferDetails!.amount as string | number | bigint;
+  let amountString: string;
+  if (typeof rawAmount === "bigint") {
+    amountString = rawAmount.toString();
+  } else if (typeof rawAmount === "number") {
+    amountString = rawAmount.toString();
+  } else {
+    amountString = String(rawAmount);
+  }
+
+  // Amount from blockchain is already in human-readable format
+  const tokenAmount = new BigNumber(amountString).toString();
 
   const contractSymbol =
     transactionDetails.contractDetails?.contractSymbol ?? "";

@@ -39,7 +39,6 @@ jest.mock("services/analytics", () => ({
     trackTransactionError: jest.fn(),
   },
 }));
-// Create a mock that resolves immediately to prevent memory issues
 const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
 
 jest.mock("helpers/muxedAddress", () => ({
@@ -402,8 +401,6 @@ describe("SendCollectibleReview - Banner Content", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock is already set up at top level with mockResolvedValue(false)
-    // jest.clearAllMocks() clears call history but keeps the implementation
     mockUseTransactionBuilderStore.mockReturnValue(mockTransactionBuilderState);
     mockUseTransactionSettingsStore.mockReturnValue(
       mockTransactionSettingsState,
@@ -666,8 +663,6 @@ describe("SendCollectibleReview - Banner Content", () => {
 describe("SendCollectibleReview - Unable to Scan States", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock is already set up at top level with mockResolvedValue(false)
-    // jest.clearAllMocks() clears call history but keeps the implementation
     setupDefaultMocks();
   });
 

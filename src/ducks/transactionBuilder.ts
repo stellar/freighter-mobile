@@ -154,15 +154,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
 
-          // For custom tokens, use the amount in base units from buildPaymentTransaction
-          // For native tokens sent to contract addresses, use stroops
           const amountForSimulation =
             isCustomToken && builtTxResult.amountInBaseUnits
               ? builtTxResult.amountInBaseUnits
               : xlmToStroop(params.tokenAmount).toString();
 
-          // If destination is muxed, memo is already embedded in the address (CAP-0067)
-          // Don't pass memo separately to avoid duplicate memo in transaction
           const isDestinationMuxed = isMuxedAccount(finalDestination);
           const memoForSimulation = isDestinationMuxed
             ? ""
@@ -174,16 +170,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             memo: memoForSimulation,
             params: {
               publicKey: params.senderAddress,
-              destination: finalDestination, // Use the final destination (may be muxed)
+              destination: finalDestination,
               amount: amountForSimulation,
             },
             contractAddress: builtTxResult.contractId!,
           });
         }
 
-        // Only update store if this build request is still the latest one.
-        // This prevents race conditions where a slow async response from
-        // an older transaction overwrites state from a newer one.
         if (get().requestId === newRequestId) {
           set({
             transactionXDR: finalXdr,
@@ -204,8 +197,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           error,
         );
 
-        // Only set error state if this build request is still current.
-        // Prevents stale error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {
           set({
             error: errorMessage,

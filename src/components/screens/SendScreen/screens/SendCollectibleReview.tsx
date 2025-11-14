@@ -205,7 +205,6 @@ const SendCollectibleReviewScreen: React.FC<
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
-  // Check if contract supports muxed addresses (for collectibles)
   useEffect(() => {
     const checkContract = async () => {
       if (!collectionAddress || !recipientAddress || !network) {

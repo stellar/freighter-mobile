@@ -374,7 +374,6 @@ const TransactionSettingsBottomSheet: React.FC<
   };
 
   // Render functions
-  // No warnings when memo is typed - muxed addresses are natively supported
   const memoNote = useMemo(() => {
     // Only show message when memo is disabled
     if (isMemoDisabled && memoDisabledMessage) {

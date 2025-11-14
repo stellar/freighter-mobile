@@ -12,7 +12,6 @@ import {
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
-  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -414,9 +413,11 @@ export const buildPaymentTransaction = async (
         networkDetails,
       });
 
-      const amountInBaseUnits = isCustomToken
-        ? amount
-        : BigNumber(amount).shiftedBy(DEFAULT_DECIMALS).toFixed(0);
+      // TEST: Check if amount is already in base units or needs conversion
+      // If amount is "1" and we're sending 1 million, it might already be in base units
+      // Test by NOT converting to see if that fixes it
+      // TODO: After testing, determine if amount needs conversion or is already in base units
+      const amountInBaseUnits = amount;
 
       const finalDestination = buildSorobanTransferOperation({
         sourceAccount: senderAddress,
@@ -627,14 +628,11 @@ export const buildSendCollectibleTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    // Check if contract supports muxed addresses (CAP-0067)
-    // This is the same check done for custom tokens - collectibles are also Soroban transactions
     const contractSupportsMuxed = await checkContractMuxedSupport({
       contractId: collectionAddress,
       networkDetails,
     });
 
-    // For CAP-0067: Handle muxed addresses based on contract support
     const finalDestination = determineMuxedDestination({
       recipientAddress,
       transactionMemo,
