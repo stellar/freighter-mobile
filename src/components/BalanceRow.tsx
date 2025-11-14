@@ -16,6 +16,7 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
+import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -172,10 +173,28 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatTokenForDisplay(
-                spendableAmount || balance.total,
-                balance.tokenCode,
-              )}
+              (() => {
+                const amountToDisplay = spendableAmount || balance.total;
+                // For Soroban tokens, convert from base units to human-readable format
+                if (
+                  "decimals" in balance &&
+                  typeof balance.decimals === "number" &&
+                  balance.decimals > 0
+                ) {
+                  const humanReadableAmount = formatSorobanTokenAmount(
+                    new BigNumber(amountToDisplay),
+                    balance.decimals,
+                  );
+                  return formatTokenForDisplay(
+                    humanReadableAmount,
+                    balance.tokenCode,
+                  );
+                }
+                return formatTokenForDisplay(
+                  amountToDisplay,
+                  balance.tokenCode,
+                );
+              })()}
           </Text>
         </TokenTextContainer>
       </LeftSection>

@@ -89,6 +89,14 @@ export const getTokenFromTokenId = (tokenId: string) => {
     return { code: undefined, issuer: undefined, contractId: tokenId };
   }
 
+  // Check if it's SYMBOL:CONTRACTID format (Soroban token)
+  // Split by : and check if the second part is a contract ID
+  const parts = tokenId.split(":");
+  if (parts.length === 2 && isContractId(parts[1])) {
+    // This is a Soroban token in SYMBOL:CONTRACTID format
+    return { code: undefined, issuer: undefined, contractId: parts[1] };
+  }
+
   // Classic token format: CODE:ISSUER
   const [code, issuer] = tokenId.split(":");
 

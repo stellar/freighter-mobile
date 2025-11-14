@@ -12,6 +12,7 @@ import {
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
+  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -413,11 +414,34 @@ export const buildPaymentTransaction = async (
         networkDetails,
       });
 
-      // TEST: Check if amount is already in base units or needs conversion
-      // If amount is "1" and we're sending 1 million, it might already be in base units
-      // Test by NOT converting to see if that fixes it
-      // TODO: After testing, determine if amount needs conversion or is already in base units
-      const amountInBaseUnits = amount;
+      // For custom tokens, use the token's decimals; for native tokens, use DEFAULT_DECIMALS
+      // The amount parameter is in human-readable format (e.g., "1.33" for 1.33 tokens)
+      // We need to convert it to base units by multiplying by 10^decimals
+      let decimals: number;
+      if (isCustomToken && selectedBalance) {
+        // For SorobanBalance, decimals is a required property
+        const balanceDecimals =
+          "decimals" in selectedBalance ? selectedBalance.decimals : undefined;
+        if (
+          typeof balanceDecimals === "number" &&
+          !Number.isNaN(balanceDecimals) &&
+          balanceDecimals >= 0
+        ) {
+          decimals = balanceDecimals;
+        } else {
+          // Fallback to DEFAULT_DECIMALS if decimals is missing or invalid
+          decimals = DEFAULT_DECIMALS;
+        }
+      } else {
+        // For native tokens or non-custom tokens, use DEFAULT_DECIMALS
+        decimals = DEFAULT_DECIMALS;
+      }
+
+      // Convert human-readable amount to base units
+      // Example: 1.33 tokens with 6 decimals = 1.33 * 10^6 = 1,330,000 base units
+      const amountInBaseUnits = BigNumber(amount)
+        .shiftedBy(decimals)
+        .toFixed(0);
 
       const finalDestination = buildSorobanTransferOperation({
         sourceAccount: senderAddress,
