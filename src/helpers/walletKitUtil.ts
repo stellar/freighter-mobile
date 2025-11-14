@@ -33,10 +33,6 @@ import { analytics } from "services/analytics";
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
-
-  // This is actually a Ethereum RPC method, but it's being used by Allbridge
-  // so let's just recognize it as a valid method so we don't reject their connection
-  StellarRpcMethods.PERSONAL_SIGN,
 ];
 
 /** Supported Stellar RPC events for WalletKit */
