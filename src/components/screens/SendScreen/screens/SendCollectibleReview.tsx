@@ -233,6 +233,25 @@ const SendCollectibleReviewScreen: React.FC<
   const isMuxedAddressWithoutMemoSupport = Boolean(
     isRecipientMuxed && contractSupportsMuxed === false,
   );
+  const handleTransactionScanSuccess = useCallback(
+    (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      const security = getTransactionSecurity(
+        scanResult,
+        overriddenBlockaidResponse,
+      );
+      if (security.transactionSecurityAssessment.isUnableToScan) {
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        reviewBottomSheetModalRef.current?.present();
+      }
+    },
+    [overriddenBlockaidResponse],
+  );
+
+  const handleTransactionScanError = useCallback(() => {
+    setTransactionScanResult(undefined);
+    transactionSecurityWarningBottomSheetModalRef.current?.present();
+  }, []);
 
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
@@ -266,19 +285,20 @@ const SendCollectibleReviewScreen: React.FC<
           return;
         }
 
-        if (shouldOpenReview) {
-          scanTransaction(xdr, "internal")
-            .then((scanResult) => {
-              logger.info("SendCollectibleReview", "scanResult", scanResult);
-              setTransactionScanResult(scanResult);
-            })
-            .catch(() => {
-              setTransactionScanResult(undefined);
-            })
-            .finally(() => {
-              reviewBottomSheetModalRef.current?.present();
-            });
-        }
+        scanTransaction(xdr, "internal")
+          .then((scanResult) => {
+            setTransactionScanResult(scanResult);
+
+            if (shouldOpenReview) {
+              handleTransactionScanSuccess(scanResult);
+            }
+          })
+          .catch(() => {
+            setTransactionScanResult(undefined);
+            if (shouldOpenReview) {
+              handleTransactionScanError();
+            }
+          });
       } catch (error) {
         logger.error(
           "SendCollectibleReview",
@@ -294,6 +314,8 @@ const SendCollectibleReviewScreen: React.FC<
       buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
+      handleTransactionScanSuccess,
+      handleTransactionScanError,
     ],
   );
 
