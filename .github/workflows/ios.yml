@@ -120,7 +120,18 @@ jobs:
         run: ls -1 /Applications | grep -i Xcode || true
 
       - name: Set xcode version
-        run: sudo xcode-select -s /Applications/Xcode_26.app
+        run: |
+          # Find the most recent Xcode 26 version
+          XCODE_PATH=$(ls -1d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+
+          if [ -z "$XCODE_PATH" ]; then
+            echo "Error: No Xcode 26 version found in /Applications"
+            ls -1 /Applications | grep -i Xcode || true
+            exit 1
+          fi
+
+          echo "Using Xcode: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
 
       - name: Verify Xcode Version
         run: xcodebuild -version
