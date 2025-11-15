@@ -28,6 +28,7 @@ import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
 import { analytics } from "services/analytics";
+import { submitTx } from "services/stellar";
 
 /** Supported Stellar RPC methods for WalletKit */
 const stellarNamespaceMethods = [
@@ -240,14 +241,18 @@ export const approveSessionRequest = async ({
 }) => {
   const { id, params, topic } = sessionRequest;
   const { request, chainId } = params || {};
-  const { params: requestParams } = request || {};
+  const { params: requestParams, method: requestMethod } = request || {};
   const { xdr } = requestParams || {};
 
+  const rpcMethod = requestMethod as StellarRpcMethods;
+
+  const targetNetwork =
+    chainId === (StellarRpcChains.PUBLIC as string)
+      ? NETWORKS.PUBLIC
+      : NETWORKS.TESTNET;
+
   if (chainId !== activeChain) {
-    const targetNetworkName =
-      chainId === (StellarRpcChains.PUBLIC as string)
-        ? NETWORK_NAMES.PUBLIC
-        : NETWORK_NAMES.TESTNET;
+    const targetNetworkName = NETWORK_NAMES[targetNetwork];
     const message = t("walletKit.errorWrongNetworkMessage", {
       targetNetworkName,
     });
@@ -260,20 +265,41 @@ export const approveSessionRequest = async ({
     return;
   }
 
-  let signedTransaction;
+  let transaction: Transaction | FeeBumpTransaction;
+  let signedTransaction: string | null;
+  let dappDomain: string | undefined;
   try {
-    const transaction = TransactionBuilder.fromXDR(
-      xdr as string,
-      networkPassphrase,
-    );
+    transaction = TransactionBuilder.fromXDR(xdr as string, networkPassphrase);
+
+    // Always sign the transaction for both supported RPC methods
     signedTransaction = signTransaction(transaction);
 
+    if (!signedTransaction) {
+      const errorMessage = "Failed to sign transaction";
+      logger.error(
+        "approveSessionRequest",
+        errorMessage,
+        new Error(errorMessage),
+      );
+      showToast({
+        title: t("walletKit.errorSigning"),
+        message: t("walletKit.pleaseTryAgainLater"),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t("common.error", { errorMessage }),
+      });
+      return;
+    }
+
+    // Get dapp metadata for analytics
     const { activeSessions } = useWalletKitStore.getState();
     const dappMetadata = getDappMetadataFromEvent(
       sessionRequest,
       activeSessions,
     );
-    const dappDomain = dappMetadata?.url;
+    dappDomain = dappMetadata?.url;
 
     analytics.trackSignedTransaction({
       transactionHash: transaction.hash().toString("hex"),
@@ -293,32 +319,105 @@ export const approveSessionRequest = async ({
     return;
   }
 
-  const response = {
-    id,
-    result: { signedXDR: signedTransaction },
-    jsonrpc: "2.0",
-  };
+  // Handle the different RPC methods
+  if (rpcMethod === StellarRpcMethods.SIGN_AND_SUBMIT_XDR) {
+    // For stellar_signAndSubmitXDR: sign AND submit, then return success status
+    try {
+      await submitTx({
+        network: targetNetwork,
+        tx: signedTransaction,
+      });
 
-  try {
-    await walletKit.respondSessionRequest({ topic, response });
+      analytics.trackSubmittedTransaction({
+        transactionHash: transaction.hash().toString("hex"),
+        ...(dappDomain ? { dappDomain } : {}),
+      });
+    } catch (error) {
+      const message = t("common.error", {
+        errorMessage:
+          error instanceof Error ? error.message : t("common.unknownError"),
+      });
 
-    showToast({
-      title: t("walletKit.signingSuccessfull"),
-      message: t("walletKit.returnToBrowser"),
-      variant: "success",
+      showToast({
+        title: t("walletKit.errorSubmitting"),
+        message,
+        variant: "error",
+      });
+
+      rejectSessionRequest({ sessionRequest, message });
+
+      return;
+    }
+
+    try {
+      const response = {
+        id,
+        result: { status: "success" as const },
+        jsonrpc: "2.0",
+      };
+
+      await walletKit.respondSessionRequest({ topic, response });
+
+      showToast({
+        title: t("walletKit.signAndSubmitSuccessfull"),
+        message: t("walletKit.returnToBrowser"),
+        variant: "success",
+      });
+    } catch (error) {
+      const message = t("common.error", {
+        errorMessage:
+          error instanceof Error ? error.message : t("common.unknownError"),
+      });
+
+      showToast({
+        title: t("walletKit.errorRespondingRequest"),
+        message,
+        variant: "error",
+      });
+
+      rejectSessionRequest({ sessionRequest, message });
+    }
+  } else if (rpcMethod === StellarRpcMethods.SIGN_XDR) {
+    // For stellar_signXDR: sign only, then return the signed transaction
+    const response = {
+      id,
+      result: { signedXDR: signedTransaction },
+      jsonrpc: "2.0",
+    };
+
+    try {
+      await walletKit.respondSessionRequest({ topic, response });
+
+      showToast({
+        title: t("walletKit.signSuccessfull"),
+        message: t("walletKit.returnToBrowser"),
+        variant: "success",
+      });
+    } catch (error) {
+      const message = t("common.error", {
+        errorMessage:
+          error instanceof Error ? error.message : t("common.unknownError"),
+      });
+
+      showToast({
+        title: t("walletKit.errorRespondingRequest"),
+        message,
+        variant: "error",
+      });
+
+      rejectSessionRequest({ sessionRequest, message });
+    }
+  } else {
+    // Unknown RPC method
+    const message = t("walletKit.errorUnsupportedMethod", {
+      method: rpcMethod || "unknown",
     });
-  } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
-    });
-
+    logger.error("approveSessionRequest", message, new Error(message));
     showToast({
-      title: t("walletKit.errorRespondingRequest"),
+      title: t("walletKit.errorUnsupportedMethodTitle"),
       message,
       variant: "error",
     });
-
     rejectSessionRequest({ sessionRequest, message });
   }
 };
