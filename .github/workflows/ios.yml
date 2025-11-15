@@ -120,7 +120,38 @@ jobs:
         run: ls -1 /Applications | grep -i Xcode || true
 
       - name: Set xcode version
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: |
+          # Find the most recent Xcode version available
+          XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null)
+
+          if [ -z "$XCODE_PATHS" ]; then
+            echo "Error: No Xcode installation found in /Applications"
+            ls -1 /Applications | grep -i Xcode || true
+            exit 1
+          fi
+
+          # Find the latest Xcode by checking versions
+          LATEST_XCODE=""
+          LATEST_VERSION="0"
+
+          for XCODE_PATH in $XCODE_PATHS; do
+            # Extract version from Info.plist or use xcodebuild
+            VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "0")
+            
+            # Compare versions (simple numeric comparison for major.minor format)
+            if [ "$(printf '%s\n' "$VERSION" "$LATEST_VERSION" | sort -V | tail -1)" = "$VERSION" ]; then
+              LATEST_VERSION="$VERSION"
+              LATEST_XCODE="$XCODE_PATH"
+            fi
+          done
+
+          if [ -z "$LATEST_XCODE" ]; then
+            # Fallback: use the most recently modified Xcode
+            LATEST_XCODE=$(ls -1dt /Applications/Xcode*.app 2>/dev/null | head -1)
+          fi
+
+          echo "Using Xcode: $LATEST_XCODE (Version: $LATEST_VERSION)"
+          sudo xcode-select -s "$LATEST_XCODE"
 
       - name: Verify Xcode Version
         run: xcodebuild -version
