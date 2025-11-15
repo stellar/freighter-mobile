@@ -53,10 +53,6 @@ export enum StellarRpcChains {
 export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
-
-  // This is actually a Ethereum RPC method, but it's being used by Allbridge
-  // so let's just recognize it as a valid method so we don't reject their connection
-  PERSONAL_SIGN = "personal_sign",
 }
 
 /**

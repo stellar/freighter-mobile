@@ -2,6 +2,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { track } from "services/analytics/core";
 import type {
   SignedTransactionEvent,
+  SubmittedTransactionEvent,
   TransactionSuccessEvent,
   SwapSuccessEvent,
   TransactionErrorEvent,
@@ -15,6 +16,17 @@ export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+  });
+};
+
+export const trackSubmittedTransaction = (
+  data: SubmittedTransactionEvent,
+): void => {
+  track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
+    transactionHash: data.transactionHash,
+    transactionType: data.transactionType,
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
   });
 };
 
