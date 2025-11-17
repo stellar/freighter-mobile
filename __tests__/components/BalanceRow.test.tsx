@@ -47,6 +47,46 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
+// Mock soroban helpers
+jest.mock("helpers/soroban", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  const BigNumberLib = require("bignumber.js");
+  return {
+    formatTokenForDisplay: jest.fn((amount, decimals) => {
+      const bn =
+        typeof amount === "string"
+          ? new BigNumberLib.BigNumber(amount)
+          : amount;
+      if (decimals > 0) {
+        const formatted = bn.shiftedBy(-decimals).toFixed(decimals);
+        // Trim trailing zeros
+        return formatted.replace(/\.?0+$/, "") || "0";
+      }
+      return bn.toString();
+    }),
+  };
+});
+
+// Mock formatAmount helpers
+jest.mock("helpers/formatAmount", () => {
+  const actual = jest.requireActual("helpers/formatAmount");
+  return {
+    ...actual,
+    formatTokenForDisplay: jest.fn((amount, code) => {
+      const formatted = typeof amount === "string" ? amount : amount.toString();
+      return code ? `${formatted} ${code}` : formatted;
+    }),
+    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
+    formatPercentageAmount: jest.fn((amount) => {
+      if (!amount) return "—";
+      const isNegative = amount.isLessThan(0);
+      const formattedNumber = amount.abs().toFixed(2);
+
+      return `${isNegative ? "-" : "+"}${formattedNumber}%`;
+    }),
+  };
+});
+
 describe("BalanceRow", () => {
   const mockBalance = {
     token: {
@@ -99,12 +139,17 @@ describe("BalanceRow", () => {
       displayName: "Test Token",
     } as PricedBalance;
 
+    // Mock hasDecimals to return true for this custom token
+    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(true);
+
     const { getByText } = render(
       <BalanceRow balance={customTokenBalance} scanResult={benignTokenScan} />,
     );
 
     expect(getByText("Test Token")).toBeTruthy();
-    // formatBalanceAmount should convert 10000 (raw) to 1 (trimmed), then format as 1.00
+    // formatBalanceAmount uses actual implementation (tested in formatAmount.test.ts)
+    // formatSorobanTokenAmount converts 10000 with 4 decimals to "1" (trailing zeros trimmed)
+    // formatTokenForDisplay adds minimum 2 decimal places, so "1" becomes "1.00 TEST"
     expect(getByText("1.00 TEST")).toBeTruthy();
   });
 
