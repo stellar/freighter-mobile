@@ -1,5 +1,8 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS } from "config/constants";
+import { Balance, PricedBalance } from "config/types";
+import { hasDecimals } from "helpers/balances";
+import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import { getNumberFormatSettings } from "react-native-localize";
 
 /**
@@ -631,4 +634,47 @@ export const xlmToStroop = (lumens: BigNumber | string): BigNumber => {
   }
   // round to nearest stroop
   return new BigNumber(Math.round(Number(lumens) * 1e7));
+};
+
+/**
+ * Formats a balance amount for display, handling custom tokens with decimals
+ *
+ * This function intelligently formats balance amounts by:
+ * - Converting raw Soroban token amounts to decimal format when decimals are present
+ * - Formatting native and classic tokens directly
+ * - Supporting optional amount overrides (e.g., spendable amount)
+ *
+ * @param {Balance | PricedBalance} balance - The balance object to format
+ * @param {string} [code] - Optional token code override
+ * @param {BigNumber} [amountOverride] - Optional amount override (e.g., spendable amount)
+ * @returns {string} Formatted balance amount string
+ *
+ * @example
+ * // Format custom token with decimals
+ * const customTokenBalance = { total: new BigNumber("10000"), decimals: 4, ... };
+ * formatBalanceAmount(customTokenBalance, "TEST"); // Returns "1.00 TEST"
+ *
+ * // Format with amount override
+ * formatBalanceAmount(balance, "XLM", spendableAmount); // Returns "50.25 XLM"
+ */
+export const formatBalanceAmount = (
+  balance: Balance | PricedBalance,
+  code?: string,
+  amountOverride?: BigNumber,
+): string => {
+  const amount = amountOverride || balance.total;
+
+  // Check if this is a SorobanBalance (custom token) with decimals
+  if (hasDecimals(balance)) {
+    // Convert raw amount to decimal format using the token's decimals
+    const formattedTokenAmount = formatSorobanTokenAmount(
+      amount,
+      balance.decimals,
+    );
+    // Then format for display with locale settings
+    return formatTokenForDisplay(formattedTokenAmount, code);
+  }
+
+  // For other balance types (native, classic, liquidity pools), format directly
+  return formatTokenForDisplay(amount, code);
 };

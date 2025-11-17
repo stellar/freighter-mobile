@@ -5,7 +5,6 @@ import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
 import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
-import * as balancesHelpers from "helpers/balances";
 import React from "react";
 import { Text } from "react-native";
 
@@ -20,12 +19,6 @@ jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}));
-
-// Mock the balances helpers
-jest.mock("helpers/balances", () => ({
-  isLiquidityPool: jest.fn(),
-  hasDecimals: jest.fn(),
 }));
 
 // Mock the useColors hook
@@ -49,18 +42,12 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => ({
-  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
-  formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-  formatPercentageAmount: jest.fn((amount) => {
-    if (!amount) return "—";
-    const isNegative = amount.isLessThan(0);
-    const formattedNumber = amount.abs().toFixed(2);
-
-    return `${isNegative ? "-" : "+"}${formattedNumber}%`;
-  }),
-}));
+// Use actual implementations for helpers
+jest.mock("helpers/balances", () => jest.requireActual("helpers/balances"));
+jest.mock("helpers/soroban", () => jest.requireActual("helpers/soroban"));
+jest.mock("helpers/formatAmount", () =>
+  jest.requireActual("helpers/formatAmount"),
+);
 
 describe("BalanceRow", () => {
   const mockBalance = {
@@ -84,8 +71,6 @@ describe("BalanceRow", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(false);
-    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(false);
   });
 
   it("should render basic balance information", () => {
@@ -94,7 +79,7 @@ describe("BalanceRow", () => {
     );
 
     expect(getByText("XLM")).toBeTruthy();
-    expect(getByText("100.5")).toBeTruthy();
+    expect(getByText("100.5 XLM")).toBeTruthy();
   });
 
   it("should render default right content with fiat values", () => {
@@ -198,11 +183,18 @@ describe("BalanceRow", () => {
     });
 
     it("should adjust width for liquidity pool tokens", () => {
-      jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(true);
       const liquidityPoolBalance = {
         ...mockBalance,
         liquidityPoolId: "pool-id",
-      };
+        reserves: [
+          { asset: "native", amount: "100" },
+          {
+            asset:
+              "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            amount: "200",
+          },
+        ],
+      } as PricedBalance;
 
       const { getByTestId } = render(
         <DefaultRightContent balance={liquidityPoolBalance} />,

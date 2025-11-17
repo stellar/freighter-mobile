@@ -1,21 +1,16 @@
 /* eslint-disable react/no-unstable-nested-components */
-import { BigNumber } from "bignumber.js";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
-import { hasDecimals } from "helpers/balances";
 import {
-  formatTokenForDisplay,
+  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import {
-  isContractId,
-  formatTokenForDisplay as formatSorobanTokenAmount,
-} from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -127,46 +122,17 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     );
   };
 
-  const renderBalanceInfo = () => {
-    const amountToDisplay = tokenBalance.total;
-    // For Soroban tokens, convert from base units to decimal-aware format
-    if (hasDecimals(tokenBalance)) {
-      const decimalAwareAmount = formatSorobanTokenAmount(
-        new BigNumber(amountToDisplay),
-        tokenBalance.decimals,
-      );
-      return (
-        <Display xs medium>
-          {formatTokenForDisplay(decimalAwareAmount, tokenBalance.tokenCode)}
-        </Display>
-      );
-    }
-    return (
-      <Display xs medium>
-        {formatTokenForDisplay(amountToDisplay, tokenBalance.tokenCode)}
-      </Display>
-    );
-  };
+  const renderBalanceInfo = () => (
+    <Display xs medium>
+      {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
+    </Display>
+  );
 
   const renderBalanceDetails = () => {
-    const amountToDisplay = tokenBalance.total;
-    // For Soroban tokens, convert from base units to decimal-aware format
-    let balanceDisplay: string;
-    if (hasDecimals(tokenBalance)) {
-      const decimalAwareAmount = formatSorobanTokenAmount(
-        new BigNumber(amountToDisplay),
-        tokenBalance.decimals,
-      );
-      balanceDisplay = formatTokenForDisplay(
-        decimalAwareAmount,
-        tokenBalance.tokenCode,
-      );
-    } else {
-      balanceDisplay = formatTokenForDisplay(
-        amountToDisplay,
-        tokenBalance.tokenCode,
-      );
-    }
+    const balanceDisplay = formatBalanceAmount(
+      tokenBalance,
+      tokenBalance.tokenCode,
+    );
 
     const baseRows = [
       {

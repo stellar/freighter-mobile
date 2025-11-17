@@ -9,14 +9,13 @@ import {
 } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { isLiquidityPool, hasDecimals } from "helpers/balances";
+import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
-  formatTokenForDisplay,
+  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
-import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -113,22 +112,6 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   );
 };
 
-const formatBalanceAmount = (
-  balance: PricedBalance,
-  spendableAmount?: BigNumber,
-): string => {
-  const amountToDisplay = spendableAmount || balance.total;
-  // For Soroban tokens, convert from base units to decimal-aware format
-  if (hasDecimals(balance)) {
-    const decimalAwareAmount = formatSorobanTokenAmount(
-      new BigNumber(amountToDisplay),
-      balance.decimals,
-    );
-    return formatTokenForDisplay(decimalAwareAmount, balance.tokenCode);
-  }
-  return formatTokenForDisplay(amountToDisplay, balance.tokenCode);
-};
-
 const renderContent = (
   children: ReactNode,
   onPress?: () => void,
@@ -188,7 +171,8 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
             {balance.displayName}
           </Text>
           <Text sm medium secondary numberOfLines={1}>
-            {customTextContent || formatBalanceAmount(balance, spendableAmount)}
+            {customTextContent ||
+              formatBalanceAmount(balance, balance.tokenCode, spendableAmount)}
           </Text>
         </TokenTextContainer>
       </LeftSection>
