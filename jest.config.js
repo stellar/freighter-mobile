@@ -26,6 +26,7 @@ module.exports = {
       "react-native-css-interop",
       "react-native-reanimated",
       "@gorhom/bottom-sheet",
+      "react-native-worklets",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
       "react-native-config",

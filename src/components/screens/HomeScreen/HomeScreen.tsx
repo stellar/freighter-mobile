@@ -40,7 +40,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
+import {
+  TouchableOpacity,
+  View,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -239,11 +244,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           bottomSheetRef={manageAccountsBottomSheetRef}
         />
 
-        {/* avoid nested VirtualizedLists, due to undefined scroll behavior. top content is balances, and footer is the tabs with their own scrollable content */}
-        <FlatList
-          testID="home-screen-flatlist"
-          data={[]} // Empty data array since we only use header and footer
-          renderItem={() => null} // No items to render
+        <ScrollView
+          testID="home-screen-scrollview"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -255,66 +257,63 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             />
           }
           contentContainerStyle={{ flexGrow: 1 }}
-          ListHeaderComponent={
-            <View className="pt-8 w-full items-center">
-              <View className="flex-col gap-3 items-center">
-                <TouchableOpacity onPress={handleManageAccountsPress}>
-                  <View className="flex-row items-center gap-2">
-                    <Avatar
-                      size="sm"
-                      publicAddress={account?.publicKey ?? ""}
-                    />
-                    <Text>{account?.accountName ?? t("home.title")}</Text>
-                    <Icon.ChevronDown
-                      size={16}
-                      color={themeColors.foreground.primary}
-                    />
-                  </View>
-                </TouchableOpacity>
-                <Display lg medium>
-                  {formattedBalance}
-                </Display>
-              </View>
-
-              <View className="flex-row gap-[24px] items-center justify-center my-8">
-                <IconButton
-                  Icon={Icon.Plus}
-                  title={t("home.buy")}
-                  onPress={navigateToBuyXLM}
-                />
-                <IconButton
-                  Icon={Icon.ArrowUp}
-                  title={t("home.send")}
-                  disabled={hasZeroBalance}
-                  onPress={handleSendPress}
-                />
-                {swapEnabled && (
-                  <IconButton
-                    Icon={Icon.RefreshCw02}
-                    title={t("home.swap")}
-                    disabled={hasZeroBalance}
-                    onPress={handleSwapPress}
+        >
+          {/* Header section with account info and actions */}
+          <View className="pt-8 w-full items-center">
+            <View className="flex-col gap-3 items-center">
+              <TouchableOpacity onPress={handleManageAccountsPress}>
+                <View className="flex-row items-center gap-2">
+                  <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
+                  <Text>{account?.accountName ?? t("home.title")}</Text>
+                  <Icon.ChevronDown
+                    size={16}
+                    color={themeColors.foreground.primary}
                   />
-                )}
-                <IconButton
-                  Icon={Icon.Copy01}
-                  title={t("common.copy")}
-                  onPress={() => handleCopyAddress(account?.publicKey)}
-                />
-              </View>
-              <View className="w-full border-b mb-4 border-border-primary" />
+                </View>
+              </TouchableOpacity>
+              <Display lg medium>
+                {formattedBalance}
+              </Display>
             </View>
-          }
-          ListFooterComponent={
-            <TokensCollectiblesTabs
-              showTokensSettings={hasTokens}
-              publicKey={account?.publicKey ?? ""}
-              network={network}
-              onTokenPress={handleTokenPress}
-              onCollectiblePress={handleCollectiblePress}
-            />
-          }
-        />
+
+            <View className="flex-row gap-[24px] items-center justify-center my-8">
+              <IconButton
+                Icon={Icon.Plus}
+                title={t("home.buy")}
+                onPress={navigateToBuyXLM}
+              />
+              <IconButton
+                Icon={Icon.ArrowUp}
+                title={t("home.send")}
+                disabled={hasZeroBalance}
+                onPress={handleSendPress}
+              />
+              {swapEnabled && (
+                <IconButton
+                  Icon={Icon.RefreshCw02}
+                  title={t("home.swap")}
+                  disabled={hasZeroBalance}
+                  onPress={handleSwapPress}
+                />
+              )}
+              <IconButton
+                Icon={Icon.Copy01}
+                title={t("common.copy")}
+                onPress={() => handleCopyAddress(account?.publicKey)}
+              />
+            </View>
+            <View className="w-full border-b mb-4 border-border-primary" />
+          </View>
+
+          {/* Tokens and Collectibles tabs content */}
+          <TokensCollectiblesTabs
+            showTokensSettings={hasTokens}
+            publicKey={account?.publicKey ?? ""}
+            network={network}
+            onTokenPress={handleTokenPress}
+            onCollectiblePress={handleCollectiblePress}
+          />
+        </ScrollView>
 
         {/* Analytics Debug - Development Only */}
         <DebugBottomSheet

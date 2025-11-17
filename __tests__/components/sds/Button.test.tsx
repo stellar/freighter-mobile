@@ -42,7 +42,6 @@ jest.mock("hooks/useBiometrics", () => ({
     getBiometricButtonIcon: mockGetBiometricButtonIcon,
   }),
 }));
-
 describe("Button", () => {
   const onPressMock = jest.fn();
 
