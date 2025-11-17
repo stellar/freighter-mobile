@@ -719,6 +719,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </Text>
               <TouchableOpacity
                 className="ml-2"
+                hitSlop={10}
                 onPress={() => setShowFiatAmount(!showFiatAmount)}
               >
                 <Icon.RefreshCcw03
