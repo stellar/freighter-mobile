@@ -513,6 +513,27 @@ export const hasXLMForFees = (
 };
 
 /**
+ * Checks if a balance has a decimals property (indicating it's a Soroban/custom token)
+ *
+ * This is a type guard function that checks if a balance object has the `decimals` property,
+ * which indicates it's a SorobanBalance (custom token) that requires decimal conversion.
+ *
+ * @param {Balance | PricedBalance} balance - The balance object to check
+ * @returns {boolean} True if the balance has a decimals property, false otherwise
+ *
+ * @example
+ * // Check if a balance has decimals
+ * if (hasDecimals(balance)) {
+ *   // It's a SorobanBalance, use balance.decimals for conversion
+ *   const decimals = balance.decimals;
+ * }
+ */
+export const hasDecimals = (
+  balance: Balance | PricedBalance,
+): balance is Balance & { decimals: number } =>
+  "decimals" in balance && typeof balance.decimals === "number";
+
+/**
  * Returns the issuer address from a token identifier string
  *
  * This function returns issuer from token identifier strings.

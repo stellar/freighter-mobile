@@ -1,5 +1,7 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS } from "config/constants";
+import { Balance, SorobanBalance, PricedBalance } from "config/types";
+import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import { getNumberFormatSettings } from "react-native-localize";
 
 /**
@@ -679,4 +681,62 @@ export const formatFiatInputDisplay = (value: string): string => {
   }
 
   return value;
+};
+
+/**
+ * Formats a balance amount for display, respecting custom token decimals
+ *
+ * This function handles the conversion of raw token amounts (stored in the smallest unit)
+ * to human-readable format for custom tokens (Soroban tokens). For custom tokens with decimals,
+ * it first converts the raw amount using the token's decimal places, then formats it for display.
+ *
+ * For other balance types (native XLM, classic tokens, liquidity pools), it formats the amount directly.
+ *
+ * @param {Balance | PricedBalance} balance - The balance object containing the amount and token information
+ * @param {string} [code] - Optional token code to append to the formatted amount
+ * @param {BigNumber} [amountOverride] - Optional amount override (e.g., spendableAmount) instead of balance.total
+ * @returns {string} Formatted token amount string with optional token code
+ *
+ * @example
+ * // Format a custom token balance with 4 decimals (raw amount: 10000 = 1.0000)
+ * const customTokenBalance: SorobanBalance = {
+ *   total: new BigNumber("10000"),
+ *   decimals: 4,
+ *   symbol: "MYTOKEN",
+ *   ...
+ * };
+ * formatBalanceAmount(customTokenBalance, "MYTOKEN"); // Returns "1.0000 MYTOKEN"
+ *
+ * // Format native XLM balance
+ * const xlmBalance: NativeBalance = {
+ *   total: new BigNumber("100.5"),
+ *   token: { type: "native", code: "XLM" },
+ *   ...
+ * };
+ * formatBalanceAmount(xlmBalance, "XLM"); // Returns "100.50 XLM"
+ *
+ * // Format with amount override (e.g., spendable amount)
+ * formatBalanceAmount(customTokenBalance, "MYTOKEN", spendableAmount); // Uses spendableAmount instead of total
+ */
+export const formatBalanceAmount = (
+  balance: Balance | PricedBalance,
+  code?: string,
+  amountOverride?: BigNumber,
+): string => {
+  const amount = amountOverride || balance.total;
+
+  // Check if this is a SorobanBalance (custom token) with decimals
+  if ("decimals" in balance && typeof balance.decimals === "number") {
+    const sorobanBalance = balance as SorobanBalance;
+    // Convert raw amount to decimal format using the token's decimals
+    const formattedTokenAmount = formatSorobanTokenAmount(
+      amount,
+      sorobanBalance.decimals,
+    );
+    // Then format for display with locale settings
+    return formatTokenForDisplay(formattedTokenAmount, code);
+  }
+
+  // For other balance types (native, classic, liquidity pools), format directly
+  return formatTokenForDisplay(amount, code);
 };

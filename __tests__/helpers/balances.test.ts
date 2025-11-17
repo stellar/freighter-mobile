@@ -7,6 +7,7 @@ import {
   LiquidityPoolBalance,
   NativeBalance,
   NativeToken,
+  SorobanBalance,
 } from "config/types";
 import {
   getLPShareCode,
@@ -17,6 +18,7 @@ import {
   calculateSpendableAmount,
   isAmountSpendable,
   getIssuerFromIdentifier,
+  hasDecimals,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -448,6 +450,151 @@ describe("balances helpers", () => {
     it("should return empty string for empty identifier", () => {
       const issuer = getIssuerFromIdentifier("");
       expect(issuer).toBe("");
+    });
+  });
+
+  describe("hasDecimals", () => {
+    it("should return true for SorobanBalance with decimals", () => {
+      const sorobanBalance: SorobanBalance = {
+        token: {
+          code: "TEST",
+          issuer: {
+            key: "C1234567890ABCDEF",
+          },
+        } as NonNativeToken,
+        total: new BigNumber("10000"),
+        available: new BigNumber("10000"),
+        decimals: 4,
+        contractId: "C1234567890ABCDEF",
+        name: "Test Token",
+        symbol: "TEST",
+      };
+
+      expect(hasDecimals(sorobanBalance)).toBe(true);
+      // Type guard should work
+      if (hasDecimals(sorobanBalance)) {
+        expect(sorobanBalance.decimals).toBe(4);
+      }
+    });
+
+    it("should return false for native XLM balance", () => {
+      const nativeBalanceTest: NativeBalance = {
+        token: {
+          type: "native",
+          code: NATIVE_TOKEN_CODE,
+        },
+        total: new BigNumber("100.5"),
+        available: new BigNumber("100.5"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      expect(hasDecimals(nativeBalanceTest)).toBe(false);
+    });
+
+    it("should return false for classic token balance", () => {
+      const classicBalance: ClassicBalance = {
+        token: {
+          code: "USDC",
+          issuer: {
+            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        } as NonNativeToken,
+        total: new BigNumber("1000"),
+        available: new BigNumber("1000"),
+        limit: new BigNumber("10000"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      expect(hasDecimals(classicBalance)).toBe(false);
+    });
+
+    it("should return false for balance with undefined decimals", () => {
+      const balanceWithoutDecimals = {
+        token: {
+          code: "TEST",
+          issuer: {
+            key: "C1234567890ABCDEF",
+          },
+        } as NonNativeToken,
+        total: new BigNumber("10000"),
+        available: new BigNumber("10000"),
+        contractId: "C1234567890ABCDEF",
+      };
+
+      expect(hasDecimals(balanceWithoutDecimals as Balance)).toBe(false);
+    });
+  });
+
+  describe("SorobanBalance (custom tokens)", () => {
+    const sorobanBalance: SorobanBalance = {
+      token: {
+        code: "TEST",
+        issuer: {
+          key: "C1234567890ABCDEF",
+        },
+      } as NonNativeToken,
+      total: new BigNumber("10000"), // Raw amount
+      available: new BigNumber("10000"),
+      decimals: 4,
+      contractId: "C1234567890ABCDEF",
+      name: "Test Token",
+      symbol: "TEST",
+    };
+
+    it("should calculate spendable amount for SorobanBalance correctly", () => {
+      // For SorobanBalance, spendable should equal available (no fee subtraction)
+      const spendable = calculateSpendableAmount({
+        balance: sorobanBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("10000");
+    });
+
+    it("should validate spendable amount for SorobanBalance", () => {
+      // Raw amount: 10000, which with 4 decimals = 1.0000 tokens
+      // User wants to spend 0.5 tokens = 5000 raw
+      const isValid = isAmountSpendable({
+        amount: "5000", // This is in raw format, not decimal format
+        balance: sorobanBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
+      expect(isValid).toBe(true);
+    });
+
+    it("should return false for excessive amounts on SorobanBalance", () => {
+      const isValid = isAmountSpendable({
+        amount: "20000", // Exceeds available
+        balance: sorobanBalance,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
+      expect(isValid).toBe(false);
+    });
+
+    it("should get token identifier for SorobanBalance", () => {
+      const identifier = getTokenIdentifier(sorobanBalance as Balance);
+      expect(identifier).toBe("TEST:C1234567890ABCDEF");
+    });
+
+    it("should handle SorobanBalance with different decimal places", () => {
+      const tokenWith2Decimals: SorobanBalance = {
+        ...sorobanBalance,
+        decimals: 2,
+        total: new BigNumber("10000"), // Raw amount
+        available: new BigNumber("10000"),
+      };
+
+      const spendable = calculateSpendableAmount({
+        balance: tokenWith2Decimals,
+        subentryCount: 0,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("10000");
     });
   });
 });

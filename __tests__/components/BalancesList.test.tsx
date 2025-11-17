@@ -61,6 +61,7 @@ jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
   getTokenIdentifiersFromBalances: jest.fn(),
   getLPShareCode: jest.fn(),
+  hasDecimals: jest.fn(),
   getTokenIdentifier: jest.fn((token) => {
     if (token.type === "native") return "XLM";
     return `${token.code}:${token.issuer.key}`;
@@ -74,15 +75,21 @@ jest.mock("helpers/debug", () => ({
 }));
 
 // Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => ({
-  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
-  formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-  formatPercentageAmount: jest.fn((amount) => {
-    if (!amount) return "—";
-    const isNegative = amount.isLessThan(0);
-    return `${isNegative ? "-" : "+"}${amount.abs().toString()}%`;
-  }),
-}));
+jest.mock("helpers/formatAmount", () => {
+  const actual = jest.requireActual("helpers/formatAmount");
+  return {
+    ...actual,
+    formatBalanceAmount: jest.fn((balance, code, amountOverride) =>
+      actual.formatBalanceAmount(balance, code, amountOverride),
+    ),
+    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
+    formatPercentageAmount: jest.fn((amount) => {
+      if (!amount) return "—";
+      const isNegative = amount.isLessThan(0);
+      return `${isNegative ? "-" : "+"}${amount.abs().toString()}%`;
+    }),
+  };
+});
 
 // Mock the useBalancesList hook
 jest.mock("hooks/useBalancesList", () => ({
