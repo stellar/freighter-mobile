@@ -5,7 +5,6 @@ import { BigNumber } from "bignumber.js";
 import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
 import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
-import * as balancesHelpers from "helpers/balances";
 import React from "react";
 import { Text } from "react-native";
 
@@ -15,16 +14,8 @@ import {
   suspiciousTokenScan,
 } from "../../__mocks__/blockaid-response";
 
-// Mock the balances helpers
-jest.mock("helpers/balances", () => ({
-  isLiquidityPool: jest.fn(),
-  hasDecimals: jest.fn(),
-  getTokenIdentifier: jest.fn((token) => {
-    if (token.type === "native") return "XLM";
-    if (token.issuer?.key) return `${token.code}:${token.issuer.key}`;
-    return token.code;
-  }),
-}));
+// Use actual implementations for balance helpers
+jest.mock("helpers/balances", () => jest.requireActual("helpers/balances"));
 
 // Mock the useColors hook
 jest.mock("hooks/useColors", () => ({
@@ -47,45 +38,11 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
-// Mock soroban helpers
-jest.mock("helpers/soroban", () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  const BigNumberLib = require("bignumber.js");
-  return {
-    formatTokenForDisplay: jest.fn((amount, decimals) => {
-      const bn =
-        typeof amount === "string"
-          ? new BigNumberLib.BigNumber(amount)
-          : amount;
-      if (decimals > 0) {
-        const formatted = bn.shiftedBy(-decimals).toFixed(decimals);
-        // Trim trailing zeros
-        return formatted.replace(/\.?0+$/, "") || "0";
-      }
-      return bn.toString();
-    }),
-  };
-});
-
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => {
-  const actual = jest.requireActual("helpers/formatAmount");
-  return {
-    ...actual,
-    formatTokenForDisplay: jest.fn((amount, code) => {
-      const formatted = typeof amount === "string" ? amount : amount.toString();
-      return code ? `${formatted} ${code}` : formatted;
-    }),
-    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-    formatPercentageAmount: jest.fn((amount) => {
-      if (!amount) return "—";
-      const isNegative = amount.isLessThan(0);
-      const formattedNumber = amount.abs().toFixed(2);
-
-      return `${isNegative ? "-" : "+"}${formattedNumber}%`;
-    }),
-  };
-});
+// Use actual implementations for helpers
+jest.mock("helpers/soroban", () => jest.requireActual("helpers/soroban"));
+jest.mock("helpers/formatAmount", () =>
+  jest.requireActual("helpers/formatAmount"),
+);
 
 describe("BalanceRow", () => {
   const mockBalance = {
@@ -109,8 +66,6 @@ describe("BalanceRow", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(false);
-    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(false);
   });
 
   it("should render basic balance information", () => {
@@ -138,9 +93,6 @@ describe("BalanceRow", () => {
       tokenCode: "TEST",
       displayName: "Test Token",
     } as PricedBalance;
-
-    // Mock hasDecimals to return true for this custom token
-    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(true);
 
     const { getByText } = render(
       <BalanceRow balance={customTokenBalance} scanResult={benignTokenScan} />,
@@ -246,11 +198,18 @@ describe("BalanceRow", () => {
     });
 
     it("should adjust width for liquidity pool tokens", () => {
-      jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(true);
       const liquidityPoolBalance = {
         ...mockBalance,
         liquidityPoolId: "pool-id",
-      };
+        reserves: [
+          { asset: "native", amount: "100" },
+          {
+            asset:
+              "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            amount: "200",
+          },
+        ],
+      } as PricedBalance;
 
       const { getByTestId } = render(
         <DefaultRightContent balance={liquidityPoolBalance} />,

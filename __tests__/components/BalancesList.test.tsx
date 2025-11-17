@@ -49,41 +49,17 @@ jest.mock("@react-navigation/native", () => ({
   })),
 }));
 
-// Mock balances helpers
-jest.mock("helpers/balances", () => ({
-  isLiquidityPool: jest.fn(),
-  getTokenIdentifiersFromBalances: jest.fn(),
-  getLPShareCode: jest.fn(),
-  hasDecimals: jest.fn(),
-  getTokenIdentifier: jest.fn((token) => {
-    if (token.type === "native") return "XLM";
-    return `${token.code}:${token.issuer.key}`;
-  }),
-  calculateSpendableAmount: jest.fn(({ balance }) => balance.total),
-}));
-
 // Mock debug to avoid console logs in tests
 jest.mock("helpers/debug", () => ({
   debug: jest.fn(),
 }));
 
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => {
-  const actual = jest.requireActual("helpers/formatAmount");
-  return {
-    ...actual,
-    formatTokenForDisplay: jest.fn((amount, code) => {
-      const formatted = typeof amount === "string" ? amount : amount.toString();
-      return code ? `${formatted} ${code}` : formatted;
-    }),
-    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-    formatPercentageAmount: jest.fn((amount) => {
-      if (!amount) return "—";
-      const isNegative = amount.isLessThan(0);
-      return `${isNegative ? "-" : "+"}${amount.abs().toString()}%`;
-    }),
-  };
-});
+// Use actual implementations for helpers
+jest.mock("helpers/balances", () => jest.requireActual("helpers/balances"));
+jest.mock("helpers/soroban", () => jest.requireActual("helpers/soroban"));
+jest.mock("helpers/formatAmount", () =>
+  jest.requireActual("helpers/formatAmount"),
+);
 
 // Mock the useBalancesList hook
 jest.mock("hooks/useBalancesList", () => ({
