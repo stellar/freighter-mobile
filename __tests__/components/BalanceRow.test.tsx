@@ -15,6 +15,13 @@ import {
   suspiciousTokenScan,
 } from "../../__mocks__/blockaid-response";
 
+// Mock react-i18next
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
@@ -142,7 +149,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementAbove = getByTextAbove("+0.02%");
 
-      expect(priceChangeElementAbove.props.style.color).toBe("#30a46c");
+      expect(priceChangeElementAbove.props.style).toMatchObject({
+        color: "#30a46c",
+      });
 
       const balanceAtThreshold = {
         ...mockBalance,
@@ -153,7 +162,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementAt = getByTextAt("+0.01%");
 
-      expect(priceChangeElementAt.props.style.color).toBe("#30a46c");
+      expect(priceChangeElementAt.props.style).toMatchObject({
+        color: "#30a46c",
+      });
     });
 
     it("should use secondary color for negative price changes and positive changes below threshold", () => {
@@ -166,7 +177,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementNegative = getByTextNegative("-0.02%");
 
-      expect(priceChangeElementNegative.props.style.color).toBe("#a0a0a0");
+      expect(priceChangeElementNegative.props.style).toMatchObject({
+        color: "#a0a0a0",
+      });
 
       const balanceBelowThreshold = {
         ...mockBalance,
@@ -177,7 +190,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementBelow = getByTextBelow("+0.00%");
 
-      expect(priceChangeElementBelow.props.style.color).toBe("#a0a0a0");
+      expect(priceChangeElementBelow.props.style).toMatchObject({
+        color: "#a0a0a0",
+      });
     });
 
     it("should adjust width for liquidity pool tokens", () => {
@@ -197,35 +212,35 @@ describe("BalanceRow", () => {
     });
 
     it("should show alert icon for malicious tokens", () => {
-      const { UNSAFE_getByType } = render(
+      const { UNSAFE_getByType: getByType } = render(
         <BalanceRow balance={mockBalance} scanResult={maliciousTokenScan} />,
       );
 
-      const icon = UNSAFE_getByType(Icon.AlertCircle);
+      const icon = getByType(Icon.AlertCircle);
       expect(icon).toBeTruthy();
       expect(icon.props.themeColor).toBe("red");
     });
 
     it("should show alert icon for suspicious tokens", () => {
-      const { UNSAFE_getByType } = render(
+      const { UNSAFE_getByType: getByType } = render(
         <BalanceRow balance={mockBalance} scanResult={suspiciousTokenScan} />,
       );
 
-      const icon = UNSAFE_getByType(Icon.AlertCircle);
+      const icon = getByType(Icon.AlertCircle);
       expect(icon).toBeTruthy();
       expect(icon.props.themeColor).toBe("amber");
     });
 
     it("should not show alert icon for benign tokens", () => {
-      const { UNSAFE_getByType } = render(
+      const { UNSAFE_getByType: getByType } = render(
         <BalanceRow balance={mockBalance} scanResult={benignTokenScan} />,
       );
 
       try {
-        UNSAFE_getByType(Icon.AlertCircle);
+        getByType(Icon.AlertCircle);
       } catch (error: unknown) {
         expect((error as Error).message).toBe(
-          "No instances found with node type: \"Unknown\"",
+          'No instances found with node type: "Unknown"',
         );
       }
     });

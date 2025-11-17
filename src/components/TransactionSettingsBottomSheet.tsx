@@ -394,7 +394,6 @@ const TransactionSettingsBottomSheet: React.FC<
           </TouchableOpacity>
         </View>
         <Input
-          isBottomSheetInput
           fieldSize="lg"
           leftElement={<Icon.File02 size={16} themeColor="gray" />}
           placeholder={t("transactionSettings.memoPlaceholder")}
@@ -444,7 +443,6 @@ const TransactionSettingsBottomSheet: React.FC<
 
           <View className="flex-1">
             <Input
-              isBottomSheetInput
               fieldSize="lg"
               placeholder={t("transactionSettings.slippagePlaceholder")}
               value={localSlippage}
@@ -510,7 +508,6 @@ const TransactionSettingsBottomSheet: React.FC<
         </View>
         <View className="flex flex-row mt-[4px] items-center gap-2">
           <Input
-            isBottomSheetInput
             fieldSize="lg"
             value={localFee}
             leftElement={<Icon.Route size={16} themeColor="gray" />}
@@ -571,7 +568,6 @@ const TransactionSettingsBottomSheet: React.FC<
           </TouchableOpacity>
         </View>
         <Input
-          isBottomSheetInput
           fieldSize="lg"
           leftElement={<Icon.ClockRefresh size={16} themeColor="gray" />}
           placeholder={t("transactionSettings.timeoutPlaceholder")}

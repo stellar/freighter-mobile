@@ -20,12 +20,7 @@ jest.mock("hooks/useRightHeader", () => ({
   useRightHeaderMenu: jest.fn(),
 }));
 
-jest.mock("react-native-qrcode-svg", () => {
-  const QRCode = () => mockView;
-  QRCode.displayName = "QRCode";
-
-  return QRCode;
-});
+jest.mock("react-native-qrcode-svg");
 
 const mockAccount = {
   publicKey: "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",

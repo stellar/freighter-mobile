@@ -190,6 +190,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           publicKey={publicKey}
           network={network}
           onTokenPress={onTokenPress}
+          disableInnerScrolling
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
         />
@@ -211,7 +212,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           className="flex-1"
           style={{ marginHorizontal: -pxValue(DEFAULT_PADDING) }}
         >
-          <CollectiblesGrid onCollectiblePress={onCollectiblePress} />
+          <CollectiblesGrid
+            onCollectiblePress={onCollectiblePress}
+            disableInnerScrolling
+          />
         </View>
       ),
       [onCollectiblePress],

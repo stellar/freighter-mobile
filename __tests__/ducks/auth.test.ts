@@ -70,18 +70,6 @@ jest.mock("services/storage/reactNativeBiometricStorage", () => ({
   },
 }));
 
-jest.mock("react-native-keychain", () => ({
-  getSupportedBiometryType: jest.fn(),
-  BIOMETRY_TYPE: {
-    FACE_ID: "FaceID",
-    FINGERPRINT: "Fingerprint",
-    FACE: "Face",
-    TOUCH_ID: "TouchID",
-    OPTIC_ID: "OpticID",
-    IRIS: "Iris",
-  },
-}));
-
 jest.mock("ducks/preferences", () => ({
   usePreferencesStore: {
     getState: jest.fn(),
@@ -667,7 +655,10 @@ describe("auth duck", () => {
         mockStoredData,
       );
 
-      const response = await result.current.enableBiometrics(mockCallback);
+      let response;
+      await act(async () => {
+        response = await result.current.enableBiometrics(mockCallback);
+      });
 
       expect(getSupportedBiometryType).toHaveBeenCalled();
       expect(biometricDataStorage.getItem).toHaveBeenCalledWith(
@@ -688,7 +679,9 @@ describe("auth duck", () => {
       (getSupportedBiometryType as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        result.current.enableBiometrics(mockCallback),
+        act(async () => {
+          await result.current.enableBiometrics(mockCallback);
+        }),
       ).rejects.toThrow("No biometry type found");
       expect(mockCallback).not.toHaveBeenCalled();
     });
@@ -700,7 +693,9 @@ describe("auth duck", () => {
       (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        result.current.enableBiometrics(mockCallback),
+        act(async () => {
+          await result.current.enableBiometrics(mockCallback);
+        }),
       ).rejects.toThrow(
         "No stored password found for biometric authentication",
       );
@@ -715,7 +710,9 @@ describe("auth duck", () => {
       (biometricDataStorage.getItem as jest.Mock).mockRejectedValue(mockError);
 
       await expect(
-        result.current.enableBiometrics(mockCallback),
+        act(async () => {
+          await result.current.enableBiometrics(mockCallback);
+        }),
       ).rejects.toThrow("Biometric authentication failed");
       expect(mockCallback).not.toHaveBeenCalled();
     });
@@ -750,10 +747,13 @@ describe("auth duck", () => {
         mockStoredData,
       );
 
-      const response = await result.current.verifyActionWithBiometrics(
-        mockCallback,
-        ...mockArgs,
-      );
+      let response;
+      await act(async () => {
+        response = await result.current.verifyActionWithBiometrics(
+          mockCallback,
+          ...mockArgs,
+        );
+      });
 
       expect(getSupportedBiometryType).toHaveBeenCalled();
       expect(biometricDataStorage.getItem).toHaveBeenCalledWith(
@@ -776,10 +776,13 @@ describe("auth duck", () => {
         isBiometricsEnabled: false,
       });
 
-      const response = await result.current.verifyActionWithBiometrics(
-        mockCallback,
-        ...mockArgs,
-      );
+      let response;
+      await act(async () => {
+        response = await result.current.verifyActionWithBiometrics(
+          mockCallback,
+          ...mockArgs,
+        );
+      });
 
       expect(getSupportedBiometryType).not.toHaveBeenCalled();
       expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
@@ -799,10 +802,13 @@ describe("auth duck", () => {
 
       (rnBiometrics.isSensorAvailable as jest.Mock).mockResolvedValue(false);
 
-      const response = await result.current.verifyActionWithBiometrics(
-        mockCallback,
-        ...mockArgs,
-      );
+      let response;
+      await act(async () => {
+        response = await result.current.verifyActionWithBiometrics(
+          mockCallback,
+          ...mockArgs,
+        );
+      });
 
       expect(getSupportedBiometryType).not.toHaveBeenCalled();
       expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
@@ -822,10 +828,13 @@ describe("auth duck", () => {
         });
       });
 
-      const response = await result.current.verifyActionWithBiometrics(
-        mockCallback,
-        ...mockArgs,
-      );
+      let response;
+      await act(async () => {
+        response = await result.current.verifyActionWithBiometrics(
+          mockCallback,
+          ...mockArgs,
+        );
+      });
 
       expect(getSupportedBiometryType).not.toHaveBeenCalled();
       expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
@@ -852,10 +861,13 @@ describe("auth duck", () => {
 
       (getSupportedBiometryType as jest.Mock).mockResolvedValue(null);
 
-      const response = await result.current.verifyActionWithBiometrics(
-        mockCallback,
-        ...mockArgs,
-      );
+      let response;
+      await act(async () => {
+        response = await result.current.verifyActionWithBiometrics(
+          mockCallback,
+          ...mockArgs,
+        );
+      });
 
       expect(getSupportedBiometryType).toHaveBeenCalled();
       expect(biometricDataStorage.getItem).not.toHaveBeenCalled();
@@ -881,7 +893,12 @@ describe("auth duck", () => {
       (biometricDataStorage.getItem as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        result.current.verifyActionWithBiometrics(mockCallback, ...mockArgs),
+        act(async () => {
+          await result.current.verifyActionWithBiometrics(
+            mockCallback,
+            ...mockArgs,
+          );
+        }),
       ).rejects.toThrow(
         "No stored password found for biometric authentication",
       );
@@ -907,7 +924,12 @@ describe("auth duck", () => {
       (biometricDataStorage.getItem as jest.Mock).mockRejectedValue(mockError);
 
       await expect(
-        result.current.verifyActionWithBiometrics(mockCallback, ...mockArgs),
+        act(async () => {
+          await result.current.verifyActionWithBiometrics(
+            mockCallback,
+            ...mockArgs,
+          );
+        }),
       ).rejects.toThrow("Biometric authentication failed");
       expect(mockCallback).not.toHaveBeenCalled();
     });
