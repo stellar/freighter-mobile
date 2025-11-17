@@ -18,7 +18,6 @@ import {
   calculateSpendableAmount,
   isAmountSpendable,
   getIssuerFromIdentifier,
-  hasDecimals,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -450,81 +449,6 @@ describe("balances helpers", () => {
     it("should return empty string for empty identifier", () => {
       const issuer = getIssuerFromIdentifier("");
       expect(issuer).toBe("");
-    });
-  });
-
-  describe("hasDecimals", () => {
-    it("should return true for SorobanBalance with decimals", () => {
-      const sorobanBalance: SorobanBalance = {
-        token: {
-          code: "TEST",
-          issuer: {
-            key: "C1234567890ABCDEF",
-          },
-        } as NonNativeToken,
-        total: new BigNumber("10000"),
-        available: new BigNumber("10000"),
-        decimals: 4,
-        contractId: "C1234567890ABCDEF",
-        name: "Test Token",
-        symbol: "TEST",
-      };
-
-      expect(hasDecimals(sorobanBalance)).toBe(true);
-      // Type guard should work
-      if (hasDecimals(sorobanBalance)) {
-        expect(sorobanBalance.decimals).toBe(4);
-      }
-    });
-
-    it("should return false for native XLM balance", () => {
-      const nativeBalanceTest: NativeBalance = {
-        token: {
-          type: "native",
-          code: NATIVE_TOKEN_CODE,
-        },
-        total: new BigNumber("100.5"),
-        available: new BigNumber("100.5"),
-        minimumBalance: new BigNumber("1"),
-        buyingLiabilities: "0",
-        sellingLiabilities: "0",
-      };
-
-      expect(hasDecimals(nativeBalanceTest)).toBe(false);
-    });
-
-    it("should return false for classic token balance", () => {
-      const classicBalance: ClassicBalance = {
-        token: {
-          code: "USDC",
-          issuer: {
-            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-          },
-        } as NonNativeToken,
-        total: new BigNumber("1000"),
-        available: new BigNumber("1000"),
-        limit: new BigNumber("10000"),
-        buyingLiabilities: "0",
-        sellingLiabilities: "0",
-      };
-
-      expect(hasDecimals(classicBalance)).toBe(false);
-    });
-
-    it("should return false for balance with undefined decimals", () => {
-      const balanceWithoutDecimals = {
-        token: {
-          code: "TEST",
-          issuer: {
-            key: "C1234567890ABCDEF",
-          },
-        } as NonNativeToken,
-        total: new BigNumber("10000"),
-        available: new BigNumber("10000"),
-        contractId: "C1234567890ABCDEF",
-      };
-
-      expect(hasDecimals(balanceWithoutDecimals as Balance)).toBe(false);
     });
   });
 

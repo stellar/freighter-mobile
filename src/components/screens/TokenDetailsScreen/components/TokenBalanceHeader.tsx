@@ -4,13 +4,17 @@ import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
+import { Balance, PricedBalance, SorobanBalance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import {
-  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
+  formatTokenForDisplay,
 } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import {
+  formatTokenForDisplay as formatSorobanTokenAmount,
+  isContractId,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -104,6 +108,28 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         )}
       </View>
     );
+  };
+
+  const formatBalanceAmount = (
+    balance: Balance | PricedBalance,
+    code?: string,
+  ): string => {
+    const amount = balance.total;
+
+    // Check if this is a SorobanBalance (custom token) with decimals
+    if ("decimals" in balance && typeof balance.decimals === "number") {
+      const sorobanBalance = balance as SorobanBalance;
+      // Convert raw amount to decimal format using the token's decimals
+      const formattedTokenAmount = formatSorobanTokenAmount(
+        amount,
+        sorobanBalance.decimals,
+      );
+      // Then format for display with locale settings
+      return formatTokenForDisplay(formattedTokenAmount, code);
+    }
+
+    // For other balance types (native, classic, liquidity pools), format directly
+    return formatTokenForDisplay(amount, code);
   };
 
   const renderBalanceInfo = () => (

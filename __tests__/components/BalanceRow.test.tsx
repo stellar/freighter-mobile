@@ -54,26 +54,6 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => {
-  const actual = jest.requireActual("helpers/formatAmount");
-  return {
-    ...actual,
-    formatBalanceAmount: jest.fn((balance, code, amountOverride) =>
-      // Use the real implementation to test actual conversion behavior
-      actual.formatBalanceAmount(balance, code, amountOverride),
-    ),
-    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-    formatPercentageAmount: jest.fn((amount) => {
-      if (!amount) return "—";
-      const isNegative = amount.isLessThan(0);
-      const formattedNumber = amount.abs().toFixed(2);
-
-      return `${isNegative ? "-" : "+"}${formattedNumber}%`;
-    }),
-  };
-});
-
 describe("BalanceRow", () => {
   const mockBalance = {
     token: {

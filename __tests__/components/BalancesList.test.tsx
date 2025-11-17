@@ -74,23 +74,6 @@ jest.mock("helpers/debug", () => ({
   debug: jest.fn(),
 }));
 
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => {
-  const actual = jest.requireActual("helpers/formatAmount");
-  return {
-    ...actual,
-    formatBalanceAmount: jest.fn((balance, code, amountOverride) =>
-      actual.formatBalanceAmount(balance, code, amountOverride),
-    ),
-    formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-    formatPercentageAmount: jest.fn((amount) => {
-      if (!amount) return "—";
-      const isNegative = amount.isLessThan(0);
-      return `${isNegative ? "-" : "+"}${amount.abs().toString()}%`;
-    }),
-  };
-});
-
 // Mock the useBalancesList hook
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(),
