@@ -19,7 +19,7 @@ import {
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
-import { isLiquidityPool } from "helpers/balances";
+import { hasDecimals, isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
@@ -361,10 +361,9 @@ export const buildPaymentTransaction = async (
         ? getContractIdForNativeToken(network)
         : recipientAddress;
 
-      const decimals =
-        "decimals" in selectedBalance
-          ? selectedBalance.decimals
-          : DEFAULT_DECIMALS;
+      const decimals = hasDecimals(selectedBalance)
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS;
       const amountInBaseUnits = BigNumber(amount)
         .shiftedBy(decimals)
         .toFixed(0);

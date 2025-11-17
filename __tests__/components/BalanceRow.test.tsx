@@ -18,6 +18,12 @@ import {
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
+  hasDecimals: jest.fn(),
+  getTokenIdentifier: jest.fn((token) => {
+    if (token.type === "native") return "XLM";
+    if (token.issuer?.key) return `${token.code}:${token.issuer.key}`;
+    return token.code;
+  }),
 }));
 
 // Mock the useColors hook
@@ -38,19 +44,6 @@ jest.mock("hooks/useColors", () => ({
         9: "red",
       },
     },
-  }),
-}));
-
-// Mock formatAmount helpers
-jest.mock("helpers/formatAmount", () => ({
-  formatTokenForDisplay: jest.fn((amount) => amount.toString()),
-  formatFiatAmount: jest.fn((amount) => `$${amount.toString()}`),
-  formatPercentageAmount: jest.fn((amount) => {
-    if (!amount) return "—";
-    const isNegative = amount.isLessThan(0);
-    const formattedNumber = amount.abs().toFixed(2);
-
-    return `${isNegative ? "-" : "+"}${formattedNumber}%`;
   }),
 }));
 
@@ -77,6 +70,7 @@ describe("BalanceRow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(false);
+    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(false);
   });
 
   it("should render basic balance information", () => {
@@ -85,7 +79,33 @@ describe("BalanceRow", () => {
     );
 
     expect(getByText("XLM")).toBeTruthy();
-    expect(getByText("100.5")).toBeTruthy();
+    expect(getByText("100.5 XLM")).toBeTruthy();
+  });
+
+  it("should format custom token balance with decimals correctly", () => {
+    const customTokenBalance = {
+      ...mockBalance,
+      token: {
+        code: "TEST",
+        issuer: { key: "C1234567890" },
+      },
+      total: new BigNumber("10000"), // Raw amount for 4 decimals
+      available: new BigNumber("10000"),
+      decimals: 4,
+      contractId: "C1234567890",
+      name: "Test Token",
+      symbol: "TEST",
+      tokenCode: "TEST",
+      displayName: "Test Token",
+    } as PricedBalance;
+
+    const { getByText } = render(
+      <BalanceRow balance={customTokenBalance} scanResult={benignTokenScan} />,
+    );
+
+    expect(getByText("Test Token")).toBeTruthy();
+    // formatBalanceAmount should convert 10000 (raw) to 1 (trimmed), then format as 1.00
+    expect(getByText("1.00 TEST")).toBeTruthy();
   });
 
   it("should render default right content with fiat values", () => {

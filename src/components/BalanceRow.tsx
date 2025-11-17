@@ -7,7 +7,7 @@ import {
   DEFAULT_PRESS_DELAY,
   POSITIVE_PRICE_CHANGE_THRESHOLD,
 } from "config/constants";
-import { PricedBalance } from "config/types";
+import { Balance, PricedBalance, SorobanBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
@@ -16,6 +16,7 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
+import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import useColors from "hooks/useColors";
 import React, { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -131,6 +132,43 @@ const renderContent = (
   return children;
 };
 
+/**
+ * Formats a balance amount for display, respecting custom token decimals
+ *
+ * This function handles the conversion of raw token amounts (stored in the smallest unit)
+ * to human-readable format for custom tokens (Soroban tokens). For custom tokens with decimals,
+ * it first converts the raw amount using the token's decimal places, then formats it for display.
+ *
+ * For other balance types (native XLM, classic tokens, liquidity pools), it formats the amount directly.
+ *
+ * @param {Balance | PricedBalance} balance - The balance object containing the amount and token information
+ * @param {string} [code] - Optional token code to append to the formatted amount
+ * @param {BigNumber} [amountOverride] - Optional amount override (e.g., spendableAmount) instead of balance.total
+ * @returns {string} Formatted token amount string with optional token code
+ */
+const formatBalanceAmount = (
+  balance: Balance | PricedBalance,
+  code?: string,
+  amountOverride?: BigNumber,
+): string => {
+  const amount = amountOverride || balance.total;
+
+  // Check if this is a SorobanBalance (custom token) with decimals
+  if ("decimals" in balance && typeof balance.decimals === "number") {
+    const sorobanBalance = balance as SorobanBalance;
+    // Convert raw amount to decimal format using the token's decimals
+    const formattedTokenAmount = formatSorobanTokenAmount(
+      amount,
+      sorobanBalance.decimals,
+    );
+    // Then format for display with locale settings
+    return formatTokenForDisplay(formattedTokenAmount, code);
+  }
+
+  // For other balance types (native, classic, liquidity pools), format directly
+  return formatTokenForDisplay(amount, code);
+};
+
 export const BalanceRow: React.FC<BalanceRowProps> = ({
   balance,
   scanResult: scanResultFromProps,
@@ -172,10 +210,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatTokenForDisplay(
-                spendableAmount || balance.total,
-                balance.tokenCode,
-              )}
+              formatBalanceAmount(balance, balance.tokenCode, spendableAmount)}
           </Text>
         </TokenTextContainer>
       </LeftSection>

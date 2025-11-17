@@ -537,3 +537,14 @@ export const getIssuerFromIdentifier = (
   /* eslint-enable */
   return issuer;
 };
+
+/**
+ * Type guard to check if a balance has a decimals property
+ *
+ * @param {Balance | PricedBalance} balance - The balance to check
+ * @returns {boolean} True if balance has decimals property, false otherwise
+ */
+export const hasDecimals = (
+  balance: Balance | PricedBalance,
+): balance is Balance & { decimals: number } =>
+  "decimals" in balance && typeof balance.decimals === "number";

@@ -54,6 +54,7 @@ jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
   getTokenIdentifiersFromBalances: jest.fn(),
   getLPShareCode: jest.fn(),
+  hasDecimals: jest.fn(),
   getTokenIdentifier: jest.fn((token) => {
     if (token.type === "native") return "XLM";
     return `${token.code}:${token.issuer.key}`;
