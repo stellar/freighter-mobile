@@ -101,9 +101,15 @@ jobs:
             exit 0
           fi
 
-          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+          RELEASE_BRANCHES=$(git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | sed 's/.*refs\/heads\///' || true)
+
+          if [ -n "$RELEASE_BRANCHES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Active release branch detected. Skipping scheduled daily dev build."
+            echo "Active release branch(es) detected:"
+            echo "$RELEASE_BRANCHES" | while read -r branch; do
+              echo "  - $branch"
+            done
+            echo "Skipping scheduled daily dev build."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
