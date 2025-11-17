@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { hasDecimals } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import {
   createTokenFiatConverterReducer,
@@ -51,9 +52,17 @@ export const useTokenFiatConverter = ({
     [selectedBalance?.currentPrice],
   );
 
+  const decimals = useMemo(
+    () =>
+      selectedBalance && hasDecimals(selectedBalance)
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS,
+    [selectedBalance],
+  );
+
   const reducer = useMemo(
-    () => createTokenFiatConverterReducer(tokenPrice),
-    [tokenPrice],
+    () => createTokenFiatConverterReducer(tokenPrice, decimals),
+    [tokenPrice, decimals],
   );
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -61,10 +70,10 @@ export const useTokenFiatConverter = ({
   const tokenAmountDisplayDerived = useMemo(
     () =>
       formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
-        decimalPlaces: DEFAULT_DECIMALS,
+        decimalPlaces: decimals,
         useGrouping: false,
       }),
-    [state.tokenAmount],
+    [state.tokenAmount, decimals],
   );
 
   // Use raw input when user is typing in token mode, otherwise use derived value
