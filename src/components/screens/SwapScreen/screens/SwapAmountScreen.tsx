@@ -20,6 +20,7 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   SWAP_SELECTION_TYPES,
   TransactionContext,
 } from "config/constants";
@@ -45,6 +46,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -97,6 +100,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     publicKey: account?.publicKey ?? "",
     network,
   });
+
+  const { recommendedFee } = useNetworkFees();
 
   const {
     sourceTokenId,
@@ -256,6 +261,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
+
   useEffect(() => {
     if (swapError) {
       setSwapError(null);
@@ -413,15 +420,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const showSecurityWarningForSource = useMemo(
     () =>
-      sourceBalanceSecurityAssessment.isUnableToScan && sourceTokenId !== "XLM",
+      sourceBalanceSecurityAssessment.isUnableToScan &&
+      sourceTokenId !== NATIVE_TOKEN_CODE,
     [sourceBalanceSecurityAssessment.isUnableToScan, sourceTokenId],
+  );
+
+  const showSecurityWarningForDestination = useMemo(
+    () =>
+      destBalanceSecurityAssessment.isUnableToScan &&
+      destinationTokenId !== NATIVE_TOKEN_CODE,
+    [destBalanceSecurityAssessment.isUnableToScan, destinationTokenId],
   );
 
   const handleMainButtonPress = useCallback(async () => {
     if (destinationBalance) {
       const isUnableToScan =
-        showSecurityWarningForSource ||
-        destBalanceSecurityAssessment.isUnableToScan;
+        showSecurityWarningForSource || showSecurityWarningForDestination;
 
       if (isUnableToScan) {
         await prepareSwapTransaction(false);
@@ -436,7 +450,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationBalance,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
-    destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForDestination,
     showSecurityWarningForSource,
   ]);
 
@@ -483,7 +497,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       });
     }
 
-    if (destBalanceSecurityAssessment.isUnableToScan) {
+    if (showSecurityWarningForDestination) {
       warnings.push({
         id: "unable-to-scan-destination",
         description: t("blockaid.unableToScan.destinationToken"),
@@ -498,7 +512,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalanceSecurityAssessment.isSuspicious,
     destBalanceSecurityAssessment.isMalicious,
     destBalanceSecurityAssessment.isSuspicious,
-    destBalanceSecurityAssessment.isUnableToScan,
+    showSecurityWarningForDestination,
     showSecurityWarningForSource,
     transactionScanResult,
     scanResults,
@@ -515,8 +529,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
 
   const isUnableToScan =
-    showSecurityWarningForSource ||
-    destBalanceSecurityAssessment.isUnableToScan;
+    showSecurityWarningForSource || showSecurityWarningForDestination;
 
   const transactionSecuritySeverity = useMemo(() => {
     if (transactionSecurityAssessment.isMalicious)
@@ -536,8 +549,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     const isUnableToScanConfirm =
-      showSecurityWarningForSource ||
-      destBalanceSecurityAssessment.isUnableToScan;
+      showSecurityWarningForSource || showSecurityWarningForDestination;
 
     if (isUnableToScanConfirm) {
       swapReviewBottomSheetModalRef.current?.present();

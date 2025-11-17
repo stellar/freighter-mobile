@@ -8,8 +8,8 @@ on:
         description: A git commit/hash/tag (optional)
         type: string
         default: ""
-      env:
-        description: The Android env that will be built (optional)
+      buildEnv:
+        description: The Android env to be built (optional)
         type: choice
         default: ""
         options:
@@ -23,6 +23,13 @@ on:
         options:
           - "yes"
           - "no"
+      release_notes:
+        description: Google Play release notes (optional)
+        type: string
+        default: ""
+  schedule:
+    # Runs every day at midnight PST/PDT time (8am UTC/GMT)
+    - cron: "0 8 * * *"
 
 concurrency:
   group:
@@ -87,7 +94,31 @@ env:
     ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
 
 jobs:
+  # Scheduled nightly builds should not overwrite the dev build
+  # when a release candidate branch is active (release/v*).
+  check_release_branch:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check for active release branch
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Active release branch detected. Skipping scheduled daily dev build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check_release_branch
+    if: needs.check_release_branch.outputs.skip == 'false'
     name: Build Android
     runs-on: "ubuntu-latest-16-cores"
     timeout-minutes: 45
@@ -110,10 +141,25 @@ jobs:
 
       - name: Set env
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
-          # Translate env input to Android flavor (dev/prod map directly to flavor dimension)
-          export ANDROID_FLAVOR="${{ github.event.inputs.env }}"
+          # If the workflow is triggered by a scheduled event, always upload to Google Play.
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "UPLOAD_TO_GOOGLE_PLAY=yes" >> $GITHUB_ENV
+          else
+            echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}" >> $GITHUB_ENV
+          fi
+
+          # Translate buildEnv input to Android flavor
+          if [[ "${{ github.event.inputs.buildEnv }}" == "prod" ]]; then
+            export ANDROID_FLAVOR="prod"
+          else
+            export ANDROID_FLAVOR="dev"
+          fi
           ./scripts/gh-android-env >> $GITHUB_ENV
+
+      - name: Generate release notes
+        env:
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes || '' }}
+        run: scripts/generate-release-notes.sh
 
       - name: Decode and save sentry.properties
         run:
@@ -123,7 +169,7 @@ jobs:
       # Most of the vars below are set on the ./scripts/gh-android-env script.
       - name: Debug info
         run: |
-          echo "UPLOAD_TO_GOOGLE_PLAY=${{ github.event.inputs.upload_to_google_play }}"
+          echo "UPLOAD_TO_GOOGLE_PLAY=${UPLOAD_TO_GOOGLE_PLAY}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
           echo "REF_NAME=${REF_NAME}"
           echo "APP_VERSION=${APP_VERSION}"

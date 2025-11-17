@@ -78,22 +78,16 @@ class GHActionIOS
   end
 
   def set_scheme
-    ref_name = @env.fetch("REF_NAME")
-    ios_scheme = @env.fetch("IOS_SCHEME")
+    ios_scheme = @env["IOS_SCHEME"].to_s
 
-    if ios_scheme.to_s != ""
+    # If the scheme is set in the workflow dispatch, use it
+    if !ios_scheme.empty?
       build_env[:ios_scheme] = ios_scheme
       return
     end
 
-    # Default scheme based on ref_name
-    # Production builds are tagged with version numbers (e.g., v1.6.23)
-    # Development builds use other patterns
-    build_env[:ios_scheme] = if ref_name.match?(/^v?\d+\.\d+\.\d+$/)
-                                "freighter-mobile"
-                              else
-                                "freighter-mobile-dev"
-                              end
+    # Otherwise, default to dev scheme
+    build_env[:ios_scheme] = "freighter-mobile-dev"
   end
 
   def output_env

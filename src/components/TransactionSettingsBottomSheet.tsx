@@ -25,6 +25,7 @@ import {
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
@@ -69,6 +70,11 @@ const TransactionSettingsBottomSheet: React.FC<
     saveSwapSlippage,
   } = useSwapSettingsStore();
 
+  const { markAsManuallyChanged } = useInitialRecommendedFee(
+    recommendedFee,
+    context,
+  );
+
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -76,7 +82,9 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
-  const fee = context === TransactionContext.Swap ? swapFee : transactionFee;
+  const storeFee =
+    context === TransactionContext.Swap ? swapFee : transactionFee;
+
   const timeout =
     context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
   const slippage = context === TransactionContext.Swap ? swapSlippage : 1;
@@ -95,9 +103,7 @@ const TransactionSettingsBottomSheet: React.FC<
         ];
 
   // State hooks
-  const [localFee, setLocalFee] = useState(
-    formatNumberForDisplay(fee ?? recommendedFee),
-  );
+  const [localFee, setLocalFee] = useState(formatNumberForDisplay(storeFee));
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
@@ -221,8 +227,10 @@ const TransactionSettingsBottomSheet: React.FC<
     [TransactionSetting.Memo]: () => saveMemo(localMemo),
     [TransactionSetting.Slippage]: () =>
       saveSlippage(Number(parseDisplayNumber(localSlippage))),
-    [TransactionSetting.Fee]: () =>
-      saveFee(parseDisplayNumber(localFee).toString()),
+    [TransactionSetting.Fee]: () => {
+      markAsManuallyChanged();
+      saveFee(parseDisplayNumber(localFee).toString());
+    },
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
   };
 
@@ -255,7 +263,6 @@ const TransactionSettingsBottomSheet: React.FC<
           </TouchableOpacity>
         </View>
         <Input
-          isBottomSheetInput
           fieldSize="lg"
           leftElement={<Icon.File02 size={16} themeColor="gray" />}
           placeholder={t("transactionSettings.memoPlaceholder")}
@@ -303,7 +310,6 @@ const TransactionSettingsBottomSheet: React.FC<
 
           <View className="flex-1">
             <Input
-              isBottomSheetInput
               fieldSize="lg"
               placeholder={t("transactionSettings.slippagePlaceholder")}
               value={localSlippage}
@@ -355,11 +361,12 @@ const TransactionSettingsBottomSheet: React.FC<
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={() =>
+            onPress={() => {
+              markAsManuallyChanged();
               setLocalFee(
                 formatNumberForDisplay(recommendedFee || MIN_TRANSACTION_FEE),
-              )
-            }
+              );
+            }}
           >
             <Text sm medium color={themeColors.lilac[11]}>
               {t("transactionSettings.resetFee")}
@@ -368,7 +375,6 @@ const TransactionSettingsBottomSheet: React.FC<
         </View>
         <View className="flex flex-row mt-[4px] items-center gap-2">
           <Input
-            isBottomSheetInput
             fieldSize="lg"
             value={localFee}
             leftElement={<Icon.Route size={16} themeColor="gray" />}
@@ -411,6 +417,7 @@ const TransactionSettingsBottomSheet: React.FC<
       getLocalizedCongestionLevel,
       handleFeeChange,
       recommendedFee,
+      markAsManuallyChanged,
     ],
   );
 
@@ -428,7 +435,6 @@ const TransactionSettingsBottomSheet: React.FC<
           </TouchableOpacity>
         </View>
         <Input
-          isBottomSheetInput
           fieldSize="lg"
           leftElement={<Icon.ClockRefresh size={16} themeColor="gray" />}
           placeholder={t("transactionSettings.timeoutPlaceholder")}

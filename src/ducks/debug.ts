@@ -22,7 +22,7 @@ const INITIAL_DEBUG_STATE = {
 };
 
 export const useDebugStore = create<DebugState>()(
-  isDev
+  isDev || __DEV__
     ? persist(
         (set) => ({
           ...INITIAL_DEBUG_STATE,

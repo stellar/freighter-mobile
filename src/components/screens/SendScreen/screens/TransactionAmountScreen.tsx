@@ -18,7 +18,7 @@ import {
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import {
   useSendBannerContent,
-  useTransactionSecurity,
+  getTransactionSecurity,
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -55,6 +55,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -108,13 +110,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
+  // Ensure defaults when entering the screen
   useEffect(() => {
+    // Clear collectible details when entering token flow to prevent cross-flow contamination
+    saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    // Clear recipient address when entering the screen
+    saveRecipientAddress("");
+
     if (tokenId) {
       saveSelectedTokenId(tokenId);
-      // Clear collectible details when entering token flow to prevent cross-flow contamination
-      saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
+    } else {
+      saveSelectedTokenId("");
     }
-  }, [tokenId, saveSelectedTokenId, saveSelectedCollectibleDetails]);
+  }, [
+    tokenId,
+    saveSelectedTokenId,
+    saveSelectedCollectibleDetails,
+    saveRecipientAddress,
+  ]);
 
   useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
@@ -132,19 +145,31 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionHash,
   } = useTransactionBuilderStore();
 
-  // Reset transaction on unmount, but keep selectedTokenId and settings
-  // so navigation between Amount and SearchContacts/TokenScreen works correctly
+  // Reset transaction, recipient, and token on unmount
   useEffect(
     () => () => {
       resetTransaction();
+      saveSelectedTokenId("");
+      saveRecipientAddress("");
+      resetSendRecipient();
+      resetSettings();
     },
-    [resetTransaction],
+    [
+      resetTransaction,
+      saveSelectedTokenId,
+      saveRecipientAddress,
+      resetSendRecipient,
+      resetSettings,
+    ],
   );
 
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
+  const { recommendedFee } = useNetworkFees();
+
+  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
 
   const publicKey = account?.publicKey;
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -230,7 +255,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
+  } = getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
 
   const {
     tokenAmount,
@@ -345,6 +370,39 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     showToast,
   ]);
 
+  const handleTransactionScanSuccess = useCallback(
+    (
+      scanResult: Blockaid.StellarTransactionScanResponse | undefined,
+      shouldOpenReview: boolean,
+    ) => {
+      logger.info("TransactionAmountScreen", "scanResult", scanResult);
+      setTransactionScanResult(scanResult);
+
+      if (shouldOpenReview) {
+        const security = getTransactionSecurity(
+          scanResult,
+          overriddenBlockaidResponse,
+        );
+        if (security.transactionSecurityAssessment.isUnableToScan) {
+          transactionSecurityWarningBottomSheetModalRef.current?.present();
+        } else {
+          reviewBottomSheetModalRef.current?.present();
+        }
+      }
+    },
+    [overriddenBlockaidResponse],
+  );
+
+  const handleTransactionScanError = useCallback(
+    (shouldOpenReview: boolean) => {
+      setTransactionScanResult(undefined);
+      if (shouldOpenReview) {
+        transactionSecurityWarningBottomSheetModalRef.current?.present();
+      }
+    },
+    [],
+  );
+
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
       const numberTokenAmount = new BigNumber(tokenAmount);
@@ -379,26 +437,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         if (!finalXDR) return;
 
-        if (shouldOpenReview) {
-          scanTransaction(finalXDR, "internal")
-            .then((scanResult) => {
-              logger.info("TransactionAmountScreen", "scanResult", scanResult);
-              setTransactionScanResult(scanResult);
-
-              const isUnableToScan =
-                !scanResult || transactionSecurityAssessment.isUnableToScan;
-
-              if (isUnableToScan) {
-                transactionSecurityWarningBottomSheetModalRef.current?.present();
-              } else {
-                reviewBottomSheetModalRef.current?.present();
-              }
-            })
-            .catch(() => {
-              setTransactionScanResult(undefined);
-              transactionSecurityWarningBottomSheetModalRef.current?.present();
-            });
-        }
+        // Always scan the transaction to keep the hook updated
+        scanTransaction(finalXDR, "internal")
+          .then((scanResult) =>
+            handleTransactionScanSuccess(scanResult, shouldOpenReview),
+          )
+          .catch(() => handleTransactionScanError(shouldOpenReview));
       } catch (error) {
         logger.error(
           "TransactionAmountScreen",
@@ -415,7 +459,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
-      transactionSecurityAssessment,
+      handleTransactionScanSuccess,
+      handleTransactionScanError,
     ],
   );
 
