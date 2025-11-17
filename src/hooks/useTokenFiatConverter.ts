@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { hasDecimals } from "helpers/balances";
 import {
   formatBigNumberForDisplay,
   parseDisplayNumber,
@@ -47,15 +48,24 @@ export const useTokenFiatConverter = ({
     [selectedBalance?.currentPrice],
   );
 
+  // Get decimals from selected balance, defaulting to DEFAULT_DECIMALS
+  const decimals = useMemo(
+    () =>
+      selectedBalance && hasDecimals(selectedBalance)
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS,
+    [selectedBalance],
+  );
+
   // Update display value when internal value changes
   useEffect(() => {
     setTokenAmountDisplay(
       formatBigNumberForDisplay(new BigNumber(tokenAmount), {
-        decimalPlaces: DEFAULT_DECIMALS,
+        decimalPlaces: decimals,
         useGrouping: false,
       }),
     );
-  }, [tokenAmount]);
+  }, [tokenAmount, decimals]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {
@@ -78,12 +88,12 @@ export const useTokenFiatConverter = ({
         const newTokenAmount = tokenPrice.isZero()
           ? new BigNumber(0)
           : bnFiatAmount.dividedBy(tokenPrice);
-        setTokenAmount(newTokenAmount.toFixed(DEFAULT_DECIMALS));
+        setTokenAmount(newTokenAmount.toFixed(decimals));
       } else {
         setTokenAmount("0");
       }
     }
-  }, [fiatAmount, tokenPrice, showFiatAmount]);
+  }, [fiatAmount, tokenPrice, showFiatAmount, decimals]);
 
   /**
    * Handles numeric input and deletion for display-formatted values
@@ -97,14 +107,10 @@ export const useTokenFiatConverter = ({
 
       setFiatAmount(parseDisplayNumber(newAmount, FIAT_DECIMALS));
     } else {
-      const newAmount = formatNumericInput(
-        tokenAmountDisplay,
-        key,
-        DEFAULT_DECIMALS,
-      );
+      const newAmount = formatNumericInput(tokenAmountDisplay, key, decimals);
       // Update display value immediately to preserve formatting
       setTokenAmountDisplay(newAmount);
-      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
+      const internalAmount = parseDisplayNumber(newAmount, decimals);
       setTokenAmount(internalAmount);
     }
 

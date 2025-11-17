@@ -6,7 +6,7 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import {
-  formatTokenForDisplay,
+  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -108,7 +108,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   const renderBalanceInfo = () => (
     <Display xs medium>
-      {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
+      {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
     </Display>
   );
 
@@ -122,7 +122,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         ),
         trailingContent: (
           <Text md secondary color={THEME.colors.text.primary}>
-            {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
+            {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
           </Text>
         ),
       },
