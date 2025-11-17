@@ -25,6 +25,7 @@ jest.mock("react-i18next", () => ({
 // Mock the balances helpers
 jest.mock("helpers/balances", () => ({
   isLiquidityPool: jest.fn(),
+  hasDecimals: jest.fn(),
 }));
 
 // Mock the useColors hook
@@ -84,6 +85,7 @@ describe("BalanceRow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(balancesHelpers.isLiquidityPool).mockReturnValue(false);
+    jest.mocked(balancesHelpers.hasDecimals).mockReturnValue(false);
   });
 
   it("should render basic balance information", () => {

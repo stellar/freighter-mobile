@@ -642,7 +642,6 @@
       "sorobanInfo": "Para transações Soroban (como transferências de colecionáveis ou tokens personalizados), o suporte a memo depende do contrato de destino.",
       "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
       "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
-      "muxedAddressInfo": "Endereços muxed (formato M-) permitem incluir um memo diretamente no endereço. O memo é incorporado no endereço de destino. Nota: Algumas exchanges podem ainda não suportar endereços muxed para depósitos.",
       "memoEmbeddedInMuxedAddress": "O memo já está incluído neste endereço e será usado automaticamente.",
       "memoDisabledForTransaction": "O memo está desabilitado para esta transação.",
       "memoNotSupportedForOperation": "Memo não é suportado para esta operação.",

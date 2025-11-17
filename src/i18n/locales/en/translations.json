@@ -678,7 +678,6 @@
       "sorobanInfo": "For Soroban transactions (such as collectible or custom token transfers), memo support depends on the target contract.",
       "sorobanNoteTransaction": "Make sure the target destination supports memo.",
       "sorobanNoteCollectible": "Make sure the target destination supports memo.",
-      "muxedAddressInfo": "Muxed addresses (M- format) allow you to include a memo directly in the address. The memo is embedded in the destination address. Note: Some exchanges may not yet support muxed addresses for deposits.",
       "memoEmbeddedInMuxedAddress": "Memo is embedded in the muxed address (M-) and will be extracted automatically.",
       "memoDisabledForTransaction": "Memo is disabled for this transaction.",
       "memoNotSupportedForOperation": "Memo is not supported for this operation.",

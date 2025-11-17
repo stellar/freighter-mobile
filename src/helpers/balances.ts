@@ -402,6 +402,26 @@ export const calculateSpendableAmount = ({
 };
 
 /**
+ * Checks if a balance has valid decimals property for decimal-aware formatting
+ *
+ * @param {Balance | PricedBalance} balance - The balance to check
+ * @returns {boolean} True if balance has valid decimals property, false otherwise
+ *
+ * @example
+ * // Check if balance has decimals
+ * if (hasDecimals(balance)) {
+ *   // Use decimal-aware formatting
+ *   const formatted = formatSorobanTokenAmount(amount, balance.decimals);
+ * }
+ */
+export const hasDecimals = (
+  balance: Balance | PricedBalance,
+): balance is Balance & { decimals: number } =>
+  "decimals" in balance &&
+  typeof balance.decimals === "number" &&
+  balance.decimals > 0;
+
+/**
  * Validates if an amount exceeds the spendable balance
  *
  * @param {IsAmountSpendableParams} params - Object containing amount, balance, subentry count, and transaction fee

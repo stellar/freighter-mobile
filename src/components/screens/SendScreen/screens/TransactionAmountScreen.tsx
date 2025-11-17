@@ -344,25 +344,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
 
-    // For custom tokens, spendableBalance is in base units, convert to human-readable
-    // For native tokens, spendableBalance is already in human-readable format
+    // For custom tokens, spendableBalance is in base units, convert to decimal-aware
+    // For native tokens, spendableBalance is already in decimal-aware format
     const decimals =
       isCustomToken && "decimals" in selectedBalance
         ? selectedBalance.decimals
         : DEFAULT_DECIMALS;
 
-    const humanReadableSpendable = isCustomToken
+    const decimalAwareSpendable = isCustomToken
       ? spendableBalance.shiftedBy(-decimals)
       : spendableBalance;
 
     let targetAmount: BigNumber;
 
     if (percentage === 100) {
-      targetAmount = humanReadableSpendable;
+      targetAmount = decimalAwareSpendable;
 
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
-      targetAmount = humanReadableSpendable.multipliedBy(percentage / 100);
+      targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
     if (showFiatAmount) {
@@ -398,20 +398,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return;
     }
 
-    // For custom tokens, spendableBalance is in base units, convert to human-readable for comparison
-    // For native tokens, spendableBalance is already in human-readable format
+    // For custom tokens, spendableBalance is in base units, convert to decimal-aware for comparison
+    // For native tokens, spendableBalance is already in decimal-aware format
     const decimals =
       isCustomToken && selectedBalance && "decimals" in selectedBalance
         ? selectedBalance.decimals
         : DEFAULT_DECIMALS;
 
-    const humanReadableSpendable = isCustomToken
+    const decimalAwareSpendable = isCustomToken
       ? spendableBalance.shiftedBy(-decimals)
       : spendableBalance;
 
     if (
-      humanReadableSpendable &&
-      currentTokenAmount.isGreaterThan(humanReadableSpendable) &&
+      decimalAwareSpendable &&
+      currentTokenAmount.isGreaterThan(decimalAwareSpendable) &&
       !transactionHash
     ) {
       const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");

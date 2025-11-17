@@ -9,7 +9,7 @@ import {
 } from "config/constants";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { isLiquidityPool } from "helpers/balances";
+import { isLiquidityPool, hasDecimals } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
   formatTokenForDisplay,
@@ -113,6 +113,22 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
   );
 };
 
+const formatBalanceAmount = (
+  balance: PricedBalance,
+  spendableAmount?: BigNumber,
+): string => {
+  const amountToDisplay = spendableAmount || balance.total;
+  // For Soroban tokens, convert from base units to decimal-aware format
+  if (hasDecimals(balance)) {
+    const decimalAwareAmount = formatSorobanTokenAmount(
+      new BigNumber(amountToDisplay),
+      balance.decimals,
+    );
+    return formatTokenForDisplay(decimalAwareAmount, balance.tokenCode);
+  }
+  return formatTokenForDisplay(amountToDisplay, balance.tokenCode);
+};
+
 const renderContent = (
   children: ReactNode,
   onPress?: () => void,
@@ -172,29 +188,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
             {balance.displayName}
           </Text>
           <Text sm medium secondary numberOfLines={1}>
-            {customTextContent ||
-              (() => {
-                const amountToDisplay = spendableAmount || balance.total;
-                // For Soroban tokens, convert from base units to human-readable format
-                if (
-                  "decimals" in balance &&
-                  typeof balance.decimals === "number" &&
-                  balance.decimals > 0
-                ) {
-                  const humanReadableAmount = formatSorobanTokenAmount(
-                    new BigNumber(amountToDisplay),
-                    balance.decimals,
-                  );
-                  return formatTokenForDisplay(
-                    humanReadableAmount,
-                    balance.tokenCode,
-                  );
-                }
-                return formatTokenForDisplay(
-                  amountToDisplay,
-                  balance.tokenCode,
-                );
-              })()}
+            {customTextContent || formatBalanceAmount(balance, spendableAmount)}
           </Text>
         </TokenTextContainer>
       </LeftSection>

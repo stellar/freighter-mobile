@@ -6,6 +6,7 @@ import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
+import { hasDecimals } from "helpers/balances";
 import {
   formatTokenForDisplay,
   formatFiatAmount,
@@ -128,19 +129,15 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   const renderBalanceInfo = () => {
     const amountToDisplay = tokenBalance.total;
-    // For Soroban tokens, convert from base units to human-readable format
-    if (
-      "decimals" in tokenBalance &&
-      typeof tokenBalance.decimals === "number" &&
-      tokenBalance.decimals > 0
-    ) {
-      const humanReadableAmount = formatSorobanTokenAmount(
+    // For Soroban tokens, convert from base units to decimal-aware format
+    if (hasDecimals(tokenBalance)) {
+      const decimalAwareAmount = formatSorobanTokenAmount(
         new BigNumber(amountToDisplay),
         tokenBalance.decimals,
       );
       return (
         <Display xs medium>
-          {formatTokenForDisplay(humanReadableAmount, tokenBalance.tokenCode)}
+          {formatTokenForDisplay(decimalAwareAmount, tokenBalance.tokenCode)}
         </Display>
       );
     }
@@ -153,19 +150,15 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   const renderBalanceDetails = () => {
     const amountToDisplay = tokenBalance.total;
-    // For Soroban tokens, convert from base units to human-readable format
+    // For Soroban tokens, convert from base units to decimal-aware format
     let balanceDisplay: string;
-    if (
-      "decimals" in tokenBalance &&
-      typeof tokenBalance.decimals === "number" &&
-      tokenBalance.decimals > 0
-    ) {
-      const humanReadableAmount = formatSorobanTokenAmount(
+    if (hasDecimals(tokenBalance)) {
+      const decimalAwareAmount = formatSorobanTokenAmount(
         new BigNumber(amountToDisplay),
         tokenBalance.decimals,
       );
       balanceDisplay = formatTokenForDisplay(
-        humanReadableAmount,
+        decimalAwareAmount,
         tokenBalance.tokenCode,
       );
     } else {

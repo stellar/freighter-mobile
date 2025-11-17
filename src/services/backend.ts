@@ -128,9 +128,7 @@ export const getContractSpecs = async ({
     throw normalizeError(payload);
   }
 
-  const specData = payload.data;
-
-  return specData;
+  return payload.data;
 };
 
 /**
