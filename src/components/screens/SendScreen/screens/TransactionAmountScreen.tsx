@@ -305,6 +305,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [transactionScanResult, overriddenBlockaidResponse],
   );
 
+  // Determine max decimals for token input (use token's decimals for custom tokens)
+  const maxTokenDecimals = useMemo(() => {
+    if (isCustomToken && selectedBalance && "decimals" in selectedBalance) {
+      return selectedBalance.decimals;
+    }
+    return DEFAULT_DECIMALS;
+  }, [isCustomToken, selectedBalance]);
+
   const {
     tokenAmount,
     tokenAmountDisplay,
@@ -314,7 +322,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     handleDisplayAmountChange,
     setTokenAmount,
     setFiatAmount,
-  } = useTokenFiatConverter({ selectedBalance });
+  } = useTokenFiatConverter({
+    selectedBalance,
+    maxDecimals: maxTokenDecimals,
+  });
 
   const spendableBalance = useMemo(() => {
     if (!selectedBalance || !account) {
@@ -333,15 +344,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
 
+    // For custom tokens, spendableBalance is in base units, convert to human-readable
+    // For native tokens, spendableBalance is already in human-readable format
+    const decimals =
+      isCustomToken && "decimals" in selectedBalance
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS;
+
+    const humanReadableSpendable = isCustomToken
+      ? spendableBalance.shiftedBy(-decimals)
+      : spendableBalance;
+
     let targetAmount: BigNumber;
 
     if (percentage === 100) {
-      targetAmount = spendableBalance;
+      targetAmount = humanReadableSpendable;
 
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
-      const totalBalance = BigNumber(spendableBalance);
-      targetAmount = totalBalance.multipliedBy(percentage / 100);
+      targetAmount = humanReadableSpendable.multipliedBy(percentage / 100);
     }
 
     if (showFiatAmount) {
@@ -351,7 +372,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
     } else {
       // Set raw internal value (dot notation)
-      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+      setTokenAmount(targetAmount.toFixed(decimals));
     }
   };
 
@@ -377,9 +398,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return;
     }
 
+    // For custom tokens, spendableBalance is in base units, convert to human-readable for comparison
+    // For native tokens, spendableBalance is already in human-readable format
+    const decimals =
+      isCustomToken && selectedBalance && "decimals" in selectedBalance
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS;
+
+    const humanReadableSpendable = isCustomToken
+      ? spendableBalance.shiftedBy(-decimals)
+      : spendableBalance;
+
     if (
-      spendableBalance &&
-      currentTokenAmount.isGreaterThan(spendableBalance) &&
+      humanReadableSpendable &&
+      currentTokenAmount.isGreaterThan(humanReadableSpendable) &&
       !transactionHash
     ) {
       const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
@@ -399,6 +431,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     balanceItems,
     transactionFee,
     transactionHash,
+    isCustomToken,
+    selectedBalance,
     t,
     showToast,
   ]);
@@ -610,6 +644,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
+      amountError,
     }),
     [
       handleCancelReview,
@@ -618,6 +653,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
       isMuxedAddressWithoutMemoSupport,
+      amountError,
       onConfirmAddMemo,
       handleTransactionConfirmation,
       isValidatingMemo,
@@ -861,6 +897,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
+            amountError={amountError}
           />
         }
         renderFooterComponent={renderFooterComponent}

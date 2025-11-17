@@ -19,7 +19,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { truncateAddress } from "helpers/stellar";
+import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -57,6 +57,7 @@ type SendReviewBottomSheetProps = {
    */
   bannerVariant?: "error" | "warning";
   signTransactionDetails?: SignTransactionDetailsInterface | null;
+  amountError?: string | null;
 };
 
 /**
@@ -85,6 +86,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   bannerText,
   bannerVariant,
   signTransactionDetails,
+  amountError: propAmountError,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -94,6 +96,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+
+  // Use amountError from props (calculated in parent component)
+  const amountError = propAmountError;
 
   const handleCopyXdr = useCallback(() => {
     if (transactionXDR) {
@@ -159,15 +164,21 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   }, [isBuilding, isRequiredMemoMissing, t, themeColors.text.secondary]);
 
   const renderBanner = () => {
-    if (!bannerText) {
+    // Show amount error banner if present, otherwise show other banners
+    const displayBannerText = amountError || bannerText;
+    const displayBannerVariant = amountError
+      ? "error"
+      : bannerVariant || "error";
+
+    if (!displayBannerText) {
       return null;
     }
 
     return (
       <Banner
-        variant={bannerVariant || "error"}
-        text={bannerText}
-        onPress={onBannerPress}
+        variant={displayBannerVariant}
+        text={displayBannerText}
+        onPress={amountError ? undefined : onBannerPress}
       />
     );
   };
@@ -181,66 +192,74 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element} The appropriate button for the current state
    */
 
+  const isRecipientMuxed = isMuxedAccount(recipientAddress);
+
   const transactionDetailsList: ListItemProps[] = useMemo(
-    () => [
-      {
-        icon: (
-          <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
-        ),
-        title: t("common.wallet"),
-        titleColor: themeColors.text.secondary,
-        trailingContent: (
-          <View className="flex-row items-center gap-2">
-            <Avatar
-              size="sm"
-              publicAddress={account?.publicKey ?? ""}
-              hasDarkBackground
-            />
+    () =>
+      [
+        {
+          icon: (
+            <Icon.Wallet01 size={16} color={themeColors.foreground.primary} />
+          ),
+          title: t("common.wallet"),
+          titleColor: themeColors.text.secondary,
+          trailingContent: (
+            <View className="flex-row items-center gap-2">
+              <Avatar
+                size="sm"
+                publicAddress={account?.publicKey ?? ""}
+                hasDarkBackground
+              />
+              <Text md primary>
+                {account?.accountName}
+              </Text>
+            </View>
+          ),
+        },
+        // Hide memo line if recipient is a muxed address (M- address)
+        !isRecipientMuxed
+          ? {
+              icon: (
+                <Icon.File02 size={16} color={themeColors.foreground.primary} />
+              ),
+              titleComponent: renderMemoTitle(),
+              trailingContent: (
+                <Text md secondary={!transactionMemo}>
+                  {transactionMemo || t("common.none")}
+                </Text>
+              ),
+            }
+          : undefined,
+        {
+          icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
+          title: t("transactionAmountScreen.details.fee"),
+          titleColor: themeColors.text.secondary,
+          trailingContent: (
             <Text md primary>
-              {account?.accountName}
+              {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
             </Text>
-          </View>
-        ),
-      },
-      {
-        icon: <Icon.File02 size={16} color={themeColors.foreground.primary} />,
-        titleComponent: renderMemoTitle(),
-        trailingContent: (
-          <Text md secondary={!transactionMemo}>
-            {transactionMemo || t("common.none")}
-          </Text>
-        ),
-      },
-      {
-        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
-        title: t("transactionAmountScreen.details.fee"),
-        titleColor: themeColors.text.secondary,
-        trailingContent: (
-          <Text md primary>
-            {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
-          </Text>
-        ),
-      },
-      {
-        icon: (
-          <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-        ),
-        title: t("transactionAmountScreen.details.xdr"),
-        titleColor: themeColors.text.secondary,
-        trailingContent: (
-          <TouchableOpacity
-            onPress={handleCopyXdr}
-            disabled={isBuilding || !transactionXDR}
-            className="flex-row items-center gap-[8px]"
-          >
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-            <Text md medium secondary={isBuilding}>
-              {renderXdrContent()}
-            </Text>
-          </TouchableOpacity>
-        ),
-      },
-    ],
+          ),
+        },
+        {
+          icon: (
+            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
+          ),
+          title: t("transactionAmountScreen.details.xdr"),
+          titleColor: themeColors.text.secondary,
+          trailingContent: (
+            <TouchableOpacity
+              onPress={handleCopyXdr}
+              disabled={isBuilding || !transactionXDR}
+              className="flex-row items-center gap-[8px]"
+            >
+              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+              <Text md medium secondary={isBuilding}>
+                {renderXdrContent()}
+              </Text>
+            </TouchableOpacity>
+          ),
+        },
+      ].filter(Boolean) as ListItemProps[],
     [
       account?.accountName,
       account?.publicKey,
@@ -254,6 +273,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       transactionFee,
       transactionMemo,
       transactionXDR,
+      isRecipientMuxed,
     ],
   );
 
@@ -347,6 +367,7 @@ type SendReviewFooterProps = {
   isUnableToScan?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
+  amountError?: string | null;
 };
 
 export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
@@ -365,6 +386,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isUnableToScan,
       isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
+      amountError,
     } = props;
 
     const isTrusted =
@@ -374,6 +396,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
+
+    const shouldUseRowLayout = isTrusted || isMuxedAddressWithoutMemoSupport;
 
     const renderConfirmButton = useCallback(() => {
       const getButtonText = () => {
@@ -389,7 +413,12 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       };
 
       const isConfirmDisabled =
-        isBuilding || !transactionXDR || !!error || isValidatingMemo;
+        isBuilding ||
+        !transactionXDR ||
+        !!error ||
+        isValidatingMemo ||
+        isMuxedAddressWithoutMemoSupport ||
+        !!amountError;
 
       return (
         <View className="flex-1">
@@ -415,6 +444,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isBuilding,
       transactionXDR,
       error,
+      isMuxedAddressWithoutMemoSupport,
+      amountError,
     ]);
 
     const renderButtons = useCallback(() => {
@@ -433,11 +464,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       );
 
       const cancelButton = (
-        <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
+        <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
             tertiary={isSuspicious && !isUnableToScan}
-            destructive={!isTrusted}
-            secondary={isTrusted}
+            destructive={!shouldUseRowLayout}
+            secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
             disabled={isDisabled}
@@ -457,15 +488,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
-          variant={
-            isMalicious || isMuxedAddressWithoutMemoSupport || isUnableToScan
-              ? "error"
-              : "secondary"
-          }
+          variant={isMalicious || isUnableToScan ? "error" : "secondary"}
         />
       );
 
-      if (!isTrusted) {
+      if (!shouldUseRowLayout) {
         return (
           <>
             {cancelButton}
@@ -483,11 +510,10 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       );
     }, [
       onSettingsPress,
-      isTrusted,
+      shouldUseRowLayout,
       isSuspicious,
       isMalicious,
       isUnableToScan,
-      isMuxedAddressWithoutMemoSupport,
       onCancel,
       isRequiredMemoMissing,
       isDisabled,
@@ -500,7 +526,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
     return (
       <View
         className={`${
-          isTrusted ? "flex-row" : "flex-col"
+          shouldUseRowLayout ? "flex-row" : "flex-col"
         } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
         style={{
           paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),

@@ -26,7 +26,6 @@ import {
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
 import { isContractId } from "helpers/soroban";
-import { isMuxedAccount } from "helpers/stellar";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -122,11 +121,6 @@ const TransactionSettingsBottomSheet: React.FC<
   // Soroban transaction: collectible transfer, custom token, or recipient is contract address
   const isSorobanTransaction = Boolean(
     isCollectibleTransfer || isCustomToken || isSorobanRecipient,
-  );
-
-  // Check if destination is already a muxed account (M address)
-  const isDestinationMuxed = Boolean(
-    recipientAddress && isMuxedAccount(recipientAddress),
   );
 
   // Determine contract ID for Soroban transactions
@@ -616,14 +610,6 @@ const TransactionSettingsBottomSheet: React.FC<
           key: "sorobanInfo",
           value: t("transactionSettings.memoInfo.sorobanInfo"),
         },
-        ...(isDestinationMuxed
-          ? [
-              {
-                key: "muxedAddressInfo",
-                value: t("transactionSettings.memoInfo.muxedAddressInfo"),
-              },
-            ]
-          : []),
       ],
     },
     {

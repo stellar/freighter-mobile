@@ -10,6 +10,7 @@ import { useMemo, useState, useEffect } from "react";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
+  maxDecimals?: number; // Maximum decimal places for token input (defaults to DEFAULT_DECIMALS)
 }
 
 interface UseTokenFiatConverterResult {
@@ -35,6 +36,7 @@ interface UseTokenFiatConverterResult {
  */
 export const useTokenFiatConverter = ({
   selectedBalance,
+  maxDecimals = DEFAULT_DECIMALS,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const [tokenAmount, setTokenAmount] = useState("0");
   const [tokenAmountDisplay, setTokenAmountDisplay] = useState("0");
@@ -51,11 +53,11 @@ export const useTokenFiatConverter = ({
   useEffect(() => {
     setTokenAmountDisplay(
       formatBigNumberForDisplay(new BigNumber(tokenAmount), {
-        decimalPlaces: DEFAULT_DECIMALS,
+        decimalPlaces: maxDecimals,
         useGrouping: false,
       }),
     );
-  }, [tokenAmount]);
+  }, [tokenAmount, maxDecimals]);
 
   // Update fiat amount when token amount changes
   useEffect(() => {
@@ -78,12 +80,12 @@ export const useTokenFiatConverter = ({
         const newTokenAmount = tokenPrice.isZero()
           ? new BigNumber(0)
           : bnFiatAmount.dividedBy(tokenPrice);
-        setTokenAmount(newTokenAmount.toFixed(DEFAULT_DECIMALS));
+        setTokenAmount(newTokenAmount.toFixed(maxDecimals));
       } else {
         setTokenAmount("0");
       }
     }
-  }, [fiatAmount, tokenPrice, showFiatAmount]);
+  }, [fiatAmount, tokenPrice, showFiatAmount, maxDecimals]);
 
   /**
    * Handles numeric input and deletion for display-formatted values
@@ -100,11 +102,11 @@ export const useTokenFiatConverter = ({
       const newAmount = formatNumericInput(
         tokenAmountDisplay,
         key,
-        DEFAULT_DECIMALS,
+        maxDecimals,
       );
       // Update display value immediately to preserve formatting
       setTokenAmountDisplay(newAmount);
-      const internalAmount = parseDisplayNumber(newAmount, DEFAULT_DECIMALS);
+      const internalAmount = parseDisplayNumber(newAmount, maxDecimals);
       setTokenAmount(internalAmount);
     }
 
