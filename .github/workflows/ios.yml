@@ -122,10 +122,12 @@ jobs:
       - name: Set xcode version
         run: |
           # Find the most recent Xcode version available
-          XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null)
+          # Exclude RC (Release_Candidate) and beta versions to prefer stable releases
+          XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" || true)
 
           if [ -z "$XCODE_PATHS" ]; then
-            echo "Error: No Xcode installation found in /Applications"
+            echo "Error: No stable Xcode installation found in /Applications"
+            echo "Available Xcode versions:"
             ls -1 /Applications | grep -i Xcode || true
             exit 1
           fi
@@ -135,7 +137,7 @@ jobs:
           LATEST_VERSION="0"
 
           for XCODE_PATH in $XCODE_PATHS; do
-            # Extract version from Info.plist or use xcodebuild
+            # Extract version from Info.plist
             VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "0")
             
             # Compare versions (simple numeric comparison for major.minor format)
@@ -146,8 +148,14 @@ jobs:
           done
 
           if [ -z "$LATEST_XCODE" ]; then
-            # Fallback: use the most recently modified Xcode
-            LATEST_XCODE=$(ls -1dt /Applications/Xcode*.app 2>/dev/null | head -1)
+            # Fallback: use the most recently modified stable Xcode
+            LATEST_XCODE=$(ls -1dt /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" | head -1)
+            
+            # If still nothing, use any Xcode (shouldn't happen, but safety fallback)
+            if [ -z "$LATEST_XCODE" ]; then
+              LATEST_XCODE=$(ls -1dt /Applications/Xcode*.app 2>/dev/null | head -1)
+              echo "Warning: Falling back to any available Xcode (including RC/beta)"
+            fi
           fi
 
           echo "Using Xcode: $LATEST_XCODE (Version: $LATEST_VERSION)"
