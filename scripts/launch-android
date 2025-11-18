@@ -119,8 +119,11 @@ def launch_emulator_if_needed
     return
   end
 
-  puts "Launching Android emulator: #{avd}"
-  pid = spawn("emulator", "-avd", avd, "-netdelay", "none", "-netspeed", "full")
+  puts "Launching Android emulator: #{avd} on a detached terminal window..."
+  cmd = "emulator -avd #{avd} -netdelay none -netspeed full"
+  escaped = cmd.gsub('\\', '\\\\').gsub('"', '\\"')
+  applescript = "tell application \"Terminal\" to do script \"#{escaped}\""
+  pid = spawn("osascript", "-e", applescript)
   Process.detach(pid)
 end
 

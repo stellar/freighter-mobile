@@ -36,16 +36,24 @@
 		<key>CFBundleVersion</key>
 		<string>$(CURRENT_PROJECT_VERSION)</string>
 		<key>LSRequiresIPhoneOS</key>
-		<true />
+		<true/>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>
-			<false />
+			<false/>
 		</dict>
 		<key>NSCameraUsageDescription</key>
 		<string>Freighter needs access to your Camera to scan QR codes.</string>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Freighter needs access to your Face ID to securely log in and approve transactions.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
+		<key>NSUserTrackingUsageDescription</key>
+		<string>Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
+		<key>RCTNewArchEnabled</key>
+		<true/>
 		<key>UIAppFonts</key>
 		<array>
 			<string>Inter-Bold.ttf</string>
@@ -67,12 +75,6 @@
 		</array>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false />
-		<key>NSUserTrackingUsageDescription</key>
-		<string>Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
-		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
-		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>Freighter needs access to your Photos to save collectibles to your photo library.</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false />
 	</dict>

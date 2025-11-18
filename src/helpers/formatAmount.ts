@@ -69,9 +69,9 @@ const formatNumber = (
       if (minimumFractionDigits === 0) {
         trimmedDecimal = decimalPart.replace(/0+$/, "");
       } else {
-        // When minimumFractionDigits is set, preserve trailing zeros up to that minimum
+        // When minimumFractionDigits is set, pad with zeros to reach minimum length
         const minLength = Math.max(minimumFractionDigits, decimalPart.length);
-        trimmedDecimal = decimalPart.substring(0, minLength);
+        trimmedDecimal = decimalPart.padEnd(minLength, "0");
       }
     }
     // For very high precision numbers (more than 20 decimal places), preserve all digits
@@ -631,4 +631,52 @@ export const xlmToStroop = (lumens: BigNumber | string): BigNumber => {
   }
   // round to nearest stroop
   return new BigNumber(Math.round(Number(lumens) * 1e7));
+};
+
+/**
+ * Formats a fiat amount display string to a fiat amount string.
+ * Handles mid-input formatting and supports both comma and dot decimal separators.
+ *
+ * This function takes a display value (which may contain commas for locale formatting)
+ * and formats it as a USD currency string with 2 decimal places. It handles various
+ * input formats including incomplete numbers during typing (e.g., "100,").
+ *
+ * @param {string} value - The fiat amount display string to format (may contain commas or dots)
+ * @returns {string} The formatted fiat amount string with $ prefix (e.g., "$100.00" or "-$1,234.56")
+ *
+ * @example
+ * // Valid numeric strings
+ * formatFiatInputDisplay("1000");        // Returns "$1,000.00"
+ * formatFiatInputDisplay("1234.56");     // Returns "$1,234.56"
+ * formatFiatInputDisplay("1234,56");    // Returns "$1,234.56" (comma normalized)
+ * formatFiatInputDisplay("0");           // Returns "$0.00"
+ *
+ * @example
+ * // Mid-input formatting (user typing)
+ * formatFiatInputDisplay("100,");        // Returns "$100.00"
+ * formatFiatInputDisplay("100.");        // Returns "$100.00"
+ * formatFiatInputDisplay("55,7");       // Returns "$55.70" (single digit decimal)
+ * formatFiatInputDisplay("1234,1");      // Returns "$1,234.10"
+ *
+ * @example
+ * // Large numbers and edge cases
+ * formatFiatInputDisplay("1000000");      // Returns "$1,000,000.00"
+ * formatFiatInputDisplay("9999999.99");   // Returns "$9,999,999.99"
+ * formatFiatInputDisplay("-1000");        // Returns "-$1,000.00"
+ *
+ */
+export const formatFiatInputDisplay = (value: string): string => {
+  const normalizedValue = value.replace(",", ".");
+  const parsed = parseFloat(normalizedValue);
+
+  if (!Number.isNaN(parsed)) {
+    return formatFiatAmount(parsed.toString());
+  }
+
+  const match = value.match(/^(\d+)([.,]?)(\d*)$/);
+  if (match) {
+    return formatFiatAmount(value);
+  }
+
+  return value;
 };
