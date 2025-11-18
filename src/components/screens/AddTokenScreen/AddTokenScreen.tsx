@@ -419,16 +419,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             {searchResults.length > 0 ? (
               <>
                 {hasUnableToScanTokens && (
-                  <View className="mb-4 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2">
+                  <View className="mb-4 mt-4 p-4 bg-gray-3 rounded-[16px] flex-row items-center gap-2">
                     <Icon.Cube01 size={16} color={themeColors.gray[11]} />
-                    <Text sm color={themeColors.gray[11]}>
+                    <Text md color={themeColors.gray[11]}>
                       {t("addTokenScreen.unableToScanBanner")}
                     </Text>
                   </View>
                 )}
                 {categorizedTokens.verified.length > 0 && (
                   <>
-                    <View className="mt-2 mb-4 flex-row items-center gap-2">
+                    <View className="mt-4 mb-6 flex-row items-center gap-2">
                       <TouchableOpacity
                         hitSlop={10}
                         onPress={() =>
@@ -456,7 +456,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                 )}
                 {categorizedTokens.unverified.length > 0 && (
                   <>
-                    <View className="mt-2 mb-6 flex-row items-center gap-2">
+                    <View className="mt-4 mb-8 flex-row items-center gap-2">
                       <TouchableOpacity
                         hitSlop={10}
                         onPress={() =>
