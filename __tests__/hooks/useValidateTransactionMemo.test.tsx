@@ -302,10 +302,11 @@ describe("useValidateTransactionMemo", () => {
         });
       });
 
-      expect(mockCachedFetch).toHaveBeenCalledWith(
-        "https://api.stellar.expert/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200",
-        "memoRequiredAccounts",
-      );
+      expect(mockCachedFetch).toHaveBeenCalledWith({
+        urlOrFn:
+          "https://api.stellar.expert/explorer/directory?sort=address&tag[]=memo-required&order=asc&limit=200",
+        storageKey: "memoRequiredAccounts",
+      });
       expect(result.current.isMemoMissing).toBe(true);
     });
 

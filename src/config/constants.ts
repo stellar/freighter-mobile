@@ -278,6 +278,7 @@ export enum STORAGE_KEYS {
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
+  VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",

@@ -24,10 +24,10 @@ import { stellarSdkServer } from "services/stellar";
 export const checkMemoRequiredFromCache = async (
   transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
 ): Promise<boolean> => {
-  const response = await cachedFetch<MemoRequiredAccountsApiResponse>(
-    getApiStellarExpertIsMemoRequiredListUrl(),
-    STORAGE_KEYS.MEMO_REQUIRED_ACCOUNTS,
-  );
+  const response = await cachedFetch<MemoRequiredAccountsApiResponse>({
+    urlOrFn: getApiStellarExpertIsMemoRequiredListUrl(),
+    storageKey: STORAGE_KEYS.MEMO_REQUIRED_ACCOUNTS,
+  });
 
   // eslint-disable-next-line no-underscore-dangle
   const memoRequiredAccounts = response._embedded.records || [];

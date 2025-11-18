@@ -1,13 +1,16 @@
 import { NETWORKS } from "config/constants";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
+import { dataStorage } from "services/storage/storageFactory";
 import { fetchVerifiedTokens } from "services/verified-token-lists";
 import { TokenListReponseItem } from "services/verified-token-lists/types";
 
 jest.mock("services/verified-token-lists");
+jest.mock("services/storage/storageFactory");
 
 const mockFetchVerifiedTokens = fetchVerifiedTokens as jest.MockedFunction<
   typeof fetchVerifiedTokens
 >;
+const mockDataStorage = dataStorage as jest.Mocked<typeof dataStorage>;
 
 describe("useVerifiedTokensStore", () => {
   const mockVerifiedTokens: TokenListReponseItem[] = [
@@ -31,19 +34,9 @@ describe("useVerifiedTokensStore", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset store state
-    useVerifiedTokensStore.setState({
-      verifiedTokensByNetwork: {
-        [NETWORKS.PUBLIC]: [],
-        [NETWORKS.TESTNET]: [],
-        [NETWORKS.FUTURENET]: [],
-      },
-      lastFetchedByNetwork: {
-        [NETWORKS.PUBLIC]: null,
-        [NETWORKS.TESTNET]: null,
-        [NETWORKS.FUTURENET]: null,
-      },
-    });
+    // Reset storage mocks
+    mockDataStorage.getItem.mockResolvedValue(null);
+    mockDataStorage.setItem.mockResolvedValue();
   });
 
   describe("getVerifiedTokens", () => {
@@ -61,29 +54,28 @@ describe("useVerifiedTokensStore", () => {
       });
 
       // Verify cache was updated
-      const state = useVerifiedTokensStore.getState();
-      expect(state.verifiedTokensByNetwork[NETWORKS.PUBLIC]).toEqual(
-        mockVerifiedTokens,
+      expect(mockDataStorage.setItem).toHaveBeenCalledWith(
+        `verifiedTokens_${NETWORKS.PUBLIC}`,
+        JSON.stringify(mockVerifiedTokens),
       );
-      expect(state.lastFetchedByNetwork[NETWORKS.PUBLIC]).not.toBeNull();
+      expect(mockDataStorage.setItem).toHaveBeenCalledWith(
+        `verifiedTokens_${NETWORKS.PUBLIC}_date`,
+        expect.any(String),
+      );
     });
 
     it("returns cached tokens if cache is fresh", async () => {
       const now = Date.now();
-      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
 
       // First call - fetch and cache
+      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
       const { getVerifiedTokens } = useVerifiedTokensStore.getState();
       await getVerifiedTokens({ network: NETWORKS.PUBLIC });
 
-      // Set lastFetched to recent time (within TTL)
-      useVerifiedTokensStore.setState({
-        lastFetchedByNetwork: {
-          [NETWORKS.PUBLIC]: now - 1000, // 1 second ago
-          [NETWORKS.TESTNET]: null,
-          [NETWORKS.FUTURENET]: null,
-        },
-      });
+      // Mock cached data (fresh, within 30 min TTL)
+      mockDataStorage.getItem
+        .mockResolvedValueOnce((now - 1000).toString()) // cached date (1 second ago)
+        .mockResolvedValueOnce(JSON.stringify(mockVerifiedTokens)); // cached result
 
       // Second call - should use cache
       const result = await getVerifiedTokens({ network: NETWORKS.PUBLIC });
@@ -95,22 +87,17 @@ describe("useVerifiedTokensStore", () => {
 
     it("refetches tokens if cache is stale", async () => {
       const now = Date.now();
-      const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
+      const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
       // First call - fetch and cache
+      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
       const { getVerifiedTokens } = useVerifiedTokensStore.getState();
       await getVerifiedTokens({ network: NETWORKS.PUBLIC });
 
-      // Set lastFetched to stale time (beyond TTL)
-      useVerifiedTokensStore.setState({
-        lastFetchedByNetwork: {
-          [NETWORKS.PUBLIC]: now - CACHE_TTL_MS - 1000, // 24 hours + 1 second ago
-          [NETWORKS.TESTNET]: null,
-          [NETWORKS.FUTURENET]: null,
-        },
-      });
+      // Mock stale cached data (beyond 30 min TTL)
+      mockDataStorage.getItem
+        .mockResolvedValueOnce((now - CACHE_TTL_MS - 1000).toString()) // stale date
+        .mockResolvedValueOnce(JSON.stringify(mockVerifiedTokens)); // cached result
 
       // Second call - should refetch
       const result = await getVerifiedTokens({ network: NETWORKS.PUBLIC });
@@ -122,20 +109,16 @@ describe("useVerifiedTokensStore", () => {
 
     it("refetches tokens when forceRefresh is true", async () => {
       const now = Date.now();
-      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
 
       // First call - fetch and cache
+      mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
       const { getVerifiedTokens } = useVerifiedTokensStore.getState();
       await getVerifiedTokens({ network: NETWORKS.PUBLIC });
 
-      // Set lastFetched to recent time
-      useVerifiedTokensStore.setState({
-        lastFetchedByNetwork: {
-          [NETWORKS.PUBLIC]: now - 1000, // 1 second ago
-          [NETWORKS.TESTNET]: null,
-          [NETWORKS.FUTURENET]: null,
-        },
-      });
+      // Mock fresh cached data
+      mockDataStorage.getItem
+        .mockResolvedValueOnce((now - 1000).toString()) // fresh date
+        .mockResolvedValueOnce(JSON.stringify(mockVerifiedTokens)); // cached result
 
       // Second call with forceRefresh - should refetch
       const result = await getVerifiedTokens({
@@ -189,12 +172,13 @@ describe("useVerifiedTokensStore", () => {
       });
 
       // Verify both networks are cached separately
-      const state = useVerifiedTokensStore.getState();
-      expect(state.verifiedTokensByNetwork[NETWORKS.PUBLIC]).toEqual(
-        mockVerifiedTokens,
+      expect(mockDataStorage.setItem).toHaveBeenCalledWith(
+        `verifiedTokens_${NETWORKS.PUBLIC}`,
+        JSON.stringify(mockVerifiedTokens),
       );
-      expect(state.verifiedTokensByNetwork[NETWORKS.TESTNET]).toEqual(
-        testnetTokens,
+      expect(mockDataStorage.setItem).toHaveBeenCalledWith(
+        `verifiedTokens_${NETWORKS.TESTNET}`,
+        JSON.stringify(testnetTokens),
       );
     });
 
