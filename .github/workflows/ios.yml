@@ -139,7 +139,7 @@ jobs:
           echo "Available Xcode versions:"
           ls -1 /Applications | grep -i Xcode || echo "No Xcode found"
 
-      - name: Set xcode version
+      - name: Set latest stable Xcode version
         run: |
           # Find all stable Xcode versions (exclude Release_Candidate, RC, beta, Beta)
           XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" || true)
@@ -176,7 +176,7 @@ jobs:
           echo "Selected Xcode: $LATEST_XCODE (Version: $LATEST_VERSION)"
           sudo xcode-select -s "$LATEST_XCODE"
 
-      - name: Verify Xcode Version
+      - name: Verify selected Xcode Version
         run: xcodebuild -version
 
       - name: Set ref
