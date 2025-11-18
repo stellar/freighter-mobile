@@ -428,8 +428,19 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                 )}
                 {categorizedTokens.verified.length > 0 && (
                   <>
-                    <View className="mb-2">
-                      <Text md medium>
+                    <View className="mt-2 mb-4 flex-row items-center gap-2">
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() =>
+                          moreInfoBottomSheetModalRef.current?.present()
+                        }
+                      >
+                        <Icon.InfoCircle
+                          size={16}
+                          color={themeColors.foreground.secondary}
+                        />
+                      </TouchableOpacity>
+                      <Text md medium secondary>
                         {t("addTokenScreen.verified")}
                       </Text>
                     </View>
@@ -445,11 +456,19 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                 )}
                 {categorizedTokens.unverified.length > 0 && (
                   <>
-                    {categorizedTokens.verified.length > 0 && (
-                      <View className="h-4" />
-                    )}
-                    <View className="mb-2">
-                      <Text md medium>
+                    <View className="mt-2 mb-6 flex-row items-center gap-2">
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() =>
+                          moreInfoBottomSheetModalRef.current?.present()
+                        }
+                      >
+                        <Icon.InfoCircle
+                          size={16}
+                          color={themeColors.foreground.secondary}
+                        />
+                      </TouchableOpacity>
+                      <Text md medium secondary>
                         {t("addTokenScreen.unverified")}
                       </Text>
                     </View>
