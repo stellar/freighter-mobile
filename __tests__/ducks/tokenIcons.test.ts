@@ -26,6 +26,10 @@ jest.mock("helpers/getIconUrl", () => ({
   getIconUrl: jest.fn(),
 }));
 
+// Time constants for tests
+const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
+
 describe("tokenIcons store", () => {
   const mockGetIconUrl = getIconUrl as jest.MockedFunction<typeof getIconUrl>;
   const mockGetVerifiedTokens = jest.fn();
@@ -172,7 +176,7 @@ describe("tokenIcons store", () => {
     it("should not refresh if last refresh was less than 24 hours ago", () => {
       const now = Date.now();
       useTokenIconsStore.setState({
-        lastRefreshed: now - 12 * 60 * 60 * 1000, // 12 hours ago
+        lastRefreshed: now - TWELVE_HOURS,
       });
 
       useTokenIconsStore.getState().refreshIcons();
@@ -184,7 +188,7 @@ describe("tokenIcons store", () => {
       mockGetIconUrl.mockResolvedValue(mockIconUrl);
 
       useTokenIconsStore.setState({
-        lastRefreshed: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
+        lastRefreshed: Date.now() - TWENTY_FIVE_HOURS,
         icons: {
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
             imageUrl: "old-url",

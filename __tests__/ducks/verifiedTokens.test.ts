@@ -12,6 +12,9 @@ const mockFetchVerifiedTokens = fetchVerifiedTokens as jest.MockedFunction<
 >;
 const mockDataStorage = dataStorage as jest.Mocked<typeof dataStorage>;
 
+// Time constants for tests
+const THIRTY_MINUTES = 30 * 60 * 1000;
+
 describe("useVerifiedTokensStore", () => {
   const mockVerifiedTokens: TokenListReponseItem[] = [
     {
@@ -87,7 +90,7 @@ describe("useVerifiedTokensStore", () => {
 
     it("refetches tokens if cache is stale", async () => {
       const now = Date.now();
-      const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+      const CACHE_TTL_MS = THIRTY_MINUTES;
 
       // First call - fetch and cache
       mockFetchVerifiedTokens.mockResolvedValue(mockVerifiedTokens);

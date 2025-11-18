@@ -5,6 +5,10 @@ jest.mock("services/storage/storageFactory");
 
 const mockDataStorage = dataStorage as jest.Mocked<typeof dataStorage>;
 
+// Time constants for tests
+const THIRTY_MINUTES = 30 * 60 * 1000;
+const FIVE_MINUTES = 5 * 60 * 1000;
+
 describe("cachedFetch", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -59,7 +63,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: "https://api.example.com/data",
         storageKey,
-        ttlMs: 30 * 60 * 1000, // 30 minutes
+        ttlMs: THIRTY_MINUTES,
       });
 
       expect(result).toEqual(cachedData);
@@ -68,7 +72,7 @@ describe("cachedFetch", () => {
 
     it("refetches if cache is stale", async () => {
       const now = Date.now();
-      const staleTime = now - 31 * 60 * 1000; // 31 minutes ago
+      const staleTime = now - THIRTY_MINUTES - 1000; // 1 second past TTL
       const newResponse = { new: "data" };
 
       // Mock stale cached data
@@ -83,7 +87,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: "https://api.example.com/data",
         storageKey,
-        ttlMs: 30 * 60 * 1000, // 30 minutes
+        ttlMs: THIRTY_MINUTES,
       });
 
       expect(result).toEqual(newResponse);
@@ -162,7 +166,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
-        ttlMs: 30 * 60 * 1000, // 30 minutes
+        ttlMs: THIRTY_MINUTES,
       });
 
       expect(result).toEqual(cachedData);
@@ -171,7 +175,7 @@ describe("cachedFetch", () => {
 
     it("refetches if cache is stale", async () => {
       const now = Date.now();
-      const staleTime = now - 31 * 60 * 1000; // 31 minutes ago
+      const staleTime = now - THIRTY_MINUTES - 1000; // 1 second past TTL
       const newData = { new: "data" };
       const mockFn = jest.fn().mockResolvedValue(newData);
 
@@ -183,7 +187,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
-        ttlMs: 30 * 60 * 1000, // 30 minutes
+        ttlMs: THIRTY_MINUTES,
       });
 
       expect(result).toEqual(newData);
@@ -204,7 +208,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
-        ttlMs: 30 * 60 * 1000,
+        ttlMs: THIRTY_MINUTES,
         forceRefresh: true,
       });
 
@@ -226,7 +230,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
-        ttlMs: 30 * 60 * 1000,
+        ttlMs: THIRTY_MINUTES,
         forceRefresh: true, // Force refresh to trigger function call
       });
 
@@ -248,7 +252,7 @@ describe("cachedFetch", () => {
     });
 
     it("uses custom TTL", async () => {
-      const customTtl = 5 * 60 * 1000; // 5 minutes
+      const customTtl = FIVE_MINUTES;
       const now = Date.now();
       const staleTime = now - customTtl - 1000; // Just past TTL
       const mockFn = jest.fn().mockResolvedValue(mockData);
@@ -313,7 +317,7 @@ describe("cachedFetch", () => {
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey: "invalid-json-key",
-        ttlMs: 30 * 60 * 1000,
+        ttlMs: THIRTY_MINUTES,
       });
 
       expect(result).toEqual({ data: "test" });
