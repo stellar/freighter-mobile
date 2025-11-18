@@ -9,6 +9,7 @@ import {
 import {
   formatTokenForDisplay,
   formatFiatAmount,
+  formatFiatInputDisplay,
   formatPercentageAmount,
   formatNumberForDisplay,
   formatBigNumberForDisplay,
@@ -280,9 +281,87 @@ describe("formatAmount helpers", () => {
     });
   });
 
+  describe("formatFiatInputDisplay", () => {
+    it("should format valid numeric strings with dot notation", () => {
+      expect(formatFiatInputDisplay("1000")).toBe("$1,000.00");
+      expect(formatFiatInputDisplay("1234.56")).toBe("$1,234.56");
+      expect(formatFiatInputDisplay("0.12")).toBe("$0.12");
+      expect(formatFiatInputDisplay("0")).toBe("$0.00");
+    });
+
+    it("should format valid numeric strings with comma notation", () => {
+      expect(formatFiatInputDisplay("1000,50")).toBe("$1,000.50");
+      expect(formatFiatInputDisplay("1234,56")).toBe("$1,234.56");
+      expect(formatFiatInputDisplay("0,12")).toBe("$0.12");
+    });
+
+    it("should handle mid-input formatting with trailing comma", () => {
+      // When user is typing "100," it should format it properly
+      expect(formatFiatInputDisplay("100,")).toBe("$100.00");
+      expect(formatFiatInputDisplay("1234,")).toBe("$1,234.00");
+      expect(formatFiatInputDisplay("55,")).toBe("$55.00");
+    });
+
+    it("should handle mid-input formatting with trailing dot", () => {
+      // When user is typing "100." it should format it properly
+      expect(formatFiatInputDisplay("100.")).toBe("$100.00");
+      expect(formatFiatInputDisplay("1234.")).toBe("$1,234.00");
+      expect(formatFiatInputDisplay("55.")).toBe("$55.00");
+    });
+
+    it("should handle single digit decimal input", () => {
+      // When user types "100,5" it should format to "100.50"
+      expect(formatFiatInputDisplay("100,5")).toBe("$100.50");
+      expect(formatFiatInputDisplay("1234,1")).toBe("$1,234.10");
+      expect(formatFiatInputDisplay("55,7")).toBe("$55.70");
+    });
+
+    it("should handle single digit decimal input with dot", () => {
+      expect(formatFiatInputDisplay("100.5")).toBe("$100.50");
+      expect(formatFiatInputDisplay("1234.1")).toBe("$1,234.10");
+      expect(formatFiatInputDisplay("55.7")).toBe("$55.70");
+    });
+
+    it("should handle integer values without decimal separator", () => {
+      expect(formatFiatInputDisplay("100")).toBe("$100.00");
+      expect(formatFiatInputDisplay("55")).toBe("$55.00");
+      expect(formatFiatInputDisplay("123456")).toBe("$123,456.00");
+    });
+
+    it("should handle zero and empty values", () => {
+      expect(formatFiatInputDisplay("0")).toBe("$0.00");
+      expect(formatFiatInputDisplay("0,00")).toBe("$0.00");
+      expect(formatFiatInputDisplay("0.00")).toBe("$0.00");
+    });
+
+    it("should handle large numbers", () => {
+      expect(formatFiatInputDisplay("1000000")).toBe("$1,000,000.00");
+      expect(formatFiatInputDisplay("1234567,89")).toBe("$1,234,567.89");
+      expect(formatFiatInputDisplay("9999999.99")).toBe("$9,999,999.99");
+    });
+
+    it("should handle negative values", () => {
+      expect(formatFiatInputDisplay("-1000")).toBe("-$1,000.00");
+      expect(formatFiatInputDisplay("-1234,56")).toBe("-$1,234.56");
+      expect(formatFiatInputDisplay("-0.12")).toBe("-$0.12");
+    });
+
+    it("should handle invalid input gracefully", () => {
+      // Invalid input should return the value as-is (fallback behavior)
+      expect(formatFiatInputDisplay("abc")).toBe("abc");
+      expect(formatFiatInputDisplay("")).toBe("");
+      expect(formatFiatInputDisplay("invalid123")).toBe("invalid123");
+    });
+
+    it("should preserve precision for valid numbers", () => {
+      expect(formatFiatInputDisplay("1234.567")).toBe("$1,234.57");
+      expect(formatFiatInputDisplay("1234,567")).toBe("$1,234.57");
+    });
+  });
+
   describe("formatPercentageAmount", () => {
     it("should format positive string values with plus sign", () => {
-      expect(formatPercentageAmount("0.1")).toBe("+0.1%");
+      expect(formatPercentageAmount("0.1")).toBe("+0.10%");
       expect(formatPercentageAmount("1.23")).toBe("+1.23%");
       expect(formatPercentageAmount("10")).toBe("+10.00%");
     });
@@ -338,13 +417,13 @@ describe("formatAmount helpers", () => {
     });
 
     it("should format negative string values with minus sign", () => {
-      expect(formatPercentageAmount("-0.1")).toBe("-0.1%");
+      expect(formatPercentageAmount("-0.1")).toBe("-0.10%");
       expect(formatPercentageAmount("-1.23")).toBe("-1.23%");
       expect(formatPercentageAmount("-10")).toBe("-10.00%");
     });
 
     it("should format string values", () => {
-      expect(formatPercentageAmount("0.1")).toBe("+0.1%");
+      expect(formatPercentageAmount("0.1")).toBe("+0.10%");
       expect(formatPercentageAmount("-1.23")).toBe("-1.23%");
     });
 
@@ -684,7 +763,7 @@ describe("formatAmount helpers", () => {
         "TEST",
         spendableAmount,
       );
-      expect(result).toBe("0.5 TEST");
+      expect(result).toBe("0.50 TEST");
     });
 
     it("should handle zero amount for custom tokens (raw to decimal conversion)", () => {
@@ -737,7 +816,7 @@ describe("formatAmount helpers", () => {
       };
 
       const result = formatBalanceAmount(nativeBalance, "XLM");
-      expect(result).toBe("100.5 XLM");
+      expect(result).toBe("100.50 XLM");
     });
 
     it("should format classic token balance directly", () => {

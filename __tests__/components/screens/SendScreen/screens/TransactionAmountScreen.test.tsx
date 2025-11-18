@@ -407,13 +407,15 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockHasXLMForFees.mockReturnValue(true); // Return true for XLM fees
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: mockTokenAmount,
+      tokenAmountDisplay: "100",
       fiatAmount: "100.00",
+      fiatAmountDisplay: "100.00",
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
-      tokenAmountDisplay: "100",
+      updateFiatDisplay: jest.fn(),
     });
     mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
@@ -785,13 +787,15 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
+      tokenAmountDisplay: "100",
       fiatAmount: "100.00",
+      fiatAmountDisplay: "100.00",
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
-      tokenAmountDisplay: "100",
+      updateFiatDisplay: jest.fn(),
     });
 
     const settingsStateWithMemo = {
@@ -836,13 +840,15 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
 
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
+      tokenAmountDisplay: "100",
       fiatAmount: "100.00",
+      fiatAmountDisplay: "100.00",
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
-      tokenAmountDisplay: "100",
+      updateFiatDisplay: jest.fn(),
     });
 
     const settingsStateWithoutMemo = {
@@ -992,13 +998,15 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     mockHasXLMForFees.mockReturnValue(true);
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: mockTokenAmount,
+      tokenAmountDisplay: "100",
       fiatAmount: "100.00",
+      fiatAmountDisplay: "100.00",
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
-      tokenAmountDisplay: "100",
+      updateFiatDisplay: jest.fn(),
     });
     mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);

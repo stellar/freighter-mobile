@@ -79,7 +79,7 @@ describe("BalanceRow", () => {
     );
 
     expect(getByText("XLM")).toBeTruthy();
-    expect(getByText("100.5 XLM")).toBeTruthy();
+    expect(getByText("100.50 XLM")).toBeTruthy();
   });
 
   it("should render default right content with fiat values", () => {

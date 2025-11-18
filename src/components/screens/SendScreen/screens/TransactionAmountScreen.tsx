@@ -29,7 +29,6 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
-  FIAT_DECIMALS,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -49,7 +48,10 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
+import {
+  formatTokenForDisplay,
+  formatFiatInputDisplay,
+} from "helpers/formatAmount";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -295,38 +297,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
-  const {
-    transactionSecurityAssessment,
-    transactionSecurityWarnings,
-    transactionSecuritySeverity,
-  } = useMemo(
-    () =>
-      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
-    [transactionScanResult, overriddenBlockaidResponse],
-  );
-
-  // Determine max decimals for token input (use token's decimals for custom tokens)
-  const maxTokenDecimals = useMemo(() => {
-    if (isCustomToken && selectedBalance && "decimals" in selectedBalance) {
-      return selectedBalance.decimals;
-    }
-    return DEFAULT_DECIMALS;
-  }, [isCustomToken, selectedBalance]);
-
-  const {
-    tokenAmount,
-    tokenAmountDisplay,
-    fiatAmount,
-    showFiatAmount,
-    setShowFiatAmount,
-    handleDisplayAmountChange,
-    setTokenAmount,
-    setFiatAmount,
-  } = useTokenFiatConverter({
-    selectedBalance,
-    maxDecimals: maxTokenDecimals,
-  });
-
   const spendableBalance = useMemo(() => {
     if (!selectedBalance || !account) {
       return BigNumber(0);
@@ -340,6 +310,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     return result;
   }, [selectedBalance, account, transactionFee]);
+
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
+
+  const {
+    tokenAmount,
+    tokenAmountDisplay,
+    fiatAmount,
+    fiatAmountDisplay,
+    showFiatAmount,
+    setShowFiatAmount,
+    handleDisplayAmountChange,
+    setTokenAmount,
+    updateFiatDisplay,
+  } = useTokenFiatConverter({ selectedBalance });
 
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
@@ -365,14 +353,42 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
+    // Ensure targetAmount never exceeds spendableBalance
+    const cappedTargetAmount = BigNumber.minimum(
+      targetAmount,
+      spendableBalance,
+    );
+
     if (showFiatAmount) {
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      const calculatedFiatAmount = targetAmount.multipliedBy(tokenPrice);
-      // Set raw internal value (dot notation)
-      setFiatAmount(calculatedFiatAmount.toFixed(FIAT_DECIMALS));
+      if (!tokenPrice.isZero()) {
+        let calculatedFiatAmount = cappedTargetAmount.multipliedBy(tokenPrice);
+        let fiatAmountString = calculatedFiatAmount.toFixed(2);
+
+        let convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
+          tokenPrice,
+        );
+        if (convertedBackToTokens.isGreaterThan(spendableBalance)) {
+          // Subtract 1 cent to fix USD value going over max tokens
+          calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
+          fiatAmountString = calculatedFiatAmount.toFixed(2);
+          convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
+            tokenPrice,
+          );
+        }
+
+        const finalTokenAmount = BigNumber.minimum(
+          convertedBackToTokens,
+          spendableBalance,
+        );
+        const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
+        const finalFiatAmountString = finalFiatAmount.toFixed(2);
+
+        updateFiatDisplay(finalFiatAmountString);
+        setTokenAmount(finalTokenAmount.toFixed(DEFAULT_DECIMALS));
+      }
     } else {
-      // Set raw internal value (dot notation)
-      setTokenAmount(targetAmount.toFixed(decimals));
+      setTokenAmount(cappedTargetAmount.toFixed(DEFAULT_DECIMALS));
     }
   };
 
@@ -770,7 +786,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                   ? { primary: true }
                   : { secondary: true })}
               >
-                {formatFiatAmount(fiatAmount)}
+                {formatFiatInputDisplay(fiatAmountDisplay)}
               </Display>
             ) : (
               <View className="flex-row items-center gap-[4px]">
@@ -798,10 +814,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                       tokenAmount,
                       selectedBalance?.tokenCode,
                     )
-                  : formatFiatAmount(fiatAmount)}
+                  : formatFiatInputDisplay(fiatAmountDisplay)}
               </Text>
               <TouchableOpacity
                 className="ml-2"
+                hitSlop={10}
                 onPress={() => setShowFiatAmount(!showFiatAmount)}
               >
                 <Icon.RefreshCcw03
