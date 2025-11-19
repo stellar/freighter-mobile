@@ -854,6 +854,8 @@
     "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again",
     "errorUnsupportedChain": "Unsupported Chain",
     "errorUnsupportedChainMessage": "Please make sure the App you are trying to connect with supports the Stellar chain",
+    "errorUnsupportedTransactionChain": "Unsupported Chain",
+    "errorUnsupportedTransactionChainMessage": "The chain {{chainId}} is not supported. Please make sure the transaction you are trying to sign was built on a supported Stellar chain",
     "errorUnsupportedMethodTitle": "Unsupported Method",
     "errorUnsupportedMethod": "The method '{{method}}' is not supported by Freighter wallet",
     "pleaseTryAgainLater": "Please try again later",

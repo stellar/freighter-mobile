@@ -246,6 +246,22 @@ export const approveSessionRequest = async ({
 
   const rpcMethod = requestMethod as StellarRpcMethods;
 
+  const supportedChains = [StellarRpcChains.PUBLIC, StellarRpcChains.TESTNET];
+
+  // Check if the chain is supported by the wallet
+  if (!supportedChains.includes(chainId as StellarRpcChains)) {
+    const message = t("walletKit.errorUnsupportedTransactionChainMessage", {
+      chainId,
+    });
+    showToast({
+      title: t("walletKit.errorUnsupportedTransactionChain"),
+      message,
+      variant: "error",
+    });
+    rejectSessionRequest({ sessionRequest, message });
+    return;
+  }
+
   const targetNetwork =
     chainId === (StellarRpcChains.PUBLIC as string)
       ? NETWORKS.PUBLIC

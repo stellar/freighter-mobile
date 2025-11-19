@@ -818,6 +818,8 @@
     "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
     "errorUnsupportedChain": "Rede não suportada",
     "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
+    "errorUnsupportedTransactionChain": "Rede não suportada",
+    "errorUnsupportedTransactionChainMessage": "A rede {{chainId}} não é suportada. Por favor, certifique-se de que a transação que você está tentando assinar foi construída em uma rede Stellar suportada",
     "errorUnsupportedMethodTitle": "Método não suportado",
     "errorUnsupportedMethod": "O método '{{method}}' não é suportado pela carteira Freighter",
     "pleaseTryAgainLater": "Por favor, tente novamente mais tarde",
