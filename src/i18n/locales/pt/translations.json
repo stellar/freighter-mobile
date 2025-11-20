@@ -983,7 +983,8 @@
       "transactionFeeRequired": "Taxa de transação é obrigatória",
       "transactionTimeoutRequired": "Tempo limite da transação é obrigatório",
       "networkRequired": "Rede é obrigatória",
-      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta"
+      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta",
+      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado"
     }
   },
   "welcomeBanner": {

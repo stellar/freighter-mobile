@@ -982,7 +982,8 @@
       "transactionFeeRequired": "Transaction fee is required",
       "transactionTimeoutRequired": "Transaction timeout is required",
       "networkRequired": "Network is required",
-      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
+      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account",
+      "invalidDecimals": "Invalid or missing decimals for custom token"
     }
   },
   "welcomeBanner": {

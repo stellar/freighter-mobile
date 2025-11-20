@@ -63,14 +63,14 @@ describe("history helpers", () => {
       });
     });
 
-    it("should extract contractId from SYMBOL:CONTRACTID format", () => {
+    it("should extract symbol and contractId from SYMBOL:CONTRACTID format", () => {
       const symbol = "USDC";
       const contractId =
         "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
       const tokenId = `${symbol}:${contractId}`;
       const result = getTokenFromTokenId(tokenId);
       expect(result).toEqual({
-        code: undefined,
+        code: symbol,
         issuer: undefined,
         contractId,
       });

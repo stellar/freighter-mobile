@@ -34,6 +34,7 @@ import {
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
+import { TransactionOperationType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -255,7 +256,7 @@ interface IBuildSorobanTransferOperation {
   sourceAccount: string;
   destinationAddress: string;
   amount: string;
-  token: SdkToken;
+  contractId: string; // Contract ID for the token (custom token contractId or native token contractId)
   transactionBuilder: TransactionBuilder;
   network: NETWORKS;
   memo?: string; // Optional memo for creating muxed address
@@ -270,25 +271,20 @@ interface IBuildSorobanTransferOperation {
  * @returns Final destination address (may be muxed if memo was provided and contract supports it)
  * @note transactionBuilder is mutated in place, so it doesn't need to be returned
  */
-export const buildSorobanTransferOperation = (
+const buildSorobanTransferOperation = (
   params: IBuildSorobanTransferOperation,
 ): string => {
   const {
     sourceAccount,
     destinationAddress,
     amount,
-    token,
+    contractId,
     transactionBuilder,
-    network,
     memo,
     contractSupportsMuxed = false,
   } = params;
 
   try {
-    const contractId = token.isNative()
-      ? getContractIdForNativeToken(network)
-      : destinationAddress;
-
     const contract = new Contract(contractId);
 
     // Determine final destination at the very last step - right before building the operation
@@ -388,21 +384,18 @@ export const buildPaymentTransaction = async (
 
     if (shouldUseSorobanTransfer) {
       let contractId: string;
-      let token: SdkToken;
 
-      if (isCustomToken && selectedBalance.contractId) {
+      if (isCustomToken) {
         contractId = selectedBalance.contractId;
-        token = SdkToken.native();
       } else {
         try {
-          token = getTokenForPayment(selectedBalance);
+          const token = getTokenForPayment(selectedBalance);
           contractId = token.isNative()
             ? getContractIdForNativeToken(network)
             : recipientAddress;
         } catch (error) {
-          if (isCustomToken && selectedBalance.contractId) {
+          if (isCustomToken) {
             contractId = selectedBalance.contractId;
-            token = SdkToken.native();
           } else {
             throw error;
           }
@@ -418,10 +411,11 @@ export const buildPaymentTransaction = async (
       // The amount parameter is in human-readable format (e.g., "1.33" for 1.33 tokens)
       // We need to convert it to base units by multiplying by 10^decimals
       let decimals: number;
-      if (isCustomToken && selectedBalance) {
+      if (isCustomToken) {
         // For SorobanBalance, decimals is a required property
         const balanceDecimals =
           "decimals" in selectedBalance ? selectedBalance.decimals : undefined;
+
         if (
           typeof balanceDecimals === "number" &&
           !Number.isNaN(balanceDecimals) &&
@@ -429,8 +423,13 @@ export const buildPaymentTransaction = async (
         ) {
           decimals = balanceDecimals;
         } else {
-          // Fallback to DEFAULT_DECIMALS if decimals is missing or invalid
-          decimals = DEFAULT_DECIMALS;
+          // Track error and throw - decimals is required for custom tokens
+          const errorMessage = t("transaction.errors.invalidDecimals");
+          analytics.trackTransactionError({
+            error: errorMessage,
+            operationType: TransactionOperationType.SorobanToken,
+          });
+          throw new Error(errorMessage);
         }
       } else {
         // For native tokens or non-custom tokens, use DEFAULT_DECIMALS
@@ -447,7 +446,7 @@ export const buildPaymentTransaction = async (
         sourceAccount: senderAddress,
         destinationAddress: recipientAddress,
         amount: amountInBaseUnits,
-        token,
+        contractId,
         transactionBuilder,
         network,
         memo,
@@ -469,9 +468,7 @@ export const buildPaymentTransaction = async (
     const token = getTokenForPayment(selectedBalance);
     const paymentDestination = recipientAddress;
 
-    const baseAccount = isMuxedAccount(recipientAddress)
-      ? getBaseAccount(recipientAddress) || recipientAddress
-      : recipientAddress;
+    const baseAccount = getBaseAccount(recipientAddress)!;
 
     if (token.isNative()) {
       try {
@@ -504,6 +501,7 @@ export const buildPaymentTransaction = async (
       }
     }
 
+    // If account is funded or asset is not XLM, use standard payment
     transactionBuilder.addOperation(
       Operation.payment({
         destination: paymentDestination,
@@ -664,9 +662,9 @@ export const buildSendCollectibleTransaction = async (
     });
 
     const transferParams = [
-      new Address(senderAddress).toScVal(),
-      new Address(finalDestination).toScVal(),
-      xdr.ScVal.scvU32(tokenId),
+      new Address(senderAddress).toScVal(), // from
+      new Address(finalDestination).toScVal(), // to
+      xdr.ScVal.scvU32(tokenId), // token_id
     ];
 
     txBuilder.addOperation(contract.call("transfer", ...transferParams));

@@ -79,6 +79,14 @@ export const getIsSupportedSorobanOp = (
  * - "native" for XLM
  * - "CODE:ISSUER" for classic tokens
  * - Contract address for Soroban tokens
+ * - "SYMBOL:CONTRACTID" for Soroban tokens with symbol
+ *
+ * @param tokenId - The token identifier string
+ * @returns Token information object with possible signatures:
+ *   - { code: "XLM", issuer: undefined, contractId: undefined } for native tokens
+ *   - { code: undefined, issuer: undefined, contractId: string } for Soroban tokens (contract ID only)
+ *   - { code: string, issuer: undefined, contractId: string } for Soroban tokens (SYMBOL:CONTRACTID format)
+ *   - { code: string, issuer: string, contractId: undefined } for classic tokens (CODE:ISSUER format)
  */
 export const getTokenFromTokenId = (tokenId: string) => {
   if (tokenId === "native") {
@@ -94,7 +102,7 @@ export const getTokenFromTokenId = (tokenId: string) => {
   const parts = tokenId.split(":");
   if (parts.length === 2 && isContractId(parts[1])) {
     // This is a Soroban token in SYMBOL:CONTRACTID format
-    return { code: undefined, issuer: undefined, contractId: parts[1] };
+    return { code: parts[0], issuer: undefined, contractId: parts[1] };
   }
 
   // Classic token format: CODE:ISSUER

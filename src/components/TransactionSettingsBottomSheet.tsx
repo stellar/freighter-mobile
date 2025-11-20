@@ -132,7 +132,6 @@ const TransactionSettingsBottomSheet: React.FC<
     if (isCollectibleTransfer) {
       return selectedCollectibleDetails?.collectionAddress;
     }
-
     if (isCustomToken && selectedBalance && "contractId" in selectedBalance) {
       return selectedBalance.contractId;
     }

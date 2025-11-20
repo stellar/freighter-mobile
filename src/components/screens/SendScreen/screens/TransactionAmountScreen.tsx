@@ -147,6 +147,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isBuilding,
     transactionXDR,
     transactionHash,
+    error: transactionBuilderError,
   } = useTransactionBuilderStore();
 
   // Reset transaction, recipient, and token on unmount
@@ -180,6 +181,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // Show toast when transaction builder error occurs
+  const previousErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      transactionBuilderError &&
+      transactionBuilderError !== previousErrorRef.current
+    ) {
+      previousErrorRef.current = transactionBuilderError;
+      showToast({
+        variant: "error",
+        title: transactionBuilderError,
+        toastId: "transaction-builder-error",
+        duration: 5000,
+      });
+    }
+  }, [transactionBuilderError, showToast]);
   const deviceSize = useDeviceSize();
   const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -480,10 +498,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
-        reviewBottomSheetModalRef.current?.present();
+        // When scan fails, treat as unable to scan and open security detail sheet
+        const security = getTransactionSecurity(
+          undefined,
+          overriddenBlockaidResponse,
+        );
+        if (security.transactionSecurityAssessment.isUnableToScan) {
+          transactionSecurityWarningBottomSheetModalRef.current?.present();
+        } else {
+          reviewBottomSheetModalRef.current?.present();
+        }
       }
     },
-    [],
+    [overriddenBlockaidResponse],
   );
 
   const prepareTransaction = useCallback(
