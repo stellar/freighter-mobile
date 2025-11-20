@@ -17,6 +17,7 @@ import {
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
+import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import { useRef, useState } from "react";
 import { handleContractLookup } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
@@ -43,6 +44,12 @@ export const useTokenLookup = ({
   const latestRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [searchResults, setSearchResults] = useState<
+    FormattedSearchTokenRecord[]
+  >([]);
+  const [verifiedTokens, setVerifiedTokens] = useState<
+    FormattedSearchTokenRecord[]
+  >([]);
+  const [unverifiedTokens, setUnverifiedTokens] = useState<
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
@@ -173,6 +180,20 @@ export const useTokenLookup = ({
       };
     });
 
+  // Categorize tokens into verified and unverified
+  const categorizeTokens = async (
+    tokens: FormattedSearchTokenRecord[],
+    abortSignal: AbortSignal,
+  ): Promise<void> => {
+    const { verified, unverified } = await splitVerifiedTokens({
+      tokens,
+      network,
+    });
+    if (abortSignal.aborted) return;
+    setVerifiedTokens(verified);
+    setUnverifiedTokens(unverified);
+  };
+
   const performSearch = async (term: string) => {
     const requestId = ++latestRequestRef.current;
     // Cancel previous request
@@ -184,6 +205,8 @@ export const useTokenLookup = ({
     if (!term) {
       if (latestRequestRef.current === requestId) setStatus(HookStatus.IDLE);
       setSearchResults([]);
+      setVerifiedTokens([]);
+      setUnverifiedTokens([]);
       return;
     }
 
@@ -271,6 +294,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedSearchResults);
+        await categorizeTokens(groupedSearchResults, signal);
       } catch (error) {
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
@@ -286,6 +310,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedFallbackResults);
+        await categorizeTokens(groupedFallbackResults, signal);
       }
     } else {
       const defaultSearchResults: FormattedSearchTokenRecord[] =
@@ -300,9 +325,12 @@ export const useTokenLookup = ({
         groupTokensBySecurityLevel(defaultSearchResults);
 
       setSearchResults(groupedDefaultResults);
+      await categorizeTokens(groupedDefaultResults, signal);
     }
 
-    setStatus(HookStatus.SUCCESS);
+    if (latestRequestRef.current === requestId) {
+      setStatus(HookStatus.SUCCESS);
+    }
   };
 
   const handleSearch = (text: string) => {
@@ -313,10 +341,14 @@ export const useTokenLookup = ({
     abortControllerRef.current?.abort();
     setStatus(HookStatus.IDLE);
     setSearchResults([]);
+    setVerifiedTokens([]);
+    setUnverifiedTokens([]);
   };
 
   return {
     searchResults,
+    verifiedTokens,
+    unverifiedTokens,
     status,
     handleSearch,
     resetSearch,

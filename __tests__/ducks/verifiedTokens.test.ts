@@ -1,4 +1,4 @@
-import { NETWORKS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { dataStorage } from "services/storage/storageFactory";
 import { fetchVerifiedTokens } from "services/verified-token-lists";
@@ -58,11 +58,11 @@ describe("useVerifiedTokensStore", () => {
 
       // Verify cache was updated
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `verifiedTokens_${NETWORKS.PUBLIC}`,
+        `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
         JSON.stringify(mockVerifiedTokens),
       );
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `verifiedTokens_${NETWORKS.PUBLIC}_date`,
+        `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${NETWORKS.PUBLIC}_date`,
         expect.any(String),
       );
     });
@@ -176,11 +176,11 @@ describe("useVerifiedTokensStore", () => {
 
       // Verify both networks are cached separately
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `verifiedTokens_${NETWORKS.PUBLIC}`,
+        `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
         JSON.stringify(mockVerifiedTokens),
       );
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `verifiedTokens_${NETWORKS.TESTNET}`,
+        `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${NETWORKS.TESTNET}`,
         JSON.stringify(testnetTokens),
       );
     });

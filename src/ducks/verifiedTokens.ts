@@ -1,4 +1,4 @@
-import { NETWORKS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { cachedFetch } from "helpers/cachedFetch";
 import {
   TOKEN_LISTS_API_SERVICES,
@@ -53,7 +53,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
  */
 export const useVerifiedTokensStore = create<VerifiedTokensState>()(() => ({
   getVerifiedTokens: async ({ network, forceRefresh = false }) => {
-    const storageKey = `verifiedTokens_${network}`;
+    const storageKey = `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${network}`;
 
     return cachedFetch<TokenListReponseItem[]>({
       urlOrFn: () =>

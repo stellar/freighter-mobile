@@ -23,6 +23,29 @@ jest.mock("helpers/balances", () => {
 
 jest.mock("helpers/soroban", () => ({
   isContractId: (value: string) => value.startsWith("C") && value.length === 56,
+  getNativeContractDetails: () => ({
+    contract: "native-contract-id",
+    issuer: "native-issuer-id",
+    code: "XLM",
+    domain: "stellar.org",
+  }),
+}));
+
+jest.mock("helpers/splitVerifiedTokens", () => ({
+  splitVerifiedTokens: ({ tokens }: { tokens: any[]; network: string }) =>
+    // Simple mock: return all tokens as verified for testing
+    Promise.resolve({
+      verified: tokens,
+      unverified: [],
+    }),
+}));
+
+jest.mock("ducks/verifiedTokens", () => ({
+  useVerifiedTokensStore: {
+    getState: () => ({
+      getVerifiedTokens: jest.fn().mockResolvedValue([]),
+    }),
+  },
 }));
 
 // Mock useDebounce - use a simple implementation that just returns the callback
@@ -185,6 +208,8 @@ describe("useTokenLookup", () => {
     });
 
     expect(result.current.searchResults).toEqual([]);
+    expect(result.current.verifiedTokens).toEqual([]);
+    expect(result.current.unverifiedTokens).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
   });
 
@@ -219,6 +244,8 @@ describe("useTokenLookup", () => {
     });
 
     expect(result.current.searchResults).toEqual([]);
+    expect(result.current.verifiedTokens).toEqual([]);
+    expect(result.current.unverifiedTokens).toEqual([]);
     expect(result.current.status).toBe(HookStatus.IDLE);
   });
 

@@ -26,7 +26,6 @@ import {
 import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { getTokenIdentifier } from "helpers/balances";
-import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -36,13 +35,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageToken } from "hooks/useManageToken";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
@@ -76,7 +69,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { themeColors } = useColors();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const { searchResults, status, handleSearch, resetSearch } = useTokenLookup({
+  const {
+    searchResults,
+    verifiedTokens,
+    unverifiedTokens,
+    status,
+    handleSearch,
+    resetSearch,
+  } = useTokenLookup({
     network,
     publicKey: account?.publicKey,
     balanceItems,
@@ -86,28 +86,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     () => searchResults.some((token) => token.isUnableToScan),
     [searchResults],
   );
-
-  const [categorizedTokens, setCategorizedTokens] = useState<{
-    verified: FormattedSearchTokenRecord[];
-    unverified: FormattedSearchTokenRecord[];
-  }>({ verified: [], unverified: [] });
-
-  useEffect(() => {
-    const categorizeTokens = async () => {
-      if (searchResults.length === 0) {
-        setCategorizedTokens({ verified: [], unverified: [] });
-        return;
-      }
-
-      const { verified, unverified } = await splitVerifiedTokens({
-        tokens: searchResults,
-        network,
-      });
-      setCategorizedTokens({ verified, unverified });
-    };
-
-    categorizeTokens();
-  }, [searchResults, network]);
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -426,7 +404,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                     </Text>
                   </View>
                 )}
-                {categorizedTokens.verified.length > 0 && (
+                {verifiedTokens.length > 0 && (
                   <>
                     <View className="mt-4 mb-6 flex-row items-center gap-2">
                       <TouchableOpacity
@@ -444,7 +422,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                         {t("addTokenScreen.verified")}
                       </Text>
                     </View>
-                    {categorizedTokens.verified.map((token) => (
+                    {verifiedTokens.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}
                         token={token}
@@ -454,7 +432,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                     ))}
                   </>
                 )}
-                {categorizedTokens.unverified.length > 0 && (
+                {unverifiedTokens.length > 0 && (
                   <>
                     <View className="mt-4 mb-8 flex-row items-center gap-2">
                       <TouchableOpacity
@@ -472,7 +450,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
                         {t("addTokenScreen.unverified")}
                       </Text>
                     </View>
-                    {categorizedTokens.unverified.map((token) => (
+                    {unverifiedTokens.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}
                         token={token}
