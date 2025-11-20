@@ -18,6 +18,7 @@ import {
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
@@ -34,7 +35,6 @@ import {
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
-import { TransactionOperationType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -258,7 +258,6 @@ interface IBuildSorobanTransferOperation {
   amount: string;
   contractId: string; // Contract ID for the token (custom token contractId or native token contractId)
   transactionBuilder: TransactionBuilder;
-  network: NETWORKS;
   memo?: string; // Optional memo for creating muxed address
   contractSupportsMuxed?: boolean; // Whether contract supports muxed addresses
 }
@@ -425,10 +424,11 @@ export const buildPaymentTransaction = async (
         } else {
           // Track error and throw - decimals is required for custom tokens
           const errorMessage = t("transaction.errors.invalidDecimals");
-          analytics.trackTransactionError({
-            error: errorMessage,
-            operationType: TransactionOperationType.SorobanToken,
-          });
+          logger.error(
+            "buildPaymentTransaction",
+            errorMessage,
+            new Error(errorMessage),
+          );
           throw new Error(errorMessage);
         }
       } else {
@@ -448,7 +448,6 @@ export const buildPaymentTransaction = async (
         amount: amountInBaseUnits,
         contractId,
         transactionBuilder,
-        network,
         memo,
         contractSupportsMuxed,
       });
