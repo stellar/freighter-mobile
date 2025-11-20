@@ -6,6 +6,7 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
+import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
@@ -30,6 +31,7 @@ import {
   DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   TransactionContext,
+  mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -50,6 +52,8 @@ import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
 } from "helpers/formatAmount";
+import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -143,6 +147,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isBuilding,
     transactionXDR,
     transactionHash,
+    error: transactionBuilderError,
   } = useTransactionBuilderStore();
 
   // Reset transaction, recipient, and token on unmount
@@ -176,15 +181,36 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // Show toast when transaction builder error occurs
+  const previousErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      transactionBuilderError &&
+      transactionBuilderError !== previousErrorRef.current
+    ) {
+      previousErrorRef.current = transactionBuilderError;
+      showToast({
+        variant: "error",
+        title: transactionBuilderError,
+        toastId: "transaction-builder-error",
+        duration: 5000,
+      });
+    }
+  }, [transactionBuilderError, showToast]);
   const deviceSize = useDeviceSize();
   const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const [contractSupportsMuxed, setContractSupportsMuxed] = useState<
+    boolean | null
+  >(null);
   const signTransactionDetails = useSignTransactionDetails({
     xdr: transactionXDR ?? "",
   });
@@ -235,6 +261,58 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
 
+  // Check if selected balance is a custom token (SorobanBalance with contractId)
+  const isCustomToken = Boolean(
+    selectedBalance &&
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId),
+  );
+
+  // Check if recipient is M address
+  const isRecipientMuxed = Boolean(
+    recipientAddress && isMuxedAccount(recipientAddress),
+  );
+
+  const contractId = useMemo(() => {
+    if (
+      selectedBalance &&
+      "contractId" in selectedBalance &&
+      selectedBalance.contractId
+    ) {
+      return selectedBalance.contractId;
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBalance?.id, selectedBalance]);
+
+  useEffect(() => {
+    const checkContract = async () => {
+      if (!isCustomToken || !recipientAddress || !network || !contractId) {
+        setContractSupportsMuxed(null);
+        return;
+      }
+
+      try {
+        const networkDetails = mapNetworkToNetworkDetails(network);
+        const supportsMuxed = await checkContractMuxedSupport({
+          contractId,
+          networkDetails,
+        });
+        setContractSupportsMuxed(supportsMuxed);
+      } catch (error) {
+        // On error, assume no support for safety
+        setContractSupportsMuxed(false);
+      }
+    };
+
+    checkContract();
+  }, [isCustomToken, recipientAddress, network, contractId]);
+
+  // Determine if M address + contract doesn't support muxed
+  const isMuxedAddressWithoutMemoSupport = Boolean(
+    isRecipientMuxed && isCustomToken && contractSupportsMuxed === false,
+  );
+
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
   const spendableBalance = useMemo(() => {
@@ -272,15 +350,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
 
+    // For custom tokens, spendableBalance is in base units, convert to decimal-aware
+    // For native tokens, spendableBalance is already in decimal-aware format
+    const decimals =
+      isCustomToken && "decimals" in selectedBalance
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS;
+
+    const decimalAwareSpendable = isCustomToken
+      ? spendableBalance.shiftedBy(-decimals)
+      : spendableBalance;
+
     let targetAmount: BigNumber;
 
     if (percentage === 100) {
-      targetAmount = spendableBalance;
+      targetAmount = decimalAwareSpendable;
 
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
     } else {
-      const totalBalance = BigNumber(spendableBalance);
-      targetAmount = totalBalance.multipliedBy(percentage / 100);
+      targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
     // Ensure targetAmount never exceeds spendableBalance
@@ -344,9 +432,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return;
     }
 
+    // For custom tokens, spendableBalance is in base units, convert to decimal-aware for comparison
+    // For native tokens, spendableBalance is already in decimal-aware format
+    const decimals =
+      isCustomToken && selectedBalance && "decimals" in selectedBalance
+        ? selectedBalance.decimals
+        : DEFAULT_DECIMALS;
+
+    const decimalAwareSpendable = isCustomToken
+      ? spendableBalance.shiftedBy(-decimals)
+      : spendableBalance;
+
     if (
-      spendableBalance &&
-      currentTokenAmount.isGreaterThan(spendableBalance) &&
+      decimalAwareSpendable &&
+      currentTokenAmount.isGreaterThan(decimalAwareSpendable) &&
       !transactionHash
     ) {
       const errorMessage = t("transactionAmountScreen.errors.amountTooHigh");
@@ -366,6 +465,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     balanceItems,
     transactionFee,
     transactionHash,
+    isCustomToken,
+    selectedBalance,
     t,
     showToast,
   ]);
@@ -397,10 +498,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
-        transactionSecurityWarningBottomSheetModalRef.current?.present();
+        // When scan fails, treat as unable to scan and open security detail sheet
+        const security = getTransactionSecurity(
+          undefined,
+          overriddenBlockaidResponse,
+        );
+        if (security.transactionSecurityAssessment.isUnableToScan) {
+          transactionSecurityWarningBottomSheetModalRef.current?.present();
+        } else {
+          reviewBottomSheetModalRef.current?.present();
+        }
       }
     },
-    [],
+    [overriddenBlockaidResponse],
   );
 
   const prepareTransaction = useCallback(
@@ -573,14 +683,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isRequiredMemoMissing,
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
+      isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
+      amountError,
     }),
     [
       handleCancelReview,
       isRequiredMemoMissing,
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
+      transactionSecurityAssessment.isUnableToScan,
+      isMuxedAddressWithoutMemoSupport,
+      amountError,
       onConfirmAddMemo,
       handleTransactionConfirmation,
       isValidatingMemo,
@@ -629,13 +745,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
 
+  const openMuxedAddressWarningBottomSheet = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCancelMuxedAddressWarning = useCallback(() => {
+    muxedAddressInfoBottomSheetModalRef.current?.dismiss();
+  }, []);
+
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
+    isMuxedAddressWithoutMemoSupport,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
+    onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
 
   if (isProcessing) {
@@ -812,12 +938,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}
-            isMalicious={transactionSecurityAssessment.isMalicious}
-            isSuspicious={transactionSecurityAssessment.isSuspicious}
-            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
             bannerText={bannerContent?.text}
             bannerVariant={bannerContent?.variant}
             signTransactionDetails={signTransactionDetails}
+            amountError={amountError}
           />
         }
         renderFooterComponent={renderFooterComponent}
@@ -867,6 +991,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={muxedAddressInfoBottomSheetModalRef}
+        handleCloseModal={handleCancelMuxedAddressWarning}
+        customContent={
+          <MuxedAddressWarningBottomSheet
+            onCancel={handleCancelMuxedAddressWarning}
+            onClose={handleCancelMuxedAddressWarning}
           />
         }
       />

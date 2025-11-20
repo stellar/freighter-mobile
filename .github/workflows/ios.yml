@@ -101,9 +101,15 @@ jobs:
             exit 0
           fi
 
-          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+          RELEASE_BRANCHES=$(git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | sed 's/.*refs\/heads\///' || true)
+
+          if [ -n "$RELEASE_BRANCHES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Active release branch detected. Skipping scheduled daily dev build."
+            echo "Active release branch(es) detected:"
+            echo "$RELEASE_BRANCHES" | while read -r branch; do
+              echo "  - $branch"
+            done
+            echo "Skipping scheduled daily dev build."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
@@ -112,17 +118,65 @@ jobs:
     needs: check_release_branch
     if: needs.check_release_branch.outputs.skip == 'false'
     name: Build iOS
-    runs-on: macos-latest
-    timeout-minutes: 45
+    runs-on: macos-26
+    timeout-minutes: 60
 
     steps:
-      - name: List available Xcode versions
-        run: ls -1 /Applications | grep -i Xcode || true
+      - name: Display macOS Image Information
+        run: |
+          echo "=== macOS Runner Information ==="
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Runner Name: ${{ runner.name }}"
+          echo "macOS Version:"
+          sw_vers
+          echo ""
+          echo "Kernel Version:"
+          uname -a
+          echo ""
+          echo "Xcode Command Line Tools Version:"
+          xcode-select --version 2>/dev/null || echo "Not installed"
+          echo ""
+          echo "Available Xcode versions:"
+          ls -1 /Applications | grep -i Xcode || echo "No Xcode found"
 
-      - name: Set xcode version
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
+      - name: Set latest stable Xcode version
+        run: |
+          # Find all stable Xcode versions (exclude Release_Candidate, RC, beta, Beta)
+          XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" || true)
 
-      - name: Verify Xcode Version
+          if [ -z "$XCODE_PATHS" ]; then
+            echo "Error: No stable Xcode installation found in /Applications"
+            echo "Available Xcode versions:"
+            ls -1 /Applications | grep -i Xcode || true
+            exit 1
+          fi
+
+          # Find the latest stable Xcode by sorting versions
+          LATEST_XCODE=""
+          LATEST_VERSION=""
+
+          TEMP_FILE=$(mktemp)
+          for XCODE_PATH in $XCODE_PATHS; do
+            VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "0")
+            printf "%s\t%s\n" "$VERSION" "$XCODE_PATH" >> "$TEMP_FILE"
+          done
+
+          # Sort by version (descending) and get the first one
+          LATEST=$(sort -V -r -k1 "$TEMP_FILE" | head -n 1)
+          rm -f "$TEMP_FILE"
+
+          if [ -z "$LATEST" ]; then
+            echo "Error: Failed to determine latest Xcode version"
+            exit 1
+          fi
+
+          LATEST_VERSION=$(echo "$LATEST" | cut -f1)
+          LATEST_XCODE=$(echo "$LATEST" | cut -f2)
+
+          echo "Selected Xcode: $LATEST_XCODE (Version: $LATEST_VERSION)"
+          sudo xcode-select -s "$LATEST_XCODE"
+
+      - name: Verify selected Xcode Version
         run: xcodebuild -version
 
       - name: Set ref

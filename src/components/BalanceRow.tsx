@@ -12,7 +12,7 @@ import { useDebugStore } from "ducks/debug";
 import { isLiquidityPool } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import {
-  formatTokenForDisplay,
+  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -172,10 +172,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           </Text>
           <Text sm medium secondary numberOfLines={1}>
             {customTextContent ||
-              formatTokenForDisplay(
-                spendableAmount || balance.total,
-                balance.tokenCode,
-              )}
+              formatBalanceAmount(balance, balance.tokenCode, spendableAmount)}
           </Text>
         </TokenTextContainer>
       </LeftSection>

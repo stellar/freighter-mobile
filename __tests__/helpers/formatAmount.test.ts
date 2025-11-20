@@ -1,5 +1,12 @@
 import BigNumber from "bignumber.js";
 import {
+  SorobanBalance,
+  NativeBalance,
+  ClassicBalance,
+  NonNativeToken,
+  NativeToken,
+} from "config/types";
+import {
   formatTokenForDisplay,
   formatFiatAmount,
   formatFiatInputDisplay,
@@ -8,6 +15,7 @@ import {
   formatBigNumberForDisplay,
   parseDisplayNumber,
   parseDisplayNumberToBigNumber,
+  formatBalanceAmount,
 } from "helpers/formatAmount";
 
 // Mock react-native-localize for consistent test behavior
@@ -677,6 +685,175 @@ describe("formatAmount helpers", () => {
       expect(result.toString()).toBe("1.23456789e-10"); // BigNumber converts very small numbers to scientific notation
       // Verify the actual numeric value is correct
       expect(result.toNumber()).toBe(0.000000000123456789);
+    });
+  });
+
+  describe("formatBalanceAmount - custom token decimal conversion", () => {
+    it("should convert raw amount to decimal format for custom token with 4 decimals", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("10000"), // Raw amount for 4 decimals = 1.0000
+        available: new BigNumber("10000"),
+        decimals: 4,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance, "TEST");
+      expect(result).toBe("1.00 TEST");
+    });
+
+    it("should convert raw amount to decimal format for custom token with 2 decimals", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("100"), // Raw amount for 2 decimals = 1.00
+        available: new BigNumber("100"),
+        decimals: 2,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance, "TEST");
+      expect(result).toBe("1.00 TEST");
+    });
+
+    it("should convert raw amount to decimal format for custom token with 7 decimals", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("10000000"), // Raw amount for 7 decimals = 1.0000000
+        available: new BigNumber("10000000"),
+        decimals: 7,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance, "TEST");
+      expect(result).toBe("1.00 TEST");
+    });
+
+    it("should handle amountOverride for custom tokens (raw to decimal conversion)", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("10000"),
+        available: new BigNumber("10000"),
+        decimals: 4,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const spendableAmount = new BigNumber("5000"); // Raw amount for 4 decimals = 0.5000
+      const result = formatBalanceAmount(
+        customTokenBalance,
+        "TEST",
+        spendableAmount,
+      );
+      expect(result).toBe("0.50 TEST");
+    });
+
+    it("should handle zero amount for custom tokens (raw to decimal conversion)", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("0"),
+        available: new BigNumber("0"),
+        decimals: 4,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance, "TEST");
+      expect(result).toBe("0.00 TEST");
+    });
+
+    it("should handle very large amounts for custom tokens (raw to decimal conversion)", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("1000000000000"), // Raw amount for 4 decimals = 100000000.0000
+        available: new BigNumber("1000000000000"),
+        decimals: 4,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance, "TEST");
+      expect(result).toBe("100,000,000.00 TEST");
+    });
+
+    it("should format native XLM balance directly", () => {
+      const nativeBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("100.5"),
+        available: new BigNumber("100.5"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      const result = formatBalanceAmount(nativeBalance, "XLM");
+      expect(result).toBe("100.50 XLM");
+    });
+
+    it("should format classic token balance directly", () => {
+      const classicBalance: ClassicBalance = {
+        token: {
+          code: "USDC",
+          issuer: {
+            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        } as NonNativeToken,
+        total: new BigNumber("1000"),
+        available: new BigNumber("1000"),
+        limit: new BigNumber("10000"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      };
+
+      const result = formatBalanceAmount(classicBalance, "USDC");
+      expect(result).toBe("1,000.00 USDC");
+    });
+
+    it("should format without token code", () => {
+      const customTokenBalance: SorobanBalance = {
+        total: new BigNumber("10000"),
+        available: new BigNumber("10000"),
+        decimals: 4,
+        contractId: "C1234567890",
+        name: "Test Token",
+        symbol: "TEST",
+        token: {
+          code: "TEST",
+          issuer: { key: "C1234567890" },
+        } as NonNativeToken,
+      };
+
+      const result = formatBalanceAmount(customTokenBalance);
+      expect(result).toBe("1.00");
     });
   });
 });

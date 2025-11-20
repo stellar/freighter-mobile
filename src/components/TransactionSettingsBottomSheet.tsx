@@ -14,16 +14,21 @@ import {
   NATIVE_TOKEN_CODE,
   TransactionContext,
   TransactionSetting,
+  mapNetworkToNetworkDetails,
 } from "config/constants";
 import { NetworkCongestion } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   parseDisplayNumber,
   formatNumberForDisplay,
 } from "helpers/formatAmount";
+import { getMemoDisabledState } from "helpers/muxedAddress";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -31,7 +36,13 @@ import { useValidateMemo } from "hooks/useValidateMemo";
 import { useValidateSlippage } from "hooks/useValidateSlippage";
 import { useValidateTransactionFee } from "hooks/useValidateTransactionFee";
 import { useValidateTransactionTimeout } from "hooks/useValidateTransactionTimeout";
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
@@ -56,6 +67,9 @@ const TransactionSettingsBottomSheet: React.FC<
     transactionMemo,
     transactionFee,
     transactionTimeout,
+    recipientAddress,
+    selectedTokenId,
+    selectedCollectibleDetails,
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
@@ -79,6 +93,96 @@ const TransactionSettingsBottomSheet: React.FC<
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const { network, account } = useAuthenticationStore();
+
+  // Get selected balance to check if it's a custom token
+  const { balanceItems } = useBalancesList({
+    publicKey: account?.publicKey ?? "",
+    network,
+  });
+  const selectedBalance = balanceItems.find(
+    (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
+  );
+  const isCustomToken = Boolean(
+    selectedBalance &&
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId),
+  );
+
+  const isCollectibleTransfer =
+    Boolean(selectedCollectibleDetails?.collectionAddress) &&
+    Boolean(selectedCollectibleDetails?.tokenId);
+
+  const isSorobanRecipient = Boolean(
+    recipientAddress && isContractId(recipientAddress),
+  );
+
+  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
+  );
+
+  // Determine contract ID for Soroban transactions
+  const contractId = useMemo(() => {
+    if (!isSorobanTransaction || !recipientAddress) {
+      return undefined;
+    }
+
+    if (isCollectibleTransfer) {
+      return selectedCollectibleDetails?.collectionAddress;
+    }
+    if (isCustomToken && selectedBalance && "contractId" in selectedBalance) {
+      return selectedBalance.contractId;
+    }
+
+    if (isSorobanRecipient) {
+      return recipientAddress;
+    }
+
+    return undefined;
+  }, [
+    isSorobanTransaction,
+    recipientAddress,
+    isCollectibleTransfer,
+    isCustomToken,
+    isSorobanRecipient,
+    selectedCollectibleDetails?.collectionAddress,
+    selectedBalance,
+  ]);
+
+  // Get memo disabled state using the helper
+  const [memoState, setMemoState] = useState<{
+    isMemoDisabled: boolean;
+    memoDisabledMessage?: string;
+  }>({ isMemoDisabled: false });
+
+  useEffect(() => {
+    const updateMemoState = async () => {
+      if (!account?.publicKey || !recipientAddress) {
+        setMemoState({ isMemoDisabled: false });
+        return;
+      }
+
+      const networkDetails = network
+        ? mapNetworkToNetworkDetails(network)
+        : undefined;
+
+      const state = await getMemoDisabledState({
+        targetAddress: recipientAddress,
+        contractId,
+        networkDetails,
+        t,
+      });
+
+      setMemoState(state);
+    };
+
+    updateMemoState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.publicKey, recipientAddress, contractId, network]);
+
+  const { isMemoDisabled, memoDisabledMessage } = memoState;
 
   // Derived values based on context
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
@@ -110,6 +214,13 @@ const TransactionSettingsBottomSheet: React.FC<
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
+  useEffect(() => {
+    if (isMemoDisabled && localMemo) {
+      setLocalMemo("");
+      saveTransactionMemo("");
+    }
+  }, [isMemoDisabled, localMemo, saveTransactionMemo]);
+
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
   const { error: feeError } = useValidateTransactionFee(localFee);
@@ -119,11 +230,12 @@ const TransactionSettingsBottomSheet: React.FC<
   // Callback functions
   const saveMemo = useCallback(
     (value: string) => {
-      if (context === TransactionContext.Send) {
+      // Only save memo if it's not disabled (destination is not already muxed)
+      if (!isMemoDisabled) {
         saveTransactionMemo(value);
       }
     },
-    [context, saveTransactionMemo],
+    [saveTransactionMemo, isMemoDisabled],
   );
 
   const saveFee = useCallback(
@@ -185,9 +297,15 @@ const TransactionSettingsBottomSheet: React.FC<
     const numericValue = enforceSettingInputDecimalSeparator(text);
     setLocalSlippage(numericValue);
   }, []);
-  const handleMemoChange = useCallback((text: string) => {
-    setLocalMemo(text);
-  }, []);
+  const handleMemoChange = useCallback(
+    (text: string) => {
+      // Prevent memo changes if destination is already muxed
+      if (!isMemoDisabled) {
+        setLocalMemo(text);
+      }
+    },
+    [isMemoDisabled],
+  );
 
   const handleFeeChange = useCallback((text: string) => {
     const normalizedText = enforceSettingInputDecimalSeparator(text);
@@ -249,6 +367,18 @@ const TransactionSettingsBottomSheet: React.FC<
   };
 
   // Render functions
+  const memoNote = useMemo(() => {
+    // Only show message when memo is disabled
+    if (isMemoDisabled && memoDisabledMessage) {
+      return (
+        <Text sm color={themeColors.status.warning}>
+          {memoDisabledMessage}
+        </Text>
+      );
+    }
+    return undefined;
+  }, [isMemoDisabled, memoDisabledMessage, themeColors.status.warning]);
+
   const getMemoRow = useCallback(
     () => (
       <View className="flex-col gap-2 mt-[24px]">
@@ -268,11 +398,13 @@ const TransactionSettingsBottomSheet: React.FC<
           placeholder={t("transactionSettings.memoPlaceholder")}
           value={localMemo}
           onChangeText={handleMemoChange}
-          error={memoError}
+          error={isMemoDisabled ? undefined : memoError}
+          editable={!isMemoDisabled}
+          note={memoNote}
         />
       </View>
     ),
-    [localMemo, memoError, t, handleMemoChange],
+    [localMemo, memoError, t, handleMemoChange, memoNote, isMemoDisabled],
   );
 
   const getSlippageRow = useCallback(
@@ -468,6 +600,10 @@ const TransactionSettingsBottomSheet: React.FC<
         {
           key: "additionalInfo",
           value: t("transactionSettings.memoInfo.additionalInfo"),
+        },
+        {
+          key: "sorobanInfo",
+          value: t("transactionSettings.memoInfo.sorobanInfo"),
         },
       ],
     },
