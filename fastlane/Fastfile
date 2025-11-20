@@ -183,16 +183,22 @@ platform :android do
     create_json_secret_file
   end
 
-  lane :upload_build do
+  lane :upload_build do |options|
     if google_play?
       # Google Play release notes are limited to around 500 characters
       # so let's truncate them to 450 characters to prevent upload errors.
       display_notes = truncated_release_notes(max_length: 450)
       UI.message "📝 Using release notes for Google Play (truncated to 450 chars):\n#{display_notes}"
       write_android_changelog(display_notes)
+      
+      # Determine the APK path based on flavor
+      flavor = options[:flavor] || ENV.fetch("ANDROID_FLAVOR") { "dev" }
+      apk_path = File.expand_path("../android/app/build/outputs/apk/#{flavor}Release/app-#{flavor}-release.apk", __dir__)
+      
       upload_to_play_store(
         track: "internal",
-        track_promote_to: "internal"
+        track_promote_to: "internal",
+        apk: apk_path
       )
     else
       UI.important "⚠️  Not uploading build to Google Play store"
@@ -204,14 +210,14 @@ platform :android do
     create_keystore_file("dev")
     
     gradle(
-      task: "bundle",
+      task: "assembleRelease",
       flavor: "dev",
       build_type: "Release",
       print_command: false,
       project_dir: "android/"
     )
 
-    upload_build
+    upload_build(flavor: "dev")
   end
 
   desc "Push a new Prod build to the Google Play"
@@ -219,13 +225,13 @@ platform :android do
     create_keystore_file("prod")
     
     gradle(
-      task: "bundle",
+      task: "assembleRelease",
       flavor: "prod",
       build_type: "Release",
       print_command: false,
       project_dir: "android/"
     )
 
-    upload_build
+    upload_build(flavor: "prod")
   end
 end

@@ -228,7 +228,7 @@ jobs:
         if: always() && env.ANDROID_FLAVOR == 'dev'
         with:
           name: android-build-dev-${{ env.BUILD_VERSION }}
-          path: android/app/build/outputs/bundle/devRelease/
+          path: android/app/build/outputs/apk/devRelease/
           retention-days: 7
 
       # Production builds: Extended retention given less frequent uploads
@@ -237,5 +237,5 @@ jobs:
         if: always() && env.ANDROID_FLAVOR == 'prod'
         with:
           name: android-build-prod-${{ env.BUILD_VERSION }}
-          path: android/app/build/outputs/bundle/prodRelease/
+          path: android/app/build/outputs/apk/prodRelease/
           retention-days: 30
