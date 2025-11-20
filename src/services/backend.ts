@@ -130,6 +130,68 @@ export const getContractSpecs = async ({
 
   return payload.data;
 };
+
+/**
+ * Checks if a contract's transfer function supports muxed addresses (CAP-0067)
+ * by examining the contract specification.
+ *
+ * A contract supports muxed addresses if the transfer function has a `to_muxed` parameter.
+ * This is the CAP-0067 pattern where the transfer signature is:
+ * transfer(from: Address, to_muxed: MuxedAddress, amount: i128)
+ *
+ * @param contractId - The contract ID to check
+ * @param networkDetails - Network details
+ * @returns Promise resolving to true if contract supports muxed addresses, false otherwise
+ */
+export const checkContractSupportsMuxed = async ({
+  contractId,
+  networkDetails,
+}: {
+  contractId: string;
+  networkDetails: NetworkDetails;
+}): Promise<boolean> => {
+  try {
+    const spec = await getContractSpecs({ contractId, networkDetails });
+
+    // Check if transfer function exists
+    const definitions = spec.definitions as
+      | {
+          transfer?: {
+            properties?: {
+              args?: {
+                properties?: Record<string, unknown>;
+                required?: string[];
+              };
+            };
+          };
+        }
+      | undefined;
+    const transferDef = definitions?.transfer;
+    if (!transferDef) {
+      return false;
+    }
+
+    // Get args properties and required array
+    const argsProperties = transferDef.properties?.args?.properties;
+    const required = transferDef.properties?.args?.required;
+
+    // Check if 'to_muxed' parameter exists in properties (CAP-0067 pattern)
+    // Use 'in' operator to check if key exists, regardless of value
+    if (argsProperties && "to_muxed" in argsProperties) {
+      return true;
+    }
+
+    // Also check if to_muxed is in the required array (even if property doesn't exist)
+    if (Array.isArray(required) && required.includes("to_muxed")) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    // If we can't fetch the spec, assume no muxed support for safety
+    return false;
+  }
+};
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**

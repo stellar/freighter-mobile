@@ -638,7 +638,14 @@
     "memoInfo": {
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
-      "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido."
+      "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
+      "sorobanInfo": "Para transações Soroban (como transferências de colecionáveis ou tokens personalizados), o suporte a memo depende do contrato de destino.",
+      "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
+      "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
+      "memoEmbeddedInMuxedAddress": "O memo já está incluído neste endereço e será usado automaticamente.",
+      "memoDisabledForTransaction": "O memo está desabilitado para esta transação.",
+      "memoNotSupportedForOperation": "Memo não é suportado para esta operação.",
+      "muxedNotSupportedBaseGWillBeUsed": "A conta G base será usada. Endereço muxed não é suportado para esta operação."
     },
     "slippageInfo": {
       "title": "Deslizamento permitido",
@@ -705,6 +712,11 @@
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
       "memoMissing": "Esta transação requer um memo",
+      "muxedAddressNotSupported": "Endereço muxed não suportado",
+      "muxedAddressWarning": {
+        "title": "Endereço muxed não suportado",
+        "description": "Este token não suporta endereço muxed (M-) como destino. Prosseguir com esta transação pode resultar na perda do token durante a transferência."
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousTransaction": "Esta transação foi marcada como maliciosa",
@@ -971,7 +983,8 @@
       "transactionFeeRequired": "Taxa de transação é obrigatória",
       "transactionTimeoutRequired": "Tempo limite da transação é obrigatório",
       "networkRequired": "Rede é obrigatória",
-      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta"
+      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta",
+      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado"
     }
   },
   "welcomeBanner": {

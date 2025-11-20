@@ -56,6 +56,12 @@ jest.mock("helpers/balances", () => ({
   calculateSpendableAmount: jest.fn(),
   hasXLMForFees: jest.fn(),
 }));
+const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
+
+jest.mock("helpers/muxedAddress", () => ({
+  checkContractMuxedSupport: (...args: unknown[]) =>
+    mockCheckContractMuxedSupport(...args),
+}));
 jest.mock("helpers/cachedFetch");
 jest.mock("helpers/deviceSize");
 

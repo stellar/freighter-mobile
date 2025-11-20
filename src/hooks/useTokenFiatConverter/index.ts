@@ -1,17 +1,19 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { hasDecimals } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import {
   createTokenFiatConverterReducer,
   initialState,
   TokenFiatConverterActionType,
 } from "hooks/useTokenFiatConverter/reducer";
-import { useMemo, useReducer, useCallback } from "react";
+import { useMemo, useReducer, useCallback, useEffect, useRef } from "react";
 import { getNumberFormatSettings } from "react-native-localize";
 
 interface UseTokenFiatConverterProps {
   selectedBalance: PricedBalance | undefined;
+  tokenDecimals?: number;
 }
 
 interface UseTokenFiatConverterResult {
@@ -45,26 +47,64 @@ interface UseTokenFiatConverterResult {
  */
 export const useTokenFiatConverter = ({
   selectedBalance,
+  tokenDecimals = DEFAULT_DECIMALS,
 }: UseTokenFiatConverterProps): UseTokenFiatConverterResult => {
   const tokenPrice = useMemo(
     () => selectedBalance?.currentPrice || new BigNumber(0),
     [selectedBalance?.currentPrice],
   );
 
+  const decimals = useMemo(
+    () =>
+      selectedBalance && hasDecimals(selectedBalance)
+        ? selectedBalance.decimals
+        : tokenDecimals,
+    [selectedBalance, tokenDecimals],
+  );
+
   const reducer = useMemo(
-    () => createTokenFiatConverterReducer(tokenPrice),
-    [tokenPrice],
+    () => createTokenFiatConverterReducer(tokenPrice, decimals),
+    [tokenPrice, decimals],
   );
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // Track previous token code to detect token changes
+  const previousTokenCodeRef = useRef<string | undefined>(
+    selectedBalance?.tokenCode,
+  );
+
+  // Reset fiat amount when token changes or has no price
+  useEffect(() => {
+    const currentTokenCode = selectedBalance?.tokenCode;
+    const tokenChanged = previousTokenCodeRef.current !== currentTokenCode;
+
+    if (tokenChanged) {
+      previousTokenCodeRef.current = currentTokenCode;
+
+      // If token has no price, reset fiat to 0
+      if (!selectedBalance?.currentPrice || tokenPrice.isZero()) {
+        dispatch({
+          type: TokenFiatConverterActionType.SET_FIAT_AMOUNT,
+          payload: "0",
+        });
+      } else {
+        // If token has price, recalculate fiat from current token amount
+        dispatch({
+          type: TokenFiatConverterActionType.SET_TOKEN_AMOUNT,
+          payload: state.tokenAmount,
+        });
+      }
+    }
+  }, [selectedBalance, tokenPrice, state.tokenAmount]);
+
   const tokenAmountDisplayDerived = useMemo(
     () =>
       formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
-        decimalPlaces: DEFAULT_DECIMALS,
+        decimalPlaces: decimals,
         useGrouping: false,
       }),
-    [state.tokenAmount],
+    [state.tokenAmount, decimals],
   );
 
   // Use raw input when user is typing in token mode, otherwise use derived value

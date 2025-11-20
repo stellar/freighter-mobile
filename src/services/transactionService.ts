@@ -18,11 +18,21 @@ import {
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
 import { xlmToStroop } from "helpers/formatAmount";
+import {
+  determineMuxedDestination,
+  checkContractMuxedSupport,
+} from "helpers/muxedAddress";
 import { isContractId, getNativeContractDetails } from "helpers/soroban";
-import { isValidStellarAddress, isSameAccount } from "helpers/stellar";
+import {
+  isValidStellarAddress,
+  isSameAccount,
+  isMuxedAccount,
+  getBaseAccount,
+} from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
@@ -246,41 +256,54 @@ interface IBuildSorobanTransferOperation {
   sourceAccount: string;
   destinationAddress: string;
   amount: string;
-  token: SdkToken;
+  contractId: string; // Contract ID for the token (custom token contractId or native token contractId)
   transactionBuilder: TransactionBuilder;
-  network: NETWORKS;
+  memo?: string; // Optional memo for creating muxed address
+  contractSupportsMuxed?: boolean; // Whether contract supports muxed addresses
 }
 
 /**
  * Builds a Soroban token transfer operation for sending to contract addresses
+ * Supports muxed addresses (M... format) for CAP-0067 memo support
+ *
+ * @param params Transfer operation parameters
+ * @returns Final destination address (may be muxed if memo was provided and contract supports it)
+ * @note transactionBuilder is mutated in place, so it doesn't need to be returned
  */
-export const buildSorobanTransferOperation = (
+const buildSorobanTransferOperation = (
   params: IBuildSorobanTransferOperation,
-): TransactionBuilder => {
+): string => {
   const {
     sourceAccount,
     destinationAddress,
     amount,
-    token,
+    contractId,
     transactionBuilder,
-    network,
+    memo,
+    contractSupportsMuxed = false,
   } = params;
 
   try {
-    const contractId = token.isNative()
-      ? getContractIdForNativeToken(network)
-      : destinationAddress;
-
     const contract = new Contract(contractId);
+
+    // Determine final destination at the very last step - right before building the operation
+    const finalDestination = determineMuxedDestination({
+      recipientAddress: destinationAddress,
+      transactionMemo: memo,
+      contractSupportsMuxed,
+    });
 
     const transaction = contract.call(
       "transfer",
       new Address(sourceAccount).toScVal(),
-      new Address(destinationAddress).toScVal(),
+      new Address(finalDestination).toScVal(),
       nativeToScVal(amount, { type: "i128" }),
     );
 
+    // transactionBuilder is mutated in place
     transactionBuilder.addOperation(transaction);
+
+    return finalDestination;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -288,19 +311,16 @@ export const buildSorobanTransferOperation = (
       `Error building Soroban transfer operation: ${errorMessage}`,
     );
   }
-
-  return transactionBuilder;
 };
 
 interface BuildPaymentTransactionResult {
   tx: Transaction;
   xdr: string;
   contractId?: string;
+  finalDestination?: string;
+  amountInBaseUnits?: string;
 }
 
-/**
- * Builds a payment transaction (standard or Soroban)
- */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
@@ -349,65 +369,131 @@ export const buildPaymentTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    if (memo) {
+    const isCustomToken =
+      selectedBalance &&
+      "contractId" in selectedBalance &&
+      selectedBalance.contractId;
+
+    const isToContractAddress = isContractId(recipientAddress);
+    const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
+    const isRecipientMuxed = isMuxedAccount(recipientAddress);
+    if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
 
-    const isToContractAddress = isContractId(recipientAddress);
+    if (shouldUseSorobanTransfer) {
+      let contractId: string;
 
-    if (isToContractAddress) {
-      const token = getTokenForPayment(selectedBalance);
-      const contractId = token.isNative()
-        ? getContractIdForNativeToken(network)
-        : recipientAddress;
+      if (isCustomToken) {
+        contractId = selectedBalance.contractId;
+      } else {
+        try {
+          const token = getTokenForPayment(selectedBalance);
+          contractId = token.isNative()
+            ? getContractIdForNativeToken(network)
+            : recipientAddress;
+        } catch (error) {
+          if (isCustomToken) {
+            contractId = selectedBalance.contractId;
+          } else {
+            throw error;
+          }
+        }
+      }
 
-      const decimals =
-        "decimals" in selectedBalance
-          ? selectedBalance.decimals
-          : DEFAULT_DECIMALS;
+      const contractSupportsMuxed = await checkContractMuxedSupport({
+        contractId,
+        networkDetails,
+      });
+
+      // For custom tokens, use the token's decimals; for native tokens, use DEFAULT_DECIMALS
+      // The amount parameter is in human-readable format (e.g., "1.33" for 1.33 tokens)
+      // We need to convert it to base units by multiplying by 10^decimals
+      let decimals: number;
+      if (isCustomToken) {
+        // For SorobanBalance, decimals is a required property
+        const balanceDecimals =
+          "decimals" in selectedBalance ? selectedBalance.decimals : undefined;
+
+        if (
+          typeof balanceDecimals === "number" &&
+          !Number.isNaN(balanceDecimals) &&
+          balanceDecimals >= 0
+        ) {
+          decimals = balanceDecimals;
+        } else {
+          // Track error and throw - decimals is required for custom tokens
+          const errorMessage = t("transaction.errors.invalidDecimals");
+          logger.error(
+            "buildPaymentTransaction",
+            errorMessage,
+            new Error(errorMessage),
+          );
+          throw new Error(errorMessage);
+        }
+      } else {
+        // For native tokens or non-custom tokens, use DEFAULT_DECIMALS
+        decimals = DEFAULT_DECIMALS;
+      }
+
+      // Convert human-readable amount to base units
+      // Example: 1.33 tokens with 6 decimals = 1.33 * 10^6 = 1,330,000 base units
       const amountInBaseUnits = BigNumber(amount)
         .shiftedBy(decimals)
         .toFixed(0);
 
-      buildSorobanTransferOperation({
+      const finalDestination = buildSorobanTransferOperation({
         sourceAccount: senderAddress,
         destinationAddress: recipientAddress,
         amount: amountInBaseUnits,
-        token,
+        contractId,
         transactionBuilder,
-        network,
+        memo,
+        contractSupportsMuxed,
       });
 
       const transaction = transactionBuilder.build();
+      const transactionXDR = transaction.toXDR();
 
-      return { tx: transaction, xdr: transaction.toXDR(), contractId };
+      return {
+        tx: transaction,
+        xdr: transactionXDR,
+        contractId,
+        finalDestination,
+        amountInBaseUnits,
+      };
     }
 
     const token = getTokenForPayment(selectedBalance);
+    const paymentDestination = recipientAddress;
 
-    // Check if destination is funded, but only for XLM transfers
+    const baseAccount = getBaseAccount(recipientAddress)!;
+
     if (token.isNative()) {
       try {
-        await server.loadAccount(recipientAddress);
+        await server.loadAccount(baseAccount);
       } catch (e) {
         const error = e as AxiosError;
 
         if (error.response && error.response.status === 404) {
-          // Ensure the amount is sufficient for account creation
           if (BigNumber(amount).isLessThan(1)) {
             throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
           }
 
           transactionBuilder.addOperation(
             Operation.createAccount({
-              destination: recipientAddress,
+              destination: baseAccount,
               startingBalance: amount,
             }),
           );
 
           const transaction = transactionBuilder.build();
 
-          return { tx: transaction, xdr: transaction.toXDR() };
+          return {
+            tx: transaction,
+            xdr: transaction.toXDR(),
+            finalDestination: recipientAddress,
+          };
         }
 
         throw error;
@@ -417,14 +503,19 @@ export const buildPaymentTransaction = async (
     // If account is funded or asset is not XLM, use standard payment
     transactionBuilder.addOperation(
       Operation.payment({
-        destination: recipientAddress,
+        destination: paymentDestination,
         asset: token,
         amount,
       }),
     );
 
     const transaction = transactionBuilder.build();
-    return { tx: transaction, xdr: transaction.toXDR() };
+
+    return {
+      tx: transaction,
+      xdr: transaction.toXDR(),
+      finalDestination: recipientAddress,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -432,9 +523,6 @@ export const buildPaymentTransaction = async (
   }
 };
 
-/**
- * Builds a swap transaction (path payment)
- */
 export const buildSwapTransaction = async (
   params: BuildSwapTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
@@ -515,6 +603,7 @@ export const buildSwapTransaction = async (
 interface BuildSendCollectibleTransactionResult {
   tx: Transaction;
   xdr: string;
+  finalDestination?: string;
 }
 
 /**
@@ -527,11 +616,11 @@ export const buildSendCollectibleTransaction = async (
     collectionAddress,
     transactionFee,
     transactionTimeout,
-    transactionMemo,
     tokenId,
     network,
     recipientAddress,
     senderAddress,
+    transactionMemo,
   } = params;
 
   try {
@@ -560,19 +649,32 @@ export const buildSendCollectibleTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
+    const contractSupportsMuxed = await checkContractMuxedSupport({
+      contractId: collectionAddress,
+      networkDetails,
+    });
+
+    const finalDestination = determineMuxedDestination({
+      recipientAddress,
+      transactionMemo,
+      contractSupportsMuxed,
+    });
+
     const transferParams = [
       new Address(senderAddress).toScVal(), // from
-      new Address(recipientAddress).toScVal(), // to
+      new Address(finalDestination).toScVal(), // to
       xdr.ScVal.scvU32(tokenId), // token_id
     ];
+
     txBuilder.addOperation(contract.call("transfer", ...transferParams));
 
-    if (transactionMemo) {
-      txBuilder.addMemo(Memo.text(transactionMemo));
-    }
-
     const transaction = txBuilder.build();
-    return { tx: transaction, xdr: transaction.toXDR() };
+
+    return {
+      tx: transaction,
+      xdr: transaction.toXDR(),
+      finalDestination,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -610,15 +712,21 @@ export const simulateContractTransfer = async ({
   }
 
   try {
+    // Note: If destination is already muxed (from buildPaymentTransaction),
+    // it will be passed through here. The memo parameter is kept for backward compatibility
+    // but for CAP-0067, memo should be embedded in the muxed address.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,
-      memo,
+      memo, // This may be redundant if destination is muxed, but kept for compatibility
       params,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
     });
-    return result.preparedTx.toXDR();
+
+    // Use the preparedTransaction XDR directly from the backend
+    // The backend builds, simulates, and prepares the transaction
+    return result.preparedTransaction;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -647,12 +755,12 @@ export const simulateCollectibleTransfer = async ({
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
     });
+
     return result.preparedTransaction;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     analytics.trackSimulationError(errorMessage, "collectible_transfer");
-
     throw error;
   }
 };

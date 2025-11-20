@@ -39,6 +39,12 @@ jest.mock("services/analytics", () => ({
     trackTransactionError: jest.fn(),
   },
 }));
+const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
+
+jest.mock("helpers/muxedAddress", () => ({
+  checkContractMuxedSupport: (...args: unknown[]) =>
+    mockCheckContractMuxedSupport(...args),
+}));
 
 // Hook mocks
 jest.mock("hooks/useGetActiveAccount");
@@ -633,8 +639,6 @@ describe("SendCollectibleReview - Banner Content", () => {
     );
     expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
     expect(mockSendReviewBottomSheetProps.isRequiredMemoMissing).toBe(false);
-    expect(mockSendReviewBottomSheetProps.isMalicious).toBe(false);
-    expect(mockSendReviewBottomSheetProps.isSuspicious).toBe(true);
     expect(mockSendReviewBottomSheetProps.bannerText).toBe(
       "transactionAmountScreen.errors.suspicious",
     );
@@ -710,10 +714,12 @@ describe("SendCollectibleReview - Unable to Scan States", () => {
       />,
     );
 
-    // Check unable to scan props are passed correctly
-    expect(mockSendReviewBottomSheetProps.isUnableToScan).toBe(true);
-    expect(mockSendReviewBottomSheetProps.isMalicious).toBe(false);
-    expect(mockSendReviewBottomSheetProps.isSuspicious).toBe(false);
+    // Check unable to scan banner content is passed correctly
+    expect(mockSendReviewBottomSheetProps.bannerText).toBe(
+      "securityWarning.proceedWithCaution",
+    );
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
+    expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
   });
 
   it("should show 'Continue' button text for unable to scan in SecurityDetailBottomSheet", () => {

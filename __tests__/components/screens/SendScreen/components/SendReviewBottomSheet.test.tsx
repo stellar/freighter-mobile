@@ -58,9 +58,6 @@ describe("SendReviewBottomSheet", () => {
     tokenAmount: "100",
     onBannerPress: jest.fn(),
     isRequiredMemoMissing: false,
-    isMalicious: false,
-    isSuspicious: false,
-    isUnableToScan: false,
     bannerText: undefined,
     bannerVariant: undefined,
     signTransactionDetails: null,
@@ -93,7 +90,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isMalicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,
@@ -106,7 +102,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isSuspicious
           bannerText="This address was flagged as suspicious"
           bannerVariant="warning"
         />,
@@ -119,7 +114,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isUnableToScan
           bannerText="Proceed with caution"
           bannerVariant="warning"
         />,
@@ -135,7 +129,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isMalicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
           onBannerPress={onBannerPress}
@@ -153,7 +146,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isSuspicious
           bannerText="This address was flagged as suspicious"
           bannerVariant="warning"
           onBannerPress={onBannerPress}
@@ -171,7 +163,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isUnableToScan
           bannerText="Proceed with caution"
           bannerVariant="warning"
           onBannerPress={onBannerPress}
@@ -188,8 +179,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isMalicious
-          isSuspicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,
@@ -202,8 +191,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isMalicious
-          isSuspicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,
@@ -232,7 +219,6 @@ describe("SendReviewBottomSheet", () => {
         <SendReviewBottomSheet
           {...defaultProps}
           isRequiredMemoMissing
-          isMalicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,
@@ -247,7 +233,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isMalicious
           bannerText="This address was flagged as malicious"
           bannerVariant="error"
         />,
@@ -260,7 +245,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isSuspicious
           bannerText="This address was flagged as suspicious"
           bannerVariant="warning"
         />,
@@ -273,7 +257,6 @@ describe("SendReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SendReviewBottomSheet
           {...defaultProps}
-          isUnableToScan
           bannerText="Proceed with caution"
           bannerVariant="warning"
         />,

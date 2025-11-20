@@ -151,10 +151,11 @@ export const formatFiatInputTemplate = (
  * All state changes happen atomically in a single reducer.
  *
  * @param {BigNumber} tokenPrice - The current token price for conversions
+ * @param {number} tokenDecimals - The number of decimal places for the token
  * @returns {Function} The reducer function
  */
 export const createTokenFiatConverterReducer =
-  (tokenPrice: BigNumber) =>
+  (tokenPrice: BigNumber, tokenDecimals: number = DEFAULT_DECIMALS) =>
   (
     state: TokenFiatConverterState,
     action: TokenFiatConverterAction,
@@ -194,14 +195,14 @@ export const createTokenFiatConverterReducer =
           const bnFiatAmount = new BigNumber(fiatAmount);
           if (bnFiatAmount.isFinite()) {
             if (tokenPrice.isZero()) {
-              tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+              tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
             } else {
               tokenAmount = bnFiatAmount
                 .dividedBy(tokenPrice)
-                .toFixed(DEFAULT_DECIMALS);
+                .toFixed(tokenDecimals);
             }
           } else {
-            tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+            tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
           }
         }
         return {
@@ -221,8 +222,8 @@ export const createTokenFiatConverterReducer =
           // Format tokenAmount when switching to fiat mode to ensure consistent formatting
           const bnTokenAmount = new BigNumber(state.tokenAmount);
           tokenAmount = bnTokenAmount.isFinite()
-            ? bnTokenAmount.toFixed(DEFAULT_DECIMALS)
-            : new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+            ? bnTokenAmount.toFixed(tokenDecimals)
+            : new BigNumber(0).toFixed(tokenDecimals);
         } else {
           // Convert tokenAmount to fiat when switching back to token mode
           const bnTokenAmount = new BigNumber(state.tokenAmount);
@@ -259,9 +260,9 @@ export const createTokenFiatConverterReducer =
         const newDisplay = formatNumericInput(
           currentDisplay,
           key,
-          DEFAULT_DECIMALS,
+          tokenDecimals,
         );
-        const internalAmount = parseDisplayNumber(newDisplay, DEFAULT_DECIMALS);
+        const internalAmount = parseDisplayNumber(newDisplay, tokenDecimals);
 
         // Convert to fiat if in token mode
         let { fiatAmount } = state;
@@ -300,14 +301,14 @@ export const createTokenFiatConverterReducer =
           const bnFiatAmount = new BigNumber(internalAmount);
           if (bnFiatAmount.isFinite()) {
             if (tokenPrice.isZero()) {
-              tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+              tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
             } else {
               tokenAmount = bnFiatAmount
                 .dividedBy(tokenPrice)
-                .toFixed(DEFAULT_DECIMALS);
+                .toFixed(tokenDecimals);
             }
           } else {
-            tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+            tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
           }
         }
 
@@ -330,14 +331,14 @@ export const createTokenFiatConverterReducer =
           const bnFiatAmount = new BigNumber(fiatAmount);
           if (bnFiatAmount.isFinite()) {
             if (tokenPrice.isZero()) {
-              tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+              tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
             } else {
               tokenAmount = bnFiatAmount
                 .dividedBy(tokenPrice)
-                .toFixed(DEFAULT_DECIMALS);
+                .toFixed(tokenDecimals);
             }
           } else {
-            tokenAmount = new BigNumber(0).toFixed(DEFAULT_DECIMALS);
+            tokenAmount = new BigNumber(0).toFixed(tokenDecimals);
           }
         }
 
@@ -372,7 +373,7 @@ export const createTokenFiatConverterReducer =
           ? (price.isZero()
               ? new BigNumber(0)
               : bnFiatAmount.dividedBy(price)
-            ).toFixed(DEFAULT_DECIMALS)
+            ).toFixed(tokenDecimals)
           : "0";
 
         return {

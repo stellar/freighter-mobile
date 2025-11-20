@@ -81,8 +81,10 @@ export interface UseSendBannerContentParams {
   isSuspicious: boolean;
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
+  isMuxedAddressWithoutMemoSupport?: boolean;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
+  onMuxedAddressWithoutMemoSupportPress?: () => void;
 }
 
 /**
@@ -94,14 +96,20 @@ export function useSendBannerContent({
   isSuspicious,
   isUnableToScan = false,
   isRequiredMemoMissing = false,
+  isMuxedAddressWithoutMemoSupport = false,
   onSecurityWarningPress,
   onMemoMissingPress,
+  onMuxedAddressWithoutMemoSupportPress,
 }: UseSendBannerContentParams): BannerContent | undefined {
   const { t } = useAppTranslation();
 
   return useMemo(() => {
     const shouldShowNoticeBanner =
-      isRequiredMemoMissing || isMalicious || isSuspicious || isUnableToScan;
+      isRequiredMemoMissing ||
+      isMalicious ||
+      isSuspicious ||
+      isMuxedAddressWithoutMemoSupport ||
+      isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
       return undefined;
@@ -123,11 +131,14 @@ export function useSendBannerContent({
       };
     }
 
-    if (isUnableToScan) {
+    if (
+      isMuxedAddressWithoutMemoSupport &&
+      onMuxedAddressWithoutMemoSupportPress
+    ) {
       return {
-        text: t("securityWarning.proceedWithCaution"),
-        variant: "warning" as const,
-        onPress: onSecurityWarningPress,
+        text: t("transactionAmountScreen.errors.muxedAddressNotSupported"),
+        variant: "error" as const,
+        onPress: onMuxedAddressWithoutMemoSupportPress,
       };
     }
 
@@ -139,14 +150,24 @@ export function useSendBannerContent({
       };
     }
 
+    if (isUnableToScan && onSecurityWarningPress) {
+      return {
+        text: t("securityWarning.proceedWithCaution"),
+        variant: "warning" as const,
+        onPress: onSecurityWarningPress,
+      };
+    }
+
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
+    isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
-    t,
     onSecurityWarningPress,
     onMemoMissingPress,
+    onMuxedAddressWithoutMemoSupportPress,
   ]);
 }

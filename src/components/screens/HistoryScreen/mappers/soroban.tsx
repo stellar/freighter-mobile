@@ -27,8 +27,8 @@ import { transformBackendCollections } from "helpers/collectibles";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import {
   SorobanTokenInterface,
-  formatTokenForDisplay as formatSorobanTokenAmount,
   getBalanceByKey,
+  formatTokenForDisplay as formatSorobanTokenAmount,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
@@ -178,8 +178,9 @@ const processSorobanMint = async ({
             })
           : `${t("history.transactionHistory.minted")} ${code}`;
 
+        const amountString = String(sorobanAttributes.amount);
         const formattedTokenAmount = formatSorobanTokenAmount(
-          new BigNumber(sorobanAttributes.amount),
+          new BigNumber(amountString),
           token.decimals,
         );
 
@@ -290,9 +291,11 @@ const processSorobanMint = async ({
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
 
+    const amountString = String(sorobanAttributes.amount);
+
     const formattedTokenAmount = formatSorobanTokenAmount(
-      new BigNumber(sorobanAttributes.amount),
-      Number(decimals),
+      new BigNumber(amountString),
+      decimals,
     );
 
     const formattedAmount = `${isReceiving ? "+" : ""}${formatTokenForDisplay(
@@ -384,9 +387,11 @@ const processSorobanTransfer = async ({
     const { symbol, decimals, name } = tokenDetailsResponse;
     const isNative = symbol === "native";
     const code = isNative ? NATIVE_TOKEN_CODE : symbol;
+    const amountString = String(sorobanAttributes.amount);
+
     const formattedTokenAmount = formatSorobanTokenAmount(
-      new BigNumber(sorobanAttributes.amount),
-      decimals,
+      new BigNumber(amountString),
+      Number(decimals),
     );
 
     const isRecipient =
@@ -772,9 +777,15 @@ export const SorobanTokenTransferTransactionDetailsContent: React.FC<{
   transactionDetails: TransactionDetails;
 }> = ({ transactionDetails }) => {
   const { themeColors } = useColors();
+  const rawAmount: string | number | bigint = transactionDetails
+    .contractDetails!.transferDetails!.amount as string | number | bigint;
+  const amountString = String(rawAmount);
+
+  const contractDecimals =
+    transactionDetails.contractDetails!.contractDecimals!;
   const tokenAmount = formatSorobanTokenAmount(
-    new BigNumber(transactionDetails.contractDetails!.transferDetails!.amount),
-    transactionDetails.contractDetails!.contractDecimals!,
+    new BigNumber(amountString),
+    contractDecimals,
   );
 
   const contractSymbol =

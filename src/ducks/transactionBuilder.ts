@@ -3,6 +3,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
+import { isMuxedAccount } from "helpers/stellar";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -135,25 +136,45 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const isRecipientContract =
           params.recipientAddress && isContractId(params.recipientAddress);
 
-        // If sending to a contract, prepare (simulate) the transaction
-        if (isRecipientContract && params.network && params.senderAddress) {
+        // Check if this is a custom token (SorobanBalance with contractId)
+        const isCustomToken =
+          params.selectedBalance &&
+          "contractId" in params.selectedBalance &&
+          params.selectedBalance.contractId;
+
+        // Use the final destination from buildPaymentTransaction if available (may be muxed)
+        const finalDestination =
+          builtTxResult.finalDestination || params.recipientAddress!;
+
+        // If sending to a contract OR using a custom token, prepare (simulate) the transaction
+        // Custom tokens (SorobanBalance) always need simulation for proper fees and resources
+        const shouldSimulate =
+          (isRecipientContract || isCustomToken) && builtTxResult.contractId;
+
+        if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
+
+          const amountForSimulation =
+            isCustomToken && builtTxResult.amountInBaseUnits
+              ? builtTxResult.amountInBaseUnits
+              : xlmToStroop(params.tokenAmount).toString();
+
+          const isDestinationMuxed = isMuxedAccount(finalDestination);
+          const memoForSimulation = isDestinationMuxed
+            ? ""
+            : params.transactionMemo || "";
+
           finalXdr = await simulateContractTransfer({
             transaction: builtTxResult.tx,
             networkDetails,
-            memo: params.transactionMemo || "",
+            memo: memoForSimulation,
             params: {
               publicKey: params.senderAddress,
-              destination: params.recipientAddress!,
-              amount: xlmToStroop(params.tokenAmount).toString(),
+              destination: finalDestination,
+              amount: amountForSimulation,
             },
             contractAddress: builtTxResult.contractId!,
           });
-        } else {
-          logger.warn(
-            "TransactionBuilderStore",
-            "Recipient is not a contract, using standard transaction XDR.",
-          );
         }
 
         // Only update store if this build request is still the latest one.
@@ -178,7 +199,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           "Failed to build transaction",
           error,
         );
-
         // Only set error state if this build request is still current.
         // Prevents stale error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {
@@ -286,6 +306,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         }
 
         const networkDetails = mapNetworkToNetworkDetails(params.network);
+
+        // Simulate the collectible transfer transaction to get proper fees and resources
+        // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
+        // which checks contract muxed support and creates muxed addresses according to the behavior matrix
         const finalXdr = await simulateCollectibleTransfer({
           transactionXdr: builtTxResult.tx.toXDR(),
           networkDetails,
@@ -312,7 +336,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           "Failed to build send collectible transaction",
           error,
         );
-
         // Only set error state if this send collectible build is still current.
         // Prevents stale send collectible error from overwriting newer transaction state.
         if (get().requestId === newRequestId) {

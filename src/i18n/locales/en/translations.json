@@ -674,7 +674,14 @@
     "memoInfo": {
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
-      "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient."
+      "additionalInfo": "If a required memo is missing or incorrect, your funds may not reach the intended recipient.",
+      "sorobanInfo": "For Soroban transactions (such as collectible or custom token transfers), memo support depends on the target contract.",
+      "sorobanNoteTransaction": "Make sure the target destination supports memo.",
+      "sorobanNoteCollectible": "Make sure the target destination supports memo.",
+      "memoEmbeddedInMuxedAddress": "Memo is embedded in the muxed address (M-) and will be extracted automatically.",
+      "memoDisabledForTransaction": "Memo is disabled for this transaction.",
+      "memoNotSupportedForOperation": "Memo is not supported for this operation.",
+      "muxedNotSupportedBaseGWillBeUsed": "Base G account will be used. Muxed address not supported for this operation."
     },
     "slippageInfo": {
       "title": "Allowed slippage",
@@ -741,6 +748,11 @@
       "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "amountTooHigh": "The amount entered is greater than the available balance",
       "memoMissing": "This transaction requires a memo",
+      "muxedAddressNotSupported": "Muxed address not supported",
+      "muxedAddressWarning": {
+        "title": "Muxed address not supported",
+        "description": "This token does not support muxed address (M-) as a target destination. Proceeding with this transaction could result in the loss of the token during the transfer."
+      },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",
       "maliciousTransaction": "This transaction was flagged as malicious",
@@ -970,7 +982,8 @@
       "transactionFeeRequired": "Transaction fee is required",
       "transactionTimeoutRequired": "Transaction timeout is required",
       "networkRequired": "Network is required",
-      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account"
+      "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account",
+      "invalidDecimals": "Invalid or missing decimals for custom token"
     }
   },
   "welcomeBanner": {

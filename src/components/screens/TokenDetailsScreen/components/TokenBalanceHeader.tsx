@@ -6,7 +6,7 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import {
-  formatTokenForDisplay,
+  formatBalanceAmount,
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
@@ -39,8 +39,24 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const tokenBalance = pricedBalances[tokenId];
   const isSorobanToken = isContractId(tokenId);
+
+  // For Soroban tokens, balances are stored as SYMBOL:CONTRACTID, so we need to find by contractId
+  let tokenBalance: (typeof pricedBalances)[string] | undefined;
+  if (isSorobanToken) {
+    // Find balance by matching contractId
+    tokenBalance = Object.values(pricedBalances).find(
+      (balance) => "contractId" in balance && balance.contractId === tokenId,
+    );
+  } else {
+    // For classic tokens, use the tokenId directly
+    tokenBalance = pricedBalances[tokenId];
+  }
+
+  // Early return if tokenBalance is not available
+  if (!tokenBalance) {
+    return null;
+  }
 
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
     if (tokenId === "native") {
@@ -108,11 +124,16 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   const renderBalanceInfo = () => (
     <Display xs medium>
-      {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
+      {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
     </Display>
   );
 
   const renderBalanceDetails = () => {
+    const balanceDisplay = formatBalanceAmount(
+      tokenBalance,
+      tokenBalance.tokenCode,
+    );
+
     const baseRows = [
       {
         titleComponent: (
@@ -122,7 +143,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         ),
         trailingContent: (
           <Text md secondary color={THEME.colors.text.primary}>
-            {formatTokenForDisplay(tokenBalance.total, tokenBalance.tokenCode)}
+            {balanceDisplay}
           </Text>
         ),
       },
