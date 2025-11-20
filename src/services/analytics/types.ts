@@ -23,6 +23,12 @@ export interface SignedTransactionEvent {
   dappDomain?: string;
 }
 
+export interface SubmittedTransactionEvent {
+  transactionHash: string;
+  transactionType?: TransactionType | string;
+  dappDomain?: string;
+}
+
 export enum TransactionOperationType {
   Payment = "payment",
   PathPayment = "pathPayment",
