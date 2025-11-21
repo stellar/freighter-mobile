@@ -345,7 +345,15 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
                 token.error_message,
               );
             });
-          } else {
+
+            // Let's prevent flooding Sentry with "no collectibles fetched for contract" errors
+            // since the backend has a few hardcoded collection contracts which errors for most
+            // users since they are not owners of collectibles on those contracts.
+          } else if (
+            !error.error_message?.includes(
+              "no collectibles fetched for contract",
+            )
+          ) {
             logger.error(
               "fetchCollectibles",
               `Error in collection ${error.collection_address}`,
