@@ -1,7 +1,7 @@
 {
   "name": "freighter-mobile",
   "version": "1.8.24",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "scripts": {
     "android": "yarn android-dev",
     "android-dev": "ruby scripts/launch-android --env=dev",
