@@ -5,13 +5,10 @@ import {
   BalanceMap,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrl } from "helpers/getIconUrl";
-import {
-  fetchVerifiedTokens,
-  TOKEN_LISTS_API_SERVICES,
-} from "services/verified-token-lists";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -201,10 +198,8 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         }));
       },
       cacheTokenListIcons: async ({ network }) => {
-        const verifiedTokens = await fetchVerifiedTokens({
-          tokenListsApiServices: TOKEN_LISTS_API_SERVICES,
-          network,
-        });
+        const { getVerifiedTokens } = useVerifiedTokensStore.getState();
+        const verifiedTokens = await getVerifiedTokens({ network });
         const iconMap = verifiedTokens.reduce(
           (prev, curr) => {
             if (curr.icon) {

@@ -69,7 +69,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
   const { themeColors } = useColors();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const { searchResults, status, handleSearch, resetSearch } = useTokenLookup({
+  const {
+    searchResults,
+    verifiedTokens,
+    unverifiedTokens,
+    status,
+    handleSearch,
+    resetSearch,
+  } = useTokenLookup({
     network,
     publicKey: account?.publicKey,
     balanceItems,
@@ -390,21 +397,69 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
             {searchResults.length > 0 ? (
               <>
                 {hasUnableToScanTokens && (
-                  <View className="mb-4 p-3 bg-gray-3 rounded-lg flex-row items-center gap-2">
+                  <View className="mb-4 mt-4 p-4 bg-gray-3 rounded-[16px] flex-row items-center gap-2">
                     <Icon.Cube01 size={16} color={themeColors.gray[11]} />
-                    <Text sm color={themeColors.gray[11]}>
+                    <Text md color={themeColors.gray[11]}>
                       {t("addTokenScreen.unableToScanBanner")}
                     </Text>
                   </View>
                 )}
-                {searchResults.map((token) => (
-                  <TokenItem
-                    key={`${token.tokenCode}:${token.issuer}`}
-                    token={token}
-                    handleAddToken={handleAddTokenMemo}
-                    handleRemoveToken={handleRemoveTokenMemo}
-                  />
-                ))}
+                {verifiedTokens.length > 0 && (
+                  <>
+                    <View className="mt-4 mb-6 flex-row items-center gap-2">
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() =>
+                          moreInfoBottomSheetModalRef.current?.present()
+                        }
+                      >
+                        <Icon.InfoCircle
+                          size={16}
+                          color={themeColors.foreground.secondary}
+                        />
+                      </TouchableOpacity>
+                      <Text md medium secondary>
+                        {t("addTokenScreen.verified")}
+                      </Text>
+                    </View>
+                    {verifiedTokens.map((token) => (
+                      <TokenItem
+                        key={`${token.tokenCode}:${token.issuer}`}
+                        token={token}
+                        handleAddToken={handleAddTokenMemo}
+                        handleRemoveToken={handleRemoveTokenMemo}
+                      />
+                    ))}
+                  </>
+                )}
+                {unverifiedTokens.length > 0 && (
+                  <>
+                    <View className="mt-4 mb-8 flex-row items-center gap-2">
+                      <TouchableOpacity
+                        hitSlop={10}
+                        onPress={() =>
+                          moreInfoBottomSheetModalRef.current?.present()
+                        }
+                      >
+                        <Icon.InfoCircle
+                          size={16}
+                          color={themeColors.foreground.secondary}
+                        />
+                      </TouchableOpacity>
+                      <Text md medium secondary>
+                        {t("addTokenScreen.unverified")}
+                      </Text>
+                    </View>
+                    {unverifiedTokens.map((token) => (
+                      <TokenItem
+                        key={`${token.tokenCode}:${token.issuer}`}
+                        token={token}
+                        handleAddToken={handleAddTokenMemo}
+                        handleRemoveToken={handleRemoveTokenMemo}
+                      />
+                    ))}
+                  </>
+                )}
               </>
             ) : (
               <EmptyState />

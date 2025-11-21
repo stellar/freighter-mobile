@@ -476,8 +476,8 @@
     "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Tokens",
-      "block1": "Quando você gerencia tokens na blockchain Stellar, você está criando e controlando representações digitais de valor, como moedas ou tokens.",
-      "block2": "Isso envolve configurar trustlines, que permitem que os usuários mantenham e negociem seus tokens, e configurar flags para controlar o acesso e o uso. Ao aproveitar esses recursos, você pode emitir, distribuir e gerenciar seus tokens com segurança, mantendo a conformidade e a flexibilidade."
+      "block1": "Quando você gerencia tokens, está escolhendo quais tokens sua carteira pode manter e usar na rede Stellar. Para Stellar Classic, adicionar um token cria uma trustline, permitindo que sua carteira o reconheça e interaja com ele. Tokens Soroban não usam trustlines, mas ainda podem ser gerenciados e acessados aqui.",
+      "block2": "Tokens verificados vêm de listas de tokens confiáveis do ecossistema. Tokens não verificados não estão incluídos nessas listas, então proceda com cautela ao adicionar ou fazer transações com eles."
     },
     "actions": {
       "copyAddress": "Copiar endereço",
@@ -521,6 +521,8 @@
     "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
+    "verified": "Verificado",
+    "unverified": "Não verificado",
     "unableToScanBanner": "Não foi possível escanear tokens maliciosos",
     "toastSuccess": "{{tokenCode}} adicionado com sucesso como um token",
     "toastError": "Erro ao adicionar token {{tokenCode}}",
