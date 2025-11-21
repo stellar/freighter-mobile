@@ -183,13 +183,11 @@ export const useTokenLookup = ({
   // Categorize tokens into verified and unverified
   const categorizeTokens = async (
     tokens: FormattedSearchTokenRecord[],
-    abortSignal: AbortSignal,
   ): Promise<void> => {
     const { verified, unverified } = await splitVerifiedTokens({
       tokens,
       network,
     });
-    if (abortSignal.aborted) return;
     setVerifiedTokens(verified);
     setUnverifiedTokens(unverified);
   };
@@ -294,7 +292,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedSearchResults);
-        await categorizeTokens(groupedSearchResults, signal);
+        await categorizeTokens(groupedSearchResults);
       } catch (error) {
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
@@ -310,7 +308,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedFallbackResults);
-        await categorizeTokens(groupedFallbackResults, signal);
+        await categorizeTokens(groupedFallbackResults);
       }
     } else {
       const defaultSearchResults: FormattedSearchTokenRecord[] =
@@ -325,7 +323,7 @@ export const useTokenLookup = ({
         groupTokensBySecurityLevel(defaultSearchResults);
 
       setSearchResults(groupedDefaultResults);
-      await categorizeTokens(groupedDefaultResults, signal);
+      await categorizeTokens(groupedDefaultResults);
     }
 
     if (latestRequestRef.current === requestId) {
