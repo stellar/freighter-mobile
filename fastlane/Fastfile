@@ -204,9 +204,7 @@ platform :android do
     create_keystore_file("dev")
     
     gradle(
-      task: "bundle",
-      flavor: "dev",
-      build_type: "Release",
+      task: "assembleDevRelease",
       print_command: false,
       project_dir: "android/"
     )
@@ -219,9 +217,7 @@ platform :android do
     create_keystore_file("prod")
     
     gradle(
-      task: "bundle",
-      flavor: "prod",
-      build_type: "Release",
+      task: "assembleProdRelease",
       print_command: false,
       project_dir: "android/"
     )
