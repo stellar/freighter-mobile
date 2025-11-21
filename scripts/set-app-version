@@ -53,5 +53,12 @@ updateFile("ios/freighter-mobile.xcodeproj/project.pbxproj", (contents) =>
   contents.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${version};`),
 );
 
+updateFile("package.json", (contents) => {
+  const packageJson = JSON.parse(contents);
+  packageJson.version = version;
+  // Use JSON.stringify with proper formatting to preserve structure
+  return JSON.stringify(packageJson, null, 2) + "\n";
+});
+
 console.log(`🎯 App version set to ${version}`);
 
