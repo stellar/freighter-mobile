@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -47,12 +48,15 @@ jobs:
         run: |
           set -eo pipefail
 
-          release_tag_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+$'
-          last_release_tag=$(git tag -l | grep -E "$release_tag_pattern" | sort -V | tail -n 1 || true)
+          # Find the latest version tag (e.g., v1.8.24)
+          # Use --sort=-version:refname to sort tags by version in descending order
+          last_release_tag=$(git tag --list 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
 
           if [ -n "$last_release_tag" ]; then
+            echo "Found last release tag: $last_release_tag"
             commits=$(git log "${last_release_tag}..HEAD" --pretty=format:'- %s' --no-merges 2>/dev/null || true)
           else
+            echo "No release tag found, including all commits"
             commits=$(git log --pretty=format:'- %s' --no-merges 2>/dev/null || true)
           fi
 
