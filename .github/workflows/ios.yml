@@ -85,6 +85,9 @@ env:
   WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
     ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
 
+  # MP Collections Addresses (comma-separated list of collection addresses)
+  MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+
 jobs:
   # Scheduled nightly builds should not overwrite the dev build
   # when a release candidate branch is active (release/v*).
