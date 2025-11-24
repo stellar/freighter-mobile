@@ -47,11 +47,11 @@ jobs:
         run: |
           set -eo pipefail
 
-          release_commit_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+'
-          last_release_commit=$(git log --grep "$release_commit_pattern" --pretty=format:%H -n 1 || true)
+          release_tag_pattern='^v[0-9]\+\.[0-9]\+\.[0-9]\+$'
+          last_release_tag=$(git tag -l | grep -E "$release_tag_pattern" | sort -V | tail -n 1 || true)
 
-          if [ -n "$last_release_commit" ]; then
-            commits=$(git log "${last_release_commit}..HEAD" --pretty=format:'- %s' --no-merges 2>/dev/null || true)
+          if [ -n "$last_release_tag" ]; then
+            commits=$(git log "${last_release_tag}..HEAD" --pretty=format:'- %s' --no-merges 2>/dev/null || true)
           else
             commits=$(git log --pretty=format:'- %s' --no-merges 2>/dev/null || true)
           fi
