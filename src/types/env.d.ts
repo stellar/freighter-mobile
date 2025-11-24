@@ -33,6 +33,8 @@ declare module "react-native-config" {
     ANDROID_DEV_KEYSTORE_ALIAS: string;
     ANDROID_PROD_KEYSTORE_PASSWORD: string;
     ANDROID_PROD_KEYSTORE_ALIAS: string;
+
+    MP_COLLECTIONS_ADDRESSES: string;
   }
   const Config: NativeConfig;
   export default Config;

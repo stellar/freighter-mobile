@@ -45,6 +45,8 @@ type EnvConfigType = {
   ANDROID_DEV_KEYSTORE_ALIAS: string;
   ANDROID_PROD_KEYSTORE_PASSWORD: string;
   ANDROID_PROD_KEYSTORE_ALIAS: string;
+
+  MP_COLLECTIONS_ADDRESSES: string[];
 };
 
 /**
@@ -103,6 +105,11 @@ const getEnvConfig = (): EnvConfigType => ({
   ANDROID_DEV_KEYSTORE_ALIAS: Config.ANDROID_DEV_KEYSTORE_ALIAS,
   ANDROID_PROD_KEYSTORE_PASSWORD: Config.ANDROID_PROD_KEYSTORE_PASSWORD,
   ANDROID_PROD_KEYSTORE_ALIAS: Config.ANDROID_PROD_KEYSTORE_ALIAS,
+
+  // Parse comma-separated list of collection addresses
+  MP_COLLECTIONS_ADDRESSES: Config.MP_COLLECTIONS_ADDRESSES
+    ? Config.MP_COLLECTIONS_ADDRESSES.split(",").map((addr) => addr.trim())
+    : [],
 });
 
 /**
