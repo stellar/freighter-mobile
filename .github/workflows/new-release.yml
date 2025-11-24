@@ -163,7 +163,7 @@ jobs:
                 name: "iOS Release",
                 inputs: {
                   ref_name: branch,
-                  env: "dev",
+                  buildEnv: "dev",
                   upload_to_testflight: "yes",
                   release_notes: releaseNotes
                 }
@@ -173,7 +173,7 @@ jobs:
                 name: "Android Release",
                 inputs: {
                   ref_name: branch,
-                  env: "dev",
+                  buildEnv: "dev",
                   upload_to_google_play: "yes",
                   release_notes: releaseNotes
                 }
