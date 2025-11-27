@@ -105,9 +105,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionFee,
     recipientAddress,
     selectedTokenId,
+    transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
     saveSelectedCollectibleDetails,
+    saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -272,6 +274,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isRecipientMuxed = Boolean(
     recipientAddress && isMuxedAccount(recipientAddress),
   );
+
+  // Clear memo when M address is detected (M addresses don't need separate memo)
+  useEffect(() => {
+    if (isRecipientMuxed && transactionMemo) {
+      saveMemo("");
+    }
+  }, [isRecipientMuxed, transactionMemo, saveMemo]);
 
   const contractId = useMemo(() => {
     if (

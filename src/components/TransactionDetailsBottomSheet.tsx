@@ -2,7 +2,7 @@ import { TransactionBuilder } from "@stellar/stellar-sdk";
 import StellarLogo from "assets/logos/stellar-logo.svg";
 import BigNumber from "bignumber.js";
 import { CollectibleImage } from "components/CollectibleImage";
-import { List } from "components/List";
+import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import Avatar from "components/sds/Avatar";
@@ -22,7 +22,7 @@ import {
   formatFiatAmount,
   stroopToXlm,
 } from "helpers/formatAmount";
-import { truncateAddress } from "helpers/stellar";
+import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -105,10 +105,20 @@ const TransactionDetailsBottomSheet: React.FC<
     network,
   );
 
-  const memo =
-    "memo" in transaction && transaction.memo.value
-      ? String(transaction.memo.value)
-      : (transactionMemo ?? "");
+  // Check if recipient is M address
+  const isRecipientMuxed = Boolean(
+    recipientAddress && isMuxedAccount(recipientAddress),
+  );
+
+  // M addresses don't need separate memo, it's encoded in the address
+  let memo = "";
+  if (!isRecipientMuxed) {
+    if ("memo" in transaction && transaction.memo.value) {
+      memo = String(transaction.memo.value);
+    } else {
+      memo = transactionMemo ?? "";
+    }
+  }
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [transactionDetails, setTransactionDetails] =
@@ -279,85 +289,97 @@ const TransactionDetailsBottomSheet: React.FC<
 
       <List
         variant="secondary"
-        items={[
-          {
-            icon: (
-              <Icon.ClockCheck
-                size={16}
-                color={themeColors.foreground.primary}
-              />
-            ),
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("transactionDetailsBottomSheet.status")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md medium color={transactionStatus.color}>
-                {transactionStatus.text}
-              </Text>
-            ),
-          },
-          {
-            icon: (
-              <Icon.File02 size={16} color={themeColors.foreground.primary} />
-            ),
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("transactionAmountScreen.details.memo")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md medium secondary={!memo}>
-                {memo || t("common.none")}
-              </Text>
-            ),
-          },
-          {
-            icon: (
-              <Icon.Route size={16} color={themeColors.foreground.primary} />
-            ),
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("transactionAmountScreen.details.fee")}
-              </Text>
-            ),
-            trailingContent: (
-              <View className="flex-row items-center gap-[4px]">
-                <StellarLogo width={16} height={16} />
-                <Text md medium>
-                  {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
+        items={
+          [
+            {
+              icon: (
+                <Icon.ClockCheck
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              titleComponent: (
+                <Text md secondary color={THEME.colors.text.secondary}>
+                  {t("transactionDetailsBottomSheet.status")}
                 </Text>
-              </View>
-            ),
-          },
-          {
-            icon: (
-              <Icon.FileCode02
-                size={16}
-                color={themeColors.foreground.primary}
-              />
-            ),
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("transactionAmountScreen.details.xdr")}
-              </Text>
-            ),
-            trailingContent: (
-              <View
-                className="flex-row items-center gap-[8px]"
-                onTouchEnd={handleCopyXdr}
-              >
-                <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-                <Text md medium>
-                  {transactionXDR
-                    ? truncateAddress(transactionXDR, 10, 4)
-                    : t("common.none")}
+              ),
+              trailingContent: (
+                <Text md medium color={transactionStatus.color}>
+                  {transactionStatus.text}
                 </Text>
-              </View>
-            ),
-          },
-        ]}
+              ),
+            },
+            // Hide memo line if recipient is a muxed address (M- address)
+            !isRecipientMuxed
+              ? {
+                  icon: (
+                    <Icon.File02
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                  ),
+                  titleComponent: (
+                    <Text md secondary color={THEME.colors.text.secondary}>
+                      {t("transactionAmountScreen.details.memo")}
+                    </Text>
+                  ),
+                  trailingContent: (
+                    <Text md medium secondary={!memo}>
+                      {memo || t("common.none")}
+                    </Text>
+                  ),
+                }
+              : undefined,
+            {
+              icon: (
+                <Icon.Route size={16} color={themeColors.foreground.primary} />
+              ),
+              titleComponent: (
+                <Text md secondary color={THEME.colors.text.secondary}>
+                  {t("transactionAmountScreen.details.fee")}
+                </Text>
+              ),
+              trailingContent: (
+                <View className="flex-row items-center gap-[4px]">
+                  <StellarLogo width={16} height={16} />
+                  <Text md medium>
+                    {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
+                  </Text>
+                </View>
+              ),
+            },
+            {
+              icon: (
+                <Icon.FileCode02
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              titleComponent: (
+                <Text md secondary color={THEME.colors.text.secondary}>
+                  {t("transactionAmountScreen.details.xdr")}
+                </Text>
+              ),
+              trailingContent: (
+                <View
+                  className="flex-row items-center gap-[8px]"
+                  onTouchEnd={handleCopyXdr}
+                >
+                  <Icon.Copy01
+                    size={16}
+                    color={themeColors.foreground.primary}
+                  />
+                  <Text md medium>
+                    {transactionXDR
+                      ? truncateAddress(transactionXDR, 10, 4)
+                      : t("common.none")}
+                  </Text>
+                </View>
+              ),
+            },
+            // Filter out undefined entries to keep detail order
+          ].filter(Boolean) as ListItemProps[]
+        }
       />
 
       {transactionHash && (

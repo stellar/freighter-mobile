@@ -217,6 +217,7 @@ export const createTokenFiatConverterReducer =
         const showFiatAmount = action.payload;
         let { tokenAmount } = state;
         let { fiatAmount } = state;
+        let fiatAmountDisplayRaw: string | null = null;
 
         if (showFiatAmount) {
           // Format tokenAmount when switching to fiat mode to ensure consistent formatting
@@ -224,6 +225,31 @@ export const createTokenFiatConverterReducer =
           tokenAmount = bnTokenAmount.isFinite()
             ? bnTokenAmount.toFixed(tokenDecimals)
             : new BigNumber(0).toFixed(tokenDecimals);
+
+          // Convert token amount to fiat
+          if (
+            bnTokenAmount.isFinite() &&
+            !bnTokenAmount.isZero() &&
+            !tokenPrice.isZero()
+          ) {
+            const calculatedFiat = tokenPrice
+              .multipliedBy(bnTokenAmount)
+              .toFixed(FIAT_DECIMALS);
+            fiatAmount = calculatedFiat;
+
+            // Normalize display: if fiat amount ends with ".00", set display to integer part
+            // This allows user to start editing fresh instead of being stuck with "x.00"
+            const bnFiat = new BigNumber(calculatedFiat);
+            if (bnFiat.isInteger()) {
+              // If it's a whole number, set display to integer part for easier editing
+              fiatAmountDisplayRaw = bnFiat.toFixed(0);
+            }
+          } else {
+            // If token amount is 0, set fiat to "0" (not "0.00") to allow fresh input
+            fiatAmount = "0";
+            // Set fiatAmountDisplayRaw to "0" so user can start typing fresh
+            fiatAmountDisplayRaw = "0";
+          }
         } else {
           // Convert tokenAmount to fiat when switching back to token mode
           const bnTokenAmount = new BigNumber(state.tokenAmount);
@@ -240,6 +266,16 @@ export const createTokenFiatConverterReducer =
           }
         }
 
+        // Determine fiatAmountDisplayRaw value
+        let finalFiatAmountDisplayRaw: string | null = null;
+        if (showFiatAmount) {
+          if (fiatAmountDisplayRaw !== null) {
+            finalFiatAmountDisplayRaw = fiatAmountDisplayRaw;
+          } else {
+            finalFiatAmountDisplayRaw = state.fiatAmountDisplayRaw;
+          }
+        }
+
         return {
           ...state,
           showFiatAmount,
@@ -249,9 +285,7 @@ export const createTokenFiatConverterReducer =
           tokenAmountDisplayRaw: showFiatAmount
             ? null
             : state.tokenAmountDisplayRaw,
-          fiatAmountDisplayRaw: showFiatAmount
-            ? state.fiatAmountDisplayRaw
-            : null,
+          fiatAmountDisplayRaw: finalFiatAmountDisplayRaw,
         };
       }
 
@@ -288,6 +322,12 @@ export const createTokenFiatConverterReducer =
       case TokenFiatConverterActionType.HANDLE_FIAT_INPUT: {
         const { key, currentDisplay } = action.payload;
         const newDisplay = formatFiatInputTemplate(currentDisplay, key);
+
+        // If the display value didn't change (e.g., max decimals already reached),
+        // don't recalculate token amount - return current state
+        if (newDisplay === currentDisplay && key !== "") {
+          return state;
+        }
 
         let internalAmount = newDisplay.replace(",", ".");
         // Remove trailing decimal separator for internal value

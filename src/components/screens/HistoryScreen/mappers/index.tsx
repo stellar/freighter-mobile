@@ -123,6 +123,7 @@ export const mapHistoryItemData = async ({
       memo,
       themeColors,
       xdr,
+      network: networkDetails.network,
     });
   }
 
