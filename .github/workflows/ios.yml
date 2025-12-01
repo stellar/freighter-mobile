@@ -125,7 +125,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: Display macOS Image Information
+      - name: Display macOS Image Information and Xcode versions
         run: |
           echo "=== macOS Runner Information ==="
           echo "Runner OS: ${{ runner.os }}"
@@ -144,6 +144,25 @@ jobs:
 
       - name: Set latest stable Xcode version
         run: |
+          # Find all beta/RC Xcode versions to identify base versions to exclude
+          BETA_XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -E "(Release_Candidate|RC|beta|Beta)" || true)
+
+          # Extract base version numbers (major.minor) from beta/RC versions
+          EXCLUDED_BASE_VERSIONS=""
+          if [ -n "$BETA_XCODE_PATHS" ]; then
+            echo "Found beta/RC Xcode versions:"
+            for BETA_XCODE_PATH in $BETA_XCODE_PATHS; do
+              BETA_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$BETA_XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "")
+              if [ -n "$BETA_VERSION" ]; then
+                # Extract major.minor version (e.g., 26.2 from 26.2.0 or 26.2_beta_2)
+                BASE_VERSION=$(echo "$BETA_VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
+                echo "  - $BETA_XCODE_PATH (Version: $BETA_VERSION, Base: $BASE_VERSION)"
+                EXCLUDED_BASE_VERSIONS="${EXCLUDED_BASE_VERSIONS}${BASE_VERSION} "
+              fi
+            done
+            echo "Excluding all paths with base versions: $EXCLUDED_BASE_VERSIONS"
+          fi
+
           # Find all stable Xcode versions (exclude Release_Candidate, RC, beta, Beta)
           XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" || true)
 
@@ -154,14 +173,31 @@ jobs:
             exit 1
           fi
 
-          # Find the latest stable Xcode by sorting versions
+          # Find the latest stable Xcode by sorting versions, excluding those with beta/RC base versions
           LATEST_XCODE=""
           LATEST_VERSION=""
 
           TEMP_FILE=$(mktemp)
           for XCODE_PATH in $XCODE_PATHS; do
             VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "0")
-            printf "%s\t%s\n" "$VERSION" "$XCODE_PATH" >> "$TEMP_FILE"
+            if [ "$VERSION" != "0" ]; then
+              # Extract major.minor version for comparison
+              BASE_VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
+              
+              # Check if this base version should be excluded
+              SHOULD_EXCLUDE=false
+              for EXCLUDED_BASE in $EXCLUDED_BASE_VERSIONS; do
+                if [ "$BASE_VERSION" = "$EXCLUDED_BASE" ]; then
+                  echo "Excluding $XCODE_PATH (Version: $VERSION, Base: $BASE_VERSION matches excluded base version)"
+                  SHOULD_EXCLUDE=true
+                  break
+                fi
+              done
+              
+              if [ "$SHOULD_EXCLUDE" = "false" ]; then
+                printf "%s\t%s\n" "$VERSION" "$XCODE_PATH" >> "$TEMP_FILE"
+              fi
+            fi
           done
 
           # Sort by version (descending) and get the first one
