@@ -19,7 +19,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isSorobanTransaction as checkIsSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -196,11 +196,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const isRecipientMuxed = isMuxedAccount(recipientAddress);
 
   // Check if this is a Soroban transaction (custom token or contract address)
-  const isSorobanTransaction = Boolean(
-    (selectedBalance &&
-      "contractId" in selectedBalance &&
-      Boolean(selectedBalance.contractId)) ||
-      (recipientAddress && isContractId(recipientAddress)),
+  const isSorobanTransaction = checkIsSorobanTransaction(
+    selectedBalance,
+    recipientAddress,
   );
 
   const transactionDetailsList: ListItemProps[] = useMemo(

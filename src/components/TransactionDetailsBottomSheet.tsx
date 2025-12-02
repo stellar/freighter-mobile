@@ -22,7 +22,7 @@ import {
   formatFiatAmount,
   stroopToXlm,
 } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isSorobanTransaction as checkIsSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -112,11 +112,9 @@ const TransactionDetailsBottomSheet: React.FC<
   );
 
   // Check if this is a Soroban transaction (custom token or contract address)
-  const isSorobanTransaction = Boolean(
-    (selectedBalance &&
-      "contractId" in selectedBalance &&
-      Boolean(selectedBalance.contractId)) ||
-      (recipientAddress && isContractId(recipientAddress)),
+  const isSorobanTransaction = checkIsSorobanTransaction(
+    selectedBalance,
+    recipientAddress,
   );
 
   // Only hide memo for Soroban M addresses (M addresses in Soroban transactions)
