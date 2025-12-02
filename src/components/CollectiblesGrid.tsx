@@ -22,6 +22,12 @@ import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 
 /**
+ * Opacity value for hidden collectibles in the UI.
+ * Used to visually differentiate hidden collectibles from visible ones.
+ */
+export const HIDDEN_COLLECTIBLE_OPACITY = 0.25;
+
+/**
  * Props for the CollectiblesGrid component
  */
 interface CollectiblesGridProps {
@@ -104,10 +110,27 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             })
           }
         >
-          <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
+          <View
+            style={
+              item.isHidden
+                ? { opacity: HIDDEN_COLLECTIBLE_OPACITY }
+                : undefined
+            }
+            className="w-full h-full"
+          >
+            <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
+          </View>
+          {item.isHidden && (
+            <View
+              className="absolute inset-0 items-center justify-center z-10"
+              pointerEvents="none"
+            >
+              <Icon.EyeOff size={20} color={themeColors.text.primary} />
+            </View>
+          )}
         </TouchableOpacity>
       ),
-      [onCollectiblePress],
+      [onCollectiblePress, themeColors.text.primary],
     );
 
     const renderCollection = useCallback(
