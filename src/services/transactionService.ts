@@ -30,7 +30,6 @@ import { isContractId, getNativeContractDetails } from "helpers/soroban";
 import {
   isValidStellarAddress,
   isSameAccount,
-  isMuxedAccount,
   getBaseAccount,
 } from "helpers/stellar";
 import { t } from "i18next";
@@ -376,8 +375,9 @@ export const buildPaymentTransaction = async (
 
     const isToContractAddress = isContractId(recipientAddress);
     const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
-    const isRecipientMuxed = isMuxedAccount(recipientAddress);
-    if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
+    // For normal transactions (non-Soroban), allow memo even with M addresses
+    // For Soroban transactions, memo handling is done in buildSorobanTransferOperation
+    if (memo && !shouldUseSorobanTransfer) {
       transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
     }
 

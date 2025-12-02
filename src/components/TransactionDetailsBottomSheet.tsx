@@ -22,6 +22,7 @@ import {
   formatFiatAmount,
   stroopToXlm,
 } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -110,13 +111,24 @@ const TransactionDetailsBottomSheet: React.FC<
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
-  // M addresses don't need separate memo, it's encoded in the address
+  // Check if this is a Soroban transaction (custom token or contract address)
+  const isSorobanTransaction = Boolean(
+    (selectedBalance &&
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId)) ||
+      (recipientAddress && isContractId(recipientAddress)),
+  );
+
+  // Only hide memo for Soroban M addresses (M addresses in Soroban transactions)
+  // Normal transactions support M address + memo
+  // Custom tokens to G addresses support memo
   let memo = "";
-  if (!isRecipientMuxed) {
+  // Always extract memo from transaction or use stored memo, unless it's a Soroban M address
+  if (!(isRecipientMuxed && isSorobanTransaction)) {
     if ("memo" in transaction && transaction.memo.value) {
       memo = String(transaction.memo.value);
-    } else {
-      memo = transactionMemo ?? "";
+    } else if (transactionMemo) {
+      memo = transactionMemo;
     }
   }
 
@@ -309,8 +321,9 @@ const TransactionDetailsBottomSheet: React.FC<
                 </Text>
               ),
             },
-            // Hide memo line if recipient is a muxed address (M- address)
-            !isRecipientMuxed
+            // Hide memo line only for Soroban M addresses (M addresses in Soroban transactions)
+            // Normal transactions support M address + memo
+            !(isRecipientMuxed && isSorobanTransaction)
               ? {
                   icon: (
                     <Icon.File02

@@ -85,6 +85,14 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
     ? isMuxedAccount(destinationAddress)
     : false;
 
+  // Check if this is a Soroban transaction (custom token or collectible transfer)
+  // Soroban transactions to M addresses don't support separate memo (memo is encoded in address)
+  // Soroban transactions to G addresses support memo
+  // Normal transactions (payments) support M address + memo
+  const isSorobanTransaction =
+    transactionDetails.transactionType === TransactionType.CONTRACT_TRANSFER ||
+    transactionDetails.transactionType === TransactionType.CONTRACT;
+
   const detailItems = useMemo(
     () =>
       [
@@ -111,8 +119,10 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
         },
-        // Hide memo line if destination is a muxed address (M- address)
-        !isDestinationMuxed
+        // Hide memo line only for Soroban transactions (custom tokens or collectibles) to M addresses
+        // Soroban transactions to G addresses support memo
+        // Normal transactions support M address + memo
+        !(isDestinationMuxed && isSorobanTransaction)
           ? {
               icon: (
                 <Icon.File02 size={16} color={themeColors.foreground.primary} />
@@ -189,6 +199,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       transactionDetails.memo,
       transactionDetails.xdr,
       isDestinationMuxed,
+      isSorobanTransaction,
     ],
   ) as ListItemProps[];
 

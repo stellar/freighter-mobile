@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { TransactionBuilder } from "@stellar/stellar-sdk";
+import { TransactionBuilder, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
@@ -21,7 +21,7 @@ import {
 import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { truncateAddress, isMuxedAccount } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -61,7 +61,7 @@ const extractDestinationFromXDR = (
 
     // Find payment operation and extract destination
     const paymentOp = transaction.operations.find(
-      (op) => op.type === "payment" && "destination" in op,
+      (op) => op.type === Horizon.HorizonApi.OperationResponseType.payment,
     );
 
     if (paymentOp && "destination" in paymentOp) {
@@ -108,9 +108,9 @@ export const mapPaymentHistoryItem = ({
   // Horizon API returns base G address, but XDR contains the actual address used
   const actualDestination = extractDestinationFromXDR(xdr, network, to);
 
-  // If destination is an M address, clear memo (memo is encoded in the address)
-  const isDestinationMuxed = isMuxedAccount(actualDestination);
-  const finalMemo = isDestinationMuxed ? "" : memo;
+  // Payment mapper handles classic/native tokens only (Soroban payments go to soroban mapper)
+  // Classic tokens support M address + memo, so preserve memo even for M addresses
+  const finalMemo = memo;
 
   const isRecipient = actualDestination === publicKey && from !== publicKey;
   const paymentDifference = isRecipient ? "+" : "-";
