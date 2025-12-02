@@ -417,7 +417,9 @@
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
-    "menuAddManually": "Adicionar manualmente"
+    "emptyHidden": "Nenhum colecionável oculto",
+    "menuAddManually": "Adicionar manualmente",
+    "menuHidenCollectibles": "Colecionáveis ocultos"
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -434,7 +436,10 @@
     "saveToPhotos": "Salvar na galeria",
     "imageSavedToPhotos": "Imagem salva na galeria",
     "imageSaveFailed": "Falha ao salvar imagem na galeria",
-    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos"
+    "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos",
+    "hideCollectible": "Ocultar colecionável",
+    "showCollectible": "Mostrar colecionável",
+    "hideSuccess": "Colecionável ocultado com sucesso"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
@@ -450,6 +455,9 @@
     "toastSuccess": "Colecionável adicionado com sucesso",
     "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
     "alreadyInWallet": "Este colecionável já está na sua carteira"
+  },
+  "hiddenCollectiblesScreen": {
+    "title": "Colecionáveis Ocultos"
   },
   "collectibles": {
     "errors": {

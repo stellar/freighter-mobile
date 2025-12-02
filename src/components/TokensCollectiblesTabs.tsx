@@ -85,6 +85,7 @@ interface Props {
  * @param {Props} props - Component props
  * @returns {JSX.Element} The tab component with content
  */
+// TODO: fix inner scrolling
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
@@ -173,6 +174,17 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           disabled: isCollectiblesLoading,
           onPress: () =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN),
+        },
+        {
+          title: t("collectiblesGrid.menuHidenCollectibles"),
+          systemIcon: Platform.select({
+            ios: "eye.slash",
+            android: "visibility_off",
+          }),
+          onPress: () =>
+            navigation.navigate(
+              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
+            ),
         },
       ];
 

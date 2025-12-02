@@ -35,6 +35,9 @@ interface CollectiblesGridProps {
   }) => void;
   /** Whether to disable internal scrolling (for use in parent ScrollView) */
   disableInnerScrolling?: boolean;
+
+  /** Whether to show only hidden collectibles. By default, it shows only visible collectibles. */
+  showOnlyHiddenCollectibles?: boolean;
 }
 
 /**
@@ -58,7 +61,11 @@ interface CollectiblesGridProps {
  * @returns {JSX.Element} The collectibles grid component
  */
 export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
-  ({ onCollectiblePress, disableInnerScrolling = false }) => {
+  ({
+    onCollectiblePress,
+    disableInnerScrolling = false,
+    showOnlyHiddenCollectibles = false,
+  }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
@@ -116,7 +123,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
               {item.collectionName}
             </Text>
             <Text medium secondary>
-              {item.count}
+              {item.items.length}
             </Text>
           </View>
           <FlatList
@@ -133,6 +140,27 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       ),
       [renderCollectibleItem, themeColors.text.secondary],
     );
+
+    // Filter collections based on showOnlyHiddenCollectibles prop
+    const filteredCollections = React.useMemo(() => {
+      // TODO: extract this to a hook which saves shown and hidden collectibles
+      if (!showOnlyHiddenCollectibles) {
+        // Show only visible collectibles (not hidden)
+        return collections
+          .map((collection) => ({
+            ...collection,
+            items: collection.items.filter((item) => !item.isHidden),
+          }))
+          .filter((collection) => collection.items.length > 0);
+      }
+      // Show only hidden collectibles
+      return collections
+        .map((collection) => ({
+          ...collection,
+          items: collection.items.filter((item) => item.isHidden === true),
+        }))
+        .filter((collection) => collection.items.length > 0);
+    }, [collections, showOnlyHiddenCollectibles]);
 
     // During initial loading, show spinner without refresh capability
     if (isLoading && !isRefreshing) {
@@ -168,7 +196,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         >
           <Icon.Grid01 size={20} color={themeColors.text.secondary} />
           <Text md medium secondary>
-            {t("collectiblesGrid.empty")}
+            {showOnlyHiddenCollectibles
+              ? t("collectiblesGrid.emptyHidden")
+              : t("collectiblesGrid.empty")}
           </Text>
         </View>
       </View>
@@ -180,13 +210,13 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         return renderErrorView();
       }
 
-      if (!collections.length) {
+      if (!filteredCollections.length) {
         return renderEmptyView();
       }
 
       return (
         <View>
-          {collections.map((collection) =>
+          {filteredCollections.map((collection) =>
             renderCollection({ item: collection }),
           )}
         </View>
@@ -196,7 +226,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     // For all other states, wrap content in FlatList with RefreshControl
     return (
       <FlatList
-        data={collections}
+        data={filteredCollections}
         renderItem={renderCollection}
         keyExtractor={(collection) => collection.collectionAddress}
         showsVerticalScrollIndicator={false}

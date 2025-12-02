@@ -5,6 +5,9 @@ import {
   addCollectibleToStorage,
   removeCollectibleFromStorage,
   transformBackendCollections,
+  retrieveHiddenCollectibles,
+  addHiddenCollectibleToStorage,
+  removeHiddenCollectibleFromStorage,
 } from "helpers/collectibles";
 import { t } from "i18next";
 import {
@@ -46,6 +49,8 @@ export interface Collectible {
   externalUrl?: string;
   /** Array of traits/attributes that define this collectible */
   traits?: CollectibleTrait[];
+  /** Whether the collectible is hidden from the main collectibles list */
+  isHidden?: boolean;
 }
 
 /**
@@ -109,6 +114,20 @@ interface CollectiblesState {
     collectionAddress: string;
     tokenId: string;
   }) => Collectible | undefined;
+  /** Function to hide a collectible */
+  hideCollectible: (params: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => Promise<void>;
+  /** Function to unhide a collectible */
+  unhideCollectible: (params: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => Promise<void>;
 }
 
 /*
@@ -313,6 +332,13 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         publicKey,
       });
 
+      // Retrieve hidden collectibles from local storage
+      // TODO: rename to hiddenCollectiblesContracts
+      const hiddenCollectibles = await retrieveHiddenCollectibles({
+        network,
+        publicKey,
+      });
+
       // Transform local storage data to API format
       const contracts = collectiblesContracts.map((contract) => ({
         id: contract.contractId,
@@ -386,8 +412,11 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         .filter(({ collection }) => collection.collectibles.length > 0);
 
       // Transform backend collections to frontend Collection interface
-      const transformedCollections =
-        await transformBackendCollections(ownedCollections);
+      // Pass hiddenCollectibles to set isHidden flag during transformation
+      const transformedCollections = await transformBackendCollections(
+        ownedCollections,
+        hiddenCollectibles,
+      );
 
       // Set the transformed collections
       set({
@@ -683,4 +712,108 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         (collection) => collection.collectionAddress === collectionAddress,
       )
       ?.items.find((item) => item.tokenId === tokenId),
+
+  /**
+   * Hides a collectible by adding it to hidden collectibles storage and updating the store
+   *
+   * @param {Object} params - Parameters for hiding a collectible
+   * @param {string} params.publicKey - The public key of the account owning the collectible
+   * @param {string} params.network - The network of the collectible
+   * @param {string} params.contractId - The contract ID of the collectible
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {Promise<void>} Promise that resolves when hide completes
+   * @throws {Error} When storage operation fails
+   */
+  hideCollectible: async ({
+    publicKey,
+    network,
+    contractId,
+    tokenId,
+  }: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => {
+    try {
+      // Add to hidden collectibles storage
+      await addHiddenCollectibleToStorage({
+        network,
+        publicKey,
+        contractId,
+        tokenId,
+      });
+
+      // Update the store to reflect the hidden state
+      const state = get();
+      const updatedCollections = state.collections.map((collection) => {
+        if (collection.collectionAddress === contractId) {
+          return {
+            ...collection,
+            items: collection.items.map((item) =>
+              item.tokenId === tokenId ? { ...item, isHidden: true } : item,
+            ),
+          };
+        }
+        return collection;
+      });
+
+      set({ collections: updatedCollections });
+    } catch (error) {
+      logger.error("hideCollectible", "Error hiding collectible:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Unhides a collectible by removing it from hidden collectibles storage and updating the store
+   *
+   * @param {Object} params - Parameters for unhiding a collectible
+   * @param {string} params.publicKey - The public key of the account owning the collectible
+   * @param {string} params.network - The network of the collectible
+   * @param {string} params.contractId - The contract ID of the collectible
+   * @param {string} params.tokenId - The token ID of the collectible
+   * @returns {Promise<void>} Promise that resolves when unhide completes
+   * @throws {Error} When storage operation fails
+   */
+  unhideCollectible: async ({
+    publicKey,
+    network,
+    contractId,
+    tokenId,
+  }: {
+    publicKey: string;
+    network: string;
+    contractId: string;
+    tokenId: string;
+  }) => {
+    try {
+      // Remove from hidden collectibles storage
+      await removeHiddenCollectibleFromStorage({
+        network,
+        publicKey,
+        contractId,
+        tokenId,
+      });
+
+      // Update the store to reflect the visible state
+      const state = get();
+      const updatedCollections = state.collections.map((collection) => {
+        if (collection.collectionAddress === contractId) {
+          return {
+            ...collection,
+            items: collection.items.map((item) =>
+              item.tokenId === tokenId ? { ...item, isHidden: false } : item,
+            ),
+          };
+        }
+        return collection;
+      });
+
+      set({ collections: updatedCollections });
+    } catch (error) {
+      logger.error("unhideCollectible", "Error unhiding collectible:", error);
+      throw error;
+    }
+  },
 }));
