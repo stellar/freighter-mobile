@@ -64,6 +64,8 @@ interface Props {
   showSpendableAmount?: boolean;
   /** Type of fee to use for spendable amount calculation */
   feeContext?: TransactionContext;
+  /** Whether to disable inner scrolling for both the tokens and collectibles grids */
+  disableInnerScrolling?: boolean;
 }
 
 /**
@@ -85,7 +87,6 @@ interface Props {
  * @param {Props} props - Component props
  * @returns {JSX.Element} The tab component with content
  */
-// TODO: fix inner scrolling
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
@@ -99,6 +100,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     onCollectiblePress,
     showSpendableAmount = false,
     feeContext = TransactionContext.Send,
+    disableInnerScrolling = false,
   }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
@@ -202,12 +204,19 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           publicKey={publicKey}
           network={network}
           onTokenPress={onTokenPress}
-          disableInnerScrolling
+          disableInnerScrolling={disableInnerScrolling}
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
         />
       ),
-      [publicKey, network, onTokenPress, showSpendableAmount, feeContext],
+      [
+        publicKey,
+        network,
+        onTokenPress,
+        showSpendableAmount,
+        feeContext,
+        disableInnerScrolling,
+      ],
     );
 
     /**
@@ -226,11 +235,11 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         >
           <CollectiblesGrid
             onCollectiblePress={onCollectiblePress}
-            disableInnerScrolling
+            disableInnerScrolling={disableInnerScrolling}
           />
         </View>
       ),
-      [onCollectiblePress],
+      [onCollectiblePress, disableInnerScrolling],
     );
 
     /**
