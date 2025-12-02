@@ -130,8 +130,6 @@ describe("muxedAddress helpers", () => {
 
     it("should disable memo when contract does not support muxed and target is M address", async () => {
       mockIsMuxedAccount.mockReturnValue(true);
-      // Note: This case is handled early in the function (line 34)
-      // So checkContractSupportsMuxed is never called
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(false);
 
@@ -142,8 +140,6 @@ describe("muxedAddress helpers", () => {
         t: mockT,
       });
 
-      // M addresses with contractId are handled earlier in the function (line 34)
-      // So it returns early with the memoDisabledForTransaction message
       expect(result.isMemoDisabled).toBe(true);
       expect(result.memoDisabledMessage).toBe(
         "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
@@ -169,8 +165,6 @@ describe("muxedAddress helpers", () => {
 
     it("should disable memo when contract supports muxed but target is M address", async () => {
       mockIsMuxedAccount.mockReturnValue(true);
-      // Note: This case is handled early in the function (line 34)
-      // So checkContractSupportsMuxed is never called
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(false);
 
@@ -181,7 +175,6 @@ describe("muxedAddress helpers", () => {
         t: mockT,
       });
 
-      // M addresses with contractId are handled earlier in the function (line 34)
       expect(result.isMemoDisabled).toBe(true);
       expect(result.memoDisabledMessage).toBe(
         "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
@@ -209,8 +202,6 @@ describe("muxedAddress helpers", () => {
 
     it("should disable memo on error checking contract when target is M address", async () => {
       mockIsMuxedAccount.mockReturnValue(true);
-      // Note: This case is handled early in the function (line 34)
-      // So checkContractSupportsMuxed is never called, and error handling doesn't apply
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(false);
 
@@ -221,8 +212,6 @@ describe("muxedAddress helpers", () => {
         t: mockT,
       });
 
-      // M addresses with contractId are handled earlier in the function (line 34)
-      // So it returns early with the memoDisabledForTransaction message
       expect(result.isMemoDisabled).toBe(true);
       expect(result.memoDisabledMessage).toBe(
         "translated:transactionSettings.memoInfo.memoDisabledForTransaction",

@@ -84,7 +84,6 @@ export async function getMemoDisabledState(
 
     // For G addresses in Soroban transactions, memo is always supported
     // For M addresses in Soroban transactions with muxed support, memo is disabled (encoded in address)
-    // This case is already handled above (line 34)
     return { isMemoDisabled: false, memoDisabledMessage: undefined };
   } catch (error) {
     // On error, only disable memo if target is M address (to be safe)
