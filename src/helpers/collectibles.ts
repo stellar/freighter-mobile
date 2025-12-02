@@ -207,22 +207,22 @@ export const removeCollectibleFromStorage = async (params: {
  *
  * @param collectionAddress The collection address of the collectible
  * @param tokenId The token ID of the collectible
- * @param hiddenCollectibles Optional array of hidden collectible contracts
+ * @param hiddenCollectiblesContracts Optional array of hidden collectible contracts
  * @returns True if the collectible is hidden, false otherwise
  */
 const isCollectibleHidden = (
   collectionAddress: string,
   tokenId: string,
-  hiddenCollectibles?: CollectibleContract[],
+  hiddenCollectiblesContracts?: CollectibleContract[],
 ): boolean => {
-  if (!hiddenCollectibles?.length) {
+  if (!hiddenCollectiblesContracts?.length) {
     return false;
   }
 
-  return hiddenCollectibles.some(
-    (hiddenCollectible) =>
-      hiddenCollectible.contractId === collectionAddress &&
-      hiddenCollectible.tokenIds.includes(tokenId),
+  return hiddenCollectiblesContracts.some(
+    (hiddenCollectibleContract) =>
+      hiddenCollectibleContract.contractId === collectionAddress &&
+      hiddenCollectibleContract.tokenIds.includes(tokenId),
   );
 };
 
@@ -230,12 +230,12 @@ const isCollectibleHidden = (
  * Transforms backend collectibles collections to frontend Collection interface
  *
  * @param backendCollections The backend collections
- * @param hiddenCollectibles Optional array of hidden collectible contracts to set isHidden flag
+ * @param hiddenCollectiblesContracts Optional array of hidden collectible contracts to set isHidden flag
  * @returns Promise resolving to transformed frontend collections
  */
 export const transformBackendCollections = async (
   backendCollections: BackendCollection[],
-  hiddenCollectibles?: CollectibleContract[],
+  hiddenCollectiblesContracts?: CollectibleContract[],
 ): Promise<Collection[]> => {
   try {
     const transformedCollections: Collection[] = await Promise.all(
@@ -257,7 +257,7 @@ export const transformBackendCollections = async (
               const isHidden = isCollectibleHidden(
                 collection.address,
                 collectible.token_id,
-                hiddenCollectibles,
+                hiddenCollectiblesContracts,
               );
 
               // Transform backend metadata to frontend Collectible interface
@@ -292,7 +292,7 @@ export const transformBackendCollections = async (
               const isHidden = isCollectibleHidden(
                 collection.address,
                 collectible.token_id,
-                hiddenCollectibles,
+                hiddenCollectiblesContracts,
               );
 
               // Return fallback collectible if metadata fetch fails

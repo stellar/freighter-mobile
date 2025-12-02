@@ -332,9 +332,8 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         publicKey,
       });
 
-      // Retrieve hidden collectibles from local storage
-      // TODO: rename to hiddenCollectiblesContracts
-      const hiddenCollectibles = await retrieveHiddenCollectibles({
+      // Retrieve hidden collectibles contracts from local storage
+      const hiddenCollectiblesContracts = await retrieveHiddenCollectibles({
         network,
         publicKey,
       });
@@ -412,10 +411,10 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         .filter(({ collection }) => collection.collectibles.length > 0);
 
       // Transform backend collections to frontend Collection interface
-      // Pass hiddenCollectibles to set isHidden flag during transformation
+      // Pass hiddenCollectiblesContracts to set isHidden flag during transformation
       const transformedCollections = await transformBackendCollections(
         ownedCollections,
-        hiddenCollectibles,
+        hiddenCollectiblesContracts,
       );
 
       // Set the transformed collections
