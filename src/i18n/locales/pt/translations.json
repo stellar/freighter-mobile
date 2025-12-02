@@ -439,7 +439,8 @@
     "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos",
     "hideCollectible": "Ocultar colecionável",
     "showCollectible": "Mostrar colecionável",
-    "hideSuccess": "Colecionável ocultado com sucesso"
+    "hideSuccess": "Colecionável ocultado com sucesso",
+    "hiddenBanner": "Este colecionável está oculto"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",

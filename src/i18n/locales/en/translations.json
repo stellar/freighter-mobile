@@ -475,7 +475,8 @@
     "imageSaveAttempted": "Save attempted, check your photos",
     "hideCollectible": "Hide collectible",
     "showCollectible": "Show collectible",
-    "hideSuccess": "Successfully hid collectible"
+    "hideSuccess": "Successfully hid collectible",
+    "hiddenBanner": "This collectible is hidden"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
