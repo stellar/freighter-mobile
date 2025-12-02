@@ -19,6 +19,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { isSorobanTransaction as checkIsSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -194,6 +195,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
   const isRecipientMuxed = isMuxedAccount(recipientAddress);
 
+  // Check if this is a Soroban transaction (custom token or contract address)
+  const isSorobanTransaction = checkIsSorobanTransaction(
+    selectedBalance,
+    recipientAddress,
+  );
+
   const transactionDetailsList: ListItemProps[] = useMemo(
     () =>
       [
@@ -216,8 +223,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </View>
           ),
         },
-        // Hide memo line if recipient is a muxed address (M- address)
-        !isRecipientMuxed
+        // Hide memo line only for Soroban M addresses (M addresses in Soroban transactions)
+        // Normal transactions support M address + memo
+        !(isRecipientMuxed && isSorobanTransaction)
           ? {
               icon: (
                 <Icon.File02 size={16} color={themeColors.foreground.primary} />
@@ -274,6 +282,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
+      isSorobanTransaction,
     ],
   );
 

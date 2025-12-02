@@ -105,9 +105,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionFee,
     recipientAddress,
     selectedTokenId,
+    transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
     saveSelectedCollectibleDetails,
+    saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
@@ -272,6 +274,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isRecipientMuxed = Boolean(
     recipientAddress && isMuxedAccount(recipientAddress),
   );
+
+  // Clear memo only for Soroban M addresses (custom tokens / contract addresses)
+  // Normal transactions support M address + memo
+  useEffect(() => {
+    if (isRecipientMuxed && isCustomToken && transactionMemo) {
+      saveMemo("");
+    }
+  }, [isRecipientMuxed, isCustomToken, transactionMemo, saveMemo]);
 
   const contractId = useMemo(() => {
     if (

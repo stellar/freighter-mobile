@@ -806,6 +806,215 @@ describe("useTokenFiatConverter", () => {
     });
   });
 
+  describe("Fiat conversion input fixes", () => {
+    it("should allow immediate input when switching to fiat mode with zero token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Start with zero token amount
+      expect(result.current.tokenAmount).toBe("0");
+      expect(result.current.fiatAmount).toBe("0");
+
+      // Switch to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // After switching, fiatAmountDisplayRaw should be set to "0" to allow fresh input
+      // User should be able to type immediately without needing to backspace
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      // Should replace "0" with "5" (not append to "0.00")
+      expect(result.current.fiatAmountDisplay).toBe("5");
+      expect(result.current.fiatAmount).toBe("5");
+    });
+
+    it("should allow immediate input when switching to fiat mode with whole number token amount", () => {
+      const mockBalance = createMockPricedBalance(100, 2.0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Set token amount to 1 (which converts to 2.00 in fiat)
+      act(() => {
+        result.current.setTokenAmount("1");
+      });
+
+      expect(result.current.tokenAmount).toBe("1");
+      expect(result.current.fiatAmount).toBe("2.00");
+
+      // Switch to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // After switching, fiatAmountDisplayRaw should be set to "2" (integer part)
+      // User should be able to type immediately without needing to backspace "2.00"
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      // Should append to "2" to get "25" (not stuck with "2.00")
+      expect(result.current.fiatAmountDisplay).toBe("25");
+      expect(result.current.fiatAmount).toBe("25");
+    });
+
+    it("should allow immediate input when switching to fiat mode with token amount that converts to whole number fiat", () => {
+      const mockBalance = createMockPricedBalance(100, 1.0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Set token amount to 3 (which converts to 3.00 in fiat, should normalize to "3")
+      act(() => {
+        result.current.setTokenAmount("3");
+      });
+
+      expect(result.current.tokenAmount).toBe("3");
+      expect(result.current.fiatAmount).toBe("3.00");
+
+      // Switch to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // After switching, fiatAmountDisplayRaw should be set to "3" (integer part)
+      // User should be able to type immediately
+      act(() => {
+        result.current.handleDisplayAmountChange("7");
+      });
+
+      // Should append to "3" to get "37" (not stuck with "3.00")
+      expect(result.current.fiatAmountDisplay).toBe("37");
+      expect(result.current.fiatAmount).toBe("37");
+    });
+
+    it("should preserve decimal fiat amounts when switching to fiat mode", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Set token amount to 1.2 (which converts to 3.00 in fiat - wait, 1.2 * 2.5 = 3.00, so it's a whole number)
+      // Let's use 1.1 which converts to 2.75 (not a whole number)
+      act(() => {
+        result.current.setTokenAmount("1.1");
+      });
+
+      expect(result.current.tokenAmount).toBe("1.1");
+      expect(result.current.fiatAmount).toBe("2.75");
+
+      // Switch to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // For non-whole numbers, fiatAmountDisplayRaw should be null (use derived value)
+      // User should be able to type, but it will start from "2.75"
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+
+      // Should append to "2.75" to get "2.755" (or handle according to formatFiatInputTemplate)
+      // Since formatFiatInputTemplate limits to 2 decimal places, it should stay "2.75"
+      expect(result.current.fiatAmountDisplay).toBe("2.75");
+      expect(result.current.fiatAmount).toBe("2.75");
+    });
+
+    it("should handle switching to fiat mode, typing, then switching back and forth", () => {
+      const mockBalance = createMockPricedBalance(100, 2.0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Step 1: Set token amount to 1
+      act(() => {
+        result.current.setTokenAmount("1");
+      });
+      expect(result.current.tokenAmount).toBe("1");
+      expect(result.current.fiatAmount).toBe("2.00");
+
+      // Step 2: Switch to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // Step 3: Type immediately (should work without backspacing)
+      act(() => {
+        result.current.handleDisplayAmountChange("5");
+      });
+      expect(result.current.fiatAmountDisplay).toBe("25");
+      expect(result.current.fiatAmount).toBe("25");
+
+      // Step 4: Switch back to token mode
+      act(() => {
+        result.current.setShowFiatAmount(false);
+      });
+      expect(result.current.tokenAmount).toBe("12.5000000"); // 25 / 2.0 = 12.5
+      expect(result.current.fiatAmount).toBe("25.00");
+
+      // Step 5: Switch back to fiat mode
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      // Should normalize to "25" since it's a whole number
+      expect(result.current.fiatAmount).toBe("25.00");
+
+      // Step 6: Type again (should work)
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      expect(result.current.fiatAmountDisplay).toBe("250");
+      expect(result.current.fiatAmount).toBe("250");
+    });
+
+    it("should handle the bug scenario: switch to fiat, type number, switch back and forth multiple times", () => {
+      const mockBalance = createMockPricedBalance(100, 1.0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      // Step 1: Set token amount to 1
+      act(() => {
+        result.current.setTokenAmount("1");
+      });
+
+      // Step 2: Switch to fiat mode (1 * 1.0 = 1.00, should normalize to "1")
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // Step 3: Type a number - should work immediately
+      act(() => {
+        result.current.handleDisplayAmountChange("2");
+      });
+      expect(result.current.fiatAmountDisplay).toBe("12");
+      expect(result.current.fiatAmount).toBe("12");
+
+      // Step 4: Switch back to token mode
+      act(() => {
+        result.current.setShowFiatAmount(false);
+      });
+      expect(result.current.tokenAmount).toBe("12.0000000");
+
+      // Step 5: Switch to fiat mode again (12 * 1.0 = 12.00, should normalize to "12")
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // Step 6: Type a number - should work immediately
+      act(() => {
+        result.current.handleDisplayAmountChange("3");
+      });
+      expect(result.current.fiatAmountDisplay).toBe("123");
+      expect(result.current.fiatAmount).toBe("123");
+    });
+  });
+
   describe("Fiat display edge cases", () => {
     it("should show '0,00' when raw input is empty after deletion", () => {
       const mockBalance = createMockPricedBalance(100, 2.5);

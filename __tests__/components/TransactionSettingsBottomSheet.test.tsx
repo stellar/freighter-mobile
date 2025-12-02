@@ -77,6 +77,7 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 }));
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
+  isSorobanTransaction: jest.fn(),
 }));
 
 const mockGetMemoDisabledState = jest.fn().mockResolvedValue({
