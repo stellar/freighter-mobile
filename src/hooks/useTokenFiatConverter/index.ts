@@ -19,8 +19,10 @@ interface UseTokenFiatConverterProps {
 interface UseTokenFiatConverterResult {
   tokenAmount: string; // Internal value (dot notation)
   tokenAmountDisplay: string; // Display value (locale-formatted, derived)
+  tokenAmountDisplayRaw: string | null; // Raw input when typing
   fiatAmount: string; // Internal value (dot notation)
   fiatAmountDisplay: string; // Display value (locale-formatted, derived or raw input)
+  fiatAmountDisplayRaw: string | null; // Raw input when typing
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
   handleDisplayAmountChange: (key: string) => void;
@@ -235,8 +237,10 @@ export const useTokenFiatConverter = ({
   return {
     tokenAmount: state.tokenAmount,
     tokenAmountDisplay,
+    tokenAmountDisplayRaw: state.tokenAmountDisplayRaw,
     fiatAmount: state.fiatAmount,
     fiatAmountDisplay,
+    fiatAmountDisplayRaw: state.fiatAmountDisplayRaw,
     showFiatAmount: state.showFiatAmount,
     setShowFiatAmount,
     handleDisplayAmountChange,

@@ -85,6 +85,8 @@ export const initialState: TokenFiatConverterState = {
  * Normalizes a display value that represents zero to "0" for input handling.
  * Handles various zero formats like "0,00", "0.00", "0,", "0.", "0,0", "0.0", etc.
  * Preserves partial decimal inputs like "0." or "0," to allow decimal entry.
+ * Also preserves values like "0,0" and "0,00" that are part of active decimal input
+ * (when user is typing digits after the decimal separator).
  *
  * @param {string} displayValue - The display value to normalize
  * @returns {string} "0" if the value represents zero, otherwise the original value
@@ -99,6 +101,14 @@ export const normalizeZeroDisplay = (displayValue: string): string => {
 
   // Don't normalize if it's just a decimal separator (user is starting with ".")
   if (displayValue === "." || displayValue === ",") {
+    return displayValue;
+  }
+
+  // Preserve values like "0,0", "0,00", "0.0", "0.00" etc. that are part of active decimal input
+  // These patterns indicate the user is actively typing a decimal value
+  // Pattern: starts with "0" followed by separator and one or more zeros (e.g., "0,0", "0,00")
+  // OR starts with "0" followed by separator and at least one non-zero digit (e.g., "0,01", "0,1")
+  if (/^0[,.]0+$/.test(displayValue) || /^0[,.]0*[1-9]/.test(displayValue)) {
     return displayValue;
   }
 
