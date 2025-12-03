@@ -17,6 +17,7 @@ import {
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
@@ -76,8 +77,16 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
     const { network } = useAuthenticationStore();
-    const { collections, isLoading, error, fetchCollectibles } =
-      useCollectiblesStore();
+    const { isLoading, error, fetchCollectibles } = useCollectiblesStore();
+
+    // Separate visible and hidden collectibles using the hook
+    const { visibleCollectibles, hiddenCollectibles } =
+      useFilteredCollectibles();
+
+    // Select the appropriate collections based on showOnlyHiddenCollectibles prop
+    const filteredCollections = showOnlyHiddenCollectibles
+      ? hiddenCollectibles
+      : visibleCollectibles;
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -163,27 +172,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       ),
       [renderCollectibleItem, themeColors.text.secondary],
     );
-
-    // Filter collections based on showOnlyHiddenCollectibles prop
-    const filteredCollections = React.useMemo(() => {
-      // TODO: extract this to a hook which saves shown and hidden collectibles
-      if (!showOnlyHiddenCollectibles) {
-        // Show only visible collectibles (not hidden)
-        return collections
-          .map((collection) => ({
-            ...collection,
-            items: collection.items.filter((item) => !item.isHidden),
-          }))
-          .filter((collection) => collection.items.length > 0);
-      }
-      // Show only hidden collectibles
-      return collections
-        .map((collection) => ({
-          ...collection,
-          items: collection.items.filter((item) => item.isHidden === true),
-        }))
-        .filter((collection) => collection.items.length > 0);
-    }, [collections, showOnlyHiddenCollectibles]);
 
     // During initial loading, show spinner without refresh capability
     if (isLoading && !isRefreshing) {
