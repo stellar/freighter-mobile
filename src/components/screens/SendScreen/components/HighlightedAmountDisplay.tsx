@@ -128,7 +128,7 @@ export const HighlightedAmountDisplay: React.FC<
 
   return (
     <View className="relative items-center justify-center">
-      {/* Background display - always shown, greyed out */}
+      {/* Background display - only shown when rawInput is empty, hidden when user starts typing to avoid overlapping with the overlay */}
       <Display
         size={isSmallScreen ? "lg" : "xl"}
         medium
@@ -136,6 +136,7 @@ export const HighlightedAmountDisplay: React.FC<
         numberOfLines={1}
         minimumFontScale={0.6}
         secondary
+        style={{ opacity: rawInput ? 0 : 1 }}
       >
         {formattedDisplay}
       </Display>

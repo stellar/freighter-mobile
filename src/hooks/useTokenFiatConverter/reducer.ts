@@ -439,6 +439,7 @@ export const createTokenFiatConverterReducer =
         let { tokenAmount } = state;
         let { fiatAmount } = state;
         let fiatAmountDisplayRaw: string | null = null;
+        let tokenAmountDisplayRaw: string | null = null;
 
         if (showFiatAmount) {
           // Format tokenAmount when switching to fiat mode to ensure consistent formatting
@@ -454,28 +455,56 @@ export const createTokenFiatConverterReducer =
           const displayResult = determineFiatDisplayRaw(calculatedFiat);
           fiatAmount = displayResult.fiatAmount;
           fiatAmountDisplayRaw = displayResult.fiatAmountDisplayRaw;
+
+          // If fiatAmountDisplayRaw is null (decimal value, not an integer),
+          // set it to the formatted fiat amount so it gets highlighted when switching modes
+          // This ensures amounts less than 1 (like 0.03) are highlighted
+          if (
+            fiatAmountDisplayRaw === null &&
+            !new BigNumber(calculatedFiat).isZero()
+          ) {
+            const { decimalSeparator } = getNumberFormatSettings();
+            fiatAmountDisplayRaw = calculatedFiat.replace(
+              ".",
+              decimalSeparator,
+            );
+          }
         } else {
           // Convert tokenAmount to fiat when switching back to token mode
           fiatAmount = recalculateFiatAmountFromToken(
             state.tokenAmount,
             tokenPrice,
           );
+
+          // Format tokenAmount when switching back to token mode
+          tokenAmount = formatTokenAmount(state.tokenAmount, tokenDecimals);
+
+          // If there was fiat input, set tokenAmountDisplayRaw to highlight the converted token amount
+          if (
+            state.fiatAmountDisplayRaw !== null &&
+            !new BigNumber(tokenAmount).isZero()
+          ) {
+            // Use the formatted token amount as the raw display value for highlighting
+            tokenAmountDisplayRaw = tokenAmount;
+          }
         }
 
         // Determine final fiatAmountDisplayRaw value
-        const finalFiatAmountDisplayRaw: string | null = showFiatAmount
+        const finalFiatAmountDisplayRaw = showFiatAmount
           ? (fiatAmountDisplayRaw ?? state.fiatAmountDisplayRaw)
           : null;
+
+        // Determine final tokenAmountDisplayRaw value
+        const finalTokenAmountDisplayRaw = showFiatAmount
+          ? null
+          : (tokenAmountDisplayRaw ?? state.tokenAmountDisplayRaw);
 
         return {
           ...state,
           showFiatAmount,
           tokenAmount,
           fiatAmount,
-          // Clear raw inputs when switching modes
-          tokenAmountDisplayRaw: showFiatAmount
-            ? null
-            : state.tokenAmountDisplayRaw,
+          tokenAmountDisplayRaw: finalTokenAmountDisplayRaw,
           fiatAmountDisplayRaw: finalFiatAmountDisplayRaw,
         };
       }
