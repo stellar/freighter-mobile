@@ -231,6 +231,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
             />
           </View>
 
+          {/* Hidden Collectible Banner */}
           {collectible.isHidden && (
             <View className="mb-6">
               <Banner

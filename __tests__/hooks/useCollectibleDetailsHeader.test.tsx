@@ -11,10 +11,15 @@ jest.mock("providers/ToastProvider", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
+const mockGoBack = jest.fn();
+const mockPopToTop = jest.fn();
+
 // Mock all dependencies
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
     setOptions: mockSetOptions,
+    goBack: mockGoBack,
+    popToTop: mockPopToTop,
   }),
 }));
 
@@ -40,6 +45,9 @@ jest.mock("hooks/useGetActiveAccount", () => ({
   }),
 }));
 
+const mockHideCollectible = jest.fn();
+const mockUnhideCollectible = jest.fn();
+
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({
     fetchCollectibles: jest.fn(),
@@ -54,13 +62,23 @@ jest.mock("ducks/collectibles", () => ({
         { name: "Rarity", value: "Common" },
       ],
       externalUrl: "https://example.com",
+      isHidden: false,
     })),
+    hideCollectible: mockHideCollectible,
+    unhideCollectible: mockUnhideCollectible,
     isLoading: false,
   }),
 }));
 
 jest.mock("helpers/stellarExpert", () => ({
   getStellarExpertUrl: jest.fn(() => "https://testnet.stellar.expert"),
+}));
+
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({
+    open: jest.fn().mockResolvedValue(undefined),
+    isAvailable: jest.fn().mockResolvedValue(true),
+  }),
 }));
 
 jest.mock("hooks/useRightHeader", () => ({
@@ -87,6 +105,8 @@ describe("useCollectibleDetailsHeader", () => {
     jest.spyOn(Platform, "select").mockReturnValue({
       refreshMetadata: "arrow.clockwise",
       viewOnStellarExpert: "link",
+      hideCollectible: "eye.slash",
+      showCollectible: "eye",
     });
   });
 
@@ -110,6 +130,8 @@ describe("useCollectibleDetailsHeader", () => {
       handleRemoveCollectible: expect.any(Function),
       handleViewOnStellarExpert: expect.any(Function),
       handleSaveToPhotos: expect.any(Function),
+      handleHideCollectible: expect.any(Function),
+      handleShowCollectible: expect.any(Function),
     });
   });
 
@@ -175,13 +197,61 @@ describe("useCollectibleDetailsHeader", () => {
         removeCollectible: "trash",
         viewOnStellarExpert: "link",
         saveToPhotos: "square.and.arrow.down",
+        hideCollectible: "eye.slash",
+        showCollectible: "eye",
       },
       android: {
         refreshMetadata: "refresh",
         removeCollectible: "delete",
         viewOnStellarExpert: "link",
         saveToPhotos: "place_item",
+        hideCollectible: "visibility_off",
+        showCollectible: "visibility",
       },
     });
+  });
+
+  it("should handle hide collectible", async () => {
+    mockHideCollectible.mockResolvedValue(undefined);
+    mockGoBack.mockClear();
+    mockShowToast.mockClear();
+
+    const { result } = renderHook(() =>
+      useCollectibleDetailsHeader(defaultParams),
+    );
+
+    await result.current.handleHideCollectible();
+
+    expect(mockHideCollectible).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "testnet",
+      contractId: "test-collection-address",
+      tokenId: "test-token-id",
+    });
+    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith({
+      title: "collectibleDetails.hideSuccess",
+      variant: "success",
+      toastId: "hide-collectible-success",
+    });
+  });
+
+  it("should handle show collectible", async () => {
+    mockUnhideCollectible.mockResolvedValue(undefined);
+    mockPopToTop.mockClear();
+
+    const { result } = renderHook(() =>
+      useCollectibleDetailsHeader(defaultParams),
+    );
+
+    await result.current.handleShowCollectible();
+
+    expect(mockUnhideCollectible).toHaveBeenCalledWith({
+      publicKey: "test-public-key",
+      network: "testnet",
+      contractId: "test-collection-address",
+      tokenId: "test-token-id",
+    });
+    expect(mockPopToTop).toHaveBeenCalled();
   });
 });

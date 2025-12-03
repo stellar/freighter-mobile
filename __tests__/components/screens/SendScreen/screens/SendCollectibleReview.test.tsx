@@ -272,6 +272,7 @@ const setupDefaultMocks = () => {
         items: [mockCollectible],
       },
     ],
+    getCollectible: jest.fn(() => mockCollectible),
   };
 
   mockUseTransactionBuilderStore.mockReturnValue(mockTransactionBuilderState);
@@ -397,6 +398,7 @@ describe("SendCollectibleReview - Banner Content", () => {
         items: [mockCollectible],
       },
     ],
+    getCollectible: jest.fn(() => mockCollectible),
   };
 
   beforeEach(() => {
