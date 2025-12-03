@@ -88,7 +88,7 @@ const SendCollectibleReviewScreen: React.FC<
   const { network } = useAuthenticationStore();
   const { recipientAddress, saveSelectedCollectibleDetails, resetSettings } =
     useTransactionSettingsStore();
-  const { collections } = useCollectiblesStore();
+  const { getCollectible } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
@@ -188,17 +188,10 @@ const SendCollectibleReviewScreen: React.FC<
     [transactionScanResult, overriddenBlockaidResponse],
   );
 
-  const selectedCollectible = useMemo(() => {
-    const collection = collections.find(
-      (c) => c.collectionAddress === collectionAddress,
-    );
-    if (collection) {
-      return collection.items.find(
-        (collectible) => collectible.tokenId === tokenId,
-      );
-    }
-    return undefined;
-  }, [collections, collectionAddress, tokenId]);
+  const selectedCollectible = useMemo(
+    () => getCollectible({ collectionAddress, tokenId }),
+    [collectionAddress, tokenId, getCollectible],
+  );
 
   // Check if recipient is M address
   const isRecipientMuxed = Boolean(

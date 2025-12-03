@@ -80,25 +80,24 @@ const TransactionDetailsBottomSheet: React.FC<
     publicKey: account?.publicKey ?? "",
     network,
   });
-  const { collections } = useCollectiblesStore();
+  const { getCollectible } = useCollectiblesStore();
 
   const selectedBalance = balanceItems.find(
     (item) => item.id === selectedTokenId,
   );
 
-  const selectedCollectible = useMemo(() => {
-    const collection = collections.find(
-      (c) =>
-        c.collectionAddress === selectedCollectibleDetails.collectionAddress,
-    );
-    if (collection) {
-      return collection.items.find(
-        (collectible) =>
-          collectible.tokenId === selectedCollectibleDetails.tokenId,
-      );
-    }
-    return undefined;
-  }, [collections, selectedCollectibleDetails]);
+  const selectedCollectible = useMemo(
+    () =>
+      getCollectible({
+        collectionAddress: selectedCollectibleDetails.collectionAddress,
+        tokenId: selectedCollectibleDetails.tokenId,
+      }),
+    [
+      selectedCollectibleDetails.collectionAddress,
+      selectedCollectibleDetails.tokenId,
+      getCollectible,
+    ],
+  );
 
   const transaction = TransactionBuilder.fromXDR(
     transactionXDR as string,
