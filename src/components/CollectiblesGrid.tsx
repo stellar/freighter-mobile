@@ -67,12 +67,17 @@ interface CollectiblesGridProps {
  * - Pull-to-refresh functionality
  * - Responsive grid layout with proper spacing
  * - Memoized rendering for performance optimization
+ * - Supports filtering by visible or hidden collectibles via the `type` prop
+ * - Visual distinction for hidden collectibles (reduced opacity with eye-off icon)
  *
  * The component automatically fetches collectibles data on mount and provides
- * a refresh mechanism for users to update the data manually.
+ * a refresh mechanism for users to update the data manually. It uses the
+ * `useFilteredCollectibles` hook to separate visible and hidden collectibles.
  *
  * @param {CollectiblesGridProps} props - Component props
  * @param {Function} [props.onCollectiblePress] - Callback function when a collectible is pressed
+ * @param {CollectibleFilterType} [props.type] - Filter type to determine which collectibles to display (VISIBLE or HIDDEN). Defaults to VISIBLE.
+ * @param {boolean} [props.disableInnerScrolling] - Whether to disable internal scrolling (for use in parent ScrollView)
  * @returns {JSX.Element} The collectibles grid component
  */
 export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(

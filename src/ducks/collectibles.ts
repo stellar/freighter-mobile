@@ -268,10 +268,15 @@ const dummyCollections: Collection[] = [
  * - Error handling
  * - Data fetching operations
  * - Local storage synchronization
+ * - Hide/unhide collectible functionality
+ *
+ * Hidden collectibles are persisted in local storage and excluded from the
+ * main collections view by default. The `isHidden` flag is set during
+ * collection transformation based on stored hidden collectible contracts.
  *
  * @example
  * ```ts
- * const { collections, fetchCollectibles, addCollectible } = useCollectiblesStore();
+ * const { collections, fetchCollectibles, addCollectible, hideCollectible, unhideCollectible } = useCollectiblesStore();
  *
  * // Fetch collectibles for an account
  * await fetchCollectibles({
@@ -279,8 +284,16 @@ const dummyCollections: Collection[] = [
  *   network: "PUBLIC"
  * });
  *
- * // Add a new collectible
- * await addCollectible({
+ * // Hide a collectible
+ * await hideCollectible({
+ *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+ *   network: "PUBLIC",
+ *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
+ *   tokenId: "123"
+ * });
+ *
+ * // Unhide a collectible
+ * await unhideCollectible({
  *   publicKey: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
  *   network: "PUBLIC",
  *   contractId: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",

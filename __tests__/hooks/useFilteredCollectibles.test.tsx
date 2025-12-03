@@ -351,13 +351,22 @@ describe("useFilteredCollectibles", () => {
       },
     ];
 
+    // Set initial collections
+    mockCollections.length = 0;
     mockCollections.push(...initialCollections);
 
-    const { result, rerender } = renderHook(() => useFilteredCollectibles());
+    // Mock to return a copy of the current collections
+    mockUseCollectiblesStore.mockImplementation(
+      (selector: (state: { collections: Collection[] }) => Collection[]) =>
+        selector({ collections: [...mockCollections] }),
+    );
+
+    const { result } = renderHook(() => useFilteredCollectibles());
 
     expect(result.current.visibleCollectibles).toHaveLength(1);
 
-    // Create a new array reference with different collections
+    // Clear and create a new array with different collections
+    mockCollections.length = 0;
     const updatedCollections: Collection[] = [
       {
         collectionAddress: "collection10",
@@ -377,17 +386,16 @@ describe("useFilteredCollectibles", () => {
       },
     ];
 
-    // Update the mock to return the new collections array
-    mockUseCollectiblesStore.mockImplementation(
-      (selector: (state: { collections: Collection[] }) => Collection[]) =>
-        selector({ collections: updatedCollections }),
+    mockCollections.push(...updatedCollections);
+
+    // Create a new render to test with updated collections
+    const { result: updatedResult } = renderHook(() =>
+      useFilteredCollectibles(),
     );
 
-    rerender();
-
-    expect(result.current.visibleCollectibles).toEqual([]);
-    expect(result.current.hiddenCollectibles).toHaveLength(1);
-    expect(result.current.hiddenCollectibles[0].collectionAddress).toBe(
+    expect(updatedResult.current.visibleCollectibles).toEqual([]);
+    expect(updatedResult.current.hiddenCollectibles).toHaveLength(1);
+    expect(updatedResult.current.hiddenCollectibles[0].collectionAddress).toBe(
       "collection10",
     );
   });

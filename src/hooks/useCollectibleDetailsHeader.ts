@@ -28,19 +28,34 @@ interface UseCollectibleDetailsHeaderProps {
  * This hook handles:
  * - Setting the header title to the collectible name
  * - Setting up the right header context menu with collectible actions
- * - All menu action handlers (refresh metadata, view on stellar.expert, etc.)
+ * - All menu action handlers (refresh metadata, view on stellar.expert, save to photos, etc.)
+ * - Hide/show collectible functionality (conditionally displayed based on collectible's hidden state)
+ *
+ * The context menu dynamically shows either "Hide collectible" or "Show collectible" option
+ * based on whether the collectible is currently hidden or visible.
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.collectionAddress - The collection address of the collectible
  * @param {string} params.collectibleName - The name of the collectible for the header title
+ * @param {string} params.tokenId - The token ID of the collectible
+ * @param {string} [params.collectibleImage] - Optional image URL for save to photos functionality
  *
  * @example
  * ```tsx
- * const { handleViewInBrowser } = useCollectibleDetailsHeader({
+ * const { handleHideCollectible, handleShowCollectible } = useCollectibleDetailsHeader({
  *   collectionAddress: "collection123",
- *   collectibleName: "My NFT"
+ *   collectibleName: "My NFT",
+ *   tokenId: "token456"
  * });
  * ```
+ *
+ * @returns {Object} Object containing handler functions for collectible actions
+ * @returns {Function} returns.handleRefreshMetadata - Handler to refresh collectible metadata
+ * @returns {Function} returns.handleViewOnStellarExpert - Handler to view collectible on stellar.expert
+ * @returns {Function} returns.handleSaveToPhotos - Handler to save collectible image to photos
+ * @returns {Function} returns.handleRemoveCollectible - Handler to remove collectible from wallet
+ * @returns {Function} returns.handleHideCollectible - Handler to hide a visible collectible
+ * @returns {Function} returns.handleShowCollectible - Handler to show/unhide a hidden collectible
  */
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
