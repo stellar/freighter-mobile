@@ -7,6 +7,7 @@ import {
   createTokenFiatConverterReducer,
   initialState,
   TokenFiatConverterActionType,
+  formatTokenAmountForDisplay,
 } from "hooks/useTokenFiatConverter/reducer";
 import { useMemo, useReducer, useCallback, useEffect, useRef } from "react";
 import { getNumberFormatSettings } from "react-native-localize";
@@ -100,14 +101,18 @@ export const useTokenFiatConverter = ({
     }
   }, [selectedBalance, tokenPrice, state.tokenAmount]);
 
-  const tokenAmountDisplayDerived = useMemo(
-    () =>
-      formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
+  // Format token amount display: trim trailing zeros and use locale separator when NOT in fiat mode
+  const tokenAmountDisplayDerived = useMemo(() => {
+    if (state.showFiatAmount) {
+      // In fiat mode, use full precision formatting
+      return formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
         decimalPlaces: decimals,
         useGrouping: false,
-      }),
-    [state.tokenAmount, decimals],
-  );
+      });
+    }
+    // In token mode, trim trailing zeros and use locale separator
+    return formatTokenAmountForDisplay(state.tokenAmount);
+  }, [state.tokenAmount, state.showFiatAmount, decimals]);
 
   // Use raw input when user is typing in token mode, otherwise use derived value
   const tokenAmountDisplay =

@@ -358,6 +358,32 @@ export const formatTokenAmount = (
 };
 
 /**
+ * Formats token amount for display with trimmed trailing zeros and locale-specific decimal separator.
+ * No minimum decimals are enforced - "0.2" stays as "0,2", not "0,20".
+ *
+ * @param {string} tokenAmount - The token amount in dot notation (e.g., "0.200000")
+ * @returns {string} The formatted token amount with locale decimal separator and trimmed trailing zeros (e.g., "0,2")
+ * @internal - Exported for testing purposes
+ */
+export const formatTokenAmountForDisplay = (tokenAmount: string): string => {
+  const bnTokenAmount = new BigNumber(tokenAmount);
+  if (!bnTokenAmount.isFinite()) {
+    return "0";
+  }
+
+  // Convert to string using BigNumber's minimal representation
+  // This removes trailing zeros automatically (e.g., "0.200000" -> "0.2")
+  let formattedAmount = bnTokenAmount.toString();
+
+  // Remove trailing decimal point if present (e.g., "1." -> "1")
+  formattedAmount = formattedAmount.replace(/\.$/, "");
+
+  // Replace dot with locale-specific decimal separator
+  const { decimalSeparator } = getNumberFormatSettings();
+  return formattedAmount.replace(".", decimalSeparator);
+};
+
+/**
  * Determines the fiat amount display raw value when switching to fiat mode.
  * Normalizes display for easier editing (e.g., "2.00" -> "2").
  *
@@ -484,8 +510,8 @@ export const createTokenFiatConverterReducer =
             state.fiatAmountDisplayRaw !== null &&
             !new BigNumber(tokenAmount).isZero()
           ) {
-            // Use the formatted token amount as the raw display value for highlighting
-            tokenAmountDisplayRaw = tokenAmount;
+            // Format token amount with locale-specific decimal separator and trimmed trailing zeros
+            tokenAmountDisplayRaw = formatTokenAmountForDisplay(tokenAmount);
           }
         }
 
