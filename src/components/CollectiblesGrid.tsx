@@ -29,6 +29,14 @@ import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
 export const HIDDEN_COLLECTIBLE_OPACITY = 0.25;
 
 /**
+ * Filter type for collectibles display
+ */
+export enum CollectibleFilterType {
+  VISIBLE = "visible",
+  HIDDEN = "hidden",
+}
+
+/**
  * Props for the CollectiblesGrid component
  */
 interface CollectiblesGridProps {
@@ -43,8 +51,8 @@ interface CollectiblesGridProps {
   /** Whether to disable internal scrolling (for use in parent ScrollView) */
   disableInnerScrolling?: boolean;
 
-  /** Whether to show only hidden collectibles. By default, it shows only visible collectibles. */
-  showOnlyHiddenCollectibles?: boolean;
+  /** Type to determine which collectibles to display. Defaults to VISIBLE. */
+  type?: CollectibleFilterType;
 }
 
 /**
@@ -71,7 +79,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({
     onCollectiblePress,
     disableInnerScrolling = false,
-    showOnlyHiddenCollectibles = false,
+    type = CollectibleFilterType.VISIBLE,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -83,10 +91,11 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { visibleCollectibles, hiddenCollectibles } =
       useFilteredCollectibles();
 
-    // Select the appropriate collections based on showOnlyHiddenCollectibles prop
-    const filteredCollections = showOnlyHiddenCollectibles
-      ? hiddenCollectibles
-      : visibleCollectibles;
+    // Select the appropriate collections based on type prop
+    const filteredCollections =
+      type === CollectibleFilterType.HIDDEN
+        ? hiddenCollectibles
+        : visibleCollectibles;
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -207,7 +216,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         >
           <Icon.Grid01 size={20} color={themeColors.text.secondary} />
           <Text md medium secondary>
-            {showOnlyHiddenCollectibles
+            {type === CollectibleFilterType.HIDDEN
               ? t("collectiblesGrid.emptyHidden")
               : t("collectiblesGrid.empty")}
           </Text>

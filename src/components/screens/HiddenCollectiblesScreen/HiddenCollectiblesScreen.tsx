@@ -1,5 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { CollectiblesGrid } from "components/CollectiblesGrid";
+import {
+  CollectibleFilterType,
+  CollectiblesGrid,
+} from "components/CollectiblesGrid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import React, { useCallback } from "react";
@@ -46,7 +49,7 @@ export const HiddenCollectiblesScreen: React.FC<
     >
       <CollectiblesGrid
         onCollectiblePress={handleCollectiblePress}
-        showOnlyHiddenCollectibles
+        type={CollectibleFilterType.HIDDEN}
         disableInnerScrolling
       />
     </BaseLayout>
