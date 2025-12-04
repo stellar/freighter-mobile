@@ -96,11 +96,12 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { visibleCollectibles, hiddenCollectibles } =
       useFilteredCollectibles();
 
+    const isTypeHidden = type === CollectibleFilterType.HIDDEN;
+
     // Select the appropriate collections based on type prop
-    const filteredCollections =
-      type === CollectibleFilterType.HIDDEN
-        ? hiddenCollectibles
-        : visibleCollectibles;
+    const filteredCollections = isTypeHidden
+      ? hiddenCollectibles
+      : visibleCollectibles;
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -221,7 +222,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         >
           <Icon.Grid01 size={20} color={themeColors.text.secondary} />
           <Text md medium secondary>
-            {type === CollectibleFilterType.HIDDEN
+            {isTypeHidden
               ? t("collectiblesGrid.emptyHidden")
               : t("collectiblesGrid.empty")}
           </Text>
