@@ -338,7 +338,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     );
   });
 
-  it("should enable memo field for collectible transfers with G address", async () => {
+  it("should enable memo field for collectible transfers with G address when contract supports to_muxed", async () => {
     const mockState = createMockState({
       recipientAddress:
         "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
@@ -350,6 +350,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    // Contract supports muxed (to_muxed) → memo should be enabled
     mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
@@ -372,17 +373,19 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
   });
 
-  it("should enable memo for Soroban contract addresses (G addresses)", async () => {
+  it("should enable memo for Soroban contract addresses (G addresses) when contract supports to_muxed", async () => {
     const sorobanContractAddress =
       "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    const gAddress = "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
     const mockState = createMockState({
-      recipientAddress: sorobanContractAddress,
+      recipientAddress: gAddress,
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
+    // Contract supports muxed (to_muxed) → memo should be enabled
     mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
@@ -401,8 +404,45 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       const memoInput = getByPlaceholderText(
         "transactionSettings.memoPlaceholder",
       );
-      // Memo input should be enabled for contract addresses (they're G addresses, not M addresses)
+      // Memo input should be enabled when contract supports muxed
       expect(memoInput.props.editable).toBe(true);
+    });
+  });
+
+  it("should disable memo for Soroban contract addresses (G addresses) when contract does not support to_muxed", async () => {
+    const sorobanContractAddress =
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    const gAddress = "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
+    const mockState = createMockState({
+      recipientAddress: gAddress,
+    });
+
+    mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    mockIsContractId.mockImplementation(
+      (address) => address === sorobanContractAddress,
+    );
+    // Contract doesn't support muxed → memo should be disabled
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
+
+    const { getByPlaceholderText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      // Memo input should be disabled when contract doesn't support muxed
+      expect(memoInput.props.editable).toBe(false);
     });
   });
 
@@ -478,7 +518,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     expect(mockState.saveMemo).not.toHaveBeenCalledWith("Test memo");
   });
 
-  it("should enable memo for collectible transfer with G address", async () => {
+  it("should enable memo for collectible transfer with G address when contract supports to_muxed", async () => {
     const mockState = createMockState({
       recipientAddress:
         "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
@@ -490,6 +530,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    // Contract supports muxed (to_muxed) → memo should be enabled
     mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
@@ -509,6 +550,43 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
         "transactionSettings.memoPlaceholder",
       );
       expect(memoInput.props.editable).toBe(true);
+    });
+  });
+
+  it("should disable memo for collectible transfer with G address when contract does not support to_muxed", async () => {
+    const contractWithoutMuxed =
+      "CBHUX3RSBKAL7MJUOUA3PPW3TA65YRFLCGASJ5TNHY7HDLXCHWZQA6GR";
+    const mockState = createMockState({
+      recipientAddress:
+        "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      selectedCollectibleDetails: {
+        collectionAddress: contractWithoutMuxed,
+        tokenId: "456",
+      },
+    });
+
+    mockUseTransactionSettingsStore.mockReturnValue(mockState);
+    // Contract doesn't support muxed (to_muxed) → memo should be disabled
+    mockGetMemoDisabledState.mockResolvedValue({
+      isMemoDisabled: true,
+      memoDisabledMessage:
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    });
+
+    const { getByPlaceholderText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      const memoInput = getByPlaceholderText(
+        "transactionSettings.memoPlaceholder",
+      );
+      expect(memoInput.props.editable).toBe(false);
     });
   });
 
