@@ -29,6 +29,7 @@ export async function getMemoDisabledState(
 ): Promise<MemoDisabledState> {
   const { targetAddress, contractId, networkDetails, t } = params;
 
+  // Disable memo for all M addresses (memo is encoded in the address)
   if (isMuxedAccount(targetAddress)) {
     return {
       isMemoDisabled: true,
@@ -60,6 +61,8 @@ export async function getMemoDisabledState(
     };
   }
 
+  // For Soroban transactions (custom tokens/collectibles) with G addresses:
+  // Memo is only supported if the contract supports muxed (has to_muxed property)
   try {
     const contractSupportsMuxed = await checkContractSupportsMuxed({
       contractId,
@@ -77,7 +80,13 @@ export async function getMemoDisabledState(
 
     return { isMemoDisabled: false, memoDisabledMessage: undefined };
   } catch (error) {
-    return { isMemoDisabled: true, memoDisabledMessage: undefined };
+    // On error, disable memo for safety (assume contract doesn't support muxed)
+    return {
+      isMemoDisabled: true,
+      memoDisabledMessage: t(
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ),
+    };
   }
 }
 

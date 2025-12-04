@@ -7,6 +7,7 @@ import {
   createTokenFiatConverterReducer,
   initialState,
   TokenFiatConverterActionType,
+  formatTokenAmountForDisplay,
 } from "hooks/useTokenFiatConverter/reducer";
 import { useMemo, useReducer, useCallback, useEffect, useRef } from "react";
 import { getNumberFormatSettings } from "react-native-localize";
@@ -19,8 +20,10 @@ interface UseTokenFiatConverterProps {
 interface UseTokenFiatConverterResult {
   tokenAmount: string; // Internal value (dot notation)
   tokenAmountDisplay: string; // Display value (locale-formatted, derived)
+  tokenAmountDisplayRaw: string | null; // Raw input when typing
   fiatAmount: string; // Internal value (dot notation)
   fiatAmountDisplay: string; // Display value (locale-formatted, derived or raw input)
+  fiatAmountDisplayRaw: string | null; // Raw input when typing
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
   handleDisplayAmountChange: (key: string) => void;
@@ -98,14 +101,18 @@ export const useTokenFiatConverter = ({
     }
   }, [selectedBalance, tokenPrice, state.tokenAmount]);
 
-  const tokenAmountDisplayDerived = useMemo(
-    () =>
-      formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
+  // Format token amount display: trim trailing zeros and use locale separator when NOT in fiat mode
+  const tokenAmountDisplayDerived = useMemo(() => {
+    if (state.showFiatAmount) {
+      // In fiat mode, use full precision formatting
+      return formatBigNumberForDisplay(new BigNumber(state.tokenAmount), {
         decimalPlaces: decimals,
         useGrouping: false,
-      }),
-    [state.tokenAmount, decimals],
-  );
+      });
+    }
+    // In token mode, trim trailing zeros and use locale separator
+    return formatTokenAmountForDisplay(state.tokenAmount);
+  }, [state.tokenAmount, state.showFiatAmount, decimals]);
 
   // Use raw input when user is typing in token mode, otherwise use derived value
   const tokenAmountDisplay =
@@ -235,8 +242,10 @@ export const useTokenFiatConverter = ({
   return {
     tokenAmount: state.tokenAmount,
     tokenAmountDisplay,
+    tokenAmountDisplayRaw: state.tokenAmountDisplayRaw,
     fiatAmount: state.fiatAmount,
     fiatAmountDisplay,
+    fiatAmountDisplayRaw: state.fiatAmountDisplayRaw,
     showFiatAmount: state.showFiatAmount,
     setShowFiatAmount,
     handleDisplayAmountChange,

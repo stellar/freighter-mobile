@@ -63,6 +63,27 @@ export const isContractId = (contractId: string) => {
   }
 };
 
+/**
+ * Checks if a transaction is a Soroban transaction.
+ * A transaction is considered Soroban if:
+ * - The selected balance is a Soroban token (has a contractId), OR
+ * - The recipient address is a contract address
+ *
+ * @param selectedBalance - The selected balance (can be undefined)
+ * @param recipientAddress - The recipient address (can be undefined)
+ * @returns True if the transaction is a Soroban transaction, false otherwise
+ */
+export const isSorobanTransaction = (
+  selectedBalance?: Balance,
+  recipientAddress?: string,
+): boolean =>
+  Boolean(
+    (selectedBalance &&
+      "contractId" in selectedBalance &&
+      Boolean(selectedBalance.contractId)) ||
+      (recipientAddress && isContractId(recipientAddress)),
+  );
+
 export const getNativeContractDetails = (network: NETWORKS) => {
   const NATIVE_CONTRACT_DEFAULTS = {
     code: NATIVE_TOKEN_CODE,

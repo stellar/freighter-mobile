@@ -54,7 +54,23 @@ describe("muxedAddress helpers", () => {
   });
 
   describe("getMemoDisabledState", () => {
-    it("should disable memo for M addresses", async () => {
+    it("should disable memo for all M addresses (M address with contractId)", async () => {
+      mockIsMuxedAccount.mockReturnValue(true);
+
+      const result = await getMemoDisabledState({
+        targetAddress: "M...",
+        contractId: "contract123",
+        networkDetails,
+        t: mockT,
+      });
+
+      expect(result.isMemoDisabled).toBe(true);
+      expect(result.memoDisabledMessage).toBe(
+        "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
+      );
+    });
+
+    it("should disable memo for all M addresses (M address without contractId)", async () => {
       mockIsMuxedAccount.mockReturnValue(true);
 
       const result = await getMemoDisabledState({
@@ -97,7 +113,7 @@ describe("muxedAddress helpers", () => {
       );
     });
 
-    it("should disable memo when contract does not support muxed", async () => {
+    it("should disable memo when contract does not support muxed and target is G address", async () => {
       mockIsMuxedAccount.mockReturnValue(false);
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(true);
@@ -116,7 +132,25 @@ describe("muxedAddress helpers", () => {
       );
     });
 
-    it("should allow memo when contract supports muxed", async () => {
+    it("should disable memo when contract does not support muxed and target is M address", async () => {
+      mockIsMuxedAccount.mockReturnValue(true);
+      mockIsContractId.mockReturnValue(false);
+      mockIsValidStellarAddress.mockReturnValue(false);
+
+      const result = await getMemoDisabledState({
+        targetAddress: "M...",
+        contractId: "contract123",
+        networkDetails,
+        t: mockT,
+      });
+
+      expect(result.isMemoDisabled).toBe(true);
+      expect(result.memoDisabledMessage).toBe(
+        "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
+      );
+    });
+
+    it("should allow memo when contract supports muxed and target is G address", async () => {
       mockIsMuxedAccount.mockReturnValue(false);
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(true);
@@ -133,7 +167,25 @@ describe("muxedAddress helpers", () => {
       expect(result.memoDisabledMessage).toBeUndefined();
     });
 
-    it("should disable memo on error checking contract", async () => {
+    it("should disable memo when contract supports muxed but target is M address", async () => {
+      mockIsMuxedAccount.mockReturnValue(true);
+      mockIsContractId.mockReturnValue(false);
+      mockIsValidStellarAddress.mockReturnValue(false);
+
+      const result = await getMemoDisabledState({
+        targetAddress: "M...",
+        contractId: "contract123",
+        networkDetails,
+        t: mockT,
+      });
+
+      expect(result.isMemoDisabled).toBe(true);
+      expect(result.memoDisabledMessage).toBe(
+        "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
+      );
+    });
+
+    it("should disable memo on error checking contract when target is G address", async () => {
       mockIsMuxedAccount.mockReturnValue(false);
       mockIsContractId.mockReturnValue(false);
       mockIsValidStellarAddress.mockReturnValue(true);
@@ -149,7 +201,27 @@ describe("muxedAddress helpers", () => {
       });
 
       expect(result.isMemoDisabled).toBe(true);
-      expect(result.memoDisabledMessage).toBeUndefined();
+      expect(result.memoDisabledMessage).toBe(
+        "translated:transactionSettings.memoInfo.memoNotSupportedForOperation",
+      );
+    });
+
+    it("should disable memo on error checking contract when target is M address", async () => {
+      mockIsMuxedAccount.mockReturnValue(true);
+      mockIsContractId.mockReturnValue(false);
+      mockIsValidStellarAddress.mockReturnValue(false);
+
+      const result = await getMemoDisabledState({
+        targetAddress: "M...",
+        contractId: "contract123",
+        networkDetails,
+        t: mockT,
+      });
+
+      expect(result.isMemoDisabled).toBe(true);
+      expect(result.memoDisabledMessage).toBe(
+        "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
+      );
     });
   });
 
