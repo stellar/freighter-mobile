@@ -478,9 +478,11 @@ export const removeHiddenCollectibleFromStorage = async (params: {
   try {
     const storage = await getHiddenCollectiblesStorage();
 
-    // Check if the user has any hidden collectibles for this network
+    // Throw an error here in case we find nothing in the storage
     if (!storage[publicKey] || !storage[publicKey][network]) {
-      return;
+      throw new Error(
+        `Cannot remove hidden collectible: storage not found for publicKey "${publicKey}" and network "${network}"`,
+      );
     }
 
     // Find the contract

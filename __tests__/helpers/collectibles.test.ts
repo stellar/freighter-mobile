@@ -892,20 +892,29 @@ describe("collectibles helpers", () => {
         );
       });
 
-      it("does nothing when publicKey does not exist", async () => {
+      it("throws error when publicKey does not exist", async () => {
         const mockStorage = {};
         (dataStorage.getItem as jest.Mock).mockResolvedValue(
           JSON.stringify(mockStorage),
         );
 
-        await removeHiddenCollectibleFromStorage({
-          network: "testnet",
-          publicKey: "non-existent-key",
-          contractId: "contract1",
-          tokenId: "token1",
-        });
+        await expect(
+          removeHiddenCollectibleFromStorage({
+            network: "testnet",
+            publicKey: "non-existent-key",
+            contractId: "contract1",
+            tokenId: "token1",
+          }),
+        ).rejects.toThrow(
+          'Cannot remove hidden collectible: storage not found for publicKey "non-existent-key" and network "testnet"',
+        );
 
         expect(dataStorage.setItem).not.toHaveBeenCalled();
+        expect(logger.error).toHaveBeenCalledWith(
+          "removeHiddenCollectibleFromStorage",
+          "Error removing hidden collectible from storage",
+          expect.any(Error),
+        );
       });
     });
   });
