@@ -80,7 +80,7 @@ jest.mock("helpers/soroban", () => ({
   isSorobanTransaction: jest.fn(),
 }));
 
-const mockGetMemoDisabledState = jest.fn().mockReturnValue({
+const mockGetMemoDisabledState = jest.fn().mockResolvedValue({
   isMemoDisabled: false,
   memoDisabledMessage: undefined,
 });
@@ -139,7 +139,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       network: NETWORKS.PUBLIC,
     } as any);
     mockIsContractId.mockReturnValue(false);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
@@ -169,7 +169,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
   });
 
   it("should handle async onSettingsChange correctly", async () => {
-    const asyncOnSettingsChange = jest.fn().mockReturnValue(undefined);
+    const asyncOnSettingsChange = jest.fn().mockResolvedValue(undefined);
 
     const { getByText } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -292,7 +292,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsContractId.mockReturnValue(false);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
@@ -312,7 +312,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: true,
       memoDisabledMessage:
         "transactionSettings.memoInfo.memoDisabledForTransaction",
@@ -350,7 +350,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
@@ -383,7 +383,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockIsContractId.mockImplementation(
       (address) => address === sorobanContractAddress,
     );
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
@@ -415,7 +415,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: true,
       memoDisabledMessage:
         "transactionSettings.memoInfo.memoDisabledForTransaction",
@@ -443,7 +443,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: true,
       memoDisabledMessage:
         "transactionSettings.memoInfo.memoDisabledForTransaction",
@@ -490,7 +490,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     });
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
@@ -525,7 +525,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
 
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
     mockIsContractId.mockReturnValue(false);
-    mockGetMemoDisabledState.mockReturnValue({
+    mockGetMemoDisabledState.mockResolvedValue({
       isMemoDisabled: false,
       memoDisabledMessage: undefined,
     });
