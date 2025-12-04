@@ -478,31 +478,33 @@ export const removeHiddenCollectibleFromStorage = async (params: {
   try {
     const storage = await getHiddenCollectiblesStorage();
 
+    const collectibleStorage = storage[publicKey]?.[network];
+
     // Throw an error here in case we find nothing in the storage
-    if (!storage[publicKey] || !storage[publicKey][network]) {
+    if (!collectibleStorage) {
       throw new Error(
         `Cannot remove hidden collectible: storage not found for publicKey "${publicKey}" and network "${network}"`,
       );
     }
 
     // Find the contract
-    const contractIndex = storage[publicKey][network].findIndex(
+    const contractIndex = collectibleStorage.findIndex(
       (contract) => contract.contractId === contractId,
     );
 
     if (contractIndex >= 0) {
-      const contract = storage[publicKey][network][contractIndex];
+      const contract = collectibleStorage[contractIndex];
 
       // Remove the token ID
       contract.tokenIds = contract.tokenIds.filter((id) => id !== tokenId);
 
       // If no more token IDs, remove the contract
       if (contract.tokenIds.length === 0) {
-        storage[publicKey][network].splice(contractIndex, 1);
+        collectibleStorage.splice(contractIndex, 1);
       }
 
       // If no more contracts for this network, clean up
-      if (storage[publicKey][network].length === 0) {
+      if (collectibleStorage.length === 0) {
         delete storage[publicKey][network];
       }
 
