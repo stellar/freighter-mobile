@@ -160,8 +160,8 @@ jobs:
 
             // Wait a moment for PR to be fully indexed by GitHub
             // This ensures the PR context is available when the test workflow runs
-            core.info("Waiting 3 seconds for PR to be fully indexed...");
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            core.info("Waiting 30 seconds for PR to be fully indexed...");
+            await new Promise(resolve => setTimeout(resolve, 30000));
 
             try {
               await github.rest.actions.createWorkflowDispatch({
