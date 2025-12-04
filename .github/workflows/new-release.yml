@@ -149,6 +149,33 @@ jobs:
               }
             }
 
+      - name: Trigger test workflow
+        uses: actions/github-script@v8
+        env:
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        with:
+          script: |
+            const branch = process.env.RELEASE_BRANCH;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            // Wait a moment for PR to be fully indexed by GitHub
+            // This ensures the PR context is available when the test workflow runs
+            core.info("Waiting 3 seconds for PR to be fully indexed...");
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: "test.yml",
+                ref: branch
+              });
+              core.notice(`Triggered Test workflow for branch ${branch}`);
+            } catch (error) {
+              core.warning(`Failed to trigger test workflow: ${error.message}`);
+              // Don't fail the workflow if test trigger fails - it's not critical
+            }
+
       - name: Trigger dev builds (initial QA)
         uses: actions/github-script@v8
         env:
