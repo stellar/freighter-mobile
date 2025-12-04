@@ -1201,6 +1201,50 @@ describe("useTokenFiatConverter", () => {
       // Should show "0.00" (or "0,00" depending on locale) when empty
       expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]00$/);
     });
+
+    it("should correctly handle typing '0,01' without replacing with '1,00'", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: mockBalance }),
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+
+      // Type "0" - starts from "0"
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]00$/);
+
+      // Type "," - should preserve "0," in raw input (display may format to "0,00")
+      act(() => {
+        result.current.handleDisplayAmountChange(",");
+      });
+      // The display might format "0," to "0,00", but internally it should preserve "0,"
+      // We verify by typing the next digit
+
+      // Type "0" - should show "0,0" (or "0.0") and NOT normalize to "0"
+      // This is the critical step - "0,0" should be preserved, not normalized
+      act(() => {
+        result.current.handleDisplayAmountChange("0");
+      });
+      // After typing "0" after "0,", we should have "0,0" which should be preserved
+      // The display might show "0,00" but the raw value should be "0,0"
+      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]0/);
+
+      // Type "1" - should show "0,01" (or "0.01") and NOT replace with "1,00"
+      // This is the bug fix - typing "1" after "0,0" should append to make "0,01"
+      act(() => {
+        result.current.handleDisplayAmountChange("1");
+      });
+      // Should show "0,01" (or "0.01")
+      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]01$/);
+
+      // Verify the internal fiat amount is correct (0.01)
+      expect(result.current.fiatAmount).toBe("0.01");
+    });
   });
 });
 

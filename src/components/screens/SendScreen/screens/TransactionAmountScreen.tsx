@@ -13,6 +13,7 @@ import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomS
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
+  HighlightedAmountDisplay,
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
@@ -82,6 +83,14 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
+/**
+ * Checks if a raw input value should skip highlighting.
+ * Only skip if it's exactly "0" (no decimal separator or trailing characters).
+ * Values like "0,", "0,00", ",00" should be highlighted.
+ */
+const shouldSkipHighlighting = (rawInput: string | null): boolean =>
+  // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
+  !rawInput || rawInput === "0" || rawInput === "";
 /**
  * TransactionAmountScreen Component
  *
@@ -348,8 +357,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     tokenAmount,
     tokenAmountDisplay,
-    fiatAmount,
     fiatAmountDisplay,
+    fiatAmountDisplayRaw,
     showFiatAmount,
     setShowFiatAmount,
     handleDisplayAmountChange,
@@ -813,18 +822,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
           <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
-              <Display
-                size={isSmallScreen ? "lg" : "xl"}
-                medium
-                adjustsFontSizeToFit
-                numberOfLines={1}
-                minimumFontScale={0.6}
-                {...(Number(fiatAmount) > 0
-                  ? { primary: true }
-                  : { secondary: true })}
-              >
-                {formatFiatInputDisplay(fiatAmountDisplay)}
-              </Display>
+              <HighlightedAmountDisplay
+                rawInput={
+                  fiatAmountDisplayRaw !== null &&
+                  !shouldSkipHighlighting(fiatAmountDisplayRaw)
+                    ? fiatAmountDisplayRaw
+                    : null
+                }
+                formattedDisplay={formatFiatInputDisplay(fiatAmountDisplay)}
+                isSmallScreen={isSmallScreen}
+                highlightColor={themeColors.text.primary}
+                normalColor={themeColors.text.primary}
+                secondaryColor={themeColors.text.secondary}
+              />
             ) : (
               <View className="flex-row items-center gap-[4px]">
                 <Display

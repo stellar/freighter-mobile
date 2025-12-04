@@ -11,11 +11,8 @@ import * as ReactNativeLocalize from "react-native-localize";
 
 describe("useTokenFiatConverter reducer helper functions", () => {
   describe("normalizeZeroDisplay", () => {
+    // These are formatted values (from calculations) that should be normalized to "0"
     it.each([
-      ["0,00", ","],
-      ["0.00", "."],
-      ["0,0", ","],
-      ["0.0", "."],
       ["0", "."], // Works with any separator
     ])("should normalize '%s' to '0'", (input, separator) => {
       jest
@@ -26,6 +23,27 @@ describe("useTokenFiatConverter reducer helper functions", () => {
 
       const result = normalizeZeroDisplay(input);
       expect(result).toBe("0");
+    });
+
+    // These are active decimal inputs that should be preserved
+    it.each([
+      ["0,0", ","],
+      ["0.0", "."],
+      ["0,00", ","],
+      ["0.00", "."],
+      ["0,01", ","],
+      ["0.01", "."],
+      ["0,1", ","],
+      ["0.1", "."],
+    ])("should preserve active decimal input '%s'", (input, separator) => {
+      jest
+        .spyOn(ReactNativeLocalize, "getNumberFormatSettings")
+        .mockReturnValue({
+          decimalSeparator: separator,
+        } as ReactNativeLocalize.NumberFormatSettings);
+
+      const result = normalizeZeroDisplay(input);
+      expect(result).toBe(input);
     });
 
     it.each([

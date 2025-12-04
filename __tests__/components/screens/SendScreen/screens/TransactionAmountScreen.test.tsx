@@ -408,8 +408,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: mockTokenAmount,
       tokenAmountDisplay: "100",
+      tokenAmountDisplayRaw: null,
       fiatAmount: "100.00",
       fiatAmountDisplay: "100.00",
+      fiatAmountDisplayRaw: null,
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
@@ -788,8 +790,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
       tokenAmountDisplay: "100",
+      tokenAmountDisplayRaw: null,
       fiatAmount: "100.00",
       fiatAmountDisplay: "100.00",
+      fiatAmountDisplayRaw: null,
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
@@ -841,8 +845,10 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: "100", // Non-zero amount
       tokenAmountDisplay: "100",
+      tokenAmountDisplayRaw: null,
       fiatAmount: "100.00",
       fiatAmountDisplay: "100.00",
+      fiatAmountDisplayRaw: null,
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
@@ -999,8 +1005,10 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     mockUseTokenFiatConverter.mockReturnValue({
       tokenAmount: mockTokenAmount,
       tokenAmountDisplay: "100",
+      tokenAmountDisplayRaw: null,
       fiatAmount: "100.00",
       fiatAmountDisplay: "100.00",
+      fiatAmountDisplayRaw: null,
       showFiatAmount: false,
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),

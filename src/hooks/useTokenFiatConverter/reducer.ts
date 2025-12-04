@@ -85,6 +85,8 @@ export const initialState: TokenFiatConverterState = {
  * Normalizes a display value that represents zero to "0" for input handling.
  * Handles various zero formats like "0,00", "0.00", "0,", "0.", "0,0", "0.0", etc.
  * Preserves partial decimal inputs like "0." or "0," to allow decimal entry.
+ * Also preserves values like "0,0" and "0,00" that are part of active decimal input
+ * (when user is typing digits after the decimal separator).
  *
  * @param {string} displayValue - The display value to normalize
  * @returns {string} "0" if the value represents zero, otherwise the original value
@@ -99,6 +101,14 @@ export const normalizeZeroDisplay = (displayValue: string): string => {
 
   // Don't normalize if it's just a decimal separator (user is starting with ".")
   if (displayValue === "." || displayValue === ",") {
+    return displayValue;
+  }
+
+  // Preserve values like "0,0", "0,00", "0.0", "0.00" etc. that are part of active decimal input
+  // These patterns indicate the user is actively typing a decimal value
+  // Pattern: starts with "0" followed by separator and one or more zeros (e.g., "0,0", "0,00")
+  // OR starts with "0" followed by separator and at least one non-zero digit (e.g., "0,01", "0,1")
+  if (/^0[,.]0+$/.test(displayValue) || /^0[,.]0*[1-9]/.test(displayValue)) {
     return displayValue;
   }
 
@@ -348,6 +358,32 @@ export const formatTokenAmount = (
 };
 
 /**
+ * Formats token amount for display with trimmed trailing zeros and locale-specific decimal separator.
+ * No minimum decimals are enforced - "0.2" stays as "0,2", not "0,20".
+ *
+ * @param {string} tokenAmount - The token amount in dot notation (e.g., "0.200000")
+ * @returns {string} The formatted token amount with locale decimal separator and trimmed trailing zeros (e.g., "0,2")
+ * @internal - Exported for testing purposes
+ */
+export const formatTokenAmountForDisplay = (tokenAmount: string): string => {
+  const bnTokenAmount = new BigNumber(tokenAmount);
+  if (!bnTokenAmount.isFinite()) {
+    return "0";
+  }
+
+  // Convert to string using BigNumber's minimal representation
+  // This removes trailing zeros automatically (e.g., "0.200000" -> "0.2")
+  let formattedAmount = bnTokenAmount.toString();
+
+  // Remove trailing decimal point if present (e.g., "1." -> "1")
+  formattedAmount = formattedAmount.replace(/\.$/, "");
+
+  // Replace dot with locale-specific decimal separator
+  const { decimalSeparator } = getNumberFormatSettings();
+  return formattedAmount.replace(".", decimalSeparator);
+};
+
+/**
  * Determines the fiat amount display raw value when switching to fiat mode.
  * Normalizes display for easier editing (e.g., "2.00" -> "2").
  *
@@ -429,6 +465,7 @@ export const createTokenFiatConverterReducer =
         let { tokenAmount } = state;
         let { fiatAmount } = state;
         let fiatAmountDisplayRaw: string | null = null;
+        let tokenAmountDisplayRaw: string | null = null;
 
         if (showFiatAmount) {
           // Format tokenAmount when switching to fiat mode to ensure consistent formatting
@@ -444,28 +481,56 @@ export const createTokenFiatConverterReducer =
           const displayResult = determineFiatDisplayRaw(calculatedFiat);
           fiatAmount = displayResult.fiatAmount;
           fiatAmountDisplayRaw = displayResult.fiatAmountDisplayRaw;
+
+          // If fiatAmountDisplayRaw is null (decimal value, not an integer),
+          // set it to the formatted fiat amount so it gets highlighted when switching modes
+          // This ensures amounts less than 1 (like 0.03) are highlighted
+          if (
+            fiatAmountDisplayRaw === null &&
+            !new BigNumber(calculatedFiat).isZero()
+          ) {
+            const { decimalSeparator } = getNumberFormatSettings();
+            fiatAmountDisplayRaw = calculatedFiat.replace(
+              ".",
+              decimalSeparator,
+            );
+          }
         } else {
           // Convert tokenAmount to fiat when switching back to token mode
           fiatAmount = recalculateFiatAmountFromToken(
             state.tokenAmount,
             tokenPrice,
           );
+
+          // Format tokenAmount when switching back to token mode
+          tokenAmount = formatTokenAmount(state.tokenAmount, tokenDecimals);
+
+          // If there was fiat input, set tokenAmountDisplayRaw to highlight the converted token amount
+          if (
+            state.fiatAmountDisplayRaw !== null &&
+            !new BigNumber(tokenAmount).isZero()
+          ) {
+            // Format token amount with locale-specific decimal separator and trimmed trailing zeros
+            tokenAmountDisplayRaw = formatTokenAmountForDisplay(tokenAmount);
+          }
         }
 
         // Determine final fiatAmountDisplayRaw value
-        const finalFiatAmountDisplayRaw: string | null = showFiatAmount
+        const finalFiatAmountDisplayRaw = showFiatAmount
           ? (fiatAmountDisplayRaw ?? state.fiatAmountDisplayRaw)
           : null;
+
+        // Determine final tokenAmountDisplayRaw value
+        const finalTokenAmountDisplayRaw = showFiatAmount
+          ? null
+          : (tokenAmountDisplayRaw ?? state.tokenAmountDisplayRaw);
 
         return {
           ...state,
           showFiatAmount,
           tokenAmount,
           fiatAmount,
-          // Clear raw inputs when switching modes
-          tokenAmountDisplayRaw: showFiatAmount
-            ? null
-            : state.tokenAmountDisplayRaw,
+          tokenAmountDisplayRaw: finalTokenAmountDisplayRaw,
           fiatAmountDisplayRaw: finalFiatAmountDisplayRaw,
         };
       }
