@@ -163,7 +163,7 @@ const TransactionSettingsBottomSheet: React.FC<
   }>({ isMemoDisabled: false });
 
   useEffect(() => {
-    const updateMemoState = async () => {
+    const updateMemoState = () => {
       if (!account?.publicKey || !recipientAddress) {
         setMemoState({ isMemoDisabled: false });
         return;
@@ -173,7 +173,7 @@ const TransactionSettingsBottomSheet: React.FC<
         ? mapNetworkToNetworkDetails(network)
         : undefined;
 
-      const state = await getMemoDisabledState({
+      const state = getMemoDisabledState({
         targetAddress: recipientAddress,
         contractId,
         networkDetails,
