@@ -203,13 +203,39 @@ export const removeCollectibleFromStorage = async (params: {
 };
 
 /**
+ * Checks if a collectible is hidden based on the hidden collectibles contracts
+ *
+ * @param collectionAddress The collection address of the collectible
+ * @param tokenId The token ID of the collectible
+ * @param hiddenCollectiblesContracts Optional array of hidden collectible contracts
+ * @returns True if the collectible is hidden, false otherwise
+ */
+const isCollectibleHidden = (
+  collectionAddress: string,
+  tokenId: string,
+  hiddenCollectiblesContracts?: CollectibleContract[],
+): boolean => {
+  if (!hiddenCollectiblesContracts?.length) {
+    return false;
+  }
+
+  return hiddenCollectiblesContracts.some(
+    (hiddenCollectibleContract) =>
+      hiddenCollectibleContract.contractId === collectionAddress &&
+      hiddenCollectibleContract.tokenIds.includes(tokenId),
+  );
+};
+
+/**
  * Transforms backend collectibles collections to frontend Collection interface
  *
  * @param backendCollections The backend collections
+ * @param hiddenCollectiblesContracts Optional array of hidden collectible contracts to set isHidden flag
  * @returns Promise resolving to transformed frontend collections
  */
 export const transformBackendCollections = async (
   backendCollections: BackendCollection[],
+  hiddenCollectiblesContracts?: CollectibleContract[],
 ): Promise<Collection[]> => {
   try {
     const transformedCollections: Collection[] = await Promise.all(
@@ -226,6 +252,13 @@ export const transformBackendCollections = async (
               }
 
               const metadata = (await response.json()) as CollectibleMetadata;
+
+              // Check if collectible is hidden
+              const isHidden = isCollectibleHidden(
+                collection.address,
+                collectible.token_id,
+                hiddenCollectiblesContracts,
+              );
 
               // Transform backend metadata to frontend Collectible interface
               return {
@@ -246,12 +279,20 @@ export const transformBackendCollections = async (
                     t("collectibles.fallbacks.unknownTrait"),
                   value: trait.value === undefined ? "" : trait.value,
                 })),
+                isHidden,
               };
             } catch (error) {
               logger.error(
                 "transformBackendCollections",
                 `Failed to fetch metadata for token ${collectible.token_id}:`,
                 error,
+              );
+
+              // Check if collectible is hidden (for fallback case too)
+              const isHidden = isCollectibleHidden(
+                collection.address,
+                collectible.token_id,
+                hiddenCollectiblesContracts,
               );
 
               // Return fallback collectible if metadata fetch fails
@@ -266,6 +307,7 @@ export const transformBackendCollections = async (
                 description: t("collectibles.fallbacks.descriptionUnavailable"),
                 externalUrl: "",
                 traits: [],
+                isHidden,
               };
             }
           }),
@@ -286,6 +328,198 @@ export const transformBackendCollections = async (
     logger.error(
       "transformBackendCollections",
       "Error transforming backend collections:",
+      error,
+    );
+    throw error;
+  }
+};
+
+/**
+ * Helper to get hidden collectibles storage from storage
+ * @returns The current hidden collectibles storage, or an empty object if none exists
+ */
+export const getHiddenCollectiblesStorage =
+  async (): Promise<CollectiblesStorage> => {
+    const storageData = await dataStorage.getItem(
+      STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+    );
+    if (!storageData) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(storageData) as CollectiblesStorage;
+    } catch (e) {
+      logger.error(
+        "getHiddenCollectiblesStorage",
+        "Error parsing hidden collectibles storage",
+        e,
+      );
+      return {};
+    }
+  };
+
+/**
+ * Helper to save hidden collectibles storage to storage
+ * @param storage The updated storage to save
+ */
+export const saveHiddenCollectiblesStorage = async (
+  storage: CollectiblesStorage,
+): Promise<void> => {
+  await dataStorage.setItem(
+    STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+    JSON.stringify(storage),
+  );
+};
+
+/**
+ * Retrieves hidden collectible contracts from local storage
+ *
+ * @param params The network and publicKey to retrieve contracts for
+ * @returns An array of hidden collectible contracts for the specified network and publicKey
+ */
+export const retrieveHiddenCollectibles = async (params: {
+  network: string;
+  publicKey: string;
+}): Promise<CollectibleContract[]> => {
+  const { network, publicKey } = params;
+
+  try {
+    const storage = await getHiddenCollectiblesStorage();
+    return storage?.[publicKey]?.[network] ?? [];
+  } catch (error) {
+    logger.error(
+      "retrieveHiddenCollectibles",
+      "Error retrieving hidden collectibles:",
+      error,
+    );
+    return [];
+  }
+};
+
+/**
+ * Adds a single collectible to hidden collectibles storage
+ *
+ * @param params The parameters for hiding a collectible
+ * @param params.network The network of the collectible
+ * @param params.publicKey The public key of the account
+ * @param params.contractId The contract ID of the collectible
+ * @param params.tokenId The token ID of the collectible
+ * @returns Promise that resolves when the collectible is hidden
+ */
+export const addHiddenCollectibleToStorage = async (params: {
+  network: string;
+  publicKey: string;
+  contractId: string;
+  tokenId: string;
+}): Promise<void> => {
+  const { network, publicKey, contractId, tokenId } = params;
+
+  try {
+    const storage = await getHiddenCollectiblesStorage();
+
+    // Initialize nested structure if needed
+    if (!storage[publicKey]) {
+      storage[publicKey] = {};
+    }
+
+    if (!storage[publicKey][network]) {
+      storage[publicKey][network] = [];
+    }
+
+    // Check if contract already exists
+    const existingContract = storage[publicKey][network].find(
+      (contract) => contract.contractId === contractId,
+    );
+
+    // Contract exists, add token ID if not already present
+    if (existingContract) {
+      if (!existingContract.tokenIds.includes(tokenId)) {
+        existingContract.tokenIds.push(tokenId);
+      }
+    } else {
+      // Contract doesn't exist, create new entry
+      storage[publicKey][network].push({
+        contractId,
+        tokenIds: [tokenId],
+      });
+    }
+
+    // Save back to storage
+    await saveHiddenCollectiblesStorage(storage);
+  } catch (error) {
+    logger.error(
+      "addHiddenCollectibleToStorage",
+      "Error adding hidden collectible to storage",
+      error,
+    );
+    throw error;
+  }
+};
+
+/**
+ * Removes a single collectible from hidden collectibles storage
+ *
+ * @param params The parameters for unhiding a collectible
+ * @param params.network The network of the collectible
+ * @param params.publicKey The public key of the account
+ * @param params.contractId The contract ID of the collectible
+ * @param params.tokenId The token ID of the collectible
+ * @returns Promise that resolves when the collectible is unhidden
+ */
+export const removeHiddenCollectibleFromStorage = async (params: {
+  network: string;
+  publicKey: string;
+  contractId: string;
+  tokenId: string;
+}): Promise<void> => {
+  const { network, publicKey, contractId, tokenId } = params;
+
+  try {
+    const storage = await getHiddenCollectiblesStorage();
+
+    const collectibleStorage = storage[publicKey]?.[network];
+
+    // Throw an error here in case we find nothing in the storage
+    if (!collectibleStorage) {
+      throw new Error(
+        `Cannot remove hidden collectible: storage not found for publicKey "${publicKey}" and network "${network}"`,
+      );
+    }
+
+    // Find the contract
+    const contractIndex = collectibleStorage.findIndex(
+      (contract) => contract.contractId === contractId,
+    );
+
+    if (contractIndex >= 0) {
+      const contract = collectibleStorage[contractIndex];
+
+      // Remove the token ID
+      contract.tokenIds = contract.tokenIds.filter((id) => id !== tokenId);
+
+      // If no more token IDs, remove the contract
+      if (contract.tokenIds.length === 0) {
+        collectibleStorage.splice(contractIndex, 1);
+      }
+
+      // If no more contracts for this network, clean up
+      if (collectibleStorage.length === 0) {
+        delete storage[publicKey][network];
+      }
+
+      // If no more networks for this public key, clean up
+      if (Object.keys(storage[publicKey]).length === 0) {
+        delete storage[publicKey];
+      }
+
+      // Save back to storage
+      await saveHiddenCollectiblesStorage(storage);
+    }
+  } catch (error) {
+    logger.error(
+      "removeHiddenCollectibleFromStorage",
+      "Error removing hidden collectible from storage",
       error,
     );
     throw error;

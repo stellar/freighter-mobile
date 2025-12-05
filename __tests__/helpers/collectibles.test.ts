@@ -2,10 +2,15 @@ import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   addCollectibleToStorage,
+  addHiddenCollectibleToStorage,
   getCollectiblesStorage,
+  getHiddenCollectiblesStorage,
   removeCollectibleFromStorage,
+  removeHiddenCollectibleFromStorage,
   retrieveCollectiblesContracts,
+  retrieveHiddenCollectibles,
   saveCollectiblesStorage,
+  saveHiddenCollectiblesStorage,
   transformBackendCollections,
 } from "helpers/collectibles";
 import { dataStorage } from "services/storage/storageFactory";
@@ -514,6 +519,7 @@ describe("collectibles helpers", () => {
               { name: "Color", value: "Blue" },
               { name: "Rarity", value: "Common" },
             ],
+            isHidden: false,
           },
           {
             collectionAddress: "collection1",
@@ -527,6 +533,7 @@ describe("collectibles helpers", () => {
               { name: "Color", value: "Blue" },
               { name: "Rarity", value: "Common" },
             ],
+            isHidden: false,
           },
         ],
       });
@@ -546,6 +553,7 @@ describe("collectibles helpers", () => {
         description: "Description unavailable",
         externalUrl: "",
         traits: [],
+        isHidden: false,
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -583,6 +591,7 @@ describe("collectibles helpers", () => {
           { name: "Unknown", value: "Blue" }, // Fallback trait_type
           { name: "Rarity", value: "" }, // Empty value for missing value
         ],
+        isHidden: false,
       });
     });
 
@@ -603,6 +612,7 @@ describe("collectibles helpers", () => {
         description: "Description unavailable",
         externalUrl: "",
         traits: [],
+        isHidden: false,
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -621,6 +631,291 @@ describe("collectibles helpers", () => {
         "Error transforming backend collections:",
         expect.any(Error),
       );
+    });
+
+    it("sets isHidden to true when collectible is in hidden list", async () => {
+      const hiddenCollectiblesContracts = [
+        {
+          contractId: "collection1",
+          tokenIds: ["token1"],
+        },
+      ];
+
+      const result = await transformBackendCollections(
+        mockBackendCollections,
+        hiddenCollectiblesContracts,
+      );
+
+      expect(result[0].items[0].isHidden).toBe(true);
+      expect(result[0].items[1].isHidden).toBe(false);
+    });
+
+    it("sets isHidden to false when no hidden collectibles provided", async () => {
+      const result = await transformBackendCollections(
+        mockBackendCollections,
+        undefined,
+      );
+
+      expect(result[0].items[0].isHidden).toBe(false);
+      expect(result[0].items[1].isHidden).toBe(false);
+    });
+  });
+
+  describe("hidden collectibles storage", () => {
+    describe("getHiddenCollectiblesStorage", () => {
+      it("returns empty object when no storage data exists", async () => {
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+        const result = await getHiddenCollectiblesStorage();
+
+        expect(result).toEqual({});
+        expect(dataStorage.getItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+        );
+      });
+
+      it("returns parsed storage data when valid JSON exists", async () => {
+        const mockStorage = { "test-key": { testnet: [] } };
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+
+        const result = await getHiddenCollectiblesStorage();
+
+        expect(result).toEqual(mockStorage);
+      });
+
+      it("returns empty object and logs error when JSON parsing fails", async () => {
+        (dataStorage.getItem as jest.Mock).mockResolvedValue("invalid-json");
+
+        const result = await getHiddenCollectiblesStorage();
+
+        expect(result).toEqual({});
+        expect(logger.error).toHaveBeenCalledWith(
+          "getHiddenCollectiblesStorage",
+          "Error parsing hidden collectibles storage",
+          expect.any(Error),
+        );
+      });
+    });
+
+    describe("saveHiddenCollectiblesStorage", () => {
+      it("saves storage data as JSON string", async () => {
+        const mockStorage = { "test-key": { testnet: [] } };
+        (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+        await saveHiddenCollectiblesStorage(mockStorage);
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+          JSON.stringify(mockStorage),
+        );
+      });
+    });
+
+    describe("retrieveHiddenCollectibles", () => {
+      it("returns hidden collectibles for existing publicKey and network", async () => {
+        const mockHiddenCollectibles = [
+          { contractId: "contract1", tokenIds: ["token1", "token2"] },
+          { contractId: "contract2", tokenIds: ["token3"] },
+        ];
+        const mockStorage = {
+          "test-public-key": {
+            testnet: mockHiddenCollectibles,
+          },
+        };
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+
+        const result = await retrieveHiddenCollectibles({
+          network: "testnet",
+          publicKey: "test-public-key",
+        });
+
+        expect(result).toEqual(mockHiddenCollectibles);
+      });
+
+      it("returns empty array when publicKey does not exist", async () => {
+        const mockStorage = {};
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+
+        const result = await retrieveHiddenCollectibles({
+          network: "testnet",
+          publicKey: "non-existent-key",
+        });
+
+        expect(result).toEqual([]);
+      });
+
+      it("returns empty array and logs error when storage access fails", async () => {
+        (dataStorage.getItem as jest.Mock).mockRejectedValue(
+          new Error("Storage error"),
+        );
+
+        const result = await retrieveHiddenCollectibles({
+          network: "testnet",
+          publicKey: "test-public-key",
+        });
+
+        expect(result).toEqual([]);
+        expect(logger.error).toHaveBeenCalledWith(
+          "retrieveHiddenCollectibles",
+          "Error retrieving hidden collectibles:",
+          expect.any(Error),
+        );
+      });
+    });
+
+    describe("addHiddenCollectibleToStorage", () => {
+      it("adds new hidden collectible when contract does not exist", async () => {
+        const mockStorage = {};
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+        (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+        await addHiddenCollectibleToStorage({
+          network: "testnet",
+          publicKey: "test-public-key",
+          contractId: "contract1",
+          tokenId: "token1",
+        });
+
+        const expectedStorage = {
+          "test-public-key": {
+            testnet: [{ contractId: "contract1", tokenIds: ["token1"] }],
+          },
+        };
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+          JSON.stringify(expectedStorage),
+        );
+      });
+
+      it("adds tokenId to existing hidden contract", async () => {
+        const mockStorage = {
+          "test-public-key": {
+            testnet: [{ contractId: "contract1", tokenIds: ["token1"] }],
+          },
+        };
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+        (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+        await addHiddenCollectibleToStorage({
+          network: "testnet",
+          publicKey: "test-public-key",
+          contractId: "contract1",
+          tokenId: "token2",
+        });
+
+        const expectedStorage = {
+          "test-public-key": {
+            testnet: [
+              { contractId: "contract1", tokenIds: ["token1", "token2"] },
+            ],
+          },
+        };
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+          JSON.stringify(expectedStorage),
+        );
+      });
+
+      it("does not add duplicate tokenId", async () => {
+        const mockStorage = {
+          "test-public-key": {
+            testnet: [{ contractId: "contract1", tokenIds: ["token1"] }],
+          },
+        };
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+        (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+        await addHiddenCollectibleToStorage({
+          network: "testnet",
+          publicKey: "test-public-key",
+          contractId: "contract1",
+          tokenId: "token1",
+        });
+
+        const expectedStorage = {
+          "test-public-key": {
+            testnet: [{ contractId: "contract1", tokenIds: ["token1"] }],
+          },
+        };
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+          JSON.stringify(expectedStorage),
+        );
+      });
+    });
+
+    describe("removeHiddenCollectibleFromStorage", () => {
+      it("removes tokenId from existing hidden contract", async () => {
+        const mockStorage = {
+          "test-public-key": {
+            testnet: [
+              { contractId: "contract1", tokenIds: ["token1", "token2"] },
+            ],
+          },
+        };
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+        (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+        await removeHiddenCollectibleFromStorage({
+          network: "testnet",
+          publicKey: "test-public-key",
+          contractId: "contract1",
+          tokenId: "token1",
+        });
+
+        const expectedStorage = {
+          "test-public-key": {
+            testnet: [{ contractId: "contract1", tokenIds: ["token2"] }],
+          },
+        };
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.HIDDEN_COLLECTIBLES_LIST,
+          JSON.stringify(expectedStorage),
+        );
+      });
+
+      it("throws error when publicKey does not exist", async () => {
+        const mockStorage = {};
+        (dataStorage.getItem as jest.Mock).mockResolvedValue(
+          JSON.stringify(mockStorage),
+        );
+
+        await expect(
+          removeHiddenCollectibleFromStorage({
+            network: "testnet",
+            publicKey: "non-existent-key",
+            contractId: "contract1",
+            tokenId: "token1",
+          }),
+        ).rejects.toThrow(
+          'Cannot remove hidden collectible: storage not found for publicKey "non-existent-key" and network "testnet"',
+        );
+
+        expect(dataStorage.setItem).not.toHaveBeenCalled();
+        expect(logger.error).toHaveBeenCalledWith(
+          "removeHiddenCollectibleFromStorage",
+          "Error removing hidden collectible from storage",
+          expect.any(Error),
+        );
+      });
     });
   });
 });

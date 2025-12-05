@@ -48,6 +48,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
+  HIDDEN_COLLECTIBLES_SCREEN: "HiddenCollectiblesScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -158,6 +159,7 @@ export type RootStackParamList = {
     tokenId: string;
   };
   [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN]: undefined;
 };
 
 export type AuthStackParamList = {

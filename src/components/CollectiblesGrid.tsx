@@ -17,9 +17,24 @@ import {
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
+
+/**
+ * Opacity value for hidden collectibles in the UI.
+ * Used to visually differentiate hidden collectibles from visible ones.
+ */
+export const HIDDEN_COLLECTIBLE_OPACITY = 0.25;
+
+/**
+ * Filter type for collectibles display
+ */
+export enum CollectibleFilterType {
+  VISIBLE = "visible",
+  HIDDEN = "hidden",
+}
 
 /**
  * Props for the CollectiblesGrid component
@@ -35,6 +50,9 @@ interface CollectiblesGridProps {
   }) => void;
   /** Whether to disable internal scrolling (for use in parent ScrollView) */
   disableInnerScrolling?: boolean;
+
+  /** Type to determine which collectibles to display. Defaults to VISIBLE. */
+  type?: CollectibleFilterType;
 }
 
 /**
@@ -49,22 +67,41 @@ interface CollectiblesGridProps {
  * - Pull-to-refresh functionality
  * - Responsive grid layout with proper spacing
  * - Memoized rendering for performance optimization
+ * - Supports filtering by visible or hidden collectibles via the `type` prop
+ * - Visual distinction for hidden collectibles (reduced opacity with eye-off icon)
  *
  * The component automatically fetches collectibles data on mount and provides
- * a refresh mechanism for users to update the data manually.
+ * a refresh mechanism for users to update the data manually. It uses the
+ * `useFilteredCollectibles` hook to separate visible and hidden collectibles.
  *
  * @param {CollectiblesGridProps} props - Component props
  * @param {Function} [props.onCollectiblePress] - Callback function when a collectible is pressed
+ * @param {CollectibleFilterType} [props.type] - Filter type to determine which collectibles to display (VISIBLE or HIDDEN). Defaults to VISIBLE.
+ * @param {boolean} [props.disableInnerScrolling] - Whether to disable internal scrolling (for use in parent ScrollView)
  * @returns {JSX.Element} The collectibles grid component
  */
 export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
-  ({ onCollectiblePress, disableInnerScrolling = false }) => {
+  ({
+    onCollectiblePress,
+    disableInnerScrolling = false,
+    type = CollectibleFilterType.VISIBLE,
+  }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
     const { network } = useAuthenticationStore();
-    const { collections, isLoading, error, fetchCollectibles } =
-      useCollectiblesStore();
+    const { isLoading, error, fetchCollectibles } = useCollectiblesStore();
+
+    // Separate visible and hidden collectibles using the hook
+    const { visibleCollectibles, hiddenCollectibles } =
+      useFilteredCollectibles();
+
+    const isTypeHidden = type === CollectibleFilterType.HIDDEN;
+
+    // Select the appropriate collections based on type prop
+    const filteredCollections = isTypeHidden
+      ? hiddenCollectibles
+      : visibleCollectibles;
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -97,10 +134,27 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             })
           }
         >
-          <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
+          <View
+            style={
+              item.isHidden
+                ? { opacity: HIDDEN_COLLECTIBLE_OPACITY }
+                : undefined
+            }
+            className="w-full h-full"
+          >
+            <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
+          </View>
+          {item.isHidden && (
+            <View
+              className="absolute inset-0 items-center justify-center z-10"
+              pointerEvents="none"
+            >
+              <Icon.EyeOff size={20} color={themeColors.text.primary} />
+            </View>
+          )}
         </TouchableOpacity>
       ),
-      [onCollectiblePress],
+      [onCollectiblePress, themeColors.text.primary],
     );
 
     const renderCollection = useCallback(
@@ -116,7 +170,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
               {item.collectionName}
             </Text>
             <Text medium secondary>
-              {item.count}
+              {item.items.length}
             </Text>
           </View>
           <FlatList
@@ -168,7 +222,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         >
           <Icon.Grid01 size={20} color={themeColors.text.secondary} />
           <Text md medium secondary>
-            {t("collectiblesGrid.empty")}
+            {isTypeHidden
+              ? t("collectiblesGrid.emptyHidden")
+              : t("collectiblesGrid.empty")}
           </Text>
         </View>
       </View>
@@ -180,13 +236,13 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         return renderErrorView();
       }
 
-      if (!collections.length) {
+      if (!filteredCollections.length) {
         return renderEmptyView();
       }
 
       return (
         <View>
-          {collections.map((collection) =>
+          {filteredCollections.map((collection) =>
             renderCollection({ item: collection }),
           )}
         </View>
@@ -196,7 +252,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     // For all other states, wrap content in FlatList with RefreshControl
     return (
       <FlatList
-        data={collections}
+        data={filteredCollections}
         renderItem={renderCollection}
         keyExtractor={(collection) => collection.collectionAddress}
         showsVerticalScrollIndicator={false}

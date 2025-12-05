@@ -453,7 +453,9 @@
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
-    "menuAddManually": "Add manually"
+    "emptyHidden": "No hidden collectibles",
+    "menuAddManually": "Add manually",
+    "menuHidenCollectibles": "Hidden collectibles"
   },
   "collectibleDetails": {
     "title": "Collectible Details",
@@ -470,7 +472,11 @@
     "saveToPhotos": "Save to photos",
     "imageSavedToPhotos": "Image saved to photos",
     "imageSaveFailed": "Failed to save image to photos",
-    "imageSaveAttempted": "Save attempted, check your photos"
+    "imageSaveAttempted": "Save attempted, check your photos",
+    "hideCollectible": "Hide collectible",
+    "showCollectible": "Show collectible",
+    "hideSuccess": "Successfully hid collectible",
+    "hiddenBanner": "This collectible is hidden"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -486,6 +492,9 @@
     "toastSuccess": "Successfully added collectible",
     "toastError": "Error adding collectible. {{errorMessage}}",
     "alreadyInWallet": "This collectible is already in your wallet"
+  },
+  "hiddenCollectiblesScreen": {
+    "title": "Hidden Collectibles"
   },
   "collectibles": {
     "errors": {
