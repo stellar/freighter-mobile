@@ -216,7 +216,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </View>
           ),
         },
-        // Hide memo line if recipient is a muxed address (M- address)
+        // Hide memo line for M addresses (memo is encoded in the address)
         !isRecipientMuxed
           ? {
               icon: (

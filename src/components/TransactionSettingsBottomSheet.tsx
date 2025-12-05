@@ -25,7 +25,10 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import { isContractId } from "helpers/soroban";
+import {
+  isContractId,
+  isSorobanTransaction as checkIsSorobanTransaction,
+} from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -104,23 +107,25 @@ const TransactionSettingsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
+  const isCollectibleTransfer =
+    Boolean(selectedCollectibleDetails?.collectionAddress) &&
+    Boolean(selectedCollectibleDetails?.tokenId);
+
+  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer ||
+      checkIsSorobanTransaction(selectedBalance, recipientAddress),
+  );
+
+  // Keep isCustomToken for contractId determination below
   const isCustomToken = Boolean(
     selectedBalance &&
       "contractId" in selectedBalance &&
       Boolean(selectedBalance.contractId),
   );
 
-  const isCollectibleTransfer =
-    Boolean(selectedCollectibleDetails?.collectionAddress) &&
-    Boolean(selectedCollectibleDetails?.tokenId);
-
   const isSorobanRecipient = Boolean(
     recipientAddress && isContractId(recipientAddress),
-  );
-
-  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
-  const isSorobanTransaction = Boolean(
-    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
 
   // Determine contract ID for Soroban transactions

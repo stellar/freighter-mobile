@@ -111,7 +111,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
         },
-        // Hide memo line if destination is a muxed address (M- address)
+        // Hide memo line for M addresses (memo is encoded in the address)
         !isDestinationMuxed
           ? {
               icon: (
