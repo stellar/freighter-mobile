@@ -64,6 +64,8 @@ interface Props {
   showSpendableAmount?: boolean;
   /** Type of fee to use for spendable amount calculation */
   feeContext?: TransactionContext;
+  /** Whether to disable inner scrolling for both the tokens and collectibles grids */
+  disableInnerScrolling?: boolean;
 }
 
 /**
@@ -98,6 +100,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     onCollectiblePress,
     showSpendableAmount = false,
     feeContext = TransactionContext.Send,
+    disableInnerScrolling = false,
   }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
@@ -174,6 +177,17 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           onPress: () =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN),
         },
+        {
+          title: t("collectiblesGrid.menuHidenCollectibles"),
+          systemIcon: Platform.select({
+            ios: "eye.slash",
+            android: "visibility_off",
+          }),
+          onPress: () =>
+            navigation.navigate(
+              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
+            ),
+        },
       ];
 
       // Reverse the array for iOS to match Android behavior
@@ -190,12 +204,19 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           publicKey={publicKey}
           network={network}
           onTokenPress={onTokenPress}
-          disableInnerScrolling
+          disableInnerScrolling={disableInnerScrolling}
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
         />
       ),
-      [publicKey, network, onTokenPress, showSpendableAmount, feeContext],
+      [
+        publicKey,
+        network,
+        onTokenPress,
+        showSpendableAmount,
+        feeContext,
+        disableInnerScrolling,
+      ],
     );
 
     /**
@@ -214,11 +235,11 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         >
           <CollectiblesGrid
             onCollectiblePress={onCollectiblePress}
-            disableInnerScrolling
+            disableInnerScrolling={disableInnerScrolling}
           />
         </View>
       ),
-      [onCollectiblePress],
+      [onCollectiblePress, disableInnerScrolling],
     );
 
     /**

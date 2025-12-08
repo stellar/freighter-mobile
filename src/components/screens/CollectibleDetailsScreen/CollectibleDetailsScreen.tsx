@@ -3,6 +3,7 @@ import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -229,6 +230,18 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
               placeholderIconSize={90}
             />
           </View>
+
+          {/* Hidden Collectible Banner */}
+          {collectible.isHidden && (
+            <View className="mb-6">
+              <Banner
+                variant="warning"
+                text={t("collectibleDetails.hiddenBanner")}
+                showChevron={false}
+                icon={<Icon.EyeOff size={16} themeColor="amber" />}
+              />
+            </View>
+          )}
 
           {/* Basic Information */}
           <View className="mb-6">

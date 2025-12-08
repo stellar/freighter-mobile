@@ -307,6 +307,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
           {/* Tokens and Collectibles tabs content */}
           <TokensCollectiblesTabs
+            // Should disable inner scrolling here since the whole Home screen is scrollable
+            disableInnerScrolling
             showTokensSettings={hasTokens}
             publicKey={account?.publicKey ?? ""}
             network={network}
