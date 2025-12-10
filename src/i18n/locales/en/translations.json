@@ -1203,11 +1203,9 @@
       "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
     }
   },
-  "security": {
-    "jailbreakDetected": {
-      "title": "Security Risk Detected",
-      "description": "Freighter cannot run on jailbroken or rooted devices. Using a wallet app on a compromised device puts your funds at significant risk of theft.",
-      "disclaimer": "To protect your assets, Freighter is unavailable on this device. Please use Freighter on a secure, unmodified device."
-    }
+  "jailbreakDetected": {
+    "title": "Jailbreak Detected",
+    "description": "Freighter cannot run on jailbroken or rooted devices. Using a wallet app on a compromised device puts your funds at significant risk of theft.",
+    "disclaimer": "To protect your assets, Freighter is unavailable on this device. Please use Freighter on a secure, unmodified device."
   }
 }

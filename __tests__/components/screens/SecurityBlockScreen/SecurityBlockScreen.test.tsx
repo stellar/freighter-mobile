@@ -36,16 +36,16 @@ describe("SecurityBlockScreen", () => {
 
   it("renders the security warning title", () => {
     const { getByText } = renderSecurityBlockScreen();
-    expect(getByText("security.jailbreakDetected.title")).toBeTruthy();
+    expect(getByText("jailbreakDetected.title")).toBeTruthy();
   });
 
   it("renders the security warning description", () => {
     const { getByText } = renderSecurityBlockScreen();
-    expect(getByText("security.jailbreakDetected.description")).toBeTruthy();
+    expect(getByText("jailbreakDetected.description")).toBeTruthy();
   });
 
   it("renders the security warning disclaimer", () => {
     const { getByText } = renderSecurityBlockScreen();
-    expect(getByText("security.jailbreakDetected.disclaimer")).toBeTruthy();
+    expect(getByText("jailbreakDetected.disclaimer")).toBeTruthy();
   });
 });

@@ -19,7 +19,7 @@ export const SecurityBlockScreen: React.FC = () => {
         <View className="mb-6">
           <Icon.AlertCircle
             circle
-            size={56}
+            size={32}
             circleBackground={themeColors.red[3]}
             circleBorder={themeColors.red[6]}
             themeColor="red"
@@ -27,16 +27,18 @@ export const SecurityBlockScreen: React.FC = () => {
         </View>
 
         <Text className="text-xl font-semibold text-gray-12 text-left mb-4">
-          {t("security.jailbreakDetected.title")}
+          {t("jailbreakDetected.title")}
         </Text>
 
         <SDSText secondary md>
-          {t("security.jailbreakDetected.description")}
+          {t("jailbreakDetected.description")}
         </SDSText>
 
-        <SDSText secondary sm>
-          {t("security.jailbreakDetected.disclaimer")}
-        </SDSText>
+        <View className="mt-4">
+          <SDSText secondary md>
+            {t("jailbreakDetected.disclaimer")}
+          </SDSText>
+        </View>
       </View>
     </View>
   );
