@@ -1205,8 +1205,8 @@
     }
   },
   "jailbreakDetected": {
-    "title": "Jailbreak Detectado",
-    "description": "O Freighter não pode ser executado em dispositivos com jailbreak ou root. Usar um aplicativo de carteira em um dispositivo comprometido coloca seus fundos em risco significativo de roubo.",
-    "disclaimer": "Para proteger seus ativos, o Freighter não está disponível neste dispositivo. Use o Freighter em um dispositivo seguro e não modificado."
+    "title": "Não é possível executar neste dispositivo",
+    "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
+    "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
   }
 }

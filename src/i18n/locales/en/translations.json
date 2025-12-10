@@ -1204,8 +1204,8 @@
     }
   },
   "jailbreakDetected": {
-    "title": "Jailbreak Detected",
-    "description": "Freighter cannot run on jailbroken or rooted devices. Using a wallet app on a compromised device puts your funds at significant risk of theft.",
-    "disclaimer": "To protect your assets, Freighter is unavailable on this device. Please use Freighter on a secure, unmodified device."
+    "title": "Cannot run on this device",
+    "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
+    "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
   }
 }
