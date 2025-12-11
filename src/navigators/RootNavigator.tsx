@@ -77,7 +77,7 @@ export const RootNavigator = () => {
   );
   const [initializing, setInitializing] = useState(true);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
-  const [isJailbroken, setIsJailbroken] = useState(true);
+  const [isJailbroken, setIsJailbroken] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
@@ -94,7 +94,7 @@ export const RootNavigator = () => {
       postInitializeCallback?: () => void,
     ): Promise<void> => {
       const deviceCompromised = isDeviceJailbroken();
-      setIsJailbroken(!deviceCompromised);
+      setIsJailbroken(deviceCompromised);
 
       if (deviceCompromised) {
         setInitializing(false);
@@ -152,12 +152,12 @@ export const RootNavigator = () => {
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
   }, [authStatus]);
 
-  if (initializing) {
-    return <LoadingScreen />;
+  if (isJailbroken) {
+    return <SecurityBlockScreen />;
   }
 
-  if (!isJailbroken) {
-    return <SecurityBlockScreen />;
+  if (initializing) {
+    return <LoadingScreen />;
   }
 
   // Show force update screen if required
