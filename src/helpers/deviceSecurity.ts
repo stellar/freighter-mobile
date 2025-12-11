@@ -1,10 +1,19 @@
+import * as Sentry from "@sentry/react-native";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import JailMonkey from "jail-monkey";
+import { analytics } from "services/analytics";
 
 export const isDeviceJailbroken = (): boolean => {
   try {
-    return JailMonkey.isJailBroken();
+    const isJailBroken = JailMonkey.isJailBroken();
+    if (isJailBroken) {
+      analytics.track(AnalyticsEvent.DEVICE_JAILBREAK_DETECTED);
+    }
+    return isJailBroken;
   } catch (error) {
-    // Fail closed - treat errors as jailbroken device
-    return true;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    Sentry.captureMessage(`[isJailBroken] ${errorMessage}`, "error");
+    analytics.track(AnalyticsEvent.DEVICE_JAILBREAK_FAILED);
+    return false;
   }
 };
