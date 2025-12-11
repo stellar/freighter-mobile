@@ -43,4 +43,31 @@ const getHashKey = async (): Promise<HashKey | null> => {
   return hashKey ? (JSON.parse(hashKey) as HashKey) : null;
 };
 
-export { clearTemporaryData, clearNonSensitiveData, getHashKey };
+/**
+ * Refreshes the hash key expiration time
+ */
+const refreshHashKeyExpiration = async (
+  expirationMs: number,
+): Promise<void> => {
+  const hashKey = await getHashKey();
+  if (!hashKey) {
+    return;
+  }
+
+  const updatedHashKey: HashKey = {
+    ...hashKey,
+    expiresAt: Date.now() + expirationMs,
+  };
+
+  await secureDataStorage.setItem(
+    SENSITIVE_STORAGE_KEYS.HASH_KEY,
+    JSON.stringify(updatedHashKey),
+  );
+};
+
+export {
+  clearTemporaryData,
+  clearNonSensitiveData,
+  getHashKey,
+  refreshHashKeyExpiration,
+};

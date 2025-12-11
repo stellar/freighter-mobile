@@ -65,6 +65,7 @@ export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const HASH_KEY_BACKGROUND_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes when in background
 export const VISUAL_DELAY_MS = 500;
 
 // Recovery phrase validation constants

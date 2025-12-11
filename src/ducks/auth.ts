@@ -295,9 +295,9 @@ interface AuthActions {
   refreshActiveAccount: () => Promise<ActiveAccount | null>;
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
-  getTemporaryStore: () => Promise<TemporaryStore | null>;
   verifyBiometrics: () => Promise<boolean>;
   storeBiometricPassword: (password: string) => Promise<void>;
+  initBiometricPassword: () => Promise<boolean>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -349,6 +349,9 @@ const initializeStore = async (
   setState: (state: Partial<AuthState>) => void,
 ) => {
   try {
+    await clearTemporaryData();
+    setState({ authStatus: AUTH_STATUS.HASH_KEY_EXPIRED });
+
     const activeNetwork = await dataStorage.getItem(
       STORAGE_KEYS.ACTIVE_NETWORK,
     );
@@ -357,7 +360,7 @@ const initializeStore = async (
       setState({ network: activeNetwork as NETWORKS });
     }
   } catch (error) {
-    logger.error("initializeStore", "Failed to load active network", error);
+    logger.error("initializeStore", "Failed to initialize store", error);
   }
 };
 
@@ -456,26 +459,116 @@ const decryptTemporaryStore = async (
   return JSON.parse(decryptedData) as TemporaryStore;
 };
 
+// Track repeated failures for monitoring
+let getTemporaryStoreFailureCount = 0;
+let lastFailureTimestamp = 0;
+const FAILURE_RESET_WINDOW_MS = 60000; // 1 minute window
+const SUSPICIOUS_FAILURE_THRESHOLD = 3; // Log warning after 3 failures
+
+/**
+ * Tracks and logs unauthorized access attempts for monitoring
+ */
+const trackUnauthorizedAccessAttempt = (context: string): void => {
+  const now = Date.now();
+
+  // Reset count if outside the time window
+  if (now - lastFailureTimestamp > FAILURE_RESET_WINDOW_MS) {
+    getTemporaryStoreFailureCount = 0;
+  }
+
+  getTemporaryStoreFailureCount++;
+  lastFailureTimestamp = now;
+
+  if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
+    logger.error(
+      "[getTemporaryStore]",
+      "Suspicious repeated failures detected",
+      `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms. Context: ${context}`,
+    );
+  }
+};
+
+/**
+ * Resets the failure count on successful access
+ */
+const resetFailureTracking = (): void => {
+  getTemporaryStoreFailureCount = 0;
+};
+
+/**
+ * Gets the current auth status from the store (lazy getter to avoid use-before-define)
+ */
+const getCurrentAuthStatus = (): AuthStatus | undefined => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    return useAuthenticationStore?.getState()?.authStatus;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Retrieves data from the temporary store
  *
  * Gets the hash key, retrieves the encrypted temporary store,
- * and decrypts it to access sensitive data.
+ * and decrypts it to access the data.
  *
+ * @param {AuthStatus} [authStatus] - Optional auth status to check. If not provided, will try to get from store.
  * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if retrieval failed
+ * @throws {Error} If access check fails
  */
-const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
+const getTemporaryStore = async (
+  authStatus?: AuthStatus,
+): Promise<TemporaryStore | null> => {
   try {
     const hashKey = await getHashKey();
 
     if (!hashKey) {
       logger.error(
         "[getTemporaryStore]",
-        "Hash key error",
-        "Hash key not found",
+        "Unauthorized access attempt",
+        "Hash key not found - user must sign in",
       );
 
-      return null;
+      trackUnauthorizedAccessAttempt("Hash key not found");
+
+      throw new Error(
+        "Unauthorized temporary store access: Hash key not found. User must sign in.",
+      );
+    }
+
+    // Reset failure count on successful access
+    resetFailureTracking();
+
+    if (isHashKeyExpired(hashKey)) {
+      logger.error(
+        "[getTemporaryStore]",
+        "Unauthorized access attempt",
+        "Hash key has expired, access denied",
+      );
+
+      trackUnauthorizedAccessAttempt("Hash key expired");
+
+      throw new Error(
+        "Unauthorized temporary store access: Hash key expired. User must sign in again.",
+      );
+    }
+
+    // Get authStatus from parameter or store (if available)
+    const currentAuthStatus = authStatus ?? getCurrentAuthStatus();
+
+    if (currentAuthStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
+      logger.error(
+        "[getTemporaryStore]",
+        "Unauthorized access attempt",
+        `Auth status: ${currentAuthStatus}. User is logged out. Access denied.`,
+      );
+
+      trackUnauthorizedAccessAttempt("User not authenticated");
+
+      throw new Error(
+        "Unauthorized temporary store access: User is logged out. Please sign in.",
+      );
     }
 
     // Get the encrypted temporary store
@@ -502,11 +595,17 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
       if (!decryptedTemporaryStore) {
         logger.error(
           "[getTemporaryStore]",
-          "decryption error",
-          "Failed to decrypt temporary store",
+          "Unauthorized access attempt",
+          "Failed to decrypt temporary store - hash key may be wrong or corrupted",
         );
 
-        return null;
+        trackUnauthorizedAccessAttempt("Decryption failed");
+
+        await clearTemporaryData();
+
+        throw new Error(
+          "Unauthorized temporary store access: Failed to decrypt. Hash key may be wrong, corrupted, or temporary store is invalid. Please sign in again.",
+        );
       }
 
       // Validate the structure of the temporary store
@@ -515,34 +614,39 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
         !decryptedTemporaryStore.mnemonicPhrase
       ) {
         logger.error(
-          "getTemporaryStore",
-          "invalid structure error",
-          "Temporary store has invalid structure",
+          "[getTemporaryStore]",
+          "Unauthorized access attempt",
+          "Temporary store has invalid structure - data may be corrupted",
         );
+
+        trackUnauthorizedAccessAttempt("Invalid data structure");
 
         await clearTemporaryData();
 
-        return null;
+        throw new Error(
+          "Unauthorized temporary store access: Invalid data structure. Temporary store may be corrupted. Please sign in again.",
+        );
       }
 
       return decryptedTemporaryStore;
     } catch (error) {
       logger.error(
         "[getTemporaryStore]",
-        "Failed to decrypt temporary store",
-        error,
+        "Unauthorized access attempt",
+        `Failed to decrypt temporary store: ${error instanceof Error ? error.message : String(error)}. Hash key may be wrong or corrupted.`,
       );
 
-      // If decryption fails, the hash key or temporary store may be corrupted
-      // We should clear them both and force a new login
+      trackUnauthorizedAccessAttempt("Decryption error");
+
       await clearTemporaryData();
 
-      return null;
+      throw new Error(
+        "Unauthorized temporary store access: Decryption failed. Hash key may be wrong, corrupted, or temporary store is invalid. Please sign in again.",
+      );
     }
   } catch (error) {
     logger.error("[getTemporaryStore]", "Failed to get temporary store", error);
-
-    return null;
+    throw error;
   }
 };
 
@@ -1549,6 +1653,31 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       );
     },
 
+    initBiometricPassword: async () => {
+      try {
+        const temporaryStore = await getTemporaryStore();
+        if (!temporaryStore) {
+          return false;
+        }
+        const { password } = temporaryStore;
+        if (!password) {
+          return false;
+        }
+        await biometricDataStorage.setItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          password,
+        );
+        return true;
+      } catch (error) {
+        logger.error(
+          "initBiometricPassword",
+          "Failed to initialize biometric password from temporary store",
+          error,
+        );
+        return false;
+      }
+    },
+
     /**
      * Logs out the user by clearing sensitive data
      *
@@ -2273,8 +2402,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         set({ error: errorMessage });
       }
     },
-
-    getTemporaryStore: async () => getTemporaryStore(),
 
     clearError: () => {
       set({ error: null });

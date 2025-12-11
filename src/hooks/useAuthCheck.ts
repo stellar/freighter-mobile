@@ -1,3 +1,7 @@
+import {
+  HASH_KEY_BACKGROUND_EXPIRATION_MS,
+  HASH_KEY_EXPIRATION_MS,
+} from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -8,6 +12,7 @@ import {
   PanResponder,
   PanResponderInstance,
 } from "react-native";
+import { refreshHashKeyExpiration } from "services/storage/helpers";
 
 // Constants for interval timings (in milliseconds)
 const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
@@ -31,6 +36,7 @@ const useAuthCheck = () => {
   // Refs to track app state, last interaction, auth check intervals, and pan responder instance
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const expirationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionRef = useRef<number>(Date.now());
   const lastCheckRef = useRef<number>(Date.now());
   const panResponderRef = useRef<PanResponderInstance | null>(null);
@@ -91,21 +97,76 @@ const useAuthCheck = () => {
   );
 
   /**
+   * Sets shorter authentication expiration when app goes to background and schedules a check
+   */
+  const setBackgroundAuthExpiration = useCallback(async () => {
+    try {
+      await refreshHashKeyExpiration(HASH_KEY_BACKGROUND_EXPIRATION_MS);
+      // Schedule a check when the expiration time is reached
+      expirationTimeoutRef.current = setTimeout(() => {
+        checkAuth().catch((err) =>
+          logger.error(
+            "setBackgroundAuthExpiration",
+            "Error checking auth on expiration timeout",
+            err,
+          ),
+        );
+      }, HASH_KEY_BACKGROUND_EXPIRATION_MS);
+    } catch (err) {
+      logger.error(
+        "setBackgroundAuthExpiration",
+        "Failed to refresh hash key expiration for background",
+        err,
+      );
+    }
+  }, [checkAuth]);
+
+  /**
+   * Handles app returning to foreground by checking expiration and refreshing if valid
+   */
+  const handleAppReturnsToForeground = useCallback(async () => {
+    try {
+      const status = await getAuthStatus();
+      // Only refresh expiration if not expired
+      if (status !== AUTH_STATUS.HASH_KEY_EXPIRED) {
+        await refreshHashKeyExpiration(HASH_KEY_EXPIRATION_MS);
+      }
+      // checkAuth will handle navigation if expired
+      await checkAuth();
+    } catch (err) {
+      logger.error("handleAppReturnsToForeground", "Error checking auth", err);
+    }
+  }, [getAuthStatus, checkAuth]);
+
+  /**
    * Listen for app state changes (foreground/background) to adjust the auth check interval.
    */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      // When returning to active state, allow a slight delay before checking auth
+      // Clear any existing expiration timeout
+      if (expirationTimeoutRef.current) {
+        clearTimeout(expirationTimeoutRef.current);
+        expirationTimeoutRef.current = null;
+      }
+
+      // When app goes to background, set shorter expiration and schedule a check
+      if (
+        (appState.current === "active" || appState.current === "inactive") &&
+        (nextAppState === "background" || nextAppState === "inactive")
+      ) {
+        setBackgroundAuthExpiration();
+      }
+
+      // When returning to active state, check if expired first, then refresh if still valid
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
         setTimeout(() => {
-          checkAuth().catch((err) =>
-            logger.error("handleAppStateChange", "Error checking auth", err),
-          );
+          handleAppReturnsToForeground();
         }, INITIAL_CHECK_DELAY);
       }
+
       appState.current = nextAppState;
       setupCheckInterval(nextAppState);
     };
@@ -123,8 +184,14 @@ const useAuthCheck = () => {
     return () => {
       subscription.remove();
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+      if (expirationTimeoutRef.current)
+        clearTimeout(expirationTimeoutRef.current);
     };
-  }, [setupCheckInterval, checkAuth]);
+  }, [
+    setupCheckInterval,
+    setBackgroundAuthExpiration,
+    handleAppReturnsToForeground,
+  ]);
 
   /**
    * Monitor user interaction and update active status accordingly.
