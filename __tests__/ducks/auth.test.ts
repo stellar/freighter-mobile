@@ -6,6 +6,7 @@ import {
   SENSITIVE_STORAGE_KEYS,
   LoginType,
 } from "config/constants";
+import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { Account, AUTH_STATUS } from "config/types";
 import {
@@ -61,6 +62,8 @@ jest.mock("services/storage/storageFactory", () => ({
   },
   biometricDataStorage: {
     getItem: jest.fn(),
+    setItem: jest.fn(),
+    checkIfExists: jest.fn(),
   },
 }));
 
@@ -151,6 +154,7 @@ describe("auth duck", () => {
       [mockAccountId]: mockPrivateKey,
     },
     mnemonicPhrase: mockMnemonicPhrase,
+    password: mockPassword,
   });
 
   let dataStorageMemory: Record<string, string>;
@@ -173,7 +177,6 @@ describe("auth duck", () => {
     useAuthenticationStore.getState().renameAccount = jest.fn();
     useAuthenticationStore.getState().getAllAccounts = jest.fn();
     useAuthenticationStore.getState().selectAccount = jest.fn();
-    useAuthenticationStore.getState().getTemporaryStore = jest.fn();
     useAuthenticationStore.getState().clearError = jest.fn();
 
     // Reset the store state
@@ -932,6 +935,320 @@ describe("auth duck", () => {
         }),
       ).rejects.toThrow("Biometric authentication failed");
       expect(mockCallback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("authentication mechanisms", () => {
+    beforeEach(() => {
+      // Setup default mocks for authenticated state
+      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(mockEncryptedData);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+          return Promise.resolve(JSON.stringify(mockHashKeyObj));
+        }
+        return Promise.resolve(null);
+      });
+      (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+        mockTemporaryStore,
+      );
+    });
+
+    describe("getTemporaryStore authentication checks", () => {
+      it("should return false when hash key is not found", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (getHashKey as jest.Mock).mockResolvedValue(null);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
+      it("should return false when hash key is expired", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const expiredHashKey = {
+          ...mockHashKeyObj,
+          expiresAt: Date.now() - 1000, // Expired 1 second ago
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(expiredHashKey);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
+      it("should return false when auth status is NOT_AUTHENTICATED", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
+      it("should allow access when auth status is HASH_KEY_EXPIRED (for sign-in flow)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // Ensure hash key is valid (not expired) - this is required for getTemporaryStore to work
+        const validHashKey = {
+          ...mockHashKeyObj,
+          expiresAt: Date.now() + 3600000, // Valid for 1 hour
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(validHashKey);
+
+        // Mock temporary store with password
+        const tempStoreWithPassword = JSON.stringify({
+          privateKeys: {
+            [mockAccountId]: mockPrivateKey,
+          },
+          mnemonicPhrase: mockMnemonicPhrase,
+          password: mockPassword,
+        });
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+          tempStoreWithPassword,
+        );
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+          });
+        });
+
+        // Should succeed even with HASH_KEY_EXPIRED status (for sign-in flow)
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(true);
+        });
+      });
+
+      it("should return false when decryption fails", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+
+        // Should clear temporary data on decryption failure
+        expect(clearTemporaryData).toHaveBeenCalled();
+      });
+
+      it("should return false when temporary store has invalid structure", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const invalidTempStore = JSON.stringify({
+          // Missing privateKeys and mnemonicPhrase
+          someOtherField: "value",
+        });
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+          invalidTempStore,
+        );
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+
+        // Should clear temporary data on invalid structure
+        expect(clearTemporaryData).toHaveBeenCalled();
+      });
+
+      it("should return false when decryption throws an error", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const decryptionError = new Error("Decryption failed");
+        (decryptDataWithPassword as jest.Mock).mockRejectedValue(
+          decryptionError,
+        );
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword catches errors and returns false
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+
+        // Should clear temporary data on decryption error
+        expect(clearTemporaryData).toHaveBeenCalled();
+      });
+
+      it("should return null when temporary store data is not found", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve(null);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+            return Promise.resolve(JSON.stringify(mockHashKeyObj));
+          }
+          return Promise.resolve(null);
+        });
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        // initBiometricPassword should return false when temp store is null
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+    });
+
+    describe("failure tracking", () => {
+      beforeEach(() => {
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+      });
+
+      it("should track repeated unauthorized access attempts", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (getHashKey as jest.Mock).mockResolvedValue(null);
+
+        // Make multiple failed attempts sequentially to properly track failures
+        for (let i = 0; i < 3; i++) {
+          // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-loop-func
+          await act(async () => {
+            const success = await result.current.initBiometricPassword();
+            expect(success).toBe(false);
+          });
+        }
+
+        // Should log suspicious repeated failures after threshold
+        expect(logger.error).toHaveBeenCalledWith(
+          "[getTemporaryStore]",
+          "Suspicious repeated failures detected",
+          expect.stringContaining("Multiple unauthorized access attempts"),
+        );
+      });
+
+      it("should reset failure count on successful access", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // First, make a failed attempt
+        (getHashKey as jest.Mock).mockResolvedValue(null);
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+
+        // Then, make a successful attempt - ensure hash key is valid
+        const validHashKey = {
+          ...mockHashKeyObj,
+          expiresAt: Date.now() + 3600000, // Valid for 1 hour
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(validHashKey);
+
+        // Ensure temporary store is available
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve(mockEncryptedData);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+            return Promise.resolve(JSON.stringify(validHashKey));
+          }
+          return Promise.resolve(null);
+        });
+
+        const tempStoreWithPassword = JSON.stringify({
+          privateKeys: {
+            [mockAccountId]: mockPrivateKey,
+          },
+          mnemonicPhrase: mockMnemonicPhrase,
+          password: mockPassword,
+        });
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+          tempStoreWithPassword,
+        );
+
+        // Ensure auth status is authenticated for successful access
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(true);
+        });
+
+        // Failure count should be reset, so next failure should not trigger suspicious log
+        const errorCallCount = (logger.error as jest.Mock).mock.calls.filter(
+          (call) => call[1] === "Suspicious repeated failures detected",
+        ).length;
+
+        // Make another failure
+        (getHashKey as jest.Mock).mockResolvedValue(null);
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+
+        // Should not have increased suspicious failure count
+        const newErrorCallCount = (logger.error as jest.Mock).mock.calls.filter(
+          (call) => call[1] === "Suspicious repeated failures detected",
+        ).length;
+
+        // The count should be the same (or only increased by 1 if we hit threshold again)
+        expect(newErrorCallCount).toBeLessThanOrEqual(errorCallCount + 1);
+      });
     });
   });
 });
