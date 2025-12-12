@@ -1,6 +1,5 @@
 import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
-import { SecurityLevel } from "services/storage/keychainSecurityConfig";
 import {
   unifiedSecureStorage,
   rnBiometrics,
@@ -82,17 +81,11 @@ export interface BiometricStorage {
 const secureDataStorageWrapper: PersistentStorage = {
   getItem: async (key: string) =>
     unifiedSecureStorage.getItem(key, {
-      securityLevel: SecurityLevel.HIGH,
       requireExplicitBiometricPrompt: false,
     }),
   setItem: async (key: string, value: string) =>
-    unifiedSecureStorage.setItem(key, value, {
-      securityLevel: SecurityLevel.HIGH,
-    }),
-  remove: async (keys: string | string[]) =>
-    unifiedSecureStorage.remove(keys, {
-      securityLevel: SecurityLevel.HIGH,
-    }),
+    unifiedSecureStorage.setItem(key, value),
+  remove: async (keys: string | string[]) => unifiedSecureStorage.remove(keys),
   clear: async () => unifiedSecureStorage.clear(),
 };
 
@@ -107,31 +100,21 @@ const biometricDataStorageWrapper: BiometricStorage = {
   ): Promise<Keychain.UserCredentials | false> => {
     if (message) {
       return unifiedSecureStorage.getItemWithCredentials(key, {
-        securityLevel: SecurityLevel.HIGH,
         requireExplicitBiometricPrompt: true,
         biometricPrompt: message,
       });
     }
     // Fallback to automatic prompt if no message provided
     const result = await unifiedSecureStorage.getItemWithCredentials(key, {
-      securityLevel: SecurityLevel.HIGH,
       requireExplicitBiometricPrompt: false,
     });
     return result;
   },
   setItem: async (key: string, value: string) =>
-    unifiedSecureStorage.setItem(key, value, {
-      securityLevel: SecurityLevel.HIGH,
-    }),
-  remove: async (keys: string | string[]) =>
-    unifiedSecureStorage.remove(keys, {
-      securityLevel: SecurityLevel.HIGH,
-    }),
+    unifiedSecureStorage.setItem(key, value),
+  remove: async (keys: string | string[]) => unifiedSecureStorage.remove(keys),
   clear: async () => unifiedSecureStorage.clear(),
-  checkIfExists: async (key: string) =>
-    unifiedSecureStorage.checkIfExists(key, {
-      securityLevel: SecurityLevel.HIGH,
-    }),
+  checkIfExists: async (key: string) => unifiedSecureStorage.checkIfExists(key),
 };
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.

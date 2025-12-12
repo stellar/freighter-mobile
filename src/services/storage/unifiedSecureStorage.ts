@@ -1,12 +1,7 @@
 import { logger } from "config/logger";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
-import {
-  SecurityLevel,
-  createSecureKeychainSetOptions,
-  createSecureKeychainGetOptions,
-  createSecureKeychainBaseOptions,
-} from "services/storage/keychainSecurityConfig";
+import { SECURE_KEYCHAIN_OPTIONS } from "services/storage/keychainSecurityConfig";
 
 /**
  * React Native Biometrics instance for biometric authentication
@@ -44,30 +39,15 @@ export interface SecureStorageOptions {
     title: string;
     cancel: string;
   };
-
-  /**
-   * Security level for the stored item
-   * @default SecurityLevel.HIGH
-   */
-  securityLevel?: SecurityLevel;
 }
 
 /**
  * Unified secure storage implementation using react-native-keychain
  *
- * This storage provides a single interface for storing sensitive data with
- * configurable security levels and biometric authentication options.
- *
- * Features:
- * - Device-only storage (excluded from backups/migration)
- * - Configurable security levels (HIGHEST, HIGH, MEDIUM)
- * - Optional explicit biometric prompts or automatic keychain prompts
- * - Supports both simple string storage and credential-based storage
- *
- * Use cases:
- * - HIGHEST: Wallet master keys, encrypted seeds (requires passcode + biometrics)
- * - HIGH: Encrypted wallet blobs, hash keys, passwords (requires biometrics/passcode)
- * - MEDIUM: Session tokens, metadata (device-only, no biometric prompt)
+ * All sensitive data is stored with maximum security:
+ * - Device-only (excluded from backups/migration)
+ * - Requires passcode to be set on device
+ * - Requires biometric/passcode on every access
  */
 export const unifiedSecureStorage = {
   /**
@@ -75,23 +55,13 @@ export const unifiedSecureStorage = {
    *
    * @param key - The key to store the value under
    * @param value - The value to store
-   * @param options - Storage options (security level, etc.)
    */
-  setItem: async (
-    key: string,
-    value: string,
-    options?: SecureStorageOptions,
-  ): Promise<void> => {
+  setItem: async (key: string, value: string): Promise<void> => {
     try {
-      const securityLevel = options?.securityLevel ?? SecurityLevel.HIGH;
-      await Keychain.setGenericPassword(
-        key,
-        value,
-        createSecureKeychainSetOptions(
-          `${DEFAULT_SERVICE}_${key}`,
-          securityLevel,
-        ),
-      );
+      await Keychain.setGenericPassword(key, value, {
+        service: `${DEFAULT_SERVICE}_${key}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      });
     } catch (error) {
       logger.error(
         "unifiedSecureStorage.setItem",
@@ -109,7 +79,7 @@ export const unifiedSecureStorage = {
    * Otherwise, relies on the keychain's automatic biometric prompt.
    *
    * @param key - The key to retrieve
-   * @param options - Retrieval options (biometric prompt, security level, etc.)
+   * @param options - Retrieval options (biometric prompt)
    * @returns The stored value as a string, or null if not found or authentication failed
    */
   getItem: async (
@@ -117,8 +87,6 @@ export const unifiedSecureStorage = {
     options?: SecureStorageOptions,
   ): Promise<string | null> => {
     try {
-      const securityLevel = options?.securityLevel ?? SecurityLevel.HIGH;
-
       // If explicit biometric prompt is required, show it first
       if (options?.requireExplicitBiometricPrompt && options?.biometricPrompt) {
         const hasVerified = await rnBiometrics.simplePrompt({
@@ -130,11 +98,10 @@ export const unifiedSecureStorage = {
         }
       }
 
-      const service = `${DEFAULT_SERVICE}_${key}`;
-
-      const result = await Keychain.getGenericPassword(
-        createSecureKeychainGetOptions(service, securityLevel),
-      );
+      const result = await Keychain.getGenericPassword({
+        service: `${DEFAULT_SERVICE}_${key}`,
+        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
+      });
 
       if (result === false) {
         return null;
@@ -158,7 +125,7 @@ export const unifiedSecureStorage = {
    * Useful when you need the username or other credential metadata.
    *
    * @param key - The key to retrieve
-   * @param options - Retrieval options (biometric prompt, security level, etc.)
+   * @param options - Retrieval options (biometric prompt)
    * @returns The stored credentials, or false if not found or authentication failed
    */
   getItemWithCredentials: async (
@@ -166,8 +133,6 @@ export const unifiedSecureStorage = {
     options?: SecureStorageOptions,
   ): Promise<Keychain.UserCredentials | false> => {
     try {
-      const securityLevel = options?.securityLevel ?? SecurityLevel.HIGH;
-
       // If explicit biometric prompt is required, show it first
       if (options?.requireExplicitBiometricPrompt && options?.biometricPrompt) {
         const hasVerified = await rnBiometrics.simplePrompt({
@@ -179,11 +144,10 @@ export const unifiedSecureStorage = {
         }
       }
 
-      const service = `${DEFAULT_SERVICE}_${key}`;
-
-      const result = await Keychain.getGenericPassword(
-        createSecureKeychainGetOptions(service, securityLevel),
-      );
+      const result = await Keychain.getGenericPassword({
+        service: `${DEFAULT_SERVICE}_${key}`,
+        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
+      });
 
       return result;
     } catch (error) {
@@ -200,35 +164,23 @@ export const unifiedSecureStorage = {
    * Removes one or more items from secure storage
    *
    * @param keys - The key(s) to remove
-   * @param options - Options including security level
    */
-  remove: async (
-    keys: string | string[],
-    options?: SecureStorageOptions,
-  ): Promise<void> => {
+  remove: async (keys: string | string[]): Promise<void> => {
     try {
-      const securityLevel = options?.securityLevel ?? SecurityLevel.HIGH;
-
       if (Array.isArray(keys)) {
         await Promise.all(
           keys.map((key) =>
-            Keychain.resetGenericPassword(
-              createSecureKeychainBaseOptions(
-                `${DEFAULT_SERVICE}_${key}`,
-                securityLevel,
-              ),
-            ),
+            Keychain.resetGenericPassword({
+              service: `${DEFAULT_SERVICE}_${key}`,
+            }),
           ),
         );
         return;
       }
 
-      await Keychain.resetGenericPassword(
-        createSecureKeychainBaseOptions(
-          `${DEFAULT_SERVICE}_${keys}`,
-          securityLevel,
-        ),
-      );
+      await Keychain.resetGenericPassword({
+        service: `${DEFAULT_SERVICE}_${keys}`,
+      });
     } catch (error) {
       logger.error(
         "unifiedSecureStorage.remove",
@@ -243,21 +195,13 @@ export const unifiedSecureStorage = {
    * Checks if an item exists in secure storage
    *
    * @param key - The storage key to check
-   * @param options - Options including security level
    * @returns True if the item exists, false otherwise
    */
-  checkIfExists: async (
-    key: string,
-    options?: SecureStorageOptions,
-  ): Promise<boolean> => {
+  checkIfExists: async (key: string): Promise<boolean> => {
     try {
-      const securityLevel = options?.securityLevel ?? SecurityLevel.HIGH;
-      const result = await Keychain.hasGenericPassword(
-        createSecureKeychainBaseOptions(
-          `${DEFAULT_SERVICE}_${key}`,
-          securityLevel,
-        ),
-      );
+      const result = await Keychain.hasGenericPassword({
+        service: `${DEFAULT_SERVICE}_${key}`,
+      });
       return result;
     } catch (error) {
       logger.error(
