@@ -846,7 +846,9 @@
     "connectionNotFound": "Conexão não encontrada",
     "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
     "walletIsLocked": "Carteira bloqueada",
-    "userNotAuthenticated": "Usuário não autenticado"
+    "userNotAuthenticated": "Usuário não autenticado",
+    "invalidTransactionOrigin": "Domínio da solicitação de transação inválido",
+    "invalidTransactionOriginMessage": "Você acabou de receber uma solicitação de transação WalletConnect de {{transactionRequestOrigin}}. No entanto, você não tem uma conexão com este domínio na sua carteira Freighter. Por favor, verifique se é de uma fonte confiável."
   },
   "sendRecipient": {
     "error": {

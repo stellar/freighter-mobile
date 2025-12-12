@@ -653,6 +653,43 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Validate that the transaction request origin is legit
+      const transactionRequestOrigin =
+        sessionRequest.verifyContext?.verified?.origin;
+      const isValidTransactionRequestOrigin = Object.values(
+        activeSessions,
+      ).some(
+        (session) => session.peer?.metadata?.url === transactionRequestOrigin,
+      );
+      if (!isValidTransactionRequestOrigin) {
+        showToast({
+          title: t("walletKit.invalidTransactionOrigin"),
+          message: t("walletKit.invalidTransactionOriginMessage", {
+            transactionRequestOrigin,
+          }),
+          variant: "error",
+        });
+
+        logger.error(
+          "WalletKitProvider",
+          "Invalid transaction origin",
+          new Error("Invalid transaction origin, potentially bad actor found"),
+          {
+            transactionRequestOrigin,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            xdr: sessionRequest.params?.request?.params?.xdr,
+          },
+        );
+
+        rejectSessionRequest({
+          sessionRequest,
+          message: `${t("walletKit.invalidTransactionOrigin")}: ${transactionRequestOrigin}.`,
+        });
+
+        clearEvent();
+        return;
+      }
+
       setRequestEvent(sessionRequest);
 
       const dappMetadata = getDappMetadataFromEvent(
