@@ -673,7 +673,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         logger.error(
           "WalletKitProvider",
           "Invalid transaction origin",
-          new Error("Invalid transaction origin, potentially bad actor found"),
+          new Error(
+            "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+          ),
           {
             transactionRequestOrigin,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
