@@ -883,8 +883,8 @@
     "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Freighter wallet",
     "walletIsLocked": "Wallet is locked",
     "userNotAuthenticated": "User not authenticated",
-    "invalidTransactionOrigin": "Invalid transaction request domain",
-    "invalidTransactionOriginMessage": "You have just received a WalletConnect transaction request from {{transactionRequestOrigin}}. However, you don't have a connection with this domain in your Freighter wallet. Please double check if it's coming from a trusted source."
+    "invalidTransactionOrigin": "Untrusted Transaction Domain",
+    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet."
   },
   "sendRecipient": {
     "error": {
