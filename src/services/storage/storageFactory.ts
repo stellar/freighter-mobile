@@ -1,7 +1,10 @@
 import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
-import { reactNativeBiometricStorage } from "services/storage/reactNativeBiometricStorage";
-import { reactNativeKeychainStorage } from "services/storage/reactNativeKeychainStorage";
+import { SecurityLevel } from "services/storage/keychainSecurityConfig";
+import {
+  unifiedSecureStorage,
+  rnBiometrics,
+} from "services/storage/unifiedSecureStorage";
 
 // This interface is used to define the methods that are required for a storage implementation.
 export interface PersistentStorage {
@@ -72,7 +75,71 @@ export interface BiometricStorage {
   checkIfExists(key: string): Promise<boolean>;
 }
 
+/**
+ * Wrapper for secure storage that uses automatic keychain biometric prompts
+ * Used for sensitive data like encrypted wallet blobs and hash keys
+ */
+const secureDataStorageWrapper: PersistentStorage = {
+  getItem: async (key: string) =>
+    unifiedSecureStorage.getItem(key, {
+      securityLevel: SecurityLevel.HIGH,
+      requireExplicitBiometricPrompt: false,
+    }),
+  setItem: async (key: string, value: string) =>
+    unifiedSecureStorage.setItem(key, value, {
+      securityLevel: SecurityLevel.HIGH,
+    }),
+  remove: async (keys: string | string[]) =>
+    unifiedSecureStorage.remove(keys, {
+      securityLevel: SecurityLevel.HIGH,
+    }),
+  clear: async () => unifiedSecureStorage.clear(),
+};
+
+/**
+ * Wrapper for biometric storage that uses explicit biometric prompts
+ * Used for biometric-protected passwords that need custom prompt UI
+ */
+const biometricDataStorageWrapper: BiometricStorage = {
+  getItem: async (
+    key: string,
+    message?: { title: string; cancel: string },
+  ): Promise<Keychain.UserCredentials | false> => {
+    if (message) {
+      return unifiedSecureStorage.getItemWithCredentials(key, {
+        securityLevel: SecurityLevel.HIGH,
+        requireExplicitBiometricPrompt: true,
+        biometricPrompt: message,
+      });
+    }
+    // Fallback to automatic prompt if no message provided
+    const result = await unifiedSecureStorage.getItemWithCredentials(key, {
+      securityLevel: SecurityLevel.HIGH,
+      requireExplicitBiometricPrompt: false,
+    });
+    return result;
+  },
+  setItem: async (key: string, value: string) =>
+    unifiedSecureStorage.setItem(key, value, {
+      securityLevel: SecurityLevel.HIGH,
+    }),
+  remove: async (keys: string | string[]) =>
+    unifiedSecureStorage.remove(keys, {
+      securityLevel: SecurityLevel.HIGH,
+    }),
+  clear: async () => unifiedSecureStorage.clear(),
+  checkIfExists: async (key: string) =>
+    unifiedSecureStorage.checkIfExists(key, {
+      securityLevel: SecurityLevel.HIGH,
+    }),
+};
+
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.
-export const secureDataStorage = reactNativeKeychainStorage;
+// Both secureDataStorage and biometricDataStorage now use the unified secure storage implementation
+// with different configurations (automatic vs explicit biometric prompts).
+export const secureDataStorage = secureDataStorageWrapper;
 export const dataStorage = asyncStorage;
-export const biometricDataStorage = reactNativeBiometricStorage;
+export const biometricDataStorage = biometricDataStorageWrapper;
+
+// Re-export rnBiometrics for convenience and backward compatibility
+export { rnBiometrics };

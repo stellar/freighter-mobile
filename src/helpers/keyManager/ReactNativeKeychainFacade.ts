@@ -4,6 +4,12 @@
 import { EncryptedKey } from "@stellar/typescript-wallet-sdk-km";
 import { logger } from "config/logger";
 import * as Keychain from "react-native-keychain";
+import {
+  SecurityLevel,
+  createSecureKeychainGetOptions,
+  createSecureKeychainSetOptions,
+  createSecureKeychainBaseOptions,
+} from "services/storage/keychainSecurityConfig";
 
 /**
  * Configuration parameters for ReactNativeKeychainFacade
@@ -40,9 +46,10 @@ export class ReactNativeKeychainFacade {
    */
   public async hasKey(id: string): Promise<boolean> {
     try {
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_${id}`,
-      });
+      const service = `${this.service}_${id}`;
+      const result = await Keychain.getGenericPassword(
+        createSecureKeychainGetOptions(service, SecurityLevel.HIGHEST),
+      );
       return result !== false;
     } catch (error) {
       logger.error(
@@ -57,12 +64,16 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Get a key from keychain
+   *
+   * This method requires user presence (biometrics/passcode) to access
+   * the encrypted wallet key, providing strong protection for sensitive data.
    */
   public async getKey(id: string): Promise<EncryptedKey | null> {
     try {
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_${id}`,
-      });
+      const service = `${this.service}_${id}`;
+      const result = await Keychain.getGenericPassword(
+        createSecureKeychainGetOptions(service, SecurityLevel.HIGHEST),
+      );
 
       if (result === false) {
         return null;
@@ -82,12 +93,22 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Set a key in keychain
+   *
+   * Stores encrypted wallet keys with the highest security level:
+   * - Device-only (excluded from backups/migration)
+   * - Requires user presence (biometrics/passcode) on every access
+   * - Only accessible when device has passcode set and is unlocked
    */
   public async setKey(id: string, key: EncryptedKey): Promise<void> {
     try {
-      await Keychain.setGenericPassword(id, JSON.stringify(key), {
-        service: `${this.service}_${id}`,
-      });
+      await Keychain.setGenericPassword(
+        id,
+        JSON.stringify(key),
+        createSecureKeychainSetOptions(
+          `${this.service}_${id}`,
+          SecurityLevel.HIGHEST,
+        ),
+      );
     } catch (error) {
       throw new Error(`Failed to set key ${id}`);
     }
@@ -98,9 +119,12 @@ export class ReactNativeKeychainFacade {
    */
   public async removeKey(id: string): Promise<void> {
     try {
-      await Keychain.resetGenericPassword({
-        service: `${this.service}_${id}`,
-      });
+      await Keychain.resetGenericPassword(
+        createSecureKeychainBaseOptions(
+          `${this.service}_${id}`,
+          SecurityLevel.HIGHEST,
+        ),
+      );
     } catch (error) {
       logger.error(
         "ReactNativeKeychainKeyStore.removeKey",
@@ -114,14 +138,21 @@ export class ReactNativeKeychainFacade {
   /**
    * Get all keys from keychain
    * Uses the special index key to track all stored keys
+   *
+   * Note: The index key uses MEDIUM security level as it only contains
+   * metadata (key IDs), not sensitive cryptographic material.
    */
   public async getAllKeys(): Promise<EncryptedKey[]> {
     const keys: EncryptedKey[] = [];
     try {
       // Get the index key with service only
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_index`,
-      });
+      // Index uses MEDIUM security as it only contains metadata
+      const result = await Keychain.getGenericPassword(
+        createSecureKeychainGetOptions(
+          `${this.service}_index`,
+          SecurityLevel.MEDIUM,
+        ),
+      );
 
       if (result === false) {
         return [];
@@ -149,13 +180,18 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Add a key ID to the index
+   *
+   * Note: The index uses MEDIUM security level as it only contains
+   * metadata (key IDs), not sensitive cryptographic material.
    */
   public async addToKeyIndex(id: string): Promise<void> {
     try {
       // Using a specific service name for the index
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_index`,
-      });
+      const indexGetOptions = createSecureKeychainGetOptions(
+        `${this.service}_index`,
+        SecurityLevel.MEDIUM,
+      );
+      const result = await Keychain.getGenericPassword(indexGetOptions);
 
       let keyIds: string[] = [];
 
@@ -165,12 +201,14 @@ export class ReactNativeKeychainFacade {
 
       if (!keyIds.includes(id)) {
         keyIds.push(id);
+        const indexSetOptions = createSecureKeychainSetOptions(
+          `${this.service}_index`,
+          SecurityLevel.MEDIUM,
+        );
         await Keychain.setGenericPassword(
           DEFAULT_KEY_INDEX,
           JSON.stringify(keyIds),
-          {
-            service: `${this.service}_index`,
-          },
+          indexSetOptions,
         );
       }
     } catch (error) {
@@ -184,32 +222,40 @@ export class ReactNativeKeychainFacade {
       await Keychain.setGenericPassword(
         DEFAULT_KEY_INDEX,
         JSON.stringify([id]),
-        {
-          service: `${this.service}_index`,
-        },
+        createSecureKeychainSetOptions(
+          `${this.service}_index`,
+          SecurityLevel.MEDIUM,
+        ),
       );
     }
   }
 
   /**
    * Remove a key ID from the index
+   *
+   * Note: The index uses MEDIUM security level as it only contains
+   * metadata (key IDs), not sensitive cryptographic material.
    */
   public async removeFromKeyIndex(id: string): Promise<void> {
     try {
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_index`,
-      });
+      const indexGetOptions = createSecureKeychainGetOptions(
+        `${this.service}_index`,
+        SecurityLevel.MEDIUM,
+      );
+      const result = await Keychain.getGenericPassword(indexGetOptions);
 
       if (result !== false) {
         const keyIds: string[] = JSON.parse(result.password);
         const newKeyIds = keyIds.filter((keyId) => keyId !== id);
 
+        const indexSetOptions = createSecureKeychainSetOptions(
+          `${this.service}_index`,
+          SecurityLevel.MEDIUM,
+        );
         await Keychain.setGenericPassword(
           DEFAULT_KEY_INDEX,
           JSON.stringify(newKeyIds),
-          {
-            service: `${this.service}_index`,
-          },
+          indexSetOptions,
         );
       }
     } catch (error) {
