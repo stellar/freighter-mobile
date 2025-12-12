@@ -349,9 +349,6 @@ const initializeStore = async (
   setState: (state: Partial<AuthState>) => void,
 ) => {
   try {
-    await clearTemporaryData();
-    setState({ authStatus: AUTH_STATUS.HASH_KEY_EXPIRED });
-
     const activeNetwork = await dataStorage.getItem(
       STORAGE_KEYS.ACTIVE_NETWORK,
     );
@@ -466,116 +463,40 @@ const FAILURE_RESET_WINDOW_MS = 60000; // 1 minute window
 const SUSPICIOUS_FAILURE_THRESHOLD = 3; // Log warning after 3 failures
 
 /**
- * Tracks and logs unauthorized access attempts for monitoring
- */
-const trackUnauthorizedAccessAttempt = (context: string): void => {
-  const now = Date.now();
-
-  // Reset count if outside the time window
-  if (now - lastFailureTimestamp > FAILURE_RESET_WINDOW_MS) {
-    getTemporaryStoreFailureCount = 0;
-  }
-
-  getTemporaryStoreFailureCount++;
-  lastFailureTimestamp = now;
-
-  if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
-    logger.error(
-      "[getTemporaryStore]",
-      "Suspicious repeated failures detected",
-      `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms. Context: ${context}`,
-    );
-  }
-};
-
-/**
- * Resets the failure count on successful access
- */
-const resetFailureTracking = (): void => {
-  getTemporaryStoreFailureCount = 0;
-};
-
-/**
- * Gets the current auth status from the store (lazy getter to avoid use-before-define)
- */
-const getCurrentAuthStatus = (): AuthStatus | undefined => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    return useAuthenticationStore?.getState()?.authStatus;
-  } catch {
-    return undefined;
-  }
-};
-
-/**
  * Retrieves data from the temporary store
  *
  * Gets the hash key, retrieves the encrypted temporary store,
  * and decrypts it to access the data.
  *
- * @param {AuthStatus} [authStatus] - Optional auth status to check. If not provided, will try to get from store.
  * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if retrieval failed
- * @throws {Error} If access check fails
  */
-const getTemporaryStore = async (
-  authStatus?: AuthStatus,
-): Promise<TemporaryStore | null> => {
+const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
   try {
     const hashKey = await getHashKey();
 
     if (!hashKey) {
       logger.error(
         "[getTemporaryStore]",
-        "Unauthorized access attempt",
         "Hash key not found - user must sign in",
+        undefined,
       );
 
-      trackUnauthorizedAccessAttempt("Hash key not found");
-
-      throw new Error(
-        "Unauthorized temporary store access: Hash key not found. User must sign in.",
-      );
+      return null;
     }
-
-    // Reset failure count on successful access
-    resetFailureTracking();
 
     if (isHashKeyExpired(hashKey)) {
       logger.error(
         "[getTemporaryStore]",
-        "Unauthorized access attempt",
         "Hash key has expired, access denied",
+        undefined,
       );
 
-      trackUnauthorizedAccessAttempt("Hash key expired");
-
-      throw new Error(
-        "Unauthorized temporary store access: Hash key expired. User must sign in again.",
-      );
+      return null;
     }
 
-    // Get authStatus from parameter or store (if available)
-    const currentAuthStatus = authStatus ?? getCurrentAuthStatus();
-
-    if (currentAuthStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
-      logger.error(
-        "[getTemporaryStore]",
-        "Unauthorized access attempt",
-        `Auth status: ${currentAuthStatus}. User is logged out. Access denied.`,
-      );
-
-      trackUnauthorizedAccessAttempt("User not authenticated");
-
-      throw new Error(
-        "Unauthorized temporary store access: User is logged out. Please sign in.",
-      );
-    }
-
-    // Get the encrypted temporary store
     const temporaryStore = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
-
     if (!temporaryStore) {
       logger.error(
         "[getTemporaryStore]",
@@ -586,67 +507,46 @@ const getTemporaryStore = async (
       return null;
     }
 
+    let decryptedTemporaryStore: TemporaryStore | null = null;
+
     try {
-      const decryptedTemporaryStore = await decryptTemporaryStore(
+      decryptedTemporaryStore = await decryptTemporaryStore(
         hashKey,
         temporaryStore,
       );
-
-      if (!decryptedTemporaryStore) {
-        logger.error(
-          "[getTemporaryStore]",
-          "Unauthorized access attempt",
-          "Failed to decrypt temporary store - hash key may be wrong or corrupted",
-        );
-
-        trackUnauthorizedAccessAttempt("Decryption failed");
-
-        await clearTemporaryData();
-
-        throw new Error(
-          "Unauthorized temporary store access: Failed to decrypt. Hash key may be wrong, corrupted, or temporary store is invalid. Please sign in again.",
-        );
-      }
-
-      // Validate the structure of the temporary store
-      if (
-        !decryptedTemporaryStore.privateKeys ||
-        !decryptedTemporaryStore.mnemonicPhrase
-      ) {
-        logger.error(
-          "[getTemporaryStore]",
-          "Unauthorized access attempt",
-          "Temporary store has invalid structure - data may be corrupted",
-        );
-
-        trackUnauthorizedAccessAttempt("Invalid data structure");
-
-        await clearTemporaryData();
-
-        throw new Error(
-          "Unauthorized temporary store access: Invalid data structure. Temporary store may be corrupted. Please sign in again.",
-        );
-      }
-
-      return decryptedTemporaryStore;
     } catch (error) {
+      // Error will be handled in the failure tracking below
+    }
+
+    if (
+      decryptedTemporaryStore &&
+      decryptedTemporaryStore.privateKeys &&
+      decryptedTemporaryStore.mnemonicPhrase
+    ) {
+      getTemporaryStoreFailureCount = 0;
+      return decryptedTemporaryStore;
+    }
+
+    const now = Date.now();
+    if (now - lastFailureTimestamp > FAILURE_RESET_WINDOW_MS) {
+      getTemporaryStoreFailureCount = 0;
+    }
+    getTemporaryStoreFailureCount++;
+    lastFailureTimestamp = now;
+
+    if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
       logger.error(
         "[getTemporaryStore]",
-        "Unauthorized access attempt",
-        `Failed to decrypt temporary store: ${error instanceof Error ? error.message : String(error)}. Hash key may be wrong or corrupted.`,
-      );
-
-      trackUnauthorizedAccessAttempt("Decryption error");
-
-      await clearTemporaryData();
-
-      throw new Error(
-        "Unauthorized temporary store access: Decryption failed. Hash key may be wrong, corrupted, or temporary store is invalid. Please sign in again.",
+        "Repeated failures detected",
+        `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms`,
       );
     }
+    await clearTemporaryData();
+
+    return null;
   } catch (error) {
     logger.error("[getTemporaryStore]", "Failed to get temporary store", error);
-    throw error;
+    return null;
   }
 };
 

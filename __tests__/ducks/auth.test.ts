@@ -997,22 +997,6 @@ describe("auth duck", () => {
         });
       });
 
-      it("should return false when auth status is NOT_AUTHENTICATED", async () => {
-        const { result } = renderHook(() => useAuthenticationStore());
-
-        act(() => {
-          useAuthenticationStore.setState({
-            authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
-          });
-        });
-
-        // initBiometricPassword catches errors and returns false
-        await act(async () => {
-          const success = await result.current.initBiometricPassword();
-          expect(success).toBe(false);
-        });
-      });
-
       it("should allow access when auth status is HASH_KEY_EXPIRED (for sign-in flow)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1159,7 +1143,26 @@ describe("auth duck", () => {
       it("should track repeated unauthorized access attempts", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
-        (getHashKey as jest.Mock).mockResolvedValue(null);
+        // Ensure hash key is valid so we can test decryption failures
+        const validHashKey = {
+          ...mockHashKeyObj,
+          expiresAt: Date.now() + 3600000, // Valid for 1 hour
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(validHashKey);
+
+        // Ensure temporary store exists
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve(mockEncryptedData);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+            return Promise.resolve(JSON.stringify(validHashKey));
+          }
+          return Promise.resolve(null);
+        });
+
+        // Mock decryption failures to trigger tracking
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
 
         // Make multiple failed attempts sequentially to properly track failures
         for (let i = 0; i < 3; i++) {
@@ -1173,7 +1176,7 @@ describe("auth duck", () => {
         // Should log suspicious repeated failures after threshold
         expect(logger.error).toHaveBeenCalledWith(
           "[getTemporaryStore]",
-          "Suspicious repeated failures detected",
+          "Repeated failures detected",
           expect.stringContaining("Multiple unauthorized access attempts"),
         );
       });
@@ -1181,31 +1184,14 @@ describe("auth duck", () => {
       it("should reset failure count on successful access", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
-        // First, make a failed attempt
-        (getHashKey as jest.Mock).mockResolvedValue(null);
+        // First, make a failed decryption attempt
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
         await act(async () => {
           const success = await result.current.initBiometricPassword();
           expect(success).toBe(false);
         });
 
-        // Then, make a successful attempt - ensure hash key is valid
-        const validHashKey = {
-          ...mockHashKeyObj,
-          expiresAt: Date.now() + 3600000, // Valid for 1 hour
-        };
-        (getHashKey as jest.Mock).mockResolvedValue(validHashKey);
-
-        // Ensure temporary store is available
-        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
-          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
-            return Promise.resolve(mockEncryptedData);
-          }
-          if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
-            return Promise.resolve(JSON.stringify(validHashKey));
-          }
-          return Promise.resolve(null);
-        });
-
+        // Then, make a successful attempt - restore successful decryption
         const tempStoreWithPassword = JSON.stringify({
           privateKeys: {
             [mockAccountId]: mockPrivateKey,
@@ -1216,6 +1202,21 @@ describe("auth duck", () => {
         (decryptDataWithPassword as jest.Mock).mockResolvedValue(
           tempStoreWithPassword,
         );
+
+        // Ensure temporary store is available
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve(mockEncryptedData);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+            const validHashKey = {
+              ...mockHashKeyObj,
+              expiresAt: Date.now() + 3600000, // Valid for 1 hour
+            };
+            return Promise.resolve(JSON.stringify(validHashKey));
+          }
+          return Promise.resolve(null);
+        });
 
         // Ensure auth status is authenticated for successful access
         act(() => {
@@ -1231,7 +1232,7 @@ describe("auth duck", () => {
 
         // Failure count should be reset, so next failure should not trigger suspicious log
         const errorCallCount = (logger.error as jest.Mock).mock.calls.filter(
-          (call) => call[1] === "Suspicious repeated failures detected",
+          (call) => call[1] === "Repeated failures detected",
         ).length;
 
         // Make another failure
@@ -1243,7 +1244,7 @@ describe("auth duck", () => {
 
         // Should not have increased suspicious failure count
         const newErrorCallCount = (logger.error as jest.Mock).mock.calls.filter(
-          (call) => call[1] === "Suspicious repeated failures detected",
+          (call) => call[1] === "Repeated failures detected",
         ).length;
 
         // The count should be the same (or only increased by 1 if we hit threshold again)
