@@ -31,7 +31,6 @@ const useAuthCheck = () => {
   // Refs to track app state, last interaction, auth check intervals, and pan responder instance
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const expirationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionRef = useRef<number>(Date.now());
   const lastCheckRef = useRef<number>(Date.now());
   const panResponderRef = useRef<PanResponderInstance | null>(null);
@@ -96,12 +95,17 @@ const useAuthCheck = () => {
    */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      // Clear any existing expiration timeout
-      if (expirationTimeoutRef.current) {
-        clearTimeout(expirationTimeoutRef.current);
-        expirationTimeoutRef.current = null;
+      // When returning to active state, allow a slight delay before checking auth
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        setTimeout(() => {
+          checkAuth().catch((err) =>
+            logger.error("handleAppStateChange", "Error checking auth", err),
+          );
+        }, INITIAL_CHECK_DELAY);
       }
-
       appState.current = nextAppState;
       setupCheckInterval(nextAppState);
     };
@@ -119,10 +123,8 @@ const useAuthCheck = () => {
     return () => {
       subscription.remove();
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
-      if (expirationTimeoutRef.current)
-        clearTimeout(expirationTimeoutRef.current);
     };
-  }, [setupCheckInterval]);
+  }, [setupCheckInterval, checkAuth]);
 
   /**
    * Monitor user interaction and update active status accordingly.
