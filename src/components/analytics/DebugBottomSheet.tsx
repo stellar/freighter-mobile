@@ -14,7 +14,7 @@ import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { DevSettings, View, TouchableOpacity } from "react-native";
 import { getVersion } from "react-native-device-info";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 import { analytics } from "services/analytics";
@@ -66,6 +66,7 @@ const CustomContent: React.FC<{
 
   const handleResetApp = () => {
     devResetAppAuth();
+    DevSettings.reload();
     onDismiss();
   };
 
