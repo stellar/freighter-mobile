@@ -14,7 +14,7 @@ import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { DevSettings, View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { getVersion } from "react-native-device-info";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 import { analytics } from "services/analytics";
@@ -66,7 +66,14 @@ const CustomContent: React.FC<{
 
   const handleResetApp = () => {
     devResetAppAuth();
-    DevSettings.reload();
+    // Conditionally require DevSettings only in dev mode
+    // This prevents dev support libraries from being bundled in production
+    if (__DEV__) {
+      /* eslint-disable */
+      const { DevSettings } = require("react-native");
+      DevSettings.reload();
+      /* eslint-enable */
+    }
     onDismiss();
   };
 
