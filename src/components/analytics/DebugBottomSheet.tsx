@@ -66,6 +66,14 @@ const CustomContent: React.FC<{
 
   const handleResetApp = () => {
     devResetAppAuth();
+    // Conditionally require DevSettings only in dev mode
+    // This prevents dev support libraries from being bundled in production
+    if (__DEV__) {
+      /* eslint-disable */
+      const { DevSettings } = require("react-native");
+      DevSettings.reload();
+      /* eslint-enable */
+    }
     onDismiss();
   };
 

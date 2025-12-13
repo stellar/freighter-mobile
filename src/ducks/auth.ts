@@ -42,7 +42,6 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
-import { DevSettings } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
@@ -2321,7 +2320,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       set({ ...initialState });
       dataStorage.clear();
       get().logout();
-      DevSettings.reload();
     },
 
     setSignInMethod: (method: LoginType) => {
