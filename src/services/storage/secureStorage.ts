@@ -80,55 +80,9 @@ export const secureStorage = {
    *
    * @param key - The key to retrieve
    * @param options - Retrieval options (biometric prompt)
-   * @returns The stored value as a string, or null if not found or authentication failed
-   */
-  getItem: async (
-    key: string,
-    options?: SecureStorageOptions,
-  ): Promise<string | null> => {
-    try {
-      // If explicit biometric prompt is required, show it first
-      if (options?.requireExplicitBiometricPrompt && options?.biometricPrompt) {
-        const hasVerified = await rnBiometrics.simplePrompt({
-          promptMessage: options.biometricPrompt.title,
-          cancelButtonText: options.biometricPrompt.cancel,
-        });
-        if (!hasVerified.success) {
-          return null;
-        }
-      }
-
-      const result = await Keychain.getGenericPassword({
-        service: `${DEFAULT_SERVICE}_${key}`,
-        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
-      });
-
-      if (result === false) {
-        return null;
-      }
-
-      return result.password;
-    } catch (error) {
-      logger.error(
-        "secureStorage.getItem",
-        `Error retrieving key from keychain: ${key}`,
-        error,
-      );
-      return null;
-    }
-  },
-
-  /**
-   * Retrieves an item from secure storage with full credential information
-   *
-   * Similar to getItem but returns the full UserCredentials object instead of just the password.
-   * Useful when you need the username or other credential metadata.
-   *
-   * @param key - The key to retrieve
-   * @param options - Retrieval options (biometric prompt)
    * @returns The stored credentials, or false if not found or authentication failed
    */
-  getItemWithCredentials: async (
+  getItem: async (
     key: string,
     options?: SecureStorageOptions,
   ): Promise<Keychain.UserCredentials | false> => {
@@ -152,7 +106,7 @@ export const secureStorage = {
       return result;
     } catch (error) {
       logger.error(
-        "secureStorage.getItemWithCredentials",
+        "secureStorage.getItem",
         `Error retrieving key from keychain: ${key}`,
         error,
       );

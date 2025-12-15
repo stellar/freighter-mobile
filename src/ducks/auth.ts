@@ -400,10 +400,13 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // Check if any accounts exist at all
     const hasAccount = (await getAllAccounts()).length > 0;
 
-    const [hashKey, temporaryStore] = await Promise.all([
+    const [hashKey, temporaryStoreResult] = await Promise.all([
       getHashKey(),
       secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
     ]);
+    const temporaryStore = temporaryStoreResult
+      ? temporaryStoreResult.password
+      : null;
 
     // If there are no accounts at all, always return NOT_AUTHENTICATED
     if (!hasAccount) {
@@ -479,9 +482,12 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
     }
 
     // Get the encrypted temporary store
-    const temporaryStore = await secureDataStorage.getItem(
+    const temporaryStoreResult = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
+    const temporaryStore = temporaryStoreResult
+      ? temporaryStoreResult.password
+      : null;
 
     if (!temporaryStore) {
       logger.error(

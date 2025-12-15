@@ -16,7 +16,7 @@ export interface PersistentStorage {
  * All sensitive data uses the same secure storage with maximum security.
  * Supports both automatic keychain prompts and explicit biometric prompts.
  */
-const secureDataStorageWrapper: PersistentStorage = {
+const secureDataStorageWrapper = {
   getItem: async (key: string) => secureStorage.getItem(key),
   setItem: async (key: string, value: string) =>
     secureStorage.setItem(key, value),
@@ -38,12 +38,12 @@ export const biometricDataStorage = {
     message?: { title: string; cancel: string },
   ): Promise<Keychain.UserCredentials | false> => {
     if (message) {
-      return secureStorage.getItemWithCredentials(key, {
+      return secureStorage.getItem(key, {
         requireExplicitBiometricPrompt: true,
         biometricPrompt: message,
       });
     }
-    return secureStorage.getItemWithCredentials(key);
+    return secureStorage.getItem(key);
   },
   setItem: async (key: string, value: string) =>
     secureStorage.setItem(key, value),

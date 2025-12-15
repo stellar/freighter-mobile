@@ -70,7 +70,6 @@ jest.mock("services/storage/secureStorage", () => ({
   secureStorage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
-    getItemWithCredentials: jest.fn(),
     remove: jest.fn(),
     checkIfExists: jest.fn(),
     clear: jest.fn(),
