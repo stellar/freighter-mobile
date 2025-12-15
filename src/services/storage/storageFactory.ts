@@ -2,11 +2,43 @@ import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
 import { secureStorage } from "services/storage/secureStorage";
 
-// This interface is used to define the methods that are required for a storage implementation.
+/**
+ * Interface for persistent storage operations
+ *
+ * This interface defines the contract for storing and retrieving data persistently.
+ * It provides methods for secure storage of information with standard CRUD operations.
+ */
 export interface PersistentStorage {
+  /**
+   * Retrieves an item from storage
+   *
+   * @param {string} key - The storage key for the item
+   * @returns {Promise<string | null>} The stored value or null if not found
+   */
   getItem(key: string): Promise<string | null>;
+
+  /**
+   * Stores an item in storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {string} value - The value to store
+   * @returns {Promise<void>}
+   */
   setItem(key: string, value: string): Promise<void>;
+
+  /**
+   * Removes one or more items from storage
+   *
+   * @param {string | string[]} keys - The key(s) to remove
+   * @returns {Promise<void>}
+   */
   remove: (keys: string | string[]) => Promise<void>;
+
+  /**
+   * Clears all storage
+   *
+   * @returns {Promise<void>}
+   */
   clear: () => Promise<void>;
 }
 
@@ -36,6 +68,15 @@ const secureDataStorageWrapper: PersistentStorage = {
  * - Includes checkIfExists method
  */
 export const biometricDataStorage = {
+  /**
+   * Retrieves an item from biometric-protected storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {Object} [message] - Optional prompt configuration for biometric authentication
+   * @param {string} message.title - Title displayed during biometric prompt
+   * @param {string} message.cancel - Text for the cancel button
+   * @returns {Promise<Keychain.UserCredentials | false>} The stored credentials or false if authentication fails
+   */
   getItem: async (
     key: string,
     message?: { title: string; cancel: string },
@@ -48,10 +89,38 @@ export const biometricDataStorage = {
     }
     return secureStorage.getItem(key);
   },
+
+  /**
+   * Stores an item in biometric-protected storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {string} value - The value to store securely
+   * @returns {Promise<void>}
+   */
   setItem: async (key: string, value: string) =>
     secureStorage.setItem(key, value),
+
+  /**
+   * Removes one or more items from biometric-protected storage
+   *
+   * @param {string | string[]} keys - The key(s) to remove
+   * @returns {Promise<void>}
+   */
   remove: async (keys: string | string[]) => secureStorage.remove(keys),
+
+  /**
+   * Clears all biometric-protected storage
+   *
+   * @returns {Promise<void>}
+   */
   clear: async () => secureStorage.clear(),
+
+  /**
+   * Checks if an item exists in biometric-protected storage
+   *
+   * @param {string} key - The storage key to check
+   * @returns {Promise<boolean>} True if the item exists, false otherwise
+   */
   checkIfExists: async (key: string) => secureStorage.checkIfExists(key),
 };
 
