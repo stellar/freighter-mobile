@@ -27,13 +27,12 @@ import {
   clearTemporaryData,
   getHashKey,
 } from "services/storage/helpers";
+import { rnBiometrics } from "services/storage/secureStorage";
 import {
   dataStorage,
   secureDataStorage,
   biometricDataStorage,
 } from "services/storage/storageFactory";
-// Import mocked modules
-import { rnBiometrics } from "services/storage/unifiedSecureStorage";
 import StellarHDWallet from "stellar-hd-wallet";
 
 // Mock dependencies
@@ -64,11 +63,11 @@ jest.mock("services/storage/storageFactory", () => ({
   },
 }));
 
-jest.mock("services/storage/unifiedSecureStorage", () => ({
+jest.mock("services/storage/secureStorage", () => ({
   rnBiometrics: {
     isSensorAvailable: jest.fn(),
   },
-  unifiedSecureStorage: {
+  secureStorage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
     getItemWithCredentials: jest.fn(),

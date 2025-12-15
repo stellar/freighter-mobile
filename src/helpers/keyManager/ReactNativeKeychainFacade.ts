@@ -63,8 +63,6 @@ export class ReactNativeKeychainFacade {
   /**
    * Get a key from keychain
    *
-   * This method requires user presence (biometrics/passcode) to access
-   * the encrypted wallet key, providing strong protection for sensitive data.
    */
   public async getKey(id: string): Promise<EncryptedKey | null> {
     try {
@@ -92,10 +90,6 @@ export class ReactNativeKeychainFacade {
   /**
    * Set a key in keychain
    *
-   * Stores encrypted wallet keys with maximum security:
-   * - Device-only (excluded from backups/migration)
-   * - Requires user presence (biometrics/passcode) on every access
-   * - Only accessible when device has passcode set and is unlocked
    */
   public async setKey(id: string, key: EncryptedKey): Promise<void> {
     try {
@@ -129,9 +123,6 @@ export class ReactNativeKeychainFacade {
   /**
    * Get all keys from keychain
    * Uses the special index key to track all stored keys
-   *
-   * Note: The index key uses lower security as it only contains metadata (key IDs),
-   * not sensitive cryptographic material.
    */
   public async getAllKeys(): Promise<EncryptedKey[]> {
     const keys: EncryptedKey[] = [];
@@ -168,8 +159,6 @@ export class ReactNativeKeychainFacade {
   /**
    * Add a key ID to the index
    *
-   * Note: The index uses lower security as it only contains metadata (key IDs),
-   * not sensitive cryptographic material.
    */
   public async addToKeyIndex(id: string): Promise<void> {
     try {
@@ -217,8 +206,6 @@ export class ReactNativeKeychainFacade {
   /**
    * Remove a key ID from the index
    *
-   * Note: The index uses lower security as it only contains metadata (key IDs),
-   * not sensitive cryptographic material.
    */
   public async removeFromKeyIndex(id: string): Promise<void> {
     try {

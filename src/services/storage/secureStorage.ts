@@ -42,14 +42,14 @@ export interface SecureStorageOptions {
 }
 
 /**
- * Unified secure storage implementation using react-native-keychain
+ * Secure storage implementation using react-native-keychain
  *
  * All sensitive data is stored with maximum security:
  * - Device-only (excluded from backups/migration)
  * - Requires passcode to be set on device
  * - Requires biometric/passcode on every access
  */
-export const unifiedSecureStorage = {
+export const secureStorage = {
   /**
    * Stores an item in secure storage
    *
@@ -64,7 +64,7 @@ export const unifiedSecureStorage = {
       });
     } catch (error) {
       logger.error(
-        "unifiedSecureStorage.setItem",
+        "secureStorage.setItem",
         `Error storing item in keychain: ${key}`,
         error,
       );
@@ -110,7 +110,7 @@ export const unifiedSecureStorage = {
       return result.password;
     } catch (error) {
       logger.error(
-        "unifiedSecureStorage.getItem",
+        "secureStorage.getItem",
         `Error retrieving key from keychain: ${key}`,
         error,
       );
@@ -152,7 +152,7 @@ export const unifiedSecureStorage = {
       return result;
     } catch (error) {
       logger.error(
-        "unifiedSecureStorage.getItemWithCredentials",
+        "secureStorage.getItemWithCredentials",
         `Error retrieving key from keychain: ${key}`,
         error,
       );
@@ -183,7 +183,7 @@ export const unifiedSecureStorage = {
       });
     } catch (error) {
       logger.error(
-        "unifiedSecureStorage.remove",
+        "secureStorage.remove",
         "Error removing keys from keychain",
         error,
       );
@@ -205,7 +205,7 @@ export const unifiedSecureStorage = {
       return result;
     } catch (error) {
       logger.error(
-        "unifiedSecureStorage.checkIfExists",
+        "secureStorage.checkIfExists",
         `Error checking if key exists: ${key}`,
         error,
       );
@@ -226,11 +226,7 @@ export const unifiedSecureStorage = {
         service: DEFAULT_SERVICE,
       });
     } catch (error) {
-      logger.error(
-        "unifiedSecureStorage.clear",
-        "Error clearing keychain",
-        error,
-      );
+      logger.error("secureStorage.clear", "Error clearing keychain", error);
     }
   },
 };

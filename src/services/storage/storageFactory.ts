@@ -1,9 +1,6 @@
 import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
-import {
-  unifiedSecureStorage,
-  rnBiometrics,
-} from "services/storage/unifiedSecureStorage";
+import { secureStorage } from "services/storage/secureStorage";
 
 // This interface is used to define the methods that are required for a storage implementation.
 export interface PersistentStorage {
@@ -14,17 +11,17 @@ export interface PersistentStorage {
 }
 
 /**
- * Unified secure storage wrapper
+ * Secure storage wrapper
  *
  * All sensitive data uses the same secure storage with maximum security.
  * Supports both automatic keychain prompts and explicit biometric prompts.
  */
 const secureDataStorageWrapper: PersistentStorage = {
-  getItem: async (key: string) => unifiedSecureStorage.getItem(key),
+  getItem: async (key: string) => secureStorage.getItem(key),
   setItem: async (key: string, value: string) =>
-    unifiedSecureStorage.setItem(key, value),
-  remove: async (keys: string | string[]) => unifiedSecureStorage.remove(keys),
-  clear: async () => unifiedSecureStorage.clear(),
+    secureStorage.setItem(key, value),
+  remove: async (keys: string | string[]) => secureStorage.remove(keys),
+  clear: async () => secureStorage.clear(),
 };
 
 /**
@@ -41,23 +38,20 @@ export const biometricDataStorage = {
     message?: { title: string; cancel: string },
   ): Promise<Keychain.UserCredentials | false> => {
     if (message) {
-      return unifiedSecureStorage.getItemWithCredentials(key, {
+      return secureStorage.getItemWithCredentials(key, {
         requireExplicitBiometricPrompt: true,
         biometricPrompt: message,
       });
     }
-    return unifiedSecureStorage.getItemWithCredentials(key);
+    return secureStorage.getItemWithCredentials(key);
   },
   setItem: async (key: string, value: string) =>
-    unifiedSecureStorage.setItem(key, value),
-  remove: async (keys: string | string[]) => unifiedSecureStorage.remove(keys),
-  clear: async () => unifiedSecureStorage.clear(),
-  checkIfExists: async (key: string) => unifiedSecureStorage.checkIfExists(key),
+    secureStorage.setItem(key, value),
+  remove: async (keys: string | string[]) => secureStorage.remove(keys),
+  clear: async () => secureStorage.clear(),
+  checkIfExists: async (key: string) => secureStorage.checkIfExists(key),
 };
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.
 export const secureDataStorage = secureDataStorageWrapper;
 export const dataStorage = asyncStorage;
-
-// Re-export rnBiometrics for convenience and backward compatibility
-export { rnBiometrics };
