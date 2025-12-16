@@ -83,8 +83,7 @@ export const biometricDataStorage = {
   ): Promise<Keychain.UserCredentials | false> => {
     if (message) {
       return secureStorage.getItem(key, {
-        requireExplicitBiometricPrompt: true,
-        biometricPrompt: message,
+        explicitBiometricPrompt: message,
       });
     }
     return secureStorage.getItem(key);

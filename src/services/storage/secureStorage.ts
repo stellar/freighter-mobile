@@ -23,19 +23,10 @@ const DEFAULT_SERVICE = "freighter_secure_storage";
  */
 export interface SecureStorageOptions {
   /**
-   * Whether to require an explicit biometric prompt before accessing the item.
-   * When true, uses react-native-biometrics to show a custom prompt.
-   * When false, relies on the keychain's automatic biometric prompt via accessControl.
-   *
-   * @default false
-   */
-  requireExplicitBiometricPrompt?: boolean;
-
-  /**
    * Prompt configuration for explicit biometric authentication
-   * Only used when requireExplicitBiometricPrompt is true
+   * If provided, shows a custom confirmation biometric prompt before accessing the item.
    */
-  biometricPrompt?: {
+  explicitBiometricPrompt?: {
     title: string;
     cancel: string;
   };
@@ -75,8 +66,9 @@ export const secureStorage = {
   /**
    * Retrieves an item from secure storage
    *
-   * If requireExplicitBiometricPrompt is true, shows a custom biometric prompt first.
-   * Otherwise, relies on the keychain's automatic biometric prompt.
+   * If explicitBiometricPrompt is provided, shows a custom biometric prompt first.
+   * The keychain's automatic biometric prompt is never shown, so biometric authentication
+   * only occurs when explicitBiometricPrompt is provided.
    *
    * @param key - The key to retrieve
    * @param options - Retrieval options (biometric prompt)
@@ -87,11 +79,11 @@ export const secureStorage = {
     options?: SecureStorageOptions,
   ): Promise<Keychain.UserCredentials | false> => {
     try {
-      // If explicit biometric prompt is required, show it first
-      if (options?.requireExplicitBiometricPrompt && options?.biometricPrompt) {
+      // If explicit biometric prompt is provided, show it first
+      if (options?.explicitBiometricPrompt) {
         const hasVerified = await rnBiometrics.simplePrompt({
-          promptMessage: options.biometricPrompt.title,
-          cancelButtonText: options.biometricPrompt.cancel,
+          promptMessage: options.explicitBiometricPrompt.title,
+          cancelButtonText: options.explicitBiometricPrompt.cancel,
         });
         if (!hasVerified.success) {
           return false;
