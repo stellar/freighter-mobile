@@ -14,9 +14,16 @@ export const rnBiometrics = new ReactNativeBiometrics({
 });
 
 /**
- * Default service name used for the keychain
+ * Service name for secure storage
+ * Maintains backward compatibility with existing data
  */
-const DEFAULT_SERVICE = "freighter_secure_storage";
+export const SECURE_STORAGE_SERVICE = "freighter_secure_storage";
+
+/**
+ * Service name for biometric storage
+ * Maintains backward compatibility with existing biometric data
+ */
+export const BIOMETRIC_STORAGE_SERVICE = "freighter_biometric_storage";
 
 /**
  * Options for storing/retrieving items from secure storage
@@ -33,14 +40,17 @@ export interface SecureStorageOptions {
 }
 
 /**
- * Secure storage implementation using react-native-keychain
+ * Creates a secure storage instance with a specific service name
  *
  * All sensitive data is stored with maximum security:
  * - Device-only (excluded from backups/migration)
  * - Requires passcode to be set on device
  * - Requires biometric/passcode on every access
+ *
+ * @param serviceName - The service name to use for keychain storage
+ * @returns A secure storage instance configured with the given service name
  */
-export const secureStorage = {
+export const createSecureStorage = (serviceName: string) => ({
   /**
    * Stores an item in secure storage
    *
@@ -50,7 +60,7 @@ export const secureStorage = {
   setItem: async (key: string, value: string): Promise<void> => {
     try {
       await Keychain.setGenericPassword(key, value, {
-        service: `${DEFAULT_SERVICE}_${key}`,
+        service: `${serviceName}_${key}`,
         ...SECURE_KEYCHAIN_OPTIONS,
       });
     } catch (error) {
@@ -91,7 +101,7 @@ export const secureStorage = {
       }
 
       const result = await Keychain.getGenericPassword({
-        service: `${DEFAULT_SERVICE}_${key}`,
+        service: `${serviceName}_${key}`,
         accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
       });
 
@@ -117,7 +127,7 @@ export const secureStorage = {
         await Promise.all(
           keys.map((key) =>
             Keychain.resetGenericPassword({
-              service: `${DEFAULT_SERVICE}_${key}`,
+              service: `${serviceName}_${key}`,
             }),
           ),
         );
@@ -125,7 +135,7 @@ export const secureStorage = {
       }
 
       await Keychain.resetGenericPassword({
-        service: `${DEFAULT_SERVICE}_${keys}`,
+        service: `${serviceName}_${keys}`,
       });
     } catch (error) {
       logger.error(
@@ -146,7 +156,7 @@ export const secureStorage = {
   checkIfExists: async (key: string): Promise<boolean> => {
     try {
       const result = await Keychain.hasGenericPassword({
-        service: `${DEFAULT_SERVICE}_${key}`,
+        service: `${serviceName}_${key}`,
       });
       return result;
     } catch (error) {
@@ -169,10 +179,16 @@ export const secureStorage = {
   clear: async (): Promise<void> => {
     try {
       await Keychain.resetGenericPassword({
-        service: DEFAULT_SERVICE,
+        service: serviceName,
       });
     } catch (error) {
       logger.error("secureStorage.clear", "Error clearing keychain", error);
     }
   },
-};
+});
+
+/**
+ * Default secure storage instance using freighter_secure_storage service name
+ * Maintains backward compatibility with existing data
+ */
+export const secureStorage = createSecureStorage(SECURE_STORAGE_SERVICE);

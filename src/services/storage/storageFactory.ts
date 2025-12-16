@@ -1,6 +1,10 @@
 import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
-import { secureStorage } from "services/storage/secureStorage";
+import {
+  BIOMETRIC_STORAGE_SERVICE,
+  createSecureStorage,
+  SECURE_STORAGE_SERVICE,
+} from "services/storage/secureStorage";
 
 /**
  * Interface for persistent storage operations
@@ -43,6 +47,18 @@ export interface PersistentStorage {
 }
 
 /**
+ * Secure storage instance using freighter_secure_storage service name
+ * Maintains backward compatibility with existing data
+ */
+const secureStorageInstance = createSecureStorage(SECURE_STORAGE_SERVICE);
+
+/**
+ * Biometric storage instance using freighter_biometric_storage service name
+ * Maintains backward compatibility with existing biometric data
+ */
+const biometricStorageInstance = createSecureStorage(BIOMETRIC_STORAGE_SERVICE);
+
+/**
  * Secure storage wrapper
  *
  * All sensitive data uses the same secure storage with maximum security.
@@ -50,24 +66,22 @@ export interface PersistentStorage {
  */
 const secureDataStorageWrapper: PersistentStorage = {
   getItem: async (key: string) => {
-    const result = await secureStorage.getItem(key);
+    const result = await secureStorageInstance.getItem(key);
     return result ? result.password : null;
   },
   setItem: async (key: string, value: string) =>
-    secureStorage.setItem(key, value),
-  remove: async (keys: string | string[]) => secureStorage.remove(keys),
-  clear: async () => secureStorage.clear(),
+    secureStorageInstance.setItem(key, value),
+  remove: async (keys: string | string[]) => secureStorageInstance.remove(keys),
+  clear: async () => secureStorageInstance.clear(),
 };
 
 /**
  * Biometric storage wrapper
  *
- * Same as secureDataStorage but with additional methods for biometric-specific use cases:
- * - Returns UserCredentials instead of just password
- * - Supports custom biometric prompt messages
- * - Includes checkIfExists method
+ * Provides a convenience API for biometric storage with simplified prompt handling.
+ * The wrapper accepts { title, cancel } directly instead of { explicitBiometricPrompt: { title, cancel } }.
  */
-export const biometricDataStorage = {
+const biometricStorageWrapper = {
   /**
    * Retrieves an item from biometric-protected storage
    *
@@ -82,11 +96,11 @@ export const biometricDataStorage = {
     message?: { title: string; cancel: string },
   ): Promise<Keychain.UserCredentials | false> => {
     if (message) {
-      return secureStorage.getItem(key, {
+      return biometricStorageInstance.getItem(key, {
         explicitBiometricPrompt: message,
       });
     }
-    return secureStorage.getItem(key);
+    return biometricStorageInstance.getItem(key);
   },
 
   /**
@@ -97,7 +111,7 @@ export const biometricDataStorage = {
    * @returns {Promise<void>}
    */
   setItem: async (key: string, value: string) =>
-    secureStorage.setItem(key, value),
+    biometricStorageInstance.setItem(key, value),
 
   /**
    * Removes one or more items from biometric-protected storage
@@ -105,14 +119,15 @@ export const biometricDataStorage = {
    * @param {string | string[]} keys - The key(s) to remove
    * @returns {Promise<void>}
    */
-  remove: async (keys: string | string[]) => secureStorage.remove(keys),
+  remove: async (keys: string | string[]) =>
+    biometricStorageInstance.remove(keys),
 
   /**
    * Clears all biometric-protected storage
    *
    * @returns {Promise<void>}
    */
-  clear: async () => secureStorage.clear(),
+  clear: async () => biometricStorageInstance.clear(),
 
   /**
    * Checks if an item exists in biometric-protected storage
@@ -120,9 +135,11 @@ export const biometricDataStorage = {
    * @param {string} key - The storage key to check
    * @returns {Promise<boolean>} True if the item exists, false otherwise
    */
-  checkIfExists: async (key: string) => secureStorage.checkIfExists(key),
+  checkIfExists: async (key: string) =>
+    biometricStorageInstance.checkIfExists(key),
 };
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.
 export const secureDataStorage = secureDataStorageWrapper;
 export const dataStorage = asyncStorage;
+export const biometricDataStorage = biometricStorageWrapper;
