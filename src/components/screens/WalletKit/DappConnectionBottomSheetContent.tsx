@@ -39,7 +39,6 @@ type DappConnectionBottomSheetContentProps = {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
-  proceedAnywayAction?: () => void;
 };
 
 /**
@@ -62,7 +61,6 @@ const DappConnectionBottomSheetContent: React.FC<
   isSuspicious,
   isUnableToScan,
   securityWarningAction,
-  proceedAnywayAction,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -205,7 +203,7 @@ const DappConnectionBottomSheetContent: React.FC<
               xl
               isFullWidth
               onPress={() => {
-                proceedAnywayAction?.();
+                onConnection();
               }}
               isLoading={isConnecting}
               disabled={isConnecting}
