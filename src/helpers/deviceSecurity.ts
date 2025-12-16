@@ -11,8 +11,7 @@ export const isDeviceJailbroken = (): boolean => {
     }
     return isJailBroken;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("isDeviceJailbroken", "isJailBroken", errorMessage);
+    logger.error("isDeviceJailbroken", "isJailBroken", error);
     analytics.track(AnalyticsEvent.DEVICE_JAILBREAK_FAILED);
     return false;
   }
