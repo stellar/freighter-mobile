@@ -27,37 +27,9 @@ describe("Protocols Helper", () => {
   ];
 
   describe("findMatchedProtocol", () => {
-    it("should find protocol by exact name match", () => {
-      const result = findMatchedProtocol({
-        protocols: mockProtocols,
-        searchName: "StellarX",
-      });
-
-      expect(result).toEqual(mockProtocols[0]);
-    });
-
-    it("should handle case-insensitive matching", () => {
-      const result = findMatchedProtocol({
-        protocols: mockProtocols,
-        searchName: "steLLarx",
-      });
-
-      expect(result).toEqual(mockProtocols[0]);
-    });
-
-    it("should find protocol by partial name match", () => {
-      const result = findMatchedProtocol({
-        protocols: mockProtocols,
-        searchName: "StellarXDEX",
-      });
-
-      expect(result).toEqual(mockProtocols[0]);
-    });
-
     it("should find protocol by domain in URL", () => {
       const result = findMatchedProtocol({
         protocols: mockProtocols,
-        searchName: "Some App",
         searchUrl: "https://stellarx.com/some-path",
       });
 
@@ -67,7 +39,6 @@ describe("Protocols Helper", () => {
     it("should find protocol by website URL match", () => {
       const result = findMatchedProtocol({
         protocols: mockProtocols,
-        searchName: "Some App",
         searchUrl: "https://aquarius.com",
       });
 
@@ -77,8 +48,16 @@ describe("Protocols Helper", () => {
     it("should return undefined when no match found", () => {
       const result = findMatchedProtocol({
         protocols: mockProtocols,
-        searchName: "NonExistent",
         searchUrl: "https://nonexistent.com",
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should return undefined when searchUrl is undefined", () => {
+      const result = findMatchedProtocol({
+        protocols: mockProtocols,
+        searchUrl: undefined,
       });
 
       expect(result).toBeUndefined();
@@ -87,53 +66,13 @@ describe("Protocols Helper", () => {
     it("should handle empty protocols array", () => {
       const result = findMatchedProtocol({
         protocols: [],
-        searchName: "StellarX",
         searchUrl: "https://stellarx.com",
       });
 
       expect(result).toBeUndefined();
     });
 
-    it("should handle undefined search parameters", () => {
-      const result = findMatchedProtocol({
-        protocols: mockProtocols,
-        searchName: undefined as any,
-        searchUrl: undefined as any,
-      });
-
-      expect(result).toBeUndefined();
-    });
-
-    it("should prioritize name match over URL match", () => {
-      // Create a protocol that could match both name and URL
-      const protocolsWithOverlap = [
-        {
-          name: "StellarX",
-          description: "StellarX Protocol",
-          iconUrl: "https://stellarx.com/icon.png",
-          websiteUrl: "https://stellarx.com",
-          tags: ["dex", "trading"],
-        },
-        {
-          name: "OtherApp",
-          description: "Other App",
-          iconUrl: "https://other.com/icon.png",
-          websiteUrl: "https://stellarx.com", // Same domain as StellarX
-          tags: ["other"],
-        },
-      ];
-
-      const result = findMatchedProtocol({
-        protocols: protocolsWithOverlap,
-        searchName: "StellarX",
-        searchUrl: "https://stellarx.com",
-      });
-
-      // Should return StellarX (name match) not OtherApp (URL match)
-      expect(result).toEqual(protocolsWithOverlap[0]);
-    });
-
-    it("should handle protocols with special characters in names", () => {
+    it("should handle protocols with special characters in domains", () => {
       const protocolsWithSpecialChars = [
         {
           name: "Stellar-X",
@@ -153,7 +92,6 @@ describe("Protocols Helper", () => {
 
       const result = findMatchedProtocol({
         protocols: protocolsWithSpecialChars,
-        searchName: "Stellar-X",
         searchUrl: "https://stellar-x.com",
       });
 
@@ -163,7 +101,6 @@ describe("Protocols Helper", () => {
     it("should handle URLs with subdomains", () => {
       const result = findMatchedProtocol({
         protocols: mockProtocols,
-        searchName: "Some App",
         searchUrl: "https://app.stellarx.com",
       });
 
@@ -173,11 +110,37 @@ describe("Protocols Helper", () => {
     it("should handle URLs with query parameters", () => {
       const result = findMatchedProtocol({
         protocols: mockProtocols,
-        searchName: "Some App",
         searchUrl: "https://stellarx.com?param=value",
       });
 
       expect(result).toEqual(mockProtocols[0]);
+    });
+
+    it("should return first match when multiple protocols share the same domain", () => {
+      const protocolsWithSameDomain = [
+        {
+          name: "StellarX",
+          description: "StellarX Protocol",
+          iconUrl: "https://stellarx.com/icon.png",
+          websiteUrl: "https://stellarx.com",
+          tags: ["dex", "trading"],
+        },
+        {
+          name: "OtherApp",
+          description: "Other App",
+          iconUrl: "https://other.com/icon.png",
+          websiteUrl: "https://stellarx.com", // Same domain as StellarX
+          tags: ["other"],
+        },
+      ];
+
+      const result = findMatchedProtocol({
+        protocols: protocolsWithSameDomain,
+        searchUrl: "https://stellarx.com",
+      });
+
+      // Should return the first match (StellarX)
+      expect(result).toEqual(protocolsWithSameDomain[0]);
     });
   });
 });
