@@ -1,11 +1,7 @@
 import { logger } from "config/logger";
-import { isIOS } from "helpers/device";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
-import {
-  SECURE_KEYCHAIN_OPTIONS_ANDROID,
-  SECURE_KEYCHAIN_OPTIONS_IOS,
-} from "services/storage/keychainSecurityConfig";
+import { SECURE_KEYCHAIN_OPTIONS } from "services/storage/keychainSecurityConfig";
 
 /**
  * React Native Biometrics instance for biometric authentication
@@ -67,18 +63,10 @@ export const createSecureStorage = (serviceName: string) => ({
    */
   setItem: async (key: string, value: string): Promise<void> => {
     try {
-      // iOS: Use accessControl to require user presence
-      // Android: Do not use accessControl to avoid unwanted prompts
-      const storageOptions: Keychain.SetOptions = isIOS
-        ? {
-            service: `${serviceName}_${key}`,
-            accessible: SECURE_KEYCHAIN_OPTIONS_IOS.accessible,
-            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
-          }
-        : {
-            service: `${serviceName}_${key}`,
-            accessible: SECURE_KEYCHAIN_OPTIONS_ANDROID.accessible,
-          };
+      const storageOptions: Keychain.SetOptions = {
+        service: `${serviceName}_${key}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      };
 
       await Keychain.setGenericPassword(key, value, storageOptions);
     } catch (error) {
@@ -118,16 +106,10 @@ export const createSecureStorage = (serviceName: string) => ({
         }
       }
 
-      // iOS: Use accessControl to require user presence
-      // Android: Do not pass accessControl to avoid unwanted prompts
-      const getOptions: Keychain.GetOptions = isIOS
-        ? {
-            service: `${serviceName}_${key}`,
-            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
-          }
-        : {
-            service: `${serviceName}_${key}`,
-          };
+      const getOptions: Keychain.GetOptions = {
+        service: `${serviceName}_${key}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      };
 
       const result = await Keychain.getGenericPassword(getOptions);
       return result;

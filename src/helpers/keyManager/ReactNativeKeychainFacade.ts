@@ -3,11 +3,9 @@
 /* eslint-disable no-await-in-loop */
 import { EncryptedKey } from "@stellar/typescript-wallet-sdk-km";
 import { logger } from "config/logger";
-import { isIOS } from "helpers/device";
 import * as Keychain from "react-native-keychain";
 import {
-  SECURE_KEYCHAIN_OPTIONS_ANDROID,
-  SECURE_KEYCHAIN_OPTIONS_IOS,
+  SECURE_KEYCHAIN_OPTIONS,
   INDEX_KEYCHAIN_OPTIONS,
 } from "services/storage/keychainSecurityConfig";
 
@@ -46,16 +44,10 @@ export class ReactNativeKeychainFacade {
    */
   public async hasKey(id: string): Promise<boolean> {
     try {
-      // iOS: Use accessControl to require user presence
-      // Android: Do not use accessControl to avoid unwanted prompts
-      const getOptions: Keychain.GetOptions = isIOS
-        ? {
-            service: `${this.service}_${id}`,
-            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
-          }
-        : {
-            service: `${this.service}_${id}`,
-          };
+      const getOptions: Keychain.GetOptions = {
+        service: `${this.service}_${id}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      };
 
       const result = await Keychain.getGenericPassword(getOptions);
       return result !== false;
@@ -76,16 +68,10 @@ export class ReactNativeKeychainFacade {
    */
   public async getKey(id: string): Promise<EncryptedKey | null> {
     try {
-      // iOS: Use accessControl to require user presence
-      // Android: Do not use accessControl to avoid unwanted prompts
-      const getOptions: Keychain.GetOptions = isIOS
-        ? {
-            service: `${this.service}_${id}`,
-            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
-          }
-        : {
-            service: `${this.service}_${id}`,
-          };
+      const getOptions: Keychain.GetOptions = {
+        service: `${this.service}_${id}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      };
 
       const result = await Keychain.getGenericPassword(getOptions);
 
@@ -111,18 +97,10 @@ export class ReactNativeKeychainFacade {
    */
   public async setKey(id: string, key: EncryptedKey): Promise<void> {
     try {
-      // iOS: Use accessControl to require user presence
-      // Android: Do not use accessControl to avoid unwanted prompts
-      const setOptions: Keychain.SetOptions = isIOS
-        ? {
-            service: `${this.service}_${id}`,
-            accessible: SECURE_KEYCHAIN_OPTIONS_IOS.accessible,
-            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
-          }
-        : {
-            service: `${this.service}_${id}`,
-            accessible: SECURE_KEYCHAIN_OPTIONS_ANDROID.accessible,
-          };
+      const setOptions: Keychain.SetOptions = {
+        service: `${this.service}_${id}`,
+        ...SECURE_KEYCHAIN_OPTIONS,
+      };
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {

@@ -1,28 +1,22 @@
+import { isIOS } from "helpers/device";
 import * as Keychain from "react-native-keychain";
 
 /**
- * Secure keychain options for iOS - sensitive data (wallet keys, encrypted blobs, passwords, etc.)
+ * Secure keychain options for sensitive data (wallet keys, encrypted blobs, passwords, etc.)
+ *
+ * Platform-specific behavior:
+ * - iOS: Uses accessControl to require user presence (biometrics or passcode) on read
+ * - Android: Does not use accessControl to avoid unwanted prompts
  *
  * Security features:
  * - WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: Only accessible when device has passcode and is unlocked
- * - BIOMETRY_ANY_OR_DEVICE_PASSCODE: Requires biometric/passcode on every read
  * - Never included in backups or device migration
  */
-export const SECURE_KEYCHAIN_OPTIONS_IOS = {
+export const SECURE_KEYCHAIN_OPTIONS = {
   accessible: Keychain.ACCESSIBLE.WHEN_PASSCODE_SET_THIS_DEVICE_ONLY,
-  accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
-};
-
-/**
- * Secure keychain options for Android - sensitive data (wallet keys, encrypted blobs, passwords, etc.)
- *
- * Security features:
- * - WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: Only accessible when device has passcode and is unlocked
- * - No accessControl: On Android, accessControl triggers unwanted prompts, so we don't use it
- * - Never included in backups or device migration
- */
-export const SECURE_KEYCHAIN_OPTIONS_ANDROID = {
-  accessible: Keychain.ACCESSIBLE.WHEN_PASSCODE_SET_THIS_DEVICE_ONLY,
+  accessControl: isIOS
+    ? Keychain.ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE
+    : undefined,
 };
 
 /**
