@@ -1,7 +1,11 @@
 import { logger } from "config/logger";
+import { isIOS } from "helpers/device";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
-import { SECURE_KEYCHAIN_OPTIONS } from "services/storage/keychainSecurityConfig";
+import {
+  SECURE_KEYCHAIN_OPTIONS_ANDROID,
+  SECURE_KEYCHAIN_OPTIONS_IOS,
+} from "services/storage/keychainSecurityConfig";
 
 /**
  * React Native Biometrics instance for biometric authentication
@@ -54,15 +58,29 @@ export const createSecureStorage = (serviceName: string) => ({
   /**
    * Stores an item in secure storage
    *
+   * Platform-specific behavior:
+   * - iOS: Uses accessControl to require user presence (biometrics or passcode) on read
+   * - Android: Does not use accessControl to avoid unwanted prompts
+   *
    * @param key - The key to store the value under
    * @param value - The value to store
    */
   setItem: async (key: string, value: string): Promise<void> => {
     try {
-      await Keychain.setGenericPassword(key, value, {
-        service: `${serviceName}_${key}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
-      });
+      // iOS: Use accessControl to require user presence
+      // Android: Do not use accessControl to avoid unwanted prompts
+      const storageOptions: Keychain.SetOptions = isIOS
+        ? {
+            service: `${serviceName}_${key}`,
+            accessible: SECURE_KEYCHAIN_OPTIONS_IOS.accessible,
+            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
+          }
+        : {
+            service: `${serviceName}_${key}`,
+            accessible: SECURE_KEYCHAIN_OPTIONS_ANDROID.accessible,
+          };
+
+      await Keychain.setGenericPassword(key, value, storageOptions);
     } catch (error) {
       logger.error(
         "secureStorage.setItem",
@@ -76,9 +94,9 @@ export const createSecureStorage = (serviceName: string) => ({
   /**
    * Retrieves an item from secure storage
    *
-   * If explicitBiometricPrompt is provided, shows a custom biometric prompt first.
-   * The keychain's automatic biometric prompt is never shown, so biometric authentication
-   * only occurs when explicitBiometricPrompt is provided.
+   * Platform-specific behavior:
+   * - iOS: Uses accessControl to require user presence (biometrics or passcode) on read
+   * - Android: Does not use accessControl to avoid unwanted prompts
    *
    * @param key - The key to retrieve
    * @param options - Retrieval options (biometric prompt)
@@ -89,7 +107,7 @@ export const createSecureStorage = (serviceName: string) => ({
     options?: SecureStorageOptions,
   ): Promise<Keychain.UserCredentials | false> => {
     try {
-      // If explicit biometric prompt is provided, show it first
+      // If explicit biometric prompt is provided, show it first (works for both iOS and Android)
       if (options?.explicitBiometricPrompt) {
         const hasVerified = await rnBiometrics.simplePrompt({
           promptMessage: options.explicitBiometricPrompt.title,
@@ -100,11 +118,18 @@ export const createSecureStorage = (serviceName: string) => ({
         }
       }
 
-      const result = await Keychain.getGenericPassword({
-        service: `${serviceName}_${key}`,
-        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
-      });
+      // iOS: Use accessControl to require user presence
+      // Android: Do not pass accessControl to avoid unwanted prompts
+      const getOptions: Keychain.GetOptions = isIOS
+        ? {
+            service: `${serviceName}_${key}`,
+            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
+          }
+        : {
+            service: `${serviceName}_${key}`,
+          };
 
+      const result = await Keychain.getGenericPassword(getOptions);
       return result;
     } catch (error) {
       logger.error(

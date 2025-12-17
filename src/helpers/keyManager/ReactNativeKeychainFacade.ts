@@ -3,9 +3,11 @@
 /* eslint-disable no-await-in-loop */
 import { EncryptedKey } from "@stellar/typescript-wallet-sdk-km";
 import { logger } from "config/logger";
+import { isIOS } from "helpers/device";
 import * as Keychain from "react-native-keychain";
 import {
-  SECURE_KEYCHAIN_OPTIONS,
+  SECURE_KEYCHAIN_OPTIONS_ANDROID,
+  SECURE_KEYCHAIN_OPTIONS_IOS,
   INDEX_KEYCHAIN_OPTIONS,
 } from "services/storage/keychainSecurityConfig";
 
@@ -44,10 +46,18 @@ export class ReactNativeKeychainFacade {
    */
   public async hasKey(id: string): Promise<boolean> {
     try {
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_${id}`,
-        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
-      });
+      // iOS: Use accessControl to require user presence
+      // Android: Do not use accessControl to avoid unwanted prompts
+      const getOptions: Keychain.GetOptions = isIOS
+        ? {
+            service: `${this.service}_${id}`,
+            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
+          }
+        : {
+            service: `${this.service}_${id}`,
+          };
+
+      const result = await Keychain.getGenericPassword(getOptions);
       return result !== false;
     } catch (error) {
       logger.error(
@@ -66,10 +76,18 @@ export class ReactNativeKeychainFacade {
    */
   public async getKey(id: string): Promise<EncryptedKey | null> {
     try {
-      const result = await Keychain.getGenericPassword({
-        service: `${this.service}_${id}`,
-        accessControl: SECURE_KEYCHAIN_OPTIONS.accessControl,
-      });
+      // iOS: Use accessControl to require user presence
+      // Android: Do not use accessControl to avoid unwanted prompts
+      const getOptions: Keychain.GetOptions = isIOS
+        ? {
+            service: `${this.service}_${id}`,
+            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
+          }
+        : {
+            service: `${this.service}_${id}`,
+          };
+
+      const result = await Keychain.getGenericPassword(getOptions);
 
       if (result === false) {
         return null;
@@ -93,10 +111,20 @@ export class ReactNativeKeychainFacade {
    */
   public async setKey(id: string, key: EncryptedKey): Promise<void> {
     try {
-      await Keychain.setGenericPassword(id, JSON.stringify(key), {
-        service: `${this.service}_${id}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
-      });
+      // iOS: Use accessControl to require user presence
+      // Android: Do not use accessControl to avoid unwanted prompts
+      const setOptions: Keychain.SetOptions = isIOS
+        ? {
+            service: `${this.service}_${id}`,
+            accessible: SECURE_KEYCHAIN_OPTIONS_IOS.accessible,
+            accessControl: SECURE_KEYCHAIN_OPTIONS_IOS.accessControl,
+          }
+        : {
+            service: `${this.service}_${id}`,
+            accessible: SECURE_KEYCHAIN_OPTIONS_ANDROID.accessible,
+          };
+
+      await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
       throw new Error(`Failed to set key ${id}`);
     }
