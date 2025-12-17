@@ -740,9 +740,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.SITE)
             }
-            proceedAnywayAction={() =>
-              presentSecurityWarningDetail(SecurityContext.SITE)
-            }
           />
         }
       />
