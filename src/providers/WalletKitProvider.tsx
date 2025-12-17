@@ -2,10 +2,12 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -29,6 +31,7 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -82,6 +85,7 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
+  const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction } = useGetActiveAccount();
   const { overriddenBlockaidResponse } = useDebugStore();
@@ -132,6 +136,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const verifyDomainBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [securityWarningContext, setSecurityWarningContext] =
     useState<SecurityContext>(SecurityContext.SITE);
 
@@ -340,6 +345,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    verifyDomainBottomSheetModalRef.current?.dismiss();
     // Also ensure other sheets are closed to avoid any leftovers
     dappRequestBottomSheetModalRef.current?.dismiss();
 
@@ -501,6 +507,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     setSecurityWarningContext(SecurityContext.SITE);
+  }, []);
+
+  /**
+   * Handles opening and closing of the Verify Domain bottom sheet
+   */
+  const handleOpenVerifyDomain = useCallback(() => {
+    verifyDomainBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCloseVerifyDomain = useCallback(() => {
+    verifyDomainBottomSheetModalRef.current?.dismiss();
   }, []);
 
   /**
@@ -782,6 +799,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             proceedAnywayAction={() =>
               presentSecurityWarningDetail(SecurityContext.SITE)
             }
+            onVerifyDomainPress={handleOpenVerifyDomain}
           />
         }
       />
@@ -819,6 +837,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         }
       />
 
+      {/* Bottom sheet for explaining why a memo is required for a dApp transaction request */}
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
         handleCloseModal={onCancelAddMemo}
@@ -840,6 +859,35 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             securityContext={securityWarningContext}
             severity={getSeverity()}
             proceedAnywayText={getProceedAnywayText()}
+          />
+        }
+      />
+
+      {/* Bottom sheet for explaining why a domain should be verified for a dApp connection request */}
+      <BottomSheet
+        modalRef={verifyDomainBottomSheetModalRef}
+        handleCloseModal={handleCloseVerifyDomain}
+        customContent={
+          <InformationBottomSheet
+            title={t("dappConnectionBottomSheetContent.verifyDomainTitle")}
+            texts={[
+              {
+                key: "verify-domain-description",
+                value: t(
+                  "dappConnectionBottomSheetContent.verifyDomainDescription",
+                ),
+              },
+            ]}
+            headerElement={
+              <View className="p-2 rounded-[8px] bg-background-tertiary">
+                <Icon.InfoCircle color={themeColors.foreground.primary} />
+              </View>
+            }
+            onClose={handleCloseVerifyDomain}
+            onConfirm={handleCloseVerifyDomain}
+            confirmLabel={t(
+              "dappConnectionBottomSheetContent.verifyDomainButton",
+            )}
           />
         }
       />

@@ -9,12 +9,15 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { useProtocolsStore } from "ducks/protocols";
 import { WalletKitSessionProposal } from "ducks/walletKit";
+import { getDomainFromUrl } from "helpers/browser";
+import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React, { useMemo } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -40,6 +43,7 @@ type DappConnectionBottomSheetContentProps = {
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
   proceedAnywayAction?: () => void;
+  onVerifyDomainPress?: () => void;
 };
 
 /**
@@ -63,11 +67,13 @@ const DappConnectionBottomSheetContent: React.FC<
   isUnableToScan,
   securityWarningAction,
   proceedAnywayAction,
+  onVerifyDomainPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
+  const { protocols } = useProtocolsStore();
 
   const getBannerText = useMemo(() => {
     if (isMalicious) {
@@ -134,11 +140,22 @@ const DappConnectionBottomSheetContent: React.FC<
     network,
   ]);
 
+  const dappDomain = getDomainFromUrl(dappMetadata?.url ?? "");
+
+  const matchedProtocol = useMemo(
+    () =>
+      findMatchedProtocol({
+        protocols,
+        searchUrl: dappDomain,
+      }),
+    [protocols, dappDomain],
+  );
+
   if (!dappMetadata || !account) {
     return null;
   }
 
-  const dappDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
+  const isUnlistedProtocol = Boolean(dappDomain && !matchedProtocol);
 
   const handleUserCancel = () => {
     if (proposalEvent) {
@@ -258,9 +275,27 @@ const DappConnectionBottomSheetContent: React.FC<
             {dappMetadata.name}
           </Text>
           {dappDomain && (
-            <Text sm secondary>
-              {dappDomain}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              {isUnlistedProtocol && onVerifyDomainPress && (
+                <TouchableOpacity
+                  onPress={onVerifyDomainPress}
+                  disabled={isConnecting}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(
+                    "dappConnectionBottomSheetContent.verifyDomainAccessibilityLabel",
+                  )}
+                >
+                  <Icon.InfoCircle
+                    size={14}
+                    color={themeColors.foreground.secondary}
+                  />
+                </TouchableOpacity>
+              )}
+              <Text sm secondary medium>
+                {dappDomain}
+              </Text>
+            </View>
           )}
         </View>
 

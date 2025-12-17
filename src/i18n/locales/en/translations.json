@@ -802,7 +802,11 @@
     "connect": "Connect",
     "connectAnyway": "Connect anyway",
     "maliciousFlag": "This site was flagged as malicious",
-    "suspiciousFlag": "This site was flagged as suspicious"
+    "suspiciousFlag": "This site was flagged as suspicious",
+    "verifyDomainTitle": "Verify Domain",
+    "verifyDomainDescription": "Please make sure this domain matches the site you are trying to connect with.",
+    "verifyDomainButton": "Got it",
+    "verifyDomainAccessibilityLabel": "Open information about verifying this domain"
   },
   "low": "Low",
   "medium": "Medium",

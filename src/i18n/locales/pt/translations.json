@@ -766,7 +766,11 @@
     "connect": "Conectar",
     "connectAnyway": "Conectar mesmo assim",
     "maliciousFlag": "Este site foi marcado como malicioso",
-    "suspiciousFlag": "Este site foi marcado como suspeito"
+    "suspiciousFlag": "Este site foi marcado como suspeito",
+    "verifyDomainTitle": "Verificar domínio",
+    "verifyDomainDescription": "Certifique-se de que este domínio corresponde ao site com o qual você está tentando se conectar.",
+    "verifyDomainButton": "Entendi",
+    "verifyDomainAccessibilityLabel": "Abrir informações sobre verificação deste domínio"
   },
   "low": "baixo",
   "medium": "médio",
