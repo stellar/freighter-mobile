@@ -211,9 +211,3 @@ export const createSecureStorage = (serviceName: string) => ({
     }
   },
 });
-
-/**
- * Default secure storage instance using freighter_secure_storage service name
- * Maintains backward compatibility with existing data
- */
-export const secureStorage = createSecureStorage(SECURE_STORAGE_SERVICE);
