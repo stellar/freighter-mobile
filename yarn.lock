@@ -9648,6 +9648,7 @@ __metadata:
     stream-browserify: "npm:^1.0.0"
     styled-components: "npm:^6.1.19"
     tailwindcss: "npm:^3.4.17"
+    tldts: "npm:7.0.19"
     tweetnacl: "npm:^1.0.3"
     typescript: "npm:5.8.3"
     url: "npm:~0.10.1"
@@ -16913,6 +16914,24 @@ __metadata:
   version: 6.1.86
   resolution: "tldts-core@npm:6.1.86"
   checksum: 10c0/8133c29375f3f99f88fce5f4d62f6ecb9532b106f31e5423b27c1eb1b6e711bd41875184a456819ceaed5c8b94f43911b1ad57e25c6eb86e1fc201228ff7e2af
+  languageName: node
+  linkType: hard
+
+"tldts-core@npm:^7.0.19":
+  version: 7.0.19
+  resolution: "tldts-core@npm:7.0.19"
+  checksum: 10c0/8f9fa5838aa7b3adbe80a6588ad802019f21faef34e04aa1aeab3a20275bba5e22c60b66a6b3bdd830b0bd6a2d57b92e0605c3cdb2c6317f111e586fa2f37927
+  languageName: node
+  linkType: hard
+
+"tldts@npm:7.0.19":
+  version: 7.0.19
+  resolution: "tldts@npm:7.0.19"
+  dependencies:
+    tldts-core: "npm:^7.0.19"
+  bin:
+    tldts: bin/cli.js
+  checksum: 10c0/d77d2fe6f8ec07e27248cd6647b91fc814dfc82e15dce104277f317d861576908409f6549ff46e21277677f823a037f57b7a748ada7d0fcdcb08535890f71050
   languageName: node
   linkType: hard
 

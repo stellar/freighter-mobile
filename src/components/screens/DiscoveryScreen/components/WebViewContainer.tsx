@@ -15,11 +15,19 @@ interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
   onNavigationStateChange: (navState: WebViewNavigation) => void;
   onShouldStartLoadWithRequest: (request: WebViewNavigation) => boolean;
+  javaScriptEnabled?: boolean;
+  domStorageEnabled?: boolean;
 }
 
 // Memoize to avoid unnecessary expensive re-renders
 const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
-  ({ webViewRef, onNavigationStateChange, onShouldStartLoadWithRequest }) => {
+  ({
+    webViewRef,
+    onNavigationStateChange,
+    onShouldStartLoadWithRequest,
+    javaScriptEnabled = false,
+    domStorageEnabled = false,
+  }) => {
     const {
       tabs,
       isTabActive,
@@ -325,8 +333,8 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                       <WebView
                         userAgent={BROWSER_CONSTANTS.DISCOVERY_USER_AGENT}
                         allowsLinkPreview={false}
-                        javaScriptEnabled
-                        domStorageEnabled
+                        javaScriptEnabled={javaScriptEnabled}
+                        domStorageEnabled={domStorageEnabled}
                         startInLoadingState
                         injectedJavaScriptBeforeContentLoaded={`
                           window.stellar = {
