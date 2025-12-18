@@ -68,6 +68,16 @@ target 'freighter-mobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Fix deployment targets for all pods to be compatible with Xcode 26.2+
+    # This ensures jail-monkey and any other pods with old deployment targets work correctly
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 12.0
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+        end
+      end
+    end
   end
   
   target "freighter-mobile-dev"

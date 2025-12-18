@@ -95,6 +95,7 @@
     "fast-text-encoding": "^1.0.6",
     "https-browserify": "~0.0.0",
     "i18next": "^24.2.2",
+    "jail-monkey": "2.8.4",
     "lodash": "^4.17.21",
     "nativewind": "^4.1.23",
     "node-libs-react-native": "^1.2.1",

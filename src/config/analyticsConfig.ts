@@ -149,6 +149,10 @@ export enum AnalyticsEvent {
 
   // Onramp Events
   COINBASE_ONRAMP_OPENED = "coinbase onramp: opened",
+
+  // Jailbreak Events
+  DEVICE_JAILBREAK_DETECTED = "device security: jailbreak detected",
+  DEVICE_JAILBREAK_FAILED = "device security: jailbreak detection failed",
 }
 
 /**
