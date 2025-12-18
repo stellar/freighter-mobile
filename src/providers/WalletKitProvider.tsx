@@ -22,6 +22,7 @@ import {
   WalletKitSessionRequest,
   StellarRpcChains,
 } from "ducks/walletKit";
+import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
   approveSessionRequest,
@@ -676,7 +677,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       const isValidTransactionRequestOrigin = Object.values(
         activeSessions,
       ).some(
-        (session) => session.peer?.metadata?.url === transactionRequestOrigin,
+        (session) =>
+          getHostname(session.peer?.metadata?.url) ===
+          getHostname(transactionRequestOrigin),
       );
       if (!isValidTransactionRequestOrigin) {
         showToast({

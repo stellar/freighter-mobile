@@ -12,8 +12,10 @@ import {
   RootStackParamList,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useProtocolsStore } from "ducks/protocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -77,6 +79,7 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
+  const { protocols } = useProtocolsStore();
   const { activeSessions, disconnectSession, disconnectAllSessions } =
     useWalletKitStore();
 
@@ -108,24 +111,32 @@ const ConnectedAppsScreen: React.FC<ConnectedAppsScreenProps> = ({
   /* eslint-disable @typescript-eslint/no-unsafe-member-access */
   const connectedDapps = useMemo(
     () =>
-      Object.values(activeSessions).map((session) => ({
-        key: session.topic,
-        icon: (
-          <App
-            appName={session.peer.metadata.name}
-            favicon={session.peer.metadata.icons[0]}
-          />
-        ),
-        title: session.peer.metadata.name,
-        trailingContent: (
-          <TouchableOpacity
-            onPress={() => handleDisconnectSession(session.topic)}
-            className="w-10 h-10 items-end justify-center pr-1"
-          >
-            <Icon.MinusCircle size={18} themeColor="red" />
-          </TouchableOpacity>
-        ),
-      })),
+      Object.values(activeSessions).map((session) => {
+        // Try to find a matched protocol for the session so we keep
+        // the UI consistent with the Discovery tab icons and names
+        const matchedProtocol = findMatchedProtocol({
+          protocols,
+          searchUrl: session.peer.metadata.url,
+        });
+
+        const dAppName = matchedProtocol?.name ?? session.peer.metadata.name;
+        const dAppFavicon =
+          matchedProtocol?.iconUrl ?? session.peer.metadata.icons[0];
+
+        return {
+          key: session.topic,
+          icon: <App appName={dAppName} favicon={dAppFavicon} />,
+          title: dAppName,
+          trailingContent: (
+            <TouchableOpacity
+              onPress={() => handleDisconnectSession(session.topic)}
+              className="w-10 h-10 items-end justify-center pr-1"
+            >
+              <Icon.MinusCircle size={18} themeColor="red" />
+            </TouchableOpacity>
+          ),
+        };
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeSessionsKey],
   );

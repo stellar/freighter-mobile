@@ -11,8 +11,7 @@ import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { WalletKitSessionProposal } from "ducks/walletKit";
-import { getDomainFromUrl } from "helpers/browser";
-import { findMatchedProtocol } from "helpers/protocols";
+import { findMatchedProtocol, getHostname } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
@@ -73,6 +72,7 @@ const DappConnectionBottomSheetContent: React.FC<
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
+  const proposalOrigin = proposalEvent?.verifyContext?.verified?.origin ?? "";
   const { protocols } = useProtocolsStore();
 
   const getBannerText = useMemo(() => {
@@ -140,22 +140,24 @@ const DappConnectionBottomSheetContent: React.FC<
     network,
   ]);
 
-  const dappDomain = getDomainFromUrl(dappMetadata?.url ?? "");
-
   const matchedProtocol = useMemo(
     () =>
       findMatchedProtocol({
         protocols,
-        searchUrl: dappDomain,
+        searchUrl: proposalOrigin,
       }),
-    [protocols, dappDomain],
+    [protocols, proposalOrigin],
   );
+
+  const isUnlistedProtocol = Boolean(!matchedProtocol);
 
   if (!dappMetadata || !account) {
     return null;
   }
 
-  const isUnlistedProtocol = Boolean(dappDomain && !matchedProtocol);
+  const dAppDomain = getHostname(proposalOrigin ?? dappMetadata?.url ?? "");
+  const dAppName = matchedProtocol?.name ?? dappMetadata.name;
+  const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
   const handleUserCancel = () => {
     if (proposalEvent) {
@@ -264,17 +266,13 @@ const DappConnectionBottomSheetContent: React.FC<
   return (
     <View className="flex-1 justify-center items-center mt-2 gap-[16px]">
       <View className="gap-[16px] justify-center items-center">
-        <App
-          size="lg"
-          appName={dappMetadata.name}
-          favicon={dappMetadata.icons[0]}
-        />
+        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
 
         <View className="justify-center items-center">
           <Text lg primary medium textAlign="center">
-            {dappMetadata.name}
+            {dAppName}
           </Text>
-          {dappDomain && (
+          {dAppDomain && (
             <View className="flex-row items-center gap-1">
               {isUnlistedProtocol && onVerifyDomainPress && (
                 <TouchableOpacity
@@ -293,7 +291,7 @@ const DappConnectionBottomSheetContent: React.FC<
                 </TouchableOpacity>
               )}
               <Text sm secondary medium>
-                {dappDomain}
+                {dAppDomain}
               </Text>
             </View>
           )}
