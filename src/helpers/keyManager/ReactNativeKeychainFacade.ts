@@ -5,6 +5,7 @@ import { EncryptedKey } from "@stellar/typescript-wallet-sdk-km";
 import { logger } from "config/logger";
 import * as Keychain from "react-native-keychain";
 import {
+  SECURE_KEYCHAIN_GET_OPTIONS,
   SECURE_KEYCHAIN_OPTIONS,
   INDEX_KEYCHAIN_OPTIONS,
 } from "services/storage/keychainSecurityConfig";
@@ -46,7 +47,7 @@ export class ReactNativeKeychainFacade {
     try {
       const getOptions: Keychain.GetOptions = {
         service: `${this.service}_${id}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
+        ...SECURE_KEYCHAIN_GET_OPTIONS,
       };
 
       const result = await Keychain.getGenericPassword(getOptions);
@@ -70,7 +71,7 @@ export class ReactNativeKeychainFacade {
     try {
       const getOptions: Keychain.GetOptions = {
         service: `${this.service}_${id}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
+        ...SECURE_KEYCHAIN_GET_OPTIONS,
       };
 
       const result = await Keychain.getGenericPassword(getOptions);
