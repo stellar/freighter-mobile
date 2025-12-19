@@ -16,10 +16,6 @@ export const SECURE_KEYCHAIN_SET_OPTIONS = {
 /**
  * Secure keychain options for reading sensitive data
  *
- * Platform-specific behavior:
- * - iOS: Uses accessControl to require user presence (biometrics or passcode) on read
- * - Android: Does not use accessControl to avoid unwanted prompts
- *
  * Note: accessControl is only set here (for reading) because setting items with accessControl
  * triggers the biometric prompt, which causes loops during login when many keys are set.
  * By only applying accessControl when reading, we avoid prompts during storage while still
