@@ -6,7 +6,7 @@ import { logger } from "config/logger";
 import * as Keychain from "react-native-keychain";
 import {
   SECURE_KEYCHAIN_GET_OPTIONS,
-  SECURE_KEYCHAIN_OPTIONS,
+  SECURE_KEYCHAIN_SET_OPTIONS,
   INDEX_KEYCHAIN_OPTIONS,
 } from "services/storage/keychainSecurityConfig";
 
@@ -100,7 +100,7 @@ export class ReactNativeKeychainFacade {
     try {
       const setOptions: Keychain.SetOptions = {
         service: `${this.service}_${id}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
+        ...SECURE_KEYCHAIN_SET_OPTIONS,
       };
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);

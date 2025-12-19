@@ -3,7 +3,7 @@ import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import {
   SECURE_KEYCHAIN_GET_OPTIONS,
-  SECURE_KEYCHAIN_OPTIONS,
+  SECURE_KEYCHAIN_SET_OPTIONS,
 } from "services/storage/keychainSecurityConfig";
 
 /**
@@ -68,7 +68,7 @@ export const createSecureStorage = (serviceName: string) => ({
     try {
       const storageOptions: Keychain.SetOptions = {
         service: `${serviceName}_${key}`,
-        ...SECURE_KEYCHAIN_OPTIONS,
+        ...SECURE_KEYCHAIN_SET_OPTIONS,
       };
 
       await Keychain.setGenericPassword(key, value, storageOptions);
