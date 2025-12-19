@@ -9,7 +9,7 @@ import * as Keychain from "react-native-keychain";
  * - Note: accessControl is not included here because setting items with accessControl triggers
  *   the biometric prompt, which causes loops during login when many keys are set
  */
-export const SECURE_KEYCHAIN_SET_OPTIONS = {
+export const SECURE_KEYCHAIN_SET_OPTIONS: Keychain.SetOptions = {
   accessible: Keychain.ACCESSIBLE.WHEN_PASSCODE_SET_THIS_DEVICE_ONLY,
 };
 
@@ -21,7 +21,7 @@ export const SECURE_KEYCHAIN_SET_OPTIONS = {
  * By only applying accessControl when reading, we avoid prompts during storage while still
  * requiring authentication when accessing sensitive data.
  */
-export const SECURE_KEYCHAIN_GET_OPTIONS = {
+export const SECURE_KEYCHAIN_GET_OPTIONS: Keychain.GetOptions = {
   ...SECURE_KEYCHAIN_SET_OPTIONS,
   accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
 };
