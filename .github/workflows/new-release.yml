@@ -199,4 +199,6 @@ jobs:
         run: |
           git checkout "$RELEASE_BRANCH"
           git commit --allow-empty -m "Trigger CI tests"
+          echo "Waiting 30 seconds before pushing..."
+          sleep 30
           git push origin "$RELEASE_BRANCH"
