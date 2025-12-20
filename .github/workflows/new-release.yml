@@ -220,17 +220,33 @@ jobs:
               ref: branch
             });
 
-            // Create a check run on the PR to make it visible
-            await github.rest.checks.create({
+            // Wait a moment for the workflow to start
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Find the workflow run we just triggered
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
               owner,
               repo,
-              name: "Test",
-              head_sha: pr.head.sha,
-              status: "queued",
-              output: {
-                title: "CI Tests",
-                summary: "Test workflow has been triggered. [View workflow run](https://github.com/" + owner + "/" + repo + "/actions)"
-              }
+              workflow_id: "test.yml",
+              branch: branch,
+              per_page: 1
             });
 
-            core.notice(`Triggered Test workflow for PR #${prNumber} and created check run`);
+            let workflowRunUrl = `https://github.com/${owner}/${repo}/actions`;
+            if (runs.workflow_runs.length > 0) {
+              const run = runs.workflow_runs[0];
+              workflowRunUrl = run.html_url;
+            }
+
+            // Create a status check on the PR commit
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: pr.head.sha,
+              state: "pending",
+              target_url: workflowRunUrl,
+              description: "CI tests are running",
+              context: "ci/tests"
+            });
+
+            core.notice(`Triggered Test workflow for PR #${prNumber} and created status check`);
