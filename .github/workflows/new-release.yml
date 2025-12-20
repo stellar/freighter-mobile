@@ -194,3 +194,9 @@ jobs:
               });
               core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${branch}`);
             }
+
+      - name: Push empty commit to trigger CI tests
+        run: |
+          git checkout "$RELEASE_BRANCH"
+          git commit --allow-empty -m "Trigger CI tests"
+          git push origin "$RELEASE_BRANCH"
