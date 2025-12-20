@@ -212,11 +212,25 @@ jobs:
               pull_number: parseInt(prNumber)
             });
 
-            // Use createWorkflowRun with the PR's head SHA to associate it with the PR
-            await github.rest.actions.createWorkflowRun({
+            // Trigger the workflow
+            await github.rest.actions.createWorkflowDispatch({
               owner,
               repo,
               workflow_id: "test.yml",
-              ref: pr.head.sha
+              ref: branch
             });
-            core.notice(`Triggered Test workflow for PR #${prNumber} (SHA: ${pr.head.sha})`);
+
+            // Create a check run on the PR to make it visible
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: "Test",
+              head_sha: pr.head.sha,
+              status: "queued",
+              output: {
+                title: "CI Tests",
+                summary: "Test workflow has been triggered. [View workflow run](https://github.com/" + owner + "/" + repo + "/actions)"
+              }
+            });
+
+            core.notice(`Triggered Test workflow for PR #${prNumber} and created check run`);
