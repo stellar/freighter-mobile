@@ -202,12 +202,21 @@ jobs:
         with:
           script: |
             const branch = process.env.RELEASE_BRANCH;
+            const prNumber = "${{ steps.create_pr.outputs.pr_number }}";
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
-            await github.rest.actions.createWorkflowDispatch({
+            // Get PR details to get the head SHA
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: parseInt(prNumber)
+            });
+
+            // Use createWorkflowRun with the PR's head SHA to associate it with the PR
+            await github.rest.actions.createWorkflowRun({
               owner,
               repo,
               workflow_id: "test.yml",
-              ref: branch
+              ref: pr.head.sha
             });
-            core.notice(`Triggered Test workflow for ${branch}`);
+            core.notice(`Triggered Test workflow for PR #${prNumber} (SHA: ${pr.head.sha})`);
