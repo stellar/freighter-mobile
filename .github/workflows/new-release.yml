@@ -195,10 +195,19 @@ jobs:
               core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${branch}`);
             }
 
-      - name: Push empty commit to trigger CI tests
-        run: |
-          git checkout "$RELEASE_BRANCH"
-          git commit --allow-empty -m "Trigger CI tests"
-          echo "Waiting 120 seconds before pushing..."
-          sleep 120
-          git push origin "$RELEASE_BRANCH"
+      - name: Trigger CI tests
+        uses: actions/github-script@v8
+        env:
+          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+        with:
+          script: |
+            const branch = process.env.RELEASE_BRANCH;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: "test.yml",
+              ref: branch
+            });
+            core.notice(`Triggered Test workflow for ${branch}`);
