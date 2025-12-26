@@ -61,6 +61,77 @@ import StellarHDWallet from "stellar-hd-wallet";
 import { create } from "zustand";
 
 /**
+ * Performance tracking for unlock/login flow
+ * Stores timing data and logs it after 30 seconds
+ */
+const performanceLog: string[] = [];
+let performanceLogTimeout: NodeJS.Timeout | null = null;
+let firstEntryTime: number | null = null;
+let lastEntryTime: number | null = null;
+
+/**
+ * Adds a performance entry to the global log
+ * Only logs entries that take 100ms or more
+ */
+const addPerformanceEntry = (
+  functionName: string,
+  operation: string,
+  duration: number,
+): void => {
+  // Only log entries that take 100ms or more
+  if (duration < 100) {
+    return;
+  }
+
+  const entry = `${functionName}.${operation}: ⏱️ ${duration}ms`;
+  performanceLog.push(entry);
+
+  // Track first and last entry times
+  const now = Date.now();
+  if (firstEntryTime === null) {
+    firstEntryTime = now;
+  }
+  lastEntryTime = now;
+
+  // Set up 30-second timeout to log all entries if not already set
+  if (!performanceLogTimeout) {
+    performanceLogTimeout = setTimeout(() => {
+      // Sort entries by duration (ms) - descending order (slowest first)
+      const sortedLog = [...performanceLog].sort((a, b) => {
+        const extractDuration = (entry: string): number => {
+          const match = entry.match(/: ⏱️ (\d+)ms$/);
+          return match ? parseInt(match[1], 10) : 0;
+        };
+        return extractDuration(b) - extractDuration(a);
+      });
+
+      // Calculate total flow time from first to last entry
+      const totalFlowTime =
+        firstEntryTime && lastEntryTime ? lastEntryTime - firstEntryTime : 0;
+
+      logger.info(
+        "Performance Summary",
+        "📊 Complete performance log for unlock/login flow (sorted by duration):",
+      );
+      logger.info("Performance Summary", JSON.stringify(sortedLog, null, 2));
+
+      if (totalFlowTime > 0) {
+        logger.info(
+          "Performance Summary",
+          `⏱️ Total flow time (first to last entry): ${totalFlowTime}ms`,
+        );
+      }
+
+      // Clear the log and timeout
+      performanceLog.length = 0;
+      performanceLogTimeout = null;
+      firstEntryTime = null;
+      lastEntryTime = null;
+    }, 30000);
+  }
+};
+
+/**
  * Helper function to determine the biometric login type based on biometry type
  *
  * This function maps the device's supported biometry type to the corresponding
@@ -702,6 +773,8 @@ const createTemporaryStore = async (input: {
   activeKeyPair: KeyPair & { accountName: string; id: string };
   shouldRefreshHashKey?: boolean;
 }): Promise<void> => {
+  const createTempStoreStart = Date.now();
+  logger.info("createTemporaryStore", "🚀 Starting createTemporaryStore");
   const {
     password,
     mnemonicPhrase,
@@ -714,19 +787,44 @@ const createTemporaryStore = async (input: {
     let temporaryStore: TemporaryStore | null = null;
 
     if (shouldRefreshHashKey) {
+      const generateHashKeyStart = Date.now();
       hashKeyObj = await generateHashKey(password);
+      const generateHashKeyEnd = Date.now();
+      logger.info(
+        "createTemporaryStore",
+        `⏱️ generateHashKey took ${generateHashKeyEnd - generateHashKeyStart}ms`,
+      );
     } else {
+      const getHashKeyStart = Date.now();
       const retrievedHashKey = await getHashKey();
+      const getHashKeyEnd = Date.now();
+      const getHashKeyDuration = getHashKeyEnd - getHashKeyStart;
+      logger.info(
+        "createTemporaryStore",
+        `⏱️ getHashKey took ${getHashKeyDuration}ms`,
+      );
+      addPerformanceEntry(
+        "createTemporaryStore",
+        "getHashKey",
+        getHashKeyDuration,
+      );
 
       if (!retrievedHashKey) {
         throw new Error("Failed to retrieve hash key");
       }
 
+      const getTempStoreStart = Date.now();
       temporaryStore = await getTemporaryStore();
+      const getTempStoreEnd = Date.now();
+      logger.info(
+        "createTemporaryStore",
+        `⏱️ getTemporaryStore took ${getTempStoreEnd - getTempStoreStart}ms`,
+      );
       hashKeyObj = retrievedHashKey;
     }
 
     // Create the temporary store object
+    const createObjStart = Date.now();
     const temporaryStoreObj = {
       ...temporaryStore,
       privateKeys: {
@@ -738,18 +836,41 @@ const createTemporaryStore = async (input: {
 
     // Convert the store to a JSON string
     const temporaryStoreJson = JSON.stringify(temporaryStoreObj);
+    const createObjEnd = Date.now();
+    logger.info(
+      "createTemporaryStore",
+      `⏱️ Creating temp store object + JSON.stringify took ${createObjEnd - createObjStart}ms`,
+    );
 
     // Encrypt the temporary store with the hash key
+    const encryptStart = Date.now();
     const { encryptedData } = await encryptDataWithPassword({
       data: temporaryStoreJson,
       password: hashKeyObj.hashKey,
       salt: hashKeyObj.salt,
     });
+    const encryptEnd = Date.now();
+    logger.info(
+      "createTemporaryStore",
+      `⏱️ encryptDataWithPassword took ${encryptEnd - encryptStart}ms`,
+    );
 
     // Store the encrypted data
+    const storeStart = Date.now();
     await secureDataStorage.setItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
       encryptedData,
+    );
+    const storeEnd = Date.now();
+    logger.info(
+      "createTemporaryStore",
+      `⏱️ secureDataStorage.setItem took ${storeEnd - storeStart}ms`,
+    );
+
+    const createTempStoreEnd = Date.now();
+    logger.info(
+      "createTemporaryStore",
+      `✅ createTemporaryStore completed in ${createTempStoreEnd - createTempStoreStart}ms total`,
     );
   } catch (error) {
     throw new Error(`Failed to create temporary store: ${String(error)}`);
@@ -861,10 +982,24 @@ const getKeyFromKeyManager = async (
   password: string,
   activeAccountId?: string | null,
 ): Promise<Key> => {
+  const getKeyStart = Date.now();
+  logger.info("getKeyFromKeyManager", "🚀 Starting getKeyFromKeyManager");
   let accountId = activeAccountId;
 
   if (!accountId) {
+    const loadAllKeysStart = Date.now();
     const allKeys = await keyManager.loadAllKeyIds();
+    const loadAllKeysEnd = Date.now();
+    const loadAllKeysDuration = loadAllKeysEnd - loadAllKeysStart;
+    logger.info(
+      "getKeyFromKeyManager",
+      `⏱️ keyManager.loadAllKeyIds took ${loadAllKeysDuration}ms`,
+    );
+    addPerformanceEntry(
+      "getKeyFromKeyManager",
+      "keyManager.loadAllKeyIds",
+      loadAllKeysDuration,
+    );
     [accountId] = allKeys;
   }
 
@@ -872,10 +1007,36 @@ const getKeyFromKeyManager = async (
     throw new Error(t("authStore.error.noKeyPairFound"));
   }
 
-  return keyManager.loadKey(accountId, password).catch(() => {
+  const loadKeyStart = Date.now();
+  const result = await keyManager.loadKey(accountId, password).catch(() => {
     // TODO: implement error handling logic -- maybe add a limit to the number of attempts
     throw new Error(t("authStore.error.invalidPassword"));
   });
+  const loadKeyEnd = Date.now();
+  const loadKeyDuration = loadKeyEnd - loadKeyStart;
+  logger.info(
+    "getKeyFromKeyManager",
+    `⏱️ keyManager.loadKey took ${loadKeyDuration}ms`,
+  );
+  addPerformanceEntry(
+    "getKeyFromKeyManager",
+    "keyManager.loadKey",
+    loadKeyDuration,
+  );
+
+  const getKeyEnd = Date.now();
+  const getKeyTotalDuration = getKeyEnd - getKeyStart;
+  logger.info(
+    "getKeyFromKeyManager",
+    `✅ getKeyFromKeyManager completed in ${getKeyTotalDuration}ms total`,
+  );
+  addPerformanceEntry(
+    "getKeyFromKeyManager",
+    "getKeyFromKeyManager (total)",
+    getKeyTotalDuration,
+  );
+
+  return result;
 };
 
 /**
@@ -889,6 +1050,12 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   mnemonicPhrase: string,
   password: string,
 ): Promise<void> => {
+  const verifyStart = Date.now();
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "🚀 Starting verifyAndCreateExistingAccountsOnNetwork",
+  );
+
   const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
   const keyPairs = Array.from(
     { length: ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE },
@@ -902,7 +1069,23 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     getAccount(keyPair.publicKey, NETWORKS.PUBLIC),
   );
 
+  const networkCallsStart = Date.now();
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "🚀 Starting Promise.all for network account checks",
+  );
   const result = await Promise.all(promises);
+  const networkCallsEnd = Date.now();
+  const networkCallsDuration = networkCallsEnd - networkCallsStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ Promise.all(network account checks) took ${networkCallsDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "Promise.all(network account checks)",
+    networkCallsDuration,
+  );
 
   const existingAccountsOnNetwork = result.filter(
     (account) => account !== null,
@@ -913,8 +1096,33 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   );
 
   // Get both accounts from temporary store AND persistent account list
+  const getTempStoreStart = Date.now();
   const temporaryStore = await getTemporaryStore();
+  const getTempStoreEnd = Date.now();
+  const getTempStoreDuration = getTempStoreEnd - getTempStoreStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ getTemporaryStore took ${getTempStoreDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "getTemporaryStore",
+    getTempStoreDuration,
+  );
+
+  const getAllAccountsStart = Date.now();
   const existingAccounts = await getAllAccounts();
+  const getAllAccountsEnd = Date.now();
+  const getAllAccountsDuration = getAllAccountsEnd - getAllAccountsStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ getAllAccounts took ${getAllAccountsDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "getAllAccounts",
+    getAllAccountsDuration,
+  );
 
   // Get public keys from temporary store
   const existingAccountsOnDataStorageSecretKeys = Object.values(
@@ -949,10 +1157,26 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
 
   if (newKeyPairs.length === 0) {
     // No new accounts to add
+    const verifyEnd = Date.now();
+    const verifyDuration = verifyEnd - verifyStart;
+    logger.info(
+      "verifyAndCreateExistingAccountsOnNetwork",
+      `✅ verifyAndCreateExistingAccountsOnNetwork completed in ${verifyDuration}ms total (no new accounts)`,
+    );
+    addPerformanceEntry(
+      "verifyAndCreateExistingAccountsOnNetwork",
+      "verifyAndCreateExistingAccountsOnNetwork (total, no new accounts)",
+      verifyDuration,
+    );
     return;
   }
 
   // First store all accounts in the account list
+  const prepareKeyStoreStart = Date.now();
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "🚀 Starting Promise.all for key store preparation",
+  );
   const prepareKeyStorePromises = newKeyPairs.map((keyPair, index) => {
     const accountNumber = existingAccounts.length + index + 1;
 
@@ -988,18 +1212,68 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
 
   // Wait for all key stores to be created
   const newAccounts = await Promise.all(prepareKeyStorePromises);
+  const prepareKeyStoreEnd = Date.now();
+  const prepareKeyStoreDuration = prepareKeyStoreEnd - prepareKeyStoreStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ Promise.all(prepareKeyStorePromises) took ${prepareKeyStoreDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "Promise.all(prepareKeyStorePromises)",
+    prepareKeyStoreDuration,
+  );
 
   // Add all accounts to the account list
+  const appendAccountsStart = Date.now();
   await appendAccounts(newAccounts.map(({ account }) => account));
+  const appendAccountsEnd = Date.now();
+  const appendAccountsDuration = appendAccountsEnd - appendAccountsStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ appendAccounts took ${appendAccountsDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "appendAccounts",
+    appendAccountsDuration,
+  );
 
   // Now update the temporary store with all new private keys at once
+  const getHashKeyStart = Date.now();
   const hashKey = await getHashKey();
+  const getHashKeyEnd = Date.now();
+  const getHashKeyDuration = getHashKeyEnd - getHashKeyStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ getHashKey took ${getHashKeyDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "getHashKey",
+    getHashKeyDuration,
+  );
+
   if (!hashKey) {
     throw new Error("Failed to retrieve hash key");
   }
 
   // Get the latest temporary store
+  const getLatestTempStoreStart = Date.now();
   const latestTemporaryStore = await getTemporaryStore();
+  const getLatestTempStoreEnd = Date.now();
+  const getLatestTempStoreDuration =
+    getLatestTempStoreEnd - getLatestTempStoreStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ getTemporaryStore (latest) took ${getLatestTempStoreDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "getTemporaryStore (latest)",
+    getLatestTempStoreDuration,
+  );
+
   if (!latestTemporaryStore) {
     throw new Error("Failed to retrieve temporary store");
   }
@@ -1020,6 +1294,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   };
 
   // Convert to JSON and encrypt
+  const encryptAndStoreStart = Date.now();
   const temporaryStoreJson = JSON.stringify(updatedTemporaryStore);
   const { encryptedData } = await encryptDataWithPassword({
     data: temporaryStoreJson,
@@ -1027,10 +1302,32 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     salt: hashKey.salt,
   });
 
-  // Store the encrypted data
   await secureDataStorage.setItem(
     SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     encryptedData,
+  );
+  const encryptAndStoreEnd = Date.now();
+  const encryptAndStoreDuration = encryptAndStoreEnd - encryptAndStoreStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `⏱️ encryptDataWithPassword + secureDataStorage.setItem took ${encryptAndStoreDuration}ms`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "encryptDataWithPassword + secureDataStorage.setItem",
+    encryptAndStoreDuration,
+  );
+
+  const verifyEnd = Date.now();
+  const verifyDuration = verifyEnd - verifyStart;
+  logger.info(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    `✅ verifyAndCreateExistingAccountsOnNetwork completed in ${verifyDuration}ms total`,
+  );
+  addPerformanceEntry(
+    "verifyAndCreateExistingAccountsOnNetwork",
+    "verifyAndCreateExistingAccountsOnNetwork (total)",
+    verifyDuration,
   );
 };
 
@@ -1044,11 +1341,32 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
  * @returns {Promise<void>}
  */
 const signIn = async ({ password }: SignInParams): Promise<void> => {
+  const signInStart = Date.now();
+  logger.info("signIn", "🚀 Starting signIn process");
+
+  const getActiveAccountIdStart = Date.now();
   const activeAccount = await dataStorage.getItem(
     STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
   );
+  const getActiveAccountIdEnd = Date.now();
+  const getActiveAccountIdDuration =
+    getActiveAccountIdEnd - getActiveAccountIdStart;
+  logger.info(
+    "signIn",
+    `⏱️ dataStorage.getItem(ACTIVE_ACCOUNT_ID) took ${getActiveAccountIdDuration}ms`,
+  );
+  addPerformanceEntry(
+    "signIn",
+    "dataStorage.getItem(ACTIVE_ACCOUNT_ID)",
+    getActiveAccountIdDuration,
+  );
 
+  const getKeyStart = Date.now();
   const loadedKey = await getKeyFromKeyManager(password, activeAccount);
+  const getKeyEnd = Date.now();
+  const getKeyDuration = getKeyEnd - getKeyStart;
+  logger.info("signIn", `⏱️ getKeyFromKeyManager took ${getKeyDuration}ms`);
+  addPerformanceEntry("signIn", "getKeyFromKeyManager", getKeyDuration);
 
   const keyExtraData = loadedKey.extra as
     | {
@@ -1062,9 +1380,21 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     throw new Error(t("authStore.error.noKeyPairFound"));
   }
 
+  const getAccountListStart = Date.now();
   const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
   const accountList = JSON.parse(accountListRaw ?? "[]") as Account[];
   let account = accountList.find((a) => a.id === activeAccount);
+  const getAccountListEnd = Date.now();
+  const getAccountListDuration = getAccountListEnd - getAccountListStart;
+  logger.info(
+    "signIn",
+    `⏱️ dataStorage.getItem(ACCOUNT_LIST) + parse took ${getAccountListDuration}ms`,
+  );
+  addPerformanceEntry(
+    "signIn",
+    "dataStorage.getItem(ACCOUNT_LIST) + parse",
+    getAccountListDuration,
+  );
 
   if (!account) {
     logger.error(
@@ -1073,6 +1403,7 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       "Account not found in account list",
     );
 
+    const appendAccountStart = Date.now();
     account = {
       id: loadedKey.id,
       name: t("authStore.account", { number: accountList.length + 1 }),
@@ -1080,9 +1411,14 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
     };
 
     await appendAccount(account);
+    const appendAccountEnd = Date.now();
+    const appendAccountDuration = appendAccountEnd - appendAccountStart;
+    logger.info("signIn", `⏱️ appendAccount took ${appendAccountDuration}ms`);
+    addPerformanceEntry("signIn", "appendAccount", appendAccountDuration);
   }
 
   // First create the temporary store with the active account
+  const createTempStoreStart = Date.now();
   await createTemporaryStore({
     password,
     mnemonicPhrase: keyExtraData.mnemonicPhrase,
@@ -1093,37 +1429,107 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       id: loadedKey.id,
     },
   });
-
-  // Then discover and add any other accounts found on the network
-  await verifyAndCreateExistingAccountsOnNetwork(
-    keyExtraData.mnemonicPhrase,
-    password,
+  const createTempStoreEnd = Date.now();
+  const createTempStoreDuration = createTempStoreEnd - createTempStoreStart;
+  logger.info(
+    "signIn",
+    `⏱️ createTemporaryStore took ${createTempStoreDuration}ms`,
+  );
+  addPerformanceEntry(
+    "signIn",
+    "createTemporaryStore",
+    createTempStoreDuration,
   );
 
+  // TEMPORARILY COMMENTED OUT: Network account discovery - causes ~10s delay
+  // This makes 6 network calls to Stellar Horizon API to check for existing accounts
+  // Performance data shows this takes ~9-10 seconds
+  // TODO: Re-enable after optimizing or moving to background task
+  // const verifyAccountsStart = Date.now();
+  // await verifyAndCreateExistingAccountsOnNetwork(
+  //   keyExtraData.mnemonicPhrase,
+  //   password,
+  // );
+  // const verifyAccountsEnd = Date.now();
+  // const verifyAccountsDuration = verifyAccountsEnd - verifyAccountsStart;
+  // logger.info(
+  //   "signIn",
+  //   `⏱️ verifyAndCreateExistingAccountsOnNetwork took ${verifyAccountsDuration}ms`,
+  // );
+  // addPerformanceEntry(
+  //   "signIn",
+  //   "verifyAndCreateExistingAccountsOnNetwork",
+  //   verifyAccountsDuration,
+  // );
+
+  const biometricCheckStart = Date.now();
   const existingBiometricPassword = await biometricDataStorage.checkIfExists(
     BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
   );
+  const biometricCheckEnd = Date.now();
+  const biometricCheckDuration = biometricCheckEnd - biometricCheckStart;
+  logger.info(
+    "signIn",
+    `⏱️ biometricDataStorage.checkIfExists took ${biometricCheckDuration}ms`,
+  );
+  addPerformanceEntry(
+    "signIn",
+    "biometricDataStorage.checkIfExists",
+    biometricCheckDuration,
+  );
 
   if (!existingBiometricPassword) {
+    const biometricStoreStart = Date.now();
     await biometricDataStorage.setItem(
       BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
       password,
+    );
+    const biometricStoreEnd = Date.now();
+    const biometricStoreDuration = biometricStoreEnd - biometricStoreStart;
+    logger.info(
+      "signIn",
+      `⏱️ biometricDataStorage.setItem took ${biometricStoreDuration}ms`,
+    );
+    addPerformanceEntry(
+      "signIn",
+      "biometricDataStorage.setItem",
+      biometricStoreDuration,
     );
   }
 
   // After discovering accounts, make sure all existing accounts' private keys
   // are in the temporary store
   try {
+    const privateKeysStart = Date.now();
+    logger.info("signIn", "🚀 Starting private key consolidation");
+
+    const getAllAccountsStart = Date.now();
     const allAccounts = await getAllAccounts();
+    const getAllAccountsEnd = Date.now();
+    const getAllAccountsDuration = getAllAccountsEnd - getAllAccountsStart;
+    logger.info("signIn", `⏱️ getAllAccounts took ${getAllAccountsDuration}ms`);
+    addPerformanceEntry("signIn", "getAllAccounts", getAllAccountsDuration);
+
     const wallet = StellarHDWallet.fromMnemonic(keyExtraData.mnemonicPhrase);
 
     // For each account, ensure their private keys are in the temporary store
+    const getTempStoreStart = Date.now();
     const tempStore = await getTemporaryStore();
+    const getTempStoreEnd = Date.now();
+    const getTempStoreDuration = getTempStoreEnd - getTempStoreStart;
+    logger.info(
+      "signIn",
+      `⏱️ getTemporaryStore took ${getTempStoreDuration}ms`,
+    );
+    addPerformanceEntry("signIn", "getTemporaryStore", getTempStoreDuration);
+
     if (tempStore) {
       const updatedPrivateKeys = { ...tempStore.privateKeys };
       let hasNewKeys = false;
 
       // Process each account to ensure it has a private key
+      const accountProcessStart = Date.now();
+      logger.info("signIn", "🚀 Starting Promise.all for account processing");
       const accountProcessPromises = allAccounts.map(async (acct) => {
         // Skip if we already have the private key
         if (updatedPrivateKeys[acct.id]) {
@@ -1162,11 +1568,29 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
 
       // Wait for all account processing to complete
       await Promise.all(accountProcessPromises);
+      const accountProcessEnd = Date.now();
+      const accountProcessDuration = accountProcessEnd - accountProcessStart;
+      logger.info(
+        "signIn",
+        `⏱️ Promise.all(accountProcessPromises) took ${accountProcessDuration}ms`,
+      );
+      addPerformanceEntry(
+        "signIn",
+        "Promise.all(accountProcessPromises)",
+        accountProcessDuration,
+      );
 
       // If we found and added any new keys, update the temporary store
       if (hasNewKeys) {
+        const getHashKeyStart = Date.now();
         const hashKey = await getHashKey();
+        const getHashKeyEnd = Date.now();
+        const getHashKeyDuration = getHashKeyEnd - getHashKeyStart;
+        logger.info("signIn", `⏱️ getHashKey took ${getHashKeyDuration}ms`);
+        addPerformanceEntry("signIn", "getHashKey", getHashKeyDuration);
+
         if (hashKey) {
+          const encryptAndStoreStart = Date.now();
           const updatedTempStore = {
             ...tempStore,
             privateKeys: updatedPrivateKeys,
@@ -1184,9 +1608,32 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
             SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
             encryptedData,
           );
+          const encryptAndStoreEnd = Date.now();
+          const encryptAndStoreDuration =
+            encryptAndStoreEnd - encryptAndStoreStart;
+          logger.info(
+            "signIn",
+            `⏱️ encryptDataWithPassword + secureDataStorage.setItem took ${encryptAndStoreDuration}ms`,
+          );
+          addPerformanceEntry(
+            "signIn",
+            "encryptDataWithPassword + secureDataStorage.setItem",
+            encryptAndStoreDuration,
+          );
         }
       }
     }
+    const privateKeysEnd = Date.now();
+    const privateKeysDuration = privateKeysEnd - privateKeysStart;
+    logger.info(
+      "signIn",
+      `✅ Private key consolidation completed in ${privateKeysDuration}ms total`,
+    );
+    addPerformanceEntry(
+      "signIn",
+      "Private key consolidation (total)",
+      privateKeysDuration,
+    );
   } catch (e) {
     // Don't let errors in this extra step fail the entire sign-in process
     logger.error(
@@ -1195,6 +1642,11 @@ const signIn = async ({ password }: SignInParams): Promise<void> => {
       e,
     );
   }
+
+  const signInEnd = Date.now();
+  const signInDuration = signInEnd - signInStart;
+  logger.info("signIn", `✅ signIn completed in ${signInDuration}ms total`);
+  addPerformanceEntry("signIn", "signIn (total)", signInDuration);
 };
 
 /**
@@ -1278,8 +1730,17 @@ const importWallet = async ({
  * @throws {Error} If the active account cannot be retrieved
  */
 const getActiveAccount = async (): Promise<ActiveAccount | null> => {
+  const getActiveAccountStart = Date.now();
+  logger.info("getActiveAccount", "🚀 Starting getActiveAccount");
+
+  const getActiveAccountIdStart = Date.now();
   const activeAccountId = await dataStorage.getItem(
     STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+  );
+  const getActiveAccountIdEnd = Date.now();
+  logger.info(
+    "getActiveAccount",
+    `⏱️ dataStorage.getItem(ACTIVE_ACCOUNT_ID) took ${getActiveAccountIdEnd - getActiveAccountIdStart}ms`,
   );
 
   if (!activeAccountId) {
@@ -1287,6 +1748,7 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
   }
 
   // Get account info from storage (non-sensitive data)
+  const getAccountListStart = Date.now();
   const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
   if (!accountListRaw) {
     throw new Error(t("authStore.error.accountListNotFound"));
@@ -1294,12 +1756,28 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
 
   const accountList = JSON.parse(accountListRaw) as Account[];
   const account = accountList.find((a) => a.id === activeAccountId);
+  const getAccountListEnd = Date.now();
+  const getAccountListDuration = getAccountListEnd - getAccountListStart;
+  logger.info(
+    "getActiveAccount",
+    `⏱️ dataStorage.getItem(ACCOUNT_LIST) + parse + find took ${getAccountListDuration}ms`,
+  );
+  addPerformanceEntry(
+    "getActiveAccount",
+    "dataStorage.getItem(ACCOUNT_LIST) + parse + find",
+    getAccountListDuration,
+  );
 
   if (!account) {
     throw new Error(t("authStore.error.accountNotFound"));
   }
 
+  const getHashKeyStart = Date.now();
   const hashKey = await getHashKey();
+  const getHashKeyEnd = Date.now();
+  const getHashKeyDuration = getHashKeyEnd - getHashKeyStart;
+  logger.info("getActiveAccount", `⏱️ getHashKey took ${getHashKeyDuration}ms`);
+  addPerformanceEntry("getActiveAccount", "getHashKey", getHashKeyDuration);
 
   if (!hashKey) {
     throw new Error(t("authStore.error.hashKeyNotFound"));
@@ -1309,7 +1787,19 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
 
   // Get sensitive data from temporary store if the hash key is valid
   if (!hashKeyExpired) {
+    const getTempStoreStart = Date.now();
     const temporaryStore = await getTemporaryStore();
+    const getTempStoreEnd = Date.now();
+    const getTempStoreDuration = getTempStoreEnd - getTempStoreStart;
+    logger.info(
+      "getActiveAccount",
+      `⏱️ getTemporaryStore took ${getTempStoreDuration}ms`,
+    );
+    addPerformanceEntry(
+      "getActiveAccount",
+      "getTemporaryStore",
+      getTempStoreDuration,
+    );
 
     if (!temporaryStore) {
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
@@ -1322,8 +1812,24 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
       throw new Error(t("authStore.error.privateKeyNotFound"));
     }
 
-    // Get subentry count from the balances store (already fetched with balance data)
-    const { subentryCount } = useBalancesStore.getState();
+    // TEMPORARILY SIMPLIFIED: Set subentryCount to 0 instead of reading from balances store
+    // This avoids dependency on balances store which may trigger network calls
+    // TODO: Re-enable after optimizing balance fetching or moving to background
+    // const { subentryCount } = useBalancesStore.getState();
+    const subentryCount = 0;
+
+    const getActiveAccountEnd = Date.now();
+    const getActiveAccountDuration =
+      getActiveAccountEnd - getActiveAccountStart;
+    logger.info(
+      "getActiveAccount",
+      `✅ getActiveAccount completed in ${getActiveAccountDuration}ms total`,
+    );
+    addPerformanceEntry(
+      "getActiveAccount",
+      "getActiveAccount (total)",
+      getActiveAccountDuration,
+    );
 
     return {
       publicKey: account.publicKey,
@@ -1662,16 +2168,46 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @returns {Promise<void>}
      */
     signIn: async (params) => {
+      const signInWrapperStart = Date.now();
+      logger.info(
+        "useAuthenticationStore.signIn",
+        "🚀 Starting signIn wrapper",
+      );
       set({ isLoading: true, error: null });
 
       try {
         // First perform the sign in operation without changing auth state
+        const internalSignInStart = Date.now();
         await signIn(params);
+        const internalSignInEnd = Date.now();
+        const internalSignInDuration = internalSignInEnd - internalSignInStart;
+        logger.info(
+          "useAuthenticationStore.signIn",
+          `⏱️ Internal signIn() took ${internalSignInDuration}ms`,
+        );
+        addPerformanceEntry(
+          "useAuthenticationStore.signIn",
+          "Internal signIn()",
+          internalSignInDuration,
+        );
 
         // Now verify we can access the active account before changing auth state
         try {
           // This will throw if the temporary store is missing or invalid
+          const getActiveAccountStart = Date.now();
           const activeAccount = await getActiveAccount();
+          const getActiveAccountEnd = Date.now();
+          const getActiveAccountDuration =
+            getActiveAccountEnd - getActiveAccountStart;
+          logger.info(
+            "useAuthenticationStore.signIn",
+            `⏱️ getActiveAccount() took ${getActiveAccountDuration}ms`,
+          );
+          addPerformanceEntry(
+            "useAuthenticationStore.signIn",
+            "getActiveAccount()",
+            getActiveAccountDuration,
+          );
 
           if (!activeAccount) {
             throw new Error(t("authStore.error.failedToLoadAccount"));
@@ -1679,6 +2215,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
           // Only if we can successfully load the account, set the authenticated state
           analytics.trackReAuthSuccess();
+          const setAuthStateStart = Date.now();
           set({
             ...initialState,
             authStatus: AUTH_STATUS.AUTHENTICATED,
@@ -1686,6 +2223,29 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             account: activeAccount,
             isLoadingAccount: false,
           });
+          const setAuthStateEnd = Date.now();
+          const setAuthStateDuration = setAuthStateEnd - setAuthStateStart;
+          logger.info(
+            "useAuthenticationStore.signIn",
+            `⏱️ Setting auth state took ${setAuthStateDuration}ms`,
+          );
+          addPerformanceEntry(
+            "useAuthenticationStore.signIn",
+            "Setting auth state",
+            setAuthStateDuration,
+          );
+
+          const signInWrapperEnd = Date.now();
+          const signInWrapperDuration = signInWrapperEnd - signInWrapperStart;
+          logger.info(
+            "useAuthenticationStore.signIn",
+            `✅ signIn wrapper completed in ${signInWrapperDuration}ms total`,
+          );
+          addPerformanceEntry(
+            "useAuthenticationStore.signIn",
+            "signIn wrapper (total)",
+            signInWrapperDuration,
+          );
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
           analytics.trackReAuthFail();
