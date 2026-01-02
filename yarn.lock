@@ -4525,9 +4525,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/stellar-base@npm:^14.0.0":
-  version: 14.0.0
-  resolution: "@stellar/stellar-base@npm:14.0.0"
+"@stellar/stellar-base@npm:^14.0.4":
+  version: 14.0.4
+  resolution: "@stellar/stellar-base@npm:14.0.4"
   dependencies:
     "@noble/curves": "npm:^1.9.6"
     "@stellar/js-xdr": "npm:^3.1.2"
@@ -4535,7 +4535,7 @@ __metadata:
     bignumber.js: "npm:^9.3.1"
     buffer: "npm:^6.0.3"
     sha.js: "npm:^2.4.12"
-  checksum: 10c0/24bec66dc9ba90b12d828011cc44351876d281808f45648c8e30ba838a22952c008acce02a42fb13cb55c56bd92b6922e4809318f2d672c6a183c70ef68f62ee
+  checksum: 10c0/e09de57639b09d18ebd51a5e872f5dc742be6ee2c81ad105f0745ac1c77a7d783bd9b37299093b30136436ca1df7827f534eccbaaf0ac4c86f9d51814421b667
   languageName: node
   linkType: hard
 
@@ -4555,19 +4555,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/stellar-sdk@npm:^14.0.0":
-  version: 14.0.0
-  resolution: "@stellar/stellar-sdk@npm:14.0.0"
+"@stellar/stellar-sdk@npm:14.4.3":
+  version: 14.4.3
+  resolution: "@stellar/stellar-sdk@npm:14.4.3"
   dependencies:
-    "@stellar/stellar-base": "npm:^14.0.0"
-    axios: "npm:^1.8.4"
+    "@stellar/stellar-base": "npm:^14.0.4"
+    axios: "npm:^1.13.2"
     bignumber.js: "npm:^9.3.1"
     eventsource: "npm:^2.0.2"
     feaxios: "npm:^0.0.23"
     randombytes: "npm:^2.1.0"
     toml: "npm:^3.0.0"
     urijs: "npm:^1.19.1"
-  checksum: 10c0/ade1fe3ae1748a137c379fc9f73bb1b6da1a5bbbebcc164230f9cc8b75b62f525fac9bda2dbd5ea92f1124ec133b4b301b9edde5fd3fa4afe45a7c781a63f3aa
+  checksum: 10c0/dfed422cbddfbcdc0e6fa891965d0aefe0622d0e2b8426545d31724d3533dc0b2d249dd9a44d47d5be2cceccda8348b094f265ea08138122c9269d6af138e70b
   languageName: node
   linkType: hard
 
@@ -6340,7 +6340,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:1.13.2":
+"axios@npm:1.13.2, axios@npm:^1.13.2":
   version: 1.13.2
   resolution: "axios@npm:1.13.2"
   dependencies:
@@ -6359,17 +6359,6 @@ __metadata:
     form-data: "npm:^4.0.0"
     proxy-from-env: "npm:^1.1.0"
   checksum: 10c0/450993c2ba975ffccaf0d480b68839a3b2435a5469a71fa2fb0b8a55cdb2c2ae47e609360b9c1e2b2534b73dfd69e2733a1cf9f8215bee0bcd729b72f801b0ce
-  languageName: node
-  linkType: hard
-
-"axios@npm:^1.8.4":
-  version: 1.10.0
-  resolution: "axios@npm:1.10.0"
-  dependencies:
-    follow-redirects: "npm:^1.15.6"
-    form-data: "npm:^4.0.0"
-    proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/2239cb269cc789eac22f5d1aabd58e1a83f8f364c92c2caa97b6f5cbb4ab2903d2e557d9dc670b5813e9bcdebfb149e783fb8ab3e45098635cd2f559b06bd5d8
   languageName: node
   linkType: hard
 
@@ -9568,7 +9557,7 @@ __metadata:
     "@shopify/react-native-skia": "npm:^2.2.21"
     "@stablelib/base64": "npm:^2.0.1"
     "@stablelib/utf8": "npm:^2.0.1"
-    "@stellar/stellar-sdk": "npm:^14.0.0"
+    "@stellar/stellar-sdk": "npm:14.4.3"
     "@stellar/typescript-wallet-sdk-km": "npm:^1.9.0"
     "@testing-library/jest-native": "npm:^5.4.3"
     "@testing-library/react-hooks": "npm:^8.0.1"
