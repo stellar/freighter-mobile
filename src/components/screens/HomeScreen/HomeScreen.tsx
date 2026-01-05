@@ -7,6 +7,7 @@ import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
+import { LoadingScreen } from "components/screens/LoadingScreen";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -62,7 +63,8 @@ type HomeScreenProps = BottomTabScreenProps<
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
+    const { network, getAllAccounts, allAccounts, isSwitchingAccount } =
+      useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -227,6 +229,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       fetchCollectibles,
       fetchActiveSessions,
     ]);
+
+    // Show full screen loading when switching accounts
+    if (isSwitchingAccount) {
+      return <LoadingScreen />;
+    }
 
     return (
       <BaseLayout

@@ -397,7 +397,9 @@
       "invalidMnemonicPhrase": "Invalid phrase - words must be in the correct order, lowercase, and separated by spaces",
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
-      "failedToImportSecretKey": "Failed to import secret key"
+      "failedToImportSecretKey": "Failed to import secret key",
+      "failedToDiscoverAccounts": "Failed to discover accounts. Please try again.",
+      "noMnemonicPhrase": "No mnemonic phrase found. Please sign in again."
     },
     "account": "Account {{number}}",
     "faceId": {

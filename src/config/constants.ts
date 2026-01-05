@@ -65,6 +65,7 @@ export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const ACCOUNT_VERIFICATION_CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
 // Recovery phrase validation constants
@@ -287,6 +288,7 @@ export enum STORAGE_KEYS {
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
+  LAST_ACCOUNT_VERIFICATION_TIMESTAMP = "lastAccountVerificationTimestamp",
 }
 
 /**
