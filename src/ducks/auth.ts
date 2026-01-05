@@ -1234,6 +1234,105 @@ const importWallet = async ({
 };
 
 /**
+ * Updates the temporary store with a private key for a specific account
+ *
+ * @param {TemporaryStore} temporaryStore - The current temporary store
+ * @param {string} accountId - The account ID to update
+ * @param {string} privateKey - The private key to store
+ * @param {HashKey} hashKey - The hash key for encryption
+ * @returns {Promise<void>}
+ */
+const updateTemporaryStoreWithPrivateKey = async (
+  temporaryStore: TemporaryStore,
+  accountId: string,
+  privateKey: string,
+  hashKey: HashKey,
+): Promise<void> => {
+  const updatedPrivateKeys = {
+    ...temporaryStore.privateKeys,
+    [accountId]: privateKey,
+  };
+
+  const updatedTempStore = {
+    ...temporaryStore,
+    privateKeys: updatedPrivateKeys,
+  };
+
+  const tempStoreJson = JSON.stringify(updatedTempStore);
+  const { encryptedData } = await encryptDataWithPassword({
+    data: tempStoreJson,
+    password: hashKey.hashKey,
+    salt: hashKey.salt,
+  });
+
+  await secureDataStorage.setItem(
+    SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+    encryptedData,
+  );
+};
+
+/**
+ * Attempts to derive a private key from a mnemonic phrase for a given account
+ *
+ * @param {string} mnemonicPhrase - The mnemonic phrase
+ * @param {string} publicKey - The public key to match
+ * @returns {string | null} The derived private key or null if not found
+ */
+const derivePrivateKeyFromMnemonic = (
+  mnemonicPhrase: string,
+  publicKey: string,
+): string | null => {
+  const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+  const indicesToTry = Array.from({ length: 10 }, (_, i) => i);
+  const matchingIndex = indicesToTry.find(
+    (index) => wallet.getPublicKey(index) === publicKey,
+  );
+
+  if (matchingIndex !== undefined) {
+    return wallet.getSecret(matchingIndex);
+  }
+
+  return null;
+};
+
+/**
+ * Attempts to load a private key from the key manager using biometric authentication
+ *
+ * @param {string} accountId - The account ID
+ * @returns {Promise<string | null>} The private key or null if not found/authenticated
+ */
+const loadPrivateKeyFromKeyManager = async (
+  accountId: string,
+): Promise<string | null> => {
+  const biometricCredentials = await biometricDataStorage.getItem(
+    BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+    {
+      title: t("authStore.faceId.signInTitle"),
+      cancel: t("common.cancel"),
+    },
+  );
+
+  if (
+    !biometricCredentials ||
+    typeof biometricCredentials !== "object" ||
+    !("password" in biometricCredentials)
+  ) {
+    return null;
+  }
+
+  try {
+    const key = await keyManager.loadKey(
+      accountId,
+      biometricCredentials.password,
+    );
+    return key.privateKey || null;
+  } catch (e) {
+    logger.warn("getActiveAccount", "Failed to load key from key manager", e);
+    return null;
+  }
+};
+
+/**
  * Gets the active account data by combining temporary store sensitive data with account list information
  *
  * Retrieves the active account ID, loads account information from storage,
@@ -1288,40 +1387,18 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
       try {
         // Try to derive from mnemonic phrase (which is in temp store)
         if (temporaryStore.mnemonicPhrase) {
-          const wallet = StellarHDWallet.fromMnemonic(
+          const derivedKey = derivePrivateKeyFromMnemonic(
             temporaryStore.mnemonicPhrase,
+            account.publicKey,
           );
 
-          // Try indices 0-9 to find the matching public key
-          const indicesToTry = Array.from({ length: 10 }, (_, i) => i);
-          const matchingIndex = indicesToTry.find(
-            (index) => wallet.getPublicKey(index) === account.publicKey,
-          );
-
-          if (matchingIndex !== undefined) {
-            privateKey = wallet.getSecret(matchingIndex);
-
-            // Update temporary store with the loaded key
-            const updatedPrivateKeys = {
-              ...temporaryStore.privateKeys,
-              [activeAccountId]: privateKey,
-            };
-
-            const updatedTempStore = {
-              ...temporaryStore,
-              privateKeys: updatedPrivateKeys,
-            };
-
-            const tempStoreJson = JSON.stringify(updatedTempStore);
-            const { encryptedData } = await encryptDataWithPassword({
-              data: tempStoreJson,
-              password: hashKey.hashKey,
-              salt: hashKey.salt,
-            });
-
-            await secureDataStorage.setItem(
-              SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
-              encryptedData,
+          if (derivedKey) {
+            privateKey = derivedKey;
+            await updateTemporaryStoreWithPrivateKey(
+              temporaryStore,
+              activeAccountId,
+              privateKey,
+              hashKey,
             );
           }
         }
@@ -1329,60 +1406,16 @@ const getActiveAccount = async (): Promise<ActiveAccount | null> => {
         // If still not found and account was imported from secret key, try loading from key manager
         // (Accounts derived from mnemonic should have been found above)
         if (!privateKey && account.importedFromSecretKey) {
-          // Get password from biometric storage (if available)
-          // Note: This requires biometric authentication, so it may prompt the user
-          const biometricCredentials = await biometricDataStorage.getItem(
-            BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-            {
-              title: t("authStore.faceId.signInTitle"),
-              cancel: t("common.cancel"),
-            },
-          );
+          const loadedKey = await loadPrivateKeyFromKeyManager(activeAccountId);
 
-          if (
-            biometricCredentials &&
-            typeof biometricCredentials === "object" &&
-            "password" in biometricCredentials
-          ) {
-            try {
-              const key = await keyManager.loadKey(
-                activeAccountId,
-                biometricCredentials.password,
-              );
-              if (key.privateKey) {
-                privateKey = key.privateKey;
-
-                // Update temporary store with the loaded key
-                const updatedPrivateKeys = {
-                  ...temporaryStore.privateKeys,
-                  [activeAccountId]: privateKey,
-                };
-
-                const updatedTempStore = {
-                  ...temporaryStore,
-                  privateKeys: updatedPrivateKeys,
-                };
-
-                const tempStoreJson = JSON.stringify(updatedTempStore);
-                const { encryptedData } = await encryptDataWithPassword({
-                  data: tempStoreJson,
-                  password: hashKey.hashKey,
-                  salt: hashKey.salt,
-                });
-
-                await secureDataStorage.setItem(
-                  SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
-                  encryptedData,
-                );
-              }
-            } catch (e) {
-              // Key manager load failed, continue to error
-              logger.warn(
-                "getActiveAccount",
-                "Failed to load key from key manager",
-                e,
-              );
-            }
+          if (loadedKey) {
+            privateKey = loadedKey;
+            await updateTemporaryStoreWithPrivateKey(
+              temporaryStore,
+              activeAccountId,
+              privateKey,
+              hashKey,
+            );
           }
         }
       } catch (e) {
