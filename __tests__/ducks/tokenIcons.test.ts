@@ -64,25 +64,34 @@ describe("tokenIcons store", () => {
       type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
     };
 
-    it("should return bundled icon for Circle USDC on mainnet", async () => {
+    it("should fetch icon for Circle USDC on mainnet like any other token", async () => {
+      const mockIconUrl = "https://example.com/usdc.png";
+      mockGetIconUrl.mockResolvedValue(mockIconUrl);
+
       const result = await useTokenIconsStore.getState().fetchIconUrl({
         token: mockToken,
         network: NETWORKS.PUBLIC,
       });
 
       expect(result).toEqual({
-        imageUrl: "bundled-usdc-logo.png",
+        imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
       });
-      expect(mockGetIconUrl).not.toHaveBeenCalled();
+      expect(mockGetIconUrl).toHaveBeenCalledWith({
+        asset: {
+          code: mockToken.code,
+          issuer: mockToken.issuer.key,
+        },
+        network: NETWORKS.PUBLIC,
+      });
 
-      // Should also cache the bundled icon
+      // Should cache the fetched icon
       expect(
         useTokenIconsStore.getState().icons[
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
         ],
       ).toEqual({
-        imageUrl: "bundled-usdc-logo.png",
+        imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
       });
     });
@@ -220,7 +229,10 @@ describe("tokenIcons store", () => {
       });
     });
 
-    it("should use bundled icon for Circle USDC on mainnet", async () => {
+    it("should fetch icon for Circle USDC on mainnet like any other token", async () => {
+      const mockIconUrl = "https://example.com/usdc.png";
+      mockGetIconUrl.mockResolvedValue(mockIconUrl);
+
       const mockBalancesWithUSDC: BalanceMap = {
         "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
           token: {
@@ -243,16 +255,22 @@ describe("tokenIcons store", () => {
         network: NETWORKS.PUBLIC,
       });
 
-      // Should not call getIconUrl for Circle USDC
-      expect(mockGetIconUrl).not.toHaveBeenCalled();
+      // Should call getIconUrl for Circle USDC like any other token
+      expect(mockGetIconUrl).toHaveBeenCalledWith({
+        asset: {
+          code: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+        network: NETWORKS.PUBLIC,
+      });
 
-      // Should have cached the bundled icon
+      // Should have cached the fetched icon
       expect(
         useTokenIconsStore.getState().icons[
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
         ],
       ).toEqual({
-        imageUrl: "bundled-usdc-logo.png",
+        imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
       });
     });
