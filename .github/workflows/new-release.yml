@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       app_version:
-        description: App version (e.g. 1.10.24)
+        description: App version (e.g. v1.10.24)
         required: true
         type: string
       branch_from:
@@ -23,10 +23,24 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      APP_VERSION: ${{ inputs.app_version }}
       BRANCH_FROM: ${{ inputs.branch_from }}
 
     steps:
+      - name: Validate and normalize app version
+        id: normalize_version
+        run: |
+          APP_VERSION="${{ inputs.app_version }}"
+          # Remove "v" prefix if user included it
+          APP_VERSION=$(echo "$APP_VERSION" | sed 's/^v//')
+          # Validate version format (e.g., 1.10.24)
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Error: Invalid version format. Expected format: 1.10.24 or v1.10.24"
+            exit 1
+          fi
+          echo "app_version=${APP_VERSION}" >> $GITHUB_OUTPUT
+          echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_ENV
+          echo "✓ Using normalized version: ${APP_VERSION}"
+
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
@@ -53,7 +67,7 @@ jobs:
         id: set_release_branch
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
-          APP_VERSION="${{ env.APP_VERSION }}"
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
 
           if [ "$BRANCH_FROM" = "main" ]; then
             RELEASE_BRANCH="release/v${APP_VERSION}"
@@ -102,6 +116,7 @@ jobs:
 
       - name: Update app version
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Generate release notes
@@ -166,13 +181,14 @@ jobs:
 
       - name: Commit changes
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           git status
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after running set-app-version."
             exit 1
           fi
           git add .
-          git commit -m "chore: bump app version to v$APP_VERSION"
+          git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push release branch
         run: |
@@ -183,7 +199,7 @@ jobs:
         id: create_pr
         uses: actions/github-script@v8
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
           RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
           BASE_BRANCH: ${{ steps.set_release_branch.outputs.base_branch }}
         with:
@@ -245,17 +261,19 @@ jobs:
 
       - name: Update app version on bump-version branch
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Commit version bump on bump-version branch
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           git status
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after running set-app-version."
             exit 1
           fi
           git add .
-          git commit -m "chore: bump app version to v$APP_VERSION"
+          git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push bump-version branch
         run: |
@@ -264,7 +282,7 @@ jobs:
       - name: Create bump-version pull request
         uses: actions/github-script@v8
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
         with:
           script: |
             const version = process.env.APP_VERSION;
@@ -316,7 +334,7 @@ jobs:
         if: env.BRANCH_FROM == 'main'
         uses: actions/github-script@v8
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
           RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
         with:
           script: |
