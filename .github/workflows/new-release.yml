@@ -49,7 +49,7 @@ jobs:
         with:
           branch_from: ${{ env.BRANCH_FROM }}
 
-      - name: Determine release branch name
+      - name: Determine release branch name and base branch
         id: set_release_branch
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
@@ -57,22 +57,42 @@ jobs:
 
           if [ "$BRANCH_FROM" = "main" ]; then
             RELEASE_BRANCH="release/v${APP_VERSION}"
+            BASE_BRANCH="main"
           else
             RELEASE_BRANCH="emergency-release/v${APP_VERSION}"
+            # For tags, create a base branch name from the tag
+            # GitHub requires PR base to be a branch, not a tag
+            BASE_BRANCH="base-${BRANCH_FROM}"
           fi
 
           echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "base_branch=${BASE_BRANCH}" >> $GITHUB_OUTPUT
           echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> $GITHUB_ENV
+          echo "BASE_BRANCH=${BASE_BRANCH}" >> $GITHUB_ENV
           echo "Using release branch: ${RELEASE_BRANCH}"
+          echo "Using base branch: ${BASE_BRANCH}"
 
-      - name: Checkout branch_from
+      - name: Checkout branch_from and create base branch if needed
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
+          BASE_BRANCH="${{ steps.set_release_branch.outputs.base_branch }}"
+
           if [ "$BRANCH_FROM" = "main" ]; then
             git checkout main
             git pull origin main
           else
+            # For tags, checkout the tag and create a branch from it
             git checkout "$BRANCH_FROM"
+            # Check if base branch already exists remotely
+            if git ls-remote --heads origin "$BASE_BRANCH" | grep -q "$BASE_BRANCH"; then
+              echo "Base branch $BASE_BRANCH already exists, checking it out"
+              git checkout "$BASE_BRANCH"
+              git pull origin "$BASE_BRANCH"
+            else
+              echo "Creating base branch $BASE_BRANCH from tag $BRANCH_FROM"
+              git checkout -b "$BASE_BRANCH"
+              git push --set-upstream origin "$BASE_BRANCH"
+            fi
           fi
 
       - name: Create release branch
@@ -165,12 +185,12 @@ jobs:
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
-          BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
+          BASE_BRANCH: ${{ steps.set_release_branch.outputs.base_branch }}
         with:
           script: |
             const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
-            const baseBranch = process.env.BRANCH_FROM;
+            const baseBranch = process.env.BASE_BRANCH;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const releaseNotes = process.env.RELEASE_NOTES || "";
             const trimmedBody = releaseNotes.trim();
