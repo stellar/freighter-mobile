@@ -165,10 +165,12 @@ jobs:
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
+          BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
         with:
           script: |
             const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
+            const baseBranch = process.env.BRANCH_FROM;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const releaseNotes = process.env.RELEASE_NOTES || "";
             const trimmedBody = releaseNotes.trim();
@@ -185,7 +187,7 @@ jobs:
                 owner,
                 repo,
                 head: branch,
-                base: "main",
+                base: baseBranch,
                 title,
                 body
               });
@@ -197,7 +199,7 @@ jobs:
                   owner,
                   repo,
                   head: `${owner}:${branch}`,
-                  base: "main",
+                  base: baseBranch,
                   state: "open"
                 });
 
