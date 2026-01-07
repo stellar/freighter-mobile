@@ -24,7 +24,6 @@ jobs:
 
     env:
       APP_VERSION: ${{ inputs.app_version }}
-      RELEASE_BRANCH: ${{ format('release/v{0}', inputs.app_version) }}
       BRANCH_FROM: ${{ inputs.branch_from }}
 
     steps:
@@ -50,6 +49,22 @@ jobs:
         with:
           branch_from: ${{ env.BRANCH_FROM }}
 
+      - name: Determine release branch name
+        id: set_release_branch
+        run: |
+          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
+          APP_VERSION="${{ env.APP_VERSION }}"
+
+          if [ "$BRANCH_FROM" = "main" ]; then
+            RELEASE_BRANCH="release/v${APP_VERSION}"
+          else
+            RELEASE_BRANCH="emergency-release/v${APP_VERSION}"
+          fi
+
+          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> $GITHUB_ENV
+          echo "Using release branch: ${RELEASE_BRANCH}"
+
       - name: Checkout branch_from
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
@@ -62,6 +77,7 @@ jobs:
 
       - name: Create release branch
         run: |
+          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
           git checkout -b "$RELEASE_BRANCH"
 
       - name: Update app version
@@ -140,6 +156,7 @@ jobs:
 
       - name: Push release branch
         run: |
+          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
           git push --set-upstream origin "$RELEASE_BRANCH"
 
       - name: Create pull request
@@ -147,7 +164,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
-          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
         with:
           script: |
             const title = `v${process.env.APP_VERSION}`;
@@ -278,7 +295,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
-          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
         with:
           script: |
             const branch = process.env.RELEASE_BRANCH;
