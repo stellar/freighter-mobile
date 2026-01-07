@@ -41,6 +41,11 @@ export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MAX_MEMO_BYTES = 28;
 
+// Circle USDC constants for icon special casing
+export const CIRCLE_USDC_ISSUER =
+  "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+export const USDC_CODE = "USDC";
+
 // Slippage constants
 export const DEFAULT_SLIPPAGE = 1;
 export const MIN_SLIPPAGE = 0;
