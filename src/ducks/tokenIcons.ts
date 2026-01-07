@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NETWORKS } from "config/constants";
+import { logos } from "assets/logos";
+import { CIRCLE_USDC_ISSUER, NETWORKS, USDC_CODE } from "config/constants";
 import {
   NonNativeToken,
   BalanceMap,
@@ -220,6 +221,16 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           },
           {} as Record<string, Icon>,
         );
+
+        // Special case: Replace Circle USDC icon with bundled logo
+        const usdcKey = `${USDC_CODE}:${CIRCLE_USDC_ISSUER}`;
+        if (network === NETWORKS.PUBLIC && iconMap[usdcKey]) {
+          iconMap[usdcKey] = {
+            imageUrl: logos.usdc as unknown as string,
+            network,
+          };
+        }
+
         set((state) => ({
           icons: {
             ...state.icons,
@@ -229,6 +240,30 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       },
       fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
+
+        // Special case: Circle USDC on mainnet - use bundled icon
+        // Check this BEFORE cache to ensure icon always shows even if empty string was cached
+        if (
+          network === NETWORKS.PUBLIC &&
+          token.code === USDC_CODE &&
+          token.issuer.key === CIRCLE_USDC_ISSUER
+        ) {
+          const icon: Icon = {
+            imageUrl: logos.usdc as unknown as string,
+            network,
+          };
+
+          // Update cache with the correct icon
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [cacheKey]: icon,
+            },
+          }));
+
+          return icon;
+        }
+
         const cachedIcon = get().icons[cacheKey];
 
         // Return cached icon if available
