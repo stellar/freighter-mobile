@@ -8,6 +8,14 @@ on:
         description: App version (e.g. 1.8.24)
         required: true
         type: string
+      branch_from:
+        description:
+          Branch this release from (Default is `main`. For emergency releases,
+          enter a tag like "v1.8.24". Available tags will be shown in the
+          workflow logs if validation fails)
+        required: true
+        type: string
+        default: "main"
 
 jobs:
   create_release_branch:
@@ -17,6 +25,7 @@ jobs:
     env:
       APP_VERSION: ${{ inputs.app_version }}
       RELEASE_BRANCH: ${{ format('release/v{0}', inputs.app_version) }}
+      BRANCH_FROM: ${{ inputs.branch_from }}
 
     steps:
       - name: Checkout repository
@@ -34,6 +43,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate and get available tags
+        id: validate_branch_from
+        uses: ./.github/actions/validate-branch-from
+        with:
+          branch_from: ${{ env.BRANCH_FROM }}
+
+      - name: Checkout branch_from
+        run: |
+          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
+          if [ "$BRANCH_FROM" = "main" ]; then
+            git checkout main
+            git pull origin main
+          else
+            git checkout "$BRANCH_FROM"
+          fi
 
       - name: Create release branch
         run: |

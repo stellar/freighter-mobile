@@ -1,0 +1,87 @@
+name: "Validate Branch From"
+description: "Validates and provides available tags for branch_from input"
+
+inputs:
+  branch_from:
+    description: "The branch or tag to branch from"
+    required: true
+
+outputs:
+  is_valid:
+    description: "Whether the branch_from input is valid"
+    value: ${{ steps.validate.outputs.is_valid }}
+  branch_or_tag:
+    description: "The validated branch or tag name"
+    value: ${{ steps.validate.outputs.branch_or_tag }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch tags
+      id: fetch_tags
+      shell: bash
+      run: |
+        # Fetch all tags
+        git fetch --tags 2>/dev/null || true
+
+        # Get last 10 version tags
+        TAGS=$(git tag --list 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 10)
+
+        # Store tags in output (comma-separated for display)
+        TAGS_CSV=$(echo "$TAGS" | tr '\n' ',' | sed 's/,$//')
+        echo "tags=$TAGS_CSV" >> $GITHUB_OUTPUT
+
+        # Store tags as multiline for display
+        {
+          echo "tags_list<<EOF"
+          echo "$TAGS"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+
+        echo "Available tags:"
+        echo "$TAGS" | while read tag; do
+          echo "  - $tag"
+        done
+
+    - name: Validate branch_from
+      id: validate
+      shell: bash
+      run: |
+        BRANCH_FROM="${{ inputs.branch_from }}"
+        TAGS="${{ steps.fetch_tags.outputs.tags_list }}"
+
+        # Check if it's "main"
+        if [ "$BRANCH_FROM" = "main" ]; then
+          echo "✓ Using main branch as base"
+          echo "is_valid=true" >> $GITHUB_OUTPUT
+          echo "branch_or_tag=main" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Check if it's a valid tag format
+        if [[ ! "$BRANCH_FROM" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ Error: Invalid format. Must be 'main' or a version tag like 'v1.8.24'"
+          echo ""
+          echo "Available tags (last 10):"
+          echo "$TAGS" | while read tag; do
+            echo "  - $tag"
+          done
+          echo "is_valid=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Verify the tag exists
+        if git rev-parse "$BRANCH_FROM" >/dev/null 2>&1; then
+          echo "✓ Using tag $BRANCH_FROM as base"
+          echo "is_valid=true" >> $GITHUB_OUTPUT
+          echo "branch_or_tag=$BRANCH_FROM" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Error: Tag $BRANCH_FROM does not exist"
+          echo ""
+          echo "Available tags (last 10):"
+          echo "$TAGS" | while read tag; do
+            echo "  - $tag"
+          done
+          echo "is_valid=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
