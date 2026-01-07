@@ -73,6 +73,28 @@ jobs:
         run: |
           set -eo pipefail
 
+          BRANCH_FROM="${{ env.BRANCH_FROM }}"
+          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
+
+          # For emergency releases (not from main), use simpler release notes
+          if [ "$BRANCH_FROM" != "main" ]; then
+            release_notes="Use this branch to push the emergency fixes.\n\nPlease replace this PR description with a description of the fix after it has been pushed."
+
+            {
+              echo "release_notes<<$OUTPUT_DELIM"
+              echo "$release_notes"
+              echo "$OUTPUT_DELIM"
+            } >> "$GITHUB_OUTPUT"
+
+            {
+              echo "RELEASE_NOTES<<$OUTPUT_DELIM"
+              echo "$release_notes"
+              echo "$OUTPUT_DELIM"
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          # For regular releases from main, generate release notes from commits
           # Find the latest version tag (e.g., v1.8.24)
           # Use --sort=-version:refname to sort tags by version in descending order
           last_release_tag=$(git tag --list 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
@@ -93,8 +115,6 @@ jobs:
 
           printf -v release_notes '## Release Changes\n\n%s' "$commits"
           release_notes=${release_notes%$'\n'}
-
-          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
 
           {
             echo "release_notes<<$OUTPUT_DELIM"
