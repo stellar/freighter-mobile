@@ -250,7 +250,11 @@ jobs:
               }
             }
 
+      # Only trigger dev builds for regular releases from main branch
+      # Emergency releases branching from previous release skip initial QA builds
+      # as they should be manually triggered after the emergency fixes are pushed
       - name: Trigger dev builds (initial QA)
+        if: env.BRANCH_FROM == 'main'
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
