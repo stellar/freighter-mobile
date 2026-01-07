@@ -149,6 +149,82 @@ jobs:
               }
             }
 
+      - name: Create bump-version branch
+        run: |
+          git checkout main
+          git pull origin main
+          # Delete bump-version branch if it exists locally
+          git branch -D bump-version 2>/dev/null || true
+          # Delete bump-version branch if it exists remotely
+          git push origin --delete bump-version 2>/dev/null || true
+          git checkout -b bump-version
+
+      - name: Update app version on bump-version branch
+        run: |
+          node ./scripts/set-app-version "$APP_VERSION"
+
+      - name: Commit version bump on bump-version branch
+        run: |
+          git status
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected after running set-app-version."
+            exit 1
+          fi
+          git add .
+          git commit -m "chore: bump app version to v$APP_VERSION"
+
+      - name: Push bump-version branch
+        run: |
+          git push --set-upstream origin bump-version
+
+      - name: Create bump-version pull request
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+        with:
+          script: |
+            const version = process.env.APP_VERSION;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const title = `Bump version to v${version}`;
+            const body = `Bumping version on \`main\` branch to \`v${version}\`.`;
+
+            async function setOutputs(pr) {
+              core.notice(`Bump version pull request ready: ${pr.html_url}`);
+              core.setOutput("bump_version_pr_number", pr.number.toString());
+              core.setOutput("bump_version_pr_url", pr.html_url);
+            }
+
+            try {
+              const { data } = await github.rest.pulls.create({
+                owner,
+                repo,
+                head: "bump-version",
+                base: "main",
+                title,
+                body
+              });
+              await setOutputs(data);
+            } catch (error) {
+              if (error.status === 422) {
+                core.warning(`Bump version pull request could not be created automatically: ${error.message}`);
+                const { data: existing } = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  head: `${owner}:bump-version`,
+                  base: "main",
+                  state: "open"
+                });
+
+                if (existing.length > 0) {
+                  await setOutputs(existing[0]);
+                } else {
+                  throw error;
+                }
+              } else {
+                throw error;
+              }
+            }
+
       - name: Trigger dev builds (initial QA)
         uses: actions/github-script@v8
         env:
