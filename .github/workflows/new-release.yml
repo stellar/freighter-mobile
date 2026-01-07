@@ -5,14 +5,14 @@ on:
   workflow_dispatch:
     inputs:
       app_version:
-        description: App version (e.g. v1.10.24)
+        description: App version to bump to (e.g. 1.10.24)
         required: true
         type: string
       branch_from:
         description:
           Branch this release from (Default is `main`. For emergency releases,
-          enter a tag like "v1.9.24". Available tags will be shown in the
-          workflow logs if validation fails)
+          enter the tag version to branch from, e.g. 1.9.24. Available tag
+          versions will be shown in the workflow logs if validation fails.)
         required: true
         type: string
         default: "main"

@@ -58,9 +58,16 @@ runs:
           exit 0
         fi
 
-        # Check if it's a valid tag format
+        # Normalize tag format: add "v" prefix if missing
+        # Check if it matches version format without "v" (e.g., 1.9.24)
+        if [[ "$BRANCH_FROM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          BRANCH_FROM="v${BRANCH_FROM}"
+          echo "Normalized to: $BRANCH_FROM"
+        fi
+
+        # Check if it's a valid tag format (with "v" prefix)
         if [[ ! "$BRANCH_FROM" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "❌ Error: Invalid format. Must be 'main' or a version tag like 'v1.8.24'"
+          echo "❌ Error: Invalid format. Must be 'main' or a version tag like 'v1.9.24' or '1.9.24'"
           echo ""
           echo "Available tags (last 10):"
           echo "$TAGS" | while read tag; do
