@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       app_version:
-        description: App version (e.g. 1.8.24)
+        description: App version (e.g. 1.10.24)
         required: true
         type: string
       branch_from:
         description:
           Branch this release from (Default is `main`. For emergency releases,
-          enter a tag like "v1.8.24". Available tags will be shown in the
+          enter a tag like "v1.9.24". Available tags will be shown in the
           workflow logs if validation fails)
         required: true
         type: string
