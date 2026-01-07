@@ -1,5 +1,6 @@
 import { logos } from "assets/logos";
 import {
+  CIRCLE_USDC_CONTRACT,
   CIRCLE_USDC_ISSUER,
   NETWORKS,
   NETWORK_URLS,
@@ -23,7 +24,8 @@ export const getIconUrl = async ({
   if (
     network === NETWORKS.PUBLIC &&
     asset.code === USDC_CODE &&
-    asset.issuer === CIRCLE_USDC_ISSUER
+    (asset.issuer === CIRCLE_USDC_ISSUER ||
+      asset.contractId === CIRCLE_USDC_CONTRACT)
   ) {
     return logos.usdc as unknown as string;
   }
