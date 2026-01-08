@@ -1,6 +1,6 @@
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ImageSourcePropType } from "react-native";
 import styled from "styled-components/native";
 
@@ -336,6 +336,71 @@ const TokenImage = styled.Image`
 // Component
 // =============================================================================
 
+// Component to handle image loading with timeout fallback
+const ImageWithFallback: React.FC<{
+  source: TokenSource;
+}> = ({ source }) => {
+  const [showFallback, setShowFallback] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const imageLoadedRef = useRef(false);
+
+  // Timeout constant: show fallback after 1s if image hasn't loaded
+  const IMAGE_LOAD_TIMEOUT = 1000;
+
+  // Check if image is valid (non-empty string or valid ImageSourcePropType)
+  const hasValidImage =
+    source.image &&
+    (typeof source.image === "string"
+      ? source.image.trim().length > 0
+      : !!source.image);
+
+  useEffect(() => {
+    if (hasValidImage) {
+      imageLoadedRef.current = false;
+      setShowFallback(false);
+
+      timeoutRef.current = setTimeout(() => {
+        if (!imageLoadedRef.current) {
+          setShowFallback(true);
+        }
+      }, IMAGE_LOAD_TIMEOUT);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [hasValidImage]);
+
+  const handleImageLoad = () => {
+    imageLoadedRef.current = true;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  // If we have a valid image, show the image
+  if (hasValidImage && !showFallback) {
+    return (
+      <TokenImage
+        // This will allow handling both local and remote images
+        source={
+          typeof source.image === "string"
+            ? { uri: source.image }
+            : source.image
+        }
+        accessibilityLabel={source.altText}
+        onLoad={handleImageLoad}
+      />
+    );
+  }
+
+  // If no valid image, show fallback
+  return source.renderContent ? <>{source.renderContent()}</> : null;
+};
+
 /**
  * Token Component
  *
@@ -443,38 +508,17 @@ export const Token: React.FC<TokenProps> = ({
   sourceTwo,
   testID = "token",
 }: TokenProps) => {
-  const renderImage = (source: TokenSource, isSecond = false) => {
-    // Check if image is valid (non-empty string or valid ImageSourcePropType)
-    const hasValidImage =
-      source.image &&
-      (typeof source.image === "string"
-        ? source.image.trim().length > 0
-        : !!source.image);
-
-    return (
-      <TokenImageContainer
-        $size={size}
-        $variant={variant}
-        $isSecond={isSecond}
-        $backgroundColor={source.backgroundColor}
-        testID={`${testID}-image-${isSecond ? "two" : "one"}`}
-      >
-        {hasValidImage && (
-          <TokenImage
-            // This will allow handling both local and remote images
-            source={
-              typeof source.image === "string"
-                ? { uri: source.image }
-                : source.image
-            }
-            accessibilityLabel={source.altText}
-          />
-        )}
-        {/* Fallback: show custom content if image is not available or invalid */}
-        {!hasValidImage && source.renderContent && source.renderContent()}
-      </TokenImageContainer>
-    );
-  };
+  const renderImage = (source: TokenSource, isSecond = false) => (
+    <TokenImageContainer
+      $size={size}
+      $variant={variant}
+      $isSecond={isSecond}
+      $backgroundColor={source.backgroundColor}
+      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
+    >
+      <ImageWithFallback source={source} />
+    </TokenImageContainer>
+  );
 
   return (
     <TokenContainer $size={size} $variant={variant} testID={testID}>
