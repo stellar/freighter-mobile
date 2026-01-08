@@ -93,14 +93,16 @@ type TokenVariant = "single" | "swap" | "pair" | "platform";
  *
  * Defines the properties needed to display a token image.
  *
- * @property {ImageSourcePropType | string} image - The image source - can be either:
+ * @property {ImageSourcePropType | string} [image] - The image source - can be either:
  *   - An imported image (e.g., `logos.stellar`)
  *   - A remote URL as string (e.g., "https://example.com/logo.png")
+ *   - If provided and valid, this takes priority over `renderContent`
  * @property {string} altText - Accessible description of the image for screen readers
  * @property {string} [backgroundColor] - Optional custom background color for the token
  *   (defaults to the theme's background color if not provided)
  * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
- *   instead of an image (e.g., for displaying text or other components)
+ *   as a fallback when `image` is not provided or invalid (e.g., for displaying text or other components).
+ *   Only rendered if `image` is not available or invalid.
  */
 export type TokenSource = {
   /** Image URL */
@@ -348,7 +350,9 @@ const TokenImage = styled.Image`
  *   - "pair": displays two tokens side by side (for trading pairs)
  *   - "platform": displays two tokens with a platform logo overlaid (for protocol tokens)
  * - Supports both local tokens (imported from the token system) and remote images (URLs)
- * - Supports custom content rendering (e.g., text or other components)
+ * - Rendering priority: `image` takes priority over `renderContent`. If a valid `image` is provided,
+ *   it will be rendered. `renderContent` is only used as a fallback when `image` is not available or invalid.
+ * - Supports custom content rendering (e.g., text or other components) as fallback
  * - Consistent styling with border and background
  * - Customizable background colors for specific tokens
  *
@@ -420,6 +424,17 @@ const TokenImage = styled.Image`
  *     altText: "Stellar Platform Logo"
  *   }}
  * />
+ *
+ * @example
+ * // Token with fallback content (renderContent only used if image is not available)
+ * <Token
+ *   variant="single"
+ *   sourceOne={{
+ *     image: "https://example.com/token-logo.png", // This takes priority
+ *     altText: "Token Logo",
+ *     renderContent: () => <Text>Token</Text> // Fallback if image fails or is invalid
+ *   }}
+ * />
  */
 export const Token: React.FC<TokenProps> = ({
   variant,
@@ -428,29 +443,38 @@ export const Token: React.FC<TokenProps> = ({
   sourceTwo,
   testID = "token",
 }: TokenProps) => {
-  const renderImage = (source: TokenSource, isSecond = false) => (
-    <TokenImageContainer
-      $size={size}
-      $variant={variant}
-      $isSecond={isSecond}
-      $backgroundColor={source.backgroundColor}
-      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
-    >
-      {source.renderContent ? (
-        source.renderContent()
-      ) : (
-        <TokenImage
-          // This will allow handling both local and remote images
-          source={
-            typeof source.image === "string"
-              ? { uri: source.image }
-              : source.image
-          }
-          accessibilityLabel={source.altText}
-        />
-      )}
-    </TokenImageContainer>
-  );
+  const renderImage = (source: TokenSource, isSecond = false) => {
+    // Check if image is valid (non-empty string or valid ImageSourcePropType)
+    const hasValidImage =
+      source.image &&
+      (typeof source.image === "string"
+        ? source.image.trim().length > 0
+        : !!source.image);
+
+    return (
+      <TokenImageContainer
+        $size={size}
+        $variant={variant}
+        $isSecond={isSecond}
+        $backgroundColor={source.backgroundColor}
+        testID={`${testID}-image-${isSecond ? "two" : "one"}`}
+      >
+        {hasValidImage && (
+          <TokenImage
+            // This will allow handling both local and remote images
+            source={
+              typeof source.image === "string"
+                ? { uri: source.image }
+                : source.image
+            }
+            accessibilityLabel={source.altText}
+          />
+        )}
+        {/* Fallback: show custom content if image is not available or invalid */}
+        {!hasValidImage && source.renderContent && source.renderContent()}
+      </TokenImageContainer>
+    );
+  };
 
   return (
     <TokenContainer $size={size} $variant={variant} testID={testID}>
