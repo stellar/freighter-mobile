@@ -202,11 +202,16 @@ jobs:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
           RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
           BASE_BRANCH: ${{ steps.set_release_branch.outputs.base_branch }}
+          BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
         with:
           script: |
-            const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
             const baseBranch = process.env.BASE_BRANCH;
+            const branchFrom = process.env.BRANCH_FROM;
+            const isEmergencyRelease = branchFrom !== "main";
+            const title = isEmergencyRelease 
+              ? `[Emergency Release] v${process.env.APP_VERSION}`
+              : `v${process.env.APP_VERSION}`;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const releaseNotes = process.env.RELEASE_NOTES || "";
             const trimmedBody = releaseNotes.trim();
