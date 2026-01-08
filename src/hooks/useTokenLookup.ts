@@ -1,6 +1,12 @@
 /* eslint-disable no-underscore-dangle */
 import Blockaid from "@blockaid/client";
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { logos } from "assets/logos";
+import {
+  CIRCLE_USDC_ISSUER,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+  USDC_CODE,
+} from "config/constants";
 import {
   PricedBalance,
   SearchTokenResponse,
@@ -243,8 +249,19 @@ export const useTokenLookup = ({
                 key: curr.tomlInfo?.issuer,
               },
             });
+
+            // Apply USDC special case logic inline
+            let imageUrl = curr.tomlInfo?.image;
+            if (
+              network === NETWORKS.PUBLIC &&
+              curr.tomlInfo?.code === USDC_CODE &&
+              curr.tomlInfo?.issuer === CIRCLE_USDC_ISSUER
+            ) {
+              imageUrl = logos.usdc as unknown as string;
+            }
+
             const icon = {
-              imageUrl: curr.tomlInfo?.image,
+              imageUrl,
               network,
             };
 
