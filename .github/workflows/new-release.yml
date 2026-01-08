@@ -129,7 +129,7 @@ jobs:
 
           # For emergency releases (not from main), use simpler release notes
           if [ "$BRANCH_FROM" != "main" ]; then
-            release_notes="Use this branch to push the emergency fixes.\n\nPlease replace this PR description with a description of the fix after it has been pushed."
+            release_notes="Use this branch to push the emergency fixes. Please replace this PR description with a description of the fix after it has been pushed."
 
             {
               echo "release_notes<<$OUTPUT_DELIM"
