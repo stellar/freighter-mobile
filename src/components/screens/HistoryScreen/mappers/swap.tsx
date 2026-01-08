@@ -76,8 +76,8 @@ export const mapSwapHistoryItem = async ({
       ? logos.stellar
       : await getIconUrl({
           asset: {
-            code: sourceTokenIssuer || "",
-            issuer: srcTokenCode || "",
+            code: srcTokenCode || "",
+            issuer: sourceTokenIssuer || "",
           },
           network,
         });
