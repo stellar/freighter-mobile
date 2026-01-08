@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NETWORKS } from "config/constants";
+import { logos } from "assets/logos";
+import {
+  CIRCLE_USDC_CONTRACT,
+  CIRCLE_USDC_ISSUER,
+  NETWORKS,
+  USDC_CODE,
+} from "config/constants";
 import {
   NonNativeToken,
   BalanceMap,
@@ -203,8 +209,17 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const iconMap = verifiedTokens.reduce(
           (prev, curr) => {
             if (curr.icon) {
+              let iconUrl = curr.icon;
+              if (
+                network === NETWORKS.PUBLIC &&
+                curr.code === USDC_CODE &&
+                (curr.issuer === CIRCLE_USDC_ISSUER ||
+                  curr.contract === CIRCLE_USDC_CONTRACT)
+              ) {
+                iconUrl = logos.usdc as unknown as string;
+              }
               const icon: Icon = {
-                imageUrl: curr.icon,
+                imageUrl: iconUrl,
                 network,
               };
               // eslint-disable-next-line no-param-reassign
@@ -220,6 +235,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           },
           {} as Record<string, Icon>,
         );
+
         set((state) => ({
           icons: {
             ...state.icons,
@@ -229,6 +245,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       },
       fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
+
         const cachedIcon = get().icons[cacheKey];
 
         // Return cached icon if available
