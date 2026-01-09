@@ -1,7 +1,8 @@
+import Spinner from "components/Spinner";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
 import React, { useState, useEffect, useRef } from "react";
-import { ImageSourcePropType } from "react-native";
+import { ImageSourcePropType, View } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -341,8 +342,10 @@ const ImageWithFallback: React.FC<{
   source: TokenSource;
 }> = ({ source }) => {
   const [showFallback, setShowFallback] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const imageLoadedRef = useRef(false);
+  const imageErroredRef = useRef(false);
 
   // Timeout constant: show fallback after 1s if image hasn't loaded
   const IMAGE_LOAD_TIMEOUT = 1000;
@@ -357,47 +360,73 @@ const ImageWithFallback: React.FC<{
   useEffect(() => {
     if (hasValidImage) {
       imageLoadedRef.current = false;
+      imageErroredRef.current = false;
       setShowFallback(false);
+      setIsLoading(true);
 
       timeoutRef.current = setTimeout(() => {
-        if (!imageLoadedRef.current) {
+        if (!imageLoadedRef.current && !imageErroredRef.current) {
           setShowFallback(true);
+          setIsLoading(false);
         }
       }, IMAGE_LOAD_TIMEOUT);
+    } else {
+      setIsLoading(false);
     }
 
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
   }, [hasValidImage]);
 
   const handleImageLoad = () => {
     imageLoadedRef.current = true;
+    setIsLoading(false);
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
   };
 
-  // If we have a valid image, show the image
+  const handleImageError = () => {
+    imageErroredRef.current = true;
+    setIsLoading(false);
+    setShowFallback(true);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  // If we have a valid image, render the image with spinner overlay
   if (hasValidImage && !showFallback) {
     return (
-      <TokenImage
-        // This will allow handling both local and remote images
-        source={
-          typeof source.image === "string"
-            ? { uri: source.image }
-            : source.image
-        }
-        accessibilityLabel={source.altText}
-        onLoad={handleImageLoad}
-      />
+      <View className="w-full h-full relative">
+        <TokenImage
+          // This will allow handling both local and remote images
+          source={
+            typeof source.image === "string"
+              ? { uri: source.image }
+              : source.image
+          }
+          accessibilityLabel={source.altText}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
+        {/* Spinner overlay - shown while loading, hidden when image loads */}
+        {isLoading && (
+          <View className="absolute inset-0 justify-center items-center">
+            <Spinner size="small" />
+          </View>
+        )}
+      </View>
     );
   }
 
-  // If no valid image, show fallback
+  // If no valid image or image failed, show fallback
   return source.renderContent ? <>{source.renderContent()}</> : null;
 };
 
