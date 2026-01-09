@@ -24,7 +24,6 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useWalletKitStore } from "ducks/walletKit";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -81,7 +80,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       fetchAccountBalances,
     } = useBalancesStore();
     const { fetchCollectibles } = useCollectiblesStore();
-    const { fetchBalancesIcons } = useTokenIconsStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
@@ -217,7 +215,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             publicKey: account.publicKey,
             network,
           }),
-          fetchBalancesIcons({ balances, network }),
           Promise.resolve(fetchActiveSessions(account.publicKey, network)),
         ]);
       } finally {
@@ -226,10 +223,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     }, [
       account?.publicKey,
       network,
-      balances,
       fetchAccountBalances,
       fetchCollectibles,
-      fetchBalancesIcons,
       fetchActiveSessions,
     ]);
 
