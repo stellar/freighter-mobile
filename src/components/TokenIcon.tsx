@@ -79,7 +79,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         variant="single"
         size={size}
         sourceOne={{
-          image: "",
           altText: t("tokenIconAlt", { code: "LP" }),
           backgroundColor,
           renderContent: () => (
@@ -122,9 +121,9 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         variant="single"
         size={size}
         sourceOne={{
-          image: logos.stellar,
           altText: t("tokenIconAlt", { code: "XLM" }),
           backgroundColor,
+          image: logos.stellar,
         }}
       />
     );
@@ -136,22 +135,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     const icon = icons[tokenIdentifier];
     const imageUrl = iconUrl || icon?.imageUrl;
 
-    // If we have a specific icon, use it
-    if (imageUrl) {
-      return (
-        <TokenComponent
-          variant="single"
-          size={size}
-          sourceOne={{
-            image: imageUrl,
-            altText: t("tokenIconAlt", { code: token.code }),
-            backgroundColor,
-          }}
-        />
-      );
-    }
-
-    // Fallback: show SorobanTokenIcon for Soroban custom tokens
     return (
       <TokenComponent
         variant="single"
@@ -159,6 +142,9 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         sourceOne={{
           altText: t("tokenIconAlt", { code: token.code }),
           backgroundColor,
+          image: imageUrl,
+          // Fallback: show SorobanTokenIcon for Soroban custom tokens
+          // in case the specific icon is not available
           renderContent: () => <SorobanTokenIcon />,
         }}
       />
@@ -173,28 +159,25 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   const maxLetters = size === "sm" ? 1 : 2;
   const tokenInitials = token.code?.slice(0, maxLetters) || "";
 
-  const renderContent = !imageUrl
-    ? () => (
-        <Text
-          size={getFallbackTextSize(size)}
-          bold
-          secondary
-          isVerticallyCentered
-        >
-          {tokenInitials}
-        </Text>
-      )
-    : undefined;
-
   return (
     <TokenComponent
       variant="single"
       size={size}
       sourceOne={{
-        image: imageUrl,
         altText: t("tokenIconAlt", { code: token.code }),
         backgroundColor,
-        renderContent,
+        image: imageUrl,
+        // Fallback: show token initials if the icon is not available
+        renderContent: () => (
+          <Text
+            size={getFallbackTextSize(size)}
+            bold
+            secondary
+            isVerticallyCentered
+          >
+            {tokenInitials}
+          </Text>
+        ),
       }}
     />
   );

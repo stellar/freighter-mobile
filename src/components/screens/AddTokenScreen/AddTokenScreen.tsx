@@ -48,7 +48,7 @@ type AddTokenScreenProps = NativeStackScreenProps<
 
 const DEBOUNCE_SEARCH_BACKOFF_MS = 500;
 
-const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
+const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
@@ -123,6 +123,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
     setSearchTerm("");
   }, [handleRefresh, resetSearch]);
 
+  const handleManageTokenSuccess = useCallback(() => {
+    resetPageState();
+    navigation.goBack();
+  }, [resetPageState, navigation]);
+
   const { addToken, removeToken, isAddingToken, isRemovingToken } =
     useManageToken({
       token: selectedToken
@@ -136,7 +141,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = () => {
         : null,
       network,
       account,
-      onSuccess: resetPageState,
+      onSuccess: handleManageTokenSuccess,
       bottomSheetRefAdd: addTokenBottomSheetModalRef,
       bottomSheetRefRemove: removeTokenBottomSheetModalRef,
     });
