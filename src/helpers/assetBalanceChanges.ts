@@ -3,7 +3,11 @@ import {
   AssetBalanceChange,
   AssetDiffSummary,
 } from "components/screens/HistoryScreen/types";
-import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
+  NetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import { getIconUrl } from "helpers/getIconUrl";
 
@@ -22,7 +26,7 @@ async function processAssetChange(
     // Determine asset details
     let assetCode: string;
     let assetIssuer: string | null = null;
-    const decimals = 7; // Classic assets and native both use 7 decimals
+    const decimals = DEFAULT_DECIMALS;
 
     if (change.asset_type === "native") {
       assetCode = NATIVE_TOKEN_CODE;
@@ -101,18 +105,13 @@ export async function processAssetBalanceChanges(
     return [];
   }
 
-  // Filter to only changes involving the user's account
-  const userChanges = changes.filter(
-    (change) => change.from === publicKey || change.to === publicKey,
-  );
-
-  if (userChanges.length === 0) {
+  if (changes.length === 0) {
     return [];
   }
 
   // Process each change into a summary
   const summaries = await Promise.all(
-    userChanges.map((change) =>
+    changes.map((change) =>
       processAssetChange(change, publicKey, networkDetails),
     ),
   );
@@ -167,7 +166,7 @@ export async function normalizePaymentToAssetDiffs(params: {
     {
       assetCode,
       assetIssuer,
-      decimals: 7, // Classic assets use 7 decimals
+      decimals: DEFAULT_DECIMALS,
       amount,
       isCredit,
       destination,

@@ -14,7 +14,11 @@ import {
 import Icon from "components/sds/Icon";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+} from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getIconUrl } from "helpers/getIconUrl";
@@ -89,7 +93,7 @@ export const mapSwapHistoryItem = async ({
     {
       assetCode: srcTokenCode,
       assetIssuer: sourceTokenIssuer || null,
-      decimals: 7,
+      decimals: DEFAULT_DECIMALS,
       amount: operation.source_amount || "",
       isCredit: false,
       icon: sourceIcon,
@@ -98,7 +102,7 @@ export const mapSwapHistoryItem = async ({
     {
       assetCode: destTokenCodeFinal,
       assetIssuer: tokenIssuer || null,
-      decimals: 7,
+      decimals: DEFAULT_DECIMALS,
       amount,
       isCredit: true,
       icon: destIcon,
