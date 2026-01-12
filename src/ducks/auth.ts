@@ -199,7 +199,6 @@ interface AuthState {
   isCreatingAccount: boolean;
   isRenamingAccount: boolean;
   isLoadingAllAccounts: boolean;
-  isDiscoveringAccounts: boolean;
   isSwitchingAccount: boolean;
   error: string | null;
   authStatus: AuthStatus;
@@ -319,9 +318,6 @@ interface AuthActions {
   // Biometric authentication actions
   setSignInMethod: (method: LoginType) => void;
   setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => void;
-
-  // Account discovery actions
-  discoverAccounts: (password: string) => Promise<void>;
 }
 
 /**
@@ -341,7 +337,6 @@ const initialState: Omit<AuthState, "network"> = {
   isCreatingAccount: false,
   isRenamingAccount: false,
   isLoadingAllAccounts: false,
-  isDiscoveringAccounts: false,
   isSwitchingAccount: false,
   error: null,
   authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
@@ -2514,54 +2509,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               ? error.message
               : t("authStore.error.failedToImportSecretKey"),
           isLoading: false,
-        });
-
-        throw error;
-      }
-    },
-
-    /**
-     * Manually discovers accounts from the mnemonic phrase
-     * This function verifies accounts on the network and adds any new ones to the account list.
-     * It skips the cache check to force a fresh verification.
-     *
-     * @param {string} password - The password for encryption
-     * @returns {Promise<void>}
-     */
-    discoverAccounts: async (password: string) => {
-      set({ isDiscoveringAccounts: true, error: null });
-
-      try {
-        // Get the mnemonic phrase from the temporary store
-        const temporaryStore = await getTemporaryStore();
-        if (!temporaryStore?.mnemonicPhrase) {
-          throw new Error(t("authStore.error.noMnemonicPhrase"));
-        }
-
-        // Force verification by skipping cache
-        await verifyAndCreateExistingAccountsOnNetwork(
-          temporaryStore.mnemonicPhrase,
-          password,
-          true, // skipCache = true to force verification
-        );
-
-        // Refresh accounts list and active account
-        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
-
-        set({ isDiscoveringAccounts: false, error: null });
-      } catch (error) {
-        logger.error(
-          "useAuthenticationStore.discoverAccounts",
-          "Failed to discover accounts",
-          error,
-        );
-
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToDiscoverAccounts"),
-          isDiscoveringAccounts: false,
         });
 
         throw error;
