@@ -1323,19 +1323,14 @@ const loadPrivateKeyFromKeyManager = async (
     },
   );
 
-  if (
-    !biometricCredentials ||
-    typeof biometricCredentials !== "object" ||
-    !("password" in biometricCredentials)
-  ) {
+  if (!biometricCredentials || !biometricCredentials.password) {
     return null;
   }
 
+  const { password } = biometricCredentials;
+
   try {
-    const key = await keyManager.loadKey(
-      accountId,
-      biometricCredentials.password,
-    );
+    const key = await keyManager.loadKey(accountId, password);
     return key.privateKey || null;
   } catch (e) {
     logger.warn("getActiveAccount", "Failed to load key from key manager", e);
@@ -1462,11 +1457,8 @@ const getActiveAccount = async (
       }
     }
 
-    // Simplified for now: hardcode subentry count to avoid balance store dependency
-    // This avoids dependency on balances store which may trigger network calls
-    // Re-enable this once balance fetching is optimized
-    // const { subentryCount } = useBalancesStore.getState();
-    const subentryCount = 0;
+    // Get subentry count from balances store (should be available after initial fetch)
+    const { subentryCount } = useBalancesStore.getState();
 
     return {
       publicKey: account.publicKey,
