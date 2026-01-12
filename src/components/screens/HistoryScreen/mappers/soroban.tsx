@@ -12,6 +12,7 @@ import {
   TransactionType,
   TransactionStatus,
   HistoryItemData,
+  AssetDiffSummary,
 } from "components/screens/HistoryScreen/types";
 import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -50,6 +51,7 @@ interface SorobanHistoryItemData {
   fee: string;
   themeColors: ThemeColors;
   xdr: string;
+  assetDiffs?: AssetDiffSummary[];
 }
 
 interface ProcessSorobanMintData {
@@ -652,6 +654,7 @@ export const mapSorobanHistoryItem = async ({
   fee,
   themeColors,
   xdr,
+  assetDiffs = [],
 }: SorobanHistoryItemData): Promise<HistoryItemData> => {
   const {
     id,
@@ -685,6 +688,20 @@ export const mapSorobanHistoryItem = async ({
 
   // If no Soroban attributes, return a generic contract interaction
   if (!sorobanAttributes) {
+    // Use asset diffs for amount display if present
+    let amountText: string | null = null;
+    let isAddingFunds: boolean | null = null;
+
+    if (assetDiffs && assetDiffs.length === 1) {
+      const diff = assetDiffs[0];
+      const prefix = diff.isCredit ? "+" : "-";
+      amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
+      isAddingFunds = diff.isCredit;
+    } else if (assetDiffs && assetDiffs.length > 1) {
+      amountText = t("history.transactionHistory.multiple");
+      isAddingFunds = null; // Remove color styling for "Multiple"
+    }
+
     const transactionDetails: TransactionDetails = {
       operation,
       transactionTitle: t("history.transactionHistory.interacted"),
@@ -695,10 +712,13 @@ export const mapSorobanHistoryItem = async ({
       IconComponent: baseHistoryItemData.IconComponent,
       ActionIconComponent: baseHistoryItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
+      assetDiffs,
     };
 
     return {
       ...baseHistoryItemData,
+      amountText,
+      isAddingFunds,
       transactionDetails,
     } as HistoryItemData;
   }
@@ -751,6 +771,20 @@ export const mapSorobanHistoryItem = async ({
   }
 
   // Default case for other Soroban operations
+  // Use asset diffs for amount display if present
+  let amountText: string | null = null;
+  let isAddingFunds: boolean | null = null;
+
+  if (assetDiffs && assetDiffs.length === 1) {
+    const diff = assetDiffs[0];
+    const prefix = diff.isCredit ? "+" : "-";
+    amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
+    isAddingFunds = diff.isCredit;
+  } else if (assetDiffs && assetDiffs.length > 1) {
+    amountText = t("history.transactionHistory.multiple");
+    isAddingFunds = null; // Remove color styling for "Multiple"
+  }
+
   const transactionDetails: TransactionDetails = {
     operation,
     transactionTitle: t("history.transactionHistory.contract"),
@@ -761,11 +795,14 @@ export const mapSorobanHistoryItem = async ({
     IconComponent: baseHistoryItemData.IconComponent,
     ActionIconComponent: baseHistoryItemData.ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
+    assetDiffs,
   };
 
   return {
     ...baseHistoryItemData,
     rowText: operationString,
+    amountText,
+    isAddingFunds,
     transactionDetails,
   } as HistoryItemData;
 };

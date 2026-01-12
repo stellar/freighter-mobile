@@ -296,8 +296,8 @@
       "removedTrustline": "Trustline removida",
       "received": "Recebido",
       "sent": "Enviado",
-      "swapTwoTokens": "{{srcTokenCode}} por {{destTokenCode}}",
-      "swappedTwoTokens": "Trocado {{srcTokenCode}} por {{destTokenCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} para {{destTokenCode}}",
+      "swappedTwoTokens": "Trocado {{srcTokenCode}} para {{destTokenCode}}",
       "swapped": "Trocado",
       "transactionFailed": "Transação falhou",
       "failed": "Falhou",
@@ -307,6 +307,7 @@
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
       "unknown": "Desconhecido",
       "ops": "ops",
+      "multiple": "Múltiplos",
       "collectibleTransfer": {
         "unknownCollectible": "Colecionável desconhecido",
         "unknownCollection": "Coleção {{contractId}}"
@@ -323,7 +324,10 @@
       "addressCopied": "Endereço copiado para a área de transferência",
       "startingBalance": "Saldo inicial:",
       "minter": "Emissor",
-      "mintedTo": "Emitido para"
+      "mintedTo": "Emitido para",
+      "assetChanges": "Mudanças de Ativos",
+      "from": "De",
+      "to": "Para"
     }
   },
   "tokenDetailsScreen": {
