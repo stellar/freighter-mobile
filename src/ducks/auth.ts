@@ -892,13 +892,8 @@ const getKeyFromKeyManager = async (
 };
 
 /**
- * Derive couple keypairs from the mnemonic phrase and verify if they already exists on the mainnet.
- * If they do, create a new account with the remaining keypairs.
- *
- * Optimized to:
- * 1. Check local accounts FIRST before making network calls
- * 2. Use verification cache to skip if verified within 24 hours
- * 3. Only verify accounts that aren't already in the local list
+ * Derive keypairs from the mnemonic phrase and verify if they exist on the network.
+ * If they do, create accounts for them.
  *
  * @param {string} mnemonicPhrase - The mnemonic phrase to verify
  * @param {string} password - The password for encryption
