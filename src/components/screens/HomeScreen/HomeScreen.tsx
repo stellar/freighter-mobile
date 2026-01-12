@@ -102,6 +102,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         account,
         isFunded,
         isLoadingBalances,
+        isSwitchingAccount,
       });
 
     // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
