@@ -49,6 +49,15 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       ),
       testID: "show-recovery-phrase-button",
     },
+    {
+      icon: <Icon.ClockSnooze color={themeColors.foreground.primary} />,
+      title: t("securityScreen.autoLock.title"),
+      titleColor: themeColors.text.primary,
+      onPress: () =>
+        navigation.navigate(SETTINGS_ROUTES.AUTO_LOCK_SCREEN),
+      trailingContent: <Icon.ChevronRight color={themeColors.foreground.primary} />,
+      testID: "auto-lock-button",
+    },
   ];
   if (biometryType) {
     listItems.push({

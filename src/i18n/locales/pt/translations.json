@@ -916,6 +916,21 @@
   "securityScreen": {
     "title": "Segurança",
     "showRecoveryPhrase": "Mostrar frase de recuperação",
+    "autoLock": {
+      "title": "Bloqueio automático",
+      "description": "Após um tempo definido, você será solicitado a inserir sua senha ou biometria novamente como uma medida de segurança extra.",
+      "options": {
+        "immediately": "Imediatamente",
+        "1minute": "1 minuto",
+        "5minutes": "5 minutos",
+        "15minutes": "15 minutos",
+        "30minutes": "30 minutos",
+        "1hour": "1 hora",
+        "12hours": "12 horas",
+        "24hours": "24 horas",
+        "none": "Nenhum"
+      }
+    },
     "faceId": {
       "title": "Autenticação Face ID",
       "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",

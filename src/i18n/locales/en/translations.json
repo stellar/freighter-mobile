@@ -915,6 +915,21 @@
   "securityScreen": {
     "title": "Security",
     "showRecoveryPhrase": "Show recovery phrase",
+    "autoLock": {
+      "title": "Auto-lock",
+      "description": "After a set time, you will be prompted for your password or biometrics again as an extra security measure.",
+      "options": {
+        "immediately": "Immediately",
+        "1minute": "1 minute",
+        "5minutes": "5 minutes",
+        "15minutes": "15 minutes",
+        "30minutes": "30 minutes",
+        "1hour": "1 hour",
+        "12hours": "12 hours",
+        "24hours": "24 hours",
+        "none": "None"
+      }
+    },
     "faceId": {
       "title": "Face ID authentication",
       "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",

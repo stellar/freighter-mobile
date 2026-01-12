@@ -306,6 +306,7 @@ interface AuthActions {
   clearError: () => void;
   devResetAppAuth: () => void;
   setAuthStatus: (authStatus: AuthStatus) => void;
+  updateHashKeyExpiration: () => Promise<void>;
 
   // Biometric authentication actions
   setSignInMethod: (method: LoginType) => void;
@@ -638,6 +639,26 @@ export const appendAccounts = async (accounts: Account[]) => {
 };
 
 /**
+ * Gets the hash key expiration time from preferences or returns the default
+ *
+ * @returns {number} The expiration time in milliseconds
+ * If null (None option), returns 200 years so the key effectively never expires
+ */
+const getHashKeyExpirationMs = (): number => {
+  const { autoLockExpirationMs } = usePreferencesStore.getState();
+  // If null (None option), use 200 years so the key effectively never expires
+  if (autoLockExpirationMs === null) {
+    return 200 * 365 * 24 * 60 * 60 * 1000; // 200 years in milliseconds
+  }
+  // If undefined (not set yet), use default (24 hours)
+  if (autoLockExpirationMs === undefined) {
+    return HASH_KEY_EXPIRATION_MS;
+  }
+  // Otherwise use the preference value
+  return autoLockExpirationMs;
+};
+
+/**
  * Generate and store a unique hash key derived from the password
  *
  * Creates a hash key from the password using a random salt, sets an expiration
@@ -661,8 +682,8 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     // Convert to base64 for storage
     const hashKey = base64Encode(hashKeyBytes);
 
-    // Calculate the expiration timestamp
-    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+    // Calculate the expiration timestamp using preference value
+    const expirationTime = Date.now() + getHashKeyExpirationMs();
 
     // Store the hash key, salt, and expiration timestamp
     const hashKeyObj = {
@@ -680,6 +701,39 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     return hashKeyObj;
   } catch (error) {
     throw new Error(`Failed to generate hash key: ${String(error)}`);
+  }
+};
+
+/**
+ * Updates the hash key's expiration time without regenerating the key
+ *
+ * This is used when the user changes the auto-lock timer setting.
+ * The hash key itself remains the same, but its expiration is updated.
+ *
+ * @returns {Promise<void>}
+ */
+const updateHashKeyExpiration = async (): Promise<void> => {
+  try {
+    const hashKey = await getHashKey();
+    if (!hashKey) {
+      // No hash key exists, nothing to update
+      return;
+    }
+
+    // Update the expiration time using the current preference value
+    const newExpirationTime = Date.now() + getHashKeyExpirationMs();
+
+    const updatedHashKeyObj = {
+      ...hashKey,
+      expiresAt: newExpirationTime,
+    };
+
+    await secureDataStorage.setItem(
+      SENSITIVE_STORAGE_KEYS.HASH_KEY,
+      JSON.stringify(updatedHashKeyObj),
+    );
+  } catch (error) {
+    throw new Error(`Failed to update hash key expiration: ${String(error)}`);
   }
 };
 
@@ -2290,6 +2344,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       password: string,
       activeAccountId?: string | null,
     ) => getKeyFromKeyManager(password, activeAccountId),
+
+    updateHashKeyExpiration: async () => {
+      try {
+        await updateHashKeyExpiration();
+      } catch (error) {
+        logger.error(
+          "useAuthenticationStore.updateHashKeyExpiration",
+          "Failed to update hash key expiration",
+          error,
+        );
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        set({ error: errorMessage });
+      }
+    },
 
     importSecretKey: async (params: ImportSecretKeyParams) => {
       set({ isLoading: true, error: null });

@@ -107,7 +107,7 @@ const useAuthCheck = () => {
         }, INITIAL_CHECK_DELAY);
       }
       appState.current = nextAppState;
-      setupCheckInterval(nextAppState);
+      // setupCheckInterval(nextAppState);
     };
 
     const subscription = AppState.addEventListener(
@@ -116,15 +116,16 @@ const useAuthCheck = () => {
     );
 
     // Initial setup delay to ensure the app is fully initialized
-    setTimeout(() => {
-      setupCheckInterval(appState.current);
-    }, INITIAL_CHECK_DELAY);
+    // setTimeout(() => {
+    //   setupCheckInterval(appState.current);
+    // }, INITIAL_CHECK_DELAY);
 
     return () => {
       subscription.remove();
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
     };
-  }, [setupCheckInterval, checkAuth]);
+  // }, [setupCheckInterval, checkAuth]);
+  }, [checkAuth]);
 
   /**
    * Monitor user interaction and update active status accordingly.

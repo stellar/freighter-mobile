@@ -87,6 +87,7 @@ export const SETTINGS_ROUTES = {
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
   BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
+  AUTO_LOCK_SCREEN: "AutoLockScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -204,6 +205,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
+  [SETTINGS_ROUTES.AUTO_LOCK_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {

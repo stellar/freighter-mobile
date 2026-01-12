@@ -7,6 +7,7 @@ import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
+import AutoLockScreen from "components/screens/SettingsScreen/SecurityScreen/AutoLockScreen";
 import BiometricsSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/BiometricsSettingsScreen";
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
@@ -108,6 +109,13 @@ export const SettingsStackNavigator = () => {
         component={BiometricsSettingsScreen}
         options={{
           headerTitle: biometryTitle[biometryType!],
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.AUTO_LOCK_SCREEN}
+        component={AutoLockScreen}
+        options={{
+          headerTitle: t("securityScreen.autoLock.title"),
         }}
       />
     </SettingsStack.Navigator>
