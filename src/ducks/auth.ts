@@ -890,7 +890,6 @@ const getKeyFromKeyManager = async (
   }
 
   const result = await keyManager.loadKey(accountId, password).catch(() => {
-    // TODO: implement error handling logic -- maybe add a limit to the number of attempts
     throw new Error(t("authStore.error.invalidPassword"));
   });
 
@@ -916,7 +915,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   password: string,
   skipCache: boolean = false,
 ): Promise<void> => {
-  // OPTIMIZATION 1: Check verification cache (skip if verified within 24 hours)
+  // Skip verification if we checked recently (within 24 hours)
   if (!skipCache) {
     const lastVerificationTimestamp = await dataStorage.getItem(
       STORAGE_KEYS.LAST_ACCOUNT_VERIFICATION_TIMESTAMP,
@@ -933,7 +932,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     }
   }
 
-  // OPTIMIZATION 2: Check local accounts FIRST before making network calls
+  // Check what accounts we already have locally before hitting the network
   const temporaryStore = await getTemporaryStore();
   const existingAccounts = await getAllAccounts();
 
@@ -971,7 +970,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     }),
   );
 
-  // OPTIMIZATION 3: Filter out accounts we already have locally BEFORE network calls
+  // Only verify accounts we don't already have stored locally
   const accountsToVerify = keyPairs.filter(
     (keyPair) => !uniqueExistingPublicKeys.has(keyPair.publicKey),
   );
@@ -1403,7 +1402,7 @@ const getActiveAccount = async (
     // Get private key for the active account
     let privateKey = temporaryStore.privateKeys?.[activeAccountId];
 
-    // LAZY LOADING: If private key is not in temporary store, load it on-demand
+    // Load private key on-demand if it's not already in the temp store
     if (!privateKey) {
       try {
         // Try to derive from mnemonic phrase (which is in temp store)
@@ -1463,9 +1462,9 @@ const getActiveAccount = async (
       }
     }
 
-    // TEMPORARILY SIMPLIFIED: Set subentryCount to 0 instead of reading from balances store
+    // Simplified for now: hardcode subentry count to avoid balance store dependency
     // This avoids dependency on balances store which may trigger network calls
-    // TODO: Re-enable after optimizing balance fetching or moving to background
+    // Re-enable this once balance fetching is optimized
     // const { subentryCount } = useBalancesStore.getState();
     const subentryCount = 0;
 
