@@ -639,6 +639,30 @@ const processCollectibleTransfer = async ({
   return historyItemData as HistoryItemData;
 };
 
+interface AssetDiffDisplayResult {
+  amountText: string | null;
+  isAddingFunds: boolean | null;
+}
+
+const formatAssetDiffDisplay = (
+  assetDiffs?: AssetDiffSummary[],
+): AssetDiffDisplayResult => {
+  let amountText: string | null = null;
+  let isAddingFunds: boolean | null = null;
+
+  if (assetDiffs && assetDiffs.length === 1) {
+    const diff = assetDiffs[0];
+    const prefix = diff.isCredit ? "+" : "-";
+    amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
+    isAddingFunds = diff.isCredit;
+  } else if (assetDiffs && assetDiffs.length > 1) {
+    amountText = t("history.transactionHistory.multiple");
+    isAddingFunds = null;
+  }
+
+  return { amountText, isAddingFunds };
+};
+
 /**
  * Maps Soroban contract operations to history item data
  */
@@ -689,18 +713,7 @@ export const mapSorobanHistoryItem = async ({
   // If no Soroban attributes, return a generic contract interaction
   if (!sorobanAttributes) {
     // Use asset diffs for amount display if present
-    let amountText: string | null = null;
-    let isAddingFunds: boolean | null = null;
-
-    if (assetDiffs && assetDiffs.length === 1) {
-      const diff = assetDiffs[0];
-      const prefix = diff.isCredit ? "+" : "-";
-      amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
-      isAddingFunds = diff.isCredit;
-    } else if (assetDiffs && assetDiffs.length > 1) {
-      amountText = t("history.transactionHistory.multiple");
-      isAddingFunds = null; // Remove color styling for "Multiple"
-    }
+    const { amountText, isAddingFunds } = formatAssetDiffDisplay(assetDiffs);
 
     const transactionDetails: TransactionDetails = {
       operation,
@@ -772,18 +785,7 @@ export const mapSorobanHistoryItem = async ({
 
   // Default case for other Soroban operations
   // Use asset diffs for amount display if present
-  let amountText: string | null = null;
-  let isAddingFunds: boolean | null = null;
-
-  if (assetDiffs && assetDiffs.length === 1) {
-    const diff = assetDiffs[0];
-    const prefix = diff.isCredit ? "+" : "-";
-    amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
-    isAddingFunds = diff.isCredit;
-  } else if (assetDiffs && assetDiffs.length > 1) {
-    amountText = t("history.transactionHistory.multiple");
-    isAddingFunds = null; // Remove color styling for "Multiple"
-  }
+  const { amountText, isAddingFunds } = formatAssetDiffDisplay(assetDiffs);
 
   const transactionDetails: TransactionDetails = {
     operation,
