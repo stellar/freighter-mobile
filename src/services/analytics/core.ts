@@ -5,6 +5,7 @@ import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
+import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
 import {
@@ -62,6 +63,12 @@ const setAmplitudeUserProperties = (): void => {
 
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
+
+  // Disable analytics during e2e tests
+  if (isE2ETest) {
+    hasInitialised = true;
+    return;
+  }
 
   if (!AMPLITUDE_API_KEY) {
     // We should only report this error when not in development
@@ -229,6 +236,11 @@ const dispatchUnthrottled = (
   event: AnalyticsEventName,
   props?: AnalyticsProps,
 ): void => {
+  // Skip analytics tracking during e2e tests
+  if (isE2ETest) {
+    return;
+  }
+
   const { isEnabled } = useAnalyticsStore.getState();
 
   const eventData = ANALYTICS_CONFIG.INCLUDE_COMMON_CONTEXT
