@@ -141,7 +141,6 @@ export const App: React.FC<AppProps> = ({
     // Try to relate with some of the known protocols
     const matchedProtocolSite = findMatchedProtocol({
       protocols,
-      searchName: appName,
       searchUrl: favicon,
     });
     if (matchedProtocolSite) {

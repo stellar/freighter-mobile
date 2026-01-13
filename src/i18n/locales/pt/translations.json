@@ -779,7 +779,11 @@
     "connect": "Conectar",
     "connectAnyway": "Conectar mesmo assim",
     "maliciousFlag": "Este site foi marcado como malicioso",
-    "suspiciousFlag": "Este site foi marcado como suspeito"
+    "suspiciousFlag": "Este site foi marcado como suspeito",
+    "verifyDomainTitle": "Verificar domínio",
+    "verifyDomainDescription": "Certifique-se de que este domínio corresponde ao site com o qual você está tentando se conectar.",
+    "verifyDomainButton": "Entendi",
+    "verifyDomainAccessibilityLabel": "Abrir informações sobre verificação deste domínio"
   },
   "low": "baixo",
   "medium": "médio",
@@ -859,7 +863,9 @@
     "connectionNotFound": "Conexão não encontrada",
     "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
     "walletIsLocked": "Carteira bloqueada",
-    "userNotAuthenticated": "Usuário não autenticado"
+    "userNotAuthenticated": "Usuário não autenticado",
+    "invalidTransactionOrigin": "Domínio de transação não confiável",
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter."
   },
   "sendRecipient": {
     "error": {

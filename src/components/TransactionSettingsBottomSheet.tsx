@@ -46,7 +46,7 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Keyboard, TouchableOpacity, View } from "react-native";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -368,7 +368,9 @@ const TransactionSettingsBottomSheet: React.FC<
     // Notify that settings have changed
     onSettingsChange?.();
 
+    // Dismiss the sheet and keyboard together
     onConfirm();
+    Keyboard.dismiss();
   };
 
   // Render functions
