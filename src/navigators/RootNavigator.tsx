@@ -130,14 +130,28 @@ export const RootNavigator = () => {
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
+    // eslint-disable-next-line no-console
+    console.log(
+      `🧭 RootNavigator: authStatus=${authStatus}, calculating initialRouteName`,
+    );
+
     if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      // eslint-disable-next-line no-console
+      console.log("🧭 → MAIN_TAB_STACK");
       return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
-    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    ) {
+      // eslint-disable-next-line no-console
+      console.log("🧭 → LOCK_SCREEN");
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
 
+    // eslint-disable-next-line no-console
+    console.log("🧭 → AUTH_STACK");
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
   }, [authStatus]);
 
@@ -245,7 +259,8 @@ export const RootNavigator = () => {
             options={getScreenBottomNavigateOptions("")}
           />
         </RootStack.Group>
-      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
+      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
           component={LockScreen}

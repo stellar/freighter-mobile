@@ -287,6 +287,7 @@ export enum STORAGE_KEYS {
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
+  AUTH_STATUS = "authStatus",
 }
 
 /**
