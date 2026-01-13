@@ -194,6 +194,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         return;
       }
 
+      // Skip history fetch for unfunded accounts (they don't exist on the network)
+      const { isFunded } = useBalancesStore.getState();
+      if (!isFunded) {
+        logger.info(
+          "fetchAccountHistory",
+          "Skipping history fetch for unfunded account",
+        );
+        return;
+      }
+
       // Prevent duplicate concurrent requests
       if (get().isFetching) {
         logger.info(
