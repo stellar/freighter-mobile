@@ -1,0 +1,73 @@
+appId: org.stellar.freighterdev
+tags:
+  - onboarding
+  - import-wallet
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# Wait for welcome screen
+- assertVisible:
+    id: welcome-screen
+
+# Tap import wallet button
+- tapOn:
+    id: import-wallet-button
+
+# Enter password on Choose Password screen
+- assertVisible:
+    id: password-input
+- tapOn:
+    id: password-input
+- inputText: "TestPassword123!"
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Confirm password screen
+- assertVisible:
+    id: confirm-password-input
+- tapOn:
+    id: confirm-password-input
+- inputText: "TestPassword123!"
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Import wallet screen - enter recovery phrase
+- assertVisible:
+    id: import-wallet-input
+- tapOn:
+    id: import-wallet-input
+- inputText:
+    "mushroom uncover sail prevent spot theory work inflict arctic figure dish
+    surround"
+
+# Tap continue/import button
+- tapOn:
+    id: default-action-button
+
+# Biometrics screen - enable biometrics (if available)
+- runFlow:
+    when:
+      visible:
+        text: .*biometric.*|.*Face ID.*|.*Touch ID.*|.*Enable.*
+    commands:
+      - tapOn:
+          id: default-action-button
+      # Handle system biometric prompt if it appears
+      - runFlow:
+          when:
+            visible:
+              text: .*Use.*|.*Face ID.*|.*Touch ID.*
+          commands:
+            - tapOn:
+                text: ".*Use.*|.*Face ID.*|.*Touch ID.*"
+
+# Verify we reached home screen
+- assertVisible:
+    id: home-screen
+    timeout: 30000

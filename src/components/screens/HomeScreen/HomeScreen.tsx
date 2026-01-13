@@ -230,6 +230,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     return (
       <BaseLayout
+        testID="home-screen"
         insets={{ bottom: false, top: false, left: false, right: false }}
       >
         <WelcomeBannerBottomSheet

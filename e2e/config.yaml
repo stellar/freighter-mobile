@@ -1,0 +1,4 @@
+appId: org.stellar.freighterdev
+platform:
+  ios:
+    disableAnimations: true
