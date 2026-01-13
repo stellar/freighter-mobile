@@ -12,8 +12,10 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
+import { useProtocolsStore } from "ducks/protocols";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
+import { findMatchedProtocol, getHostname } from "helpers/protocols";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -86,6 +88,7 @@ const DappRequestBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { protocols } = useProtocolsStore();
 
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
@@ -156,16 +159,25 @@ const DappRequestBottomSheetContent: React.FC<
   );
 
   const dappMetadata = useDappMetadata(requestEvent);
-
   const sessionRequest = requestEvent?.params;
+  const requestOrigin = requestEvent?.verifyContext?.verified?.origin ?? "";
+
+  const matchedProtocol = useMemo(
+    () =>
+      findMatchedProtocol({
+        protocols,
+        searchUrl: requestOrigin,
+      }),
+    [protocols, requestOrigin],
+  );
 
   if (!dappMetadata || !account || !sessionRequest) {
     return null;
   }
 
-  const dAppDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
-  const dAppName = dappMetadata.name;
-  const dAppFavicon = dappMetadata.icons[0];
+  const dAppDomain = getHostname(requestOrigin ?? dappMetadata?.url ?? "");
+  const dAppName = matchedProtocol?.name ?? dappMetadata.name;
+  const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
   const renderButtons = () => {
     if (!isMalicious && !isSuspicious && !isUnableToScan) {
