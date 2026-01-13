@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { TransactionBuilder } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
@@ -19,7 +18,6 @@ import {
   NATIVE_TOKEN_CODE,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
 import { normalizePaymentToAssetDiffs } from "helpers/assetBalanceChanges";
 import { formatTokenForDisplay } from "helpers/formatAmount";
@@ -43,71 +41,6 @@ interface PaymentHistoryItemData {
 }
 
 /**
- * Extracts the actual destination address from transaction XDR for a specific operation
- * This is needed because Horizon API returns base G address for M addresses
- *
- * @param xdr Transaction envelope XDR
- * @param network Network identifier
- * @param fallbackTo Fallback destination if extraction fails
- * @param operationId Horizon operation ID (format: "txid-index")
- * @returns Actual destination address (may be M address)
- */
-const extractDestinationFromXDR = (
-  xdr: string,
-  network: string | undefined,
-  fallbackTo: string,
-  operationId: string,
-): string => {
-  if (!xdr || !network) {
-    return fallbackTo;
-  }
-
-  try {
-    // Extract operation index from Horizon operation ID
-    // Format: "123456789012345-1" where 1 is the index
-    const operationIndex = parseInt(operationId.split("-").pop() || "0", 10);
-
-    const networkDetails = mapNetworkToNetworkDetails(network as any);
-    const transaction = TransactionBuilder.fromXDR(
-      xdr,
-      networkDetails.networkPassphrase,
-    );
-
-    // Get the specific operation at this index
-    if (operationIndex >= transaction.operations.length) {
-      logger.warn(
-        "extractDestinationFromXDR",
-        `Operation index ${operationIndex} out of range (${transaction.operations.length} operations)`,
-      );
-      return fallbackTo;
-    }
-
-    const targetOp = transaction.operations[operationIndex];
-
-    // Check if it's a payment operation with a destination
-    if (
-      targetOp &&
-      (targetOp.type === "payment" ||
-        targetOp.type === "pathPaymentStrictReceive" ||
-        targetOp.type === "pathPaymentStrictSend") &&
-      "destination" in targetOp
-    ) {
-      const { destination } = targetOp;
-      // Return the destination from XDR (could be M address)
-      return destination;
-    }
-  } catch (error) {
-    logger.error(
-      "extractDestinationFromXDR",
-      "Failed to parse XDR for destination address",
-      error,
-    );
-  }
-
-  return fallbackTo;
-};
-
-/**
  * Maps payment operation data to history item data
  */
 export const mapPaymentHistoryItem = async ({
@@ -129,12 +62,11 @@ export const mapPaymentHistoryItem = async ({
     asset_type: tokenType = "native",
     asset_issuer: tokenIssuer = "",
     to,
+    to_muxed: toMuxed,
     from,
   } = operation;
 
-  // Extract actual destination from XDR (may be M address)
-  // Horizon API returns base G address, but XDR contains the actual address used
-  const actualDestination = extractDestinationFromXDR(xdr, network, to, id);
+  const actualDestination = toMuxed || to;
 
   // Payment mapper handles classic/native tokens only (Soroban payments go to soroban mapper)
   // Classic tokens support M address + memo, so preserve memo even for M addresses

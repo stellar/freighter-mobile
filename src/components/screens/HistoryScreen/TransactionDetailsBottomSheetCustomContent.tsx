@@ -282,7 +282,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             <View className="flex-row items-center justify-between pt-3 mt-3 border-t border-border-primary">
               <View className="flex-row items-center gap-2">
                 <Icon.User01 size={20} color={themeColors.gray[9]} />
-                <Text md secondary>
+                <Text md color={themeColors.white}>
                   {isReceiving
                     ? t("history.transactionDetails.from")
                     : t("history.transactionDetails.to")}
