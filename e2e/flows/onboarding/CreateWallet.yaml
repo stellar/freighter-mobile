@@ -89,6 +89,7 @@ tags:
                 text: ".*Use.*|.*Face ID.*|.*Touch ID.*"
 
 # Verify we reached home screen
-- assertVisible:
-    id: home-screen
+- extendedWaitUntil:
+    visible:
+      id: home-screen
     timeout: 30000
