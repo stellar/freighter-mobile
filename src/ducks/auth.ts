@@ -9,7 +9,6 @@ import {
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE,
-  ACCOUNT_VERIFICATION_CACHE_DURATION_MS,
   BIOMETRIC_STORAGE_KEYS,
   FACE_ID_BIOMETRY_TYPES,
   FINGERPRINT_BIOMETRY_TYPES,
@@ -890,31 +889,12 @@ const getKeyFromKeyManager = async (
  *
  * @param {string} mnemonicPhrase - The mnemonic phrase to verify
  * @param {string} password - The password for encryption
- * @param {boolean} skipCache - If true, skip cache check and force verification
  * @returns {Promise<void>}
  */
 const verifyAndCreateExistingAccountsOnNetwork = async (
   mnemonicPhrase: string,
   password: string,
-  skipCache: boolean = false,
 ): Promise<void> => {
-  // Skip verification if we checked recently (within 24 hours)
-  if (!skipCache) {
-    const lastVerificationTimestamp = await dataStorage.getItem(
-      STORAGE_KEYS.LAST_ACCOUNT_VERIFICATION_TIMESTAMP,
-    );
-
-    if (lastVerificationTimestamp) {
-      const lastVerification = parseInt(lastVerificationTimestamp, 10);
-      const now = Date.now();
-      const timeSinceVerification = now - lastVerification;
-
-      if (timeSinceVerification < ACCOUNT_VERIFICATION_CACHE_DURATION_MS) {
-        return;
-      }
-    }
-  }
-
   // Check what accounts we already have locally before hitting the network
   const temporaryStore = await getTemporaryStore();
   const existingAccounts = await getAllAccounts();
@@ -962,11 +942,6 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
 
   // Early exit if all accounts are already loaded
   if (accountsToVerify.length === 0) {
-    // Update cache timestamp
-    await dataStorage.setItem(
-      STORAGE_KEYS.LAST_ACCOUNT_VERIFICATION_TIMESTAMP,
-      Date.now().toString(),
-    );
     return;
   }
 
@@ -1075,12 +1050,6 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   await secureDataStorage.setItem(
     SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     encryptedData,
-  );
-
-  // Update cache timestamp after successful verification
-  await dataStorage.setItem(
-    STORAGE_KEYS.LAST_ACCOUNT_VERIFICATION_TIMESTAMP,
-    Date.now().toString(),
   );
 };
 
