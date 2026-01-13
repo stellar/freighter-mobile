@@ -213,10 +213,6 @@ interface AuthState {
   // Biometric authentication state
   signInMethod: LoginType;
   hasTriggeredAppOpenBiometricsLogin: boolean;
-
-  // Cached temporary store and hash key for fast account switching
-  cachedTemporaryStore: TemporaryStore | null;
-  cachedHashKey: HashKey | null;
 }
 
 /**
@@ -349,9 +345,6 @@ const initialState: Omit<AuthState, "network"> = {
   // Biometric authentication initial state
   signInMethod: LoginType.PASSWORD,
   hasTriggeredAppOpenBiometricsLogin: false,
-  // Cached temporary store and hash key for fast account switching
-  cachedTemporaryStore: null,
-  cachedHashKey: null,
 };
 
 /**
@@ -933,7 +926,9 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
 
   const existingAccountsOnTempStorePublicKeys =
     existingAccountsOnDataStorageSecretKeys.map((secretKey) =>
-      Keypair.fromSecret(secretKey).publicKey(),
+      typeof secretKey === "string"
+        ? Keypair.fromSecret(secretKey).publicKey()
+        : "",
     );
 
   // Get public keys from account list
@@ -1332,19 +1327,12 @@ const loadPrivateKeyFromKeyManager = async (
  * Gets the active account data by combining temporary store sensitive data with account list information
  *
  * Retrieves the active account ID, loads account information from storage,
- * and gets the private key from the temporary store.
+ * and decrypts the private key on-demand.
  *
- * @param {TemporaryStore | null} cachedTemporaryStore - Optional cached temporary store to avoid decryption
- * @param {HashKey | null} cachedHashKey - Optional cached hash key to avoid storage read
- * @param {(updatedStore: TemporaryStore) => void} onStoreUpdated - Optional callback when store is updated
  * @returns {Promise<ActiveAccount | null>} The active account data or null if not found
  * @throws {Error} If the active account cannot be retrieved
  */
-const getActiveAccount = async (
-  cachedTemporaryStore: TemporaryStore | null = null,
-  cachedHashKey: HashKey | null = null,
-  onStoreUpdated?: (updatedStore: TemporaryStore) => void,
-): Promise<ActiveAccount | null> => {
+const getActiveAccount = async (): Promise<ActiveAccount | null> => {
   const activeAccountId = await dataStorage.getItem(
     STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
   );
@@ -1366,8 +1354,7 @@ const getActiveAccount = async (
     throw new Error(t("authStore.error.accountNotFound"));
   }
 
-  // Use cached hash key if available, otherwise fetch from storage
-  const hashKey = cachedHashKey || (await getHashKey());
+  const hashKey = await getHashKey();
 
   if (!hashKey) {
     throw new Error(t("authStore.error.hashKeyNotFound"));
@@ -1377,8 +1364,7 @@ const getActiveAccount = async (
 
   // Get sensitive data from temporary store if the hash key is valid
   if (!hashKeyExpired) {
-    // Use cached temporary store if available, otherwise decrypt from storage
-    let temporaryStore = cachedTemporaryStore || (await getTemporaryStore());
+    let temporaryStore = await getTemporaryStore();
 
     if (!temporaryStore) {
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
@@ -1405,11 +1391,7 @@ const getActiveAccount = async (
               privateKey,
               hashKey,
             );
-            // Update the local reference and cache if callback provided
             temporaryStore = updatedStore;
-            if (onStoreUpdated) {
-              onStoreUpdated(updatedStore);
-            }
           }
         }
 
@@ -1426,11 +1408,7 @@ const getActiveAccount = async (
               privateKey,
               hashKey,
             );
-            // Update the local reference and cache if callback provided
             temporaryStore = updatedStore;
-            if (onStoreUpdated) {
-              onStoreUpdated(updatedStore);
-            }
           }
         }
       } catch (e) {
@@ -1749,8 +1727,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 accountError: null,
                 authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
                 isLoading: false,
-                cachedTemporaryStore: null,
-                cachedHashKey: null,
               });
 
               // Navigate to lock screen
@@ -1772,8 +1748,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 ...initialState,
                 authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
                 isLoading: false,
-                cachedTemporaryStore: null,
-                cachedHashKey: null,
               });
             }
           } catch (error) {
@@ -1834,19 +1808,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         await signIn(params);
         // Now verify we can access the active account before changing auth state
         try {
-          // Cache the temporary store and hash key for fast account switching
-          const hashKey = await getHashKey();
-          const temporaryStore = await getTemporaryStore();
-
+          // Verify we can load the active account before proceeding
           // This will throw if the temporary store is missing or invalid
-          const activeAccount = await getActiveAccount(temporaryStore, hashKey);
+          const activeAccount = await getActiveAccount();
 
           if (!activeAccount) {
             throw new Error(t("authStore.error.failedToLoadAccount"));
           }
 
           // Only if we can successfully load the account, set the authenticated state
-          // Cache the temporary store and hash key for fast account switching
           analytics.trackReAuthSuccess();
           set({
             ...initialState,
@@ -1854,8 +1824,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             isLoading: false,
             account: activeAccount,
             isLoadingAccount: false,
-            cachedTemporaryStore: temporaryStore,
-            cachedHashKey: hashKey,
           });
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
@@ -1874,8 +1842,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 ? accountError.message
                 : String(accountError),
             isLoading: false,
-            cachedTemporaryStore: null,
-            cachedHashKey: null,
           });
 
           // Navigate to lock screen
@@ -2320,8 +2286,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
           set({
             authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
-            cachedTemporaryStore: null,
-            cachedHashKey: null,
           });
 
           // Navigate to lock screen
@@ -2331,15 +2295,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           return null;
         }
 
-        const { cachedTemporaryStore, cachedHashKey } = get();
-        const activeAccount = await getActiveAccount(
-          cachedTemporaryStore,
-          cachedHashKey,
-          (updatedStore) => {
-            // Update cache when store is modified
-            set({ cachedTemporaryStore: updatedStore });
-          },
-        );
+        const activeAccount = await getActiveAccount();
         set({ account: activeAccount, isLoadingAccount: false });
         return activeAccount;
       } catch (error) {
@@ -2447,15 +2403,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       set({ isSwitchingAccount: true, error: null });
       try {
         await selectAccount(publicKey);
-        const { cachedTemporaryStore, cachedHashKey } = get();
-        const activeAccount = await getActiveAccount(
-          cachedTemporaryStore,
-          cachedHashKey,
-          (updatedStore) => {
-            // Update cache when store is modified
-            set({ cachedTemporaryStore: updatedStore });
-          },
-        );
+        const activeAccount = await getActiveAccount();
         set({ account: activeAccount, isSwitchingAccount: false });
       } catch (error) {
         logger.error(
