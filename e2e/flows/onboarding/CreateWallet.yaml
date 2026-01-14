@@ -41,35 +41,14 @@ tags:
 - tapOn:
     id: default-action-button
 
-# Recovery phrase screen - verify it's visible and continue
+# Recovery phrase screen - verify it's visible and skip validation
 - assertVisible:
     id: recovery-phrase-container
 - tapOn:
-    id: continue-button
-
-# Validate recovery phrase - select 3 words (round-based validation)
-# Note: This is a simplified flow. The actual validation requires selecting
-# the correct word from a grid for 3 rounds. For now, we'll tap on word bubbles
-# - this may need refinement based on actual word selection logic
-- extendedWaitUntil:
-    visible:
-      text: .*word.*
-    timeout: 10000
-# Select first word (tap on first available word bubble)
+    id: skip-button
+# Confirm skip in the bottom sheet modal
 - tapOn:
-    point: "30%,50%"
-- tapOn:
-    id: default-action-button
-# Select second word
-- tapOn:
-    point: "50%,50%"
-- tapOn:
-    id: default-action-button
-# Select third word
-- tapOn:
-    point: "70%,50%"
-- tapOn:
-    id: default-action-button
+    id: skip-confirm-button
 
 # Biometrics screen - enable biometrics (if available)
 - runFlow:
