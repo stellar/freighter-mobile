@@ -9600,6 +9600,7 @@ __metadata:
     https-browserify: "npm:~0.0.0"
     husky: "npm:^9.1.7"
     i18next: "npm:^24.2.2"
+    jail-monkey: "npm:2.8.4"
     jest: "npm:^30.2.0"
     jest-environment-jsdom: "npm:^30.1.0"
     jest-styled-components: "npm:^7.2.0"
@@ -11040,6 +11041,13 @@ __metadata:
     "@pkgjs/parseargs":
       optional: true
   checksum: 10c0/6acc10d139eaefdbe04d2f679e6191b3abf073f111edf10b1de5302c97ec93fffeb2fdd8681ed17f16268aa9dd4f8c588ed9d1d3bffbbfa6e8bf897cbb3149b9
+  languageName: node
+  linkType: hard
+
+"jail-monkey@npm:2.8.4":
+  version: 2.8.4
+  resolution: "jail-monkey@npm:2.8.4"
+  checksum: 10c0/105bb7a54c00475fad0e3137546237ee7ab241ce1787307c8658546929b76a84bc774331c23a5a9c1e24c1f269a9e6ea81a8e7964f7ade7fb9911c8dd9e5ebab
   languageName: node
   linkType: hard
 

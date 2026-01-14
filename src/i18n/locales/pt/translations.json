@@ -1222,5 +1222,10 @@
       "skipTitle": "Continuar sem atualizar?",
       "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
     }
+  },
+  "jailbreakDetected": {
+    "title": "Não é possível executar neste dispositivo",
+    "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
+    "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
   }
 }
