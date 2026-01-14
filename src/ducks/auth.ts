@@ -426,11 +426,18 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     }
 
     // Check if LOCKED status was persisted from previous session
+    // Only honor LOCKED status if temporary store exists (backwards compatibility)
     const persistedAuthStatus = await dataStorage.getItem(
       STORAGE_KEYS.AUTH_STATUS,
     );
-    if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
+    if (persistedAuthStatus === AUTH_STATUS.LOCKED && temporaryStore) {
       return AUTH_STATUS.LOCKED;
+    }
+
+    // Clear invalid persisted LOCKED status if temp store doesn't exist
+    if (persistedAuthStatus === AUTH_STATUS.LOCKED && !temporaryStore) {
+      await dataStorage.remove(STORAGE_KEYS.AUTH_STATUS);
+      return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
     // All conditions for authentication are met
@@ -1860,7 +1867,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         try {
           // Verify we can load the active account before proceeding
           // This will throw if the temporary store is missing or invalid
-          const activeAccount = await getActiveAccount(get().authStatus);
+          // Pass AUTHENTICATED status since signIn just completed successfully
+          const activeAccount = await getActiveAccount(
+            AUTH_STATUS.AUTHENTICATED,
+          );
 
           if (!activeAccount) {
             throw new Error(t("authStore.error.failedToLoadAccount"));
@@ -2279,13 +2289,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      * @returns {Promise<AuthStatus>} The current authentication status
      */
     getAuthStatus: async () => {
-      const currentAuthStatus = get().authStatus;
-
-      // Don't override LOCKED status with automatic validation
-      if (currentAuthStatus === AUTH_STATUS.LOCKED) {
-        return AUTH_STATUS.LOCKED;
-      }
-
+      // Always re-validate auth status to ensure consistency
+      // Don't rely on cached status as it may be stale after app updates
       const authStatus = await getAuthStatus();
       set({ authStatus });
 
@@ -2355,7 +2360,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           return null;
         }
 
-        const activeAccount = await getActiveAccount(get().authStatus);
+        // Use the freshly fetched authStatus for consistency
+        const activeAccount = await getActiveAccount(authStatus);
         set({ account: activeAccount, isLoadingAccount: false });
         return activeAccount;
       } catch (error) {
