@@ -1,27 +1,87 @@
 import * as Keychain from "react-native-keychain";
 import { asyncStorage } from "services/storage/asyncStorage";
-import { reactNativeBiometricStorage } from "services/storage/reactNativeBiometricStorage";
-import { reactNativeKeychainStorage } from "services/storage/reactNativeKeychainStorage";
+import {
+  BIOMETRIC_STORAGE_SERVICE,
+  createSecureStorage,
+  SECURE_STORAGE_SERVICE,
+} from "services/storage/secureStorage";
 
-// This interface is used to define the methods that are required for a storage implementation.
+/**
+ * Interface for persistent storage operations
+ *
+ * This interface defines the contract for storing and retrieving data persistently.
+ * It provides methods for secure storage of information with standard CRUD operations.
+ */
 export interface PersistentStorage {
+  /**
+   * Retrieves an item from storage
+   *
+   * @param {string} key - The storage key for the item
+   * @returns {Promise<string | null>} The stored value or null if not found
+   */
   getItem(key: string): Promise<string | null>;
+
+  /**
+   * Stores an item in storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {string} value - The value to store
+   * @returns {Promise<void>}
+   */
   setItem(key: string, value: string): Promise<void>;
+
+  /**
+   * Removes one or more items from storage
+   *
+   * @param {string | string[]} keys - The key(s) to remove
+   * @returns {Promise<void>}
+   */
   remove: (keys: string | string[]) => Promise<void>;
+
+  /**
+   * Clears all storage
+   *
+   * @returns {Promise<void>}
+   */
   clear: () => Promise<void>;
 }
 
 /**
- * Interface for biometric-protected storage operations
- *
- * This interface defines the contract for storing and retrieving data that requires
- * biometric authentication. It provides methods for secure storage of sensitive
- * information like passwords, with biometric verification required for access.
- *
- * The implementation uses the device's secure storage (Keychain on iOS, Keystore on Android)
- * and integrates with biometric authentication systems.
+ * Secure storage instance using freighter_secure_storage service name
+ * Maintains backward compatibility with existing data
  */
-export interface BiometricStorage {
+const secureStorageInstance = createSecureStorage(SECURE_STORAGE_SERVICE);
+
+/**
+ * Biometric storage instance using freighter_biometric_storage service name
+ * Maintains backward compatibility with existing biometric data
+ */
+const biometricStorageInstance = createSecureStorage(BIOMETRIC_STORAGE_SERVICE);
+
+/**
+ * Secure storage wrapper
+ *
+ * All sensitive data uses the same secure storage with maximum security.
+ * Supports both automatic keychain prompts and explicit biometric prompts.
+ */
+const secureDataStorageWrapper: PersistentStorage = {
+  getItem: async (key: string) => {
+    const result = await secureStorageInstance.getItem(key);
+    return result ? result.password : null;
+  },
+  setItem: async (key: string, value: string) =>
+    secureStorageInstance.setItem(key, value),
+  remove: async (keys: string | string[]) => secureStorageInstance.remove(keys),
+  clear: async () => secureStorageInstance.clear(),
+};
+
+/**
+ * Biometric storage wrapper
+ *
+ * Provides a convenience API for biometric storage with simplified prompt handling.
+ * The wrapper accepts { title, cancel } directly instead of { explicitBiometricPrompt: { title, cancel } }.
+ */
+const biometricStorageWrapper = {
   /**
    * Retrieves an item from biometric-protected storage
    *
@@ -31,13 +91,17 @@ export interface BiometricStorage {
    * @param {string} message.cancel - Text for the cancel button
    * @returns {Promise<Keychain.UserCredentials | false>} The stored credentials or false if authentication fails
    */
-  getItem(
+  getItem: async (
     key: string,
-    message?: {
-      title: string;
-      cancel: string;
-    },
-  ): Promise<Keychain.UserCredentials | false>;
+    message?: { title: string; cancel: string },
+  ): Promise<Keychain.UserCredentials | false> => {
+    if (message) {
+      return biometricStorageInstance.getItem(key, {
+        explicitBiometricPrompt: message,
+      });
+    }
+    return biometricStorageInstance.getItem(key);
+  },
 
   /**
    * Stores an item in biometric-protected storage
@@ -46,7 +110,8 @@ export interface BiometricStorage {
    * @param {string} value - The value to store securely
    * @returns {Promise<void>}
    */
-  setItem(key: string, value: string): Promise<void>;
+  setItem: async (key: string, value: string) =>
+    biometricStorageInstance.setItem(key, value),
 
   /**
    * Removes one or more items from biometric-protected storage
@@ -54,14 +119,15 @@ export interface BiometricStorage {
    * @param {string | string[]} keys - The key(s) to remove
    * @returns {Promise<void>}
    */
-  remove: (keys: string | string[]) => Promise<void>;
+  remove: async (keys: string | string[]) =>
+    biometricStorageInstance.remove(keys),
 
   /**
    * Clears all biometric-protected storage
    *
    * @returns {Promise<void>}
    */
-  clear: () => Promise<void>;
+  clear: async () => biometricStorageInstance.clear(),
 
   /**
    * Checks if an item exists in biometric-protected storage
@@ -69,10 +135,11 @@ export interface BiometricStorage {
    * @param {string} key - The storage key to check
    * @returns {Promise<boolean>} True if the item exists, false otherwise
    */
-  checkIfExists(key: string): Promise<boolean>;
-}
+  checkIfExists: async (key: string) =>
+    biometricStorageInstance.checkIfExists(key),
+};
 
 // React Native Keychain is currently used for secure storage, but AsyncStorage is used for general storage.
-export const secureDataStorage = reactNativeKeychainStorage;
+export const secureDataStorage = secureDataStorageWrapper;
 export const dataStorage = asyncStorage;
-export const biometricDataStorage = reactNativeBiometricStorage;
+export const biometricDataStorage = biometricStorageWrapper;

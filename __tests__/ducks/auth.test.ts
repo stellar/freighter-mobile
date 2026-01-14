@@ -27,8 +27,7 @@ import {
   clearTemporaryData,
   getHashKey,
 } from "services/storage/helpers";
-// Import mocked modules
-import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
+import { rnBiometrics } from "services/storage/secureStorage";
 import {
   dataStorage,
   secureDataStorage,
@@ -64,9 +63,16 @@ jest.mock("services/storage/storageFactory", () => ({
   },
 }));
 
-jest.mock("services/storage/reactNativeBiometricStorage", () => ({
+jest.mock("services/storage/secureStorage", () => ({
   rnBiometrics: {
     isSensorAvailable: jest.fn(),
+  },
+  secureStorage: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    remove: jest.fn(),
+    checkIfExists: jest.fn(),
+    clear: jest.fn(),
   },
 }));
 
