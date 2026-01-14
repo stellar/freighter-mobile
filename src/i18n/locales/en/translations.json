@@ -1217,5 +1217,10 @@
       "skipTitle": "Proceed without update?",
       "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
     }
+  },
+  "jailbreakDetected": {
+    "title": "Cannot run on this device",
+    "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
+    "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
   }
 }
