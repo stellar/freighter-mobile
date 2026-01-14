@@ -362,7 +362,7 @@
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta",
-      "noMnemonicPhrase": "Frase mnemônica não encontrada. Por favor, entre novamente."
+      "noMnemonicPhrase": "Frase mnemônica não encontrada. Por favor, faça login novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {

@@ -413,9 +413,9 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.NOT_AUTHENTICATED;
     }
 
-    // If we have accounts but no hash key or temp store, return HASH_KEY_EXPIRED
+    // If we have accounts but no hash key AND no temp store, return HASH_KEY_EXPIRED
     // This happens after logout but with accounts still in the system
-    if (hasAccount && (!hashKey || !temporaryStore)) {
+    if (hasAccount && !hashKey && !temporaryStore) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
@@ -488,8 +488,6 @@ const getTemporaryStore = async (
 ): Promise<TemporaryStore | null> => {
   try {
     // Security check: Only allow decryption if user can actually access the data
-    const currentAuthStatus = authStatus;
-
     // Allow access if:
     // 1. Authenticated (normal case)
     // 2. LOCKED (preserved session that can be unlocked)
@@ -497,13 +495,13 @@ const getTemporaryStore = async (
     // 1. HASH_KEY_EXPIRED (session expired, needs re-auth)
     // 2. NOT_AUTHENTICATED (no accounts)
     if (
-      currentAuthStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-      currentAuthStatus === AUTH_STATUS.NOT_AUTHENTICATED
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.NOT_AUTHENTICATED
     ) {
       logger.warn(
         "[getTemporaryStore]",
         "Security violation attempt",
-        `Attempted to access temporary store in ${currentAuthStatus} state`,
+        `Attempted to access temporary store in ${authStatus} state`,
       );
       return null;
     }
@@ -764,9 +762,7 @@ const createTemporaryStore = async (input: {
         throw new Error("Failed to retrieve hash key");
       }
 
-      temporaryStore = await getTemporaryStore(
-        shouldRefreshHashKey ? AUTH_STATUS.AUTHENTICATED : AUTH_STATUS.LOCKED,
-      );
+      temporaryStore = await getTemporaryStore(AUTH_STATUS.LOCKED);
       hashKeyObj = retrievedHashKey;
     }
 
@@ -946,11 +942,9 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   );
 
   const existingAccountsOnTempStorePublicKeys =
-    existingAccountsOnDataStorageSecretKeys.map((secretKey) =>
-      typeof secretKey === "string"
-        ? Keypair.fromSecret(secretKey).publicKey()
-        : "",
-    );
+    existingAccountsOnDataStorageSecretKeys
+      .filter((secretKey): secretKey is string => typeof secretKey === "string")
+      .map((secretKey) => Keypair.fromSecret(secretKey).publicKey());
 
   // Get public keys from account list
   const existingAccountsOnAccountListPublicKeys = existingAccounts.map(
@@ -1407,7 +1401,7 @@ const getActiveAccount = async (
 
   // Get sensitive data from temporary store if the hash key is valid
   if (!hashKeyExpired) {
-    let temporaryStore = await getTemporaryStore(authStatus);
+    const temporaryStore = await getTemporaryStore(authStatus);
 
     if (!temporaryStore) {
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
@@ -1428,13 +1422,12 @@ const getActiveAccount = async (
 
           if (derivedKey) {
             privateKey = derivedKey;
-            const updatedStore = await updateTemporaryStoreWithPrivateKey(
+            await updateTemporaryStoreWithPrivateKey(
               temporaryStore,
               activeAccountId,
               privateKey,
               hashKey,
             );
-            temporaryStore = updatedStore;
           }
         }
 
@@ -1445,13 +1438,12 @@ const getActiveAccount = async (
 
           if (loadedKey) {
             privateKey = loadedKey;
-            const updatedStore = await updateTemporaryStoreWithPrivateKey(
+            await updateTemporaryStoreWithPrivateKey(
               temporaryStore,
               activeAccountId,
               privateKey,
               hashKey,
             );
-            temporaryStore = updatedStore;
           }
         }
       } catch (e) {

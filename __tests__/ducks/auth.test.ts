@@ -37,9 +37,25 @@ import {
 import StellarHDWallet from "stellar-hd-wallet";
 
 // Mock dependencies
-jest.mock("helpers/keyManager/keyManager", () => ({
-  createKeyManager: jest.fn(),
-}));
+jest.mock("helpers/keyManager/keyManager", () => {
+  // Create a shared mock keyManager instance inside the factory
+  const mockKeyManager = {
+    storeKey: jest.fn().mockResolvedValue(undefined),
+    loadKey: jest.fn().mockResolvedValue({
+      id: "account_id_123",
+      publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+      privateKey: "SDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPK",
+      extra: { mnemonicPhrase: "test mnemonic phrase" },
+    }),
+    loadAllKeyIds: jest.fn().mockResolvedValue(["account_id_123"]),
+    removeKey: jest.fn().mockResolvedValue(undefined),
+  };
+
+  return {
+    createKeyManager: jest.fn(() => mockKeyManager),
+    __mockKeyManager: mockKeyManager, // Export for test access
+  };
+});
 
 jest.mock("helpers/encryptPassword", () => ({
   encryptDataWithPassword: jest.fn(),
@@ -61,6 +77,8 @@ jest.mock("services/storage/storageFactory", () => ({
   },
   biometricDataStorage: {
     getItem: jest.fn(),
+    setItem: jest.fn(),
+    checkIfExists: jest.fn(),
   },
 }));
 
@@ -101,6 +119,57 @@ jest.mock("config/logger", () => ({
 
 jest.mock("i18next", () => ({
   t: (key: string) => key,
+}));
+
+jest.mock("ducks/walletKit", () => ({
+  useWalletKitStore: {
+    getState: jest.fn(() => ({
+      disconnectAllSessions: jest.fn().mockResolvedValue(undefined),
+    })),
+  },
+}));
+
+jest.mock("helpers/walletKitUtil", () => ({
+  clearWalletKitStorage: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("helpers/browser", () => ({
+  clearAllWebViewData: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("ducks/browserTabs", () => ({
+  useBrowserTabsStore: {
+    getState: jest.fn(() => ({
+      closeAllTabs: jest.fn(),
+    })),
+  },
+}));
+
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: {
+    getState: jest.fn(() => ({
+      fetchBalances: jest.fn().mockResolvedValue(undefined),
+    })),
+    setState: jest.fn(),
+  },
+}));
+
+jest.mock("ducks/history", () => ({
+  useHistoryStore: {
+    getState: jest.fn(() => ({
+      fetchHistory: jest.fn().mockResolvedValue(undefined),
+    })),
+    setState: jest.fn(),
+  },
+}));
+
+jest.mock("ducks/prices", () => ({
+  usePricesStore: {
+    getState: jest.fn(() => ({
+      fetchPrices: jest.fn().mockResolvedValue(undefined),
+    })),
+    setState: jest.fn(),
+  },
 }));
 
 describe("auth duck", () => {
@@ -155,6 +224,15 @@ describe("auth duck", () => {
 
   let dataStorageMemory: Record<string, string>;
   let accountCounter = 0;
+
+  // Save original store methods before they get mocked
+  const originalStoreMethods = {
+    logout: useAuthenticationStore.getState().logout,
+    getAuthStatus: useAuthenticationStore.getState().getAuthStatus,
+    selectAccount: useAuthenticationStore.getState().selectAccount,
+    setNavigationRef: useAuthenticationStore.getState().setNavigationRef,
+    signIn: useAuthenticationStore.getState().signIn,
+  };
 
   beforeEach(() => {
     // Reset all mocks
@@ -932,6 +1010,322 @@ describe("auth duck", () => {
         }),
       ).rejects.toThrow("Biometric authentication failed");
       expect(mockCallback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("LOCKED state functionality", () => {
+    describe("logout with LOCKED state", () => {
+      it("should set LOCKED status and preserve temporary store on logout", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // Mock that accounts exist
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            account: mockAccount,
+            logout: originalStoreMethods.logout,
+            setNavigationRef: originalStoreMethods.setNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.setNavigationRef(mockNavigationRef);
+        });
+
+        // Call logout (which should set LOCKED state)
+        await act(async () => {
+          result.current.logout();
+          // Wait for async operations
+          await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+          });
+        });
+
+        // Verify LOCKED status was persisted
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
+      it("should wipe all data on logout when shouldWipeAllData is true", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            account: mockAccount,
+            logout: originalStoreMethods.logout,
+            setNavigationRef: originalStoreMethods.setNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.setNavigationRef(mockNavigationRef);
+        });
+
+        // Call logout with wipe all data flag
+        await act(async () => {
+          result.current.logout(true);
+          await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+          });
+        });
+
+        // Verify data was cleared
+        expect(clearTemporaryData).toHaveBeenCalled();
+        expect(clearNonSensitiveData).toHaveBeenCalled();
+      });
+    });
+
+    describe("getAuthStatus with LOCKED state", () => {
+      it("should return LOCKED when persisted status is LOCKED and temp store exists", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+
+        // Mock accounts exist
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          if (key === STORAGE_KEYS.AUTH_STATUS) {
+            return Promise.resolve(AUTH_STATUS.LOCKED);
+          }
+          return Promise.resolve(null);
+        });
+
+        // Mock hash key exists and is valid
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          createdAt: Date.now(),
+        });
+
+        // Mock temporary store exists
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          return Promise.resolve(null);
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+      });
+
+      it("should clear invalid LOCKED status if temp store doesn't exist", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          if (key === STORAGE_KEYS.AUTH_STATUS) {
+            return Promise.resolve(AUTH_STATUS.LOCKED);
+          }
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + 3600000, // Valid for 1 hour
+        });
+
+        // Mock temporary store does NOT exist
+        (secureDataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+        // Ensure dataStorage.remove is a mock function
+        (dataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // Verify invalid LOCKED status was cleared
+        expect(dataStorage.remove).toHaveBeenCalledWith(
+          STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+    });
+
+    describe("signIn from LOCKED state", () => {
+      it("should authenticate from LOCKED state without recreating temporary store", async () => {
+        // Update the keyManager mock to return the correct account
+        mockKeyManager.loadKey.mockResolvedValueOnce({
+          id: mockAccount.id,
+          publicKey: mockAccount.publicKey,
+          privateKey: "mock-private-key",
+          extra: { mnemonicPhrase: "mock mnemonic phrase" },
+        });
+        mockKeyManager.loadAllKeyIds.mockResolvedValueOnce([mockAccount.id]);
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+            return Promise.resolve(mockAccount.id);
+          }
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          createdAt: Date.now(),
+        });
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          return Promise.resolve(null);
+        });
+
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+          JSON.stringify({
+            privateKeys: { [mockAccount.id]: "mock-private-key" },
+            mnemonicPhrase: "mock mnemonic phrase",
+          }),
+        );
+
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.LOCKED,
+            signIn: originalStoreMethods.signIn,
+          });
+        });
+
+        await act(async () => {
+          await result.current.signIn({ password: "test-password" });
+        });
+
+        expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
+        expect(result.current.account).toBeTruthy();
+
+        // Verify persisted AUTH_STATUS was cleared
+        expect(dataStorage.remove).toHaveBeenCalledWith(
+          STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+    });
+
+    describe("account switching", () => {
+      it("should switch accounts and fetch new account data", async () => {
+        const switchKeyManager = {
+          loadKey: jest.fn(),
+          storeKey: jest.fn(),
+        };
+
+        (createKeyManager as jest.Mock).mockReturnValue(switchKeyManager);
+
+        const secondAccount: Account = {
+          id: "account-2",
+          name: "Account 2",
+          publicKey: "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        };
+
+        // Track the active account ID in a variable that can be updated
+        let activeAccountId = mockAccount.id;
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(
+              JSON.stringify([mockAccount, secondAccount]),
+            );
+          }
+          if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+            return Promise.resolve(activeAccountId);
+          }
+          return Promise.resolve(null);
+        });
+
+        // Mock setItem to update the tracked active account ID
+        (dataStorage.setItem as jest.Mock).mockImplementation((key, value) => {
+          if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+            activeAccountId = value;
+          }
+          return Promise.resolve();
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          createdAt: Date.now(),
+        });
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          return Promise.resolve(null);
+        });
+
+        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+          JSON.stringify({
+            privateKeys: {
+              [mockAccount.id]: "mock-private-key-1",
+              [secondAccount.id]: "mock-private-key-2",
+            },
+            mnemonicPhrase: "mock mnemonic phrase",
+          }),
+        );
+
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            account: mockAccount,
+            selectAccount: originalStoreMethods.selectAccount,
+          });
+        });
+
+        await act(async () => {
+          await result.current.selectAccount(secondAccount.publicKey);
+        });
+
+        // Verify active account was updated - check that setItem was called
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+          secondAccount.id,
+        );
+
+        // Verify the account state was updated
+        expect(result.current.account?.id).toBe(secondAccount.id);
+        expect(result.current.isSwitchingAccount).toBe(false);
+      });
     });
   });
 });
