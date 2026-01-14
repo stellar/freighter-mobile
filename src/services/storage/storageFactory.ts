@@ -47,6 +47,61 @@ export interface PersistentStorage {
 }
 
 /**
+ * Interface for biometric-protected storage operations
+ *
+ * This interface extends storage operations with biometric authentication support.
+ * The getItem method can optionally show a biometric prompt and returns the full
+ * keychain credentials instead of just the password string.
+ */
+export interface BiometricStorage {
+  /**
+   * Retrieves an item from biometric-protected storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {Object} [message] - Optional prompt configuration for biometric authentication
+   * @param {string} message.title - Title displayed during biometric prompt
+   * @param {string} message.cancel - Text for the cancel button
+   * @returns {Promise<Keychain.UserCredentials | false>} The stored credentials or false if authentication fails
+   */
+  getItem: (
+    key: string,
+    message?: { title: string; cancel: string },
+  ) => Promise<Keychain.UserCredentials | false>;
+
+  /**
+   * Stores an item in biometric-protected storage
+   *
+   * @param {string} key - The storage key for the item
+   * @param {string} value - The value to store securely
+   * @returns {Promise<void>}
+   */
+  setItem: (key: string, value: string) => Promise<void>;
+
+  /**
+   * Removes one or more items from biometric-protected storage
+   *
+   * @param {string | string[]} keys - The key(s) to remove
+   * @returns {Promise<void>}
+   */
+  remove: (keys: string | string[]) => Promise<void>;
+
+  /**
+   * Clears all biometric-protected storage
+   *
+   * @returns {Promise<void>}
+   */
+  clear: () => Promise<void>;
+
+  /**
+   * Checks if an item exists in biometric-protected storage
+   *
+   * @param {string} key - The storage key to check
+   * @returns {Promise<boolean>} True if the item exists, false otherwise
+   */
+  checkIfExists: (key: string) => Promise<boolean>;
+}
+
+/**
  * Secure storage instance using freighter_secure_storage service name
  * Maintains backward compatibility with existing data
  */
@@ -81,7 +136,7 @@ const secureDataStorageWrapper: PersistentStorage = {
  * Provides a convenience API for biometric storage with simplified prompt handling.
  * The wrapper accepts { title, cancel } directly instead of { explicitBiometricPrompt: { title, cancel } }.
  */
-const biometricStorageWrapper = {
+const biometricStorageWrapper: BiometricStorage = {
   /**
    * Retrieves an item from biometric-protected storage
    *
