@@ -332,8 +332,8 @@
       "removedTrustline": "Removed trustline",
       "received": "Received",
       "sent": "Sent",
-      "swapTwoTokens": "{{srcTokenCode}} for {{destTokenCode}}",
-      "swappedTwoTokens": "Swapped {{srcTokenCode}} for {{destTokenCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} to {{destTokenCode}}",
+      "swappedTwoTokens": "Swapped {{srcTokenCode}} to {{destTokenCode}}",
       "swapped": "Swapped",
       "transactionFailed": "Transaction failed",
       "failed": "Failed",
@@ -343,6 +343,7 @@
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
       "ops": "ops",
+      "multiple": "Multiple",
       "collectibleTransfer": {
         "unknownCollectible": "Unknown Collectible",
         "unknownCollection": "Collection {{contractId}}"
@@ -359,7 +360,10 @@
       "addressCopied": "Address copied to clipboard",
       "startingBalance": "Starting balance:",
       "minter": "Minter",
-      "mintedTo": "Minted to"
+      "mintedTo": "Minted to",
+      "assetChanges": "Asset Changes",
+      "from": "From",
+      "to": "To"
     }
   },
   "tokenDetailsScreen": {
