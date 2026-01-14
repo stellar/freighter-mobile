@@ -70,7 +70,9 @@ describe("useWelcomeBanner", () => {
       // Wait for all async operations to complete
       await act(async () => {
         await new Promise((resolve) => {
-          setTimeout(resolve, 100);
+          setTimeout(() => {
+            resolve(undefined);
+          }, 100);
         });
       });
 

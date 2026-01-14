@@ -425,16 +425,21 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     }
 
     // Check if LOCKED status was persisted from previous session
-    // Only honor LOCKED status if temporary store exists (backwards compatibility)
+    // Security validation: Only honor LOCKED status if BOTH:
+    // 1. Temporary store exists (contains encrypted data)
+    // 2. Hash key exists and hasn't expired
+    // This prevents an attacker from setting persisted auth status to LOCKED
+    // to bypass security checks
     const persistedAuthStatus = await dataStorage.getItem(
       STORAGE_KEYS.AUTH_STATUS,
     );
-    if (persistedAuthStatus === AUTH_STATUS.LOCKED && temporaryStore) {
-      return AUTH_STATUS.LOCKED;
-    }
+    if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
+      // Validate that both temporary store and valid hash key exist
+      if (temporaryStore && hashKey && !isHashKeyExpired(hashKey)) {
+        return AUTH_STATUS.LOCKED;
+      }
 
-    // Clear invalid persisted LOCKED status if temp store doesn't exist
-    if (persistedAuthStatus === AUTH_STATUS.LOCKED && !temporaryStore) {
+      // Clear invalid persisted LOCKED status
       await dataStorage.remove(STORAGE_KEYS.AUTH_STATUS);
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
@@ -515,6 +520,19 @@ const getTemporaryStore = async (
         "Hash key not found",
       );
 
+      return null;
+    }
+
+    // Additional security validation for LOCKED state
+    // If auth status is LOCKED, verify the hash key hasn't expired
+    // This prevents an attacker from setting persisted auth status to LOCKED
+    // to bypass hash key expiration checks
+    if (authStatus === AUTH_STATUS.LOCKED && isHashKeyExpired(hashKey)) {
+      logger.warn(
+        "[getTemporaryStore]",
+        "Security violation attempt",
+        "Attempted to access temporary store in LOCKED state with expired hash key",
+      );
       return null;
     }
 
@@ -1089,15 +1107,6 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     encryptedData,
   );
 };
-
-/**
- * Pre-loads all private keys from KeyManager and stores them in temporary storage
- * This follows the extension's approach of decrypting all stored keys during login
- * instead of deriving them from mnemonic
- *
- * @param {string} password - The user's password for decryption
- * @returns {Promise<void>}
- */
 
 /**
  * Logs in the user with the provided password
