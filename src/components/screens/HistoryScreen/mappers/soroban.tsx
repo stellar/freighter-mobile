@@ -12,6 +12,7 @@ import {
   TransactionType,
   TransactionStatus,
   HistoryItemData,
+  AssetDiffSummary,
 } from "components/screens/HistoryScreen/types";
 import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -50,6 +51,7 @@ interface SorobanHistoryItemData {
   fee: string;
   themeColors: ThemeColors;
   xdr: string;
+  assetDiffs?: AssetDiffSummary[];
 }
 
 interface ProcessSorobanMintData {
@@ -637,6 +639,30 @@ const processCollectibleTransfer = async ({
   return historyItemData as HistoryItemData;
 };
 
+interface AssetDiffDisplayResult {
+  amountText: string | null;
+  isAddingFunds: boolean | null;
+}
+
+const formatAssetDiffDisplay = (
+  assetDiffs?: AssetDiffSummary[],
+): AssetDiffDisplayResult => {
+  let amountText: string | null = null;
+  let isAddingFunds: boolean | null = null;
+
+  if (assetDiffs && assetDiffs.length === 1) {
+    const diff = assetDiffs[0];
+    const prefix = diff.isCredit ? "+" : "-";
+    amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
+    isAddingFunds = diff.isCredit;
+  } else if (assetDiffs && assetDiffs.length > 1) {
+    amountText = t("history.transactionHistory.multiple");
+    isAddingFunds = null;
+  }
+
+  return { amountText, isAddingFunds };
+};
+
 /**
  * Maps Soroban contract operations to history item data
  */
@@ -652,6 +678,7 @@ export const mapSorobanHistoryItem = async ({
   fee,
   themeColors,
   xdr,
+  assetDiffs = [],
 }: SorobanHistoryItemData): Promise<HistoryItemData> => {
   const {
     id,
@@ -685,6 +712,9 @@ export const mapSorobanHistoryItem = async ({
 
   // If no Soroban attributes, return a generic contract interaction
   if (!sorobanAttributes) {
+    // Use asset diffs for amount display if present
+    const { amountText, isAddingFunds } = formatAssetDiffDisplay(assetDiffs);
+
     const transactionDetails: TransactionDetails = {
       operation,
       transactionTitle: t("history.transactionHistory.interacted"),
@@ -695,10 +725,13 @@ export const mapSorobanHistoryItem = async ({
       IconComponent: baseHistoryItemData.IconComponent,
       ActionIconComponent: baseHistoryItemData.ActionIconComponent,
       externalUrl: `${stellarExpertUrl}/op/${id}`,
+      assetDiffs,
     };
 
     return {
       ...baseHistoryItemData,
+      amountText,
+      isAddingFunds,
       transactionDetails,
     } as HistoryItemData;
   }
@@ -751,6 +784,9 @@ export const mapSorobanHistoryItem = async ({
   }
 
   // Default case for other Soroban operations
+  // Use asset diffs for amount display if present
+  const { amountText, isAddingFunds } = formatAssetDiffDisplay(assetDiffs);
+
   const transactionDetails: TransactionDetails = {
     operation,
     transactionTitle: t("history.transactionHistory.contract"),
@@ -761,11 +797,14 @@ export const mapSorobanHistoryItem = async ({
     IconComponent: baseHistoryItemData.IconComponent,
     ActionIconComponent: baseHistoryItemData.ActionIconComponent,
     externalUrl: `${stellarExpertUrl}/op/${id}`,
+    assetDiffs,
   };
 
   return {
     ...baseHistoryItemData,
     rowText: operationString,
+    amountText,
+    isAddingFunds,
     transactionDetails,
   } as HistoryItemData;
 };
