@@ -1028,23 +1028,19 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   );
 
   const existingAccountsOnTempStorePublicKeys =
-    existingAccountsOnDataStorageSecretKeys
-      .filter((secretKey): secretKey is string => typeof secretKey === "string")
-      .map((secretKey) => Keypair.fromSecret(secretKey).publicKey());
+    existingAccountsOnDataStorageSecretKeys.map((secretKey) =>
+      Keypair.fromSecret(secretKey).publicKey(),
+    );
 
   // Get public keys from account list
   const existingAccountsOnAccountListPublicKeys = existingAccounts.map(
     (account) => account.publicKey,
   );
 
-  // Combine both sets of public keys to avoid duplicates
-  const allExistingPublicKeys = [
+  const uniqueExistingPublicKeys = new Set([
     ...existingAccountsOnTempStorePublicKeys,
     ...existingAccountsOnAccountListPublicKeys,
-  ];
-
-  // Filter out duplicates
-  const uniqueExistingPublicKeys = new Set(allExistingPublicKeys);
+  ]);
 
   // Derive keypairs from mnemonic
   const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
@@ -1486,6 +1482,18 @@ const getActiveAccount = async (
   }
 
   const hashKeyExpired = isHashKeyExpired(hashKey);
+
+  // Security: Explicitly block access in LOCKED state
+  // LOCKED state requires password re-entry before accessing sensitive data
+  // This provides defense-in-depth even if public methods are bypassed
+  if (authStatus === AUTH_STATUS.LOCKED) {
+    logger.warn(
+      "[getActiveAccount]",
+      "Security violation attempt",
+      "Attempted to access active account in LOCKED state",
+    );
+    throw new Error(t("authStore.error.authenticationExpired"));
+  }
 
   // Get sensitive data from temporary store if the hash key is valid
   if (!hashKeyExpired) {
@@ -2448,9 +2456,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         // Check auth status first
         const authStatus = await getAuthStatus();
 
-        if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        // Security: Block access when hash key is expired or when locked
+        // LOCKED state requires password re-entry before accessing sensitive data
+        if (
+          authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+          authStatus === AUTH_STATUS.LOCKED
+        ) {
           set({
-            authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+            authStatus,
           });
 
           // Navigate to lock screen
@@ -2568,8 +2581,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
       set({ isSwitchingAccount: true, error: null });
       try {
+        // Security: Check auth status before allowing account switching
+        // Block access when hash key is expired or when locked
+        const authStatus = await getAuthStatus();
+        if (
+          authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+          authStatus === AUTH_STATUS.LOCKED
+        ) {
+          set({ authStatus });
+          get().navigateToLockScreen();
+          set({ isSwitchingAccount: false });
+          return;
+        }
+
         await selectAccount(publicKey);
-        const activeAccount = await getActiveAccount(get().authStatus);
+        const activeAccount = await getActiveAccount(authStatus);
         set({ account: activeAccount, isSwitchingAccount: false });
       } catch (error) {
         logger.error(

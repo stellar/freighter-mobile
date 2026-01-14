@@ -119,6 +119,8 @@ jest.mock("services/storage/helpers", () => ({
 jest.mock("config/logger", () => ({
   logger: {
     error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
   },
 }));
 
@@ -1183,7 +1185,7 @@ describe("auth duck", () => {
     });
 
     describe("signIn from LOCKED state", () => {
-      it.skip("should authenticate from LOCKED state and re-encrypt temporary store with new hash key", async () => {
+      it("should authenticate from LOCKED state and re-encrypt temporary store with new hash key", async () => {
         // Update the keyManager mock to return the correct account
         mockKeyManager.loadKey.mockResolvedValueOnce({
           id: mockAccount.id,
