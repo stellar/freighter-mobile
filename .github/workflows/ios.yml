@@ -183,7 +183,6 @@ jobs:
             if [ "$VERSION" != "0" ]; then
               # Extract major.minor version for comparison
               BASE_VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
-              
               # Check if this base version should be excluded
               SHOULD_EXCLUDE=false
               for EXCLUDED_BASE in $EXCLUDED_BASE_VERSIONS; do
@@ -193,7 +192,6 @@ jobs:
                   break
                 fi
               done
-              
               if [ "$SHOULD_EXCLUDE" = "false" ]; then
                 printf "%s\t%s\n" "$VERSION" "$XCODE_PATH" >> "$TEMP_FILE"
               fi
