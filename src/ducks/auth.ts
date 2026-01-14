@@ -734,7 +734,7 @@ const reEncryptTemporaryStore = async (newHashKey: HashKey): Promise<void> => {
     });
 
     if (!decryptedData) {
-      throw new Error(t("authStore.error.temporaryStoreNotFound"));
+      throw new Error(t("authStore.error.failedToReEncryptData"));
     }
 
     // Re-encrypt with new hash key
