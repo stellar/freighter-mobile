@@ -76,8 +76,8 @@ export const mapSwapHistoryItem = async ({
       ? logos.stellar
       : await getIconUrl({
           asset: {
-            code: sourceTokenIssuer || "",
-            issuer: srcTokenCode || "",
+            code: srcTokenCode || "",
+            issuer: sourceTokenIssuer || "",
           },
           network,
         });
@@ -91,26 +91,24 @@ export const mapSwapHistoryItem = async ({
       size="lg"
       variant="swap"
       sourceOne={{
-        image: sourceIcon,
         altText: "Swap source token logo",
-        renderContent: !sourceIcon
-          ? () => (
-              <Text xs secondary semiBold>
-                {srcTokenCode.substring(0, 2)}
-              </Text>
-            )
-          : undefined,
+        image: sourceIcon,
+        // Fallback: show token initials if the icon is not available
+        renderContent: () => (
+          <Text xs secondary semiBold>
+            {srcTokenCode.substring(0, 2)}
+          </Text>
+        ),
       }}
       sourceTwo={{
-        image: destIcon,
         altText: "Swap destination token logo",
-        renderContent: !destIcon
-          ? () => (
-              <Text xs secondary semiBold>
-                {destTokenCodeFinal.substring(0, 2)}
-              </Text>
-            )
-          : undefined,
+        image: destIcon,
+        // Fallback: show token initials if the icon is not available
+        renderContent: () => (
+          <Text xs secondary semiBold>
+            {destTokenCodeFinal.substring(0, 2)}
+          </Text>
+        ),
       }}
     />
   );

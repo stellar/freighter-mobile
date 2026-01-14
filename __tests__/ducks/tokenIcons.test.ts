@@ -26,6 +26,14 @@ jest.mock("helpers/getIconUrl", () => ({
   getIconUrl: jest.fn(),
 }));
 
+// Mock the logos asset
+jest.mock("assets/logos", () => ({
+  logos: {
+    usdc: "bundled-usdc-logo.png",
+    stellar: "bundled-stellar-logo.png",
+  },
+}));
+
 // Time constants for tests
 const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
@@ -56,30 +64,8 @@ describe("tokenIcons store", () => {
       type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
     };
 
-    it("should return cached icon if available", async () => {
-      const cachedIcon = {
-        imageUrl: "https://example.com/icon.png",
-        network: NETWORKS.PUBLIC,
-      };
-
-      useTokenIconsStore.setState({
-        icons: {
-          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":
-            cachedIcon,
-        },
-      });
-
-      const result = await useTokenIconsStore.getState().fetchIconUrl({
-        token: mockToken,
-        network: NETWORKS.PUBLIC,
-      });
-
-      expect(result).toEqual(cachedIcon);
-      expect(mockGetIconUrl).not.toHaveBeenCalled();
-    });
-
-    it("should fetch and cache new icon for non-native token", async () => {
-      const mockIconUrl = "https://example.com/icon.png";
+    it("should fetch icon for Circle USDC on mainnet like any other token", async () => {
+      const mockIconUrl = "https://example.com/usdc.png";
       mockGetIconUrl.mockResolvedValue(mockIconUrl);
 
       const result = await useTokenIconsStore.getState().fetchIconUrl({
@@ -98,13 +84,90 @@ describe("tokenIcons store", () => {
         },
         network: NETWORKS.PUBLIC,
       });
+
+      // Should cache the fetched icon
+      expect(
+        useTokenIconsStore.getState().icons[
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        ],
+      ).toEqual({
+        imageUrl: mockIconUrl,
+        network: NETWORKS.PUBLIC,
+      });
+    });
+
+    it("should return cached icon if available for non-USDC tokens", async () => {
+      const cachedIcon = {
+        imageUrl: "https://example.com/icon.png",
+        network: NETWORKS.PUBLIC,
+      };
+
+      const btcToken: NonNativeToken = {
+        code: "BTC",
+        issuer: {
+          key: "GABC123",
+        },
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      };
+
+      useTokenIconsStore.setState({
+        icons: {
+          "BTC:GABC123": cachedIcon,
+        },
+      });
+
+      const result = await useTokenIconsStore.getState().fetchIconUrl({
+        token: btcToken,
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result).toEqual(cachedIcon);
+      expect(mockGetIconUrl).not.toHaveBeenCalled();
+    });
+
+    it("should fetch and cache new icon for non-native token", async () => {
+      const mockIconUrl = "https://example.com/icon.png";
+      mockGetIconUrl.mockResolvedValue(mockIconUrl);
+
+      const btcToken: NonNativeToken = {
+        code: "BTC",
+        issuer: {
+          key: "GABC123",
+        },
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      };
+
+      const result = await useTokenIconsStore.getState().fetchIconUrl({
+        token: btcToken,
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result).toEqual({
+        imageUrl: mockIconUrl,
+        network: NETWORKS.PUBLIC,
+      });
+      expect(mockGetIconUrl).toHaveBeenCalledWith({
+        asset: {
+          code: btcToken.code,
+          issuer: btcToken.issuer.key,
+        },
+        network: NETWORKS.PUBLIC,
+      });
     });
 
     it("should handle errors gracefully", async () => {
       mockGetIconUrl.mockRejectedValue(new Error("Failed to fetch"));
 
+      const btcToken: NonNativeToken = {
+        code: "BTC",
+        issuer: {
+          key: "GABC123",
+        },
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      };
+
       const result = await useTokenIconsStore.getState().fetchIconUrl({
-        token: mockToken,
+        token: btcToken,
         network: NETWORKS.PUBLIC,
       });
 
@@ -131,11 +194,11 @@ describe("tokenIcons store", () => {
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       } as NativeBalance,
-      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+      "BTC:GABC123": {
         token: {
-          code: "USDC",
+          code: "BTC",
           issuer: {
-            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            key: "GABC123",
           },
           type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
         },
@@ -159,9 +222,55 @@ describe("tokenIcons store", () => {
       expect(mockGetIconUrl).toHaveBeenCalledTimes(1);
       expect(mockGetIconUrl).toHaveBeenCalledWith({
         asset: {
+          code: "BTC",
+          issuer: "GABC123",
+        },
+        network: NETWORKS.PUBLIC,
+      });
+    });
+
+    it("should fetch icon for Circle USDC on mainnet like any other token", async () => {
+      const mockIconUrl = "https://example.com/usdc.png";
+      mockGetIconUrl.mockResolvedValue(mockIconUrl);
+
+      const mockBalancesWithUSDC: BalanceMap = {
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+          token: {
+            code: "USDC",
+            issuer: {
+              key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            },
+            type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          total: new BigNumber("200"),
+          available: new BigNumber("200"),
+          limit: new BigNumber("1000"),
+          buyingLiabilities: "0",
+          sellingLiabilities: "0",
+        } as ClassicBalance,
+      };
+
+      await useTokenIconsStore.getState().fetchBalancesIcons({
+        balances: mockBalancesWithUSDC,
+        network: NETWORKS.PUBLIC,
+      });
+
+      // Should call getIconUrl for Circle USDC like any other token
+      expect(mockGetIconUrl).toHaveBeenCalledWith({
+        asset: {
           code: "USDC",
           issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         },
+        network: NETWORKS.PUBLIC,
+      });
+
+      // Should have cached the fetched icon
+      expect(
+        useTokenIconsStore.getState().icons[
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        ],
+      ).toEqual({
+        imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
       });
     });
@@ -321,6 +430,78 @@ describe("tokenIcons store", () => {
       const { icons } = useTokenIconsStore.getState();
 
       expect(icons).toEqual({});
+    });
+
+    it("should replace Circle USDC icon with bundled logo on mainnet", async () => {
+      const mockVerifiedTokens: TokenListReponseItem[] = [
+        {
+          code: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          icon: "https://token-list.com/usdc.png",
+          contract: "CUSDC123",
+          domain: "circle.com",
+          decimals: 7,
+        },
+        {
+          code: "BTC",
+          issuer: "GB456",
+          icon: "https://example.com/btc.png",
+          domain: "example.com",
+          decimals: 7,
+          contract: "",
+        },
+      ];
+
+      mockGetVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
+
+      await useTokenIconsStore
+        .getState()
+        .cacheTokenListIcons({ network: NETWORKS.PUBLIC });
+
+      const { icons } = useTokenIconsStore.getState();
+
+      // Circle USDC should have the bundled icon
+      expect(
+        icons["USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],
+      ).toEqual({
+        imageUrl: "bundled-usdc-logo.png",
+        network: NETWORKS.PUBLIC,
+      });
+
+      // Other tokens should have their original token list icons
+      expect(icons["BTC:GB456"]).toEqual({
+        imageUrl: "https://example.com/btc.png",
+        network: NETWORKS.PUBLIC,
+      });
+    });
+
+    it("should not replace USDC icon on testnet", async () => {
+      const mockVerifiedTokens: TokenListReponseItem[] = [
+        {
+          code: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          icon: "https://token-list.com/usdc.png",
+          contract: "CUSDC123",
+          domain: "circle.com",
+          decimals: 7,
+        },
+      ];
+
+      mockGetVerifiedTokens.mockResolvedValue(mockVerifiedTokens);
+
+      await useTokenIconsStore
+        .getState()
+        .cacheTokenListIcons({ network: NETWORKS.TESTNET });
+
+      const { icons } = useTokenIconsStore.getState();
+
+      // On testnet, should keep the token list icon
+      expect(
+        icons["USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],
+      ).toEqual({
+        imageUrl: "https://token-list.com/usdc.png",
+        network: NETWORKS.TESTNET,
+      });
     });
   });
 });
