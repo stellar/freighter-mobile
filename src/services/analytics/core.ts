@@ -64,16 +64,10 @@ const setAmplitudeUserProperties = (): void => {
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
-  // Disable analytics during e2e tests
-  if (isE2ETest) {
-    hasInitialised = true;
-    return;
-  }
-
   if (!AMPLITUDE_API_KEY) {
-    // We should only report this error when not in development
-    // since in development we purposely don't have the amplitude api key set
-    if (!__DEV__) {
+    // We should only report this error when not in development or during e2e tests
+    // since in development or during e2e tests we purposely don't have the Amplitude API key set
+    if (!(__DEV__ || isE2ETest)) {
       logger.error(
         DEBUG_CONFIG.LOG_PREFIX,
         "missing amplitude config error",
@@ -236,11 +230,6 @@ const dispatchUnthrottled = (
   event: AnalyticsEventName,
   props?: AnalyticsProps,
 ): void => {
-  // Skip analytics tracking during e2e tests
-  if (isE2ETest) {
-    return;
-  }
-
   const { isEnabled } = useAnalyticsStore.getState();
 
   const eventData = ANALYTICS_CONFIG.INCLUDE_COMMON_CONTEXT
@@ -258,9 +247,9 @@ const dispatchUnthrottled = (
   }
 
   if (!AMPLITUDE_API_KEY) {
-    // We should only report this error when not in development
-    // since in development we purposely don't have the amplitude api key set
-    if (!__DEV__) {
+    // We should only report this error when not in development or during e2e tests
+    // since in development or during e2e tests we purposely don't have the Amplitude API key set
+    if (!(__DEV__ || isE2ETest)) {
       logger.debug(
         DEBUG_CONFIG.LOG_PREFIX,
         `Skipping event due to missing API key: ${event}`,

@@ -1,5 +1,6 @@
 import { logger } from "config/logger";
 import { isAndroid } from "helpers/device";
+import { isE2ETest } from "helpers/isEnv";
 import { getBundleId, getVersion } from "react-native-device-info";
 import { ANALYTICS_CONFIG } from "services/analytics/constants";
 import { getExperimentClient } from "services/analytics/core";
@@ -54,33 +55,34 @@ interface RemoteConfigState extends FeatureFlags {
 // Get current app version for default values
 const currentAppVersion = getVersion();
 
-// While developing locally we don't set the Amplitude API keys which prevents
-// us from fetching feature flags so let's set all "true" by default in __DEV__
-const INITIAL_REMOTE_CONFIG_STATE = __DEV__
-  ? {
-      swap_enabled: true,
-      discover_enabled: true,
-      onramp_enabled: true,
-      required_app_version: currentAppVersion,
-      latest_app_version: currentAppVersion,
-      app_update_banner_text: {
-        enabled: false,
-        payload: undefined,
-      },
-      isInitialized: false,
-    }
-  : {
-      swap_enabled: isAndroid,
-      discover_enabled: isAndroid,
-      onramp_enabled: isAndroid,
-      required_app_version: currentAppVersion,
-      latest_app_version: currentAppVersion,
-      app_update_banner_text: {
-        enabled: false,
-        payload: undefined,
-      },
-      isInitialized: false,
-    };
+// While developing locally or during e2e tests we don't set the Amplitude API keys which prevents
+// us from fetching feature flags so let's set all "true" by default in __DEV__ or isE2ETest
+const INITIAL_REMOTE_CONFIG_STATE =
+  __DEV__ || isE2ETest
+    ? {
+        swap_enabled: true,
+        discover_enabled: true,
+        onramp_enabled: true,
+        required_app_version: currentAppVersion,
+        latest_app_version: currentAppVersion,
+        app_update_banner_text: {
+          enabled: false,
+          payload: undefined,
+        },
+        isInitialized: false,
+      }
+    : {
+        swap_enabled: isAndroid,
+        discover_enabled: isAndroid,
+        onramp_enabled: isAndroid,
+        required_app_version: currentAppVersion,
+        latest_app_version: currentAppVersion,
+        app_update_banner_text: {
+          enabled: false,
+          payload: undefined,
+        },
+        isInitialized: false,
+      };
 
 let featureFlagsPollInterval: NodeJS.Timeout | null = null;
 let isPollingStarted = false;
