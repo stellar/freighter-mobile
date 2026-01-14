@@ -41,6 +41,13 @@ export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MAX_MEMO_BYTES = 28;
 
+// Circle USDC constants for icon special casing
+export const CIRCLE_USDC_ISSUER =
+  "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+export const USDC_CODE = "USDC";
+export const CIRCLE_USDC_CONTRACT =
+  "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+
 // Slippage constants
 export const DEFAULT_SLIPPAGE = 1;
 export const MIN_SLIPPAGE = 0;
@@ -324,10 +331,10 @@ export const BROWSER_CONSTANTS = {
   DEFAULT_TAB_TITLE: t("discovery.defaultTabTitle"),
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_RECENT_TABS: 20,
-  MAX_SCREENSHOTS_STORED: 100,
+  MAX_SCREENSHOTS_STORED: 30,
   MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
-  SCREENSHOT_QUALITY: 0.5,
+  SCREENSHOT_QUALITY: 0.25,
   SCREENSHOT_WIDTH: 400,
   SCREENSHOT_HEIGHT: 600,
   SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading

@@ -4,6 +4,7 @@ import blockaidLogo from "./blockaid-logo.svg";
 import freighterLogo2d from "./freighter-logo-2d.png";
 import freighterLogo from "./freighter-logo.png";
 import stellarLogo from "./stellar-logo.png";
+import usdcLogo from "./usdc-logo.png";
 import walletConnectLogo from "./walletconnect-logo.png";
 
 export const logos = {
@@ -12,4 +13,5 @@ export const logos = {
   freighter: freighterLogo,
   blockaid: blockaidLogo,
   walletConnect: walletConnectLogo,
+  usdc: usdcLogo,
 };
