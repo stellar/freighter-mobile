@@ -105,10 +105,6 @@ export async function processAssetBalanceChanges(
     return [];
   }
 
-  if (changes.length === 0) {
-    return [];
-  }
-
   // Process each change into a summary
   const summaries = await Promise.all(
     changes.map((change) =>
