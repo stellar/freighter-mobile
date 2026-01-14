@@ -514,11 +514,7 @@ const getTemporaryStore = async (
     const hashKey = await getHashKey();
 
     if (!hashKey) {
-      logger.error(
-        "[getTemporaryStore]",
-        "Hash key error",
-        "Hash key not found",
-      );
+      logger.error("[getTemporaryStore]", "Hash key not found", null);
 
       return null;
     }
@@ -544,8 +540,8 @@ const getTemporaryStore = async (
     if (!temporaryStore) {
       logger.error(
         "[getTemporaryStore]",
-        "Temporary store data error",
         "Temporary store data not found",
+        null,
       );
 
       return null;
@@ -560,8 +556,8 @@ const getTemporaryStore = async (
       if (!decryptedTemporaryStore) {
         logger.error(
           "[getTemporaryStore]",
-          "decryption error",
           "Failed to decrypt temporary store",
+          null,
         );
 
         return null;
@@ -574,8 +570,8 @@ const getTemporaryStore = async (
       ) {
         logger.error(
           "getTemporaryStore",
-          "invalid structure error",
           "Temporary store has invalid structure",
+          null,
         );
 
         await clearTemporaryData();
@@ -696,6 +692,81 @@ export const appendAccounts = async (accounts: Account[]) => {
 };
 
 /**
+ * Re-encrypts the temporary store with a new hash key
+ *
+ * Used when unlocking from LOCKED state to ensure the password is required
+ * to decrypt the temporary store, not just the old hash key.
+ *
+ * @param {HashKey} newHashKey - The new hash key to encrypt with
+ * @returns {Promise<void>}
+ * @throws {Error} If re-encryption fails
+ */
+const reEncryptTemporaryStore = async (newHashKey: HashKey): Promise<void> => {
+  try {
+    // Get old hash key
+    const oldHashKey = await getHashKey();
+    if (!oldHashKey) {
+      logger.warn(
+        "[reEncryptTemporaryStore]",
+        "No old hash key found, skipping re-encryption",
+      );
+      return;
+    }
+
+    // Get encrypted temporary store
+    const encryptedTempStore = await secureDataStorage.getItem(
+      SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+    );
+
+    if (!encryptedTempStore) {
+      logger.warn(
+        "[reEncryptTemporaryStore]",
+        "No temporary store found, skipping re-encryption",
+      );
+      return;
+    }
+
+    // Decrypt with old hash key
+    const decryptedData = await decryptDataWithPassword({
+      data: encryptedTempStore,
+      password: oldHashKey.hashKey,
+      salt: oldHashKey.salt,
+    });
+
+    if (!decryptedData) {
+      throw new Error(t("authStore.error.temporaryStoreNotFound"));
+    }
+
+    // Re-encrypt with new hash key
+    const { encryptedData } = await encryptDataWithPassword({
+      data: decryptedData,
+      password: newHashKey.hashKey,
+      salt: newHashKey.salt,
+    });
+
+    // Store re-encrypted temporary store
+    await secureDataStorage.setItem(
+      SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+      encryptedData,
+    );
+
+    logger.info(
+      "[reEncryptTemporaryStore]",
+      "Successfully re-encrypted temporary store with new hash key",
+    );
+  } catch (error) {
+    logger.error(
+      "[reEncryptTemporaryStore]",
+      "Failed to re-encrypt temporary store",
+      error,
+    );
+    // If re-encryption fails, clear temporary data and force full login
+    await clearTemporaryData();
+    throw new Error(t("authStore.error.failedToReEncryptData"));
+  }
+};
+
+/**
  * Generate and store a unique hash key derived from the password
  *
  * Creates a hash key from the password using a random salt, sets an expiration
@@ -722,20 +793,12 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     // Calculate the expiration timestamp
     const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
 
-    // Store the hash key, salt, and expiration timestamp
-    const hashKeyObj = {
+    // Return the hash key object (caller will store it)
+    return {
       hashKey,
       salt,
       expiresAt: expirationTime,
     };
-    await Promise.all([
-      secureDataStorage.setItem(
-        SENSITIVE_STORAGE_KEYS.HASH_KEY,
-        JSON.stringify(hashKeyObj),
-      ),
-    ]);
-
-    return hashKeyObj;
   } catch (error) {
     throw new Error(`Failed to generate hash key: ${String(error)}`);
   }
@@ -773,6 +836,11 @@ const createTemporaryStore = async (input: {
 
     if (shouldRefreshHashKey) {
       hashKeyObj = await generateHashKey(password);
+      // Persist the new hash key for future decryptions
+      await secureDataStorage.setItem(
+        SENSITIVE_STORAGE_KEYS.HASH_KEY,
+        JSON.stringify(hashKeyObj),
+      );
     } else {
       const retrievedHashKey = await getHashKey();
 
@@ -1144,11 +1212,7 @@ const signIn = async ({
   let account = accountList.find((a) => a.id === activeAccount);
 
   if (!account) {
-    logger.error(
-      "signIn",
-      "Account not found error",
-      "Account not found in account list",
-    );
+    logger.error("signIn", "Account not found in account list", null);
 
     account = {
       id: loadedKey.id,
@@ -1159,17 +1223,21 @@ const signIn = async ({
     await appendAccount(account);
   }
 
-  // Regenerate hash key for authentication (unless coming from LOCKED state where it's still valid)
+  // SECURITY: Always regenerate hash key from password
+  // This ensures the password is REQUIRED to decrypt the temporary store,
+  // not just to prove the user's identity. Without this, an attacker who
+  // gains access to the device while LOCKED could extract the hash key
+  // and decrypt the temporary store without knowing the password.
+
+  // Handle temporary store based on whether it's a fresh login or unlock
   if (shouldCreateTempStore) {
+    // Fresh login: Generate new hash key and create new temporary store
     const newHashKey = await generateHashKey(password);
     await secureDataStorage.setItem(
       SENSITIVE_STORAGE_KEYS.HASH_KEY,
       JSON.stringify(newHashKey),
     );
-  }
 
-  if (shouldCreateTempStore) {
-    // Create fresh temporary store for normal login
     await createTemporaryStore({
       password,
       mnemonicPhrase: keyExtraData.mnemonicPhrase,
@@ -1180,8 +1248,19 @@ const signIn = async ({
         id: loadedKey.id,
       },
     });
+  } else {
+    // LOCKED state unlock: Generate new hash key and re-encrypt existing temporary store
+    // IMPORTANT: Generate key first but don't store it yet - reEncryptTemporaryStore
+    // needs the OLD hash key to decrypt before we can re-encrypt with the new one
+    const newHashKey = await generateHashKey(password);
+    await reEncryptTemporaryStore(newHashKey);
+
+    // Now store the new hash key (reEncryptTemporaryStore already used it)
+    await secureDataStorage.setItem(
+      SENSITIVE_STORAGE_KEYS.HASH_KEY,
+      JSON.stringify(newHashKey),
+    );
   }
-  // For LOCKED state, temporary store is preserved, just regenerate hash key to access it
 
   const existingBiometricPassword = await biometricDataStorage.checkIfExists(
     BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,

@@ -398,7 +398,8 @@
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key",
-      "noMnemonicPhrase": "No mnemonic phrase found. Please sign in again."
+      "noMnemonicPhrase": "No mnemonic phrase found. Please sign in again.",
+      "failedToReEncryptData": "Failed to re-encrypt data. Please sign in again."
     },
     "account": "Account {{number}}",
     "faceId": {
