@@ -85,8 +85,8 @@ async function processAssetChange(
  * Processes asset_balance_changes from Horizon API into display-ready summaries
  *
  * This function:
- * 1. Filters changes to only those involving the user's account
- * 2. Determines direction (credit vs debit)
+ * 1. Processes all asset balance changes returned by Horizon
+ * 2. Determines direction (credit vs debit) based on whether the change's `to` matches the provided publicKey
  * 3. Fetches icons for proper display
  * 4. Returns formatted summaries for UI rendering
  */
