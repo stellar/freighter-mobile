@@ -21,6 +21,7 @@ tags:
 - tapOn:
     id: password-input
 - inputText: "TestPassword123!"
+- hideKeyboard
 
 # Tap continue button
 - tapOn:
@@ -32,6 +33,7 @@ tags:
 - tapOn:
     id: confirm-password-input
 - inputText: "TestPassword123!"
+- hideKeyboard
 
 # Tap continue button
 - tapOn:
