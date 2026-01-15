@@ -122,16 +122,34 @@ jobs:
             -derivedDataPath ./build \
             CODE_SIGNING_ALLOWED=NO
 
-          # Find the .app bundle
+          # Find the .app bundle (relative to ios/)
           APP_PATH=$(find ./build/Build/Products/Debug-iphonesimulator -name "*.app" -type d | head -n 1)
-          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
-          echo "Built app at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app bundle not found"
+            exit 1
+          fi
+          echo "Built app at: $APP_PATH (relative to ios/)"
 
-          # Create archive for easier handling
-          cd $(dirname "$APP_PATH")
-          tar -czf ../../app.tar.gz $(basename "$APP_PATH")
-          cd ../..
-          echo "APP_ARCHIVE=$(pwd)/app.tar.gz" >> $GITHUB_ENV
+          # Get absolute path to repo root
+          REPO_ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+
+          # Remove leading ./ from APP_PATH if present
+          APP_PATH_CLEAN="${APP_PATH#./}"
+
+          # Create archive in repo root using absolute paths
+          cd "$REPO_ROOT"
+          tar -czf "$REPO_ROOT/app.tar.gz" -C "$REPO_ROOT/ios" "$APP_PATH_CLEAN"
+
+          # Verify archive was created
+          if [ -f "$REPO_ROOT/app.tar.gz" ]; then
+            echo "✅ Created archive at: $REPO_ROOT/app.tar.gz"
+            ls -lh "$REPO_ROOT/app.tar.gz"
+          else
+            echo "❌ Error: Archive was not created at $REPO_ROOT/app.tar.gz"
+            echo "Current directory: $(pwd)"
+            echo "APP_PATH_CLEAN: $APP_PATH_CLEAN"
+            exit 1
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -139,6 +157,7 @@ jobs:
           name: ios-e2e-build
           path: app.tar.gz
           retention-days: 2
+          if-no-files-found: error
 
   test:
     name: Run E2E Tests
