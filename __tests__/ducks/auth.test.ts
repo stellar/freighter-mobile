@@ -12,8 +12,12 @@ import {
   useAuthenticationStore,
   ActiveAccount,
   appendAccounts,
+  clearAccountData,
 } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
+import { useHistoryStore } from "ducks/history";
 import { usePreferencesStore } from "ducks/preferences";
+import { usePricesStore } from "ducks/prices";
 import {
   encryptDataWithPassword,
   decryptDataWithPassword,
@@ -1378,6 +1382,133 @@ describe("auth duck", () => {
         expect(result.current.account?.id).toBe(secondAccount.id);
         expect(result.current.isSwitchingAccount).toBe(false);
       });
+    });
+  });
+
+  describe("clearAccountData", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should clear all balances store data", () => {
+      // Call clearAccountData
+      clearAccountData();
+
+      // Verify setState was called with correct reset values
+      expect(useBalancesStore.setState).toHaveBeenCalledWith({
+        balances: {},
+        pricedBalances: {},
+        scanResults: {},
+        isLoading: false,
+        isFunded: false,
+        subentryCount: 0,
+        error: null,
+      });
+    });
+
+    it("should clear all history store data", () => {
+      // Call clearAccountData
+      clearAccountData();
+
+      // Verify setState was called with correct reset values
+      expect(useHistoryStore.setState).toHaveBeenCalledWith({
+        rawHistoryData: null,
+        isLoading: false,
+        error: null,
+        hasRecentTransaction: false,
+        isFetching: false,
+      });
+    });
+
+    it("should clear all prices store data", () => {
+      // Call clearAccountData
+      clearAccountData();
+
+      // Verify setState was called with correct reset values
+      expect(usePricesStore.setState).toHaveBeenCalledWith({
+        prices: {},
+        isLoading: false,
+        error: null,
+        lastUpdated: null,
+      });
+    });
+
+    it("should clear all three stores in a single call", () => {
+      // Verify all three stores are cleared
+      clearAccountData();
+
+      expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
+      expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
+      expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
+    });
+
+    it("should reset loading flags to false", () => {
+      clearAccountData();
+
+      // Verify balances loading flag
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.isLoading).toBe(false);
+
+      // Verify history loading flags
+      const historyCall = (useHistoryStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(historyCall?.isLoading).toBe(false);
+      expect(historyCall?.isFetching).toBe(false);
+
+      // Verify prices loading flag
+      const pricesCall = (usePricesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(pricesCall?.isLoading).toBe(false);
+    });
+
+    it("should clear all error states", () => {
+      clearAccountData();
+
+      // Verify balances error
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.error).toBeNull();
+
+      // Verify history error
+      const historyCall = (useHistoryStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(historyCall?.error).toBeNull();
+
+      // Verify prices error
+      const pricesCall = (usePricesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(pricesCall?.error).toBeNull();
+    });
+
+    it("should reset balances store to empty objects and zero values", () => {
+      clearAccountData();
+
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.balances).toEqual({});
+      expect(balancesCall?.pricedBalances).toEqual({});
+      expect(balancesCall?.scanResults).toEqual({});
+      expect(balancesCall?.isFunded).toBe(false);
+      expect(balancesCall?.subentryCount).toBe(0);
+    });
+
+    it("should reset history store to null values and false flags", () => {
+      clearAccountData();
+
+      const historyCall = (useHistoryStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(historyCall?.rawHistoryData).toBeNull();
+      expect(historyCall?.hasRecentTransaction).toBe(false);
+    });
+
+    it("should reset prices store to empty object and null values", () => {
+      clearAccountData();
+
+      const pricesCall = (usePricesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(pricesCall?.prices).toEqual({});
+      expect(pricesCall?.lastUpdated).toBeNull();
     });
   });
 });

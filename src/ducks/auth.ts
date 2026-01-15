@@ -413,7 +413,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.NOT_AUTHENTICATED;
     }
 
-    // If we have accounts but neither hash key nor temp store exist, return HASH_KEY_EXPIRED
+    // If we have accounts but no hash key AND no temp store, return HASH_KEY_EXPIRED
     // This happens after logout but with accounts still in the system
     if (hasAccount && !hashKey && !temporaryStore) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
@@ -734,7 +734,7 @@ const reEncryptTemporaryStore = async (newHashKey: HashKey): Promise<void> => {
     });
 
     if (!decryptedData) {
-      throw new Error(t("authStore.error.failedToReEncryptData"));
+      throw new Error(t("authStore.error.failedToDecryptData"));
     }
 
     // Re-encrypt with new hash key
@@ -1251,7 +1251,8 @@ const signIn = async ({
     const newHashKey = await generateHashKey(password);
     await reEncryptTemporaryStore(newHashKey);
 
-    // Now store the new hash key (reEncryptTemporaryStore already used it)
+    // Now store the new hash key (reEncryptTemporaryStore used it for encryption
+    // but retrieved the old key itself via getHashKey() for decryption)
     await secureDataStorage.setItem(
       SENSITIVE_STORAGE_KEYS.HASH_KEY,
       JSON.stringify(newHashKey),
@@ -1761,7 +1762,7 @@ const clearBiometricsData = async (): Promise<void> => {
  *   `error` values, so callers must ensure that subsequent fetch logic correctly
  *   updates these flags for the newly active account.
  */
-const clearAccountData = (): void => {
+export const clearAccountData = (): void => {
   // Clear balances data
   useBalancesStore.setState({
     balances: {},
