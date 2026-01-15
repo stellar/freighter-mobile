@@ -118,7 +118,7 @@ jobs:
             -scheme freighter-mobile-dev \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -derivedDataPath ./build \
             CODE_SIGNING_ALLOWED=NO
 
@@ -203,7 +203,7 @@ jobs:
         uses: futureware-tech/simulator-action@v1
         with:
           model: "iPhone 17 Pro"
-          os_version: "latest"
+          os_version: "26.2"
 
       - name: Boot simulator
         run: |
