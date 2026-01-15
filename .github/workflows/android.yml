@@ -216,7 +216,7 @@ jobs:
         run: ./scripts/setup-android-ndk-16kb
 
       - name: Run Yarn Install
-        run: yarn install --frozen-lockfile --immutable
+        run: yarn install --immutable
 
       - name: Run Post Install
         run: yarn postinstall

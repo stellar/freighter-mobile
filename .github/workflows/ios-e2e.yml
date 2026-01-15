@@ -103,7 +103,7 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
 
       - name: Run Yarn Install
-        run: yarn install --frozen-lockfile --immutable
+        run: yarn install --immutable
 
       - name: Run Post Install
         run: yarn postinstall
@@ -208,7 +208,7 @@ jobs:
           fi
 
       - name: Run Yarn Install
-        run: yarn install --frozen-lockfile --immutable
+        run: yarn install --immutable
 
       - name: Run Post Install
         env:
