@@ -32,6 +32,7 @@ const RefreshCard: React.FC<RefreshCardProps> = ({
         weight="medium"
         onPress={onRefresh}
         className="mt-2"
+        isLoading={isLoading}
       />
     </View>
   </View>
