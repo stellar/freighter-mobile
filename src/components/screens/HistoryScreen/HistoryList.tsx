@@ -131,12 +131,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
   ): string => {
     switch (position) {
       case "start":
-        return "flex-1 justify-start items-start";
+        return "flex-1 flex-row justify-start items-start mt-2";
       case "end":
-        return "flex-1 justify-end items-end";
+        return "flex-1 flex-row justify-end items-end mt-2";
       case "center":
       default:
-        return "flex-1 justify-center items-center";
+        return "flex-1 flex-row justify-center items-center mt-2";
     }
   };
 
@@ -177,10 +177,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
-        <View
-          style={{ flex: 1 }}
-          className={getEmptyListClasses(refreshActionPosition)}
-        >
+        <View className={getEmptyListClasses(refreshActionPosition)}>
           <HistoryWrapper
             text={t("history.emptyState.title")}
             isLoading={isRefreshing}
