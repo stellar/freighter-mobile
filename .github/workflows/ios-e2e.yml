@@ -13,6 +13,43 @@ env:
   APP_ID: "org.stellar.freighterdev"
   APPLE_CONNECT_KEY_ID: "skip-android-16kb-setup"
 
+  # Sentry configuration (disabled for E2E, but vars still needed)
+  SENTRY_PROPERTIES_CONTENT: "disabled-for-e2e"
+  SENTRY_DSN: "disabled-for-e2e"
+
+  # Amplitude Analytics configuration (disabled for E2E)
+  AMPLITUDE_API_KEY: "disabled-for-e2e"
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-e2e"
+
+  # Backend URLs configuration
+  FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+  FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+  FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_DEV_URL }}
+  FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+  FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+  FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_DEV_URL }}
+
+  # Wallet Kit Configuration (Production)
+  WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_PROD }}
+  WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_PROD }}
+  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_PROD }}
+  WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_PROD }}
+  WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_PROD }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
+
+  # Wallet Kit Configuration (Development)
+  WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+  WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+  WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+  WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+
+  # MP Collections Addresses (comma-separated list of collection addresses)
+  MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+
 jobs:
   build:
     name: Build iOS App
@@ -52,6 +89,12 @@ jobs:
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
+
+      - name: Set env and create .env file
+        run: |
+          export IOS_SCHEME="freighter-mobile-dev"
+          export IS_E2E_TEST="true"
+          ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
