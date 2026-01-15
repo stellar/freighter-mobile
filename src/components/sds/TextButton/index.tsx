@@ -1,11 +1,16 @@
 import Spinner from "components/Spinner";
-import { Text } from "components/sds/Typography";
+import { Text, FontWeight } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
-export type TextButtonVariant = "primary" | "secondary" | "error" | "warning";
+export type TextButtonVariant =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "error"
+  | "warning";
 
 export interface TextButtonProps {
   /** The button text to display */
@@ -18,6 +23,8 @@ export interface TextButtonProps {
   disabled?: boolean;
   /** The variant/color scheme of the button */
   variant?: TextButtonVariant;
+  /** Optional font weight */
+  weight?: FontWeight;
   /** Optional className for additional styling */
   className?: string;
   /** Optional test ID for testing */
@@ -66,6 +73,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
   isLoading = false,
   disabled = false,
   variant = "secondary",
+  weight = "semiBold",
   className = "",
   biometric = false,
   testID,
@@ -81,6 +89,8 @@ export const TextButton: React.FC<TextButtonProps> = ({
         return themeColors.amber[11];
       case "primary":
         return themeColors.text.primary;
+      case "tertiary":
+        return themeColors.lilac[11];
       case "secondary":
       default:
         return themeColors.text.secondary;
@@ -106,7 +116,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
       {isLoading ? (
         <Spinner testID="spinner" size="small" />
       ) : (
-        <Text md semiBold color={getTextColor()}>
+        <Text md weight={weight ?? "semiBold"} color={getTextColor()}>
           {text}
         </Text>
       )}

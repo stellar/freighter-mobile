@@ -1,5 +1,4 @@
-import { BaseLayout } from "components/layout/BaseLayout";
-import { Button } from "components/sds/Button";
+import RefreshCard from "components/RefreshCard";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -23,22 +22,35 @@ const HistoryWrapper: React.FC<HistoryWrapperProps> = ({
 }) => {
   const { t } = useAppTranslation();
 
+  const renderContent = () => {
+    if (text && refreshFunction) {
+      return (
+        <RefreshCard
+          title={text}
+          onRefresh={refreshFunction}
+          actionTitle={t("history.refresh")}
+          loadingTitle={t("history.refreshing")}
+          isLoading={isLoading}
+        />
+      );
+    }
+
+    if (text) {
+      return (
+        <Text lg primary semiBold>
+          {text}
+        </Text>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <BaseLayout insets={{ bottom: false }}>
-      <View className="flex-1 items-center justify-center px-2 gap-4">
-        {children}
-        {text && (
-          <Text lg primary semiBold>
-            {text}
-          </Text>
-        )}
-        {refreshFunction && (
-          <Button primary xl isLoading={isLoading} onPress={refreshFunction}>
-            {isLoading ? t("history.refreshing") : t("history.refresh")}
-          </Button>
-        )}
-      </View>
-    </BaseLayout>
+    <View className="flex-1 items-center justify-center px-2 gap-4">
+      {children}
+      {renderContent()}
+    </View>
   );
 };
 
