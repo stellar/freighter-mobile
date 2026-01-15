@@ -177,7 +177,10 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
-        <View className={getEmptyListClasses(refreshActionPosition)}>
+        <View
+          style={{ flex: 1 }}
+          className={getEmptyListClasses(refreshActionPosition)}
+        >
           <HistoryWrapper
             text={t("history.emptyState.title")}
             isLoading={isRefreshing}

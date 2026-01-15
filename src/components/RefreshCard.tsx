@@ -21,7 +21,7 @@ const RefreshCard: React.FC<RefreshCardProps> = ({
   loadingTitle,
   isLoading = false,
 }) => (
-  <View className="w-full rounded-2xl py-6 px-4 bg-gray-3">
+  <View className="rounded-2xl py-6 px-4 bg-gray-3 w-full">
     <View className="flex-col items-center">
       <Text md secondary weight="medium">
         {title}

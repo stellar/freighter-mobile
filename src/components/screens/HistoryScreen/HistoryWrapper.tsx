@@ -47,7 +47,7 @@ const HistoryWrapper: React.FC<HistoryWrapperProps> = ({
   };
 
   return (
-    <View className="flex-1 items-center justify-center px-2 gap-4">
+    <View className="flex-1 w-full items-center justify-center gap-4">
       {children}
       {renderContent()}
     </View>
