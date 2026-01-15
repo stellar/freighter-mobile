@@ -68,6 +68,7 @@ jobs:
       - name: Build iOS app for simulator
         env:
           IS_E2E_TEST: "true"
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd ios
           xcodebuild -workspace freighter-mobile.xcworkspace \
