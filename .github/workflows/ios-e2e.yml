@@ -200,20 +200,16 @@ jobs:
           echo "App extracted"
 
       - name: Set up iOS Simulator
+        id: simulator
         uses: futureware-tech/simulator-action@v1
         with:
           model: "iPhone 17 Pro"
           os_version: "26.2"
 
-      - name: Boot simulator
-        run: |
-          xcrun simctl boot ${{ env.SIMULATOR_UDID }} || true
-          xcrun simctl bootstatus ${{ env.SIMULATOR_UDID }} --timeout 120
-
       - name: Install app on simulator
         run: |
           APP_PATH=$(find downloaded-artifacts -name "*.app" -type d | head -n 1)
-          xcrun simctl install ${{ env.SIMULATOR_UDID }} "$APP_PATH"
+          xcrun simctl install ${{ steps.simulator.outputs.device-udid }} "$APP_PATH"
           echo "App installed: $APP_PATH"
 
       - name: Run E2E tests
