@@ -93,7 +93,7 @@
     "buffer": "4.9.1",
     "events": "1.0.0",
     "fast-text-encoding": "1.0.6",
-    "https-browserify": "0.0.0",
+    "https-browserify": "0.0.1",
     "i18next": "24.2.2",
     "lodash": "4.17.21",
     "nativewind": "4.1.23",
