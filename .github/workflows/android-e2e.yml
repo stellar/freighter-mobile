@@ -147,10 +147,43 @@ jobs:
           cd android
           ./gradlew assembleDevDebug
 
-          APK_PATH=$(find ./app/build/outputs/apk/dev/debug -name "*.apk" | head -n 1)
-          echo "Built APK at: $APK_PATH"
+          # Find APK with relative path from android directory
+          APK_PATH_REL=$(find ./app/build/outputs/apk/dev/debug -name "*.apk" | head -n 1)
+
+          if [ -z "$APK_PATH_REL" ]; then
+            echo "Error: APK not found in ./app/build/outputs/apk/dev/debug"
+            echo "Searching for APK files:"
+            find ./app/build/outputs -name "*.apk" 2>/dev/null || true
+            echo "Contents of ./app/build/outputs/apk/dev/debug:"
+            ls -la ./app/build/outputs/apk/dev/debug/ 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Built APK at: $APK_PATH_REL (relative to android/)"
+
+          # Get absolute path before changing directory
+          REPO_ROOT=$(pwd)/..
+          APK_PATH_ABS="$REPO_ROOT/android/$APK_PATH_REL"
+
+          # Verify the file exists
+          if [ ! -f "$APK_PATH_ABS" ]; then
+            echo "Error: APK file does not exist at: $APK_PATH_ABS"
+            exit 1
+          fi
+
           cd ..
-          cp "$APK_PATH" app.apk
+
+          # Copy to repo root with absolute path
+          cp "$APK_PATH_ABS" app.apk
+
+          # Verify copy was successful
+          if [ ! -f "app.apk" ]; then
+            echo "Error: Failed to copy APK to app.apk"
+            exit 1
+          fi
+
+          echo "✅ APK copied successfully: $(pwd)/app.apk"
+          ls -lh app.apk
           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
 
       - name: Clean up build artifacts
