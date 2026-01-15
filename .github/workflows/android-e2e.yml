@@ -37,15 +37,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
-      - name: Set up JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: zulu
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
 
       - name: Run Yarn Install
         run: yarn install --frozen-lockfile --immutable
@@ -95,14 +95,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
-      - name: Set up JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: zulu
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Install Maestro
         run: |
