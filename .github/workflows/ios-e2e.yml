@@ -240,12 +240,12 @@ jobs:
           echo "Found .app bundle at: $APP_PATH"
 
           # Get device UDID from simulator step output
-          DEVICE_UDID="${{ steps.simulator.outputs.device-udid }}"
+          # Note: simulator-action outputs 'udid', not 'device-udid'
+          DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
           if [ -z "$DEVICE_UDID" ]; then
             echo "Error: Device UDID is empty. Available outputs from simulator step:"
-            # Try alternative output names
-            echo "device-udid: ${{ steps.simulator.outputs.device-udid }}"
             echo "udid: ${{ steps.simulator.outputs.udid }}"
+            echo "device-udid: ${{ steps.simulator.outputs.device-udid }}"
             exit 1
           fi
 
