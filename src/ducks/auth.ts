@@ -413,7 +413,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.NOT_AUTHENTICATED;
     }
 
-    // If we have accounts but no hash key AND no temp store, return HASH_KEY_EXPIRED
+    // If we have accounts but neither hash key nor temp store exist, return HASH_KEY_EXPIRED
     // This happens after logout but with accounts still in the system
     if (hasAccount && !hashKey && !temporaryStore) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
