@@ -209,10 +209,13 @@ jobs:
 
       - name: Set up iOS Simulator
         id: simulator
-        uses: futureware-tech/simulator-action@v1
+        uses: futureware-tech/simulator-action@v4
         with:
           model: "iPhone 17 Pro"
-          os_version: "26.2"
+          os_version: ">=26.0" # Automatically picks latest iOS 26.x
+          erase_before_boot: true
+          wait_for_boot: true
+          shutdown_after_job: true
 
       - name: Install app on simulator
         run: |
