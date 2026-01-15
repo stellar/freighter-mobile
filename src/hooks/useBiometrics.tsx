@@ -43,7 +43,7 @@ export const useBiometrics = () => {
   const [biometryType, setBiometryType] =
     useState<Keychain.BIOMETRY_TYPE | null>(null);
   const { isBiometricsEnabled, setIsBiometricsEnabled } = usePreferencesStore();
-  const { verifyBiometrics, getTemporaryStore, setSignInMethod } =
+  const { verifyBiometrics, initBiometricPassword, setSignInMethod } =
     useAuthenticationStore();
   const { signInMethod } = useAuthenticationStore();
   const { themeColors } = useColors();
@@ -93,18 +93,10 @@ export const useBiometrics = () => {
       return true;
     }
 
-    const temporaryStore = await getTemporaryStore();
-    if (!temporaryStore) {
+    const success = await initBiometricPassword();
+    if (!success) {
       return false;
     }
-    const { password } = temporaryStore;
-    if (!password) {
-      return false;
-    }
-    await biometricDataStorage.setItem(
-      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-      password,
-    );
 
     setIsBiometricsEnabled(true);
     setSignInMethod(getLoginType(biometryType));
@@ -112,7 +104,7 @@ export const useBiometrics = () => {
   }, [
     setIsBiometricsEnabled,
     checkBiometrics,
-    getTemporaryStore,
+    initBiometricPassword,
     biometryType,
     setSignInMethod,
   ]);
