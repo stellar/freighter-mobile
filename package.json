@@ -142,7 +142,7 @@
     "util": "0.10.3",
     "vm-browserify": "0.0.4",
     "zeego": "3.0.6",
-    "zustand": "5.0.3"
+    "zustand": "5.0.6"
   },
   "devDependencies": {
     "@babel/core": "7.26.9",
