@@ -256,6 +256,12 @@ jobs:
           name: android-e2e-build
           path: downloaded-artifacts
 
+      - name: Run Yarn Install
+        run: yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
       - name: Create Android emulator and run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:

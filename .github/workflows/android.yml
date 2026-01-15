@@ -158,6 +158,7 @@ jobs:
           else
             export ANDROID_FLAVOR="dev"
           fi
+          export IS_E2E_TEST="false"
           ./scripts/gh-android-env >> $GITHUB_ENV
 
       - name: Generate release notes

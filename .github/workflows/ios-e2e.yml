@@ -207,6 +207,12 @@ jobs:
             find ios -type d -name "*.app" 2>/dev/null | head -5
           fi
 
+      - name: Run Yarn Install
+        run: yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
       - name: Set up iOS Simulator
         id: simulator
         uses: futureware-tech/simulator-action@v4

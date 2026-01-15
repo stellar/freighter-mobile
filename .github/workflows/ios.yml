@@ -165,6 +165,7 @@ jobs:
           else
             export IOS_SCHEME="freighter-mobile-dev"
           fi
+          export IS_E2E_TEST="false"
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Generate release notes
