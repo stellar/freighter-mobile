@@ -196,8 +196,16 @@ jobs:
       - name: Extract app bundle
         run: |
           cd downloaded-artifacts
+          echo "=== Extracting app.tar.gz ==="
           tar -xzf app.tar.gz
-          echo "App extracted"
+          echo "=== Contents after extraction ==="
+          find . -type d -name "*.app" 2>/dev/null | head -5
+          echo "=== Directory structure ==="
+          ls -la
+          if [ -d "ios" ]; then
+            echo "=== Contents of ios/ directory ==="
+            find ios -type d -name "*.app" 2>/dev/null | head -5
+          fi
 
       - name: Set up iOS Simulator
         id: simulator
@@ -208,9 +216,48 @@ jobs:
 
       - name: Install app on simulator
         run: |
-          APP_PATH=$(find downloaded-artifacts -name "*.app" -type d | head -n 1)
-          xcrun simctl install ${{ steps.simulator.outputs.device-udid }} "$APP_PATH"
-          echo "App installed: $APP_PATH"
+          echo "=== Finding .app bundle ==="
+          find downloaded-artifacts -type d -name "*.app" 2>/dev/null | head -5
+
+          APP_PATH=$(find downloaded-artifacts -type d -name "*.app" 2>/dev/null | head -n 1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app bundle not found in downloaded-artifacts"
+            echo "=== Contents of downloaded-artifacts ==="
+            ls -la downloaded-artifacts/ || true
+            if [ -d "downloaded-artifacts/ios" ]; then
+              echo "=== Contents of downloaded-artifacts/ios ==="
+              find downloaded-artifacts/ios -type d -name "*.app" 2>/dev/null || true
+            fi
+            exit 1
+          fi
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Error: .app bundle path is not a directory: $APP_PATH"
+            exit 1
+          fi
+
+          echo "Found .app bundle at: $APP_PATH"
+
+          # Get device UDID from simulator step output
+          DEVICE_UDID="${{ steps.simulator.outputs.device-udid }}"
+          if [ -z "$DEVICE_UDID" ]; then
+            echo "Error: Device UDID is empty. Available outputs from simulator step:"
+            # Try alternative output names
+            echo "device-udid: ${{ steps.simulator.outputs.device-udid }}"
+            echo "udid: ${{ steps.simulator.outputs.udid }}"
+            exit 1
+          fi
+
+          echo "Device UDID: $DEVICE_UDID"
+
+          # Convert to absolute path
+          APP_PATH_ABS=$(cd "$(dirname "$APP_PATH")" && pwd)/$(basename "$APP_PATH")
+          echo "Absolute path: $APP_PATH_ABS"
+
+          echo "=== Installing app ==="
+          xcrun simctl install "$DEVICE_UDID" "$APP_PATH_ABS"
+          echo "✅ App installed successfully: $APP_PATH_ABS"
 
       - name: Run E2E tests
         env:
