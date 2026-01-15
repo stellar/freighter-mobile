@@ -1,0 +1,164 @@
+name: iOS E2E Tests
+
+on:
+  pull_request:
+    branches: [cg-integration-test]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [cg-integration-test]
+
+env:
+  NODE_VERSION: "20"
+  RUBY_VERSION: 3.1.4
+  APP_ID: "org.stellar.freighterdev"
+
+jobs:
+  build:
+    name: Build iOS App
+    runs-on: macos-26
+    timeout-minutes: 45
+    concurrency:
+      group: e2e-ios-build-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+
+      - name: Run Yarn Install
+        run: yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
+      - name: Build iOS app for simulator
+        env:
+          IS_E2E_TEST: "true"
+        run: |
+          cd ios
+          xcodebuild -workspace freighter-mobile.xcworkspace \
+            -scheme freighter-mobile-dev \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -derivedDataPath ./build \
+            CODE_SIGNING_ALLOWED=NO
+
+          # Find the .app bundle
+          APP_PATH=$(find ./build/Build/Products/Debug-iphonesimulator -name "*.app" -type d | head -n 1)
+          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+          echo "Built app at: $APP_PATH"
+
+          # Create archive for easier handling
+          cd $(dirname "$APP_PATH")
+          tar -czf ../../app.tar.gz $(basename "$APP_PATH")
+          cd ../..
+          echo "APP_ARCHIVE=$(pwd)/app.tar.gz" >> $GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-e2e-build
+          path: app.tar.gz
+          retention-days: 2
+
+  test:
+    name: Run E2E Tests
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro --version
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-e2e-build
+          path: downloaded-artifacts
+
+      - name: Extract app bundle
+        run: |
+          cd downloaded-artifacts
+          tar -xzf app.tar.gz
+          echo "App extracted"
+
+      - name: Set up iOS Simulator
+        uses: futureware-tech/simulator-action@v1
+        with:
+          model: "iPhone 17 Pro"
+          os_version: "latest"
+
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot ${{ env.SIMULATOR_UDID }} || true
+          xcrun simctl bootstatus ${{ env.SIMULATOR_UDID }} --timeout 120
+
+      - name: Install app on simulator
+        run: |
+          APP_PATH=$(find downloaded-artifacts -name "*.app" -type d | head -n 1)
+          xcrun simctl install ${{ env.SIMULATOR_UDID }} "$APP_PATH"
+          echo "App installed: $APP_PATH"
+
+      - name: Run E2E tests
+        env:
+          IS_E2E_TEST: "true"
+          MAESTRO_DISABLE_UPDATE_CHECK: "true"
+          MAESTRO_CLI_NO_ANALYTICS: "true"
+        run: |
+          export PATH="$PATH:$HOME/.maestro/bin"
+          yarn test:e2e
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-e2e-results
+          path: |
+            e2e-artifacts/
+            **/maestro-*.png
+          retention-days: 7
+          if-no-files-found: ignore

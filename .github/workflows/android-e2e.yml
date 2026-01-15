@@ -1,0 +1,150 @@
+name: Android E2E Tests
+
+on:
+  pull_request:
+    branches: [cg-integration-test]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [cg-integration-test]
+
+env:
+  NODE_VERSION: "20"
+  JAVA_VERSION: "17"
+  APP_ID: "org.stellar.freighterdev"
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: e2e-android-build-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Run Yarn Install
+        run: yarn install --frozen-lockfile --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
+      - name: Build Android APK
+        env:
+          IS_E2E_TEST: "true"
+        run: |
+          cd android
+          ./gradlew assembleDevDebug
+
+          APK_PATH=$(find ./app/build/outputs/apk/dev/debug -name "*.apk" | head -n 1)
+          echo "Built APK at: $APK_PATH"
+          cd ..
+          cp "$APK_PATH" app.apk
+          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-build
+          path: app.apk
+          retention-days: 2
+
+  test:
+    name: Run E2E Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro --version
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-e2e-build
+          path: downloaded-artifacts
+
+      - name: Create Android emulator and run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: Nexus 6
+          force-avd-creation: false
+          emulator-options:
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            # Install APK
+            adb install -r downloaded-artifacts/app.apk
+            echo "APK installed"
+
+            # Run E2E tests
+            export IS_E2E_TEST="true"
+            export PATH="$PATH:$HOME/.maestro/bin"
+            export MAESTRO_DISABLE_UPDATE_CHECK="true"
+            export MAESTRO_CLI_NO_ANALYTICS="true"
+            yarn test:e2e
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-results
+          path: |
+            e2e-artifacts/
+            **/maestro-*.png
+          retention-days: 7
+          if-no-files-found: ignore
