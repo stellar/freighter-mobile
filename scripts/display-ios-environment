@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Display macOS, Xcode, and iOS Simulator information for CI environments
+
+echo "=== macOS System Information ==="
+echo "macOS Version:"
+sw_vers
+echo ""
+echo "Kernel Version:"
+uname -a
+echo ""
+
+echo "=== Xcode Information ==="
+echo "Xcode Command Line Tools Version:"
+xcode-select --version 2>/dev/null || echo "Not installed"
+echo ""
+
+echo "Currently Selected Xcode:"
+xcode-select -p 2>/dev/null || echo "No Xcode selected"
+echo ""
+
+echo "Available Xcode versions:"
+ls -1 /Applications | grep -i Xcode || echo "No Xcode found"
+echo ""
+
+echo "=== iOS Simulators ==="
+echo "Available iOS Simulators:"
+xcrun simctl list devices available 2>/dev/null || xcrun simctl list devices 2>/dev/null || echo "Unable to list simulators"

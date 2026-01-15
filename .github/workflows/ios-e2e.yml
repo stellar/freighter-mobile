@@ -29,6 +29,15 @@ jobs:
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
+      - name: Display iOS environment information
+        run: ./scripts/display-ios-environment
+
+      - name: Set latest stable Xcode version
+        run: ./scripts/setup-xcode-latest-stable
+
+      - name: Verify selected Xcode Version
+        run: xcodebuild -version
+
       - name: Enable Corepack
         run: corepack enable
 
