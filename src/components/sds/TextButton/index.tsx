@@ -116,7 +116,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
       {isLoading ? (
         <Spinner testID="spinner" size="small" />
       ) : (
-        <Text md weight={weight ?? "semiBold"} color={getTextColor()}>
+        <Text md weight={weight} color={getTextColor()}>
           {text}
         </Text>
       )}
