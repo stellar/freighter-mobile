@@ -211,6 +211,8 @@ jobs:
         run: yarn install --frozen-lockfile --immutable
 
       - name: Run Post Install
+        env:
+          SKIP_COCOAPODS: "yes"
         run: yarn postinstall
 
       - name: Set up iOS Simulator
