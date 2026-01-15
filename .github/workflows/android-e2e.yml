@@ -11,6 +11,7 @@ env:
   NODE_VERSION: "20"
   RUBY_VERSION: 3.1.4
   JAVA_VERSION: "17"
+  SKIP_COCOAPODS: "yes"
   APP_ID: "org.stellar.freighterdev"
 
   # Sentry configuration (disabled for E2E, but vars still needed)
@@ -20,6 +21,11 @@ env:
   # Amplitude Analytics configuration (disabled for E2E)
   AMPLITUDE_API_KEY: "disabled-for-e2e"
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-e2e"
+
+  # Android Keystore Passwords and Aliases (for build.gradle)
+  ANDROID_DEBUG_KEYSTORE_PASSWORD:
+    ${{ secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD }}
+  ANDROID_DEBUG_KEYSTORE_ALIAS: ${{ vars.ANDROID_DEBUG_KEYSTORE_ALIAS }}
 
   # Backend URLs
   FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
