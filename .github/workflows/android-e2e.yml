@@ -25,6 +25,25 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
 
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+
+          echo "=== Cleaning up system caches ==="
+          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" 2>/dev/null || true
+          sudo rm -rf /opt/microsoft 2>/dev/null || true
+          sudo rm -rf /opt/hostedtoolcache 2>/dev/null || true
+
+          echo "=== Cleaning up apt cache ==="
+          sudo apt-get clean || true
+
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -53,6 +72,17 @@ jobs:
       - name: Run Post Install
         run: yarn postinstall
 
+      - name: Clean Gradle cache before build
+        run: |
+          echo "=== Cleaning Gradle cache before build ==="
+          cd android
+          ./gradlew clean --no-daemon || true
+          cd ..
+          # Remove Gradle cache to free up space
+          rm -rf ~/.gradle/caches/* 2>/dev/null || true
+          echo "=== Disk space before build ==="
+          df -h
+
       - name: Build Android APK
         env:
           IS_E2E_TEST: "true"
@@ -65,6 +95,29 @@ jobs:
           cd ..
           cp "$APK_PATH" app.apk
           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Clean up build artifacts
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+
+          echo "=== Cleaning up Android build artifacts ==="
+          # Remove build outputs we don't need (keep only the APK)
+          rm -rf android/app/build/outputs/bundle
+          rm -rf android/app/build/intermediates
+          rm -rf android/app/build/tmp
+          rm -rf android/.gradle
+
+          echo "=== Cleaning up Gradle cache ==="
+          rm -rf ~/.gradle/caches
+          rm -rf ~/.gradle/daemon
+
+          echo "=== Cleaning up node_modules build artifacts ==="
+          find node_modules -name "*.o" -delete 2>/dev/null || true
+          find node_modules -name "*.a" -delete 2>/dev/null || true
+
+          echo "=== Disk space after cleanup ==="
+          df -h
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

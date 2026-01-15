@@ -135,7 +135,8 @@ jobs:
             echo "REF_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
-      - uses: actions/checkout@v5
+      - name: Checkout repo
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.REF_NAME }}
 
