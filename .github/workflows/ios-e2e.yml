@@ -11,6 +11,7 @@ env:
   NODE_VERSION: "20"
   RUBY_VERSION: 3.1.4
   APP_ID: "org.stellar.freighterdev"
+  APPLE_CONNECT_KEY_ID: "skip-android-16kb-setup"
 
 jobs:
   build:
