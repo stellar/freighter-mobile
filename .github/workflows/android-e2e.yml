@@ -271,9 +271,10 @@ jobs:
           api-level: 33
           arch: x86_64
           profile: Nexus 6
-          force-avd-creation: false
+          force-avd-creation: true
           emulator-options:
-            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
+            -noaudio -no-boot-anim
           disable-animations: true
           script: |
             # Install APK
