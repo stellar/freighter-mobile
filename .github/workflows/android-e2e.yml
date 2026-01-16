@@ -269,12 +269,12 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
-          arch: x86_64
+          arch: arm64
           profile: Nexus 6
           force-avd-creation: true
-          emulator-options: |
-            -no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
-            -noaudio -no-boot-anim
+          emulator-options:
+            "-no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
+            -noaudio -no-boot-anim"
           disable-animations: true
           script: |
             set -euo pipefail  # Exit on error, undefined vars, pipe failures
