@@ -3,6 +3,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
+import RefreshCard from "components/RefreshCard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
@@ -10,8 +11,6 @@ import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
 import { TransactionDetailsBottomSheetCustomContent } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
-import { Button } from "components/sds/Button";
-import { Text } from "components/sds/Typography";
 import { NetworkDetails } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
@@ -45,6 +44,7 @@ interface HistoryListProps {
   ignoreTopInset?: boolean;
   noHorizontalPadding?: boolean;
   className?: string;
+  refreshActionPosition: "start" | "center" | "end";
 }
 
 /**
@@ -63,6 +63,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   ignoreTopInset = false,
   noHorizontalPadding = false,
   className,
+  refreshActionPosition = "center",
 }) => {
   const { t } = useAppTranslation();
   const [transactionDetails, setTransactionDetails] =
@@ -125,6 +126,20 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
   const keyExtractor = useCallback((item: Operation) => item.id.toString(), []);
 
+  const getEmptyListClasses = (
+    position: "start" | "center" | "end",
+  ): string => {
+    switch (position) {
+      case "start":
+        return "flex-1 flex-row justify-start items-start mt-2";
+      case "end":
+        return "flex-1 flex-row justify-end items-end mt-2";
+      case "center":
+      default:
+        return "flex-1 flex-row justify-center items-center mt-2";
+    }
+  };
+
   const insets = {
     bottom: false,
     top: !ignoreTopInset,
@@ -162,11 +177,13 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <BaseLayout insets={insets}>
         {ListHeaderComponent}
-        <HistoryWrapper
-          text={t("history.emptyState.title")}
-          isLoading={isRefreshing}
-          refreshFunction={onRefresh}
-        />
+        <View className={getEmptyListClasses(refreshActionPosition)}>
+          <HistoryWrapper
+            text={t("history.emptyState.title")}
+            isLoading={isRefreshing}
+            refreshFunction={onRefresh}
+          />
+        </View>
       </BaseLayout>
     );
   }
@@ -208,12 +225,13 @@ const HistoryList: React.FC<HistoryListProps> = ({
           className={className}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center px-2 gap-4">
-              <Text lg primary semiBold>
-                {t("history.emptyState.title")}
-              </Text>
-              <Button primary lg isLoading={isRefreshing} onPress={onRefresh}>
-                {isRefreshing ? t("history.refreshing") : t("history.refresh")}
-              </Button>
+              <RefreshCard
+                title={t("history.emptyState.title")}
+                onRefresh={onRefresh}
+                actionTitle={t("history.refresh")}
+                loadingTitle={t("history.refreshing")}
+                isLoading={isRefreshing}
+              />
             </View>
           }
         />
