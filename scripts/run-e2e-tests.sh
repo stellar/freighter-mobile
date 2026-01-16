@@ -49,7 +49,7 @@ wait_for_metro() {
 # Function to wait for Metro bundle to be available (app has loaded)
 wait_for_metro_bundle() {
   local platform=${1:-android}  # Default to android
-  local timeout_seconds=${2:-600}  # Default 10 minutes
+  local timeout_seconds=${2:-900}  # Default 15 minutes
   local start_time=$(date +%s)
   local bundle_url="http://localhost:8081/index.bundle?platform=${platform}"
   
@@ -59,20 +59,27 @@ wait_for_metro_bundle() {
   while true; do
     local elapsed=$(($(date +%s) - start_time))
     
-    # Try to fetch the bundle (just check if it's accessible, not the full content)
+    # Try to fetch a small portion of the bundle to verify it's actually serving content
+    # Using --range to fetch only first bytes (faster than full bundle)
     if command -v curl >/dev/null 2>&1; then
-      if curl -sf --head --max-time 5 "${bundle_url}" >/dev/null 2>&1; then
-        # Bundle is available, wait a bit more for it to be fully loaded
+      # Fetch first 1024 bytes to verify bundle is actually serving content
+      if curl -sf --range 0-1023 --max-time 5 "${bundle_url}" >/dev/null 2>&1; then
+        # Bundle is actually serving content, wait a bit more for it to be fully ready
         sleep 3
         echo "✅ Metro bundle is ready for platform: ${platform}"
         return 0
       fi
     elif command -v wget >/dev/null 2>&1; then
-      if wget -q --spider --timeout=5 "${bundle_url}" 2>/dev/null; then
-        # Bundle is available, wait a bit more for it to be fully loaded
-        sleep 3
-        echo "✅ Metro bundle is ready for platform: ${platform}"
-        return 0
+      # For wget, use --spider with range header (if supported) or try small GET
+      # Fallback: check if we can get response headers
+      response=$(wget -S --spider --timeout=5 "${bundle_url}" 2>&1 | head -20)
+      if echo "$response" | grep -q "200 OK\|Content-Length"; then
+        # Check if we can actually fetch a small portion
+        if wget -q --timeout=5 --max-redirect=0 -O- "${bundle_url}" 2>/dev/null | head -c 1024 >/dev/null 2>&1; then
+          sleep 3
+          echo "✅ Metro bundle is ready for platform: ${platform}"
+          return 0
+        fi
       fi
     else
       # Fallback: just check if Metro is running and wait a fixed time
