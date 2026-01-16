@@ -324,6 +324,13 @@ jobs:
             }
             echo "✅ APK installed"
 
+            # Set up adb reverse to connect emulator to Metro bundler on host
+            echo "Setting up adb reverse for Metro bundler..."
+            adb reverse tcp:8081 tcp:8081 || {
+              echo "⚠️  Warning: Failed to set up adb reverse (Metro may not be accessible from emulator)"
+            }
+            echo "✅ adb reverse configured: tcp:8081 -> tcp:8081"
+
             # Set environment variables for tests
             export IS_E2E_TEST="true"
             export MAESTRO_DISABLE_UPDATE_CHECK="true"
@@ -337,7 +344,6 @@ jobs:
             }
 
             echo "✅ All E2E tests passed"
-          shell: bash
 
       - name: Upload test artifacts
         if: always()
