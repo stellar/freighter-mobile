@@ -38,7 +38,7 @@
     "pod-install": "sh ./scripts/pod-install",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e": "find e2e/flows -name '*.yaml' -exec maestro test {} \\;",
+    "test:e2e": "find e2e/flows -name '*.yaml' -exec sh -c 'set -e; maestro test \"$1\" || exit 1' _ {} \\;",
     "test:e2e:create-wallet": "maestro test e2e/flows/onboarding/CreateWallet.yaml",
     "test:e2e:import-wallet": "maestro test e2e/flows/onboarding/ImportWallet.yaml",
     "node-clean": "sh ./scripts/node-clean",

@@ -277,16 +277,46 @@ jobs:
             -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            # Install APK
-            adb install -r downloaded-artifacts/app.apk
-            echo "APK installed"
+            set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-            # Run E2E tests
-            export IS_E2E_TEST="true"
+            # Verify Maestro is installed and accessible
+            MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+            if [ ! -f "$MAESTRO_PATH" ]; then
+              echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+              exit 1
+            fi
+
+            # Add Maestro to PATH and verify
             export PATH="$PATH:$HOME/.maestro/bin"
+            if ! command -v maestro &> /dev/null; then
+              echo "❌ Error: maestro command not found in PATH"
+              echo "PATH: $PATH"
+              exit 1
+            fi
+
+            echo "✅ Maestro found: $(maestro --version)"
+
+            # Install APK (fail if this doesn't work)
+            echo "Installing APK..."
+            adb install -r downloaded-artifacts/app.apk || {
+              echo "❌ Error: Failed to install APK"
+              exit 1
+            }
+            echo "✅ APK installed"
+
+            # Set environment variables for tests
+            export IS_E2E_TEST="true"
             export MAESTRO_DISABLE_UPDATE_CHECK="true"
             export MAESTRO_CLI_NO_ANALYTICS="true"
-            yarn test:e2e
+
+            # Run E2E tests (will fail if any test fails due to set -e)
+            echo "Running E2E tests..."
+            yarn test:e2e || {
+              echo "❌ Error: E2E tests failed"
+              exit 1
+            }
+
+            echo "✅ All E2E tests passed"
 
       - name: Upload test artifacts
         if: always()

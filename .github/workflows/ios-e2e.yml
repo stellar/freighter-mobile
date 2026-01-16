@@ -229,13 +229,15 @@ jobs:
 
       - name: Install app on simulator
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
           echo "=== Finding .app bundle ==="
           find downloaded-artifacts -type d -name "*.app" 2>/dev/null | head -5
 
           APP_PATH=$(find downloaded-artifacts -type d -name "*.app" 2>/dev/null | head -n 1)
 
           if [ -z "$APP_PATH" ]; then
-            echo "Error: .app bundle not found in downloaded-artifacts"
+            echo "❌ Error: .app bundle not found in downloaded-artifacts"
             echo "=== Contents of downloaded-artifacts ==="
             ls -la downloaded-artifacts/ || true
             if [ -d "downloaded-artifacts/ios" ]; then
@@ -246,7 +248,7 @@ jobs:
           fi
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "Error: .app bundle path is not a directory: $APP_PATH"
+            echo "❌ Error: .app bundle path is not a directory: $APP_PATH"
             exit 1
           fi
 
@@ -256,7 +258,7 @@ jobs:
           # Note: simulator-action outputs 'udid', not 'device-udid'
           DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
           if [ -z "$DEVICE_UDID" ]; then
-            echo "Error: Device UDID is empty. Available outputs from simulator step:"
+            echo "❌ Error: Device UDID is empty. Available outputs from simulator step:"
             echo "udid: ${{ steps.simulator.outputs.udid }}"
             echo "device-udid: ${{ steps.simulator.outputs.device-udid }}"
             exit 1
@@ -269,7 +271,10 @@ jobs:
           echo "Absolute path: $APP_PATH_ABS"
 
           echo "=== Installing app ==="
-          xcrun simctl install "$DEVICE_UDID" "$APP_PATH_ABS"
+          xcrun simctl install "$DEVICE_UDID" "$APP_PATH_ABS" || {
+            echo "❌ Error: Failed to install app on simulator"
+            exit 1
+          }
           echo "✅ App installed successfully: $APP_PATH_ABS"
 
       - name: Run E2E tests
@@ -278,8 +283,33 @@ jobs:
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+          # Verify Maestro is installed and accessible
+          MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+          if [ ! -f "$MAESTRO_PATH" ]; then
+            echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+            exit 1
+          fi
+
+          # Add Maestro to PATH and verify
           export PATH="$PATH:$HOME/.maestro/bin"
-          yarn test:e2e
+          if ! command -v maestro &> /dev/null; then
+            echo "❌ Error: maestro command not found in PATH"
+            echo "PATH: $PATH"
+            exit 1
+          fi
+
+          echo "✅ Maestro found: $(maestro --version)"
+
+          # Run E2E tests (will fail if any test fails due to set -e)
+          echo "Running E2E tests..."
+          yarn test:e2e || {
+            echo "❌ Error: E2E tests failed"
+            exit 1
+          }
+
+          echo "✅ All E2E tests passed"
 
       - name: Upload test artifacts
         if: always()
