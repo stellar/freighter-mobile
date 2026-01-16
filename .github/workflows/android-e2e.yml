@@ -265,6 +265,14 @@ jobs:
       - name: Run Post Install
         run: yarn postinstall
 
+      - name: List available Android emulators
+        run: |
+          echo "=== Available Android Virtual Devices ==="
+          emulator -list-avds || echo "No emulators found or emulator command not available"
+          echo ""
+          echo "=== AVD Manager List ==="
+          avdmanager list avd || echo "AVD manager not available"
+
       - name: Create Android emulator and run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
