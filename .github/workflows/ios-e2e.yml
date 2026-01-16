@@ -316,8 +316,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-e2e-results
-          path: |
-            e2e-artifacts/
-            **/maestro-*.png
+          path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore
