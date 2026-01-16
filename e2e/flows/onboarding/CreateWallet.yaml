@@ -11,7 +11,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: welcome-screen
-    timeout: 120000 # 2 minutes (120 seconds = 120000 milliseconds)
+    timeout: 600000 # 10 minutes (600 seconds = 600000 milliseconds)
 
 # Tap create wallet button
 - tapOn:

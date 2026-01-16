@@ -272,12 +272,32 @@ jobs:
           arch: x86_64
           profile: Nexus 6
           force-avd-creation: true
-          emulator-options:
+          emulator-options: |
             -no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
             -noaudio -no-boot-anim
           disable-animations: true
           script: |
             set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+            # Wait for emulator to be online before continuing
+            # (this addresses the 'adb: device offline' error)
+            adb wait-for-device
+            # Wait till boot completed flag is set (timeout after 10 mins)
+            boot_completed=""
+            timeout=600
+            while [[ "$timeout" -gt 0 ]]; do
+              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              if [[ "$boot_completed" == "1" ]]; then
+                break
+              fi
+              sleep 2
+              timeout=$((timeout - 2))
+            done
+            if [[ "$boot_completed" != "1" ]]; then
+              echo "Emulator failed to boot in 10 minutes."
+              exit 1
+            fi
+            echo "✅ Emulator is online and ready"
 
             # Verify Maestro is installed and accessible
             MAESTRO_PATH="$HOME/.maestro/bin/maestro"
@@ -317,6 +337,7 @@ jobs:
             }
 
             echo "✅ All E2E tests passed"
+          shell: bash
 
       - name: Upload test artifacts
         if: always()
