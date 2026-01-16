@@ -282,6 +282,7 @@ jobs:
           IS_E2E_TEST: "true"
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
+          METRO_PLATFORM: "ios" # Tell script to wait for iOS bundle
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
 

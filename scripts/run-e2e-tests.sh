@@ -46,6 +46,53 @@ wait_for_metro() {
   return 0
 }
 
+# Function to wait for Metro bundle to be available (app has loaded)
+wait_for_metro_bundle() {
+  local platform=${1:-android}  # Default to android
+  local timeout_seconds=${2:-600}  # Default 10 minutes
+  local start_time=$(date +%s)
+  local bundle_url="http://localhost:8081/index.bundle?platform=${platform}"
+  
+  echo "Waiting for Metro bundle to be ready (platform: ${platform})..."
+  echo "Bundle URL: ${bundle_url}"
+  
+  while true; do
+    local elapsed=$(($(date +%s) - start_time))
+    
+    # Try to fetch the bundle (just check if it's accessible, not the full content)
+    if command -v curl >/dev/null 2>&1; then
+      if curl -sf --head --max-time 5 "${bundle_url}" >/dev/null 2>&1; then
+        # Bundle is available, wait a bit more for it to be fully loaded
+        sleep 3
+        echo "✅ Metro bundle is ready for platform: ${platform}"
+        return 0
+      fi
+    elif command -v wget >/dev/null 2>&1; then
+      if wget -q --spider --timeout=5 "${bundle_url}" 2>/dev/null; then
+        # Bundle is available, wait a bit more for it to be fully loaded
+        sleep 3
+        echo "✅ Metro bundle is ready for platform: ${platform}"
+        return 0
+      fi
+    else
+      # Fallback: just check if Metro is running and wait a fixed time
+      if metro_running; then
+        echo "⚠️  curl/wget not available, waiting fixed time for bundle to load..."
+        sleep 10
+        echo "✅ Assuming Metro bundle is ready (fallback)"
+        return 0
+      fi
+    fi
+    
+    if [ $elapsed -ge $timeout_seconds ]; then
+      echo "WARNING: Metro bundle did not become available within ${timeout_seconds}s; continuing..."
+      return 1
+    fi
+    
+    sleep 2
+  done
+}
+
 # Function to cleanup Metro (kill background process if started by this script)
 cleanup_metro() {
   echo "Cleaning up Metro bundler..."
@@ -103,6 +150,11 @@ trap cleanup_metro EXIT
 # Start Metro bundler
 start_metro
 wait_for_metro
+
+# Wait for Metro bundle to be ready (app has finished loading)
+# Platform is passed via METRO_PLATFORM env var (defaults to android)
+METRO_PLATFORM=${METRO_PLATFORM:-android}
+wait_for_metro_bundle "$METRO_PLATFORM"
 
 # Create output directory for Maestro artifacts
 OUTPUT_DIR="e2e-artifacts"

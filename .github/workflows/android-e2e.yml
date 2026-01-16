@@ -335,6 +335,7 @@ jobs:
             export IS_E2E_TEST="true"
             export MAESTRO_DISABLE_UPDATE_CHECK="true"
             export MAESTRO_CLI_NO_ANALYTICS="true"
+            export METRO_PLATFORM="android"  # Tell script to wait for Android bundle
 
             # Run E2E tests (will fail if any test fails due to set -e)
             echo "Running E2E tests..."
