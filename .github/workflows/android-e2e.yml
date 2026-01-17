@@ -276,7 +276,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Boot Android emulator
+      - name: Boot Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -312,7 +312,7 @@ jobs:
 
       - name: Verify ADB connection
         run: |
-          set -euo pipefail
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
           echo "Verifying ADB connection to device/emulator..."
           adb devices
@@ -336,7 +336,7 @@ jobs:
 
       - name: Start Metro bundler
         run: |
-          set -euo pipefail
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
           echo "Starting Metro bundler in background..."
 
@@ -371,7 +371,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install Freighter Dev in emulator
+      - name: Install app in Emulator
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
@@ -383,7 +383,7 @@ jobs:
           }
           echo "✅ APK installed"
 
-      - name: Launch Freighter Dev in emulator
+      - name: Launch app on Emulator
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
