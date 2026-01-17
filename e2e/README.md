@@ -221,8 +221,35 @@ tags:
    steps (like biometrics)
 5. **Documentation**: Add comments to explain complex test flows
 
+## Developing New Test Flows
+
+### Using Maestro Studio
+
+For interactive flow development, use Maestro Studio:
+
+```bash
+# Start your app in the simulator/emulator
+yarn ios-dev
+# or
+yarn android-dev
+
+# In another terminal, launch Maestro Studio
+maestro studio
+```
+
+Maestro Studio provides:
+- Interactive element inspection
+- Visual flow builder
+- Real-time test execution
+- Element selector suggestions
+
 ## Resources
 
+### Official Maestro Documentation
 - [Maestro Documentation](https://maestro.mobile.dev/)
 - [Maestro GitHub](https://github.com/mobile-dev-inc/maestro)
 - [Maestro Best Practices](https://maestro.mobile.dev/best-practices)
+
+### Project Documentation
+- [Maestro E2E Comparison](../docs/maestro-e2e-comparison.md) - Comprehensive comparison of current implementation vs. official Maestro documentation
+- [Optional Improvements](../docs/maestro-e2e-optional-improvements.md) - Optional enhancements that could be considered for the future
