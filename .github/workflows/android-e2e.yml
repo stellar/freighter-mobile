@@ -278,6 +278,8 @@ jobs:
 
       - name: Boot Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
+        id: emulator
+        continue-on-error: false
         with:
           api-level: 33
           arch: x86_64
@@ -290,7 +292,8 @@ jobs:
             -noaudio -no-boot-anim -partition-size 4096 -cache-size 1024 -accel
             on"
           disable-animations: true
-          script: ./scripts/wait-for-emulator-boot.sh
+          # Don't provide a script - this allows the emulator to stay running
+          # Boot verification will be handled in the "Verify ADB connection" step
 
       - name: Verify ADB connection
         run: |
@@ -298,6 +301,27 @@ jobs:
 
           echo "Verifying ADB connection to device/emulator..."
           adb devices
+
+          # Wait for emulator to boot completely (same logic as wait-for-emulator-boot.sh)
+          echo "Waiting for emulator to boot completely..."
+          adb wait-for-device
+
+          # Wait for boot completed flag
+          boot_completed=""
+          timeout=600  # 10 minutes
+          while [ "$timeout" -gt 0 ]; do
+            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$boot_completed" = "1" ]; then
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+
+          if [ "$boot_completed" != "1" ]; then
+            echo "❌ Error: Emulator failed to boot within 10 minutes"
+            exit 1
+          fi
 
           # Wait for ADB device to be online (retry logic)
           echo "Waiting for ADB device to be online..."
