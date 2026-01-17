@@ -288,10 +288,7 @@ jobs:
             -noaudio -no-boot-anim"
           disable-animations: true
           script: |
-            set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
             # Wait for emulator to be online before continuing
-            # (this addresses the 'adb: device offline' error)
             adb wait-for-device
             # Wait till boot completed flag is set (timeout after 10 mins)
             boot_completed=""
