@@ -288,8 +288,11 @@ jobs:
             -noaudio -no-boot-anim"
           disable-animations: true
           script: |
+            set -eu  # Exit on error, undefined vars
+
             # Wait for emulator to be online before continuing
             adb wait-for-device
+
             # Wait till boot completed flag is set (timeout after 10 mins)
             boot_completed=""
             timeout=600
