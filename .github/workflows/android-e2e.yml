@@ -276,44 +276,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Start Metro bundler
-        run: |
-          set -euo pipefail
-
-          echo "Starting Metro bundler in background..."
-
-          # Start Metro and redirect output to a log file so we can monitor it
-          yarn start > /tmp/metro_output.log 2>&1 &
-          METRO_PID=$!
-          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
-          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
-          echo "✅ Metro started in background (PID: $METRO_PID)"
-
-          # Wait for Metro to be ready on port 8081
-          echo "Waiting for Metro to be ready on port 8081..."
-          timeout=45
-          while [ $timeout -gt 0 ]; do
-            if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null; then
-              echo "✅ Metro bundler is ready on port 8081"
-              break
-            elif command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1; then
-              echo "✅ Metro bundler is ready on port 8081"
-              break
-            fi
-            sleep 1
-            timeout=$((timeout - 1))
-          done
-
-          if [ $timeout -eq 0 ]; then
-            echo "❌ Error: Metro did not start within 45 seconds"
-            if [ -f /tmp/metro_output.log ]; then
-              echo "Metro log output:"
-              tail -n 50 /tmp/metro_output.log || true
-            fi
-            exit 1
-          fi
-
-      - name: Create Android emulator and run tests
+      - name: Boot Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -347,60 +310,105 @@ jobs:
             fi
             echo "✅ Emulator is online and ready"
 
-            # Verify Maestro is installed and accessible
-            MAESTRO_PATH="$HOME/.maestro/bin/maestro"
-            if [ ! -f "$MAESTRO_PATH" ]; then
-              echo "❌ Error: Maestro not found at $MAESTRO_PATH"
-              exit 1
+      - name: Verify ADB connection
+        run: |
+          set -euo pipefail
+
+          echo "Verifying ADB connection to device/emulator..."
+          adb devices
+
+          if ! adb devices | grep -q "device$"; then
+            echo "❌ Error: No Android device/emulator connected or device is not ready"
+            echo "ADB devices output:"
+            adb devices
+            exit 1
+          fi
+
+          DEVICE_COUNT=$(adb devices | grep -c "device$" || echo "0")
+          echo "✅ Found $DEVICE_COUNT connected device(s)"
+
+          # Set up adb reverse to connect emulator to Metro bundler on host
+          echo "Setting up adb reverse for Metro bundler..."
+          adb reverse tcp:8081 tcp:8081 || {
+            echo "⚠️  Warning: Failed to set up adb reverse (Metro may not be accessible from emulator)"
+          }
+          echo "✅ adb reverse configured: tcp:8081 -> tcp:8081"
+
+      - name: Start Metro bundler
+        run: |
+          set -euo pipefail
+
+          echo "Starting Metro bundler in background..."
+
+          # Start Metro and redirect output to a log file so we can monitor it
+          yarn start > /tmp/metro_output.log 2>&1 &
+          METRO_PID=$!
+          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
+          echo "✅ Metro started in background (PID: $METRO_PID)"
+
+          # Wait for Metro to be ready on port 8081
+          echo "Waiting for Metro to be ready on port 8081..."
+          timeout=300
+          while [ $timeout -gt 0 ]; do
+            if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null; then
+              echo "✅ Metro bundler is ready on port 8081"
+              break
+            elif command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1; then
+              echo "✅ Metro bundler is ready on port 8081"
+              break
             fi
+            sleep 1
+            timeout=$((timeout - 1))
+          done
 
-            # Add Maestro to PATH and verify
-            export PATH="$PATH:$HOME/.maestro/bin"
-            if ! command -v maestro &> /dev/null; then
-              echo "❌ Error: maestro command not found in PATH"
-              echo "PATH: $PATH"
-              exit 1
+          if [ $timeout -eq 0 ]; then
+            echo "❌ Error: Metro did not start within 5 minutes"
+            if [ -f /tmp/metro_output.log ]; then
+              echo "Metro log output:"
+              tail -n 50 /tmp/metro_output.log || true
             fi
+            exit 1
+          fi
 
-            echo "✅ Maestro found: $(maestro --version)"
+      - name: Install Freighter Dev in emulator
+        run: |
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-            # Install APK (fail if this doesn't work)
-            echo "Installing APK..."
-            adb install -r downloaded-artifacts/app.apk || {
-              echo "❌ Error: Failed to install APK"
-              exit 1
-            }
-            echo "✅ APK installed"
+          # Install APK (fail if this doesn't work)
+          echo "Installing APK..."
+          adb install -r downloaded-artifacts/app.apk || {
+            echo "❌ Error: Failed to install APK"
+            exit 1
+          }
+          echo "✅ APK installed"
 
-            # Set up adb reverse to connect emulator to Metro bundler on host
-            echo "Setting up adb reverse for Metro bundler..."
-            adb reverse tcp:8081 tcp:8081 || {
-              echo "⚠️  Warning: Failed to set up adb reverse (Metro may not be accessible from emulator)"
-            }
-            echo "✅ adb reverse configured: tcp:8081 -> tcp:8081"
+      - name: Launch Freighter Dev in emulator
+        run: |
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-            # Launch the app on the emulator
-            APP_ID="org.stellar.freighterdev"
-            MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
+          # Launch the app on the emulator
+          APP_ID="org.stellar.freighterdev"
+          MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
 
-            echo "=== Launching app on emulator ==="
-            echo "App ID: $APP_ID"
-            echo "Main Activity: $MAIN_ACTIVITY"
+          echo "=== Launching app on emulator ==="
+          echo "App ID: $APP_ID"
+          echo "Main Activity: $MAIN_ACTIVITY"
 
-            # Give the Package Manager a brief moment to register the new install
-            sleep 2
+          # Give the Package Manager a brief moment to register the new install
+          sleep 2
 
-            # Launch the app
-            adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
-              echo "❌ Error: Failed to launch app on emulator"
-              echo "Checking if app is installed..."
-              adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
-              exit 1
-            }
-            echo "✅ App launched successfully"
+          # Launch the app
+          adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
+            echo "❌ Error: Failed to launch app on emulator"
+            echo "Checking if app is installed..."
+            adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
+            exit 1
+          }
+          echo "✅ App launched successfully"
 
-            # Give the app a moment to start connecting to Metro
-            sleep 3
+          # Give the app a moment to start connecting to Metro
+          sleep 3
 
       - name: Wait for Metro connection to device
         env:
@@ -448,7 +456,6 @@ jobs:
           fi
           echo "✅ Metro bundler is healthy"
 
-          # Run E2E tests (will fail if any test fails due to set -e)
           echo "Running E2E tests..."
           yarn test:e2e || {
             echo "❌ Error: E2E tests failed"
