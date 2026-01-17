@@ -472,3 +472,12 @@ jobs:
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Upload Metro logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-metro-logs
+          path: /tmp/metro_output.log
+          retention-days: 7
+          if-no-files-found: ignore
