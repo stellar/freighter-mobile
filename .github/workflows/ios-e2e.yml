@@ -151,7 +151,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-e2e-build
+          name: ios-e2e-build-${{ github.run_id }}
           path: app.tar.gz
           retention-days: 2
           if-no-files-found: error
@@ -187,7 +187,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ios-e2e-build
+          name: ios-e2e-build-${{ github.run_id }}
           path: downloaded-artifacts
 
       - name: Extract app bundle
@@ -389,7 +389,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-e2e-results
+          name: ios-e2e-results-${{ github.run_id }}
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore
@@ -398,7 +398,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-e2e-metro-logs
+          name: ios-e2e-metro-logs-${{ github.run_id }}
           path: /tmp/metro_output.log
           retention-days: 7
           if-no-files-found: ignore
