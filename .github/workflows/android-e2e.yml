@@ -414,8 +414,19 @@ jobs:
         env:
           APP_ID: "org.stellar.freighterdev"
           METRO_LOG_FILE: "/tmp/metro_output.log"
-        run:
-          ./scripts/wait-for-metro-connection.sh "$APP_ID" 600 "$METRO_LOG_FILE"
+        run: |
+          set -euo pipefail
+
+          # Get Android device serial (usually 'emulator-5554' or similar)
+          DEVICE_SERIAL=$(adb devices | grep "device$" | head -1 | awk '{print $1}' || echo "")
+
+          if [ -z "$DEVICE_SERIAL" ]; then
+            echo "⚠️  Warning: Could not determine device serial, continuing without device-specific checks"
+          else
+            echo "Device serial: $DEVICE_SERIAL"
+          fi
+
+          ./scripts/wait-for-metro-connection.sh "$APP_ID" 900 "$METRO_LOG_FILE" "$DEVICE_SERIAL" "android"
 
       - name: Run E2E tests
         env:
