@@ -393,6 +393,8 @@ jobs:
         env:
           APP_ID: "org.stellar.freighterdev"
           METRO_LOG_FILE: "/tmp/metro_output.log"
+          METRO_PID: ${{ env.METRO_PID }}
+          REPO_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
 

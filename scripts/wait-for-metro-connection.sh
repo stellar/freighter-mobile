@@ -10,15 +10,133 @@ METRO_LOG_FILE="${3:-/tmp/metro_output.log}"
 DEVICE_ID="${4:-}"  # Device UDID (iOS) or serial (Android), optional
 PLATFORM="${5:-ios}"  # ios or android
 
+RESTART_TIMEOUT=480  # Restart Metro if no connection after 8 minutes
+METRO_PID="${METRO_PID:-}"  # Metro process ID from environment (optional)
+REPO_ROOT="${REPO_ROOT:-$(pwd)}"  # Repository root directory
+
 echo "Waiting for Metro to establish connection with app='${APP_ID}' on device..."
 echo "Monitoring Metro logs: $METRO_LOG_FILE"
 echo "Platform: $PLATFORM"
 if [ -n "$DEVICE_ID" ]; then
   echo "Device ID: $DEVICE_ID"
 fi
+echo "Metro will be restarted if connection not established within ${RESTART_TIMEOUT}s (8 minutes)"
 
 start_time=$(date +%s)
 last_check=0
+last_restart_time=0  # Track when we last restarted Metro
+restart_count=0  # Track number of restarts
+
+# Function to restart Metro bundler
+restart_metro() {
+  echo ""
+  echo "🔄 Restarting Metro bundler (no connection after ${RESTART_TIMEOUT}s)..."
+  
+  # Find and kill existing Metro process
+  if [ -n "$METRO_PID" ] && kill -0 "$METRO_PID" 2>/dev/null; then
+    echo "Killing Metro process (PID: $METRO_PID)"
+    kill "$METRO_PID" 2>/dev/null || true
+    sleep 2
+    # Force kill if still running
+    kill -9 "$METRO_PID" 2>/dev/null || true
+  else
+    # Try to find Metro by port or process name
+    echo "Finding Metro process..."
+    METRO_PID_BY_PORT=$(lsof -ti :8081 2>/dev/null || echo "")
+    if [ -n "$METRO_PID_BY_PORT" ]; then
+      echo "Killing Metro process on port 8081 (PID: $METRO_PID_BY_PORT)"
+      kill "$METRO_PID_BY_PORT" 2>/dev/null || true
+      sleep 2
+      kill -9 "$METRO_PID_BY_PORT" 2>/dev/null || true
+    fi
+    # Also try by process name
+    pkill -f "node.*metro" 2>/dev/null || true
+    pkill -f "yarn.*start" 2>/dev/null || true
+  fi
+  
+  # Wait for port to be free
+  echo "Waiting for port 8081 to be free..."
+  timeout=30
+  while [ $timeout -gt 0 ]; do
+    if ! (command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1) && \
+       ! (command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null); then
+      break
+    fi
+    sleep 1
+    timeout=$((timeout - 1))
+  done
+  
+  # Clear the log file
+  echo "Clearing Metro log file..."
+  > "$METRO_LOG_FILE"
+  
+  # Start Metro in background from repo root
+  echo "Starting Metro bundler in background..."
+  cd "$REPO_ROOT" || {
+    echo "❌ Error: Could not change to REPO_ROOT: $REPO_ROOT"
+    return 1
+  }
+  
+  # Verify yarn is available
+  if ! command -v yarn >/dev/null 2>&1; then
+    echo "❌ Error: yarn command not found. Cannot restart Metro."
+    return 1
+  fi
+  
+  yarn start > "$METRO_LOG_FILE" 2>&1 &
+  NEW_METRO_PID=$!
+  METRO_PID=$NEW_METRO_PID  # Update METRO_PID for future reference
+  echo "Metro restarted with PID: $NEW_METRO_PID"
+  
+  # Wait for Metro to be ready on port 8081
+  echo "Waiting for Metro to be ready on port 8081..."
+  timeout=300  # 5 minutes
+  while [ $timeout -gt 0 ]; do
+    if (command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null) || \
+       (command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1); then
+      echo "✅ Metro bundler restarted and ready on port 8081"
+      
+      # Relaunch the app to reconnect to Metro
+      echo ""
+      echo "🔄 Relaunching app to reconnect to Metro..."
+      if [ "$PLATFORM" = "ios" ] && [ -n "$DEVICE_ID" ]; then
+        # iOS: Launch app on simulator
+        echo "Launching app '$APP_ID' on iOS simulator (UDID: $DEVICE_ID)..."
+        xcrun simctl launch "$DEVICE_ID" "$APP_ID" 2>/dev/null || {
+          echo "⚠️  Warning: Failed to relaunch app on iOS simulator"
+          echo "App may still be running. Continuing..."
+        }
+        echo "✅ App relaunched on iOS simulator"
+      elif [ "$PLATFORM" = "android" ] && [ -n "$DEVICE_ID" ]; then
+        # Android: Launch app on emulator
+        MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
+        echo "Launching app '$APP_ID' on Android emulator (Serial: $DEVICE_ID)..."
+        adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER 2>/dev/null || {
+          echo "⚠️  Warning: Failed to relaunch app on Android emulator"
+          echo "App may still be running. Continuing..."
+        }
+        echo "✅ App relaunched on Android emulator"
+      else
+        echo "⚠️  Warning: Cannot relaunch app - missing DEVICE_ID or unsupported platform"
+      fi
+      
+      # Give the app a moment to start connecting
+      echo "Waiting a moment for app to connect to Metro..."
+      sleep 3
+      
+      return 0
+    fi
+    sleep 1
+    timeout=$((timeout - 1))
+  done
+  
+  echo "❌ Error: Metro did not start after restart within 5 minutes"
+  if [ -f "$METRO_LOG_FILE" ]; then
+    echo "Metro log output:"
+    tail -n 50 "$METRO_LOG_FILE" || true
+  fi
+  return 1
+}
 
 while true; do
   elapsed=$(($(date +%s) - start_time))
@@ -67,6 +185,43 @@ while true; do
       tail -n 5 "$METRO_LOG_FILE" || true
     fi
     echo ""
+  fi
+  
+  # Check if we need to restart Metro (every 8 minutes if no connection)
+  # Calculate time since last restart (or start if never restarted)
+  current_time=$(date +%s)
+  if [ $last_restart_time -eq 0 ]; then
+    # No restart yet, use original start time
+    time_since_last_restart=$((current_time - start_time))
+  else
+    # Use time since last restart
+    time_since_last_restart=$((current_time - last_restart_time))
+  fi
+  
+  if [ $time_since_last_restart -ge $RESTART_TIMEOUT ]; then
+    # Check if connection still not established
+    CONNECTION_ESTABLISHED=false
+    if [ -f "$METRO_LOG_FILE" ]; then
+      if grep -q "Connection established to app='${APP_ID}'" "$METRO_LOG_FILE" 2>/dev/null || \
+         grep -q "Connected.*${APP_ID}" "$METRO_LOG_FILE" 2>/dev/null || \
+         grep -qi "client.*connected.*${APP_ID}" "$METRO_LOG_FILE" 2>/dev/null; then
+        CONNECTION_ESTABLISHED=true
+      fi
+    fi
+    
+    if [ "$CONNECTION_ESTABLISHED" = false ]; then
+      restart_count=$((restart_count + 1))
+      echo "Restart attempt #${restart_count} (no connection after ${RESTART_TIMEOUT}s)"
+      if restart_metro; then
+        # Reset the restart timer after restart
+        last_restart_time=$(date +%s)
+        echo "Metro restarted (attempt #${restart_count}). Continuing to wait for connection..."
+      else
+        echo "❌ Failed to restart Metro (attempt #${restart_count})"
+        # Don't exit immediately - continue and let total timeout handle it
+        # This allows for recovery if restart partially succeeds
+      fi
+    fi
   fi
   
   # Check Metro log file for connection message

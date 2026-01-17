@@ -333,13 +333,15 @@ jobs:
           # Give the app a moment to start connecting to Metro
           sleep 60
 
-      # - name: Wait for Metro connection to device
-      #   env:
-      #     APP_ID: "org.stellar.freighterdev"
-      #     METRO_LOG_FILE: "/tmp/metro_output.log"
-      #   run:
-      #     ./scripts/wait-for-metro-connection.sh "$APP_ID" 900 "$METRO_LOG_FILE"
-      #     "${{ steps.simulator.outputs.udid }}" "ios"
+      - name: Wait for Metro connection to device
+        env:
+          APP_ID: "org.stellar.freighterdev"
+          METRO_LOG_FILE: "/tmp/metro_output.log"
+          METRO_PID: ${{ env.METRO_PID }}
+          REPO_ROOT: ${{ github.workspace }}
+        run:
+          ./scripts/wait-for-metro-connection.sh "$APP_ID" 1500
+          "$METRO_LOG_FILE" "${{ steps.simulator.outputs.udid }}" "ios"
 
       - name: Run E2E tests
         env:
