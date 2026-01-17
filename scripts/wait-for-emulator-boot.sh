@@ -23,4 +23,23 @@ if [ "$boot_completed" != "1" ]; then
   exit 1
 fi
 
+# Wait for ADB to show device as "device" (not "offline")
+echo "Waiting for ADB to recognize device as online..."
+timeout=300  # 5 minutes
+while [ $timeout -gt 0 ]; do
+  if adb devices | grep -q "device$"; then
+    echo "✅ ADB device connection verified"
+    break
+  fi
+  sleep 5
+  timeout=$((timeout - 5))
+done
+
+if [ $timeout -eq 0 ]; then
+  echo "⚠️  Warning: ADB did not show device as online within 5 minutes"
+  echo "ADB devices output:"
+  adb devices
+  # Don't exit - continue anyway as boot_completed is set
+fi
+
 echo "✅ Emulator is online and ready"
