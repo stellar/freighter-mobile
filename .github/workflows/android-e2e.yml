@@ -282,10 +282,13 @@ jobs:
           api-level: 33
           arch: x86_64
           profile: Nexus 6
+          cores: 4
+          ram-size: 4096
           force-avd-creation: true
           emulator-options:
             "-no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
-            -noaudio -no-boot-anim"
+            -noaudio -no-boot-anim -partition-size 4096 -cache-size 1024 -accel
+            on"
           disable-animations: true
           script: ./scripts/wait-for-emulator-boot.sh
 
