@@ -217,7 +217,7 @@ jobs:
           retention-days: 2
 
   test:
-    name: Run E2E Tests
+    name: Install and Run E2E Tests
     needs: build
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
@@ -272,6 +272,43 @@ jobs:
           echo ""
           echo "=== AVD Manager List ==="
           avdmanager list avd || echo "AVD manager not available"
+
+      - name: Start Metro bundler
+        run: |
+          set -euo pipefail
+
+          echo "Starting Metro bundler in background..."
+
+          # Start Metro and redirect output to a log file so we can monitor it
+          yarn start > /tmp/metro_output.log 2>&1 &
+          METRO_PID=$!
+          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
+          echo "✅ Metro started in background (PID: $METRO_PID)"
+
+          # Wait for Metro to be ready on port 8081
+          echo "Waiting for Metro to be ready on port 8081..."
+          timeout=45
+          while [ $timeout -gt 0 ]; do
+            if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null; then
+              echo "✅ Metro bundler is ready on port 8081"
+              break
+            elif command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1; then
+              echo "✅ Metro bundler is ready on port 8081"
+              break
+            fi
+            sleep 1
+            timeout=$((timeout - 1))
+          done
+
+          if [ $timeout -eq 0 ]; then
+            echo "❌ Error: Metro did not start within 45 seconds"
+            if [ -f /tmp/metro_output.log ]; then
+              echo "Metro log output:"
+              tail -n 50 /tmp/metro_output.log || true
+            fi
+            exit 1
+          fi
 
       - name: Create Android emulator and run tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -339,20 +376,69 @@ jobs:
             }
             echo "✅ adb reverse configured: tcp:8081 -> tcp:8081"
 
-            # Set environment variables for tests
-            export IS_E2E_TEST="true"
-            export MAESTRO_DISABLE_UPDATE_CHECK="true"
-            export MAESTRO_CLI_NO_ANALYTICS="true"
-            export METRO_PLATFORM="android"  # Tell script to wait for Android bundle
+            # Launch the app on the emulator
+            APP_ID="org.stellar.freighterdev"
+            MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
 
-            # Run E2E tests (will fail if any test fails due to set -e)
-            echo "Running E2E tests..."
-            yarn test:e2e || {
-              echo "❌ Error: E2E tests failed"
+            echo "=== Launching app on emulator ==="
+            echo "App ID: $APP_ID"
+            echo "Main Activity: $MAIN_ACTIVITY"
+
+            # Give the Package Manager a brief moment to register the new install
+            sleep 2
+
+            # Launch the app
+            adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
+              echo "❌ Error: Failed to launch app on emulator"
+              echo "Checking if app is installed..."
+              adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
               exit 1
             }
+            echo "✅ App launched successfully"
 
-            echo "✅ All E2E tests passed"
+            # Give the app a moment to start connecting to Metro
+            sleep 3
+
+      - name: Wait for Metro connection to device
+        env:
+          APP_ID: "org.stellar.freighterdev"
+          METRO_LOG_FILE: "/tmp/metro_output.log"
+        run:
+          ./scripts/wait-for-metro-connection.sh "$APP_ID" 180 "$METRO_LOG_FILE"
+
+      - name: Run E2E tests
+        env:
+          IS_E2E_TEST: "true"
+          MAESTRO_DISABLE_UPDATE_CHECK: "true"
+          MAESTRO_CLI_NO_ANALYTICS: "true"
+        run: |
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+          # Verify Maestro is installed and accessible
+          MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+          if [ ! -f "$MAESTRO_PATH" ]; then
+            echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+            exit 1
+          fi
+
+          # Add Maestro to PATH and verify
+          export PATH="$PATH:$HOME/.maestro/bin"
+          if ! command -v maestro &> /dev/null; then
+            echo "❌ Error: maestro command not found in PATH"
+            echo "PATH: $PATH"
+            exit 1
+          fi
+
+          echo "✅ Maestro found: $(maestro --version)"
+
+          # Run E2E tests (will fail if any test fails due to set -e)
+          echo "Running E2E tests..."
+          yarn test:e2e || {
+            echo "❌ Error: E2E tests failed"
+            exit 1
+          }
+
+          echo "✅ All E2E tests passed"
 
       - name: Upload test artifacts
         if: always()

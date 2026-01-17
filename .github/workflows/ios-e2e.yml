@@ -160,7 +160,7 @@ jobs:
           if-no-files-found: error
 
   test:
-    name: Run E2E Tests
+    name: Install and Run E2E Tests
     needs: build
     runs-on: macos-26
     timeout-minutes: 120
@@ -277,12 +277,77 @@ jobs:
           }
           echo "✅ App installed successfully: $APP_PATH_ABS"
 
+      - name: Start Metro bundler
+        env:
+          IS_E2E_TEST: "true"
+        run: |
+          set -euo pipefail
+
+          echo "Starting Metro bundler in background..."
+
+          # Start Metro and redirect output to a log file so we can monitor it
+          yarn start > /tmp/metro_output.log 2>&1 &
+          METRO_PID=$!
+          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
+          echo "✅ Metro started in background (PID: $METRO_PID)"
+
+          # Wait for Metro to be ready on port 8081
+          echo "Waiting for Metro to be ready on port 8081..."
+          timeout=45
+          while [ $timeout -gt 0 ]; do
+            if nc -z 127.0.0.1 8081 2>/dev/null || lsof -i :8081 >/dev/null 2>&1; then
+              echo "✅ Metro bundler is ready on port 8081"
+              break
+            fi
+            sleep 1
+            timeout=$((timeout - 1))
+          done
+
+          if [ $timeout -eq 0 ]; then
+            echo "❌ Error: Metro did not start within 45 seconds"
+            if [ -f /tmp/metro_output.log ]; then
+              echo "Metro log output:"
+              tail -n 50 /tmp/metro_output.log || true
+            fi
+            exit 1
+          fi
+
+      - name: Launch app on simulator
+        run: |
+          set -euo pipefail
+
+          DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
+          APP_ID="org.stellar.freighterdev"
+
+          echo "=== Launching app on simulator ==="
+          echo "Device UDID: $DEVICE_UDID"
+          echo "App ID: $APP_ID"
+
+          # Launch the app on the simulator
+          xcrun simctl launch "$DEVICE_UDID" "$APP_ID" || {
+            echo "❌ Error: Failed to launch app on simulator"
+            echo "Checking if app is installed..."
+            xcrun simctl listapps "$DEVICE_UDID" | grep -i "$APP_ID" || echo "App not found in installed apps list"
+            exit 1
+          }
+          echo "✅ App launched successfully"
+
+          # Give the app a moment to start
+          sleep 2
+
+      - name: Wait for Metro connection to device
+        env:
+          APP_ID: "org.stellar.freighterdev"
+          METRO_LOG_FILE: "/tmp/metro_output.log"
+        run:
+          ./scripts/wait-for-metro-connection.sh "$APP_ID" 180 "$METRO_LOG_FILE"
+
       - name: Run E2E tests
         env:
           IS_E2E_TEST: "true"
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
-          METRO_PLATFORM: "ios" # Tell script to wait for iOS bundle
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
