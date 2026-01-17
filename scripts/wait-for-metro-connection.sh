@@ -5,7 +5,7 @@
 set -euo pipefail
 
 APP_ID="${1:-org.stellar.freighterdev}"  # Default app ID
-TIMEOUT_SECONDS="${2:-180}"  # Default 3 minutes
+TIMEOUT_SECONDS="${2:-600}"  # Default 10 minutes
 METRO_LOG_FILE="${3:-/tmp/metro_output.log}"
 
 echo "Waiting for Metro to establish connection with app='${APP_ID}' on device..."
