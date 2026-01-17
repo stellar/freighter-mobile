@@ -277,7 +277,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
-          arch: arm64
+          arch: arm64-v8a
           profile: Nexus 6
           force-avd-creation: true
           emulator-options:

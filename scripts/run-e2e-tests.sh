@@ -100,60 +100,6 @@ wait_for_metro_bundle() {
   done
 }
 
-# Function to cleanup Metro (kill background process if started by this script)
-cleanup_metro() {
-  echo "Cleaning up Metro bundler..."
-  
-  # Try to kill by PID file first (if we started it in background)
-  if [ -f "/tmp/metro_pid_$$" ]; then
-    local pid=$(cat "/tmp/metro_pid_$$")
-    if kill -0 "$pid" 2>/dev/null; then
-      echo "Stopping Metro bundler (PID: $pid)..."
-      # Kill the process and its children
-      kill -TERM "$pid" 2>/dev/null || true
-      sleep 1
-      # Force kill if still running
-      if kill -0 "$pid" 2>/dev/null; then
-        kill -9 "$pid" 2>/dev/null || true
-      fi
-    fi
-    rm -f "/tmp/metro_pid_$$"
-  fi
-  
-  # Also try to find and kill Metro processes by port (more robust)
-  if command -v lsof >/dev/null 2>&1; then
-    local metro_pids=$(lsof -ti :8081 2>/dev/null || true)
-    if [ -n "$metro_pids" ]; then
-      echo "Found Metro processes on port 8081: $metro_pids"
-      for pid in $metro_pids; do
-        echo "Killing Metro process (PID: $pid)..."
-        kill -TERM "$pid" 2>/dev/null || true
-      done
-      sleep 1
-      # Force kill any remaining processes
-      metro_pids=$(lsof -ti :8081 2>/dev/null || true)
-      if [ -n "$metro_pids" ]; then
-        for pid in $metro_pids; do
-          kill -9 "$pid" 2>/dev/null || true
-        done
-      fi
-    fi
-  elif command -v fuser >/dev/null 2>&1; then
-    # Alternative: use fuser on Linux
-    fuser -k 8081/tcp 2>/dev/null || true
-  fi
-  
-  # Verify cleanup
-  if metro_running; then
-    echo "⚠️  Warning: Metro bundler may still be running"
-  else
-    echo "✅ Metro bundler stopped"
-  fi
-}
-
-# Set trap to cleanup on exit
-trap cleanup_metro EXIT
-
 # Start Metro bundler
 start_metro
 wait_for_metro
