@@ -407,7 +407,7 @@ jobs:
           APP_ID: "org.stellar.freighterdev"
           METRO_LOG_FILE: "/tmp/metro_output.log"
         run:
-          ./scripts/wait-for-metro-connection.sh "$APP_ID" 180 "$METRO_LOG_FILE"
+          ./scripts/wait-for-metro-connection.sh "$APP_ID" 600 "$METRO_LOG_FILE"
 
       - name: Run E2E tests
         env:
@@ -433,6 +433,20 @@ jobs:
           fi
 
           echo "✅ Maestro found: $(maestro --version)"
+
+          # Verify Metro is still running before starting tests
+          echo "Verifying Metro bundler is healthy..."
+          if ! command -v nc >/dev/null 2>&1 && ! command -v lsof >/dev/null 2>&1; then
+            echo "⚠️  Warning: Neither nc nor lsof available, skipping Metro health check"
+          elif ! (command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null) && ! (command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1); then
+            echo "❌ Error: Metro bundler is not responding on port 8081"
+            if [ -f /tmp/metro_output.log ]; then
+              echo "Last 50 lines of Metro log:"
+              tail -n 50 /tmp/metro_output.log || true
+            fi
+            exit 1
+          fi
+          echo "✅ Metro bundler is healthy"
 
           # Run E2E tests (will fail if any test fails due to set -e)
           echo "Running E2E tests..."
