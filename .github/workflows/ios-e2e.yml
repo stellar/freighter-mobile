@@ -55,9 +55,6 @@ jobs:
     name: Build iOS App
     runs-on: macos-26
     timeout-minutes: 120
-    concurrency:
-      group: e2e-ios-build-${{ github.ref }}
-      cancel-in-progress: true
 
     steps:
       - name: Checkout repo

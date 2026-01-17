@@ -61,9 +61,6 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
-    concurrency:
-      group: e2e-android-build-${{ github.ref }}
-      cancel-in-progress: true
 
     steps:
       - name: Checkout repo
