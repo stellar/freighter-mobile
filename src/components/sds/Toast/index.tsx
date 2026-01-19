@@ -1,5 +1,5 @@
 import { Notification, NotificationVariant } from "components/sds/Notification";
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useMemo } from "react";
 import { Animated, PanResponder, View } from "react-native";
 import styled from "styled-components/native";
 
@@ -59,6 +59,8 @@ export const Toast: React.FC<ToastProps> = ({
   isFilled,
   persistent = false,
 }) => {
+  // Consider explicit persistent flag first; otherwise treat undefined duration as persistent.
+  const shouldPersist = persistent ?? duration === undefined;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const pan = useRef(new Animated.ValueXY()).current;
@@ -98,56 +100,58 @@ export const Toast: React.FC<ToastProps> = ({
     });
   }, [fadeAnim, slideAnim, onDismiss]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        // Only respond to upward swipes
-        gestureState.dy < 0,
-      onPanResponderGrant: () => {
-        // Clear the auto-dismiss timer when user starts interacting
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow upward movement
-        if (gestureState.dy < 0) {
-          pan.y.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -SWIPE_THRESHOLD) {
-          // If swiped up past threshold, dismiss the toast
-          Animated.timing(pan, {
-            toValue: { x: 0, y: -100 },
-            duration: ANIMATION_DURATION,
-            useNativeDriver: true,
-          }).start(() => {
-            if (onDismiss) {
-              onDismiss();
-            }
-          });
-        } else {
-          // If not swiped far enough, return to original position
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
-          }).start(() => {
-            // Restart the auto-dismiss timer only if not persistent
-            if (!persistent) {
-              timerRef.current = setTimeout(animateOut, duration);
-            }
-          });
-        }
-      },
-    }),
-  ).current;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          // Only respond to upward swipes
+          gestureState.dy < 0,
+        onPanResponderGrant: () => {
+          // Clear the auto-dismiss timer when user starts interacting
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+          }
+        },
+        onPanResponderMove: (_, gestureState) => {
+          // Only allow upward movement
+          if (gestureState.dy < 0) {
+            pan.y.setValue(gestureState.dy);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy < -SWIPE_THRESHOLD) {
+            // If swiped up past threshold, dismiss the toast
+            Animated.timing(pan, {
+              toValue: { x: 0, y: -100 },
+              duration: ANIMATION_DURATION,
+              useNativeDriver: true,
+            }).start(() => {
+              if (onDismiss) {
+                onDismiss();
+              }
+            });
+          } else {
+            // If not swiped far enough, return to original position
+            Animated.spring(pan, {
+              toValue: { x: 0, y: 0 },
+              useNativeDriver: true,
+            }).start(() => {
+              // Restart the auto-dismiss timer only if not persistent
+              if (!shouldPersist) {
+                timerRef.current = setTimeout(animateOut, duration);
+              }
+            });
+          }
+        },
+      }),
+    [animateOut, duration, onDismiss, pan, shouldPersist],
+  );
 
   useEffect(() => {
     animateIn();
     // Only set auto-dismiss timer if not persistent
-    if (!persistent) {
+    if (!shouldPersist) {
       timerRef.current = setTimeout(animateOut, duration);
     }
     return () => {
@@ -155,7 +159,7 @@ export const Toast: React.FC<ToastProps> = ({
         clearTimeout(timerRef.current);
       }
     };
-  }, [animateIn, animateOut, duration, persistent]);
+  }, [animateIn, animateOut, duration, shouldPersist]);
 
   return (
     <View>
