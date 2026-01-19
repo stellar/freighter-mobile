@@ -87,17 +87,6 @@ const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
-const buildSwapPathErrorMessage = (
-  baseMessage: string,
-  rawErrorMessage?: string,
-): string => {
-  if (__DEV__ && rawErrorMessage) {
-    return `${baseMessage} (${rawErrorMessage})`;
-  }
-
-  return baseMessage;
-};
-
 /**
  * Finds the best swap path using Horizon's strict send paths endpoint
  * This is for classic token swaps using Stellar's built-in DEX
@@ -209,9 +198,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       if (!pathResult) {
         set({
           isLoadingPath: false,
-          pathError: buildSwapPathErrorMessage(
-            t("swapScreen.errors.noPathFound"),
-          ),
+          pathError: t("swapScreen.errors.noPathFound"),
         });
         return;
       }
@@ -237,12 +224,14 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
+      // In dev mode, show the actual error; otherwise show generic message
+      const displayError = __DEV__
+        ? errorMessage
+        : t("swapScreen.errors.pathFindFailed");
+
       set({
         isLoadingPath: false,
-        pathError: buildSwapPathErrorMessage(
-          t("swapScreen.errors.pathFindFailed"),
-          errorMessage,
-        ),
+        pathError: displayError,
       });
     }
   },
