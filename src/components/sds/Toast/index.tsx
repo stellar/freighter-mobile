@@ -63,7 +63,13 @@ export const Toast: React.FC<ToastProps> = ({
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const pan = useRef(new Animated.ValueXY()).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+  // Initialize with a no-op PanResponder to avoid undefined during initial render
+  const panResponderRef = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: () => false,
+    })
+  );
 
   const animateIn = useCallback(() => {
     Animated.parallel([
@@ -144,7 +150,7 @@ export const Toast: React.FC<ToastProps> = ({
         }
       },
     });
-  }, [persistent, animateOut, duration, onDismiss, pan]);
+  }, [persistent, animateOut, duration, onDismiss]);
 
   useEffect(() => {
     animateIn();
@@ -166,7 +172,7 @@ export const Toast: React.FC<ToastProps> = ({
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }, { translateY: pan.y }],
         }}
-        {...panResponderRef.current?.panHandlers}
+        {...panResponderRef.current.panHandlers}
       >
         <Notification
           variant={variant}
