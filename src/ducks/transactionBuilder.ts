@@ -5,6 +5,7 @@ import { useDebugStore } from "ducks/debug";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
+import { t } from "i18next";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -229,9 +230,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const { forceBuildTransactionFailure } = useDebugStore.getState();
 
         if (forceBuildTransactionFailure) {
-          throw new Error(
-            "[DEBUG] Forced build transaction failure - testing error handling",
-          );
+          throw new Error(t("debug.debugMessages.buildFailure"));
         }
 
         const builtTxResult = await buildSwapTransaction({
@@ -369,9 +368,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         const { forceSignTransactionFailure } = useDebugStore.getState();
 
         if (forceSignTransactionFailure) {
-          throw new Error(
-            "[DEBUG] Forced sign transaction failure - testing error handling",
-          );
+          throw new Error(t("debug.debugMessages.signFailure"));
         }
 
         const { transactionXDR } = get();
@@ -421,8 +418,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           setTimeout(resolve, 5000);
         });
 
-        const debugErrorMessage =
-          "[DEBUG] Forced submit transaction failure - testing error handling";
+        const debugErrorMessage = t("debug.debugMessages.submitFailure");
 
         logger.error(
           "TransactionBuilderStore",

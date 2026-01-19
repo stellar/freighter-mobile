@@ -1089,7 +1089,13 @@
       "submitDisabled": "Force Submit Failure",
       "swapPathForceEnabled": "✓ Force Swap Path Failure",
       "swapPathForceDisabled": "Force Swap Path Failure",
-      "clearAll": "Clear All Failures"
+      "clearAll": "Clear All Failures",
+      "debugMessages": {
+        "buildFailure": "[DEBUG] Forced build transaction failure - testing error handling",
+        "signFailure": "[DEBUG] Forced sign transaction failure - testing error handling",
+        "submitFailure": "[DEBUG] Forced submit transaction failure - testing error handling",
+        "swapPathFailure": "[DEBUG] Forced swap path finding failure - testing error handling"
+      }
     }
   },
   "blockaid": {

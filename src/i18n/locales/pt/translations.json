@@ -1090,7 +1090,13 @@
       "submitDisabled": "Forçar Falha no Envio",
       "swapPathForceEnabled": "✓ Forçar Falha de Caminho",
       "swapPathForceDisabled": "Forçar Falha de Caminho",
-      "clearAll": "Limpar Todas as Falhas"
+      "clearAll": "Limpar Todas as Falhas",
+      "debugMessages": {
+        "buildFailure": "[DEBUG] Falha forçada na construção de transação - testando tratamento de erros",
+        "signFailure": "[DEBUG] Falha forçada na assinatura de transação - testando tratamento de erros",
+        "submitFailure": "[DEBUG] Falha forçada no envio de transação - testando tratamento de erros",
+        "swapPathFailure": "[DEBUG] Falha forçada na busca de caminho de troca - testando tratamento de erros"
+      }
     }
   },
   "blockaid": {

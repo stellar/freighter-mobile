@@ -181,9 +181,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       const { forceSwapPathFailure } = useDebugStore.getState();
 
       if (forceSwapPathFailure) {
-        throw new Error(
-          "[DEBUG] Forced swap path finding failure - testing error handling",
-        );
+        throw new Error(t("debug.debugMessages.swapPathFailure"));
       }
 
       // For now, we only support classic path payments
