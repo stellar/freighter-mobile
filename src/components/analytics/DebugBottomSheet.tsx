@@ -42,6 +42,16 @@ const CustomContent: React.FC<{
     overriddenBlockaidResponse,
     setOverriddenBlockaidResponse,
     clearOverriddenBlockaidResponse,
+    forceBuildTransactionFailure,
+    forceSignTransactionFailure,
+    forceSubmitTransactionFailure,
+    setForceBuildTransactionFailure,
+    setForceSignTransactionFailure,
+    setForceSubmitTransactionFailure,
+    clearAllTransactionFailures,
+    forceSwapPathFailure,
+    setForceSwapPathFailure,
+    clearSwapPathDebug,
   } = useDebugStore();
   const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
   const [currentVersion] = useState(getVersion());
@@ -348,6 +358,132 @@ const CustomContent: React.FC<{
                 onPress={clearOverriddenBlockaidResponse}
               >
                 {t("debug.blockaidOverride.clearOverride")}
+              </Button>
+            )}
+          </View>
+
+          {/* Swap Failure Overrides Section */}
+          <View className="gap-3 mb-4">
+            <Text lg medium>
+              {t("debug.transactionFailure.title")}
+            </Text>
+            <Text xs color={themeColors.text.secondary}>
+              {t("debug.transactionFailure.description")}
+            </Text>
+
+            {(forceBuildTransactionFailure ||
+              forceSignTransactionFailure ||
+              forceSubmitTransactionFailure ||
+              forceSwapPathFailure) && (
+              <View className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <Text xs color={themeColors.status.warning}>
+                  {t("debug.transactionFailure.activeOverrides")}
+                </Text>
+                {forceBuildTransactionFailure && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.buildActive")}
+                  </Text>
+                )}
+                {forceSignTransactionFailure && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.signActive")}
+                  </Text>
+                )}
+                {forceSubmitTransactionFailure && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.submitActive")}
+                  </Text>
+                )}
+                {forceSwapPathFailure && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.swapPathForceActive")}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <View className="flex flex-col gap-2">
+              <Button
+                variant={
+                  forceBuildTransactionFailure ? "destructive" : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (forceBuildTransactionFailure) {
+                    setForceBuildTransactionFailure(false);
+                  } else {
+                    clearAllTransactionFailures();
+                    setForceBuildTransactionFailure(true);
+                  }
+                }}
+              >
+                {forceBuildTransactionFailure
+                  ? t("debug.transactionFailure.buildEnabled")
+                  : t("debug.transactionFailure.buildDisabled")}
+              </Button>
+
+              <Button
+                variant={
+                  forceSignTransactionFailure ? "destructive" : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (forceSignTransactionFailure) {
+                    setForceSignTransactionFailure(false);
+                  } else {
+                    clearAllTransactionFailures();
+                    setForceSignTransactionFailure(true);
+                  }
+                }}
+              >
+                {forceSignTransactionFailure
+                  ? t("debug.transactionFailure.signEnabled")
+                  : t("debug.transactionFailure.signDisabled")}
+              </Button>
+
+              <Button
+                variant={
+                  forceSubmitTransactionFailure ? "destructive" : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (forceSubmitTransactionFailure) {
+                    setForceSubmitTransactionFailure(false);
+                  } else {
+                    clearAllTransactionFailures();
+                    setForceSubmitTransactionFailure(true);
+                  }
+                }}
+              >
+                {forceSubmitTransactionFailure
+                  ? t("debug.transactionFailure.submitEnabled")
+                  : t("debug.transactionFailure.submitDisabled")}
+              </Button>
+
+              <Button
+                variant={forceSwapPathFailure ? "destructive" : "secondary"}
+                sm
+                onPress={() => setForceSwapPathFailure(!forceSwapPathFailure)}
+              >
+                {forceSwapPathFailure
+                  ? t("debug.transactionFailure.swapPathForceEnabled")
+                  : t("debug.transactionFailure.swapPathForceDisabled")}
+              </Button>
+            </View>
+
+            {(forceBuildTransactionFailure ||
+              forceSignTransactionFailure ||
+              forceSubmitTransactionFailure ||
+              forceSwapPathFailure) && (
+              <Button
+                variant="tertiary"
+                sm
+                onPress={() => {
+                  clearAllTransactionFailures();
+                  clearSwapPathDebug();
+                }}
+              >
+                {t("debug.transactionFailure.clearAll")}
               </Button>
             )}
           </View>

@@ -26,6 +26,8 @@ export interface ToastProps {
   onDismiss?: () => void;
   /** Whether to show filled background */
   isFilled?: boolean;
+  /** If true, the toast will not auto-dismiss and can only be dismissed by user interaction */
+  persistent?: boolean;
 }
 
 const AnimatedWrapper = styled(Animated.View)`
@@ -55,6 +57,7 @@ export const Toast: React.FC<ToastProps> = ({
     : DEFAULT_REGULAR_DURATION,
   onDismiss,
   isFilled,
+  persistent = false,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -131,8 +134,10 @@ export const Toast: React.FC<ToastProps> = ({
             toValue: { x: 0, y: 0 },
             useNativeDriver: true,
           }).start(() => {
-            // Restart the auto-dismiss timer
-            timerRef.current = setTimeout(animateOut, duration);
+            // Restart the auto-dismiss timer only if not persistent
+            if (!persistent) {
+              timerRef.current = setTimeout(animateOut, duration);
+            }
           });
         }
       },
@@ -141,13 +146,16 @@ export const Toast: React.FC<ToastProps> = ({
 
   useEffect(() => {
     animateIn();
-    timerRef.current = setTimeout(animateOut, duration);
+    // Only set auto-dismiss timer if not persistent
+    if (!persistent) {
+      timerRef.current = setTimeout(animateOut, duration);
+    }
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [animateIn, animateOut, duration]);
+  }, [animateIn, animateOut, duration, persistent]);
 
   return (
     <View>

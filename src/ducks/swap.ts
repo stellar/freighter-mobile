@@ -7,6 +7,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
@@ -86,6 +87,17 @@ const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
+const buildSwapPathErrorMessage = (
+  baseMessage: string,
+  rawErrorMessage?: string,
+): string => {
+  if (__DEV__ && rawErrorMessage) {
+    return `${baseMessage} (${rawErrorMessage})`;
+  }
+
+  return baseMessage;
+};
+
 /**
  * Finds the best swap path using Horizon's strict send paths endpoint
  * This is for classic token swaps using Stellar's built-in DEX
@@ -135,8 +147,7 @@ const findClassicSwapPath = async (params: {
     };
   } catch (error) {
     logger.error("SwapStore", "Failed to find classic swap path", error);
-
-    return null;
+    throw error instanceof Error ? error : new Error(String(error));
   }
 };
 
@@ -178,6 +189,14 @@ export const useSwapStore = create<SwapState>((set) => ({
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
     try {
+      const { forceSwapPathFailure } = useDebugStore.getState();
+
+      if (forceSwapPathFailure) {
+        throw new Error(
+          "[DEBUG] Forced swap path finding failure - testing error handling",
+        );
+      }
+
       // For now, we only support classic path payments
       // TODO: Add Soroswap support for Testnet in future iteration
       const pathResult = await findClassicSwapPath({
@@ -190,7 +209,9 @@ export const useSwapStore = create<SwapState>((set) => ({
       if (!pathResult) {
         set({
           isLoadingPath: false,
-          pathError: t("swapScreen.errors.noPathFound"),
+          pathError: buildSwapPathErrorMessage(
+            t("swapScreen.errors.noPathFound"),
+          ),
         });
         return;
       }
@@ -218,7 +239,10 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       set({
         isLoadingPath: false,
-        pathError: errorMessage,
+        pathError: buildSwapPathErrorMessage(
+          t("swapScreen.errors.pathFindFailed"),
+          errorMessage,
+        ),
       });
     }
   },
