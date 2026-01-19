@@ -51,6 +51,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = () => {
       isRefreshing={isRefreshing}
       isNavigationRefresh={isNavigationRefresh}
       className="pt-5"
+      refreshActionPosition="center"
     />
   );
 };
