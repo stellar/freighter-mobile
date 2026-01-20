@@ -104,8 +104,8 @@ jobs:
             exit 0
           fi
 
-          # Check for branches starting with "release" or "emergency-release"
-          RELEASE_BRANCHES=$(git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" | sed 's/.*refs\/heads\///' | grep -E '^(release|emergency-release)' || true)
+          # Check for branches named "release" or "emergency-release", or starting with "release/" or "emergency-release/"
+          RELEASE_BRANCHES=$(git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" | sed 's/.*refs\/heads\///' | grep -E '^(release$|release/|emergency-release$|emergency-release/)' || true)
 
           if [ -n "$RELEASE_BRANCHES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
