@@ -112,10 +112,16 @@ jobs:
             exit 0
           fi
 
-          # Check for branches starting with "release" or "emergency-release"
-          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" | sed 's/.*refs\/heads\///' | grep -qE '^(release|emergency-release)'; then
+          # Check for branches named "release" or "emergency-release", or starting with "release/" or "emergency-release/"
+          RELEASE_BRANCHES=$(git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" | sed 's/.*refs\/heads\///' | grep -E '^(release$|release/|emergency-release$|emergency-release/)' || true)
+
+          if [ -n "$RELEASE_BRANCHES" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Active release branch detected. Skipping scheduled daily dev build."
+            echo "Active release branch(es) detected:"
+            echo "$RELEASE_BRANCHES" | while read -r branch; do
+              echo "  - $branch"
+            done
+            echo "Skipping scheduled daily dev build."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
