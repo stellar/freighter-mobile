@@ -151,7 +151,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   });
 
   const handlePasteFromClipboard = useCallback(() => {
-    getClipboardText().then(handleSearch);
+    getClipboardText().then((text) => {
+      setSearchTerm(text);
+      handleSearch(text);
+    });
   }, [getClipboardText, handleSearch]);
 
   const handleAddToken = useCallback((token: FormattedSearchTokenRecord) => {
