@@ -98,7 +98,7 @@ env:
 
 jobs:
   # Scheduled nightly builds should not overwrite the dev build
-  # when a release candidate branch is active (release/v*).
+  # when a release candidate branch is active (branches starting with "release" or "emergency-release").
   check_release_branch:
     runs-on: ubuntu-latest
     outputs:
@@ -112,7 +112,8 @@ jobs:
             exit 0
           fi
 
-          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" "refs/heads/release/v*" | grep -q .; then
+          # Check for branches starting with "release" or "emergency-release"
+          if git ls-remote --heads "https://github.com/${GITHUB_REPOSITORY}.git" | sed 's/.*refs\/heads\///' | grep -qE '^(release|emergency-release)'; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Active release branch detected. Skipping scheduled daily dev build."
           else
