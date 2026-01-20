@@ -3650,11 +3650,11 @@ SPEC CHECKSUMS:
   react-native-biometrics: 43ed5b828646a7862dbc7945556446be00798e7d
   react-native-blur: 6af83e7e3c4c1446a188d9b2c493600fc4beb173
   react-native-cameraroll: bb98380ee21115d5fe1ae0f8b80c86e044613746
-  react-native-compat: 25460d40f2af22cad17e60cf9e10ddad06887301
+  react-native-compat: c8cacd35c0caa120cee536c864bc0a41763fa26a
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-cookies: d648ab7025833b977c0b19e142503034f5f29411
   react-native-fast-opencv: f603c544dc62f2da3bd6bff459f494db67d77d3b
-  react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
+  react-native-get-random-values: e2acf4070fe4b7325705a05af047449637a27a21
   react-native-ios-context-menu: f76592f78a5a1a5244c9f381a9d93d82301f92b5
   react-native-ios-utilities: d9ed1f5ea011650e9c7e9cb7c82272c1f0363e44
   react-native-menu: 8d2c831a735c9e6528c28b26ca14e57591d87e14
