@@ -178,6 +178,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
+      - name: Install idb-companion
+        run: |
+          brew tap facebook/fb
+          brew install facebook/fb/idb-companion
+
+      - name: Install idb client
+        run: pip3 install fb-idb
+
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
