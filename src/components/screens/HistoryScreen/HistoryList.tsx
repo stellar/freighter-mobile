@@ -10,7 +10,10 @@ import { TransactionDetails } from "components/screens/HistoryScreen";
 import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
-import { TransactionDetailsBottomSheetCustomContent } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
+import {
+  TransactionDetailsBottomSheetCustomContent,
+  TransactionDetailsFooter,
+} from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
 import { NetworkDetails } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
@@ -196,11 +199,17 @@ const HistoryList: React.FC<HistoryListProps> = ({
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }
         scrollable
+        useInsetsBottomPadding={false}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
           />
         }
+        renderFooterComponent={() => (
+          <TransactionDetailsFooter
+            externalUrl={transactionDetails?.externalUrl ?? ""}
+          />
+        )}
       />
 
       <View className="flex-1 relative">
