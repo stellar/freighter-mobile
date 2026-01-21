@@ -218,7 +218,7 @@ jobs:
         id: simulator
         uses: futureware-tech/simulator-action@v4
         with:
-          model: "iPhone 17 Pro"
+          model: "iPhone 14"
           os_version: "26.2"
           erase_before_boot: true
           wait_for_boot: true
