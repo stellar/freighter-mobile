@@ -113,14 +113,14 @@ jobs:
           cd ios
           xcodebuild -workspace freighter-mobile.xcworkspace \
             -scheme freighter-mobile-dev \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -derivedDataPath ./build \
             CODE_SIGNING_ALLOWED=NO
 
           # Find the .app bundle (relative to ios/)
-          APP_PATH=$(find ./build/Build/Products/Debug-iphonesimulator -name "*.app" -type d | head -n 1)
+          APP_PATH=$(find ./build/Build/Products/Release-iphonesimulator -name "*.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: .app bundle not found"
             exit 1
@@ -183,9 +183,6 @@ jobs:
           brew tap facebook/fb
           brew install facebook/fb/idb-companion
 
-      - name: Install idb client
-        run: pip3 install fb-idb
-
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
@@ -231,42 +228,6 @@ jobs:
           erase_before_boot: true
           wait_for_boot: true
           shutdown_after_job: true
-
-      - name: Start Metro bundler
-        env:
-          IS_E2E_TEST: "true"
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
-          echo "Starting Metro bundler in background..."
-
-          # Start Metro and redirect output to a log file so we can monitor it
-          yarn start > /tmp/metro_output.log 2>&1 &
-          METRO_PID=$!
-          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
-          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
-          echo "✅ Metro started in background (PID: $METRO_PID)"
-
-          # Wait for Metro to be ready on port 8081
-          echo "Waiting for Metro to be ready on port 8081..."
-          timeout=300
-          while [ $timeout -gt 0 ]; do
-            if nc -z 127.0.0.1 8081 2>/dev/null || lsof -i :8081 >/dev/null 2>&1; then
-              echo "✅ Metro bundler is ready on port 8081"
-              break
-            fi
-            sleep 1
-            timeout=$((timeout - 1))
-          done
-
-          if [ $timeout -eq 0 ]; then
-            echo "❌ Error: Metro did not start within 5 minutes"
-            if [ -f /tmp/metro_output.log ]; then
-              echo "Metro log output:"
-              tail -n 50 /tmp/metro_output.log || true
-            fi
-            exit 1
-          fi
 
       - name: Install app in Simulator
         run: |
@@ -338,19 +299,6 @@ jobs:
           }
           echo "✅ App launched successfully"
 
-          # Give the app a moment to start connecting to Metro
-          sleep 60
-
-      - name: Wait for Metro connection to device
-        env:
-          APP_ID: "org.stellar.freighterdev"
-          METRO_LOG_FILE: "/tmp/metro_output.log"
-          METRO_PID: ${{ env.METRO_PID }}
-          REPO_ROOT: ${{ github.workspace }}
-        run:
-          ./scripts/wait-for-metro-connection.sh "$APP_ID" 1500
-          "$METRO_LOG_FILE" "${{ steps.simulator.outputs.udid }}" "ios"
-
       - name: Run E2E tests
         env:
           IS_E2E_TEST: "true"
@@ -376,18 +324,6 @@ jobs:
 
           echo "✅ Maestro found: $(maestro --version)"
 
-          # Verify Metro is still running before starting tests
-          echo "Verifying Metro bundler is healthy..."
-          if ! nc -z 127.0.0.1 8081 2>/dev/null && ! lsof -i :8081 >/dev/null 2>&1; then
-            echo "❌ Error: Metro bundler is not responding on port 8081"
-            if [ -f /tmp/metro_output.log ]; then
-              echo "Last 50 lines of Metro log:"
-              tail -n 50 /tmp/metro_output.log || true
-            fi
-            exit 1
-          fi
-          echo "✅ Metro bundler is healthy"
-
           echo "Running E2E tests..."
           yarn test:e2e || {
             echo "❌ Error: E2E tests failed"
@@ -402,14 +338,5 @@ jobs:
         with:
           name: ios-e2e-results-${{ github.run_id }}
           path: e2e-artifacts/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload Metro logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-e2e-metro-logs-${{ github.run_id }}
-          path: /tmp/metro_output.log
           retention-days: 7
           if-no-files-found: ignore

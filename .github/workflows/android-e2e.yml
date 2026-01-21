@@ -22,10 +22,12 @@ env:
   AMPLITUDE_API_KEY: "disabled-for-e2e"
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-e2e"
 
+  # Android Keystores configuration (for create_keystore_file)
+  ANDROID_DEV_KEYSTORE_CONTENT: ${{ secrets.ANDROID_DEV_KEYSTORE_CONTENT }}
+
   # Android Keystore Passwords and Aliases (for build.gradle)
-  ANDROID_DEBUG_KEYSTORE_PASSWORD:
-    ${{ secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD }}
-  ANDROID_DEBUG_KEYSTORE_ALIAS: ${{ vars.ANDROID_DEBUG_KEYSTORE_ALIAS }}
+  ANDROID_DEV_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
+  ANDROID_DEV_KEYSTORE_ALIAS: ${{ vars.ANDROID_DEV_KEYSTORE_ALIAS }}
 
   # Backend URLs
   FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
@@ -119,6 +121,13 @@ jobs:
       - name: Set up Android SDK and NDK for 16KB page size alignment
         run: ./scripts/setup-android-ndk-16kb
 
+      - name: Create Android keystore file
+        run: |
+          echo "Creating dev-release.keystore file..."
+          mkdir -p android/keystores
+          echo "$ANDROID_DEV_KEYSTORE_CONTENT" | base64 -d > android/keystores/dev-release.keystore
+          ls -lh android/keystores/dev-release.keystore
+
       - name: Run Yarn Install
         run: yarn install --immutable
 
@@ -142,17 +151,17 @@ jobs:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd android
-          ./gradlew assembleDevDebug
+          ./gradlew assembleDevRelease
 
           # Find APK with relative path from android directory
-          APK_PATH_REL=$(find ./app/build/outputs/apk/dev/debug -name "*.apk" | head -n 1)
+          APK_PATH_REL=$(find ./app/build/outputs/apk/dev/release -name "*.apk" | head -n 1)
 
           if [ -z "$APK_PATH_REL" ]; then
-            echo "Error: APK not found in ./app/build/outputs/apk/dev/debug"
+            echo "Error: APK not found in ./app/build/outputs/apk/dev/release"
             echo "Searching for APK files:"
             find ./app/build/outputs -name "*.apk" 2>/dev/null || true
-            echo "Contents of ./app/build/outputs/apk/dev/debug:"
-            ls -la ./app/build/outputs/apk/dev/debug/ 2>/dev/null || true
+            echo "Contents of ./app/build/outputs/apk/dev/release:"
+            ls -la ./app/build/outputs/apk/dev/release/ 2>/dev/null || true
             exit 1
           fi
 
@@ -348,50 +357,6 @@ jobs:
           DEVICE_COUNT=$(adb devices | grep -c "device$" || echo "0")
           echo "✅ Found $DEVICE_COUNT connected device(s)"
 
-          # Set up adb reverse to connect emulator to Metro bundler on host
-          echo "Setting up adb reverse for Metro bundler..."
-          adb reverse tcp:8081 tcp:8081 || {
-            echo "⚠️  Warning: Failed to set up adb reverse (Metro may not be accessible from emulator)"
-          }
-          echo "✅ adb reverse configured: tcp:8081 -> tcp:8081"
-
-      - name: Start Metro bundler
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
-          echo "Starting Metro bundler in background..."
-
-          # Start Metro and redirect output to a log file so we can monitor it
-          yarn start > /tmp/metro_output.log 2>&1 &
-          METRO_PID=$!
-          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
-          echo "METRO_LOG_FILE=/tmp/metro_output.log" >> $GITHUB_ENV
-          echo "✅ Metro started in background (PID: $METRO_PID)"
-
-          # Wait for Metro to be ready on port 8081
-          echo "Waiting for Metro to be ready on port 8081..."
-          timeout=300
-          while [ $timeout -gt 0 ]; do
-            if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null; then
-              echo "✅ Metro bundler is ready on port 8081"
-              break
-            elif command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1; then
-              echo "✅ Metro bundler is ready on port 8081"
-              break
-            fi
-            sleep 1
-            timeout=$((timeout - 1))
-          done
-
-          if [ $timeout -eq 0 ]; then
-            echo "❌ Error: Metro did not start within 5 minutes"
-            if [ -f /tmp/metro_output.log ]; then
-              echo "Metro log output:"
-              tail -n 50 /tmp/metro_output.log || true
-            fi
-            exit 1
-          fi
-
       - name: Install app in Emulator
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
@@ -428,29 +393,6 @@ jobs:
           }
           echo "✅ App launched successfully"
 
-          # Give the app a moment to start connecting to Metro
-          sleep 3
-
-      - name: Wait for Metro connection to device
-        env:
-          APP_ID: "org.stellar.freighterdev"
-          METRO_LOG_FILE: "/tmp/metro_output.log"
-          METRO_PID: ${{ env.METRO_PID }}
-          REPO_ROOT: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-
-          # Get Android device serial (usually 'emulator-5554' or similar)
-          DEVICE_SERIAL=$(adb devices | grep "device$" | head -1 | awk '{print $1}' || echo "")
-
-          if [ -z "$DEVICE_SERIAL" ]; then
-            echo "⚠️  Warning: Could not determine device serial, continuing without device-specific checks"
-          else
-            echo "Device serial: $DEVICE_SERIAL"
-          fi
-
-          ./scripts/wait-for-metro-connection.sh "$APP_ID" 900 "$METRO_LOG_FILE" "$DEVICE_SERIAL" "android"
-
       - name: Run E2E tests
         env:
           IS_E2E_TEST: "true"
@@ -476,20 +418,6 @@ jobs:
 
           echo "✅ Maestro found: $(maestro --version)"
 
-          # Verify Metro is still running before starting tests
-          echo "Verifying Metro bundler is healthy..."
-          if ! command -v nc >/dev/null 2>&1 && ! command -v lsof >/dev/null 2>&1; then
-            echo "⚠️  Warning: Neither nc nor lsof available, skipping Metro health check"
-          elif ! (command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 8081 2>/dev/null) && ! (command -v lsof >/dev/null 2>&1 && lsof -i :8081 >/dev/null 2>&1); then
-            echo "❌ Error: Metro bundler is not responding on port 8081"
-            if [ -f /tmp/metro_output.log ]; then
-              echo "Last 50 lines of Metro log:"
-              tail -n 50 /tmp/metro_output.log || true
-            fi
-            exit 1
-          fi
-          echo "✅ Metro bundler is healthy"
-
           echo "Running E2E tests..."
           yarn test:e2e || {
             echo "❌ Error: E2E tests failed"
@@ -504,14 +432,5 @@ jobs:
         with:
           name: android-e2e-results-${{ github.run_id }}
           path: e2e-artifacts/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload Metro logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-e2e-metro-logs-${{ github.run_id }}
-          path: /tmp/metro_output.log
           retention-days: 7
           if-no-files-found: ignore
