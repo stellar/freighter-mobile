@@ -88,15 +88,19 @@ fi
 
 echo "✅ Maestro found: $(maestro --version)"
 
-# Start capturing Android logs in the background
+# Start capturing Android logs in the background (filtered for freighter app)
 LOG_FILE="e2e-artifacts/android-emulator-logs.txt"
-echo "📱 Starting Android logcat capture..."
+echo "📱 Starting Android logcat capture (filtered for freighter app)..."
 mkdir -p e2e-artifacts
 # Clear logcat buffer first to start fresh
 adb logcat -c
-# Start logcat in background with timestamp, capturing all logs
-# We capture everything to ensure we don't miss important logs
-adb logcat -v time > "$LOG_FILE" 2>&1 &
+# Start logcat in background with timestamp, filtering for:
+# - ReactNativeJS (all React Native JavaScript console logs)
+# - ReactNative (native React Native logs)
+# - AndroidRuntime (crashes and errors)
+# - Our app package name (org.stellar.freighterdev)
+# Using grep to filter by package name in addition to tag filtering
+adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E | grep -E "(ReactNativeJS|ReactNative|AndroidRuntime|org\.stellar\.freighterdev|freighter)" > "$LOG_FILE" 2>&1 &
 LOGCAT_PID=$!
 echo "✅ Log capture started (PID: $LOGCAT_PID)"
 
