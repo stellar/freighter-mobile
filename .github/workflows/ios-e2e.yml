@@ -117,7 +117,8 @@ jobs:
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -derivedDataPath ./build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS=freighter-mobile/freighter-mobile-dev.entitlements
 
           # Find the .app bundle (relative to ios/)
           APP_PATH=$(find ./build/Build/Products/Release-iphonesimulator -name "*.app" -type d | head -n 1)
@@ -126,6 +127,19 @@ jobs:
             exit 1
           fi
           echo "Built app at: $APP_PATH (relative to ios/)"
+
+          # Embed entitlements for simulator build (required for Keychain access)
+          # Even with CODE_SIGNING_ALLOWED=NO, we can embed entitlements using ad-hoc signing
+          echo "Embedding entitlements..."
+          ENTITLEMENTS_PATH="freighter-mobile/freighter-mobile-dev.entitlements"
+          if [ -f "$ENTITLEMENTS_PATH" ]; then
+            codesign --force --sign - --entitlements "$ENTITLEMENTS_PATH" "$APP_PATH" || {
+              echo "⚠️  Warning: Failed to embed entitlements, but continuing..."
+            }
+            echo "✅ Entitlements embedded"
+          else
+            echo "⚠️  Warning: Entitlements file not found at $ENTITLEMENTS_PATH"
+          fi
 
           # Get absolute path to repo root
           REPO_ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
