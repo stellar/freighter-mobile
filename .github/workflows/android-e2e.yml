@@ -271,14 +271,6 @@ jobs:
       - name: Run Post Install
         run: yarn postinstall
 
-      - name: List available Android emulators
-        run: |
-          echo "=== Available Android Virtual Devices ==="
-          emulator -list-avds || echo "No emulators found or emulator command not available"
-          echo ""
-          echo "=== AVD Manager List ==="
-          avdmanager list avd || echo "AVD manager not available"
-
       - name: Enable KVM for hardware acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
