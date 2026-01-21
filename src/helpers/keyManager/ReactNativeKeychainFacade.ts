@@ -89,6 +89,12 @@ export class ReactNativeKeychainFacade {
         service: `${this.service}_${id}`,
       });
     } catch (error) {
+      // Use console.error to ensure error details appear in CI logs
+      // (logger.error() doesn't log to console in Release E2E mode)
+      console.error(
+        `[ReactNativeKeychainKeyStore.setKey] Failed to set key ${id}:`,
+        error,
+      );
       throw new Error(`Failed to set key ${id}`);
     }
   }
