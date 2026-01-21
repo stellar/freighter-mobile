@@ -111,6 +111,16 @@ jobs:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd ios
+
+          # Get absolute path to entitlements file
+          ENTITLEMENTS_PATH="$(pwd)/freighter-mobile/freighter-mobile-dev.entitlements"
+          echo "Using entitlements file at: $ENTITLEMENTS_PATH"
+
+          if [ ! -f "$ENTITLEMENTS_PATH" ]; then
+            echo "❌ Error: Entitlements file not found at $ENTITLEMENTS_PATH"
+            exit 1
+          fi
+
           xcodebuild -workspace freighter-mobile.xcworkspace \
             -scheme freighter-mobile-dev \
             -configuration Release \
@@ -118,8 +128,9 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -derivedDataPath ./build \
             CODE_SIGNING_ALLOWED=YES \
-            CODE_SIGN_ENTITLEMENTS=freighter-mobile/freighter-mobile-dev.entitlements \
-            DEVELOPMENT_TEAM=4JWM8JNM37
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS_PATH" \
+            CODE_SIGNING_REQUIRED=NO
 
           # Find the .app bundle (relative to ios/)
           APP_PATH=$(find ./build/Build/Products/Release-iphonesimulator -name "*.app" -type d | head -n 1)
