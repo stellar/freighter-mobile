@@ -93,6 +93,7 @@ start_recording
 
 # Track failures
 failed=0
+failed_tests=""
 
 # Find and run all YAML test flows
 for file in $(find e2e/flows -name "*.yaml"); do
@@ -100,7 +101,14 @@ for file in $(find e2e/flows -name "*.yaml"); do
   if ! maestro test "$file" --test-output-dir "$OUTPUT_DIR"; then
     echo "❌ Test failed: $file"
     failed=1
-    break
+    if [ -z "$failed_tests" ]; then
+      failed_tests="$file"
+    else
+      failed_tests="$failed_tests, $file"
+    fi
+    # Continue to next test instead of breaking
+  else
+    echo "✅ Test passed: $file"
   fi
 done
 
@@ -112,7 +120,8 @@ move_video_to_test_directory
 
 # Exit with appropriate code
 if [ $failed -eq 1 ]; then
-  echo "❌ E2E tests failed"
+  echo "❌ E2E tests completed with failures"
+  echo "Failed tests: $failed_tests"
   exit 1
 else
   echo "✅ All E2E tests passed"
