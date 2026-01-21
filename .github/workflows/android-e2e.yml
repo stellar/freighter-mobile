@@ -244,6 +244,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
