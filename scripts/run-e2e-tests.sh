@@ -1,5 +1,5 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu  # Exit on error, undefined vars (pipefail not available in sh)
 
 # Create output directory for Maestro artifacts
 OUTPUT_DIR="e2e-artifacts"
