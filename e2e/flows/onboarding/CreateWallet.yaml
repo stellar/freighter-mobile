@@ -7,6 +7,16 @@ tags:
     clearState: true
     clearKeychain: true
 
+# If iOS App Tracking Transparency prompt appears on first launch,
+# choose "Ask App Not to Track"
+- runFlow:
+    when:
+      visible:
+        text: "Ask App Not to Track"
+    commands:
+      - tapOn:
+          text: "Ask App Not to Track"
+
 # Wait for welcome screen (may take time on first launch)
 - extendedWaitUntil:
     visible:
