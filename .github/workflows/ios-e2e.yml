@@ -214,11 +214,6 @@ jobs:
           SKIP_COCOAPODS: "yes"
         run: yarn install --immutable
 
-      - name: Run Post Install
-        env:
-          SKIP_COCOAPODS: "yes"
-        run: yarn postinstall
-
       - name: Boot iOS Simulator
         id: simulator
         uses: futureware-tech/simulator-action@v4

@@ -244,12 +244,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "yarn"
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: zulu
-
       - name: Set up Android SDK and NDK for 16KB page size alignment
         run: ./scripts/setup-android-ndk-16kb
 
@@ -267,9 +261,6 @@ jobs:
 
       - name: Run Yarn Install
         run: yarn install --immutable
-
-      - name: Run Post Install
-        run: yarn postinstall
 
       - name: Enable KVM for hardware acceleration
         run: |
