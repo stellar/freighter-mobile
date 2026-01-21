@@ -218,11 +218,11 @@ jobs:
         id: simulator
         uses: futureware-tech/simulator-action@v4
         with:
-          model: "iPhone 14"
+          model: "iPhone 17"
           os_version: "26.2"
-          erase_before_boot: true
+          # erase_before_boot: true
           wait_for_boot: true
-          shutdown_after_job: true
+          # shutdown_after_job: true
 
       - name: Install app in Simulator
         run: |
