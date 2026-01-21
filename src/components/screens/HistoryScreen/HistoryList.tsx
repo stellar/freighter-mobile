@@ -195,6 +195,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         handleCloseModal={() =>
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }
+        scrollable
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
