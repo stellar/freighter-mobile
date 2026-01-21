@@ -301,8 +301,8 @@ jobs:
             -noaudio -no-boot-anim -partition-size 4096 -cache-size 1024 -accel
             on"
           disable-animations: true
-          # Don't provide a script - this allows the emulator to stay running
-          # Boot verification will be handled in the "Verify ADB connection" step
+          script:
+            echo "Emulator started, boot verification will happen in next step"
 
       - name: Verify ADB connection
         run: |
