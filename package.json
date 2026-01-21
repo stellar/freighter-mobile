@@ -147,7 +147,9 @@
   "devDependencies": {
     "@babel/core": "7.26.9",
     "@babel/preset-env": "7.26.9",
+    "@eslint/js": "8.57.1",
     "@fnando/eslint-plugin-consistent-import": "*",
+    "@humanwhocodes/config-array": "0.13.0",
     "@react-native-community/cli": "20.0.2",
     "@react-native-community/cli-platform-android": "20.0.2",
     "@react-native-community/cli-platform-ios": "20.0.2",
@@ -170,8 +172,6 @@
     "@walletconnect/jsonrpc-types": "1.0.4",
     "babel-plugin-module-resolver": "5.0.2",
     "babel-plugin-styled-components": "2.1.4",
-    "@eslint/js": "8.57.1",
-    "@humanwhocodes/config-array": "0.13.0",
     "eslint": "8.57.1",
     "eslint-config-airbnb": "19.0.4",
     "eslint-config-airbnb-typescript": "18.0.0",
