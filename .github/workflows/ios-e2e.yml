@@ -231,11 +231,38 @@ jobs:
         id: simulator
         uses: futureware-tech/simulator-action@v4
         with:
-          model: "iPhone 17"
-          os_version: "26.2"
+          model: "iPhone 16e"
+          os_version: "26.0"
           # erase_before_boot: true
           wait_for_boot: true
           # shutdown_after_job: true
+
+      - name: Optimize Simulator Performance
+        run: |
+          set -euo pipefail
+
+          DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
+          echo "Optimizing simulator performance for device: $DEVICE_UDID"
+
+          # Wait for simulator to be fully ready
+          sleep 5
+
+          # Disable animations via accessibility settings
+          xcrun simctl spawn "$DEVICE_UDID" defaults write com.apple.Accessibility ReduceMotionEnabled -bool true 2>/dev/null || true
+
+          # Disable transparency effects
+          xcrun simctl spawn "$DEVICE_UDID" defaults write com.apple.universalaccess reduceTransparency -bool true 2>/dev/null || true
+
+          # Disable location services to reduce background processing
+          xcrun simctl privacy "$DEVICE_UDID" revoke location all 2>/dev/null || true
+
+          # Disable background app refresh
+          xcrun simctl spawn "$DEVICE_UDID" defaults write com.apple.BackgroundTaskManagement BackgroundAppRefreshEnabled -bool false 2>/dev/null || true
+
+          # Reduce window scale for better performance
+          defaults write com.apple.iphonesimulator SimulatorWindowLastScale "0.75" 2>/dev/null || true
+
+          echo "✅ Simulator performance optimizations applied"
 
       - name: Install app in Simulator
         run: |
