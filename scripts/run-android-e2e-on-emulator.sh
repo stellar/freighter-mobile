@@ -94,23 +94,35 @@ echo "📱 Starting Android logcat capture (filtered for freighter app)..."
 mkdir -p e2e-artifacts
 # Clear logcat buffer first to start fresh
 adb logcat -c
-# Start logcat in background with timestamp, filtering for:
-# - ReactNativeJS (all React Native JavaScript console logs)
-# - ReactNative (native React Native logs)
-# - AndroidRuntime (crashes and errors)
+# Start logcat in background with timestamp, filtering by log tags:
+# - ReactNativeJS:V (all React Native JavaScript console logs)
+# - ReactNative:V (native React Native logs)
+# - AndroidRuntime:E (crashes and errors)
+# Then pipe through grep to further filter for:
+# - The same tags (to catch any missed entries)
 # - Our app package name (org.stellar.freighterdev)
-# Using grep to filter by package name in addition to tag filtering
-adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E | grep -E "(ReactNativeJS|ReactNative|AndroidRuntime|org\.stellar\.freighterdev|freighter)" > "$LOG_FILE" 2>&1 &
+# - The word "freighter" (to catch any related logs)
+# Use --line-buffered to prevent grep from buffering output
+adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E | grep --line-buffered -E "(ReactNativeJS|ReactNative|AndroidRuntime|org\.stellar\.freighterdev|freighter)" > "$LOG_FILE" 2>&1 &
 LOGCAT_PID=$!
 echo "✅ Log capture started (PID: $LOGCAT_PID)"
 
 # Cleanup function
 cleanup() {
+  echo "🛑 Stopping logcat capture..."
+  # Kill the grep process (which will also terminate the pipeline)
   if [ -n "${LOGCAT_PID:-}" ]; then
-    echo "🛑 Stopping logcat capture..."
-    kill "$LOGCAT_PID" 2>/dev/null || true
-    wait "$LOGCAT_PID" 2>/dev/null || true
+    kill -TERM "$LOGCAT_PID" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$LOGCAT_PID" 2>/dev/null || true
+    # Don't wait for the process - just kill it and move on
+    # This prevents the script from hanging if the process is stuck
   fi
+  # Kill any remaining adb logcat processes to ensure cleanup
+  pkill -f "adb logcat.*ReactNativeJS" 2>/dev/null || true
+  # Give a brief moment for processes to terminate
+  sleep 1
+  echo "✅ Logcat capture stopped"
 }
 trap cleanup EXIT INT TERM
 
