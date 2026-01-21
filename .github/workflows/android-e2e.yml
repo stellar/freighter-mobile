@@ -265,10 +265,14 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Boot Android Emulator
+      - name: Boot Android Emulator and Run E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         id: emulator
         continue-on-error: false
+        env:
+          IS_E2E_TEST: "true"
+          MAESTRO_DISABLE_UPDATE_CHECK: "true"
+          MAESTRO_CLI_NO_ANALYTICS: "true"
         with:
           api-level: 33
           arch: x86_64
@@ -281,130 +285,112 @@ jobs:
             -noaudio -no-boot-anim -partition-size 4096 -cache-size 1024 -accel
             on"
           disable-animations: true
-          script:
-            echo "Emulator started, boot verification will happen in next step"
+          script: |
+            set -eu  # Exit on error, undefined vars (pipefail not available in sh)
 
-      - name: Verify ADB connection
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
+            echo "=== Verifying ADB connection ==="
+            adb devices
 
-          echo "Verifying ADB connection to device/emulator..."
-          adb devices
+            # Wait for emulator to boot completely
+            echo "Waiting for emulator to boot completely..."
+            adb wait-for-device
 
-          # Wait for emulator to boot completely (same logic as wait-for-emulator-boot.sh)
-          echo "Waiting for emulator to boot completely..."
-          adb wait-for-device
+            # Wait for boot completed flag
+            boot_completed=""
+            timeout=600  # 10 minutes
+            while [ "$timeout" -gt 0 ]; do
+              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              if [ "$boot_completed" = "1" ]; then
+                break
+              fi
+              sleep 2
+              timeout=$((timeout - 2))
+            done
 
-          # Wait for boot completed flag
-          boot_completed=""
-          timeout=600  # 10 minutes
-          while [ "$timeout" -gt 0 ]; do
-            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            if [ "$boot_completed" = "1" ]; then
-              break
+            if [ "$boot_completed" != "1" ]; then
+              echo "❌ Error: Emulator failed to boot within 10 minutes"
+              exit 1
             fi
+
+            # Wait for ADB device to be online (retry logic)
+            echo "Waiting for ADB device to be online..."
+            timeout=300  # 5 minutes
+            adb_ready=false
+            while [ $timeout -gt 0 ]; do
+              if adb devices | grep -q "device$"; then
+                adb_ready=true
+                break
+              fi
+              echo "Device not ready yet, waiting... (${timeout}s remaining)"
+              sleep 5
+              timeout=$((timeout - 5))
+              adb devices
+            done
+
+            if [ "$adb_ready" = false ]; then
+              echo "❌ Error: No Android device/emulator connected or device is not ready"
+              echo "ADB devices output:"
+              adb devices
+              exit 1
+            fi
+
+            DEVICE_COUNT=$(adb devices | grep -c "device$" || echo "0")
+            echo "✅ Found $DEVICE_COUNT connected device(s)"
+
+            # Install APK
+            echo "=== Installing app ==="
+            adb install -r downloaded-artifacts/app.apk || {
+              echo "❌ Error: Failed to install APK"
+              exit 1
+            }
+            echo "✅ APK installed"
+
+            # Launch the app
+            echo "=== Launching app ==="
+            APP_ID="org.stellar.freighterdev"
+            MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
+
+            echo "App ID: $APP_ID"
+            echo "Main Activity: $MAIN_ACTIVITY"
+
+            # Give the Package Manager a brief moment to register the new install
             sleep 2
-            timeout=$((timeout - 2))
-          done
 
-          if [ "$boot_completed" != "1" ]; then
-            echo "❌ Error: Emulator failed to boot within 10 minutes"
-            exit 1
-          fi
+            adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
+              echo "❌ Error: Failed to launch app on emulator"
+              echo "Checking if app is installed..."
+              adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
+              exit 1
+            }
+            echo "✅ App launched successfully"
 
-          # Wait for ADB device to be online (retry logic)
-          echo "Waiting for ADB device to be online..."
-          timeout=300  # 5 minutes
-          adb_ready=false
-          while [ $timeout -gt 0 ]; do
-            if adb devices | grep -q "device$"; then
-              adb_ready=true
-              break
+            # Run E2E tests
+            echo "=== Running E2E tests ==="
+
+            # Verify Maestro is installed and accessible
+            MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+            if [ ! -f "$MAESTRO_PATH" ]; then
+              echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+              exit 1
             fi
-            echo "Device not ready yet, waiting... (${timeout}s remaining)"
-            sleep 5
-            timeout=$((timeout - 5))
-            adb devices
-          done
 
-          if [ "$adb_ready" = false ]; then
-            echo "❌ Error: No Android device/emulator connected or device is not ready"
-            echo "ADB devices output:"
-            adb devices
-            exit 1
-          fi
+            # Add Maestro to PATH and verify
+            export PATH="$PATH:$HOME/.maestro/bin"
+            if ! command -v maestro >/dev/null 2>&1; then
+              echo "❌ Error: maestro command not found in PATH"
+              echo "PATH: $PATH"
+              exit 1
+            fi
 
-          DEVICE_COUNT=$(adb devices | grep -c "device$" || echo "0")
-          echo "✅ Found $DEVICE_COUNT connected device(s)"
+            echo "✅ Maestro found: $(maestro --version)"
 
-      - name: Install app in Emulator
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
+            echo "Running E2E tests..."
+            yarn test:e2e || {
+              echo "❌ Error: E2E tests failed"
+              exit 1
+            }
 
-          # Install APK (fail if this doesn't work)
-          echo "Installing APK..."
-          adb install -r downloaded-artifacts/app.apk || {
-            echo "❌ Error: Failed to install APK"
-            exit 1
-          }
-          echo "✅ APK installed"
-
-      - name: Launch app on Emulator
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
-          # Launch the app on the emulator
-          APP_ID="org.stellar.freighterdev"
-          MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
-
-          echo "=== Launching app on emulator ==="
-          echo "App ID: $APP_ID"
-          echo "Main Activity: $MAIN_ACTIVITY"
-
-          # Give the Package Manager a brief moment to register the new install
-          sleep 2
-
-          # Launch the app
-          adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
-            echo "❌ Error: Failed to launch app on emulator"
-            echo "Checking if app is installed..."
-            adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
-            exit 1
-          }
-          echo "✅ App launched successfully"
-
-      - name: Run E2E tests
-        env:
-          IS_E2E_TEST: "true"
-          MAESTRO_DISABLE_UPDATE_CHECK: "true"
-          MAESTRO_CLI_NO_ANALYTICS: "true"
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
-          # Verify Maestro is installed and accessible
-          MAESTRO_PATH="$HOME/.maestro/bin/maestro"
-          if [ ! -f "$MAESTRO_PATH" ]; then
-            echo "❌ Error: Maestro not found at $MAESTRO_PATH"
-            exit 1
-          fi
-
-          # Add Maestro to PATH and verify
-          export PATH="$PATH:$HOME/.maestro/bin"
-          if ! command -v maestro &> /dev/null; then
-            echo "❌ Error: maestro command not found in PATH"
-            echo "PATH: $PATH"
-            exit 1
-          fi
-
-          echo "✅ Maestro found: $(maestro --version)"
-
-          echo "Running E2E tests..."
-          yarn test:e2e || {
-            echo "❌ Error: E2E tests failed"
-            exit 1
-          }
-
-          echo "✅ All E2E tests passed"
+            echo "✅ All E2E tests passed"
 
       - name: Upload test artifacts
         if: always()
