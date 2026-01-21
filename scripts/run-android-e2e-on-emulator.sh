@@ -88,6 +88,28 @@ fi
 
 echo "✅ Maestro found: $(maestro --version)"
 
+# Start capturing Android logs in the background
+LOG_FILE="e2e-artifacts/android-emulator-logs.txt"
+echo "📱 Starting Android logcat capture..."
+mkdir -p e2e-artifacts
+# Clear logcat buffer first to start fresh
+adb logcat -c
+# Start logcat in background with timestamp, capturing all logs
+# We capture everything to ensure we don't miss important logs
+adb logcat -v time > "$LOG_FILE" 2>&1 &
+LOGCAT_PID=$!
+echo "✅ Log capture started (PID: $LOGCAT_PID)"
+
+# Cleanup function
+cleanup() {
+  if [ -n "${LOGCAT_PID:-}" ]; then
+    echo "🛑 Stopping logcat capture..."
+    kill "$LOGCAT_PID" 2>/dev/null || true
+    wait "$LOGCAT_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT INT TERM
+
 echo "Running E2E tests..."
 yarn test:e2e || {
   echo "❌ Error: E2E tests failed"

@@ -303,6 +303,27 @@ jobs:
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
+          DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
+          APP_ID="org.stellar.freighterdev"
+          LOG_FILE="e2e-artifacts/ios-simulator-logs.txt"
+
+          # Start capturing iOS simulator logs in the background
+          echo "📱 Starting iOS simulator log capture..."
+          mkdir -p e2e-artifacts
+          xcrun simctl spawn "$DEVICE_UDID" log stream --level=debug --predicate 'processImagePath contains "freighter"' > "$LOG_FILE" 2>&1 &
+          LOG_PID=$!
+          echo "✅ Log capture started (PID: $LOG_PID)"
+
+          # Cleanup function
+          cleanup() {
+            if [ -n "${LOG_PID:-}" ]; then
+              echo "🛑 Stopping log capture..."
+              kill "$LOG_PID" 2>/dev/null || true
+              wait "$LOG_PID" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT INT TERM
+
           # Verify Maestro is installed and accessible
           MAESTRO_PATH="$HOME/.maestro/bin/maestro"
           if [ ! -f "$MAESTRO_PATH" ]; then

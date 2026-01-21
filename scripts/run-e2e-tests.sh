@@ -68,23 +68,6 @@ stop_recording() {
   fi
 }
 
-# Function to move video to test output directory
-move_video_to_test_directory() {
-  if [ -f "$VIDEO_PATH" ]; then
-    # Find the most recently created test output directory
-    # Maestro creates directories with format YYYY-MM-DD_HHMMSS
-    LATEST_TEST_DIR=$(find "$OUTPUT_DIR" -maxdepth 1 -type d -regex ".*/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_[0-9]\{6\}" | sort | tail -n 1)
-    
-    if [ -n "$LATEST_TEST_DIR" ] && [ -d "$LATEST_TEST_DIR" ]; then
-      echo "📁 Moving video to latest test output directory: $LATEST_TEST_DIR"
-      mv "$VIDEO_PATH" "$LATEST_TEST_DIR/test-recording.mp4"
-      echo "✅ Video moved to $LATEST_TEST_DIR/test-recording.mp4"
-    else
-      echo "⚠️  Warning: Could not find test output directory, keeping video at $VIDEO_PATH"
-    fi
-  fi
-}
-
 # Trap to ensure recording is stopped on exit
 trap stop_recording EXIT INT TERM
 
@@ -114,9 +97,6 @@ done
 
 # Stop recording before exit
 stop_recording
-
-# Move video to the test output directory
-move_video_to_test_directory
 
 # Exit with appropriate code
 if [ $failed -eq 1 ]; then

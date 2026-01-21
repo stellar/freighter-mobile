@@ -91,11 +91,12 @@ export class ReactNativeKeychainFacade {
     } catch (error) {
       // Use console.error to ensure error details appear in CI logs
       // (logger.error() doesn't log to console in Release E2E mode)
+      // eslint-disable-next-line no-console
       console.error(
         `[ReactNativeKeychainKeyStore.setKey] Failed to set key ${id}:`,
         error,
       );
-      throw new Error(`Failed to set key ${id}`);
+      throw new Error(`Failed to set key ${id}, error: ${String(error)}`);
     }
   }
 
