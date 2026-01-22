@@ -233,7 +233,7 @@ jobs:
         with:
           model: "iPhone 16e"
           os_version: "26.2"
-          wait_for_boot: true
+          # wait_for_boot: true
 
       - name: Optimize Simulator Performance
         run: |
