@@ -53,15 +53,34 @@ tags:
     id: default-action-button
 
 # Import wallet screen - enter recovery phrase
-# Use clipboard + paste for speed and reliability (avoids inputText flakiness).
+# iOS: CI sets simulator clipboard before tests; tap the app's clipboard button to paste.
+# Android: Use Maestro setClipboard + pasteText (avoids inputText flakiness).
 - assertVisible:
     id: import-wallet-input
-- setClipboard:
-    "mushroom uncover sail prevent spot theory work inflict arctic figure dish
-    surround"
-- tapOn:
-    id: import-wallet-input
-- pasteText
+- runFlow:
+    when:
+      platform: ios
+    commands:
+      - tapOn:
+          id: clipboard-button
+      # Handle iOS paste permission modal if it appears
+      - runFlow:
+          when:
+            visible:
+              text: "Allow Paste|Don't Allow Paste"
+          commands:
+            - tapOn:
+                text: "Allow Paste"
+- runFlow:
+    when:
+      platform: android
+    commands:
+      - setClipboard:
+          "mushroom uncover sail prevent spot theory work inflict arctic figure
+          dish surround"
+      - tapOn:
+          id: import-wallet-input
+      - pasteText
 # Tap continue/import button
 - tapOn:
     id: default-action-button
