@@ -23,6 +23,7 @@ import {
   SectionList,
   View,
   SectionListData,
+  useWindowDimensions,
 } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -69,6 +70,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   refreshActionPosition = "center",
 }) => {
   const { t } = useAppTranslation();
+  const { height: windowHeight } = useWindowDimensions();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -209,6 +211,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         }
         scrollable
         useInsetsBottomPadding={false}
+        maxDynamicContentSize={windowHeight * 0.9}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
