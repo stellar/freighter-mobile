@@ -52,70 +52,23 @@ tags:
     id: default-action-button
 
 # Import wallet screen - enter recovery phrase
-# Retry up to 3 times: clear field, type phrase slower (word-by-word), tap continue.
-# Retries only if navigation doesn't happen after tapping continue (e.g., invalid phrase due to skipped letters).
-# Handles flaky inputText (e.g. skipped letters) when simulator types too fast.
-- retry:
-    maxRetries: 3
-    commands:
-      - assertVisible:
-          id: import-wallet-input
-      - tapOn:
-          id: import-wallet-input
-      # Clear any existing text (iOS workaround: long press -> Select All -> erase)
-      - longPressOn:
-          id: import-wallet-input
-      - runFlow:
-          when:
-            visible:
-              text: "Select All|Select all"
-          commands:
-            - tapOn:
-                text: "Select All|Select all"
-      - eraseText: 100
-      # Type phrase word-by-word with short pauses to avoid skipped characters
-      - inputText: "mushroom "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "uncover "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "sail "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "prevent "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "spot "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "theory "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "work "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "inflict "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "arctic "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "figure "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "dish "
-      - waitForAnimationToEnd:
-          timeout: 150
-      - inputText: "surround"
-      # Tap continue/import button
-      - tapOn:
-          id: default-action-button
-      # Verify navigation occurred - if we're still on import screen, this will fail and trigger retry
-      - extendedWaitUntil:
-          notVisible:
-            id: import-wallet-input
-          timeout: 15000
+# Uses input-text.yaml utility flow to handle flaky inputText (e.g. skipped letters) when simulator types too fast.
+# The utility flow inputs text in 2-character chunks to avoid skipped characters.
+- assertVisible:
+    id: import-wallet-input
+- tapOn:
+    id: import-wallet-input
+# Type recovery phrase using utility flow that inputs text in 2-character chunks
+# to avoid skipped characters when simulator types too fast
+- runFlow:
+    file: ../utils/input-text.yaml
+    env:
+      INPUT_TEXT:
+        "mushroom uncover sail prevent spot theory work inflict arctic figure
+        dish surround"
+# Tap continue/import button
+- tapOn:
+    id: default-action-button
 
 # Biometrics screen - skip biometrics if it appears
 - runFlow:
