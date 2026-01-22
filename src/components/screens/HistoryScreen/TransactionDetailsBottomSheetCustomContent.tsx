@@ -272,7 +272,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         <View className="bg-background-tertiary rounded-[16px] p-4">
           {assetDiffs.map((diff, index) => (
             <AssetDiffRow
-              key={`${diff.amount}:${diff.assetCode}`}
+              key={`${diff.isCredit ? "credit" : "debit"}:${diff.assetCode}:${diff.assetIssuer ?? "native"}:${diff.amount}`}
               diff={diff}
               themeColors={themeColors}
               isLast={index === assetDiffs.length - 1}
