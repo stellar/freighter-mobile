@@ -52,20 +52,15 @@ tags:
     id: default-action-button
 
 # Import wallet screen - enter recovery phrase
-# Uses input-text.yaml utility flow to handle flaky inputText (e.g. skipped letters) when simulator types too fast.
-# The utility flow inputs text in 2-character chunks to avoid skipped characters.
+# Use clipboard + paste for speed and reliability (avoids inputText flakiness).
 - assertVisible:
     id: import-wallet-input
+- setClipboard:
+    "mushroom uncover sail prevent spot theory work inflict arctic figure dish
+    surround"
 - tapOn:
     id: import-wallet-input
-# Type recovery phrase using utility flow that inputs text in 2-character chunks
-# to avoid skipped characters when simulator types too fast
-- runFlow:
-    file: ../utils/input-text.yaml
-    env:
-      INPUT_TEXT:
-        "mushroom uncover sail prevent spot theory work inflict arctic figure
-        dish surround"
+- pasteText
 # Tap continue/import button
 - tapOn:
     id: default-action-button
