@@ -588,7 +588,7 @@ export const KeyValueInvokeHostFn = ({
 
         // contractIdPreimageFromAsset
         const preimageFromAsset = preimage.fromAsset();
-        const preimageValue = preimageFromAsset.value()!;
+        const preimageValue = preimageFromAsset.value();
 
         return (
           <>
