@@ -129,6 +129,15 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
   const keyExtractor = useCallback((item: Operation) => item.id.toString(), []);
 
+  const renderFooterComponent = useCallback(
+    () => (
+      <TransactionDetailsFooter
+        externalUrl={transactionDetails?.externalUrl ?? ""}
+      />
+    ),
+    [transactionDetails?.externalUrl],
+  );
+
   const getEmptyListClasses = (
     position: "start" | "center" | "end",
   ): string => {
@@ -205,11 +214,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
             transactionDetails={transactionDetails!}
           />
         }
-        renderFooterComponent={() => (
-          <TransactionDetailsFooter
-            externalUrl={transactionDetails?.externalUrl ?? ""}
-          />
-        )}
+        renderFooterComponent={renderFooterComponent}
       />
 
       <View className="flex-1 relative">
