@@ -11,6 +11,7 @@ tags:
 # choose "Ask App Not to Track"
 - runFlow:
     when:
+      platform: ios
       visible:
         text: "Ask App Not to Track"
     commands:
