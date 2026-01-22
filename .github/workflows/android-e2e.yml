@@ -68,25 +68,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
 
-      - name: Free disk space
-        run: |
-          echo "=== Disk space before cleanup ==="
-          df -h
-
-          echo "=== Cleaning up system caches ==="
-          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
-          sudo rm -rf /opt/ghc 2>/dev/null || true
-          sudo rm -rf /opt/hostedtoolcache/CodeQL 2>/dev/null || true
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY" 2>/dev/null || true
-          sudo rm -rf /opt/microsoft 2>/dev/null || true
-          sudo rm -rf /opt/hostedtoolcache 2>/dev/null || true
-
-          echo "=== Cleaning up apt cache ==="
-          sudo apt-get clean || true
-
-          echo "=== Disk space after cleanup ==="
-          df -h
-
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -282,11 +263,9 @@ jobs:
           profile: Nexus 6
           cores: 4
           ram-size: 4096
-          force-avd-creation: true
           emulator-options:
-            "-no-snapshot-save -wipe-data -no-window -gpu swiftshader_indirect
-            -noaudio -no-boot-anim -partition-size 4096 -cache-size 1024 -accel
-            on"
+            "-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio
+            -no-boot-anim -partition-size 4096 -cache-size 1024 -accel on"
           disable-animations: true
           script: ./scripts/run-android-e2e-on-emulator.sh
 

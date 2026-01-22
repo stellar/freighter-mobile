@@ -232,10 +232,8 @@ jobs:
         uses: futureware-tech/simulator-action@v4
         with:
           model: "iPhone 16e"
-          os_version: "26.0"
-          # erase_before_boot: true
+          os_version: "26.2"
           wait_for_boot: true
-          # shutdown_after_job: true
 
       - name: Optimize Simulator Performance
         run: |
