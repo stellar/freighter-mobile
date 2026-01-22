@@ -4,6 +4,11 @@
 import { EncryptedKey } from "@stellar/typescript-wallet-sdk-km";
 import { logger } from "config/logger";
 import * as Keychain from "react-native-keychain";
+import {
+  SECURE_KEYCHAIN_GET_OPTIONS,
+  SECURE_KEYCHAIN_SET_OPTIONS,
+  INDEX_KEYCHAIN_OPTIONS,
+} from "services/storage/keychainSecurityConfig";
 
 /**
  * Configuration parameters for ReactNativeKeychainFacade
@@ -40,9 +45,12 @@ export class ReactNativeKeychainFacade {
    */
   public async hasKey(id: string): Promise<boolean> {
     try {
-      const result = await Keychain.getGenericPassword({
+      const getOptions: Keychain.GetOptions = {
         service: `${this.service}_${id}`,
-      });
+        ...SECURE_KEYCHAIN_GET_OPTIONS,
+      };
+
+      const result = await Keychain.getGenericPassword(getOptions);
       return result !== false;
     } catch (error) {
       logger.error(
@@ -57,12 +65,16 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Get a key from keychain
+   *
    */
   public async getKey(id: string): Promise<EncryptedKey | null> {
     try {
-      const result = await Keychain.getGenericPassword({
+      const getOptions: Keychain.GetOptions = {
         service: `${this.service}_${id}`,
-      });
+        ...SECURE_KEYCHAIN_GET_OPTIONS,
+      };
+
+      const result = await Keychain.getGenericPassword(getOptions);
 
       if (result === false) {
         return null;
@@ -82,12 +94,16 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Set a key in keychain
+   *
    */
   public async setKey(id: string, key: EncryptedKey): Promise<void> {
     try {
-      await Keychain.setGenericPassword(id, JSON.stringify(key), {
+      const setOptions: Keychain.SetOptions = {
         service: `${this.service}_${id}`,
-      });
+        ...SECURE_KEYCHAIN_SET_OPTIONS,
+      };
+
+      await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
       // Use console.error to ensure error details appear in CI logs
       // (logger.error() doesn't log to console in Release E2E mode)
@@ -125,9 +141,9 @@ export class ReactNativeKeychainFacade {
   public async getAllKeys(): Promise<EncryptedKey[]> {
     const keys: EncryptedKey[] = [];
     try {
-      // Get the index key with service only
       const result = await Keychain.getGenericPassword({
         service: `${this.service}_index`,
+        ...INDEX_KEYCHAIN_OPTIONS,
       });
 
       if (result === false) {
@@ -156,12 +172,13 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Add a key ID to the index
+   *
    */
   public async addToKeyIndex(id: string): Promise<void> {
     try {
-      // Using a specific service name for the index
       const result = await Keychain.getGenericPassword({
         service: `${this.service}_index`,
+        ...INDEX_KEYCHAIN_OPTIONS,
       });
 
       let keyIds: string[] = [];
@@ -177,6 +194,7 @@ export class ReactNativeKeychainFacade {
           JSON.stringify(keyIds),
           {
             service: `${this.service}_index`,
+            ...INDEX_KEYCHAIN_OPTIONS,
           },
         );
       }
@@ -193,6 +211,7 @@ export class ReactNativeKeychainFacade {
         JSON.stringify([id]),
         {
           service: `${this.service}_index`,
+          ...INDEX_KEYCHAIN_OPTIONS,
         },
       );
     }
@@ -200,11 +219,13 @@ export class ReactNativeKeychainFacade {
 
   /**
    * Remove a key ID from the index
+   *
    */
   public async removeFromKeyIndex(id: string): Promise<void> {
     try {
       const result = await Keychain.getGenericPassword({
         service: `${this.service}_index`,
+        ...INDEX_KEYCHAIN_OPTIONS,
       });
 
       if (result !== false) {
@@ -216,6 +237,7 @@ export class ReactNativeKeychainFacade {
           JSON.stringify(newKeyIds),
           {
             service: `${this.service}_index`,
+            ...INDEX_KEYCHAIN_OPTIONS,
           },
         );
       }

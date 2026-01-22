@@ -42,7 +42,6 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
-import { DevSettings } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
@@ -295,9 +294,9 @@ interface AuthActions {
   refreshActiveAccount: () => Promise<ActiveAccount | null>;
   setNavigationRef: (ref: NavigationContainerRef<RootStackParamList>) => void;
   navigateToLockScreen: () => void;
-  getTemporaryStore: () => Promise<TemporaryStore | null>;
   verifyBiometrics: () => Promise<boolean>;
   storeBiometricPassword: (password: string) => Promise<void>;
+  initBiometricPassword: () => Promise<boolean>;
   getKeyFromKeyManager: (
     password: string,
     activeAccountId?: string | null,
@@ -357,7 +356,7 @@ const initializeStore = async (
       setState({ network: activeNetwork as NETWORKS });
     }
   } catch (error) {
-    logger.error("initializeStore", "Failed to load active network", error);
+    logger.error("initializeStore", "Failed to initialize store", error);
   }
 };
 
@@ -456,11 +455,17 @@ const decryptTemporaryStore = async (
   return JSON.parse(decryptedData) as TemporaryStore;
 };
 
+// Track repeated failures for monitoring
+let getTemporaryStoreFailureCount = 0;
+let lastFailureTimestamp = 0;
+const FAILURE_RESET_WINDOW_MS = 60000; // 1 minute window
+const SUSPICIOUS_FAILURE_THRESHOLD = 3; // Log warning after 3 failures
+
 /**
  * Retrieves data from the temporary store
  *
  * Gets the hash key, retrieves the encrypted temporary store,
- * and decrypts it to access sensitive data.
+ * and decrypts it to access the data.
  *
  * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if retrieval failed
  */
@@ -471,77 +476,75 @@ const getTemporaryStore = async (): Promise<TemporaryStore | null> => {
     if (!hashKey) {
       logger.error(
         "[getTemporaryStore]",
-        "Hash key error",
-        "Hash key not found",
+        "Hash key not found - user must sign in",
+        undefined,
       );
 
       return null;
     }
 
-    // Get the encrypted temporary store
+    if (isHashKeyExpired(hashKey)) {
+      logger.error(
+        "[getTemporaryStore]",
+        "Hash key has expired, access denied",
+        undefined,
+      );
+
+      return null;
+    }
+
     const temporaryStore = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
-
     if (!temporaryStore) {
       logger.error(
         "[getTemporaryStore]",
-        "Temporary store data error",
         "Temporary store data not found",
+        undefined,
       );
 
       return null;
     }
 
+    let decryptedTemporaryStore: TemporaryStore | null = null;
+
     try {
-      const decryptedTemporaryStore = await decryptTemporaryStore(
+      decryptedTemporaryStore = await decryptTemporaryStore(
         hashKey,
         temporaryStore,
       );
-
-      if (!decryptedTemporaryStore) {
-        logger.error(
-          "[getTemporaryStore]",
-          "decryption error",
-          "Failed to decrypt temporary store",
-        );
-
-        return null;
-      }
-
-      // Validate the structure of the temporary store
-      if (
-        !decryptedTemporaryStore.privateKeys ||
-        !decryptedTemporaryStore.mnemonicPhrase
-      ) {
-        logger.error(
-          "getTemporaryStore",
-          "invalid structure error",
-          "Temporary store has invalid structure",
-        );
-
-        await clearTemporaryData();
-
-        return null;
-      }
-
-      return decryptedTemporaryStore;
     } catch (error) {
+      // Error will be handled in the failure tracking below
+    }
+
+    if (
+      decryptedTemporaryStore &&
+      decryptedTemporaryStore.privateKeys &&
+      decryptedTemporaryStore.mnemonicPhrase
+    ) {
+      getTemporaryStoreFailureCount = 0;
+      return decryptedTemporaryStore;
+    }
+
+    const now = Date.now();
+    if (now - lastFailureTimestamp > FAILURE_RESET_WINDOW_MS) {
+      getTemporaryStoreFailureCount = 0;
+    }
+    getTemporaryStoreFailureCount++;
+    lastFailureTimestamp = now;
+
+    if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
       logger.error(
         "[getTemporaryStore]",
-        "Failed to decrypt temporary store",
-        error,
+        "Repeated failures detected",
+        `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms`,
       );
-
-      // If decryption fails, the hash key or temporary store may be corrupted
-      // We should clear them both and force a new login
-      await clearTemporaryData();
-
-      return null;
     }
+    await clearTemporaryData();
+
+    return null;
   } catch (error) {
     logger.error("[getTemporaryStore]", "Failed to get temporary store", error);
-
     return null;
   }
 };
@@ -1549,6 +1552,31 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       );
     },
 
+    initBiometricPassword: async () => {
+      try {
+        const temporaryStore = await getTemporaryStore();
+        if (!temporaryStore) {
+          return false;
+        }
+        const { password } = temporaryStore;
+        if (!password) {
+          return false;
+        }
+        await biometricDataStorage.setItem(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          password,
+        );
+        return true;
+      } catch (error) {
+        logger.error(
+          "initBiometricPassword",
+          "Failed to initialize biometric password from temporary store",
+          error,
+        );
+        return false;
+      }
+    },
+
     /**
      * Logs out the user by clearing sensitive data
      *
@@ -2274,8 +2302,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       }
     },
 
-    getTemporaryStore: async () => getTemporaryStore(),
-
     clearError: () => {
       set({ error: null });
     },
@@ -2321,7 +2347,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       set({ ...initialState });
       dataStorage.clear();
       get().logout();
-      DevSettings.reload();
     },
 
     setSignInMethod: (method: LoginType) => {

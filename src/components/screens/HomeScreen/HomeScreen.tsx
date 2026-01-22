@@ -319,10 +319,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         </ScrollView>
 
         {/* Analytics Debug - Development Only */}
-        <DebugBottomSheet
-          modalRef={analyticsDebugBottomSheetRef}
-          onDismiss={handleAnalyticsDebugDismiss}
-        />
+        {__DEV__ && (
+          <DebugBottomSheet
+            modalRef={analyticsDebugBottomSheetRef}
+            onDismiss={handleAnalyticsDebugDismiss}
+          />
+        )}
         <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
       </BaseLayout>
     );

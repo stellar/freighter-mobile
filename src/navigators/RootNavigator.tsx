@@ -15,6 +15,7 @@ import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScree
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
+import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import {
   ManageWalletsStackParamList,
@@ -30,6 +31,7 @@ import {
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isDeviceJailbroken } from "helpers/deviceSecurity";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
@@ -76,6 +78,7 @@ export const RootNavigator = () => {
   );
   const [initializing, setInitializing] = useState(true);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
+  const [isJailbroken, setIsJailbroken] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
@@ -91,6 +94,15 @@ export const RootNavigator = () => {
     const initializeApp = async (
       postInitializeCallback?: () => void,
     ): Promise<void> => {
+      const deviceCompromised = isDeviceJailbroken();
+      setIsJailbroken(deviceCompromised);
+
+      if (deviceCompromised) {
+        setInitializing(false);
+        RNBootSplash.hide({ fade: true });
+        return; // Block further initialization
+      }
+
       await getAuthStatus();
       if (postInitializeCallback) {
         postInitializeCallback();
@@ -140,6 +152,10 @@ export const RootNavigator = () => {
 
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
   }, [authStatus]);
+
+  if (isJailbroken) {
+    return <SecurityBlockScreen />;
+  }
 
   if (initializing) {
     return <LoadingScreen />;

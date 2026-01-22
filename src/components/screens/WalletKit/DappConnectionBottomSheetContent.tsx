@@ -9,12 +9,14 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { useProtocolsStore } from "ducks/protocols";
 import { WalletKitSessionProposal } from "ducks/walletKit";
+import { findMatchedProtocol, getHostname } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
 import React, { useMemo } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -39,6 +41,7 @@ type DappConnectionBottomSheetContentProps = {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
+  onVerifyDomainPress?: () => void;
 };
 
 /**
@@ -61,11 +64,14 @@ const DappConnectionBottomSheetContent: React.FC<
   isSuspicious,
   isUnableToScan,
   securityWarningAction,
+  onVerifyDomainPress,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
+  const proposalOrigin = proposalEvent?.verifyContext?.verified?.origin ?? "";
+  const { protocols } = useProtocolsStore();
 
   const getBannerText = useMemo(() => {
     if (isMalicious) {
@@ -132,11 +138,24 @@ const DappConnectionBottomSheetContent: React.FC<
     network,
   ]);
 
+  const matchedProtocol = useMemo(
+    () =>
+      findMatchedProtocol({
+        protocols,
+        searchUrl: proposalOrigin,
+      }),
+    [protocols, proposalOrigin],
+  );
+
+  const isUnlistedProtocol = Boolean(!matchedProtocol);
+
   if (!dappMetadata || !account) {
     return null;
   }
 
-  const dappDomain = dappMetadata.url?.split("://")?.[1]?.split("/")?.[0];
+  const dAppDomain = getHostname(proposalOrigin ?? dappMetadata?.url ?? "");
+  const dAppName = matchedProtocol?.name ?? dappMetadata.name;
+  const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
   const handleUserCancel = () => {
     if (proposalEvent) {
@@ -245,20 +264,34 @@ const DappConnectionBottomSheetContent: React.FC<
   return (
     <View className="flex-1 justify-center items-center mt-2 gap-[16px]">
       <View className="gap-[16px] justify-center items-center">
-        <App
-          size="lg"
-          appName={dappMetadata.name}
-          favicon={dappMetadata.icons[0]}
-        />
+        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
 
         <View className="justify-center items-center">
           <Text lg primary medium textAlign="center">
-            {dappMetadata.name}
+            {dAppName}
           </Text>
-          {dappDomain && (
-            <Text sm secondary>
-              {dappDomain}
-            </Text>
+          {dAppDomain && (
+            <View className="flex-row items-center gap-1">
+              {isUnlistedProtocol && onVerifyDomainPress && (
+                <TouchableOpacity
+                  onPress={onVerifyDomainPress}
+                  disabled={isConnecting}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(
+                    "dappConnectionBottomSheetContent.verifyDomainAccessibilityLabel",
+                  )}
+                >
+                  <Icon.InfoCircle
+                    size={14}
+                    color={themeColors.foreground.secondary}
+                  />
+                </TouchableOpacity>
+              )}
+              <Text sm secondary medium>
+                {dAppDomain}
+              </Text>
+            </View>
           )}
         </View>
 

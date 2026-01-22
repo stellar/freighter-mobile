@@ -296,8 +296,8 @@
       "removedTrustline": "Trustline removida",
       "received": "Recebido",
       "sent": "Enviado",
-      "swapTwoTokens": "{{srcTokenCode}} por {{destTokenCode}}",
-      "swappedTwoTokens": "Trocado {{srcTokenCode}} por {{destTokenCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} para {{destTokenCode}}",
+      "swappedTwoTokens": "Trocado {{srcTokenCode}} para {{destTokenCode}}",
       "swapped": "Trocado",
       "transactionFailed": "Transação falhou",
       "failed": "Falhou",
@@ -307,6 +307,7 @@
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
       "unknown": "Desconhecido",
       "ops": "ops",
+      "multiple": "Múltiplos",
       "collectibleTransfer": {
         "unknownCollectible": "Colecionável desconhecido",
         "unknownCollection": "Coleção {{contractId}}"
@@ -323,7 +324,10 @@
       "addressCopied": "Endereço copiado para a área de transferência",
       "startingBalance": "Saldo inicial:",
       "minter": "Emissor",
-      "mintedTo": "Emitido para"
+      "mintedTo": "Emitido para",
+      "assetChanges": "Mudanças de Ativos",
+      "from": "De",
+      "to": "Para"
     }
   },
   "tokenDetailsScreen": {
@@ -775,7 +779,11 @@
     "connect": "Conectar",
     "connectAnyway": "Conectar mesmo assim",
     "maliciousFlag": "Este site foi marcado como malicioso",
-    "suspiciousFlag": "Este site foi marcado como suspeito"
+    "suspiciousFlag": "Este site foi marcado como suspeito",
+    "verifyDomainTitle": "Verificar domínio",
+    "verifyDomainDescription": "Certifique-se de que este domínio corresponde ao site com o qual você está tentando se conectar.",
+    "verifyDomainButton": "Entendi",
+    "verifyDomainAccessibilityLabel": "Abrir informações sobre verificação deste domínio"
   },
   "low": "baixo",
   "medium": "médio",
@@ -855,7 +863,9 @@
     "connectionNotFound": "Conexão não encontrada",
     "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
     "walletIsLocked": "Carteira bloqueada",
-    "userNotAuthenticated": "Usuário não autenticado"
+    "userNotAuthenticated": "Usuário não autenticado",
+    "invalidTransactionOrigin": "Domínio de transação não confiável",
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter."
   },
   "sendRecipient": {
     "error": {
@@ -1212,5 +1222,10 @@
       "skipTitle": "Continuar sem atualizar?",
       "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
     }
+  },
+  "jailbreakDetected": {
+    "title": "Não é possível executar neste dispositivo",
+    "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
+    "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
   }
 }

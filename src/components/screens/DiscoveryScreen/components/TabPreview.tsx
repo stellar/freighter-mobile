@@ -3,11 +3,8 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
-import {
-  getDomainFromUrl,
-  getFaviconUrl,
-  isHomepageUrl,
-} from "helpers/browser";
+import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
+import { getHostname } from "helpers/protocols";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { View, Image, TouchableOpacity } from "react-native";
@@ -26,7 +23,7 @@ const TabPreview: React.FC<TabPreviewProps> = React.memo(
   ({ title, url, logoUrl, screenshot, isActive = false, onClose }) => {
     const { themeColors } = useColors();
 
-    const domain = useMemo(() => getDomainFromUrl(url), [url]);
+    const domain = useMemo(() => getHostname(url), [url]);
 
     const renderPreviewContent = useMemo(() => {
       // Show screenshot if available
