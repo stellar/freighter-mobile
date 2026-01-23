@@ -8,15 +8,18 @@ tags:
     clearKeychain: true
 
 # If iOS App Tracking Transparency prompt appears on first launch,
-# choose "Ask App Not to Track"
-- runFlow:
-    when:
-      platform: ios
-      visible:
-        text: "Ask App Not to Track"
+# choose "Ask App Not to Track". Retry up to 3 times if dismiss fails.
+- retry:
+    maxRetries: 3
     commands:
-      - tapOn:
-          text: "Ask App Not to Track"
+      - runFlow:
+          when:
+            platform: ios
+            visible:
+              text: "Ask App Not to Track"
+          commands:
+            - tapOn:
+                text: "Ask App Not to Track"
 
 # Wait for welcome screen (may take time on first launch)
 - extendedWaitUntil:
