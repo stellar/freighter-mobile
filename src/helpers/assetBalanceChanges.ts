@@ -105,9 +105,18 @@ export async function processAssetBalanceChanges(
     return [];
   }
 
+  // Filter to only include changes where the user is involved (as sender or receiver)
+  const relevantChanges = changes.filter(
+    (change) => change.to === publicKey || change.from === publicKey,
+  );
+
+  if (relevantChanges.length === 0) {
+    return [];
+  }
+
   // Process each change into a summary
   const summaries = await Promise.all(
-    changes.map((change) =>
+    relevantChanges.map((change) =>
       processAssetChange(change, publicKey, networkDetails),
     ),
   );
