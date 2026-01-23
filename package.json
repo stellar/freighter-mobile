@@ -39,6 +39,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "sh ./scripts/run-e2e-tests.sh",
+    "test:e2e:ios": "sh ./scripts/run-e2e-tests.sh --platform ios",
+    "test:e2e:android": "sh ./scripts/run-e2e-tests.sh --platform android",
     "test:e2e:create-wallet": "maestro test e2e/flows/onboarding/CreateWallet.yaml",
     "test:e2e:import-wallet": "maestro test e2e/flows/onboarding/ImportWallet.yaml",
     "node-clean": "sh ./scripts/node-clean",
