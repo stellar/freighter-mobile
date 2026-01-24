@@ -2,7 +2,7 @@
 
 module EnvFileCreator
   # Read environment variable names from .env.example file
-  # Excludes keys containing "KEYSTORE" as we don't need them here
+  # Excludes keys containing "KEYSTORE" or "E2E_TEST" as we don't need them here
   def self.load_env_vars_from_example
     example_file = ".env.example"
     return [] unless File.exist?(example_file)
@@ -12,7 +12,7 @@ module EnvFileCreator
         .reject { |line| line.empty? || line.start_with?("#") }
         .map { |line| line.split("=", 2).first&.strip }
         .compact
-        .reject { |key| key.empty? || key.include?("KEYSTORE") }
+        .reject { |key| key.empty? || key.include?("KEYSTORE") || key.include?("E2E_TEST") }
         .sort
         .freeze
   end
