@@ -204,10 +204,15 @@ jobs:
           retention-days: 2
 
   test:
-    name: Install and Run E2E Tests
+    name: E2E Shard ${{ matrix.shard-index }}
     needs: build
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard-index: [0, 1]
+        shard-total: [2]
 
     steps:
       - name: Checkout repo
@@ -257,6 +262,8 @@ jobs:
           IS_E2E_TEST: "true"
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
+          SHARD_INDEX: ${{ matrix.shard-index }}
+          SHARD_TOTAL: ${{ matrix.shard-total }}
         with:
           api-level: 33
           arch: x86_64
@@ -273,7 +280,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-e2e-results-${{ github.run_id }}
+          name:
+            android-e2e-results-${{ github.run_id }}-shard-${{
+            matrix.shard-index }}
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore

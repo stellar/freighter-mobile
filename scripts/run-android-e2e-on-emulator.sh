@@ -126,8 +126,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Build E2E script args: --platform android and optional --shard-index/--shard-total (CI matrix)
+E2E_ARGS="--platform android"
+if [ -n "${SHARD_INDEX:-}" ] && [ -n "${SHARD_TOTAL:-}" ]; then
+  E2E_ARGS="$E2E_ARGS --shard-index $SHARD_INDEX --shard-total $SHARD_TOTAL"
+  echo "📂 Running E2E shard $SHARD_INDEX/$SHARD_TOTAL"
+fi
+
 echo "Running E2E tests..."
-yarn test:e2e || {
+./scripts/run-e2e-tests.sh $E2E_ARGS || {
   echo "❌ Error: E2E tests failed"
   exit 1
 }

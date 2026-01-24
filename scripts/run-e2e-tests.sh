@@ -6,12 +6,18 @@ OUTPUT_DIR="e2e-artifacts"
 mkdir -p "$OUTPUT_DIR"
 
 # Optional: --platform ios | android to target a specific device when both are booted.
-# Usage: ./scripts/run-e2e-tests.sh [--platform ios|android]
+# Optional: --shard-index N --shard-total M for CI matrix sharding (run flows where index % M == N).
+# Usage: ./scripts/run-e2e-tests.sh [--platform ios|android] [--shard-index N] [--shard-total M]
 #        yarn test:e2e -- --platform ios
 #        yarn test:e2e:ios   (equiv. to --platform ios)
-#        yarn test:e2e:android
+#        CI: SHARD_INDEX/SHARD_TOTAL env or --shard-index/--shard-total
 PLATFORM=""
 MAESTRO_DEVICE=""
+# Save env before we overwrite (CI matrix sets SHARD_INDEX/SHARD_TOTAL)
+_ENV_SHARD_INDEX="${SHARD_INDEX:-}"
+_ENV_SHARD_TOTAL="${SHARD_TOTAL:-}"
+SHARD_INDEX=""
+SHARD_TOTAL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --)
@@ -25,12 +31,32 @@ while [ $# -gt 0 ]; do
       PLATFORM="$2"
       shift 2
       ;;
+    --shard-index)
+      if [ $# -lt 2 ]; then
+        echo "❌ Error: --shard-index requires a value"
+        exit 1
+      fi
+      SHARD_INDEX="$2"
+      shift 2
+      ;;
+    --shard-total)
+      if [ $# -lt 2 ]; then
+        echo "❌ Error: --shard-total requires a value"
+        exit 1
+      fi
+      SHARD_TOTAL="$2"
+      shift 2
+      ;;
     *)
-      echo "❌ Error: Unknown option: $1. Supported: --platform ios | android"
+      echo "❌ Error: Unknown option: $1. Supported: --platform ios | android, --shard-index N, --shard-total M"
       exit 1
       ;;
   esac
 done
+
+# Use SHARD_INDEX / SHARD_TOTAL from env when not passed via CLI (CI matrix)
+[ -z "$SHARD_INDEX" ] && [ -n "$_ENV_SHARD_INDEX" ] && SHARD_INDEX="$_ENV_SHARD_INDEX"
+[ -z "$SHARD_TOTAL" ] && [ -n "$_ENV_SHARD_TOTAL" ] && SHARD_TOTAL="$_ENV_SHARD_TOTAL"
 
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
@@ -169,12 +195,44 @@ cleanup() {
 # Trap to ensure recording is stopped on exit/interrupt
 trap cleanup EXIT INT TERM
 
+# Validate shard args when one is set
+if [ -n "$SHARD_INDEX" ] || [ -n "$SHARD_TOTAL" ]; then
+  if [ -z "$SHARD_INDEX" ] || [ -z "$SHARD_TOTAL" ]; then
+    echo "❌ Error: both --shard-index and --shard-total (or SHARD_INDEX/SHARD_TOTAL env) must be set"
+    exit 1
+  fi
+  echo "📂 Shard $SHARD_INDEX of $SHARD_TOTAL (CI matrix)"
+fi
+
+# Collect flows deterministically (sorted), optionally filter by shard
+FLOW_FILES=""
+idx=0
+for file in $(find e2e/flows -name "*.yaml" | sort); do
+  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
+    _mod=$(( idx % SHARD_TOTAL ))
+    if [ "$_mod" -ne "$SHARD_INDEX" ]; then
+      idx=$(( idx + 1 ))
+      continue
+    fi
+  fi
+  FLOW_FILES="${FLOW_FILES:+$FLOW_FILES }$file"
+  idx=$(( idx + 1 ))
+done
+
+if [ -z "$FLOW_FILES" ]; then
+  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
+    echo "✅ No flows in shard $SHARD_INDEX/$SHARD_TOTAL; nothing to run"
+    exit 0
+  fi
+  echo "❌ Error: no E2E flow files found under e2e/flows"
+  exit 1
+fi
+
 # Track failures
 failed=0
 failed_tests=""
 
-# Find and run all YAML test flows
-for file in $(find e2e/flows -name "*.yaml"); do
+for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
   TS=$(date +%s)

@@ -170,10 +170,15 @@ jobs:
           if-no-files-found: error
 
   test:
-    name: Install and Run E2E Tests
+    name: E2E Shard ${{ matrix.shard-index }}
     needs: build
     runs-on: macos-26
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard-index: [0, 1]
+        shard-total: [2]
 
     steps:
       - name: Checkout repo
@@ -389,8 +394,8 @@ jobs:
 
           echo "✅ Maestro found: $(maestro --version)"
 
-          echo "Running E2E tests..."
-          yarn test:e2e || {
+          echo "Running E2E tests (shard ${{ matrix.shard-index }}/${{ matrix.shard-total }})..."
+          yarn test:e2e -- --platform ios --shard-index ${{ matrix.shard-index }} --shard-total ${{ matrix.shard-total }} || {
             echo "❌ Error: E2E tests failed"
             exit 1
           }
@@ -401,7 +406,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-e2e-results-${{ github.run_id }}
+          name:
+            ios-e2e-results-${{ github.run_id }}-shard-${{ matrix.shard-index }}
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore
