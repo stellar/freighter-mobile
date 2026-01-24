@@ -204,15 +204,20 @@ jobs:
           retention-days: 2
 
   test:
-    name: E2E Shard ${{ matrix.shard-index }}
+    name: E2E ${{ matrix.flow-name }}
     needs: build
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        shard-index: [0, 1]
-        shard-total: [2]
+        include:
+          - shard-index: 0
+            shard-total: 2
+            flow-name: CreateWallet
+          - shard-index: 1
+            shard-total: 2
+            flow-name: ImportWallet
 
     steps:
       - name: Checkout repo
@@ -264,6 +269,7 @@ jobs:
           MAESTRO_CLI_NO_ANALYTICS: "true"
           SHARD_INDEX: ${{ matrix.shard-index }}
           SHARD_TOTAL: ${{ matrix.shard-total }}
+          FLOW_NAME: ${{ matrix.flow-name }}
         with:
           api-level: 33
           arch: x86_64
@@ -280,9 +286,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name:
-            android-e2e-results-${{ github.run_id }}-shard-${{
-            matrix.shard-index }}
+          name: android-e2e-results-${{ github.run_id }}-${{ matrix.flow-name }}
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore

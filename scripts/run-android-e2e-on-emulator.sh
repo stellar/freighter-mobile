@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# Boot Android emulator (when run via android-emulator-runner), install app, capture logcat,
+# and run E2E tests via run-e2e-tests.sh. Used by CI (android-e2e.yml). Expects
+# downloaded-artifacts/app.apk. CI passes SHARD_INDEX, SHARD_TOTAL, FLOW_NAME.
+
 echo "=== Verifying ADB connection ==="
 adb devices
 
@@ -73,23 +77,9 @@ echo "✅ App launched successfully"
 
 echo "=== Running E2E tests ==="
 
-MAESTRO_PATH="$HOME/.maestro/bin/maestro"
-if [ ! -f "$MAESTRO_PATH" ]; then
-  echo "❌ Error: Maestro not found at $MAESTRO_PATH"
-  exit 1
-fi
-
-export PATH="$PATH:$HOME/.maestro/bin"
-if ! command -v maestro >/dev/null 2>&1; then
-  echo "❌ Error: maestro command not found in PATH"
-  echo "PATH: $PATH"
-  exit 1
-fi
-
-echo "✅ Maestro found: $(maestro --version)"
+LOG_FILE="e2e-artifacts/android-emulator-logs.txt"
 
 # Start capturing Android logs in the background (filtered for freighter app)
-LOG_FILE="e2e-artifacts/android-emulator-logs.txt"
 echo "📱 Starting Android logcat capture (filtered for freighter app)..."
 mkdir -p e2e-artifacts
 # Clear logcat buffer first to start fresh
@@ -107,33 +97,51 @@ adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E | grep --line-
 LOGCAT_PID=$!
 echo "✅ Log capture started (PID: $LOGCAT_PID)"
 
-# Cleanup function
+# Cleanup function (Android-specific: avoid wait to prevent hangs; kill pipeline + orphan adb logcat)
 cleanup() {
   echo "🛑 Stopping logcat capture..."
-  # Kill the grep process (which will also terminate the pipeline)
   if [ -n "${LOGCAT_PID:-}" ]; then
     kill -TERM "$LOGCAT_PID" 2>/dev/null || true
     sleep 1
     kill -KILL "$LOGCAT_PID" 2>/dev/null || true
-    # Don't wait for the process - just kill it and move on
-    # This prevents the script from hanging if the process is stuck
+    # Don't wait - prevents script from hanging if the pipeline is stuck
   fi
-  # Kill any remaining adb logcat processes to ensure cleanup
   pkill -f "adb logcat.*ReactNativeJS" 2>/dev/null || true
-  # Give a brief moment for processes to terminate
   sleep 1
   echo "✅ Logcat capture stopped"
 }
 trap cleanup EXIT INT TERM
 
-# Build E2E script args: --platform android and optional --shard-index/--shard-total (CI matrix)
+# Verify Maestro is installed and accessible
+MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+if [ ! -f "$MAESTRO_PATH" ]; then
+  echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+  exit 1
+fi
+
+# Add Maestro to PATH and verify
+export PATH="$PATH:$HOME/.maestro/bin"
+if ! command -v maestro >/dev/null 2>&1; then
+  echo "❌ Error: maestro command not found in PATH"
+  echo "PATH: $PATH"
+  exit 1
+fi
+
+echo "✅ Maestro found: $(maestro --version)"
+
+# Build E2E script args: --platform android and, when set, --shard-index/--shard-total (CI matrix).
+# FLOW_NAME (CI only) is used for log output only.
 E2E_ARGS="--platform android"
 if [ -n "${SHARD_INDEX:-}" ] && [ -n "${SHARD_TOTAL:-}" ]; then
   E2E_ARGS="$E2E_ARGS --shard-index $SHARD_INDEX --shard-total $SHARD_TOTAL"
-  echo "📂 Running E2E shard $SHARD_INDEX/$SHARD_TOTAL"
+  if [ -n "${FLOW_NAME:-}" ]; then
+    echo "Running E2E tests ($FLOW_NAME, shard $SHARD_INDEX/$SHARD_TOTAL)..."
+  else
+    echo "📂 Running E2E shard $SHARD_INDEX/$SHARD_TOTAL"
+  fi
+else
+  echo "Running E2E tests..."
 fi
-
-echo "Running E2E tests..."
 ./scripts/run-e2e-tests.sh $E2E_ARGS || {
   echo "❌ Error: E2E tests failed"
   exit 1
