@@ -7,12 +7,16 @@ mkdir -p "$OUTPUT_DIR"
 
 # Optional: --platform ios | android to target a specific device when both are booted.
 # Optional: --shard-index N --shard-total M for CI matrix sharding (run flows where index % M == N).
-# Usage: ./scripts/run-e2e-tests.sh [--platform ios|android] [--shard-index N] [--shard-total M]
+# Optional: positional flow name to run a single flow (e.g. CreateWallet, ImportWallet).
+# Usage: ./scripts/run-e2e-tests.sh [--platform ios|android] [--shard-index N] [--shard-total M] [FLOW_NAME]
 #        yarn test:e2e -- --platform ios
 #        yarn test:e2e:ios   (equiv. to --platform ios)
+#        yarn test:e2e:ios CreateWallet   (run only CreateWallet on iOS)
+#        yarn test:e2e:android ImportWallet
 #        CI: SHARD_INDEX/SHARD_TOTAL env or --shard-index/--shard-total
 PLATFORM=""
 MAESTRO_DEVICE=""
+FLOW_NAME_FILTER=""
 # Save env before we overwrite (CI matrix sets SHARD_INDEX/SHARD_TOTAL)
 _ENV_SHARD_INDEX="${SHARD_INDEX:-}"
 _ENV_SHARD_TOTAL="${SHARD_TOTAL:-}"
@@ -48,8 +52,14 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     *)
-      echo "❌ Error: Unknown option: $1. Supported: --platform ios | android, --shard-index N, --shard-total M"
-      exit 1
+      # Positional argument: treat as flow name filter
+      if [ -z "$FLOW_NAME_FILTER" ]; then
+        FLOW_NAME_FILTER="$1"
+        shift
+      else
+        echo "❌ Error: Multiple flow names provided. Only one flow can be specified."
+        exit 1
+      fi
       ;;
   esac
 done
@@ -218,6 +228,27 @@ for file in $(find e2e/flows -name "*.yaml" | sort); do
   FLOW_FILES="${FLOW_FILES:+$FLOW_FILES }$file"
   idx=$(( idx + 1 ))
 done
+
+# Apply flow name filter if set (exact match, case-insensitive)
+if [ -n "$FLOW_NAME_FILTER" ]; then
+  _filtered=""
+  for file in $FLOW_FILES; do
+    _name=$(basename "$file" .yaml)
+    if [ "$(echo "$_name" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FLOW_NAME_FILTER" | tr '[:upper:]' '[:lower:]')" ]; then
+      _filtered="${_filtered:+$_filtered }$file"
+    fi
+  done
+  FLOW_FILES="$_filtered"
+
+  if [ -z "$FLOW_FILES" ]; then
+    echo "❌ Error: No flow found matching '$FLOW_NAME_FILTER'"
+    echo "Available flows:"
+    find e2e/flows -name "*.yaml" | sort | while read f; do
+      echo "  - $(basename "$f" .yaml)"
+    done
+    exit 1
+  fi
+fi
 
 if [ -z "$FLOW_FILES" ]; then
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
