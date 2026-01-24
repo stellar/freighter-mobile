@@ -6,6 +6,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [cg-integration-test]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       ref:
@@ -70,12 +72,19 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
+    # Run on PR "/e2e" comments, or on normal triggers (PR, push, workflow_dispatch)
+    if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body == '/e2e') ||
+      github.event_name != 'issue_comment'
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref:
+            ${{ github.event.inputs.ref || (github.event_name == 'issue_comment'
+            && format('refs/pull/{0}/head', github.event.issue.number)) ||
+            github.ref }}
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
@@ -232,7 +241,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref:
+            ${{ github.event.inputs.ref || (github.event_name == 'issue_comment'
+            && format('refs/pull/{0}/head', github.event.issue.number)) ||
+            github.ref }}
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
