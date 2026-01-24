@@ -129,6 +129,14 @@ fi
 
 echo "✅ Maestro found: $(maestro --version)"
 
+# Verify E2E_TEST_RECOVERY_PHRASE is set in CI (required for ImportWallet flow)
+# Local runs can load from .env via run-e2e-tests.sh
+if [ -n "${SHARD_INDEX:-}" ] && [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+  echo "❌ Error: E2E_TEST_RECOVERY_PHRASE secret is not set in CI"
+  echo "   Ensure secrets.E2E_TEST_RECOVERY_PHRASE is configured in GitHub repository settings"
+  exit 1
+fi
+
 # Build E2E script args: --platform android and, when set, --shard-index/--shard-total (CI matrix).
 # FLOW_NAME (CI only) is used for log output only.
 E2E_ARGS="--platform android"

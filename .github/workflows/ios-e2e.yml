@@ -345,11 +345,16 @@ jobs:
           echo "✅ App launched successfully"
 
       - name: Set recovery phrase in simulator clipboard
+        env:
+          E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
         run: |
           set -euo pipefail
           DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
-          RECOVERY_PHRASE="mushroom uncover sail prevent spot theory work inflict arctic figure dish surround"
-          echo "$RECOVERY_PHRASE" | xcrun simctl pbcopy "$DEVICE_UDID"
+          if [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+            echo "❌ Error: E2E_TEST_RECOVERY_PHRASE secret is not set"
+            exit 1
+          fi
+          echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$DEVICE_UDID"
           echo "✅ Recovery phrase set in simulator clipboard (for ImportWallet clipboard button)"
 
       - name: Run E2E tests

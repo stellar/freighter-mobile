@@ -68,6 +68,16 @@ done
 [ -z "$SHARD_INDEX" ] && [ -n "$_ENV_SHARD_INDEX" ] && SHARD_INDEX="$_ENV_SHARD_INDEX"
 [ -z "$SHARD_TOTAL" ] && [ -n "$_ENV_SHARD_TOTAL" ] && SHARD_TOTAL="$_ENV_SHARD_TOTAL"
 
+# Load E2E_TEST_RECOVERY_PHRASE from .env when not set (local runs). CI uses secrets.
+if [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
+  E2E_TEST_RECOVERY_PHRASE=$(sed -n 's/^E2E_TEST_RECOVERY_PHRASE=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_RECOVERY_PHRASE
+fi
+if [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+  echo "⚠️  E2E_TEST_RECOVERY_PHRASE is not set (and not in .env). ImportWallet flow will fail."
+  echo "   Add E2E_TEST_RECOVERY_PHRASE to your .env file (see .env.example)."
+fi
+
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
     ios)
@@ -259,6 +269,12 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
+# Set iOS simulator clipboard for ImportWallet (local runs). CI sets it in the workflow.
+if [ "$PLATFORM" = "ios" ] && [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
+  echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+  echo "✅ Recovery phrase set in simulator clipboard (for ImportWallet)"
+fi
+
 # Track failures
 failed=0
 failed_tests=""
@@ -278,12 +294,25 @@ for file in $FLOW_FILES; do
   # Start recording for this flow
   start_flow_recording "$FLOW_OUTPUT_DIR"
   
-  # Run Maestro test with per-flow output directory
+  # Run Maestro test with per-flow output directory. Pass E2E_TEST_RECOVERY_PHRASE when set (ImportWallet).
   _ret=0
-  if [ -n "$MAESTRO_DEVICE" ]; then
-    maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+  if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    _env_arg="-e E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE"
   else
-    maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    _env_arg=""
+  fi
+  if [ -n "$MAESTRO_DEVICE" ]; then
+    if [ -n "$_env_arg" ]; then
+      maestro test "$_env_arg" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    else
+      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    fi
+  else
+    if [ -n "$_env_arg" ]; then
+      maestro test "$_env_arg" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    else
+      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    fi
   fi
   
   # Stop recording for this flow

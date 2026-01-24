@@ -270,6 +270,7 @@ jobs:
           SHARD_INDEX: ${{ matrix.shard-index }}
           SHARD_TOTAL: ${{ matrix.shard-total }}
           FLOW_NAME: ${{ matrix.flow-name }}
+          E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
         with:
           api-level: 33
           arch: x86_64

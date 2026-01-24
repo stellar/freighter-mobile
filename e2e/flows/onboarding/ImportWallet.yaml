@@ -56,7 +56,8 @@ tags:
     id: default-action-button
 
 # Import wallet screen - enter recovery phrase
-# iOS: CI sets simulator clipboard before tests; tap the app's clipboard button to paste (covers pasting UX).
+# Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
+# iOS: clipboard set before tests; tap the app's clipboard button to paste (covers pasting UX).
 # Android: Use inputText to type the recovery phrase (covers typing UX).
 - assertVisible:
     id: import-wallet-input
@@ -80,9 +81,7 @@ tags:
     commands:
       - tapOn:
           id: import-wallet-input
-      - inputText:
-          "mushroom uncover sail prevent spot theory work inflict arctic figure
-          dish surround"
+      - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
       # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
       # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
       - runFlow:

@@ -32,7 +32,9 @@ Before running E2E tests, you need to:
 
 1. Set `IS_E2E_TEST=true` in your `.env` file (this enables test-specific
    behaviors in the app)
-2. Build the app for testing (see [Building the App](#building-the-app))
+2. For the Import Wallet flow, set `E2E_TEST_RECOVERY_PHRASE` in `.env` (see
+   [Test Data](#test-data))
+3. Build the app for testing (see [Building the App](#building-the-app))
 
 ### 3. iOS Simulator
 
@@ -108,11 +110,12 @@ maestro test e2e/flows/onboarding/CreateWallet.yaml --device "iPhone 15 Pro"
 The tests use the following test data:
 
 - **Test Password**: `TestPassword123!`
-- **Test Recovery Phrase** (for import tests):
-  `mushroom uncover sail prevent spot theory work inflict arctic figure dish surround`
+- **Test Recovery Phrase** (for import tests): Set `E2E_TEST_RECOVERY_PHRASE` in
+  your `.env` file (see `.env.example`). CI uses
+  `secrets.E2E_TEST_RECOVERY_PHRASE`.
 
 **⚠️ Important**: Never use these credentials in production or commit them with
-real assets.
+real assets. Do not commit `.env` or expose the recovery phrase.
 
 ## Test Flows
 
