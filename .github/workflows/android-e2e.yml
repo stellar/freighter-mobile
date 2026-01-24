@@ -6,6 +6,13 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [cg-integration-test]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description:
+          "Commit hash to run tests on (leave empty for default workflow branch)"
+        required: false
+        type: string
 
 env:
   NODE_VERSION: "20"
@@ -67,6 +74,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
@@ -222,6 +231,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
