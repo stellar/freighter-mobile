@@ -582,6 +582,8 @@
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
     "proceedWithCaution": "Proceed with caution",
+    "expectedToFailTitle": "Warning",
+    "expectedToFailDescription": "This transaction is expected to fail for the following reasons:",
     "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
     "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
@@ -1089,6 +1091,8 @@
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",
+        "expectedToFail": "Transaction is expected to fail.",
+        "unfundedDestination": "This is a new account and needs 1 XLM in order to get started. Any transaction to send non-XLM to an unfunded account will fail.",
         "malicious": "This transaction was flagged as malicious",
         "warning": "This transaction was flagged as warning",
         "unableToSimulate": "Unable to simulate transaction",

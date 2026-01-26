@@ -22,13 +22,15 @@ export interface SecurityWarning {
 }
 
 /**
- * Security assessment result with type-safe level classification
- * Provides consistent interface across all scan types
+ * Scan assessment result with type-safe level classification
+ * Represents the evaluation outcome from a Blockaid scan (tokens, sites, or transactions)
+ * Includes both security aspects and transaction outcome aspects (e.g., expected to fail)
  */
-export interface SecurityAssessment {
+export interface ScanAssessment {
   level: SecurityLevel;
   isSuspicious: boolean;
   isMalicious: boolean;
+  isExpectedToFail?: boolean;
   isUnableToScan: boolean;
   details?: string;
 }
@@ -42,20 +44,22 @@ const getSecurityLevel = (resultType: string): SecurityLevel =>
   SecurityLevel.SAFE;
 
 /**
- * Creates security assessment with proper i18n translation
+ * Creates scan assessment with proper i18n translation
  * Ensures user-facing messages are properly localized
  */
 export const createSecurityAssessment = (
   level: SecurityLevel,
   messageKey?: string,
   fallbackMessage?: string,
-): SecurityAssessment => ({
+): ScanAssessment => ({
   level,
   isSuspicious:
     level !== SecurityLevel.SAFE &&
     level !== SecurityLevel.MALICIOUS &&
-    level !== SecurityLevel.UNABLE_TO_SCAN,
+    level !== SecurityLevel.UNABLE_TO_SCAN &&
+    level !== SecurityLevel.EXPECTED_TO_FAIL,
   isMalicious: level === SecurityLevel.MALICIOUS,
+  isExpectedToFail: level === SecurityLevel.EXPECTED_TO_FAIL,
   isUnableToScan: level === SecurityLevel.UNABLE_TO_SCAN,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
@@ -74,7 +78,7 @@ export const createSecurityAssessment = (
 export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
   debugOverride?: SecurityLevel | null,
-): SecurityAssessment => {
+): ScanAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -123,7 +127,7 @@ export const assessTokenSecurity = (
 export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
   debugOverride?: SecurityLevel | null,
-): SecurityAssessment => {
+): ScanAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -187,7 +191,7 @@ export const assessSiteSecurity = (
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   debugOverride?: SecurityLevel | null,
-): SecurityAssessment => {
+): ScanAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -214,9 +218,9 @@ export const assessTransactionSecurity = (
   // Check for simulation errors = suspicious
   if (simulation && "error" in simulation) {
     const messageKeys =
-      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
     return createSecurityAssessment(
-      SecurityLevel.SUSPICIOUS,
+      SecurityLevel.EXPECTED_TO_FAIL,
       messageKeys.title,
       messageKeys.description,
     );
@@ -256,6 +260,39 @@ export const isBlockaidWarning = (resultType: string): boolean =>
   resultType === BLOCKAID_RESULT_TYPES.SPAM;
 
 /**
+ * Detects if a transaction scan result indicates an unfunded destination error
+ * Checks for simulation errors or specific validation patterns that indicate
+ * the transaction is expected to fail due to unfunded destination
+ *
+ * @param scanResult - The Blockaid transaction scan result
+ * @returns true if the result indicates an unfunded destination, false otherwise
+ */
+export const isUnfundedDestinationError = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+): boolean => {
+  if (!scanResult) {
+    return false;
+  }
+
+  // Check if simulation has an error (indicates transaction will fail)
+  if (scanResult.simulation && "error" in scanResult.simulation) {
+    return true;
+  }
+
+  // Also check for validation errors that indicate simulation failed
+  // The response may include validation: { error: "simulation failed" }
+  if (scanResult.validation && "error" in scanResult.validation) {
+    const validation = scanResult.validation as unknown as { error?: string };
+    return (
+      validation.error !== undefined &&
+      validation.error.toLowerCase().includes("simulation")
+    );
+  }
+
+  return false;
+};
+
+/**
  * Extracts security warnings from Blockaid scan results
  * Matches extension behavior: sites show simple labels, tokens/transactions show detailed warnings
  *
@@ -273,6 +310,10 @@ export const extractSecurityWarnings = (
   if (!scanResult) {
     return warnings;
   }
+
+  const isUnfunded = isUnfundedDestinationError(
+    scanResult as unknown as Blockaid.StellarTransactionScanResponse,
+  );
 
   // Handle site scan results
   if ("status" in scanResult) {
@@ -309,11 +350,27 @@ export const extractSecurityWarnings = (
 
   // Handle transaction scan results
   if ("simulation" in scanResult) {
-    if (scanResult.simulation && "error" in scanResult.simulation) {
+    if (
+      !isUnfunded &&
+      scanResult.simulation &&
+      "error" in scanResult.simulation
+    ) {
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
       });
+    }
+
+    // Check if this scan result indicates unfunded destination (transaction expected to fail)
+    if (isUnfunded) {
+      // Only add the detailed explanation - the title already says "Transaction is expected to fail"
+      warnings.push({
+        id: "unfunded-destination-details",
+        description: t("blockaid.security.transaction.unfundedDestination"),
+      });
+
+      // Do not surface Blockaid technical messages for unfunded accounts
+      return warnings;
     }
 
     if (

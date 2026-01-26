@@ -21,6 +21,16 @@ export const BLOCKAID_ERROR_MESSAGES = {
 } as const;
 
 /**
+ * Unfunded destination detection patterns
+ * Used to identify simulation errors related to unfunded account operations
+ */
+export const UNFUNDED_DESTINATION_PATTERNS = {
+  UNFUNDED: "unfunded",
+  DESTINATION_NOT_FUNDED: "destination.*not.*funded",
+  NEW_ACCOUNT: "new.*account",
+} as const;
+
+/**
  * Security levels for Blockaid assessments
  * Provides type-safe security classification
  */
@@ -28,6 +38,7 @@ export enum SecurityLevel {
   SAFE = "SAFE",
   SUSPICIOUS = "SUSPICIOUS",
   MALICIOUS = "MALICIOUS",
+  EXPECTED_TO_FAIL = "EXPECTED_TO_FAIL",
   UNABLE_TO_SCAN = "UNABLE_TO_SCAN",
 }
 
@@ -57,6 +68,9 @@ export const SECURITY_MESSAGE_KEYS = {
     "blockaid.security.transaction.simulationFailed",
   TRANSACTION_MALICIOUS: "blockaid.security.transaction.malicious",
   TRANSACTION_WARNING: "blockaid.security.transaction.warning",
+  TRANSACTION_EXPECTED_TO_FAIL: "blockaid.security.transaction.expectedToFail",
+  TRANSACTION_UNFUNDED_DESTINATION:
+    "blockaid.security.transaction.unfundedDestination",
   // Unable to scan message keys
   UNABLE_TO_SCAN_TOKEN: "blockaid.unableToScan.token",
   UNABLE_TO_SCAN_SITE_TITLE: "blockaid.unableToScan.site.title",
@@ -68,8 +82,15 @@ export const SECURITY_MESSAGE_KEYS = {
 /**
  * Security message keys organized by SecurityLevel for different contexts
  */
-export const TOKEN_SECURITY_LEVEL_MESSAGE_KEYS = {
+export const TOKEN_SECURITY_LEVEL_MESSAGE_KEYS: Record<
+  SecurityLevel,
+  { title: string | undefined; description: string | undefined }
+> = {
   [SecurityLevel.SAFE]: {
+    title: undefined,
+    description: undefined,
+  },
+  [SecurityLevel.EXPECTED_TO_FAIL]: {
     title: undefined,
     description: undefined,
   },
@@ -85,10 +106,17 @@ export const TOKEN_SECURITY_LEVEL_MESSAGE_KEYS = {
     title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
     description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TOKEN,
   },
-} as const;
+};
 
-export const SITE_SECURITY_LEVEL_MESSAGE_KEYS = {
+export const SITE_SECURITY_LEVEL_MESSAGE_KEYS: Record<
+  SecurityLevel,
+  { title: string | undefined; description: string | undefined }
+> = {
   [SecurityLevel.SAFE]: {
+    title: undefined,
+    description: undefined,
+  },
+  [SecurityLevel.EXPECTED_TO_FAIL]: {
     title: undefined,
     description: undefined,
   },
@@ -104,12 +132,19 @@ export const SITE_SECURITY_LEVEL_MESSAGE_KEYS = {
     title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_SITE_TITLE,
     description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_SITE_DESCRIPTION,
   },
-} as const;
+};
 
-export const TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS = {
+export const TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS: Record<
+  SecurityLevel,
+  { title: string | undefined; description: string | undefined }
+> = {
   [SecurityLevel.SAFE]: {
     title: undefined,
     description: undefined,
+  },
+  [SecurityLevel.EXPECTED_TO_FAIL]: {
+    title: SECURITY_MESSAGE_KEYS.TRANSACTION_EXPECTED_TO_FAIL,
+    description: SECURITY_MESSAGE_KEYS.TRANSACTION_EXPECTED_TO_FAIL,
   },
   [SecurityLevel.SUSPICIOUS]: {
     title: SECURITY_MESSAGE_KEYS.TRANSACTION_WARNING,
@@ -123,7 +158,7 @@ export const TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS = {
     title: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TRANSACTION_TITLE,
     description: SECURITY_MESSAGE_KEYS.UNABLE_TO_SCAN_TRANSACTION_DESCRIPTION,
   },
-} as const;
+};
 
 /**
  * Validation severity levels for flagged entities

@@ -5,6 +5,7 @@ import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
   extractSecurityWarnings,
+  isUnfundedDestinationError,
 } from "services/blockaid/helper";
 
 function getTransactionSecurityWarnings(
@@ -20,7 +21,11 @@ function getTransactionSecurityWarnings(
     ];
   }
 
-  if (assessment.isMalicious || assessment.isSuspicious) {
+  if (
+    assessment.isMalicious ||
+    assessment.isSuspicious ||
+    assessment.isExpectedToFail
+  ) {
     const warnings = extractSecurityWarnings(scanResult);
 
     if (Array.isArray(warnings) && warnings.length > 0) {
@@ -34,6 +39,7 @@ function getTransactionSecurityWarnings(
 function getTransactionSecuritySeverity(
   assessment: ReturnType<typeof assessTransactionSecurity>,
 ): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined {
+  if (assessment.isExpectedToFail) return SecurityLevel.EXPECTED_TO_FAIL;
   if (assessment.isMalicious) return SecurityLevel.MALICIOUS;
   if (assessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
   if (assessment.isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
@@ -79,9 +85,11 @@ export interface BannerContent {
 export interface UseSendBannerContentParams {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
+  scanResult?: Blockaid.StellarTransactionScanResponse;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
   onMuxedAddressWithoutMemoSupportPress?: () => void;
@@ -94,20 +102,32 @@ export interface UseSendBannerContentParams {
 export function useSendBannerContent({
   isMalicious,
   isSuspicious,
+  isExpectedToFail = false,
   isUnableToScan = false,
   isRequiredMemoMissing = false,
   isMuxedAddressWithoutMemoSupport = false,
+  scanResult,
   onSecurityWarningPress,
   onMemoMissingPress,
   onMuxedAddressWithoutMemoSupportPress,
 }: UseSendBannerContentParams): BannerContent | undefined {
   const { t } = useAppTranslation();
 
+  // Check if this is an unfunded destination error
+  const isUnfundedDestination = useMemo(() => {
+    if (!scanResult) {
+      return false;
+    }
+    return isUnfundedDestinationError(scanResult);
+  }, [scanResult]);
+
   return useMemo(() => {
     const shouldShowNoticeBanner =
       isRequiredMemoMissing ||
       isMalicious ||
       isSuspicious ||
+      isExpectedToFail ||
+      isUnfundedDestination ||
       isMuxedAddressWithoutMemoSupport ||
       isUnableToScan;
 
@@ -119,6 +139,14 @@ export function useSendBannerContent({
       return {
         text: t("transactionAmountScreen.errors.malicious"),
         variant: "error" as const,
+        onPress: onSecurityWarningPress,
+      };
+    }
+
+    if (isExpectedToFail || isUnfundedDestination) {
+      return {
+        text: t("blockaid.security.transaction.expectedToFail"),
+        variant: "warning" as const,
         onPress: onSecurityWarningPress,
       };
     }
@@ -164,10 +192,13 @@ export function useSendBannerContent({
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
+    isUnfundedDestination,
     onSecurityWarningPress,
     onMemoMissingPress,
     onMuxedAddressWithoutMemoSupportPress,
+    t,
   ]);
 }

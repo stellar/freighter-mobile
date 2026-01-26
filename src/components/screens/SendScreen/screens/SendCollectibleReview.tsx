@@ -421,6 +421,7 @@ const SendCollectibleReviewScreen: React.FC<
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+      isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
@@ -430,6 +431,7 @@ const SendCollectibleReviewScreen: React.FC<
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
+      transactionSecurityAssessment.isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       handleTransactionConfirmation,
       isValidatingMemo,
@@ -503,8 +505,10 @@ const SendCollectibleReviewScreen: React.FC<
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
+    isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
+    scanResult: transactionScanResult,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
