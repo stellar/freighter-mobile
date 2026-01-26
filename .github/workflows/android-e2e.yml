@@ -67,6 +67,10 @@ env:
   # MP Collections Addresses (comma-separated list of collection addresses)
   MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
 
+  # E2E Test Configuration
+  IS_E2E_TEST: "true"
+  E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
+
 jobs:
   build:
     name: Build Android APK
@@ -107,7 +111,6 @@ jobs:
       - name: Set env and create .env file
         run: |
           export ANDROID_FLAVOR="dev"
-          export IS_E2E_TEST="true"
           ./scripts/gh-android-env >> $GITHUB_ENV
 
       - name: Set up JDK 17
@@ -146,7 +149,6 @@ jobs:
 
       - name: Build Android APK for emulator
         env:
-          IS_E2E_TEST: "true"
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd android
@@ -287,13 +289,11 @@ jobs:
         id: emulator
         continue-on-error: false
         env:
-          IS_E2E_TEST: "true"
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
           SHARD_INDEX: ${{ matrix.shard-index }}
           SHARD_TOTAL: ${{ matrix.shard-total }}
           FLOW_NAME: ${{ matrix.flow-name }}
-          E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
         with:
           api-level: 33
           arch: x86_64

@@ -59,6 +59,10 @@ env:
   # MP Collections Addresses (comma-separated list of collection addresses)
   MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
 
+  # E2E Test Configuration
+  IS_E2E_TEST: "true"
+  E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
+
 jobs:
   build:
     name: Build iOS App
@@ -108,7 +112,6 @@ jobs:
       - name: Set env and create .env file
         run: |
           export IOS_SCHEME="freighter-mobile-dev"
-          export IS_E2E_TEST="true"
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Cache CocoaPods
@@ -125,7 +128,6 @@ jobs:
 
       - name: Build iOS app for simulator
         env:
-          IS_E2E_TEST: "true"
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd ios
@@ -368,8 +370,6 @@ jobs:
           echo "✅ App launched successfully"
 
       - name: Set recovery phrase in simulator clipboard
-        env:
-          E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
         run: |
           set -euo pipefail
           DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
@@ -382,7 +382,6 @@ jobs:
 
       - name: Run E2E tests
         env:
-          IS_E2E_TEST: "true"
           MAESTRO_DISABLE_UPDATE_CHECK: "true"
           MAESTRO_CLI_NO_ANALYTICS: "true"
           DEVICE_UDID: ${{ steps.simulator.outputs.udid }}
