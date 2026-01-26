@@ -295,17 +295,25 @@ for file in $FLOW_FILES; do
   start_flow_recording "$FLOW_OUTPUT_DIR"
   
   # Run Maestro test with per-flow output directory.
-  # Pass E2E_TEST_RECOVERY_PHRASE when set (ImportWallet) via Maestro's `-e KEY=value`.
+  # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   _ret=0
   if [ -n "$MAESTRO_DEVICE" ]; then
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
       maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    elif [ -n "${IS_CI_ENV:-}" ]; then
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
     else
       maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
     fi
   else
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
       maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+    elif [ -n "${IS_CI_ENV:-}" ]; then
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
     else
       maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
     fi

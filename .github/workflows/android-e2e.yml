@@ -70,6 +70,7 @@ env:
   # E2E Test Configuration
   IS_E2E_TEST: "true"
   E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
+  IS_CI_ENV: "true"
 
 jobs:
   build:

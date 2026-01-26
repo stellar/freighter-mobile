@@ -56,25 +56,55 @@ tags:
     id: default-action-button
 
 # Import wallet screen - enter recovery phrase
+#
 # Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
-# iOS: clipboard set before tests; tap the app's clipboard button to paste (covers pasting UX).
+#
+# iOS CI: clipboard set before tests; tap the app's clipboard button to paste (covers pasting UX).
+#         we need to use clipboard in CI because the iOS Simulator skips letters when typing in CI.
+#
+# iOS Local: Use inputText to type the recovery phrase (covers typing UX).
+#         iOS Simulator doesn't skip letters when typing locally so we can use inputText.
+#
 # Android: Use inputText to type the recovery phrase (covers typing UX).
+#
 - assertVisible:
     id: import-wallet-input
+# iOS: Use clipboard in CI, inputText locally
 - runFlow:
     when:
       platform: ios
     commands:
-      - tapOn:
-          id: clipboard-button
-      # Handle iOS paste permission modal if it appears
+      # CI: Use clipboard approach (IS_CI_ENV is set to "true" in CI workflows)
       - runFlow:
           when:
-            visible:
-              text: "Allow Paste|Don't Allow Paste"
+            true: ${IS_CI_ENV === 'true'}
           commands:
             - tapOn:
-                text: "Allow Paste"
+                id: clipboard-button
+            # Handle iOS paste permission modal if it appears
+            - runFlow:
+                when:
+                  visible:
+                    text: "Allow Paste|Don't Allow Paste"
+                commands:
+                  - tapOn:
+                      text: "Allow Paste"
+      # Local: Use inputText approach (like Android)
+      - runFlow:
+          when:
+            true: ${IS_CI_ENV !== 'true'}
+          commands:
+            - tapOn:
+                id: import-wallet-input
+            - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
+            # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
+            - runFlow:
+                when:
+                  notVisible:
+                    id: default-action-button
+                commands:
+                  - hideKeyboard
+# Android: Always use inputText
 - runFlow:
     when:
       platform: android
@@ -120,10 +150,10 @@ tags:
       - runFlow:
           when:
             visible:
-              text: "Don't Allow|Don’t Allow|Cancel"
+              text: "Don't Allow|Don't Allow|Cancel"
           commands:
             - tapOn:
-                text: "Don't Allow|Don’t Allow|Cancel"
+                text: "Don't Allow|Don't Allow|Cancel"
 
 # Verify we reached home screen
 - extendedWaitUntil:
