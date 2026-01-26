@@ -88,6 +88,11 @@ env:
   # MP Collections Addresses (comma-separated list of collection addresses)
   MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
 
+  # E2E test vars: defined here for consistency with E2E workflow files (ios-e2e, android-e2e).
+  # They are shared by gh-ios-env → EnvFileCreator (.env) in both release and E2E workflows.
+  IS_E2E_TEST: "false"
+  E2E_TEST_RECOVERY_PHRASE: ""
+
 jobs:
   # Scheduled nightly builds should not overwrite the dev build
   # when a release candidate branch is active (branches starting with "release" or "emergency-release").
@@ -166,7 +171,6 @@ jobs:
           else
             export IOS_SCHEME="freighter-mobile-dev"
           fi
-          export IS_E2E_TEST="false"
           ./scripts/gh-ios-env >> $GITHUB_ENV
 
       - name: Generate release notes
