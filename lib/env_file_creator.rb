@@ -1,31 +1,37 @@
 # frozen_string_literal: true
 
 module EnvFileCreator
-  # Read environment variable names from .env.example file
-  # Excludes keys containing "KEYSTORE" or "E2E_TEST" as we don't need them here
+  # Read environment variable names from .env.example file.
+  # KEYSTORE keys are excluded (not needed in app .env). E2E_TEST keys are optional.
   def self.load_env_vars_from_example
     example_file = ".env.example"
-    return [] unless File.exist?(example_file)
+    return { required: [], optional: [] } unless File.exist?(example_file)
 
-    File.readlines(example_file)
-        .map(&:strip)
-        .reject { |line| line.empty? || line.start_with?("#") }
-        .map { |line| line.split("=", 2).first&.strip }
-        .compact
-        .reject { |key| key.empty? || key.include?("KEYSTORE") || key.include?("E2E_TEST") }
-        .sort
-        .freeze
+    keys = File.readlines(example_file)
+               .map(&:strip)
+               .reject { |line| line.empty? || line.start_with?("#") }
+               .map { |line| line.split("=", 2).first&.strip }
+               .compact
+               .reject(&:empty?)
+
+    required = keys.reject { |k| k.include?("KEYSTORE") || k.include?("E2E_TEST") }.sort.freeze
+    optional = keys.select { |k| k.include?("E2E_TEST") }.sort.freeze
+    { required: required, optional: optional }
   end
 
+  ENV_VARS = load_env_vars_from_example
+
   # Environment variables that must be included in the .env file
-  ENV_VARS = load_env_vars_from_example.freeze
+  REQUIRED_ENV_VARS = ENV_VARS[:required].freeze
+  # Optional: included only when defined (e.g. E2E_TEST_*); omit otherwise
+  OPTIONAL_ENV_VARS = ENV_VARS[:optional].freeze
 
   def self.create(env:)
-    # Validate that all required .env file variables exist and have non-empty values
-    missing_vars = ENV_VARS.select do |var_name|
+    # Validate that all required .env variables exist and have non-empty values
+    missing_vars = REQUIRED_ENV_VARS.select do |var_name|
       !env.key?(var_name) || env[var_name].nil? || env[var_name].to_s.empty?
     end
-    
+
     unless missing_vars.empty?
       $stderr.puts "❌ Error: Missing required environment variables:"
       missing_vars.each do |var_name|
@@ -35,9 +41,10 @@ module EnvFileCreator
       raise "Missing required environment variables: #{missing_vars.join(', ')}"
     end
 
-    # Create .env file with non-empty values
+    # Create .env: required vars (all present) + optional vars only when defined
+    vars_to_write = REQUIRED_ENV_VARS + OPTIONAL_ENV_VARS
     File.open(".env", "w") do |file|
-      ENV_VARS.each do |var_name|
+      vars_to_write.each do |var_name|
         value = env[var_name]
         file.puts("#{var_name}=#{value}") if value && !value.to_s.empty?
       end
