@@ -41,6 +41,20 @@ module EnvFileCreator
       raise "Missing required environment variables: #{missing_vars.join(', ')}"
     end
 
+    # Warn if optional E2E_TEST vars are missing (needed for E2E test flows)
+    missing_optional_vars = OPTIONAL_ENV_VARS.select do |var_name|
+      !env.key?(var_name) || env[var_name].nil? || env[var_name].to_s.empty?
+    end
+
+    unless missing_optional_vars.empty?
+      $stderr.puts "⚠️  Warning: Missing optional environment variables:"
+      missing_optional_vars.each do |var_name|
+        $stderr.puts "  - #{var_name}"
+      end
+      $stderr.puts "\nThese variables are optional but may be required for E2E test flows."
+      $stderr.puts "Please ensure they are set in your repository variables/secrets if needed.\n"
+    end
+
     # Create .env: required vars (all present) + optional vars only when defined
     vars_to_write = REQUIRED_ENV_VARS + OPTIONAL_ENV_VARS
     File.open(".env", "w") do |file|
