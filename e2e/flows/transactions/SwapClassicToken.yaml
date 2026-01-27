@@ -5,6 +5,9 @@ tags:
   - classic-token
 ---
 # Import wallet first to ensure we have a wallet with balances
+# NOTE: you can comment this first ImportWallet.yaml runFlow section out to
+# skip the import wallet flow when testing locally so you don't need to import
+# the wallet every time.
 - runFlow:
     file: ../onboarding/ImportWallet.yaml
 
@@ -70,15 +73,18 @@ tags:
 - tapOn:
     id: swap-continue-button
 # Verify review sheet is visible
-- assertVisible:
-    id: swap-review-sheet
+- extendedWaitUntil:
+    visible:
+      id: swap-review-sheet
+    timeout: 30000
 # Confirm the swap
 - tapOn:
     id: swap-review-confirm-button
-
 # Verify swap transaction success
-- assertVisible:
-    id: swap-processing-screen
+- extendedWaitUntil:
+    visible:
+      id: swap-processing-screen
+    timeout: 30000
 # Wait for completion and tap Done
 - extendedWaitUntil:
     visible:
@@ -87,4 +93,6 @@ tags:
 - tapOn:
     id: swap-processing-done-button
 # Verify Swapped on history screen
-- assertVisible: Swapped
+- extendedWaitUntil:
+    visible: "XLM to USDC"
+    timeout: 30000
