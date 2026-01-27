@@ -77,7 +77,7 @@ import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext } from "services/blockaid/constants";
-import { UnfundedDestinationContext } from "services/blockaid/helper";
+import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,

@@ -10,6 +10,7 @@ import {
   TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS,
   ValidationSeverity,
 } from "services/blockaid/constants";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 // Keep this helper UI-agnostic – no UI imports/hooks here
 
@@ -19,20 +20,6 @@ import {
 export interface SecurityWarning {
   id: string;
   description: string;
-}
-
-/**
- * Scan assessment result with type-safe level classification
- * Represents the evaluation outcome from a Blockaid scan (tokens, sites, or transactions)
- * Includes both security aspects and transaction outcome aspects (e.g., expected to fail)
- */
-export interface ScanAssessment {
-  level: SecurityLevel;
-  isSuspicious: boolean;
-  isMalicious: boolean;
-  isExpectedToFail?: boolean;
-  isUnableToScan: boolean;
-  details?: string;
 }
 
 /**
@@ -60,14 +47,14 @@ const getSecurityLevel = (resultType: string): SecurityLevel =>
   SecurityLevel.SAFE;
 
 /**
- * Creates scan assessment with proper i18n translation
+ * Creates security assessment with proper i18n translation
  * Ensures user-facing messages are properly localized
  */
 export const createSecurityAssessment = (
   level: SecurityLevel,
   messageKey?: string,
   fallbackMessage?: string,
-): ScanAssessment => ({
+): SecurityAssessment => ({
   level,
   isSuspicious:
     level !== SecurityLevel.SAFE &&
@@ -94,7 +81,7 @@ export const createSecurityAssessment = (
 export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
   debugOverride?: SecurityLevel | null,
-): ScanAssessment => {
+): SecurityAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -143,7 +130,7 @@ export const assessTokenSecurity = (
 export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
   debugOverride?: SecurityLevel | null,
-): ScanAssessment => {
+): SecurityAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -232,13 +219,13 @@ export const isUnfundedDestinationError = (
  * @param scanResult - The Blockaid transaction scan result
  * @param debugOverride - Debug override for testing
  * @param unfundedContext - Optional context to determine if unfunded destination
- * @returns ScanAssessment with type-safe level and localized details
+ * @returns SecurityAssessment with type-safe level and localized details
  */
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   debugOverride?: SecurityLevel | null,
   unfundedContext?: UnfundedDestinationContext,
-): ScanAssessment => {
+): SecurityAssessment => {
   // Check for debug override first
   if (debugOverride) {
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
@@ -339,14 +326,17 @@ export const extractSecurityWarnings = (
     return warnings;
   }
 
-  const isUnfunded = isUnfundedDestinationError(
-    scanResult as unknown as Blockaid.StellarTransactionScanResponse,
-    unfundedContext,
-  );
-  const isNativeUnderMinimum =
-    isUnfunded &&
-    unfundedContext?.assetCode === "XLM" &&
-    unfundedContext?.canCreateAccountWithAmount === false;
+  // Only check unfunded destination if this is a transaction scan result
+  let isUnfunded = false;
+  let isNativeUnderMinimum = false;
+
+  if ("simulation" in scanResult) {
+    isUnfunded = isUnfundedDestinationError(scanResult, unfundedContext);
+    isNativeUnderMinimum =
+      isUnfunded &&
+      unfundedContext?.assetCode === "XLM" &&
+      unfundedContext?.canCreateAccountWithAmount === false;
+  }
 
   // Handle site scan results
   if ("status" in scanResult) {

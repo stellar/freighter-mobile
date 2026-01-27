@@ -6,7 +6,7 @@ import {
   assessTransactionSecurity,
   extractSecurityWarnings,
   isUnfundedDestinationError,
-  UnfundedDestinationContext,
+  type UnfundedDestinationContext,
 } from "services/blockaid/helper";
 
 function getTransactionSecurityWarnings(

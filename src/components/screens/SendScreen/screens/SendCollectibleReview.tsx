@@ -64,7 +64,7 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { UnfundedDestinationContext } from "services/blockaid/helper";
+import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
